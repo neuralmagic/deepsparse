@@ -1,3 +1,5 @@
+*.DS_Store
+*.rst
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
