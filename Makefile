@@ -1,3 +1,9 @@
+.PHONY: build docs test
+
+BUILDDIR := $(PWD)
+CHECKDIRS := examples tests src utils notebooks setup.py
+DOCDIR := docs
+
 # run checks on all files for the repo
 quality:
     [TODO]
