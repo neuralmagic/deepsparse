@@ -11,25 +11,6 @@ from setuptools.command.install import install
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 
-class OverrideInstall(install):
-    """
-    This class adds a hook that runs after regular install that
-    changes the permissions of all the binary files to 0755.
-    """
-
-    def run(self):
-        install.run(self)
-        mode = 0o755
-        for filepath in self.get_outputs():
-            if any(fnmatch(filepath, regex) for regex in binary_regexes):
-                log.info("changing mode of %s to %s" % (filepath, oct(mode)))
-                os.chmod(filepath, mode)
-
-
-# File regexes for binaries to include in package_data
-binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
-
-
 _deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0"]
 
 _dev_deps = [
