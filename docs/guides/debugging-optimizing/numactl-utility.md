@@ -1,8 +1,8 @@
-# Using the numactl Utility to Control Resource Utilization with the Deep Sparse Engine
+# Using the numactl Utility to Control Resource Utilization with the DeepSparse Engine
 
-The Deep Sparse Engine works best when run on a single socket and with hyper-threading disabled. One standard way of controlling compute/memory resources when running processes is to use the **numactl** utility. **numactl** can be used when multiple processes need to run on the same hardware but require their own CPU/memory resources to run optimally.
+The DeepSparse Engine works best when run on a single socket and with hyper-threading disabled. One standard way of controlling compute/memory resources when running processes is to use the **numactl** utility. **numactl** can be used when multiple processes need to run on the same hardware but require their own CPU/memory resources to run optimally.
 
-Because using **numactl** to select multiple sockets will not work, to run NMIE on a single socket (N) of a multi-socket system, you would start the Deep Sparse Engine using **numactl**. For example:
+Because using **numactl** to select multiple sockets will not work, to run DeepSparse Engine on a single socket (N) of a multi-socket system, you would start the DeepSparse Engine using **numactl**. For example:
 
 ```bash
     numactl --cpunodebind N <deepsparseengine-process>
@@ -18,20 +18,20 @@ It is advised to also allocate memory from the same socket on which the engine i
 
 The difference between `--membind` and `--preferred` is that `--preferred` allows memory from other sockets to be allocated if the current socket is out of memory.  `--membind` does not allow memory to be allocated outside the specified socket.
 
-For more fine-grained control, **numactl** can be used to bind the process running the NMIE to a set of specific CPUs using `--physcpubind`. CPUs are numbered from 0-N, where N is the maximum number of logical cores available on the system. On systems with hyper-threading (or SMT), there may be more than one logical thread per physical CPU. Usually, the logical CPUs/threads are numbered after all the physical CPUs/threads. For example, in a system with two threads per CPU and N physical CPUs, the threads for a particular CPU (K) will be K and K+N for all 0&lt;=K&lt;N. The NMIE currently works best with hyper-threading/SMT disabled, so only one set of threads should be selected using **numactl**, i.e., 0 through (N-1) or N through  \
+For more fine-grained control, **numactl** can be used to bind the process running the DeepSparse Engine to a set of specific CPUs using `--physcpubind`. CPUs are numbered from 0-N, where N is the maximum number of logical cores available on the system. On systems with hyper-threading (or SMT), there may be more than one logical thread per physical CPU. Usually, the logical CPUs/threads are numbered after all the physical CPUs/threads. For example, in a system with two threads per CPU and N physical CPUs, the threads for a particular CPU (K) will be K and K+N for all 0&lt;=K&lt;N. The DeepSparse Engine currently works best with hyper-threading/SMT disabled, so only one set of threads should be selected using **numactl**, i.e., 0 through (N-1) or N through  \
 (N-1).
 
 Similarly, for a multi-socket system with N sockets and C physical CPUs per socket, the CPUs located on a single socket will range from K*C to ((K+1)*C)-1 where 0&lt;=K&lt;N. For multi-socket, multi-thread systems, the logical threads are separated by N*C. For example, for a two socket, two thread per CPU system with 8 cores per CPU, the logical threads for socket 0 would be numbered 0-7 and 16-23, and the threads for socket 1 would be numbered 8-15 and 24-31.
 
-Given the architecture above, to run the Deep Sparse Engine on the first four CPUs on the second socket, you would use the following:
+Given the architecture above, to run the DeepSparse Engine on the first four CPUs on the second socket, you would use the following:
 
 ```bash
     numactl --physcpubind 8-11 --preferred 1 <deepsparseengine-process>
 ```
 
-Note that `--preferred 1` is needed here since the NMIE is being bound to CPUs on the second socket.
+Note that `--preferred 1` is needed here since the DeepSparse Engine is being bound to CPUs on the second socket.
 
-## Deep Sparse Engine and Thread Pinning
+## DeepSparse Engine and Thread Pinning
 
 When using **numactl** to specify which CPUs/sockets the engine is allowed to run on, there is no restriction as to which CPU a particular computation thread is executed on. A single thread of computation may run on one or more CPUs during the course of execution. This is desirable if the system is being shared between multiple processes so that idle CPU threads are not prevented from doing other work.
 
@@ -43,7 +43,7 @@ However, the engine works best when threads are pinned (i.e., not allowed to mig
     export NM_BIND_THREADS_TO_CORES=1 <deepsparseengine-process>
 ```
 
-`NM_BIND_THREADS_TO_CORES` should be used with care since it forces the NMIE to run on only the threads it has been allocated at startup. If any other process ends up running on the same threads, it could result in a major degradation of performance.
+`NM_BIND_THREADS_TO_CORES` should be used with care since it forces the DeepSparse Engine to run on only the threads it has been allocated at startup. If any other process ends up running on the same threads, it could result in a major degradation of performance.
 
 When using server mode with multiple engines, it is advisable to keep thread pinning disabled.
 

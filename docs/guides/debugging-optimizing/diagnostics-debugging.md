@@ -2,23 +2,23 @@
 
 Unlike traditional software, debugging utilities available to the machine learning community are scarce. Complicated with deployment pipeline design issues, model weights, model architecture, and unoptimized models, debugging performance issues can be very dynamic in your data science ecosystem. Reviewing a log file can be your first line of defense in pinpointing performance issues with optimizing your inference.
 
-The Deep Sparse Engine ships with diagnostic logging so you can capture real-time monitoring information at model runtime and self-diagnose issues. If you are seeking technical support, we recommend capturing log information first, as described below. You can decide what to share, whether certain parts of the log or the entire content.  
+The DeepSparse Engine ships with diagnostic logging so you can capture real-time monitoring information at model runtime and self-diagnose issues. If you are seeking technical support, we recommend capturing log information first, as described below. You can decide what to share, whether certain parts of the log or the entire content.  
 
 **Note:** Our logs may reveal your inference network’s macro-architecture, including a general list of operators (such as convolution and pooling) and connections between them. Weights, trained parameters, or dataset parameters will not be captured. Consult Neural Magic’s various legal policies at [https://neuralmagic.com/legal/](https://neuralmagic.com/legal/) which include our privacy statement and software agreements. Your use of the software serves as your consent to these practices.
 
 ## Performance Tuning
 
-An initial decision point to make in troubleshooting performance issues before enabling logs is whether to prevent threads from migrating from their cores. The default behavior is to disable thread binding (or pinning), allowing your OS to manage the allocation of threads to cores. There is a performance hit associated with this if the NMIE is the main process running on your machine. If you want to enable thread binding for the possible performance benefit, set:
+An initial decision point to make in troubleshooting performance issues before enabling logs is whether to prevent threads from migrating from their cores. The default behavior is to disable thread binding (or pinning), allowing your OS to manage the allocation of threads to cores. There is a performance hit associated with this if the DeepSparseEngine is the main process running on your machine. If you want to enable thread binding for the possible performance benefit, set:
 
 ```bash
     NM_BIND_THREADS_TO_CORES=1
 ```
 
-**Note 1:** If the Deep Sparse Engine is not the only major process running on your machine, binding threads may hurt performance of the other major process(es) by monopolizing system resources.
+**Note 1:** If the DeepSparse Engine is not the only major process running on your machine, binding threads may hurt performance of the other major process(es) by monopolizing system resources.
 
 **Note 2:** If you use OpenMP or TBB (Thread Building Blocks) in your application, then enabling thread binding may result in severe performance degradation due to conflicts between Neural Magic thread pool and OpenMP/TBB thread pools.
 
-## Enabling Logs and Controlling the Amount of Logs Produced by the Deep Sparse Engine
+## Enabling Logs and Controlling the Amount of Logs Produced by the DeepSparse Engine
 
 Logs are controlled by setting the `NM_LOGGING_LEVEL` environment variable.
 
