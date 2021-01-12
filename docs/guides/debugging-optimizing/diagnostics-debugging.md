@@ -1,4 +1,4 @@
-## Logging Guidance for Diagnostics and Debugging
+# Logging Guidance for Diagnostics and Debugging
 
 Unlike traditional software, debugging utilities available to the machine learning community are scarce. Complicated with deployment pipeline design issues, model weights, model architecture, and unoptimized models, debugging performance issues can be very dynamic in your data science ecosystem. Reviewing a log file can be your first line of defense in pinpointing performance issues with optimizing your inference.
 
@@ -6,7 +6,7 @@ The NMIE ships with diagnostic logging so you can capture real-time monitoring i
 
 **Note:** Our logs may reveal your inference network’s macro-architecture, including a general list of operators (such as convolution and pooling) and connections between them. Weights, trained parameters, or dataset parameters will not be captured. Consult Neural Magic’s various legal policies at [https://neuralmagic.com/legal/](https://neuralmagic.com/legal/) which include our privacy statement and software agreements. Your use of the software serves as your consent to these practices.
 
-### Performance Tuning
+## Performance Tuning
 
 An initial decision point to make in troubleshooting performance issues before enabling logs is whether to prevent threads from migrating from their cores. The default behavior is to disable thread binding (or pinning), allowing your OS to manage the allocation of threads to cores. There is a performance hit associated with this if the NMIE is the main process running on your machine. If you want to enable thread binding for the possible performance benefit, set:
 
@@ -18,7 +18,7 @@ An initial decision point to make in troubleshooting performance issues before e
 
 **Note 2:** If you use OpenMP or TBB (Thread Building Blocks) in your application, then enabling thread binding may result in severe performance degradation due to conflicts between Neural Magic thread pool and OpenMP/TBB thread pools.
 
-### Enabling Logs and Controlling the Amount of Logs Produced by NMIE
+## Enabling Logs and Controlling the Amount of Logs Produced by NMIE
 
 Logs are controlled by setting the `NM_LOGGING_LEVEL` environment variable.
 
@@ -50,13 +50,13 @@ To enable logging for your entire shell instance, execute within your shell:
 
 By default, logs will print out to the stderr of your process. If you would like to output to a file, add `2> <name_of_log>.txt` to the end of your command.
 
-### Parsing an Example Log
+## Parsing an Example Log
 
 If you want to see an example log with `NM_LOGGING_LEVEL=diagnose`, a [truncated sample output](#example-log-verbose-level-=-diagnose) is provided at the end of this section. It will show a super_resolution network, where Neural Magic only supports running 70% of it.
 
 _Different portions of the log are explained below._
 
-#### Viewing the Whole Graph
+### Viewing the Whole Graph
 
 Once a model is in our system, it is parsed to determine what operations it contains. Each operation is made a node and assigned a unique number Its operation type is displayed:
 
@@ -74,7 +74,7 @@ Once a model is in our system, it is parsed to determine what operations it cont
     Node 9: Reshape
 ```
 
-#### Finding Supported Nodes for Our Optimized NMIE
+### Finding Supported Nodes for Our Optimized NMIE
 
 After the whole graph is loaded in, nodes are analyzed to determine whether they are supported by our optimized runtime engine. Notable "unsupported" operators are indicated by looking for `Unsupported [type of node]` in the log. For example, this is an unsupported Reshape node that produces a 6D tensor:
 
@@ -82,7 +82,7 @@ After the whole graph is loaded in, nodes are analyzed to determine whether they
     [nm_ort 7f4fbbd3f740 >DIAGNOSE< unsupported /home/jdoe/code/nyann/src/onnxruntime_neuralmagic/supported/ops.cc:60] Unsupported Reshape , const shape greater than 5D
 ```
 
-#### Compiling Each Subgraph
+### Compiling Each Subgraph
 
 Once all the nodes are located that are supported within the optimized engine, the graphs are split into maximal subgraphs and each one is compiled. ​To find the start of each subgraph compilation, look for `== Beginning new subgraph ==`. First, the nodes are displayed in the subgraph: ​
 
@@ -142,15 +142,15 @@ Simplifications are then performed on the graph to get it in an ideal state for 
 )
 ```
 
-#### Determining the Number of Cores and Batch Size
+### Determining the Number of Cores and Batch Size
 
-This log detail describes the batch size and number of cores that Neural Magic is optimizing against. Look for `== Compiling NM_Subgraph `as in this example:
+This log detail describes the batch size and number of cores that Neural Magic is optimizing against. Look for `== Compiling NM_Subgraph` as in this example:
 
 ```bash
 [nm_ort 7f4fbbd3f740 >DIAGNOSE< supported_subgraphs /home/jdoe/code/nyann/src/onnxruntime_neuralmagic/supported/subgraphs.cc:723] == Compiling NM_Subgraph_1 with batch size 1 using 18 cores.
 ```
 
-#### Obtaining Subgraph Statistics
+### Obtaining Subgraph Statistics
 
 Locating  `== NM Execution Provider supports` shows how many subgraphs we compiled and what percentage of the network we managed to support running:
 
@@ -159,9 +159,9 @@ Locating  `== NM Execution Provider supports` shows how many subgraphs we compil
 [nm_ort 7f4fbbd3f740 >DIAGNOSE< validate_minimum_supported_fraction /home/jdoe/code/nyann/src/onnxruntime_neuralmagic/utility/graph_util.cc:321] == NM Execution Provider supports 70% of the network
 ```
 
-#### Viewing Runtime Execution Times
+### Viewing Runtime Execution Times
 
-​For each subgraph Neural Magic optimizes, the execution time is reported by `ORT NM EP compute_func: ` for each run as follows:
+​For each subgraph Neural Magic optimizes, the execution time is reported by `ORT NM EP compute_func:` for each run as follows:
 
 ```bash
 ​[nm_ort 7f4fbbd3f740 >DIAGNOSE< operator() /home/jdoe/code/nyann/src/onnxruntime_neuralmagic/nm_execution_provider.cc:265] ORT NM EP compute_func: 6.478 ms
