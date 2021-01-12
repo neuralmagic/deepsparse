@@ -2,7 +2,7 @@
 
 Unlike traditional software, debugging utilities available to the machine learning community are scarce. Complicated with deployment pipeline design issues, model weights, model architecture, and unoptimized models, debugging performance issues can be very dynamic in your data science ecosystem. Reviewing a log file can be your first line of defense in pinpointing performance issues with optimizing your inference.
 
-The NMIE ships with diagnostic logging so you can capture real-time monitoring information at model runtime and self-diagnose issues. If you are corresponding with Neural Magic Support, we recommend capturing log information first, as described below. You can decide what to share, whether certain parts of the log or the entire content.  
+The Deep Sparse Engine ships with diagnostic logging so you can capture real-time monitoring information at model runtime and self-diagnose issues. If you are seeking technical support, we recommend capturing log information first, as described below. You can decide what to share, whether certain parts of the log or the entire content.  
 
 **Note:** Our logs may reveal your inference network’s macro-architecture, including a general list of operators (such as convolution and pooling) and connections between them. Weights, trained parameters, or dataset parameters will not be captured. Consult Neural Magic’s various legal policies at [https://neuralmagic.com/legal/](https://neuralmagic.com/legal/) which include our privacy statement and software agreements. Your use of the software serves as your consent to these practices.
 
@@ -14,11 +14,11 @@ An initial decision point to make in troubleshooting performance issues before e
     NM_BIND_THREADS_TO_CORES=1
 ```
 
-**Note 1:** If NMIE is not the only major process running on your machine, binding threads may hurt performance of the other major process(es) by monopolizing system resources.
+**Note 1:** If the Deep Sparse Engine is not the only major process running on your machine, binding threads may hurt performance of the other major process(es) by monopolizing system resources.
 
 **Note 2:** If you use OpenMP or TBB (Thread Building Blocks) in your application, then enabling thread binding may result in severe performance degradation due to conflicts between Neural Magic thread pool and OpenMP/TBB thread pools.
 
-## Enabling Logs and Controlling the Amount of Logs Produced by NMIE
+## Enabling Logs and Controlling the Amount of Logs Produced by the Deep Sparse Engine
 
 Logs are controlled by setting the `NM_LOGGING_LEVEL` environment variable.
 
@@ -74,7 +74,7 @@ Once a model is in our system, it is parsed to determine what operations it cont
     Node 9: Reshape
 ```
 
-### Finding Supported Nodes for Our Optimized NMIE
+### Finding Supported Nodes for Our Optimized Engine
 
 After the whole graph is loaded in, nodes are analyzed to determine whether they are supported by our optimized runtime engine. Notable "unsupported" operators are indicated by looking for `Unsupported [type of node]` in the log. For example, this is an unsupported Reshape node that produces a 6D tensor:
 
