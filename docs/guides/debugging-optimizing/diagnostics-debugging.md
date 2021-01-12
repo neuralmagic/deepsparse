@@ -52,7 +52,7 @@ By default, logs will print out to the stderr of your process. If you would like
 
 ## Parsing an Example Log
 
-If you want to see an example log with `NM_LOGGING_LEVEL=diagnose`, a [truncated sample output](#example-log-verbose-level-=-diagnose) is provided at the end of this section. It will show a super_resolution network, where Neural Magic only supports running 70% of it.
+If you want to see an example log with `NM_LOGGING_LEVEL=diagnose`, a [truncated sample output](example-log.md) is provided at the end of this guide. It will show a super_resolution network, where Neural Magic only supports running 70% of it.
 
 _Different portions of the log are explained below._
 
