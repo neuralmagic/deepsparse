@@ -12,7 +12,10 @@ try:
     from deepsparse.cpu import cpu_details
     from deepsparse.version import *
 except ImportError:
-    raise ImportError("Unable to import engine backend.")
+    raise ImportError(
+        "Unable to import deepsparse python apis. "
+        "Please contact support@neuralmagic.com"
+    )
 
 
 __all__ = ["Engine", "compile_model", "analyze_model"]
@@ -36,7 +39,10 @@ def _import_ort_nm():
 
         return engine
     except ImportError:
-        raise ImportError("Unable to import engine backend.")
+        raise ImportError(
+            "Unable to import deepsparse engine binaries. "
+            "Please contact support@neuralmagic.com"
+        )
 
 
 ENGINE_ORT = _import_ort_nm()
@@ -273,7 +279,7 @@ class Engine(object):
         :return: Dictionary of benchmark results including keys batch_stats_ms,
             batch_times_ms, and items_per_sec
         """
-        assert num_iterations >= 0 and num_warmup_iterations >= 0, (
+        assert num_iterations >= 1 and num_warmup_iterations >= 0, (
             "num_iterations and num_warmup_iterations must be non negative for "
             "benchmarking."
         )
@@ -344,7 +350,7 @@ class Engine(object):
         :return: Dictionary of benchmark results including keys batch_stats_ms,
             batch_times_ms, and items_per_sec
         """
-        assert num_iterations >= 0 and num_warmup_iterations >= 0, (
+        assert num_iterations >= 1 and num_warmup_iterations >= 0, (
             "num_iterations and num_warmup_iterations must be non negative for "
             "benchmarking."
         )
