@@ -2,7 +2,7 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
-from typing import List, Dict, Optional, Iterable
+from typing import List, Dict, Optional, Iterable, Tuple
 import os
 import numpy
 import importlib
@@ -219,6 +219,34 @@ class Engine(object):
 
         return self._eng_net.execute_list_out(inp)
 
+    def timed_run(
+        self, inp: List[numpy.ndarray], val_inp: bool = True
+    ) -> Tuple[List[numpy.ndarray], float]:
+        """
+        Convenience method for timing a model inference run.
+        Returns the result as a tuple containing (the outputs from @run, time take)
+
+        See @run for more details.
+
+        | Example:
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+        |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
+        |     out, time = engine.timed_run(inp)
+        |     assert isinstance(out, List)
+        |     assert isinstance(time, float)
+
+        :param inp: The list of inputs to pass to the engine for inference.
+            The expected order is the inputs order as defined in the ONNX graph.
+        :param val_inp: Validate the input to the model to ensure numpy array inputs
+            are setup correctly for the DeepSparse Engine
+        :return: The list of outputs from the model after executing over the inputs
+        """
+        start = time.time()
+        out = self.run(inp, val_inp)
+        end = time.time()
+
+        return out, end - start
+
     def mapped_run(
         self, inp: List[numpy.ndarray], val_inp: bool = True,
     ) -> Dict[str, numpy.ndarray]:
@@ -229,9 +257,9 @@ class Engine(object):
 
         Note 1: this function can add some a performance hit in certain cases.
         If using, please validate that you do not incur a performance hit
-        by comparing with the regular forward func
+        by comparing with the regular run func
 
-        See @forward for more details on specific setup for the inputs.
+        See @run for more details on specific setup for the inputs.
 
         | Example:
         |     engine = Engine("path/to/onnx", batch_size=1)
@@ -286,20 +314,22 @@ class Engine(object):
         completed_iterations = 0
         batch_times = []
         outputs = []
+
         while completed_iterations < num_warmup_iterations + num_iterations:
             for batch in batched_data:
                 # run benchmark
-                batch_time = time.time()
-                output = self.run(batch)
-                batch_time = time.time() - batch_time
+                output, batch_time = self.timed_run(batch, val_inp=False)
+
                 # update results
                 batch_times.append(batch_time)
                 if include_outputs:
                     outputs.append(output)
+
                 # update loop
                 completed_iterations += 1
                 if completed_iterations >= num_warmup_iterations + num_iterations:
                     break
+
         batch_times = batch_times[num_warmup_iterations:]  # remove warmup times
         batch_times_ms = [batch_time * 1000 for batch_time in batch_times]
         items_per_sec = self.batch_size / numpy.mean(batch_times).item()
