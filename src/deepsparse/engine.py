@@ -15,7 +15,7 @@ except ImportError:
     raise ImportError("Unable to import engine backend.")
 
 
-__all__ = ["Engine", "create_engine", "analyze_model"]
+__all__ = ["Engine", "compile_model", "analyze_model"]
 
 
 CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu_details()
@@ -44,18 +44,18 @@ ENGINE_ORT = _import_ort_nm()
 
 class Engine(object):
     """
-    Create a new DeepSparse Engine from the given onnx file
+    Create a new DeepSparse Engine that compiles the given onnx file
     for GPU class performance on commodity CPUs.
 
-    Note 1: Engines are created for a specific batch size and
+    Note 1: Engines are compiled for a specific batch size and
     for a specific number of CPU cores.
 
     Note 2: multi socket support is not yet built in to the Engine,
     all execution assumes single socket
 
     | Example:
-    |    # create engine for batch size 1 on all available cores
-    |    engine = Engine("path/to/onnx", batch_size=1)
+    |    # create an engine for batch size 1 on all available cores
+    |    engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
 
     :param onnx_file_path: The local path to the onnx file for the
         neural network graph definition to instantiate
@@ -64,7 +64,7 @@ class Engine(object):
         Pass -1 to run on the max number of cores in one socket for the current machine
     """
 
-    def __init__(self, onnx_file_path: str, batch_size: int, num_cores: int = -1):
+    def __init__(self, onnx_file_path: str, batch_size: int, num_cores: int):
         if num_cores == -1:
             num_cores = CORES_PER_SOCKET
 
@@ -95,7 +95,7 @@ class Engine(object):
         Convenience function for Engine.run(), see @run for more details
 
         | Example:
-        |     engine = Engine("path/to/onnx", batch_size=1)
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
         |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         |     out = engine(inp)
         |     assert isinstance(out, List)
@@ -131,7 +131,7 @@ class Engine(object):
     @property
     def onnx_file_path(self) -> str:
         """
-        :return: The local path to the onnx file the current instance was created from
+        :return: The local path to the onnx file the current instance was compiled from
         """
         return self._onnx_file_path
 
@@ -197,7 +197,7 @@ class Engine(object):
         use numpy.ascontiguousarray(array) to fix if not.
 
         | Example:
-        |     engine = Engine("path/to/onnx", batch_size=1)
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
         |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         |     out = engine.run(inp)
         |     assert isinstance(out, List)
@@ -402,11 +402,11 @@ class Engine(object):
         }
 
 
-def create_engine(
+def compile_model(
     onnx_file_path: str, batch_size: int = 1, num_cores: int = -1
 ) -> Engine:
     """
-    Convenience function to create a model in the DeepSparse Engine
+    Convenience function to compile a model in the DeepSparse Engine
     from an ONNX file for inference.
     Gives defaults of batch_size == 1 and num_cores == -1
     (will use all physical cores available on a single socket).
@@ -416,7 +416,7 @@ def create_engine(
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
         Pass -1 to run on the max number of cores in one socket for the current machine
-    :return: The created model
+    :return: The created Engine after compiling the model
     """
     return Engine(onnx_file_path, batch_size, num_cores)
 
