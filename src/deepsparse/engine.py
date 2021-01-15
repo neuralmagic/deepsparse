@@ -74,16 +74,19 @@ def _model_to_path(model: Union[str, Model, File]) -> str:
 
 def _validate_batch_size(batch_size: int) -> int:
     if batch_size < 1:
-        raise ValueError("batch_size must e greater than 0")
+        raise ValueError("batch_size must be greater than 0")
 
     return batch_size
 
 
 def _validate_num_cores(num_cores: int) -> int:
-    if num_cores != -1 and num_cores < 1:
-        raise ValueError("num_cores must be -1 or greater than 0")
+    if num_cores == -1:
+        num_cores = CORES_PER_SOCKET
 
-    return num_cores if num_cores != -1 else CORES_PER_SOCKET
+    if num_cores < 1:
+        raise ValueError("num_cores must be greater than 0")
+
+    return num_cores
 
 
 class Engine(object):
@@ -478,7 +481,7 @@ def compile_model(
 
 
 def analyze_model(
-    model: str,
+    model: Union[str, Model, File],
     inp: List[numpy.ndarray],
     batch_size: int = 1,
     num_cores: int = -1,
