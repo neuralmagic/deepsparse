@@ -15,7 +15,7 @@ class BatchBenchmarkResult(object):
 
     :param time_start: The system time when the run for the batch was started
     :param time_end: The system time when the run for the batch ended
-    :param size: The size of the batch that was benchmarked
+    :param batch_size: The size of the batch that was benchmarked
     :param inputs: Optional batch inputs that were given for the run
     :param outputs: Optional batch outputs that were given for the run
     :param extras: Optional batch extras to store any other data for the run
@@ -25,14 +25,14 @@ class BatchBenchmarkResult(object):
         self,
         time_start: float,
         time_end: float,
-        size: int,
+        batch_size: int,
         inputs: Union[None, List[numpy.ndarray]] = None,
         outputs: Union[None, List[numpy.ndarray], Dict[str, numpy.ndarray]] = None,
         extras: Any = None,
     ):
         self._time_start = time_start
         self._time_end = time_end
-        self._size = size
+        self._batch_size = batch_size
         self._inputs = inputs
         self._outputs = outputs
         self._extras = extras
@@ -41,7 +41,7 @@ class BatchBenchmarkResult(object):
         props = {
             "time_start": self.time_start,
             "time_end": self.time_end,
-            "size": self.size,
+            "size": self.batch_size,
             "batches_per_second": self.batches_per_second,
             "items_per_second": self.items_per_second,
             "ms_per_batch": self.ms_per_batch,
@@ -78,11 +78,11 @@ class BatchBenchmarkResult(object):
         return self._time_end - self._time_start
 
     @property
-    def size(self) -> int:
+    def batch_size(self) -> int:
         """
         :return: The size of the batch that was benchmarked
         """
-        return self._size
+        return self._batch_size
 
     @property
     def inputs(self) -> Union[None, List[numpy.ndarray]]:
@@ -119,7 +119,7 @@ class BatchBenchmarkResult(object):
         :return: The number of items that could be run in one second
             based on this result
         """
-        return self._size / self.time_elapsed
+        return self._batch_size / self.time_elapsed
 
     @property
     def ms_per_batch(self) -> float:
@@ -134,7 +134,7 @@ class BatchBenchmarkResult(object):
         :return: The averaged number of milliseconds it took to run each item
             in the batch
         """
-        return self.time_elapsed * 1000.0 / self._size
+        return self.time_elapsed * 1000.0 / self._batch_size
 
 
 class BenchmarkResults(Iterable):
@@ -190,7 +190,7 @@ class BenchmarkResults(Iterable):
         """
         :return: the number of items across all batches that have been added
         """
-        num_items = sum([res.size for res in self._results])
+        num_items = sum([res.batch_size for res in self._results])
 
         return num_items
 
@@ -206,7 +206,7 @@ class BenchmarkResults(Iterable):
         """
         :return: the list of all batch run sizes that have been added
         """
-        return [res.size for res in self._results]
+        return [res.batch_size for res in self._results]
 
     @property
     def batch_times_mean(self) -> float:
@@ -264,7 +264,7 @@ class BenchmarkResults(Iterable):
         self,
         time_start: float,
         time_end: float,
-        size: int,
+        batch_size: int,
         inputs: Union[None, List[numpy.ndarray]] = None,
         outputs: Union[None, List[numpy.ndarray], Dict[str, numpy.ndarray]] = None,
         extras: Any = None,
@@ -274,11 +274,11 @@ class BenchmarkResults(Iterable):
 
         :param time_start: The system time when the run for the batch was started
         :param time_end: The system time when the run for the batch ended
-        :param size: The size of the batch that was benchmarked
+        :param batch_size: The size of the batch that was benchmarked
         :param inputs: Optional batch inputs that were given for the run
         :param outputs: Optional batch outputs that were given for the run
         :param extras: Optional batch extras to store any other data for the run
         """
         self._results.append(
-            BatchBenchmarkResult(time_start, time_end, size, inputs, outputs, extras)
+            BatchBenchmarkResult(time_start, time_end, batch_size, inputs, outputs, extras)
         )

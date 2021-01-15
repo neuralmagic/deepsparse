@@ -330,7 +330,7 @@ class Engine(object):
                 results.append_batch(
                     time_start=start,
                     time_end=end,
-                    size=self.batch_size,
+                    batch_size=self.batch_size,
                     inputs=batch if include_inputs else None,
                     outputs=out if include_outputs else None,
                 )
