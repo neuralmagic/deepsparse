@@ -8,12 +8,8 @@ import numpy
 import importlib
 import time
 
-<<<<<<< HEAD
 from deepsparse.benchmark import BenchmarkResults
-from sparsezoo.objects import Model, File
-=======
 from sparsezoo import Model, File
->>>>>>> - address review comments
 
 try:
     from deepsparse.cpu import cpu_details
