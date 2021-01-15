@@ -8,8 +8,12 @@ import numpy
 import importlib
 import time
 
+<<<<<<< HEAD
 from deepsparse.benchmark import BenchmarkResults
 from sparsezoo.objects import Model, File
+=======
+from sparsezoo import Model, File
+>>>>>>> - address review comments
 
 try:
     from deepsparse.cpu import cpu_details
@@ -53,7 +57,7 @@ ENGINE_ORT = _import_ort_nm()
 
 def _model_to_path(model: Union[str, Model, File]) -> str:
     if not model:
-        raise ValueError("model must be a path, sparsezoo Model, or sparsezoo File")
+        raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
 
     if isinstance(model, Model):
         # default to the main onnx file for the model
@@ -79,8 +83,8 @@ def _validate_batch_size(batch_size: int) -> int:
     return batch_size
 
 
-def _validate_num_cores(num_cores: int) -> int:
-    if num_cores == -1:
+def _validate_num_cores(num_cores: Union[None, int]) -> int:
+    if not num_cores:
         num_cores = CORES_PER_SOCKET
 
     if num_cores < 1:
@@ -461,7 +465,7 @@ class Engine(object):
 
 
 def compile_model(
-    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = -1
+    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -474,7 +478,8 @@ def compile_model(
         graph definition to compile
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
-        Pass -1 to run on the max number of cores in one socket for the current machine
+        Pass None or 0 to run on the max number of cores
+        in one socket for the current machine, default None
     :return: The created Engine after compiling the model
     """
     return Engine(model, batch_size, num_cores)
@@ -484,7 +489,7 @@ def analyze_model(
     model: Union[str, Model, File],
     inp: List[numpy.ndarray],
     batch_size: int = 1,
-    num_cores: int = -1,
+    num_cores: int = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     optimization_level: int = 1,
@@ -504,7 +509,8 @@ def analyze_model(
         The expected order is the inputs order as defined in the ONNX graph.
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
-        Pass -1 to run on the max number of cores in one socket for the current machine
+        Pass None or 0 to run on the max number of cores
+        in one socket for the current machine, default None
     :param num_iterations: The number of times to repeat execution of the model
         while analyzing, default is 20
     :param num_warmup_iterations: The number of times to repeat execution of the model
