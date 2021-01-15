@@ -8,6 +8,8 @@ import numpy
 import importlib
 import time
 
+from deepsparse.benchmark import BenchmarkResults
+
 try:
     from deepsparse.cpu import cpu_details
     from deepsparse.version import *
@@ -286,8 +288,9 @@ class Engine(object):
         batched_data: Iterable[List[numpy.ndarray]],
         num_iterations: int = 20,
         num_warmup_iterations: int = 5,
+        include_inputs: bool = False,
         include_outputs: bool = False,
-    ) -> Dict[str, float]:
+    ) -> BenchmarkResults:
         """
         A convenience function for quickly benchmarking the instantiated model
         on a give DataLoader in the DeepSparse Engine.
@@ -302,8 +305,10 @@ class Engine(object):
             benchmarking. These executions will not be counted in the benchmark
             results that are returned. Useful and recommended to bring
             the system to a steady state. Default is 5
+        :param include_inputs: If True, inputs from forward passes during benchmarking
+            will be added to the results. Default is False
         :param include_outputs: If True, outputs from forward passes during benchmarking
-            will be returned under the 'outputs' key. Default is False
+            will be added to the results. Default is False
         :return: Dictionary of benchmark results including keys batch_stats_ms,
             batch_times_ms, and items_per_sec
         """
@@ -312,52 +317,39 @@ class Engine(object):
             "benchmarking."
         )
         completed_iterations = 0
-        batch_times = []
-        outputs = []
+        results = BenchmarkResults()
 
         while completed_iterations < num_warmup_iterations + num_iterations:
             for batch in batched_data:
                 # run benchmark
-                output, batch_time = self.timed_run(batch, val_inp=False)
+                start = time.time()
+                out = self.run(batch, val_inp=False)
+                end = time.time()
 
                 # update results
-                batch_times.append(batch_time)
-                if include_outputs:
-                    outputs.append(output)
+                results.append_batch(
+                    time_start=start,
+                    time_end=end,
+                    size=self.batch_size,
+                    inputs=batch if include_inputs else None,
+                    outputs=out if include_outputs else None,
+                )
 
                 # update loop
                 completed_iterations += 1
                 if completed_iterations >= num_warmup_iterations + num_iterations:
                     break
 
-        batch_times = batch_times[num_warmup_iterations:]  # remove warmup times
-        batch_times_ms = [batch_time * 1000 for batch_time in batch_times]
-        items_per_sec = self.batch_size / numpy.mean(batch_times).item()
-
-        batch_stats_ms = {
-            "median": numpy.median(batch_times_ms),
-            "mean": numpy.mean(batch_times_ms),
-            "std": numpy.std(batch_times_ms),
-        }
-
-        benchmark_dict = {
-            "batch_stats_ms": batch_stats_ms,
-            "batch_times_ms": batch_times_ms,
-            "items_per_sec": items_per_sec,
-        }
-
-        if include_outputs:
-            benchmark_dict["outputs"] = outputs
-
-        return benchmark_dict
+        return results
 
     def benchmark(
         self,
         data: Iterable[List[numpy.ndarray]],
         num_iterations: int = 20,
         num_warmup_iterations: int = 5,
+        include_inputs: bool = False,
         include_outputs: bool = False,
-    ) -> Dict[str, float]:
+    ) -> BenchmarkResults:
         """
         A convenience function for quickly benchmarking the instantiated model
         on a given Dataset in the DeepSparse Engine.
@@ -375,8 +367,10 @@ class Engine(object):
             benchmarking. These executions will not be counted in the benchmark
             results that are returned. Useful and recommended to bring
             the system to a steady state. Default is 5
+        :param include_inputs: If True, inputs from forward passes during benchmarking
+            will be added to the results. Default is False
         :param include_outputs: If True, outputs from forward passes during benchmarking
-            will be returned under the 'outputs' key. Default is False
+            will be added to the results. Default is False
         :return: Dictionary of benchmark results including keys batch_stats_ms,
             batch_times_ms, and items_per_sec
         """
@@ -405,6 +399,7 @@ class Engine(object):
             batched_data=infinite_data_batcher(),
             num_iterations=num_iterations,
             num_warmup_iterations=num_warmup_iterations,
+            include_inputs=include_inputs,
             include_outputs=include_outputs,
         )
 
