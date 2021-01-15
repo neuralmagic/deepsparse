@@ -106,14 +106,15 @@ class Engine(object):
 
     | Example:
     |    # create an engine for batch size 1 on all available cores
-    |    engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+    |    engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
 
     :param model: Either a path to the model's onnx file, a sparsezoo Model object,
         or a sparsezoo ONNX File object that defines the neural network
         graph definition to compile
     :param batch_size: The batch size of the inputs to be used with the engine
     :param num_cores: The number of physical cores to run the model on.
-        Pass -1 to run on the max number of cores in one socket for the current machine
+        Pass None or 0 to run on the max number of cores
+        in one socket for the current machine, default None
     """
 
     def __init__(self, model: Union[str, Model, File], batch_size: int, num_cores: int):
@@ -134,7 +135,7 @@ class Engine(object):
         Convenience function for Engine.run(), see @run for more details
 
         | Example:
-        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
         |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         |     out = engine(inp)
         |     assert isinstance(out, List)
@@ -236,7 +237,7 @@ class Engine(object):
         use numpy.ascontiguousarray(array) to fix if not.
 
         | Example:
-        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
         |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         |     out = engine.run(inp)
         |     assert isinstance(out, List)
@@ -262,7 +263,7 @@ class Engine(object):
         See @run for more details.
 
         | Example:
-        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
         |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         |     out, time = engine.timed_run(inp)
         |     assert isinstance(out, List)
@@ -470,7 +471,7 @@ def compile_model(
     """
     Convenience function to compile a model in the DeepSparse Engine
     from an ONNX file for inference.
-    Gives defaults of batch_size == 1 and num_cores == -1
+    Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
     :param model: Either a path to the model's onnx file, a sparsezoo Model object,
@@ -499,7 +500,7 @@ def analyze_model(
     """
     Function to analyze a model's performance in the DeepSparse Engine.
     The model must be defined in an ONNX graph and stored in a local file.
-    Gives defaults of batch_size == 1 and num_cores == -1
+    Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
     :param model: Either a path to the model's onnx file, a sparsezoo Model object,
