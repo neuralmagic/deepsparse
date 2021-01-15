@@ -2,13 +2,14 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
-from typing import List, Dict, Optional, Iterable, Tuple
+from typing import List, Dict, Optional, Iterable, Tuple, Union
 import os
 import numpy
 import importlib
 import time
 
 from deepsparse.benchmark import BenchmarkResults
+from sparsezoo import Model, File
 
 try:
     from deepsparse.cpu import cpu_details
@@ -50,6 +51,44 @@ def _import_ort_nm():
 ENGINE_ORT = _import_ort_nm()
 
 
+def _model_to_path(model: Union[str, Model, File]) -> str:
+    if not model:
+        raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
+
+    if isinstance(model, Model):
+        # default to the main onnx file for the model
+        model = model.onnx_file
+
+    if isinstance(model, File):
+        # get the downloaded_path -- will auto download if not on local system
+        model = model.downloaded_path()
+
+    if not isinstance(model, str):
+        raise ValueError("unsupported type for model: {}".format(type(model)))
+
+    if not os.path.exists(model):
+        raise ValueError("model path must exist: given {}".format(model))
+
+    return model
+
+
+def _validate_batch_size(batch_size: int) -> int:
+    if batch_size < 1:
+        raise ValueError("batch_size must be greater than 0")
+
+    return batch_size
+
+
+def _validate_num_cores(num_cores: Union[None, int]) -> int:
+    if not num_cores:
+        num_cores = CORES_PER_SOCKET
+
+    if num_cores < 1:
+        raise ValueError("num_cores must be greater than 0")
+
+    return num_cores
+
+
 class Engine(object):
     """
     Create a new DeepSparse Engine that compiles the given onnx file
@@ -63,37 +102,26 @@ class Engine(object):
 
     | Example:
     |    # create an engine for batch size 1 on all available cores
-    |    engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+    |    engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
 
-    :param onnx_file_path: The local path to the onnx file for the
-        neural network graph definition to instantiate
+    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
+        or a sparsezoo ONNX File object that defines the neural network
+        graph definition to compile
     :param batch_size: The batch size of the inputs to be used with the engine
     :param num_cores: The number of physical cores to run the model on.
-        Pass -1 to run on the max number of cores in one socket for the current machine
+        Pass None or 0 to run on the max number of cores
+        in one socket for the current machine, default None
     """
 
-    def __init__(self, onnx_file_path: str, batch_size: int, num_cores: int):
-        if num_cores == -1:
-            num_cores = CORES_PER_SOCKET
-
-        if num_cores < 1:
-            raise ValueError(
-                "num_cores must be greater than 0: given {}".format(num_cores)
-            )
-
-        if not os.path.exists(onnx_file_path):
-            raise ValueError(
-                "onnx_file_path must exist: given {}".format(onnx_file_path)
-            )
-
-        self._onnx_file_path = onnx_file_path
-        self._batch_size = batch_size
-        self._num_cores = num_cores
+    def __init__(self, model: Union[str, Model, File], batch_size: int, num_cores: int):
+        self._model_path = _model_to_path(model)
+        self._batch_size = _validate_batch_size(batch_size)
+        self._num_cores = _validate_num_cores(num_cores)
         self._num_sockets = 1  # only single socket is supported currently
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
         self._eng_net = ENGINE_ORT.neuralmagic_onnxruntime_engine(
-            self._onnx_file_path, self._batch_size, self._num_cores, self._num_sockets
+            self._model_path, self._batch_size, self._num_cores, self._num_sockets
         )
 
     def __call__(
@@ -103,7 +131,7 @@ class Engine(object):
         Convenience function for Engine.run(), see @run for more details
 
         | Example:
-        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
         |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         |     out = engine(inp)
         |     assert isinstance(out, List)
@@ -137,11 +165,11 @@ class Engine(object):
         )
 
     @property
-    def onnx_file_path(self) -> str:
+    def model_path(self) -> str:
         """
-        :return: The local path to the onnx file the current instance was compiled from
+        :return: The local path to the model file the current instance was compiled from
         """
-        return self._onnx_file_path
+        return self._model_path
 
     @property
     def batch_size(self) -> int:
@@ -205,7 +233,7 @@ class Engine(object):
         use numpy.ascontiguousarray(array) to fix if not.
 
         | Example:
-        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
         |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         |     out = engine.run(inp)
         |     assert isinstance(out, List)
@@ -231,7 +259,7 @@ class Engine(object):
         See @run for more details.
 
         | Example:
-        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=-1)
+        |     engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
         |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         |     out, time = engine.timed_run(inp)
         |     assert isinstance(out, List)
@@ -424,7 +452,7 @@ class Engine(object):
 
     def _properties_dict(self) -> Dict:
         return {
-            "onnx_file_path": self._onnx_file_path,
+            "onnx_file_path": self._model_path,
             "batch_size": self._batch_size,
             "num_cores": self._num_cores,
             "num_sockets": self._num_sockets,
@@ -434,29 +462,31 @@ class Engine(object):
 
 
 def compile_model(
-    onnx_file_path: str, batch_size: int = 1, num_cores: int = -1
+    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
     from an ONNX file for inference.
-    Gives defaults of batch_size == 1 and num_cores == -1
+    Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    :param onnx_file_path: The local path to the onnx file for the
-        neural network graph definition to instantiate
+    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
+        or a sparsezoo ONNX File object that defines the neural network
+        graph definition to compile
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
-        Pass -1 to run on the max number of cores in one socket for the current machine
+        Pass None or 0 to run on the max number of cores
+        in one socket for the current machine, default None
     :return: The created Engine after compiling the model
     """
-    return Engine(onnx_file_path, batch_size, num_cores)
+    return Engine(model, batch_size, num_cores)
 
 
 def analyze_model(
-    onnx_file_path: str,
-    input: List[numpy.ndarray],
+    model: Union[str, Model, File],
+    inp: List[numpy.ndarray],
     batch_size: int = 1,
-    num_cores: int = -1,
+    num_cores: int = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     optimization_level: int = 1,
@@ -466,14 +496,18 @@ def analyze_model(
     """
     Function to analyze a model's performance in the DeepSparse Engine.
     The model must be defined in an ONNX graph and stored in a local file.
-    Gives defaults of batch_size == 1 and num_cores == -1
+    Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    :param onnx_file_path: The local path to the onnx file for the
-        neural network graph definition to instantiate
+    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
+        or a sparsezoo ONNX File object that defines the neural network
+        graph definition to analyze
+    :param inp: The list of inputs to pass to the engine for analyzing inference.
+        The expected order is the inputs order as defined in the ONNX graph.
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
-        Pass -1 to run on the max number of cores in one socket for the current machine
+        Pass None or 0 to run on the max number of cores
+        in one socket for the current machine, default None
     :param num_iterations: The number of times to repeat execution of the model
         while analyzing, default is 20
     :param num_warmup_iterations: The number of times to repeat execution of the model
@@ -490,16 +524,16 @@ def analyze_model(
         Beneficial for seeing how pruning affects the performance of the model.
     :return: the analysis structure containing the performance details of each layer
     """
-    if num_cores == -1:
-        num_cores = CORES_PER_SOCKET
-    num_sockets = 1  # only single socket is supported currently
-
+    model = _model_to_path(model)
+    num_cores = _validate_num_cores(num_cores)
+    batch_size = _validate_batch_size(batch_size)
+    num_sockets = 1
     eng_net = ENGINE_ORT.neuralmagic_onnxruntime_engine(
-        onnx_file_path, batch_size, num_cores, num_sockets
+        model, batch_size, num_cores, num_sockets
     )
 
     return eng_net.benchmark(
-        input,
+        inp,
         num_iterations,
         num_warmup_iterations,
         optimization_level,
