@@ -1,12 +1,26 @@
-from typing import Tuple, List, Dict
+import os
+from distutils import log
+from fnmatch import fnmatch
+from typing import Dict, List, Tuple
+
 from setuptools import find_packages, setup
 from setuptools.command.install import install
-from fnmatch import fnmatch
-from distutils import log
-import os
+
 
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
+
+
+_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0"]
+
+_dev_deps = [
+    "black>=20.8b1",
+    "flake8>=3.8.3",
+    "isort>=5.7.0",
+    "rinohtype>=0.4.2",
+    "sphinxcontrib-apidoc>=0.3.0",
+    "wheel>=0.36.2",
+]
 
 
 class OverrideInstall(install):
@@ -39,11 +53,11 @@ def _setup_package_data() -> Dict:
 
 
 def _setup_install_requires() -> List:
-    return ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0"]
+    return _deps
 
 
 def _setup_extras() -> Dict:
-    return {}
+    return {"dev": _dev_deps}
 
 
 def _setup_entry_points() -> Dict:
