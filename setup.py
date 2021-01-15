@@ -57,9 +57,7 @@ def _setup_install_requires() -> List:
 
 
 def _setup_extras() -> Dict:
-    return {
-        "dev": _dev_deps
-    }
+    return {"dev": _dev_deps}
 
 
 def _setup_entry_points() -> Dict:
@@ -90,7 +88,6 @@ setup(
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
     python_requires=">=3.6.0",
-<<<<<<< HEAD
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Console",
@@ -108,8 +105,5 @@ setup(
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-=======
-    classifiers=["[TODO]"],
->>>>>>> included changes from actual setup.py
     cmdclass={"install": OverrideInstall},
 )

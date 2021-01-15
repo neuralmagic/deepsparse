@@ -6,19 +6,27 @@ DOCDIR := docs
 
 # run checks on all files for the repo
 quality:
-    [TODO]
+	@echo "Running python quality checks";
+	black --check $(CHECKDIRS);
+	isort --check-only $(CHECKDIRS);
+	flake8 $(CHECKDIRS);
+
 
 # style the code according to accepted standards for the repo
 style:
-    [TODO]
+	@echo "Running python styling";
+	black $(CHECKDIRS);
+	isort $(CHECKDIRS);
+
 
 # run tests for the repo
 test:
-    [TODO]
+	@echo "Running python tests";
+	@pytest;
 
 # create docs
 docs:
-	sphinx-apidoc -o "$(DOCDIR)/source/" src/nmie;
+	sphinx-apidoc -o "$(DOCDIR)/source/" src/deepsparse;
 	cd $(DOCDIR) && $(MAKE) html;
 
 # creates wheel file
