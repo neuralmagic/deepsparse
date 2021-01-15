@@ -8,11 +8,13 @@ import os
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
+
 class OverrideInstall(install):
     """
     This class adds a hook that runs after regular install that
     changes the permissions of all the binary files to 0755.
     """
+
     def run(self):
         install.run(self)
         mode = 0o755
@@ -28,20 +30,16 @@ def _setup_package_dir() -> Dict:
 
 def _setup_packages() -> List:
     return find_packages(
-        "src", include=["nmie", "nmie.*"], exclude=["*.__pycache__.*"]
+        "src", include=["deepsparse", "deepsparse.*"], exclude=["*.__pycache__.*"]
     )
 
 
 def _setup_package_data() -> Dict:
-    return {"nmie": binary_regexes}
+    return {"deepsparse": binary_regexes}
 
 
 def _setup_install_requires() -> List:
-    return [
-        "numpy>=1.16.3",
-        "onnx>=1.5.0,<1.8.0",
-        "requests>=2.0.0"
-    ]
+    return ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0"]
 
 
 def _setup_extras() -> Dict:
@@ -57,12 +55,12 @@ def _setup_long_description() -> Tuple[str, str]:
 
 
 setup(
-    name="nmie",
+    name="deepsparse",
     version="0.1.0",
-    author="Bill Nell, Michael Goin, Mark Kurtz",
+    author="Bill Nell, Michael Goin, Mark Kurtz, Kevin Rodriguez, Benjamin Fineran",
     author_email="support@neuralmagic.com",
-    description="The high performance Neural Magic Inference Engine designed "
-    "for running deep learning on X86 CPU architectures",
+    description="The high performance DeepSparse Engine designed to achieve "
+    "GPU class performance for Neural Networks on commodity CPUs.",
     long_description=_setup_long_description()[0],
     long_description_content_type=_setup_long_description()[1],
     keywords="inference machine learning x86 x86_64 avx2 avx512 neural network",
@@ -77,7 +75,21 @@ setup(
     entry_points=_setup_entry_points(),
     python_requires=">=3.6.0",
     classifiers=[
-        "[TODO]"
+        "Development Status :: 3 - Alpha",
+        "Environment :: Console",
+        "Programming Language :: Python :: 3",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Education",
+        "Intended Audience :: Information Technology",
+        "Intended Audience :: Science/Research",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3 :: Only",
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Mathematics",
+        "Topic :: Software Development",
+        "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     cmdclass={"install": OverrideInstall},
 )
