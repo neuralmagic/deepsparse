@@ -2,7 +2,8 @@
 Code related to benchmarking batched inference runs
 """
 
-from typing import Any, Union, List, Dict, Iterator, Iterable
+from typing import Any, Dict, Iterable, Iterator, List, Union
+
 import numpy
 
 
@@ -280,5 +281,7 @@ class BenchmarkResults(Iterable):
         :param extras: Optional batch extras to store any other data for the run
         """
         self._results.append(
-            BatchBenchmarkResult(time_start, time_end, batch_size, inputs, outputs, extras)
+            BatchBenchmarkResult(
+                time_start, time_end, batch_size, inputs, outputs, extras
+            )
         )
