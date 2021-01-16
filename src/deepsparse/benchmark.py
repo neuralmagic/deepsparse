@@ -280,5 +280,7 @@ class BenchmarkResults(Iterable):
         :param extras: Optional batch extras to store any other data for the run
         """
         self._results.append(
-            BatchBenchmarkResult(time_start, time_end, batch_size, inputs, outputs, extras)
+            BatchBenchmarkResult(
+                time_start, time_end, batch_size, inputs, outputs, extras
+            )
         )
