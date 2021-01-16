@@ -60,15 +60,15 @@ def _model_to_path(model: Union[str, Model, File]) -> str:
     if not model:
         raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
 
-    if isinstance(model, Model):
+    if isinstance(model, str):
+        pass
+    elif isinstance(model, Model):
         # default to the main onnx file for the model
-        model = model.onnx_file
-
-    if isinstance(model, File):
+        model = model.onnx_file.downloaded_path()
+    elif isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
         model = model.downloaded_path()
-
-    if not isinstance(model, str):
+    else:
         raise ValueError("unsupported type for model: {}".format(type(model)))
 
     if not os.path.exists(model):
