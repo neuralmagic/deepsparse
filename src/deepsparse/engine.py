@@ -62,13 +62,14 @@ def _model_to_path(model: Union[str, Model, File]) -> str:
 
     if isinstance(model, str):
         pass
-    elif isinstance(model, Model):
+    elif Model is not object and isinstance(model, Model):
         # default to the main onnx file for the model
         model = model.onnx_file.downloaded_path()
-    elif isinstance(model, File):
+    elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
         model = model.downloaded_path()
-    else:
+
+    if not isinstance(model, str):
         raise ValueError("unsupported type for model: {}".format(type(model)))
 
     if not os.path.exists(model):
