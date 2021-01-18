@@ -10,8 +10,12 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 import numpy
 
 from deepsparse.benchmark import BenchmarkResults
-from sparsezoo import File, Model
 
+try:
+    from sparsezoo import Model, File
+except Exception as err:
+    Model = object
+    File = object
 
 try:
     from deepsparse.cpu import cpu_details
@@ -57,11 +61,12 @@ def _model_to_path(model: Union[str, Model, File]) -> str:
     if not model:
         raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
 
-    if isinstance(model, Model):
+    if isinstance(model, str):
+        pass
+    elif Model is not object and isinstance(model, Model):
         # default to the main onnx file for the model
-        model = model.onnx_file
-
-    if isinstance(model, File):
+        model = model.onnx_file.downloaded_path()
+    elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
         model = model.downloaded_path()
 
@@ -108,7 +113,6 @@ class Engine(object):
 
     :param model: Either a path to the model's onnx file, a sparsezoo Model object,
         or a sparsezoo ONNX File object that defines the neural network
-        graph definition to compile
     :param batch_size: The batch size of the inputs to be used with the engine
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
@@ -480,7 +484,6 @@ def compile_model(
 
     :param model: Either a path to the model's onnx file, a sparsezoo Model object,
         or a sparsezoo ONNX File object that defines the neural network
-        graph definition to compile
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
