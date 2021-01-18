@@ -11,8 +11,9 @@ import numpy
 
 from deepsparse.benchmark import BenchmarkResults
 
+
 try:
-    from sparsezoo import Model, File
+    from sparsezoo import File, Model
 except Exception as err:
     Model = object
     File = object
@@ -27,7 +28,7 @@ except ImportError:
     )
 
 
-__all__ = ["Engine", "compile_model", "analyze_model"]
+__all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model"]
 
 
 CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu_details()
@@ -323,9 +324,51 @@ class Engine(object):
 
         return out
 
-    def benchmark_batched(
+    def benchmark(
         self,
-        batched_data: Iterable[List[numpy.ndarray]],
+        inp: List[numpy.ndarray],
+        num_iterations: int = 20,
+        num_warmup_iterations: int = 5,
+        include_inputs: bool = False,
+        include_outputs: bool = False,
+    ) -> BenchmarkResults:
+        """
+        A convenience function for quickly benchmarking the instantiated model
+        on a given input in the DeepSparse Engine.
+        The data param must be individual items, the code will batch
+        these items into the proper shape for the model for use with benchmarking.
+        After executing, will return the summary statistics for benchmarking.
+
+        :param inp: The list of inputs to pass to the engine for benchmarking.
+            The expected order is the inputs order as defined in the ONNX graph.
+        :param num_iterations: The number of iterations to run benchmarking for.
+            Default is 20
+        :param num_warmup_iterations: T number of iterations to warm up engine before
+            benchmarking. These executions will not be counted in the benchmark
+            results that are returned. Useful and recommended to bring
+            the system to a steady state. Default is 5
+        :param include_inputs: If True, inputs from forward passes during benchmarking
+            will be added to the results. Default is False
+        :param include_outputs: If True, outputs from forward passes during benchmarking
+            will be added to the results. Default is False
+        :return: the results of benchmarking
+        """
+        # define data loader
+        def _infinite_loader():
+            while True:
+                yield inp
+
+        return self.benchmark_loader(
+            loader=_infinite_loader(),
+            num_iterations=num_iterations,
+            num_warmup_iterations=num_warmup_iterations,
+            include_inputs=include_inputs,
+            include_outputs=include_outputs,
+        )
+
+    def benchmark_loader(
+        self,
+        loader: Iterable[List[numpy.ndarray]],
         num_iterations: int = 20,
         num_warmup_iterations: int = 5,
         include_inputs: bool = False,
@@ -338,7 +381,8 @@ class Engine(object):
         for use with benchmarking.
         After executing, will return the summary statistics for benchmarking.
 
-        :param batched_data: An iterator of input batches to be used for benchmarking.
+        :param loader: An iterator of inputs to pass to the engine for benchmarking.
+            The expected order of each input is as defined in the ONNX graph.
         :param num_iterations: The number of iterations to run benchmarking for.
             Default is 20
         :param num_warmup_iterations: T number of iterations to warm up engine before
@@ -349,8 +393,7 @@ class Engine(object):
             will be added to the results. Default is False
         :param include_outputs: If True, outputs from forward passes during benchmarking
             will be added to the results. Default is False
-        :return: Dictionary of benchmark results including keys batch_stats_ms,
-            batch_times_ms, and items_per_sec
+        :return: the results of benchmarking
         """
         assert num_iterations >= 1 and num_warmup_iterations >= 0, (
             "num_iterations and num_warmup_iterations must be non negative for "
@@ -360,88 +403,27 @@ class Engine(object):
         results = BenchmarkResults()
 
         while completed_iterations < num_warmup_iterations + num_iterations:
-            for batch in batched_data:
+            for batch in loader:
                 # run benchmark
                 start = time.time()
-                out = self.run(batch, val_inp=False)
+                out = self.run(batch)
                 end = time.time()
-
-                # update results
-                results.append_batch(
-                    time_start=start,
-                    time_end=end,
-                    batch_size=self.batch_size,
-                    inputs=batch if include_inputs else None,
-                    outputs=out if include_outputs else None,
-                )
-
-                # update loop
                 completed_iterations += 1
+
+                if completed_iterations >= num_warmup_iterations:
+                    # update results if warmup iterations are completed
+                    results.append_batch(
+                        time_start=start,
+                        time_end=end,
+                        batch_size=self.batch_size,
+                        inputs=batch if include_inputs else None,
+                        outputs=out if include_outputs else None,
+                    )
+
                 if completed_iterations >= num_warmup_iterations + num_iterations:
                     break
 
         return results
-
-    def benchmark(
-        self,
-        data: Iterable[List[numpy.ndarray]],
-        num_iterations: int = 20,
-        num_warmup_iterations: int = 5,
-        include_inputs: bool = False,
-        include_outputs: bool = False,
-    ) -> BenchmarkResults:
-        """
-        A convenience function for quickly benchmarking the instantiated model
-        on a given Dataset in the DeepSparse Engine.
-        The data param must be individual items, the code will batch
-        these items into the proper shape for the model for use with benchmarking.
-        After executing, will return the summary statistics for benchmarking.
-
-        :param data: An iterator of input items to be used for benchmarking.
-            These items will be stacked to create batches of the proper batch_size.
-            Items will be stacked in order. Will infinitely loop over the number
-            of items to create the proper batch size and number of batches.
-        :param num_iterations: The number of iterations to run benchmarking for.
-            Default is 20
-        :param num_warmup_iterations: T number of iterations to warm up engine before
-            benchmarking. These executions will not be counted in the benchmark
-            results that are returned. Useful and recommended to bring
-            the system to a steady state. Default is 5
-        :param include_inputs: If True, inputs from forward passes during benchmarking
-            will be added to the results. Default is False
-        :param include_outputs: If True, outputs from forward passes during benchmarking
-            will be added to the results. Default is False
-        :return: Dictionary of benchmark results including keys batch_stats_ms,
-            batch_times_ms, and items_per_sec
-        """
-        assert num_iterations >= 1 and num_warmup_iterations >= 0, (
-            "num_iterations and num_warmup_iterations must be non negative for "
-            "benchmarking."
-        )
-
-        # define data loader
-        def infinite_data_batcher():
-            batch = []
-            while True:
-                for inputs in data:
-                    batch.append(inputs)
-                    if len(batch) == self.batch_size:
-                        # concatenate batch inputs
-                        batch_inputs = []
-                        for input_idx in range(len(inputs)):
-                            batch_input = [batch_val[input_idx] for batch_val in batch]
-                            batch_inputs.append(numpy.stack(batch_input))
-                        # yield and reset
-                        yield batch_inputs
-                        batch = []
-
-        return self.benchmark_batched(
-            batched_data=infinite_data_batcher(),
-            num_iterations=num_iterations,
-            num_warmup_iterations=num_warmup_iterations,
-            include_inputs=include_inputs,
-            include_outputs=include_outputs,
-        )
 
     def _validate_inputs(self, inp: List[numpy.ndarray]):
         if isinstance(inp, str) or not isinstance(inp, List):
@@ -491,6 +473,49 @@ def compile_model(
     :return: The created Engine after compiling the model
     """
     return Engine(model, batch_size, num_cores)
+
+
+def benchmark_model(
+    model: Union[str, Model, File],
+    inp: List[numpy.ndarray],
+    batch_size: int = 1,
+    num_cores: int = None,
+    num_iterations: int = 20,
+    num_warmup_iterations: int = 5,
+    include_inputs: bool = False,
+    include_outputs: bool = False,
+) -> BenchmarkResults:
+    """
+    Convenience function to benchmark a model in the DeepSparse Engine
+    from an ONNX file for inference.
+    Gives defaults of batch_size == 1 and num_cores == None
+    (will use all physical cores available on a single socket).
+
+    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
+        or a sparsezoo ONNX File object that defines the neural network
+    :param batch_size: The batch size of the inputs to be used with the model
+    :param num_cores: The number of physical cores to run the model on.
+        Pass None or 0 to run on the max number of cores
+        in one socket for the current machine, default None
+    :param inp: The list of inputs to pass to the engine for benchmarking.
+        The expected order is the inputs order as defined in the ONNX graph.
+    :param num_iterations: The number of iterations to run benchmarking for.
+        Default is 20
+    :param num_warmup_iterations: T number of iterations to warm up engine before
+        benchmarking. These executions will not be counted in the benchmark
+        results that are returned. Useful and recommended to bring
+        the system to a steady state. Default is 5
+    :param include_inputs: If True, inputs from forward passes during benchmarking
+        will be added to the results. Default is False
+    :param include_outputs: If True, outputs from forward passes during benchmarking
+        will be added to the results. Default is False
+    :return: the results of benchmarking
+    """
+    model = compile_model(model, batch_size, num_cores)
+
+    return model.benchmark(
+        inp, num_iterations, num_warmup_iterations, include_inputs, include_outputs
+    )
 
 
 def analyze_model(
