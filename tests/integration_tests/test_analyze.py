@@ -16,10 +16,9 @@ from sparsezoo.models.classification import mobilenet_v1
         ]
     ),
 )
-def test_analyze(params, model: Model, batch_size: int):
+def test_analyze(model: Model, batch_size: int):
 
     model = model()
-    batch = model.sample_batch(batch_size)
-    inputs = batch["inputs"]
+    inputs = model.data_inputs.sample_batch(batch_size=batch_size)
 
     results = analyze_model(model, inputs, batch_size)

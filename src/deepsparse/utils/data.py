@@ -19,6 +19,7 @@ def verify_outputs(
 ) -> List[float]:
     max_diffs = []
     assert len(gt_outputs) == len(outputs)
+    print("Validating outputs:")
     for i in range(len(gt_outputs)):
         gt_output = gt_outputs[i]
         output = outputs[i]
@@ -29,7 +30,7 @@ def verify_outputs(
         max_diff = numpy.max(numpy.abs(output - gt_output))
         max_diffs.append(max_diff)
         print(
-            "    output {}: {} {} MAX DIFF: {}".format(
+            "\toutput {}: {} {} MAX DIFF: {}".format(
                 i, gt_output.shape, output.shape, max_diff
             )
         )

@@ -8,7 +8,7 @@ from sparsezoo import Model
 from sparsezoo.models import classification
 
 
-NUM_PHYSICAL_CORES, AVX_TYPE, _ = cpu.cpu_details()
+CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
 
 model_registry = {
     "mobilenet_v1": classification.mobilenet_v1,
@@ -28,7 +28,7 @@ def fetch_model(model_name: str) -> Model:
         raise Exception(
             f"Could not find model '{model_name}' in classification model registry."
         )
-    return model_registry[model_name]
+    return model_registry[model_name]()
 
 
 def parse_args():
@@ -37,24 +37,24 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--model-name",
+        "model_name",
         type=str,
-        required=True,
         choices=model_registry.keys(),
         help="Model type to analyze",
     )
 
     parser.add_argument(
-        "--batch-size",
+        "-s",
+        "--batch_size",
         type=int,
         default=64,
         help="The batch size to run the analysis for",
     )
     parser.add_argument(
-        "--num-cores",
-        nargs="+",
+        "-j",
+        "--num_cores",
         type=int,
-        default=NUM_PHYSICAL_CORES,
+        default=CORES_PER_SOCKET,
         help="The number of physical cores to run the analysis on, "
         "defaults to all physical cores available on the system",
     )
@@ -82,35 +82,35 @@ def main(args):
     batch_size = args.batch_size
     num_cores = args.num_cores
 
-    print(
-        "Compiling {} with deepsparse for batch size {} and {} cores, targeting {}".format(
-            args.model_name, batch_size, num_cores, AVX_TYPE
-        )
-    )
-    engine = compile_model(model, batch_size, num_cores)
-
     # Gather batch of data
-    batch = model.sample_batch(batch_size)
+    batch = model.sample_batch(batch_size=batch_size)
     batched_inputs = batch["inputs"]
     batched_outputs = batch["outputs"]
     batched_labels = batch["labels"]
 
-    # Record output from executing through the DeepSparse engine
-    print("Benchmarking...")
-    results = engine.benchmark(batched_inputs, include_outputs=True)
-    predicted_outputs = results.outputs
+    # Compile model for inference
+    print("Compiling {} model with DeepSparse Engine".format(model.architecture_id))
+    engine = compile_model(model, batch_size, num_cores)
+    print(engine)
 
-    print("Benchmark Results:")
-    print(results)
+    # INFERENCE
+    # Record output from inference through the DeepSparse Engine
+    print("Executing...")
+    predicted_outputs = engine(batched_inputs)
 
-    # Validate ouputs with ground truth
+    # Compare against reference model output
     verify_outputs(predicted_outputs, batched_outputs)
 
     # Measure accuracy against ground truth labels
     predicted_labels = numpy.argmax(predicted_outputs[-1], axis=-1)
     accuracy = calculate_top1_accuracy(predicted_outputs[-1], batched_labels[0])
+    print("Top-1 Accuracy for batch size {}: {:.2f}%".format(batch_size, accuracy))
 
-    print("Top-1 Accuracy: {:.2f}%".format(accuracy))
+    # BENCHMARK
+    # Record output from executing through the DeepSparse engine
+    print("Benchmarking...")
+    results = engine.benchmark(batched_inputs)
+    print(results)
 
 
 if __name__ == "__main__":

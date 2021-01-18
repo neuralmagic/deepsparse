@@ -6,7 +6,12 @@ import onnx
 from deepsparse.utils.log import log_init
 
 
-__all__ = ["get_input_names", "get_output_names", "generate_random_inputs"]
+__all__ = [
+    "get_input_names",
+    "get_output_names",
+    "generate_random_inputs",
+    "override_batch_size",
+]
 
 log = log_init(os.path.basename(__file__))
 
@@ -74,3 +79,7 @@ def generate_random_inputs(onnx_filepath: str, batch_size: int = None):
             )
         )
     return input_data_list
+
+
+def override_batch_size(onnx_filepath: str, batch_size: int) -> str:
+    return onnx_filepath

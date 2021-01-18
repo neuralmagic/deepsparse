@@ -9,32 +9,36 @@ from deepsparse.utils.onnx import (
     generate_random_inputs,
     get_input_names,
     get_output_names,
+    override_batch_size,
 )
 
 
-NUM_PHYSICAL_CORES, AVX_TYPE, _ = cpu.cpu_details()
+CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Benchmark an ONNX model, comparing between DeepSparse and ONNXRuntime"
+        description="Run an ONNX model, comparing outputs between the DeepSparse Engine and ONNXRuntime"
     )
 
     parser.add_argument(
-        "onnx-filepath",
-        help="The full filepath of the onnx model file being benchmarked",
+        "onnx_filepath",
+        type=str,
+        help="The full filepath of the ONNX model file being run",
     )
+
     parser.add_argument(
-        "--batch-size",
+        "-s",
+        "--batch_size",
         type=int,
         default=1,
         help="The batch size to run the analysis for",
     )
     parser.add_argument(
         "-j",
-        "--num-cores",
+        "--num_cores",
         type=int,
-        default=NUM_PHYSICAL_CORES,
+        default=CORES_PER_SOCKET,
         help="The number of physical cores to run the analysis on, "
         "defaults to all physical cores available on the system",
     )
@@ -47,24 +51,30 @@ def main(args):
     batch_size = args.batch_size
     num_cores = args.num_cores
 
+    # ONNXRuntime requires batch size of the model file to match incoming data
+    onnx_filepath = override_batch_size(onnx_filepath, batch_size)
+
     inputs = generate_random_inputs(onnx_filepath, batch_size)
 
     # Gather ONNXRuntime outputs
     print("Executing model with ONNXRuntime...")
-    ort_network = onnxruntime.InferenceSession(onnx_filepath)
+    sess_options = onnxruntime.SessionOptions()
+    sess_options.intra_op_num_threads = num_cores
+    ort_network = onnxruntime.InferenceSession(onnx_filepath, sess_options)
     ort_outputs = ort_network.run(
         get_output_names(onnx_filepath),
         {name: value for name, value in zip(get_input_names(onnx_filepath), inputs)},
     )
 
-    # Gather NM outputs
-    print("Executing model with DeepSparse...")
-    nm_network = compile_model(onnx_filepath, batch_size, num_cores)
-    nm_outputs = nm_network(inputs)
+    # Gather DeepSparse Engine outputs
+    print("Executing model with DeepSparse Engine...")
+    dse_network = compile_model(onnx_filepath, batch_size, num_cores)
+    dse_outputs = dse_network(inputs)
 
-    max_diffs = verify_outputs(nm_outputs, ort_outputs)
+    verify_outputs(dse_outputs, ort_outputs)
 
-    print("SUCCESS: NM output matches ONNXRuntime output")
+    print("DeepSparse Engine output matches ONNXRuntime output")
+    print("SUCCESS")
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ test:
 	@pytest ./tests/;
 
 # run example tests for the repo
-test:
+test-examples:
 	@echo "Running python example tests";
 	@pytest ./examples/;
 

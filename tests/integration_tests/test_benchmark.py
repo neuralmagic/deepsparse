@@ -17,10 +17,10 @@ from sparsezoo.models.classification import mobilenet_v1
         ]
     ),
 )
-def test_engine(params, model: Model, batch_size: int):
+def test_engine(model: Model, batch_size: int):
 
     m = model()
-    batch = m.sample_batch(batch_size)
+    batch = m.sample_batch(batch_size=batch_size)
     inputs = batch["inputs"]
     outputs = batch["outputs"]
 
