@@ -2,7 +2,8 @@
 Code related to benchmarking batched inference runs
 """
 
-from typing import Any, Union, List, Dict, Iterator, Iterable
+from typing import Any, Dict, Iterable, Iterator, List, Union
+
 import numpy
 
 

@@ -11,7 +11,7 @@ from setuptools.command.install import install
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 
-_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0"]
+_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "sparsezoo>=0.1.0"]
 
 _dev_deps = [
     "black>=20.8b1",
@@ -20,6 +20,7 @@ _dev_deps = [
     "rinohtype>=0.4.2",
     "sphinxcontrib-apidoc>=0.3.0",
     "wheel>=0.36.2",
+    "pytest>=6.0.0",
 ]
 
 

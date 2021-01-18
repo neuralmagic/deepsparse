@@ -2,11 +2,12 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
-from typing import List, Dict, Optional, Iterable, Tuple, Union
-import os
-import numpy
 import importlib
+import os
 import time
+from typing import Dict, Iterable, List, Optional, Tuple, Union
+
+import numpy
 
 from deepsparse.benchmark import BenchmarkResults
 
@@ -130,7 +131,9 @@ class Engine(object):
         )
 
     def __call__(
-        self, inp: List[numpy.ndarray], val_inp: bool = True,
+        self,
+        inp: List[numpy.ndarray],
+        val_inp: bool = True,
     ) -> List[numpy.ndarray]:
         """
         Convenience function for Engine.run(), see @run for more details
@@ -216,7 +219,9 @@ class Engine(object):
         return self._cpu_vnni
 
     def run(
-        self, inp: List[numpy.ndarray], val_inp: bool = True,
+        self,
+        inp: List[numpy.ndarray],
+        val_inp: bool = True,
     ) -> List[numpy.ndarray]:
         """
         Run given inputs through the model for inference.
@@ -283,7 +288,9 @@ class Engine(object):
         return out, end - start
 
     def mapped_run(
-        self, inp: List[numpy.ndarray], val_inp: bool = True,
+        self,
+        inp: List[numpy.ndarray],
+        val_inp: bool = True,
     ) -> Dict[str, numpy.ndarray]:
         """
         Run given inputs through the model for inference.
