@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import numpy
 import onnx
@@ -10,7 +11,6 @@ __all__ = [
     "get_input_names",
     "get_output_names",
     "generate_random_inputs",
-    "override_batch_size",
 ]
 
 log = log_init(os.path.basename(__file__))
@@ -23,20 +23,33 @@ onnx_tensor_type_map = {
     5: numpy.int16,
     6: numpy.int32,
     7: numpy.int64,
+    9: numpy.bool_,
     10: numpy.float16,
     11: numpy.float64,
     12: numpy.uint32,
     13: numpy.uint64,
+    14: numpy.complex64,
+    15: numpy.complex128,
 }
 
 
-def translate_onnx_type_to_numpy(tensor_type):
+def translate_onnx_type_to_numpy(tensor_type: int):
+    """
+    Translates ONNX types to numpy types
+    :param tensor_type: Integer representing a type in ONNX spec
+    :return: Corresponding numpy type
+    """
     if tensor_type not in onnx_tensor_type_map:
         raise Exception("Unknown ONNX tensor type = {}".format(tensor_type))
     return onnx_tensor_type_map[tensor_type]
 
 
-def get_input_names(onnx_filepath: str):
+def get_input_names(onnx_filepath: str) -> List[str]:
+    """
+    Gather names of all external inputs of ONNX model
+    :param onnx_filepath: File path to ONNX model
+    :return: List of string names
+    """
     model = onnx.load(onnx_filepath)
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
@@ -46,7 +59,12 @@ def get_input_names(onnx_filepath: str):
     return input_names
 
 
-def get_output_names(onnx_filepath: str):
+def get_output_names(onnx_filepath: str) -> List[str]:
+    """
+    Gather names of all external outputs of ONNX model
+    :param onnx_filepath: File path to ONNX model
+    :return: List of string names
+    """
     model = onnx.load(onnx_filepath)
     ret = []
     for output_obj in model.graph.output:
@@ -54,7 +72,15 @@ def get_output_names(onnx_filepath: str):
     return ret
 
 
-def generate_random_inputs(onnx_filepath: str, batch_size: int = None):
+def generate_random_inputs(
+    onnx_filepath: str, batch_size: int = None
+) -> List[numpy.array]:
+    """
+    Generate random data that matches the type and shape of ONNX model, with a batch size override
+    :param onnx_filepath: File path to ONNX model
+    :param batch_size: Optional override for the batch size dimension
+    :return: List of random tensors
+    """
     model = onnx.load(onnx_filepath)
 
     all_inputs = model.graph.input
@@ -79,7 +105,3 @@ def generate_random_inputs(onnx_filepath: str, batch_size: int = None):
             )
         )
     return input_data_list
-
-
-def override_batch_size(onnx_filepath: str, batch_size: int) -> str:
-    return onnx_filepath

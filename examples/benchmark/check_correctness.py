@@ -4,12 +4,11 @@ import numpy
 
 import onnxruntime
 from deepsparse import compile_model, cpu
-from deepsparse.utils import verify_outputs
-from deepsparse.utils.onnx import (
+from deepsparse.utils import (
+    verify_outputs,
     generate_random_inputs,
     get_input_names,
     get_output_names,
-    override_batch_size,
 )
 
 

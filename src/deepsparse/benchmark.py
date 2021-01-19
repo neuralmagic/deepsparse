@@ -270,6 +270,20 @@ class BenchmarkResults(Iterable):
         """
         return sum(self.batch_times) * 1000.0 / self.num_items
 
+    @property
+    def inputs(self) -> Union[None, List[numpy.ndarray]]:
+        """
+        :return: Batch inputs that were given for the run, if any
+        """
+        return [inp for res in self._results for inp in res.inputs]
+
+    @property
+    def outputs(self) -> Union[None, List[numpy.ndarray]]:
+        """
+        :return: Batch outputs that were given for the run, if any
+        """
+        return [out for res in self._results for out in res.outputs]
+
     def append_batch(
         self,
         time_start: float,

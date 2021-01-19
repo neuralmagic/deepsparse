@@ -4,9 +4,10 @@ import time
 import numpy
 
 import onnxruntime
-from deepsparse import BenchmarkResults, compile_model, cpu
-from deepsparse.utils import verify_outputs
-from deepsparse.utils.onnx import (
+from deepsparse import compile_model, cpu
+from deepsparse.benchmark import BenchmarkResults
+from deepsparse.utils import (
+    verify_outputs,
     generate_random_inputs,
     get_input_names,
     get_output_names,
@@ -99,11 +100,9 @@ def main(args):
     for dse_output, ort_output in zip(dse_results.outputs, ort_results.outputs):
         verify_outputs(dse_output, ort_output)
 
-    print("ONNXRuntime results:")
-    print(ort_results)
+    print("ONNXRuntime", ort_results)
     print()
-    print("DeepSparse Engine results:")
-    print(dse_results)
+    print("DeepSparse Engine", dse_results)
 
 
 if __name__ == "__main__":
