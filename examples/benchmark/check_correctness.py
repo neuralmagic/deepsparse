@@ -50,9 +50,6 @@ def main(args):
     batch_size = args.batch_size
     num_cores = args.num_cores
 
-    # ONNXRuntime requires batch size of the model file to match incoming data
-    onnx_filepath = override_batch_size(onnx_filepath, batch_size)
-
     inputs = generate_random_inputs(onnx_filepath, batch_size)
 
     # Gather ONNXRuntime outputs
@@ -69,6 +66,10 @@ def main(args):
     print("Executing model with DeepSparse Engine...")
     dse_network = compile_model(onnx_filepath, batch_size, num_cores)
     dse_outputs = dse_network(inputs)
+
+    print(ort_outputs)
+
+    print(dse_outputs)
 
     verify_outputs(dse_outputs, ort_outputs)
 

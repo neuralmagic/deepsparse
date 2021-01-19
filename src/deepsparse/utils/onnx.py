@@ -78,7 +78,7 @@ def generate_random_inputs(
     """
     Generate random data that matches the type and shape of ONNX model, with a batch size override
     :param onnx_filepath: File path to ONNX model
-    :param batch_size: Optional override for the batch size dimension
+    :param batch_size: If provided, override for the batch size dimension
     :return: List of random tensors
     """
     model = onnx.load(onnx_filepath)
@@ -93,7 +93,8 @@ def generate_random_inputs(
 
     input_data_list = []
     for i, external_input in enumerate(external_inputs):
-        in_shape = [int(d.dim_value) for d in external_input.type.tensor_type.shape.dim]
+        input_tensor_type = external_input.type.tensor_type
+        in_shape = [int(d.dim_value) for d in input_tensor_type.shape.dim]
 
         if batch_size is not None:
             in_shape[0] = batch_size
@@ -101,7 +102,7 @@ def generate_random_inputs(
         log.info("-- random input #{} of shape = {}".format(i, in_shape))
         input_data_list.append(
             numpy.random.rand(*in_shape).astype(
-                translate_onnx_type_to_numpy(external_input.type.tensor_type.elem_type)
+                translate_onnx_type_to_numpy(input_tensor_type.elem_type)
             )
         )
     return input_data_list
