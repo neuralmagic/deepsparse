@@ -20,7 +20,7 @@ except Exception as err:
 try:
     from deepsparse.cpu import cpu_details
     from deepsparse.version import *
-    from deepsparse.lib import import_deepsparse_engine
+    from deepsparse.lib import init_deepsparse_lib
 except ImportError:
     raise ImportError(
         "Unable to import deepsparse python apis. "
@@ -33,7 +33,7 @@ __all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model"]
 
 CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu_details()
 
-ENGINE = import_deepsparse_engine()
+LIB = init_deepsparse_lib()
 
 
 def _model_to_path(model: Union[str, Model, File]) -> str:
@@ -105,7 +105,7 @@ class Engine(object):
         self._num_sockets = 1  # only single socket is supported currently
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
-        self._eng_net = ENGINE.deepsparse_engine(
+        self._eng_net = LIB.deepsparse_engine(
             self._model_path, self._batch_size, self._num_cores, self._num_sockets
         )
 
@@ -538,7 +538,7 @@ def analyze_model(
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
     num_sockets = 1
-    eng_net = ENGINE.deepsparse_engine(model, batch_size, num_cores, num_sockets)
+    eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, num_sockets)
 
     return eng_net.benchmark(
         inp,

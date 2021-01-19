@@ -12,7 +12,7 @@ except ImportError:
 CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu_details()
 
 
-def import_deepsparse_engine():
+def init_deepsparse_lib():
     try:
         nm_package_dir = os.path.dirname(os.path.abspath(__file__))
         onnxruntime_neuralmagic_so_path = os.path.join(
