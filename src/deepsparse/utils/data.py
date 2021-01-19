@@ -48,6 +48,7 @@ def verify_outputs(
         max_diff = numpy.max(numpy.abs(output - gt_output))
         max_diffs.append(max_diff)
         log.info(f"output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}")
+
         if not numpy.allclose(output, gt_output, rtol=rtol, atol=atol):
             raise Exception(
                 f"ERROR: output data doesn't match\n"
