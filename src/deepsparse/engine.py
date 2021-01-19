@@ -2,7 +2,6 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
-import importlib
 import os
 import time
 from typing import Dict, Iterable, List, Optional, Tuple, Union
@@ -21,6 +20,7 @@ except Exception as err:
 try:
     from deepsparse.cpu import cpu_details
     from deepsparse.version import *
+    from deepsparse.lib import import_deepsparse_engine
 except ImportError:
     raise ImportError(
         "Unable to import deepsparse python apis. "
@@ -33,29 +33,7 @@ __all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model"]
 
 CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu_details()
 
-
-def _import_ort_nm():
-    try:
-        nm_package_dir = os.path.dirname(os.path.abspath(__file__))
-        onnxruntime_neuralmagic_so_path = os.path.join(
-            nm_package_dir, AVX_TYPE, "neuralmagic_onnxruntime_engine.so"
-        )
-        spec = importlib.util.spec_from_file_location(
-            "deepsparse.{}.neuralmagic_onnxruntime_engine".format(AVX_TYPE),
-            onnxruntime_neuralmagic_so_path,
-        )
-        engine = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(engine)
-
-        return engine
-    except ImportError:
-        raise ImportError(
-            "Unable to import deepsparse engine binaries. "
-            "Please contact support@neuralmagic.com"
-        )
-
-
-ENGINE_ORT = _import_ort_nm()
+ENGINE = import_deepsparse_engine()
 
 
 def _model_to_path(model: Union[str, Model, File]) -> str:
@@ -127,7 +105,7 @@ class Engine(object):
         self._num_sockets = 1  # only single socket is supported currently
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
-        self._eng_net = ENGINE_ORT.neuralmagic_onnxruntime_engine(
+        self._eng_net = ENGINE.deepsparse_engine(
             self._model_path, self._batch_size, self._num_cores, self._num_sockets
         )
 
@@ -560,9 +538,7 @@ def analyze_model(
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
     num_sockets = 1
-    eng_net = ENGINE_ORT.neuralmagic_onnxruntime_engine(
-        model, batch_size, num_cores, num_sockets
-    )
+    eng_net = ENGINE.deepsparse_engine(model, batch_size, num_cores, num_sockets)
 
     return eng_net.benchmark(
         inp,
