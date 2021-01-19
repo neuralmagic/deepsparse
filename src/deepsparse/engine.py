@@ -335,8 +335,6 @@ class Engine(object):
         """
         A convenience function for quickly benchmarking the instantiated model
         on a given input in the DeepSparse Engine.
-        The data param must be individual items, the code will batch
-        these items into the proper shape for the model for use with benchmarking.
         After executing, will return the summary statistics for benchmarking.
 
         :param inp: The list of inputs to pass to the engine for benchmarking.
@@ -377,8 +375,6 @@ class Engine(object):
         """
         A convenience function for quickly benchmarking the instantiated model
         on a give DataLoader in the DeepSparse Engine.
-        batched_data must already shaped into the proper batch sizes
-        for use with benchmarking.
         After executing, will return the summary statistics for benchmarking.
 
         :param loader: An iterator of inputs to pass to the engine for benchmarking.
