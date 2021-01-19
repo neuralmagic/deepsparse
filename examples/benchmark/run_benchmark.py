@@ -1,7 +1,41 @@
+"""
+Example script for benchmarking an ONNX model over random inputs and using
+both the DeepSparse Engine and ONNXRuntime, comparing results.
+
+In this method, we can assume that ONNXRuntime will give the
+"correct" output as it is the industry-standard solution.
+
+##########
+Command help:
+usage: run_benchmark.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] [-b NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS] onnx_filepath
+
+Benchmark an ONNX model, comparing between DeepSparse and ONNXRuntime
+
+positional arguments:
+  onnx_filepath         The full filepath of the ONNX model file being benchmarked
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s BATCH_SIZE, --batch_size BATCH_SIZE
+                        The batch size to run the analysis for
+  -j NUM_CORES, --num_cores NUM_CORES
+                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+  -b NUM_ITERATIONS, --num_iterations NUM_ITERATIONS
+                        The number of times the benchmark will be run
+  -w NUM_WARMUP_ITERATIONS, --num_warmup_iterations NUM_WARMUP_ITERATIONS
+                        The number of warmup runs that will be executed before the actual benchmarking
+
+##########
+Example command for benchmarking a downloaded resnet50 model for batch size 8 and 4 cores, over 100 iterations:
+python examples/benchmark/run_benchmark.py \
+    ~/Downloads/resnet50.onnx \
+    --batch_size 8 \
+    --num_cores 4 \
+    --num_iterations 100
+"""
+
 import argparse
 import time
-
-import numpy
 
 import onnxruntime
 from deepsparse import compile_model, cpu
@@ -79,7 +113,6 @@ def main():
     input_names = get_input_names(onnx_filepath)
     output_names = get_output_names(onnx_filepath)
     inputs_dict = {name: value for name, value in zip(input_names, inputs)}
-    ort_outputs = []
     ort_results = BenchmarkResults()
     for i in range(num_warmup_iterations):
         ort_network.run(output_names, inputs_dict)

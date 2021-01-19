@@ -19,8 +19,8 @@ except Exception as err:
 
 try:
     from deepsparse.cpu import cpu_details
-    from deepsparse.version import *
     from deepsparse.lib import init_deepsparse_lib
+    from deepsparse.version import *
 except ImportError:
     raise ImportError(
         "Unable to import deepsparse python apis. "

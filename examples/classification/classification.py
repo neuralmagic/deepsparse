@@ -1,4 +1,34 @@
+"""
+Example script for downloading a classification model from SparseZoo with real data
+and using the DeepSparse Engine for inference and benchmarking.
+
+##########
+Command help:
+usage: classification.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] {efficientnet_b0,efficientnet_b4,inception_v3,mobilenet_v1,mobilenet_v2,resnet_101,resnet_101_2x,resnet_152,resnet_18,resnet_34,resnet_50,resnet_50_2x,vgg_11,vgg_11bn,vgg_13,vgg_13bn,vgg_16,vgg_16bn,vgg_19,vgg_19bn}
+
+Benchmark and check accuracy of image classification models
+
+positional arguments:
+  {efficientnet_b0,efficientnet_b4,inception_v3,mobilenet_v1,mobilenet_v2,resnet_101,resnet_101_2x,resnet_152,resnet_18,resnet_34,resnet_50,resnet_50_2x,vgg_11,vgg_11bn,vgg_13,vgg_13bn,vgg_16,vgg_16bn,vgg_19,vgg_19bn}
+                        Model type to analyze
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s BATCH_SIZE, --batch_size BATCH_SIZE
+                        The batch size to run the analysis for
+  -j NUM_CORES, --num_cores NUM_CORES
+                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+
+##########
+Example command for running a mobilenet_v2 model with batch size 8 and 4 cores used:
+python examples/classification/classification.py \
+    mobilenet_v2 \
+    --batch_size 8 \
+    --num_cores 4
+"""
+
 import argparse
+from inspect import getmembers, isfunction
 
 import numpy
 
@@ -10,17 +40,7 @@ from sparsezoo.objects import Model
 
 CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
 
-model_registry = {
-    "mobilenet_v1": classification.mobilenet_v1,
-    "mobilenet_v2": classification.mobilenet_v2,
-    "resnet_18": classification.resnet_18,
-    "resnet_34": classification.resnet_34,
-    "resnet_50": classification.resnet_50,
-    "resnet_101": classification.resnet_101,
-    "resnet_152": classification.resnet_152,
-    "efficientnet_b0": classification.efficientnet_b0,
-    "efficientnet_b4": classification.efficientnet_b4,
-}
+model_registry = dict(getmembers(classification, isfunction))
 
 
 def fetch_model(model_name: str) -> Model:
@@ -87,7 +107,6 @@ def main():
     batch = model.sample_batch(batch_size=batch_size)
     batched_inputs = batch["inputs"]
     batched_outputs = batch["outputs"]
-    batched_labels = batch["labels"]
 
     # Compile model for inference
     print("Compiling {} model with DeepSparse Engine".format(model.architecture_id))
@@ -102,10 +121,11 @@ def main():
     # Compare against reference model output
     verify_outputs(predicted_outputs, batched_outputs)
 
-    # Measure accuracy against ground truth labels
-    predicted_labels = numpy.argmax(predicted_outputs[-1], axis=-1)
-    accuracy = calculate_top1_accuracy(predicted_outputs[-1], batched_labels[0])
-    print("Top-1 Accuracy for batch size {}: {:.2f}%".format(batch_size, accuracy))
+    if "labels" in batch:
+        batched_labels = batch["labels"]
+        # Measure accuracy against ground truth labels
+        accuracy = calculate_top1_accuracy(predicted_outputs[-1], batched_labels[0])
+        print("Top-1 Accuracy for batch size {}: {:.2f}%".format(batch_size, accuracy))
 
     # BENCHMARK
     # Record output from executing through the DeepSparse engine

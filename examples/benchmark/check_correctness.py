@@ -1,6 +1,36 @@
-import argparse
+"""
+Example script for generating random input from an ONNX model and running
+the model both through the DeepSparse Engine and ONNXRuntime, comparing
+outputs to confirm they are the same.
 
-import numpy
+In this method, we can assume that ONNXRuntime will give the
+"correct" output as it is the industry-standard solution.
+
+##########
+Command help:
+usage: check_correctness.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] onnx_filepath
+
+Run an ONNX model, comparing outputs between the DeepSparse Engine and ONNXRuntime
+
+positional arguments:
+  onnx_filepath         The full filepath of the ONNX model file being run
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s BATCH_SIZE, --batch_size BATCH_SIZE
+                        The batch size to run the analysis for
+  -j NUM_CORES, --num_cores NUM_CORES
+                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+
+##########
+Example command for checking a downloaded resnet50 model for batch size 8 and 4 cores:
+python examples/benchmark/check_correctness.py \
+    ~/Downloads/resnet50.onnx \
+    --batch_size 8 \
+    --num_cores 4
+"""
+
+import argparse
 
 import onnxruntime
 from deepsparse import compile_model, cpu
@@ -68,14 +98,9 @@ def main():
     dse_network = compile_model(onnx_filepath, batch_size, num_cores)
     dse_outputs = dse_network(inputs)
 
-    print(ort_outputs)
-
-    print(dse_outputs)
-
     verify_outputs(dse_outputs, ort_outputs)
 
     print("DeepSparse Engine output matches ONNXRuntime output")
-    print("SUCCESS")
 
 
 if __name__ == "__main__":

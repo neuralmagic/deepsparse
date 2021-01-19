@@ -1,6 +1,34 @@
-import argparse
+"""
+Example script for downloading an object detection model from SparseZoo with real data
+and using the DeepSparse Engine for inference and benchmarking.
 
-import numpy
+##########
+Command help:
+usage: detection.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] {ssd_resnet50_300,yolo_v3}
+
+Benchmark and check accuracy of object detection models
+
+positional arguments:
+  {ssd_resnet50_300,yolo_v3}
+                        Model type to analyze
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s BATCH_SIZE, --batch_size BATCH_SIZE
+                        The batch size to run the analysis for
+  -j NUM_CORES, --num_cores NUM_CORES
+                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+
+##########
+Example command for running a yolo_v3 model with batch size 8 and 4 cores used:
+python examples/classification/classification.py \
+    yolo_v3 \
+    --batch_size 8 \
+    --num_cores 4
+"""
+
+import argparse
+from inspect import getmembers, isfunction
 
 from deepsparse import compile_model, cpu
 from deepsparse.utils import verify_outputs
@@ -10,10 +38,7 @@ from sparsezoo.objects import Model
 
 CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
 
-model_registry = {
-    "ssd_resnet50_300": detection.ssd_resnet50_300,
-    "yolo_v3": detection.yolo_v3,
-}
+model_registry = dict(getmembers(detection, isfunction))
 
 
 def fetch_model(model_name: str) -> Model:
@@ -65,7 +90,6 @@ def main():
     batch = model.sample_batch(batch_size=batch_size)
     batched_inputs = batch["inputs"]
     batched_outputs = batch["outputs"]
-    batched_labels = batch["labels"]
 
     # Compile model for inference
     print("Compiling {} model with DeepSparse Engine".format(model.architecture_id))
