@@ -1,3 +1,3 @@
 from .data import *
-from .onnx import *
 from .log import *
+from .onnx import *

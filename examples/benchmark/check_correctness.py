@@ -5,10 +5,10 @@ import numpy
 import onnxruntime
 from deepsparse import compile_model, cpu
 from deepsparse.utils import (
-    verify_outputs,
     generate_random_inputs,
     get_input_names,
     get_output_names,
+    verify_outputs,
 )
 
 
@@ -45,7 +45,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(args):
+def main():
+    args = parse_args()
     onnx_filepath = args.onnx_filepath
     batch_size = args.batch_size
     num_cores = args.num_cores
@@ -78,5 +79,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args_ = parse_args()
-    main(args_)
+    main()

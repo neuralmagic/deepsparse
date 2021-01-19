@@ -3,8 +3,9 @@ import sys
 from unittest.mock import patch
 
 import pytest
-from sparsezoo import Model
 from sparsezoo.models.classification import mobilenet_v1
+from sparsezoo.objects import Model
+
 
 SRC_DIRS = [
     os.path.join(os.path.dirname(__file__), dirname)
@@ -18,10 +19,10 @@ sys.path.extend(SRC_DIRS)
 
 
 if SRC_DIRS is not None:
+    import check_correctness
     import classification
     import detection
     import run_benchmark
-    import check_correctness
 
 
 @pytest.mark.parametrize(
@@ -45,5 +46,4 @@ def test_check_correctness(model: Model, batch_size: int):
         """.split()
 
     with patch.object(sys, "argv", testargs):
-        args = check_correctness.parse_args()
-        result = check_correctness.main(args)
+        result = check_correctness.main()

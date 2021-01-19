@@ -12,7 +12,7 @@ from deepsparse.benchmark import BenchmarkResults
 
 
 try:
-    from sparsezoo import File, Model
+    from sparsezoo.objects import File, Model
 except Exception as err:
     Model = object
     File = object

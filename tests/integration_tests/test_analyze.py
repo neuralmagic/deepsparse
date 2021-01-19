@@ -1,7 +1,7 @@
 import pytest
 from deepsparse import analyze_model
-from sparsezoo import Model
 from sparsezoo.models.classification import mobilenet_v1
+from sparsezoo.objects import Model
 
 
 @pytest.mark.parametrize(
@@ -22,3 +22,4 @@ def test_analyze(model: Model, batch_size: int):
     inputs = model.data_inputs.sample_batch(batch_size=batch_size)
 
     results = analyze_model(model, inputs, batch_size)
+    print(results)

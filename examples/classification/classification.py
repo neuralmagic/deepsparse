@@ -4,8 +4,8 @@ import numpy
 
 from deepsparse import compile_model, cpu
 from deepsparse.utils import verify_outputs
-from sparsezoo import Model
 from sparsezoo.models import classification
+from sparsezoo.objects import Model
 
 
 CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
@@ -77,7 +77,8 @@ def calculate_top1_accuracy(pred: numpy.array, labels: numpy.array) -> float:
     return correct
 
 
-def main(args):
+def main():
+    args = parse_args()
     model = fetch_model(args.model_name)
     batch_size = args.batch_size
     num_cores = args.num_cores
@@ -114,5 +115,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args_ = parse_args()
-    main(args_)
+    main()

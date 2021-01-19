@@ -1,8 +1,8 @@
 import pytest
 from deepsparse import compile_model
 from deepsparse.utils import verify_outputs
-from sparsezoo import Model
 from sparsezoo.models.classification import mobilenet_v1
+from sparsezoo.objects import Model
 
 
 @pytest.mark.parametrize(
@@ -17,7 +17,7 @@ from sparsezoo.models.classification import mobilenet_v1
         ]
     ),
 )
-def test_engine(model: Model, batch_size: int):
+def test_benchmark(model: Model, batch_size: int):
 
     m = model()
     batch = m.sample_batch(batch_size=batch_size)
