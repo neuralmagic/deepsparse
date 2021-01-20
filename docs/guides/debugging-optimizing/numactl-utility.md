@@ -2,7 +2,7 @@
 
 The DeepSparse Engine works best when run on a single socket and with hyper-threading disabled. One standard way of controlling compute/memory resources when running processes is to use the **numactl** utility. **numactl** can be used when multiple processes need to run on the same hardware but require their own CPU/memory resources to run optimally.
 
-Because using **numactl** to select multiple sockets will not work, to run DeepSparse Engine on a single socket (N) of a multi-socket system, you would start the DeepSparse Engine using **numactl**. For example:
+To run the DeepSparse Engine on a single socket (N) of a multi-socket system, you would start the DeepSparse Engine using **numactl**. For example:
 
 ```bash
     numactl --cpunodebind N <deepsparseengine-process>
