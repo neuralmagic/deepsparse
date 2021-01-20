@@ -147,19 +147,18 @@ class BenchmarkResults(Iterable):
         self._results = []  # type: List[BatchBenchmarkResult]
 
     def __repr__(self):
-        props = {
-            "batches_per_second": self.batches_per_second,
-            "items_per_second": self.items_per_second,
-            "ms_per_batch": self.ms_per_batch,
-            "ms_per_item": self.ms_per_item,
-        }
-
-        return f"{self.__class__.__name__}({props})"
+        return f"{self.__class__.__name__}({self._properties_dict})"
 
     def __str__(self):
-        return (
-            f"{self.__class__.__name__}(ms_per_batch={self.ms_per_batch}, "
-            f"items_per_second={self.items_per_second})"
+        """
+        :return: Human readable form of the benchmark summary
+        """
+        formatted_props = [
+            "\t{}: {}".format(key, val) for key, val in self._properties_dict.items()
+        ]
+        return "{}:\n{}".format(
+            self.__class__.__name__,
+            "\n".join(formatted_props),
         )
 
     def __len__(self) -> int:
@@ -171,6 +170,16 @@ class BenchmarkResults(Iterable):
     def __iter__(self) -> Iterator[BatchBenchmarkResult]:
         for result in self._results:
             yield result
+
+    @property
+    def _properties_dict(self) -> Dict:
+        return {
+            "items_per_second": self.items_per_second,
+            "ms_per_batch": self.ms_per_batch,
+            "batch_times_mean": self.batch_times_mean,
+            "batch_times_median": self.batch_times_median,
+            "batch_times_std": self.batch_times_std,
+        }
 
     @property
     def results(self) -> List[BatchBenchmarkResult]:
@@ -260,6 +269,20 @@ class BenchmarkResults(Iterable):
             in the batch
         """
         return sum(self.batch_times) * 1000.0 / self.num_items
+
+    @property
+    def inputs(self) -> Union[None, List[numpy.ndarray]]:
+        """
+        :return: Batch inputs that were given for the run, if any
+        """
+        return [inp for res in self._results for inp in res.inputs]
+
+    @property
+    def outputs(self) -> Union[None, List[numpy.ndarray]]:
+        """
+        :return: Batch outputs that were given for the run, if any
+        """
+        return [out for res in self._results for out in res.outputs]
 
     def append_batch(
         self,

@@ -12,15 +12,15 @@ from deepsparse.benchmark import BenchmarkResults
 
 
 try:
-    from sparsezoo import File, Model
+    from sparsezoo.objects import File, Model
 except Exception as err:
     Model = object
     File = object
 
 try:
     from deepsparse.cpu import cpu_details
-    from deepsparse.version import *
     from deepsparse.lib import init_deepsparse_lib
+    from deepsparse.version import *
 except ImportError:
     raise ImportError(
         "Unable to import deepsparse python apis. "

@@ -1,5 +1,6 @@
-import os
 import importlib
+import os
+
 
 try:
     from deepsparse.cpu import cpu_details

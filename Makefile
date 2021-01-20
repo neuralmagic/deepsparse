@@ -22,7 +22,12 @@ style:
 # run tests for the repo
 test:
 	@echo "Running python tests";
-	@pytest;
+	@pytest ./tests/;
+
+# run example tests for the repo
+test-examples:
+	@echo "Running python example tests";
+	@pytest ./examples/;
 
 # create docs
 docs:
