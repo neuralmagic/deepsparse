@@ -24,10 +24,17 @@ Logs are controlled by setting the `NM_LOGGING_LEVEL` environment variable.
 
 Specify within your shell one of the following verbosity levels (in increasing order of verbosity:
 
-`error, warn,` and `diagnose` with `diagnose` as a common default for all logs that will output to stderr:
+`fatal, error, warn,` and `diagnose` with `diagnose` as a common default for all logs that will output to stderr:
 
 ```bash
-    NM_LOGGING_LEVEL=diagnose
+    NM_LOGGING_LEVEL=diagnose 
+    export NM_LOGGING_LEVEL
+```
+
+Alternatively, you can output the logging level by
+
+```bash
+    NM_LOGGING_LEVEL=diagnose <some command>
 ```
 
 To enable diagnostic logs on a per-run basis, specify it manually before each script execution. For example, if you normally run:
