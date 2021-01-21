@@ -8,13 +8,17 @@ from sparsezoo.objects import Model
 
 
 SRC_DIRS = [
-    os.path.join(os.path.dirname(__file__), dirname)
+    os.path.join(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "../examples"),
+        dirname,
+    )
     for dirname in [
         "benchmark",
         "classification",
         "detection",
     ]
 ]
+print(SRC_DIRS)
 sys.path.extend(SRC_DIRS)
 
 

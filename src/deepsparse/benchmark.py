@@ -275,14 +275,14 @@ class BenchmarkResults(Iterable):
         """
         :return: Batch inputs that were given for the run, if any
         """
-        return [inp for res in self._results for inp in res.inputs]
+        return [res.inputs for res in self._results]
 
     @property
     def outputs(self) -> Union[None, List[numpy.ndarray]]:
         """
         :return: Batch outputs that were given for the run, if any
         """
-        return [out for res in self._results for out in res.outputs]
+        return [res.outputs for res in self._results]
 
     def append_batch(
         self,
