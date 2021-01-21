@@ -67,6 +67,6 @@ Post all other questions including support or how to contribute. Don’t forget 
 
 ## Developing the DeepSparse Engine
 
-Because the DeepSparse Engine algorithms are proprietary, code contributions cannot be made. However, there are options to contribute code. Review [Developing the DeepSparse Engine](DEVELOPING.md) to get started.
+Because the DeepSparse Engine algorithms are proprietary, code contributions cannot be made. However, there are other options to contribute to the engine's Python API wrapper code. Review [Developing the DeepSparse Engine](DEVELOPING.md) to get started.
 
 We also welcome community input to bugs, feature requests, questions and problems as mentioned above.
