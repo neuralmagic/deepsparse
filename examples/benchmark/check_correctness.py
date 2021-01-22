@@ -39,6 +39,7 @@ from deepsparse.utils import (
     get_input_names,
     get_output_names,
     verify_outputs,
+    override_onnx_batch_size,
 )
 
 
@@ -82,18 +83,20 @@ def main():
     num_cores = args.num_cores
 
     inputs = generate_random_inputs(onnx_filepath, batch_size)
+    input_names = get_input_names(onnx_filepath)
+    output_names = get_output_names(onnx_filepath)
+    inputs_dict = {name: value for name, value in zip(input_names, inputs)}
 
-    # Gather ONNXRuntime outputs
+    # ONNXRuntime inference
     print("Executing model with ONNXRuntime...")
     sess_options = onnxruntime.SessionOptions()
     sess_options.intra_op_num_threads = num_cores
-    ort_network = onnxruntime.InferenceSession(onnx_filepath, sess_options)
-    ort_outputs = ort_network.run(
-        get_output_names(onnx_filepath),
-        {name: value for name, value in zip(get_input_names(onnx_filepath), inputs)},
-    )
+    with override_onnx_batch_size(onnx_filepath, batch_size) as override_onnx_filepath:
+        ort_network = onnxruntime.InferenceSession(override_onnx_filepath, sess_options)
 
-    # Gather DeepSparse Engine outputs
+        ort_outputs = ort_network.run(output_names, inputs_dict)
+
+    # DeepSparse Engine inference
     print("Executing model with DeepSparse Engine...")
     dse_network = compile_model(onnx_filepath, batch_size, num_cores)
     dse_outputs = dse_network(inputs)

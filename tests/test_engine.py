@@ -1,16 +1,18 @@
-import pytest
 from inspect import getmembers, isfunction
 
-from deepsparse import compile_model, analyze_model
+import pytest
+from deepsparse import analyze_model, compile_model
 from deepsparse.utils import verify_outputs
 from sparsezoo.models import classification
 from sparsezoo.objects import Model
 
+
 model_test_registry = {
     "mobilenet_v1": classification.mobilenet_v1,
-    "mobilenet_v2": classification.mobilenet_v2,
-    "resnet_18": classification.resnet_18,
-    "efficientnet_b0": classification.efficientnet_b0,
+    # TODO: Add models when added to sparsezoo
+    # "mobilenet_v2": classification.mobilenet_v2,
+    # "resnet_18": classification.resnet_18,
+    # "efficientnet_b0": classification.efficientnet_b0,
 }
 
 

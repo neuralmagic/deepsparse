@@ -18,7 +18,6 @@ SRC_DIRS = [
         "detection",
     ]
 ]
-print(SRC_DIRS)
 sys.path.extend(SRC_DIRS)
 
 
@@ -37,7 +36,7 @@ if SRC_DIRS is not None:
                 mobilenet_v1,
                 b,
             )
-            for b in [1]  # TODO: batch override for ORT
+            for b in [1, 8, 64]
         ]
     ),
 )
@@ -50,4 +49,74 @@ def test_check_correctness(model: Model, batch_size: int):
         """.split()
 
     with patch.object(sys, "argv", testargs):
-        result = check_correctness.main()
+        check_correctness.main()
+
+
+@pytest.mark.parametrize(
+    "model, batch_size",
+    (
+        [
+            pytest.param(
+                mobilenet_v1,
+                b,
+            )
+            for b in [1, 8, 64]
+        ]
+    ),
+)
+def test_run_benchmark(model: Model, batch_size: int):
+    m = model()
+    testargs = f"""
+        run_benchmark.py
+        {m.onnx_file.downloaded_path()}
+        --batch_size {batch_size}
+        """.split()
+
+    with patch.object(sys, "argv", testargs):
+        run_benchmark.main()
+
+
+@pytest.mark.parametrize(
+    "model_name, batch_size",
+    (
+        [
+            pytest.param(
+                "mobilenet_v1",
+                b,
+            )
+            for b in [1, 8, 64]
+        ]
+    ),
+)
+def test_classification(model_name: str, batch_size: int):
+    testargs = f"""
+        classification.py
+        {model_name}
+        --batch_size {batch_size}
+        """.split()
+
+    with patch.object(sys, "argv", testargs):
+        classification.main()
+
+
+@pytest.mark.parametrize(
+    "model_name, batch_size",
+    (
+        [
+            pytest.param(
+                "yolo_v3",
+                b,
+            )
+            for b in [1, 8, 64]
+        ]
+    ),
+)
+def test_detection(model_name: str, batch_size: int):
+    testargs = f"""
+        detection.py
+        {model_name}
+        --batch_size {batch_size}
+        """.split()
+
+    with patch.object(sys, "argv", testargs):
+        detection.main()
