@@ -1,15 +1,6 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ''
-labels: bug
-assignees: ''
-
----
-
----
-name: Bug report
-about: Create a report to help us improve
 labels: bug
 
 ---
@@ -27,8 +18,11 @@ Include all relevant environment information:
 3. DeepSparse version or commit hash [e.g. 0.1.0, `f7245c8`]:
 4. ML framework version(s) [e.g. torch 1.7.1]:
 5. Other Python package versions [e.g. SparseML, Sparsify, numpy, ONNX]:
-6. Physical core count, instruction sets, available system memory: 
-7. Other relevant environment information [e.g. hardware, CUDA version]:
+6. CPU info - output of deepsparse/src/deepsparse/arch.bin or output of cpu_architecture() as follows:
+```python
+>>> import deepsparse.cpu
+>>> print(deepsparse.cpu.cpu_architecture())
+```
 
 **To Reproduce**
 Exact steps to reproduce the behavior:
