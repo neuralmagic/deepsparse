@@ -1,9 +1,7 @@
 ---
 name: Doc edit
 about: Propose changes to project documentation
-title: ''
 labels: documentation
-assignees: ''
 
 ---
 
