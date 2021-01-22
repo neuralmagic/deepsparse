@@ -44,8 +44,8 @@ from deepsparse.utils import (
     generate_random_inputs,
     get_input_names,
     get_output_names,
-    verify_outputs,
     override_onnx_batch_size,
+    verify_outputs,
 )
 
 

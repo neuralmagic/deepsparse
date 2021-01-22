@@ -2,7 +2,7 @@
 
 Here you will find notebooks detailing workflows to get started with the DeepSparse Engine.
 
-If you have some notebook(s) utilizing DeepSparse, please open a PR so it can be included under our Community notebooks.
+If you have some notebook(s) utilizing DeepSparse, please open a Pull Request so it can be included under our Community notebooks.
 
 ## Notebooks
 

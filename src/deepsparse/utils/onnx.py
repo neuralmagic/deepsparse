@@ -1,7 +1,7 @@
-import os
-from typing import List
-import tempfile
 import contextlib
+import os
+import tempfile
+from typing import List
 
 import numpy
 import onnx
