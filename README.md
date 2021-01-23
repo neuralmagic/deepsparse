@@ -28,14 +28,17 @@
 
 ## Overview
 
-The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity within neural networks to reduce compute required as well as accelerate memory bound processes.
+The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
-This package includes a CPU inference engine, ONNX tooling, and model server if needed. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployment processes.
+This package includes APIs and examples to quickly get started learning about and actually running sparse models. 
+
+## Compatibility
+
+The DeepSparse Engine ingests models in the [ONNX](https://onnx.ai/) format, allowing for compatibility with [PyTorch](https://pytorch.org/docs/stable/onnx.html), [TensorFlow](https://github.com/onnx/tensorflow-onnx), [Keras](https://github.com/onnx/keras-onnx), and [many other frameworks](https://github.com/onnx/onnxmltools) that support it. This reduces the extra work of preparing your trained model for inference to just one step of exporting.
 
 ## Quick Tour
 
-
-To expedite inference and benchmarking on real models, we include the `sparsezoo` package. SparseZoo hosts dense and sparse models, trained on repeatable optimization recipes.
+To expedite inference and benchmarking on real models, we include the `sparsezoo` package. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts dense and sparse models, trained on repeatable optimization recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
 
 Here is how to quickly perform inference with DeepSparse Engine on a pre-trained dense MobileNetV1 from SparseZoo.
 
@@ -52,8 +55,43 @@ inputs = model.data_inputs.sample_batch()
 outputs = engine.run(inputs)
 ```
 
+We accept regular ONNX files for custom models, too. So it is just a matter of plugging in your model to compare performance with other solutions.
+
+```bash
+> wget https://github.com/onnx/models/raw/master/vision/classification/mobilenet/model/mobilenetv2-7.onnx
+Saving to: ‘mobilenetv2-7.onnx’
+```
+
+```python
+from deepsparse import compile_model
+from deepsparse.utils import generate_random_data
+ONNX_FILEPATH = "mobilenetv2-7.onnx"
+BATCH_SIZE = 16
+
+# Generate random sample input
+inputs = generate_random_data(ONNX_FILEPATH, BATCH_SIZE)
+
+# Compile and run
+engine = compile_model(ONNX_FILEPATH, BATCH_SIZE)
+outputs = engine.run(inputs)
+```
+
 For a more in-depth read on available APIs and workflows, check out the [examples](examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/).
 
+## Hardware Support
+
+The DeepSparse Engine is validated to work on x86 Intel and AMD CPUs running Linux operating systems.
+
+It is highly recommended to run on a CPU with AVX-512 instructions available for optimal algorithms to be enabled. 
+
+Here is a table detailing specific support for some algorithms over different microarchitectures:
+
+|   x86 Extension    |          Microarchitectures         | Activation Sparsity | Kernel Sparsity | Sparse Quantization |
+|:------------------:|:-----------------------------------:|:-------------------:|:---------------:|:-------------------:|
+|      [AMD AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)      |             [Zen 2](https://en.wikipedia.org/wiki/Zen_2), [Zen 3](https://en.wikipedia.org/wiki/Zen_3)            |    not supported    |    optimized    |    not supported    |
+|     [Intel AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)     |          [Haswell](https://en.wikipedia.org/wiki/Haswell_(microarchitecture)), [Broadwell](https://en.wikipedia.org/wiki/Broadwell_(microarchitecture)), and newer         |    not supported    |    optimized    |    not supported    |
+|    [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512)   |         [Skylake](https://en.wikipedia.org/wiki/Skylake_(microarchitecture)), [Cannon Lake](https://en.wikipedia.org/wiki/Cannon_Lake_(microarchitecture)), and newer        |      optimized      |    optimized    |       emulated      |
+| [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512) VNNI (DL Boost) | [Cascade Lake](https://en.wikipedia.org/wiki/Cascade_Lake_(microarchitecture)), [Ice Lake](https://en.wikipedia.org/wiki/Ice_Lake_(microprocessor)), [Cooper Lake](https://en.wikipedia.org/wiki/Cooper_Lake_(microarchitecture)), [Tiger Lake](https://en.wikipedia.org/wiki/Tiger_Lake_(microprocessor)) |      optimized      |    optimized    |      optimized      |
 
 ## Installation
 
@@ -67,24 +105,9 @@ pip install deepsparse
 
 Then if you want to explore the [examples](examples/), clone the repository and any install additional dependencies found in example folders.
 
-## Algorithm Support
-
-The DeepSparse Engine is validated to work on x86 Intel and AMD CPUs running Linux operating systems.
-
-It is recommended to run on a CPU with AVX512 instructions available for optimal algorithms to be enabled. 
-
-Here is a table detailing specific support for some algorithms over different microarchitectures:
-
-|   x86 Extension   |          Microarchitectures         | Activation Sparsity | Kernel Sparsity | Sparse Quantization |
-|:-----------------:|:-----------------------------------:|:-------------------:|:---------------:|:-------------------:|
-|      AMD AVX2     |             Zen 2, Zen 3            |    not supported    |    optimized    |    not supported    |
-|     Intel AVX2    |          Haswell, Broadwell         |    not supported    |    optimized    |    not supported    |
-|    Intel AVX512   |         Skylake, Cannon Lake        |      optimized      |    optimized    |       emulated      |
-| Intel AVX512-VNNI | Cascade Lake, Ice Lake, Cooper Lake |      optimized      |    optimized    |      optimized      |
-
 ## Notebooks
 
-For some step-by-step examples, we have [notebooks](notebooks/) showing how to compile models with the DeepSparse Engine, check the predictions for accuracy, and benchmark them on your hardware.
+For some step-by-step examples, we have Jupyter [notebooks](notebooks/) showing how to compile models with the DeepSparse Engine, check the predictions for accuracy, and benchmark them on your hardware.
   
 ## Available Models and Recipes
 
