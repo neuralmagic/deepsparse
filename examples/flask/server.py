@@ -27,14 +27,11 @@ python examples/flask/server.py \
 """
 
 import argparse
-from typing import List
 
-import numpy
-
-from deepsparse import compile_model
 import flask
+from deepsparse import compile_model
 from flask_cors import CORS
-from utils_flask import tensors_to_bytes, bytes_to_tensors
+from utils_flask import bytes_to_tensors, tensors_to_bytes
 
 
 def parse_args():

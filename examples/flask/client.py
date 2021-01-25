@@ -23,15 +23,11 @@ python examples/flask/client.py \
 """
 
 import argparse
-import requests
 import time
 
-import numpy
-
-from deepsparse.utils import (
-    generate_random_inputs,
-)
-from utils_flask import tensors_to_bytes, bytes_to_tensors
+import requests
+from deepsparse.utils import generate_random_inputs
+from utils_flask import bytes_to_tensors, tensors_to_bytes
 
 
 def parse_args():
