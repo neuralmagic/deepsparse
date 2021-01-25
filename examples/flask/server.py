@@ -20,20 +20,21 @@ optional arguments:
                         available on the system
 
 ##########
-Example command for hosting a downloaded resnet50 model for batch size 8 and 4 cores:
+Example command for hosting a downloaded resnet50 model for 4 cores:
 python examples/flask/server.py \
     ~/Downloads/resnet50.onnx \
-    --batch_size 8 \
     --num_cores 4
 """
 
 import argparse
+from typing import List
 
 import numpy
 
 from deepsparse import compile_model
-from flask import Flask, jsonify, request
+import flask
 from flask_cors import CORS
+from utils_flask import tensors_to_bytes, bytes_to_tensors
 
 
 def parse_args():
@@ -44,7 +45,7 @@ def parse_args():
     parser.add_argument(
         "onnx_filepath",
         type=str,
-        help="The full filepath of the ONNX model file being benchmarked",
+        help="The full filepath of the ONNX model file",
     )
 
     parser.add_argument(
@@ -68,30 +69,34 @@ def parse_args():
 
 def create_model_inference_app(
     model_path: str, batch_size: int, num_cores: int
-) -> Flask:
-    print(f"compiling model at {model_path}")
+) -> flask.Flask:
+    print(f"Compiling model at {model_path}")
     engine = compile_model(model_path, batch_size, num_cores)
-    app = Flask(__name__)
+    print(engine)
+
+    app = flask.Flask(__name__)
     CORS(app)
 
     @app.route("/predict", methods=["POST"])
     def predict():
-        data = request.get_json(force=True)
-        inputs = []
-        for inp in data["inputs"]:
-            inputs.append(numpy.array(inp).astype(numpy.float32))
+        data = flask.request.get_data()
 
-        outputs = engine.run(inputs)
-        outputs = [out.tolist() for out in outputs]
+        inputs = bytes_to_tensors(data)
+        print(f"Received {len(inputs)} inputs from client")
 
-        return jsonify({"outputs": outputs})
+        print(f"Executing model")
+        outputs, elapsed_time = engine.timed_run(inputs)
+
+        print(f"Inference time took {elapsed_time * 1000.0:.4f} milliseconds")
+        print(f"Produced {len(outputs)} output tensors")
+        return tensors_to_bytes(outputs)
 
     @app.route("/info", methods=["GET"])
     def info():
-        return jsonify({"model_path": model_path, "engine": repr(engine)})
+        return flask.jsonify({"model_path": model_path, "engine": repr(engine)})
 
-    print(f"starting app")
-    app.run(host="0.0.0.0", port="5543", debug=True, threaded=True)
+    print(f"Starting Flask app")
+    app.run(host="0.0.0.0", port="5543", debug=False, threaded=True)
 
 
 def main():
