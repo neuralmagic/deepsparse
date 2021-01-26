@@ -20,10 +20,9 @@ optional arguments:
                         available on the system
 
 ##########
-Example command for hosting a downloaded resnet50 model for 4 cores:
+Example command for hosting a downloaded ResNet-50 model:
 python examples/flask/server.py \
-    ~/Downloads/resnet50.onnx \
-    --num_cores 4
+    ~/Downloads/resnet50.onnx
 """
 
 import argparse

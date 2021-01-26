@@ -1,4 +1,4 @@
-# Example Model Server and Client using Flask
+# Example Model Server and Client Using Flask
 
 This directory holds an example server and client implementation. This fulfills the scenario of making inference requests to a real-time server hosting an ONNX model.
 
@@ -14,7 +14,7 @@ First, start up the host server with your model of choice:
 python server.py ~/Downloads/resnet18_pruned.onnx
 ```
 
-Then, in another terminal, use the client script to generate inputs, send them to the server, and recieve the outputs:
+Then, in another terminal, use the client script to generate inputs, send them to the server, and receive the outputs:
 
 ```bash
 python deepsparse/examples/flask/client.py ~/Downloads/resnet18_pruned.onnx    

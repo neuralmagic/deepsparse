@@ -17,7 +17,7 @@ optional arguments:
                         The batch size to run the analysis for
 
 ##########
-Example command for communicating with a hosted resnet50 model:
+Example command for communicating with a ResNet-50 model already hosted with server.py:
 python examples/flask/client.py \
     ~/Downloads/resnet50.onnx
 """
@@ -72,7 +72,7 @@ def main():
     end = time.time()
     elapsed_time = end - start
 
-    print(f"Recieved response of {len(outputs)} output tensors:")
+    print(f"Received response of {len(outputs)} output tensors:")
     print(f"Round-trip time took {elapsed_time * 1000.0:.4f} milliseconds")
 
     for i, out in enumerate(outputs):
