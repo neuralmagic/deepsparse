@@ -38,6 +38,7 @@ import argparse
 import time
 
 import onnxruntime
+
 from deepsparse import compile_model, cpu
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (

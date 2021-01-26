@@ -26,6 +26,7 @@ import argparse
 import time
 
 import requests
+
 from deepsparse.utils import generate_random_inputs
 from utils_flask import bytes_to_tensors, tensors_to_bytes
 

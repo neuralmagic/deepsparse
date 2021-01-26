@@ -28,8 +28,9 @@ python examples/flask/server.py \
 import argparse
 
 import flask
-from deepsparse import compile_model
 from flask_cors import CORS
+
+from deepsparse import compile_model
 from utils_flask import bytes_to_tensors, tensors_to_bytes
 
 
