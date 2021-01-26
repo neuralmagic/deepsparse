@@ -65,7 +65,7 @@ outputs = engine.run(inputs)
 
 ### Quickstart with ONNX
 
-We accept regular ONNX files for custom models, too. So it is just a matter of plugging in your model to compare performance with other solutions.
+We accept ONNX files for custom models, too. Simply plug in your model to compare performance with other solutions.
 
 ```bash
 > wget https://github.com/onnx/models/raw/master/vision/classification/mobilenet/model/mobilenetv2-7.onnx
