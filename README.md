@@ -154,6 +154,10 @@ Example files and scripts included in this repository are licensed under the [Ap
 
 ## Release History
 
+Official builds are hosted on PyPi
+- stable: [deepsparse](https://pypi.org/project/deepsparse/)
+- nightly (dev): [deepsparse-nightly](https://pypi.org/project/deepsparse-nightly/)
+
 [Track this project via GitHub Releases.](https://github.com/neuralmagic/deepsparse/releases/)
 
 ## Citation
