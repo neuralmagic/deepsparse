@@ -30,7 +30,13 @@
 
 The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
-This package includes APIs and examples to quickly get started learning about and actually running sparse models. 
+This repository includes package APIs along with examples to quickly get started learning about and actually running sparse models. 
+
+## Quick Links
+
+- [SparseML](https://github.com/neuralmagic/sparseml): Libraries and state-of-the-art automatic sparsification algorithms to simplify and accelerate performance
+- [SparseZoo](https://github.com/neuralmagic/sparsezoo): Neural network model repository for highly sparse models and sparsification recipes
+- [Sparsify](https://github.com/neuralmagic/sparsify): Easy-to-use interface to automatically sparsify and fine-tune models for better performance and smaller footprint
 
 ## Compatibility
 
@@ -38,7 +44,9 @@ The DeepSparse Engine ingests models in the [ONNX](https://onnx.ai/) format, all
 
 ## Quick Tour
 
-To expedite inference and benchmarking on real models, we include the `sparsezoo` package. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts dense and sparse models, trained on repeatable optimization recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
+To expedite inference and benchmarking on real models, we include the `sparsezoo` package. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference optimized models, trained on repeatable optimization recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
+
+### Quickstart with SparseZoo
 
 Here is how to quickly perform inference with DeepSparse Engine on a pre-trained dense MobileNetV1 from SparseZoo.
 
@@ -54,6 +62,8 @@ engine = compile_model(model)
 inputs = model.data_inputs.sample_batch()
 outputs = engine.run(inputs)
 ```
+
+### Quickstart with ONNX
 
 We accept regular ONNX files for custom models, too. So it is just a matter of plugging in your model to compare performance with other solutions.
 
@@ -148,7 +158,7 @@ Example files and scripts included in this repository are licensed under the [Ap
 
 ## Citation
 
-Find this project useful in your research or other communications? Please consider citing our [paper](http://proceedings.mlr.press/v119/kurtz20a.html):
+Find this project useful in your research or other communications? Please consider citing Neural Magic's [paper](http://proceedings.mlr.press/v119/kurtz20a.html):
 
 ```bibtex
 @inproceedings{pmlr-v119-kurtz20a, 
