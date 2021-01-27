@@ -1,4 +1,6 @@
+import contextlib
 import os
+import tempfile
 from typing import List
 
 import numpy
@@ -8,9 +10,12 @@ from deepsparse.utils.log import log_init
 
 
 __all__ = [
+    "get_external_inputs",
+    "get_external_outputs",
     "get_input_names",
     "get_output_names",
     "generate_random_inputs",
+    "override_onnx_batch_size",
 ]
 
 log = log_init(os.path.basename(__file__))
@@ -44,19 +49,38 @@ def translate_onnx_type_to_numpy(tensor_type: int):
     return onnx_tensor_type_map[tensor_type]
 
 
+def get_external_inputs(onnx_filepath: str) -> List:
+    """
+    Gather external inputs of ONNX model
+    :param onnx_filepath: File path to ONNX model
+    :return: List of input objects
+    """
+    model = onnx.load(onnx_filepath)
+    all_inputs = model.graph.input
+    initializer_input_names = [node.name for node in model.graph.initializer]
+    external_inputs = [
+        input for input in all_inputs if input.name not in initializer_input_names
+    ]
+    return external_inputs
+
+
+def get_external_outputs(onnx_filepath: str) -> List:
+    """
+    Gather external outputs of ONNX model
+    :param onnx_filepath: File path to ONNX model
+    :return: List of output objects
+    """
+    model = onnx.load(onnx_filepath)
+    return [output for output in model.graph.output]
+
+
 def get_input_names(onnx_filepath: str) -> List[str]:
     """
     Gather names of all external inputs of ONNX model
     :param onnx_filepath: File path to ONNX model
     :return: List of string names
     """
-    model = onnx.load(onnx_filepath)
-    all_inputs = model.graph.input
-    initializer_input_names = [node.name for node in model.graph.initializer]
-    input_names = [
-        input.name for input in all_inputs if input.name not in initializer_input_names
-    ]
-    return input_names
+    return [input.name for input in get_external_inputs(onnx_filepath)]
 
 
 def get_output_names(onnx_filepath: str) -> List[str]:
@@ -65,11 +89,7 @@ def get_output_names(onnx_filepath: str) -> List[str]:
     :param onnx_filepath: File path to ONNX model
     :return: List of string names
     """
-    model = onnx.load(onnx_filepath)
-    ret = []
-    for output_obj in model.graph.output:
-        ret.append(output_obj.name)
-    return ret
+    return [output.name for output in get_external_outputs(onnx_filepath)]
 
 
 def generate_random_inputs(
@@ -81,28 +101,46 @@ def generate_random_inputs(
     :param batch_size: If provided, override for the batch size dimension
     :return: List of random tensors
     """
-    model = onnx.load(onnx_filepath)
-
-    all_inputs = model.graph.input
-    initializer_input_names = [node.name for node in model.graph.initializer]
-    external_inputs = [
-        input for input in all_inputs if input.name not in initializer_input_names
-    ]
-
-    log.info("Generating {} random inputs".format(len(external_inputs)))
-
     input_data_list = []
-    for i, external_input in enumerate(external_inputs):
+    for i, external_input in enumerate(get_external_inputs(onnx_filepath)):
         input_tensor_type = external_input.type.tensor_type
         in_shape = [int(d.dim_value) for d in input_tensor_type.shape.dim]
 
         if batch_size is not None:
             in_shape[0] = batch_size
 
-        log.info("-- random input #{} of shape = {}".format(i, in_shape))
+        log.info("-- generating random input #{} of shape = {}".format(i, in_shape))
         input_data_list.append(
             numpy.random.rand(*in_shape).astype(
                 translate_onnx_type_to_numpy(input_tensor_type.elem_type)
             )
         )
     return input_data_list
+
+
+@contextlib.contextmanager
+def override_onnx_batch_size(onnx_filepath: str, batch_size: int):
+    """
+    Rewrite batch sizes of ONNX model, saving the modified model and returning its path
+    :param onnx_filepath: File path to ONNX model
+    :param batch_size: Override for the batch size dimension
+    :return: File path to modified ONNX model
+    """
+    model = onnx.load(onnx_filepath)
+    all_inputs = model.graph.input
+    initializer_input_names = [node.name for node in model.graph.initializer]
+    external_inputs = [
+        input for input in all_inputs if input.name not in initializer_input_names
+    ]
+    for external_input in external_inputs:
+        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+
+    # Save modified model
+    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
+    onnx.save(model, shaped_model.name)
+
+    try:
+        yield shaped_model.name
+    finally:
+        os.unlink(shaped_model.name)
+        shaped_model.close()

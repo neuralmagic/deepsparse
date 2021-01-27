@@ -44,6 +44,7 @@ from deepsparse.utils import (
     generate_random_inputs,
     get_input_names,
     get_output_names,
+    override_onnx_batch_size,
     verify_outputs,
 )
 
@@ -104,25 +105,27 @@ def main():
     num_warmup_iterations = args.num_warmup_iterations
 
     inputs = generate_random_inputs(onnx_filepath, batch_size)
+    input_names = get_input_names(onnx_filepath)
+    output_names = get_output_names(onnx_filepath)
+    inputs_dict = {name: value for name, value in zip(input_names, inputs)}
 
     # Benchmark ONNXRuntime
     print("Benchmarking model with ONNXRuntime...")
     sess_options = onnxruntime.SessionOptions()
     sess_options.intra_op_num_threads = num_cores
-    ort_network = onnxruntime.InferenceSession(onnx_filepath, sess_options)
-    input_names = get_input_names(onnx_filepath)
-    output_names = get_output_names(onnx_filepath)
-    inputs_dict = {name: value for name, value in zip(input_names, inputs)}
-    ort_results = BenchmarkResults()
-    for i in range(num_warmup_iterations):
-        ort_network.run(output_names, inputs_dict)
-    for i in range(num_iterations):
-        start = time.time()
-        output = ort_network.run(output_names, inputs_dict)
-        end = time.time()
-        ort_results.append_batch(
-            time_start=start, time_end=end, batch_size=batch_size, outputs=output
-        )
+    with override_onnx_batch_size(onnx_filepath, batch_size) as override_onnx_filepath:
+        ort_network = onnxruntime.InferenceSession(override_onnx_filepath, sess_options)
+
+        ort_results = BenchmarkResults()
+        for i in range(num_warmup_iterations):
+            ort_network.run(output_names, inputs_dict)
+        for i in range(num_iterations):
+            start = time.time()
+            output = ort_network.run(output_names, inputs_dict)
+            end = time.time()
+            ort_results.append_batch(
+                time_start=start, time_end=end, batch_size=batch_size, outputs=output
+            )
 
     # Benchmark DeepSparse Engine
     print("Benchmarking model with DeepSparse Engine...")
