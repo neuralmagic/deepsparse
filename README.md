@@ -28,42 +28,96 @@
 
 ## Overview
 
-The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity within neural networks to reduce compute required as well as accelerate memory bound processes.
+The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
-It includes a CPU inference engine, ONNX conversion tooling, and model server if needed. It's focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployment processes.
+This repository includes package APIs along with examples to quickly get started learning about and actually running sparse models. 
 
-This repository contains information on how to download the binary under the terms of the Neural Magic Engine License as well as the API which interfaces with the compiled deepsparse_engine library. [TODO ENGINEERING: REVIEW]
+## Quick Links
 
-## Quick Tour and Documentation
+- [SparseML](https://github.com/neuralmagic/sparseml): Libraries and state-of-the-art automatic sparsification algorithms to simplify and accelerate performance
+- [SparseZoo](https://github.com/neuralmagic/sparsezoo): Neural network model repository for highly sparse models and sparsification recipes
+- [Sparsify](https://github.com/neuralmagic/sparsify): Easy-to-use interface to automatically sparsify and fine-tune models for better performance and smaller footprint
 
-[TODO ENGINEERING: EDIT THE CONTENT PLACEHOLDERS AS NEEDED]
+## Compatibility
 
-Follow the quick tour below to get started.
-For a more in-depth read, check out [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/).
+The DeepSparse Engine ingests models in the [ONNX](https://onnx.ai/) format, allowing for compatibility with [PyTorch](https://pytorch.org/docs/stable/onnx.html), [TensorFlow](https://github.com/onnx/tensorflow-onnx), [Keras](https://github.com/onnx/keras-onnx), and [many other frameworks](https://github.com/onnx/onnxmltools) that support it. This reduces the extra work of preparing your trained model for inference to just one step of exporting.
 
-### Requirements
+## Quick Tour
 
-- This repository is tested on Python 3.6+, PyTorch base-ver+ and TensorFlow 1.x+
-- Use Case: Computer Vision - Image Classification, Object Detection
-- Model Architectures: Deep Learning Neural Network Architectures (e.g., CNNs, DNNs - refer to [SparseZoo](https://docs.neuralmagic.com/sparsezoo/) for examples)
-- Instruction Set: CPUs with AVX2 or AVX-512 (best); (e.g., Intel Xeon Cascade Lake, Icelake, Skylake; AMD) and 2 FMAs. VNNI support required for sparse quantization.
-- OS / Environment: Linux
+To expedite inference and benchmarking on real models, we include the `sparsezoo` package. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference optimized models, trained on repeatable optimization recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
 
-### Installation
+### Quickstart with SparseZoo
 
-To install, run:
+Here is how to quickly perform inference with DeepSparse Engine on a pre-trained dense MobileNetV1 from SparseZoo.
+
+```python
+from deepsparse import compile_model
+from sparsezoo.models import classification
+​
+# Download model and compile as optimized executable for your machine
+model = classification.mobilenet_v1()
+engine = compile_model(model)
+​
+# Fetch sample input and predict output using engine
+inputs = model.data_inputs.sample_batch()
+outputs = engine.run(inputs)
+```
+
+### Quickstart with ONNX
+
+We accept ONNX files for custom models, too. Simply plug in your model to compare performance with other solutions.
+
+```bash
+> wget https://github.com/onnx/models/raw/master/vision/classification/mobilenet/model/mobilenetv2-7.onnx
+Saving to: ‘mobilenetv2-7.onnx’
+```
+
+```python
+from deepsparse import compile_model
+from deepsparse.utils import generate_random_data
+ONNX_FILEPATH = "mobilenetv2-7.onnx"
+BATCH_SIZE = 16
+
+# Generate random sample input
+inputs = generate_random_data(ONNX_FILEPATH, BATCH_SIZE)
+
+# Compile and run
+engine = compile_model(ONNX_FILEPATH, BATCH_SIZE)
+outputs = engine.run(inputs)
+```
+
+For a more in-depth read on available APIs and workflows, check out the [examples](examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/).
+
+## Hardware Support
+
+The DeepSparse Engine is validated to work on x86 Intel and AMD CPUs running Linux operating systems.
+
+It is highly recommended to run on a CPU with AVX-512 instructions available for optimal algorithms to be enabled. 
+
+Here is a table detailing specific support for some algorithms over different microarchitectures:
+
+|   x86 Extension    |          Microarchitectures         | Activation Sparsity | Kernel Sparsity | Sparse Quantization |
+|:------------------:|:-----------------------------------:|:-------------------:|:---------------:|:-------------------:|
+|      [AMD AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)      |             [Zen 2](https://en.wikipedia.org/wiki/Zen_2), [Zen 3](https://en.wikipedia.org/wiki/Zen_3)            |    not supported    |    optimized    |    not supported    |
+|     [Intel AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)     |          [Haswell](https://en.wikipedia.org/wiki/Haswell_(microarchitecture)), [Broadwell](https://en.wikipedia.org/wiki/Broadwell_(microarchitecture)), and newer         |    not supported    |    optimized    |    not supported    |
+|    [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512)   |         [Skylake](https://en.wikipedia.org/wiki/Skylake_(microarchitecture)), [Cannon Lake](https://en.wikipedia.org/wiki/Cannon_Lake_(microarchitecture)), and newer        |      optimized      |    optimized    |       emulated      |
+| [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512) VNNI (DL Boost) | [Cascade Lake](https://en.wikipedia.org/wiki/Cascade_Lake_(microarchitecture)), [Ice Lake](https://en.wikipedia.org/wiki/Ice_Lake_(microprocessor)), [Cooper Lake](https://en.wikipedia.org/wiki/Cooper_Lake_(microarchitecture)), [Tiger Lake](https://en.wikipedia.org/wiki/Tiger_Lake_(microprocessor)) |      optimized      |    optimized    |      optimized      |
+
+## Installation
+
+This repository is tested on Python 3.6+, and ONNX 1.5.0+. It is recommended to install in a [virtual environment](https://docs.python.org/3/library/venv.html) to keep your system in order.
+
+Install with pip using:
 
 ```bash
 pip install deepsparse
 ```
 
-## Usage
+Then if you want to explore the [examples](examples/), clone the repository and any install additional dependencies found in example folders.
 
-[TODO ENGINEERING]
+## Notebooks
 
-## Tutorials
-
-[TODO ENGINEERING]
+For some step-by-step examples, we have Jupyter [notebooks](notebooks/) showing how to compile models with the DeepSparse Engine, check the predictions for accuracy, and benchmark them on your hardware.
   
 ## Available Models and Recipes
 
@@ -71,14 +125,14 @@ A number of pre-trained baseline and recalibrated models models in the [SparseZo
 
 ## Resources and Learning More
 
-- [DeepSparse Engine Documentation](https://docs.neuralmagic.com/deepsparse/), [Tutorials](notebooks/), [Use Cases](examples/)
+- DeepSparse Engine [Documentation](https://docs.neuralmagic.com/deepsparse/), [Notebooks](notebooks/), [Examples](examples/)
 - APIs to Invoke and Run the DeepSparse Engine
 - Passing a Model to the Deep Sparse Engine and Deploying
 - Debugging and Optimizing Performance
 - [SparseML Documentation](https://docs.neuralmagic.com/sparseml/)
-- [Sparsify](https://docs.neuralmagic.com/sparsify/)
+- [Sparsify Documentation](https://docs.neuralmagic.com/sparsify/)
 - [SparseZoo Documentation](https://docs.neuralmagic.com/sparsezoo/)
-- [Neural Magic Blog](https://www.neuralmagic.com/blog/), [Resources](https://www.neuralmagic.com/resources/), [Website](https://www.neuralmagic.com/)
+- Neural Magic [Blog](https://www.neuralmagic.com/blog/), [Resources](https://www.neuralmagic.com/resources/), [Website](https://www.neuralmagic.com/)
 
 ## Contributing
 
@@ -94,17 +148,37 @@ For more general questions about Neural Magic, please email us at [learnmore@neu
 
 ## License
 
-The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License 1.0](LICENSE-NEURALMAGIC). Other example files and scripts may be included in this repo and are licensed under the [Apache License Version 2.0](LICENSE) as noted.
+The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License 1.0](LICENSE-NEURALMAGIC). 
+
+Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](LICENSE) as noted.
 
 ## Release History
+
+Official builds are hosted on PyPi
+- stable: [deepsparse](https://pypi.org/project/deepsparse/)
+- nightly (dev): [deepsparse-nightly](https://pypi.org/project/deepsparse-nightly/)
 
 [Track this project via GitHub Releases.](https://github.com/neuralmagic/deepsparse/releases/)
 
 ## Citation
 
-Find this project useful in your research or other communications? Please consider citing:
+Find this project useful in your research or other communications? Please consider citing Neural Magic's [paper](http://proceedings.mlr.press/v119/kurtz20a.html):
 
 ```bibtex
-@InProceedings{pmlr-v119-kurtz20a, title = {Inducing and Exploiting Activation Sparsity for Fast Inference on Deep Neural Networks}, author = {Kurtz, Mark and Kopinsky, Justin and Gelashvili, Rati and Matveev, Alexander and Carr, John and Goin, Michael and Leiserson, William and Moore, Sage and Nell, Bill and Shavit, Nir and Alistarh, Dan}, booktitle = {Proceedings of the 37th International Conference on Machine Learning}, pages = {5533--5543}, year = {2020}, editor = {Hal Daumé III and Aarti Singh}, volume = {119}, series = {Proceedings of Machine Learning Research}, address = {Virtual}, month = {13--18 Jul}, publisher = {PMLR}, pdf = {http://proceedings.mlr.press/v119/kurtz20a/kurtz20a.pdf},, url = {http://proceedings.mlr.press/v119/kurtz20a.html}, abstract = {Optimizing convolutional neural networks for fast inference has recently become an extremely active area of research. One of the go-to solutions in this context is weight pruning, which aims to reduce computational and memory footprint by removing large subsets of the connections in a neural network. Surprisingly, much less attention has been given to exploiting sparsity in the activation maps, which tend to be naturally sparse in many settings thanks to the structure of rectified linear (ReLU) activation functions. In this paper, we present an in-depth analysis of methods for maximizing the sparsity of the activations in a trained neural network, and show that, when coupled with an efficient sparse-input convolution algorithm, we can leverage this sparsity for significant performance gains. To induce highly sparse activation maps without accuracy loss, we introduce a new regularization technique, coupled with a new threshold-based sparsification method based on a parameterized activation function called Forced-Activation-Threshold Rectified Linear Unit (FATReLU). We examine the impact of our methods on popular image classification models, showing that most architectures can adapt to significantly sparser activation maps without any accuracy loss. Our second contribution is showing that these these compression gains can be translated into inference speedups: we provide a new algorithm to enable fast convolution operations over networks with sparse activations, and show that it can enable significant speedups for end-to-end inference on a range of popular models on the large-scale ImageNet image classification task on modern Intel CPUs, with little or no retraining cost.} }
+@inproceedings{pmlr-v119-kurtz20a, 
+    title = {Inducing and Exploiting Activation Sparsity for Fast Inference on Deep Neural Networks}, 
+    author = {Kurtz, Mark and Kopinsky, Justin and Gelashvili, Rati and Matveev, Alexander and Carr, John and Goin, Michael and Leiserson, William and Moore, Sage and Nell, Bill and Shavit, Nir and Alistarh, Dan}, 
+    booktitle = {Proceedings of the 37th International Conference on Machine Learning}, 
+    pages = {5533--5543}, 
+    year = {2020}, 
+    editor = {Hal Daumé III and Aarti Singh}, 
+    volume = {119}, 
+    series = {Proceedings of Machine Learning Research},
+    address = {Virtual}, 
+    month = {13--18 Jul}, 
+    publisher = {PMLR}, 
+    pdf = {http://proceedings.mlr.press/v119/kurtz20a/kurtz20a.pdf},, 
+    url = {http://proceedings.mlr.press/v119/kurtz20a.html}, 
+    abstract = {Optimizing convolutional neural networks for fast inference has recently become an extremely active area of research. One of the go-to solutions in this context is weight pruning, which aims to reduce computational and memory footprint by removing large subsets of the connections in a neural network. Surprisingly, much less attention has been given to exploiting sparsity in the activation maps, which tend to be naturally sparse in many settings thanks to the structure of rectified linear (ReLU) activation functions. In this paper, we present an in-depth analysis of methods for maximizing the sparsity of the activations in a trained neural network, and show that, when coupled with an efficient sparse-input convolution algorithm, we can leverage this sparsity for significant performance gains. To induce highly sparse activation maps without accuracy loss, we introduce a new regularization technique, coupled with a new threshold-based sparsification method based on a parameterized activation function called Forced-Activation-Threshold Rectified Linear Unit (FATReLU). We examine the impact of our methods on popular image classification models, showing that most architectures can adapt to significantly sparser activation maps without any accuracy loss. Our second contribution is showing that these these compression gains can be translated into inference speedups: we provide a new algorithm to enable fast convolution operations over networks with sparse activations, and show that it can enable significant speedups for end-to-end inference on a range of popular models on the large-scale ImageNet image classification task on modern Intel CPUs, with little or no retraining cost.} 
 }
 ```
