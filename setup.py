@@ -77,7 +77,11 @@ setup(
     description="CPU runtime that delivers unprecedented performance for sparse models",
     long_description=_setup_long_description()[0],
     long_description_content_type=_setup_long_description()[1],
-    keywords="inference, machine learning, x86, x86_64, avx2, avx512, neural network, sparse, inference engine, cpu, runtime, deepsparse, computer vision, object detection, sparsity",
+    keywords=(
+        "inference, machine learning, x86, x86_64, avx2, avx512, neural network, "
+        "sparse, inference engine, cpu, runtime, deepsparse, computer vision, "
+        "object detection, sparsity"
+    ),
     license="Neural Magic Engine License 1.0, Apache",
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),
