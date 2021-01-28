@@ -3,6 +3,9 @@
 ### CPU inference engine that delivers unprecedented performance for sparse models
 
 <p>
+    <a href="https://github.com/neuralmagic/comingsoon/blob/master/LICENSE-NEURALMAGIC">
+        <img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
+    </a>
     <a href="https://github.com/neuralmagic/comingsoon/blob/master/LICENSE">
         <img alt="GitHub" src="https://img.shields.io/github/license/neuralmagic/comingsoon.svg?color=purple&style=for-the-badge" height=25>
     </a>
@@ -28,23 +31,19 @@
 
 ## Overview
 
-The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity 
-within neural networks to reduce compute required as well as accelerate memory bound workloads. 
-It is focused on model deployment and scaling machine learning pipelines, 
-fitting seamlessly into your existing deployments as an inference backend.
+The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
-This repository includes package APIs along with examples to quickly get started learning about and 
-actually running sparse models. 
+This repository includes package APIs along with examples to quickly get started learning about and actually running sparse models.
 
 ### Related Products
 
-- [SparseZoo](https://github.com/neuralmagic/sparsezoo): 
+- [SparseZoo](https://github.com/neuralmagic/sparsezoo):
   Neural network model repository for highly sparse models and optimization recipes
-- [SparseML](https://github.com/neuralmagic/sparseml): 
-  Libraries for state-of-the-art deep neural network optimization algorithms, 
+- [SparseML](https://github.com/neuralmagic/sparseml):
+  Libraries for state-of-the-art deep neural network optimization algorithms,
   enabling simple pipelines integration with a few lines of code
-- [Sparsify](https://github.com/neuralmagic/sparsify): 
-  Easy-to-use autoML interface to optimize deep neural networks for 
+- [Sparsify](https://github.com/neuralmagic/sparsify):
+  Easy-to-use autoML interface to optimize deep neural networks for
   better inference performance and a smaller footprint
 
 ## Compatibility
