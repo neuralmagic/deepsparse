@@ -46,24 +46,62 @@ The DeepSparse Engine ingests models in the [ONNX](https://onnx.ai/) format, all
 
 To expedite inference and benchmarking on real models, we include the `sparsezoo` package. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference optimized models, trained on repeatable optimization recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
 
-### Quickstart with SparseZoo
+### Quickstart with SparseZoo ONNX Models
+
+**MobileNetV1 Dense**
 
 Here is how to quickly perform inference with DeepSparse Engine on a pre-trained dense MobileNetV1 from SparseZoo.
 
 ```python
 from deepsparse import compile_model
 from sparsezoo.models import classification
-​
+batch_size = 64
+
 # Download model and compile as optimized executable for your machine
 model = classification.mobilenet_v1()
-engine = compile_model(model)
-​
+engine = compile_model(model, batch_size=batch_size)
+
 # Fetch sample input and predict output using engine
-inputs = model.data_inputs.sample_batch()
-outputs = engine.run(inputs)
+inputs = model.data_inputs.sample_batch(batch_size=batch_size)
+outputs, inference_time = engine.timed_run(inputs)
 ```
 
-### Quickstart with ONNX
+**MobileNetV1 Optimized**
+
+When exploring available optimized models, you can use the `Zoo.search_optimized_models` utility to find models that share a base. 
+
+Let us try this on the dense MobileNetV1 to see what is available.
+
+```python
+from sparsezoo import Zoo
+from sparsezoo.models import classification
+print(Zoo.search_optimized_models(classification.mobilenet_v1()))
+```
+Output:
+```
+[Model(stub=cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/base-none),
+ Model(stub=cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-conservative),
+ Model(stub=cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate),
+ Model(stub=cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned_quant-moderate)]
+```
+
+Great. We can see there are two pruned versions targeting FP32, `conservative` at 100% and `moderate` at >= 99% of baseline accuracy. There is also a `pruned_quant` variant targetting INT8.
+
+Let's say you want to evaluate best performance on FP32 and are okay with a small drop in accuracy, so we can choose `pruned-moderate` over `pruned-conservative`.
+
+```python
+from deepsparse import compile_model
+from sparsezoo.models import classification
+batch_size = 64
+
+model = classification.mobilenet_v1(optim_name="pruned", optim_category="moderate")
+engine = compile_model(model, batch_size=batch_size)
+
+inputs = model.data_inputs.sample_batch(batch_size=batch_size)
+outputs, inference_time = engine.timed_run(inputs)
+```
+
+### Quickstart with custom ONNX models
 
 We accept ONNX files for custom models, too. Simply plug in your model to compare performance with other solutions.
 
@@ -75,14 +113,14 @@ Saving to: ‘mobilenetv2-7.onnx’
 ```python
 from deepsparse import compile_model
 from deepsparse.utils import generate_random_data
-ONNX_FILEPATH = "mobilenetv2-7.onnx"
-BATCH_SIZE = 16
+onnx_filepath = "mobilenetv2-7.onnx"
+batch_size = 16
 
 # Generate random sample input
-inputs = generate_random_data(ONNX_FILEPATH, BATCH_SIZE)
+inputs = generate_random_data(onnx_filepath, batch_size)
 
 # Compile and run
-engine = compile_model(ONNX_FILEPATH, BATCH_SIZE)
+engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
 
