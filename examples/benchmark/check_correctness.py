@@ -33,6 +33,7 @@ python examples/benchmark/check_correctness.py \
 import argparse
 
 import onnxruntime
+
 from deepsparse import compile_model, cpu
 from deepsparse.utils import (
     generate_random_inputs,
