@@ -64,11 +64,6 @@ engine = compile_model(model, batch_size=batch_size)
 # Fetch sample input and predict output using engine
 inputs = model.data_inputs.sample_batch(batch_size=batch_size)
 outputs, inference_time = engine.timed_run(inputs)
-print(f"Inference took {inference_time} seconds")
-```
-Output:
-```
-Inference took 0.06462430953979492 seconds
 ```
 
 **MobileNetV1 Optimized**
@@ -97,16 +92,13 @@ Let's say you want to evaluate best performance on FP32 and are okay with a smal
 ```python
 from deepsparse import compile_model
 from sparsezoo.models import classification
-​batch_size = 64
+batch_size = 64
+
 model = classification.mobilenet_v1(optim_name="pruned", optim_category="moderate")
 engine = compile_model(model, batch_size=batch_size)
+
 inputs = model.data_inputs.sample_batch(batch_size=batch_size)
 outputs, inference_time = engine.timed_run(inputs)
-print(f"Inference took {inference_time} seconds")
-```
-Output:
-```
-Inference took 0.040506601333618164 seconds
 ```
 
 ### Quickstart with custom ONNX models
