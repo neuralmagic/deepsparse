@@ -16,8 +16,8 @@ optional arguments:
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
   -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on, defaults to all physical cores
-                        available on the system
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system
 
 ##########
 Example command for hosting a downloaded ResNet-50 model:
@@ -36,7 +36,9 @@ from utils_flask import bytes_to_tensors, tensors_to_bytes
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Host an ONNX model as a server, using the DeepSparse Engine and Flask"
+        description=(
+            "Host an ONNX model as a server, using the DeepSparse Engine and Flask"
+        )
     )
 
     parser.add_argument(
@@ -57,8 +59,10 @@ def parse_args():
         "--num_cores",
         type=int,
         default=0,
-        help="The number of physical cores to run the analysis on, "
-        "defaults to all physical cores available on the system",
+        help=(
+            "The number of physical cores to run the analysis on, "
+            "defaults to all physical cores available on the system"
+        ),
     )
 
     return parser.parse_args()
@@ -81,7 +85,7 @@ def create_model_inference_app(
         inputs = bytes_to_tensors(data)
         print(f"Received {len(inputs)} inputs from client")
 
-        print(f"Executing model")
+        print("Executing model")
         outputs, elapsed_time = engine.timed_run(inputs)
 
         print(f"Inference time took {elapsed_time * 1000.0:.4f} milliseconds")
@@ -92,7 +96,7 @@ def create_model_inference_app(
     def info():
         return flask.jsonify({"model_path": model_path, "engine": repr(engine)})
 
-    print(f"Starting Flask app")
+    print("Starting Flask app")
     app.run(host="0.0.0.0", port="5543", debug=False, threaded=True)
 
 

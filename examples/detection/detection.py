@@ -17,11 +17,12 @@ optional arguments:
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
   -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system
 
 ##########
 Example command for running a yolo_v3 model with batch size 8 and 4 cores used:
-python examples/classification/classification.py \
+python examples/detection/detection.py \
     yolo_v3 \
     --batch_size 8 \
     --num_cores 4
@@ -73,8 +74,10 @@ def parse_args():
         "--num_cores",
         type=int,
         default=CORES_PER_SOCKET,
-        help="The number of physical cores to run the analysis on, "
-        "defaults to all physical cores available on the system",
+        help=(
+            "The number of physical cores to run the analysis on, "
+            "defaults to all physical cores available on the system"
+        ),
     )
 
     return parser.parse_args()

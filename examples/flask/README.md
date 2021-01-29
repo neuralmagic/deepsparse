@@ -6,18 +6,39 @@ The server uses Flask to create an app with the DeepSparse Engine hosting a comp
 
 The client communicates inputs to the server by serializing NumPy tensors and sending them using the `requests` library.
 
-## Example Execution
+## Installation
 
-First, start up the host server with your model of choice:
+Install DeepSparse with `pip install deepsparse` and the additional external requirements with `pip install -r requirements.txt`.
 
+## Execution
+
+### Server
+
+First, start up the host `server.py` with your model of choice. You can specify `num_cores` to use.
+
+Example command:
 ```bash
 python server.py ~/Downloads/resnet18_pruned.onnx
 ```
 
-Then, in another terminal, use the client script to generate inputs, send them to the server, and receive the outputs:
+You can leave that running as a detached process or in a spare terminal.
 
+This starts a Flask app with the DeepSparse Engine as the inference backend, accessible at `http://0.0.0.0:5543`.
+
+The app exposes HTTP endpoints at:
+- `http://0.0.0.0:5543/info` to get information about the compiled model
+- `http://0.0.0.0:5543/predict` to send inputs to the model and recieve predicted outputs in response.
+
+### Client
+
+Then, in another terminal, use the `client.py` script to generate inputs, send them to the server's `/predict` endpoint, and receive the prediction outputs.
+
+Example command:
 ```bash
-python deepsparse/examples/flask/client.py ~/Downloads/resnet18_pruned.onnx    
+python client.py ~/Downloads/resnet18_pruned.onnx    
+```
+Output:
+```bash
 [     INFO            onnx.py:  92 - generate_random_inputs() ] Generating 1 random inputs
 [     INFO            onnx.py: 102 - generate_random_inputs() ] -- random input #0 of shape = [1, 3, 224, 224]
 Sending 1 input tensors to http://0.0.0.0:5543/predict

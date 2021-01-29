@@ -29,7 +29,7 @@ def verify_outputs(
 
     if len(outputs) != len(gt_outputs):
         raise Exception(
-            f"ERROR: number of outputs doesn't match, {len(outputs)} != {len(gt_outputs)}"
+            f"number of outputs doesn't match, {len(outputs)} != {len(gt_outputs)}"
         )
 
     for i in range(len(gt_outputs)):
@@ -38,11 +38,11 @@ def verify_outputs(
 
         if output.shape != gt_output.shape:
             raise Exception(
-                f"ERROR: output shapes don't match, {output.shape} != {gt_output.shape}"
+                f"output shapes don't match, {output.shape} != {gt_output.shape}"
             )
         if type(output) != type(gt_output):
             raise Exception(
-                f"ERROR: output types don't match, {type(output)} != {type(gt_output)}"
+                f"output types don't match, {type(output)} != {type(gt_output)}"
             )
 
         max_diff = numpy.max(numpy.abs(output - gt_output))
@@ -51,7 +51,7 @@ def verify_outputs(
 
         if not numpy.allclose(output, gt_output, rtol=rtol, atol=atol):
             raise Exception(
-                f"ERROR: output data doesn't match\n"
+                "output data doesn't match\n"
                 f"output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}"
             )
 
