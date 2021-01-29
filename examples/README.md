@@ -11,6 +11,6 @@ Open a Pull Request to [contribute](https://github.com/neuralmagic/deepsparse/bl
 | Notebook     |      Description      |
 |----------|-------------|
 | [Benchmark and ONNX Model Correctness](benchmark/)  | Comparing predictions and benchmark performance between DeepSparse Engine and ONNXRuntime  |
-| [Classification](classification/)  | How to use classification models from SparseZoo to inference and benchmark with the DeepSparse Engine  |
-| [Detection](detection/)  | How to use object detection models from SparseZoo to inference and benchmark with the DeepSparse Engine  |
+| [Classification](classification/)  | How to use classification models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine  |
+| [Detection](detection/)  | How to use object detection models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine  |
 | [Model Server](flask/)  | Simple model server and client example, showing how to use the DeepSparse Engine as an inference backend for a real-time inference server |
