@@ -1,8 +1,10 @@
 # Examples
 
-This directory contains actively maintained sample scripts to illustrate how to make use of the DeepSparse Engine. 
+This directory contains self-documented examples to illustrate how to make use of the DeepSparse Engine. 
 
-For instructions on how to run each example, either check the script header or run the example with `-h`.
+For instructions on how to run each example, either check the script header or run them with `-h`.
+
+Open a Pull Request to [contribute](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md) your own examples.
 
 ## Important note
 
@@ -21,7 +23,7 @@ pip install -r requirements.txt
 
 | Notebook     |      Description      |
 |----------|-------------|
-| [Benchmark ONNX Model](https://github.com/neuralmagic/deepsparse/tree/main/examples/benchmark/run_benchmark.py)  | Script to benchmark performance between DeepSparse Engine and ONNXRuntime  |
-| [Check Correctness ONNX Model](https://github.com/neuralmagic/deepsparse/tree/main/examples/benchmark/check_correctness.py)  | Script to check correctness between DeepSparse Engine and ONNXRuntime  |
-| [Classification](https://github.com/neuralmagic/deepsparse/tree/main/examples/classification/classification.py)  | How to use classification models from SparseZoo and inference with the DeepSparse Engine  |
-| [Detection](https://github.com/neuralmagic/deepsparse/tree/main/examples/detection/detection.py)  | How to use object detection models from SparseZoo and inference with the DeepSparse Engine  |
+| [Benchmark and ONNX Model Correctness](benchmark/)  | Comparing predictions and benchmark performance between DeepSparse Engine and ONNXRuntime  |
+| [Classification](classification/)  | How to use classification models from SparseZoo to inference and benchmark with the DeepSparse Engine  |
+| [Detection](detection/)  | How to use object detection models from SparseZoo to inference and benchmark with the DeepSparse Engine  |
+| [Model Server](flask/)  | Simple model server and client example, showing how to use the DeepSparse Engine as an inference backend for a real-time inference server |

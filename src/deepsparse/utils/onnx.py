@@ -96,7 +96,8 @@ def generate_random_inputs(
     onnx_filepath: str, batch_size: int = None
 ) -> List[numpy.array]:
     """
-    Generate random data that matches the type and shape of ONNX model, with a batch size override
+    Generate random data that matches the type and shape of ONNX model,
+    with a batch size override
     :param onnx_filepath: File path to ONNX model
     :param batch_size: If provided, override for the batch size dimension
     :return: List of random tensors

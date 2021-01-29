@@ -7,7 +7,8 @@ In this method, we can assume that ONNXRuntime will give the
 
 ##########
 Command help:
-usage: run_benchmark.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] [-b NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS] onnx_filepath
+usage: run_benchmark.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] [-b NUM_ITERATIONS]
+    [-w NUM_WARMUP_ITERATIONS] onnx_filepath
 
 Benchmark an ONNX model, comparing between DeepSparse and ONNXRuntime
 
@@ -19,14 +20,17 @@ optional arguments:
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
   -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system
   -b NUM_ITERATIONS, --num_iterations NUM_ITERATIONS
                         The number of times the benchmark will be run
   -w NUM_WARMUP_ITERATIONS, --num_warmup_iterations NUM_WARMUP_ITERATIONS
-                        The number of warmup runs that will be executed before the actual benchmarking
+                        The number of warmup runs that will be executed before
+                        the actual benchmarking
 
 ##########
-Example command for benchmarking a downloaded resnet50 model for batch size 8 and 4 cores, over 100 iterations:
+Example command for benchmarking a downloaded resnet50 model
+for batch size 8 and 4 cores, over 100 iterations:
 python examples/benchmark/run_benchmark.py \
     ~/Downloads/resnet50.onnx \
     --batch_size 8 \
@@ -55,7 +59,9 @@ CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Benchmark an ONNX model, comparing between DeepSparse and ONNXRuntime"
+        description=(
+            "Benchmark an ONNX model, comparing between DeepSparse and ONNXRuntime"
+        )
     )
 
     parser.add_argument(
@@ -76,8 +82,10 @@ def parse_args():
         "--num_cores",
         type=int,
         default=CORES_PER_SOCKET,
-        help="The number of physical cores to run the analysis on, "
-        "defaults to all physical cores available on the system",
+        help=(
+            "The number of physical cores to run the analysis on, "
+            "defaults to all physical cores available on the system"
+        ),
     )
     parser.add_argument(
         "-b",
@@ -89,7 +97,10 @@ def parse_args():
     parser.add_argument(
         "-w",
         "--num_warmup_iterations",
-        help="The number of warmup runs that will be executed before the actual benchmarking",
+        help=(
+            "The number of warmup runs that will be executed before the actual"
+            " benchmarking"
+        ),
         type=int,
         default=5,
     )

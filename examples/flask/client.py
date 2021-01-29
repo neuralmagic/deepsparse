@@ -6,7 +6,8 @@ ONNX model with the DeepSparse Engine as inference backend.
 Command help:
 usage: client.py [-h] [-s BATCH_SIZE] onnx_filepath
 
-Communicate with a Flask server hosting an ONNX model with the DeepSparse Engine as inference backend.
+Communicate with a Flask server hosting an ONNX model with the
+DeepSparse Engine as inference backend.
 
 positional arguments:
   onnx_filepath         The full filepath of the ONNX model file
@@ -33,7 +34,10 @@ from utils_flask import bytes_to_tensors, tensors_to_bytes
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Communicate with a Flask server hosting an ONNX model with the DeepSparse Engine as inference backend."
+        description=(
+            "Communicate with a Flask server hosting an ONNX model with the DeepSparse"
+            " Engine as inference backend."
+        )
     )
 
     parser.add_argument(

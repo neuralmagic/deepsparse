@@ -4,12 +4,17 @@ and using the DeepSparse Engine for inference and benchmarking.
 
 ##########
 Command help:
-usage: classification.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] {efficientnet_b0,efficientnet_b4,inception_v3,mobilenet_v1,mobilenet_v2,resnet_101,resnet_101_2x,resnet_152,resnet_18,resnet_34,resnet_50,resnet_50_2x,vgg_11,vgg_11bn,vgg_13,vgg_13bn,vgg_16,vgg_16bn,vgg_19,vgg_19bn}
+usage: classification.py [-h] [-s BATCH_SIZE] [-j NUM_CORES]
+    {efficientnet_b0,efficientnet_b4,inception_v3,mobilenet_v1,mobilenet_v2,resnet_101,
+    resnet_101_2x,resnet_152,resnet_18,resnet_34,resnet_50,resnet_50_2x,vgg_11,vgg_11bn,
+    vgg_13,vgg_13bn,vgg_16,vgg_16bn,vgg_19,vgg_19bn}
 
 Benchmark and check accuracy of image classification models
 
 positional arguments:
-  {efficientnet_b0,efficientnet_b4,inception_v3,mobilenet_v1,mobilenet_v2,resnet_101,resnet_101_2x,resnet_152,resnet_18,resnet_34,resnet_50,resnet_50_2x,vgg_11,vgg_11bn,vgg_13,vgg_13bn,vgg_16,vgg_16bn,vgg_19,vgg_19bn}
+  {efficientnet_b0,efficientnet_b4,inception_v3,mobilenet_v1,mobilenet_v2,resnet_101,
+  resnet_101_2x,resnet_152,resnet_18,resnet_34,resnet_50,resnet_50_2x,vgg_11,vgg_11bn,
+  vgg_13,vgg_13bn,vgg_16,vgg_16bn,vgg_19,vgg_19bn}
                         Model type to analyze
 
 optional arguments:
@@ -17,7 +22,8 @@ optional arguments:
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
   -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system
 
 ##########
 Example command for running a mobilenet_v2 model with batch size 8 and 4 cores used:
@@ -75,8 +81,10 @@ def parse_args():
         "--num_cores",
         type=int,
         default=CORES_PER_SOCKET,
-        help="The number of physical cores to run the analysis on, "
-        "defaults to all physical cores available on the system",
+        help=(
+            "The number of physical cores to run the analysis on, "
+            "defaults to all physical cores available on the system"
+        ),
     )
 
     return parser.parse_args()

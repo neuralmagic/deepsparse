@@ -20,10 +20,12 @@ optional arguments:
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
   -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system
 
 ##########
-Example command for checking a downloaded resnet50 model for batch size 8 and 4 cores:
+Example command for checking a downloaded resnet50 model
+for batch size 8 and 4 cores:
 python examples/benchmark/check_correctness.py \
     ~/Downloads/resnet50.onnx \
     --batch_size 8 \
@@ -49,7 +51,10 @@ CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run an ONNX model, comparing outputs between the DeepSparse Engine and ONNXRuntime"
+        description=(
+            "Run an ONNX model, comparing outputs between the DeepSparse Engine and"
+            " ONNXRuntime"
+        )
     )
 
     parser.add_argument(
@@ -70,8 +75,10 @@ def parse_args():
         "--num_cores",
         type=int,
         default=CORES_PER_SOCKET,
-        help="The number of physical cores to run the analysis on, "
-        "defaults to all physical cores available on the system",
+        help=(
+            "The number of physical cores to run the analysis on, "
+            "defaults to all physical cores available on the system"
+        ),
     )
 
     return parser.parse_args()
