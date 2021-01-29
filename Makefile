@@ -2,10 +2,15 @@
 
 BUILDDIR := $(PWD)
 CHECKDIRS := examples tests src utils notebooks setup.py
+PYCHECKGLOBS := 'examples/**/*.py' 'scripts/**/*.py' 'src/**/*.py' 'tests/**/*.py' 'utils/**/*.py' setup.py
 DOCDIR := docs
+MDCHECKGLOBS := 'docs/**/*.md' 'examples/**/*.md' 'notebooks/**/*.md' 'scripts/**/*.md'
+MDCHECKFILES := CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPING.md README.md
 
 # run checks on all files for the repo
 quality:
+	@echo "Running copyright checks";
+	python utils/copyright.py quality $(PYCHECKGLOBS) $(MDCHECKGLOBS) $(MDCHECKFILES)
 	@echo "Running python quality checks";
 	black --check $(CHECKDIRS);
 	isort --check-only $(CHECKDIRS);
@@ -14,6 +19,8 @@ quality:
 
 # style the code according to accepted standards for the repo
 style:
+	@echo "Running copyrighting";
+	python utils/copyright.py style $(PYCHECKGLOBS) $(JSCHECKGLOBS) $(MDCHECKGLOBS) $(MDCHECKFILES)
 	@echo "Running python styling";
 	black $(CHECKDIRS);
 	isort $(CHECKDIRS);

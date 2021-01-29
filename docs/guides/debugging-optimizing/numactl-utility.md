@@ -1,3 +1,19 @@
+<!--
+Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 # Using the numactl Utility to Control Resource Utilization with the DeepSparse Engine
 
 The DeepSparse Engine works best when run on a single socket and with hyper-threading disabled. One standard way of controlling compute/memory resources when running processes is to use the **numactl** utility. **numactl** can be used when multiple processes need to run on the same hardware but require their own CPU/memory resources to run optimally.
