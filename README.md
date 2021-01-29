@@ -2,10 +2,10 @@
 
 ### CPU inference engine that delivers unprecedented performance for sparse models
 
+<br>
 <p>
-    <a href="https://github.com/neuralmagic/comingsoon/blob/master/LICENSE-NEURALMAGIC">
-        <img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
-    </a>
+    <a href="https://github.com/neuralmagic/comingsoon/blob/master/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
+    </a>
     <a href="https://github.com/neuralmagic/comingsoon/blob/master/LICENSE">
         <img alt="GitHub" src="https://img.shields.io/github/license/neuralmagic/comingsoon.svg?color=purple&style=for-the-badge" height=25>
     </a>
