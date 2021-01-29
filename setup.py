@@ -83,7 +83,7 @@ setup(
         "sparse, inference engine, cpu, runtime, deepsparse, computer vision, "
         "object detection, sparsity"
     ),
-    license="Neural Magic Engine License 1.0, Apache",
+    license="Neural Magic Engine License, Apache",
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),
     include_package_data=True,
