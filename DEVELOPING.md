@@ -16,46 +16,41 @@ limitations under the License.
 
 # Developing the DeepSparse Engine
 
-[TODO: ENGINEERING - ADJUST SECTION HEADERS AS RELEVANT TO SOFTWARE; REMOVE THESE TODO(S) AND EXAMPLES BELOW]
-
-[ENGINEERING: State OS/Environment reminder; requirements upfront]
+The DeepSparse Python API is developed and tested using Python 3.6+.
+To develop the Python API, you will also need the development dependencies and to follow the styling guidelines.
 
 Here's some details to get started.
 
 ## Basic Commands
 
-[TODO: ENGINEERING]
-
-**EXAMPLE: install commands?**
+**Development Installation**
 
 ```bash
-[ENGINEERING: INSERT HERE]
+git clone https://github.com/neuralmagic/deepsparse.git
+cd deepsparse
+python3 -m pip install -e ./[dev]
 ```
 
-This will do [ENGINEERING: list out concise summary of what these command will do and what the use can expect to happen once installed]..
+This will clone the DeepSparse repo, install it, and install the development dependencies.
 
-**EXAMPLE: makefile commands?**
+**Code Styling and Formatting checks**
 
 ```bash
-[ENGINEERING: INSERT HERE]
+make style
+make quality
 ```
 
-This will do [ENGINEERING: list out concise summary of what these command will do and what the use can expect to happen once installed].
+This will run automatic code styling using `black` and `isort` and test that the
+repository's code matches its standards.
 
-**EXAMPLE: test changes locally?**
+**EXAMPLE: test changes locally**
 
 ```bash
-[ENGINEERING: INSERT HERE]
+make test
 ```
 
-This will do [ENGINEERING: list out concise summary of what these command will do and what the use can expect to happen once installed]..
-
-## Resources
-
-[TODO: ENGINEERING - What does the developer need to know?]
-
-- EXAMPLE: architecture docs?
-- EXAMPLE: how make a modifier? (separate doc)
+This will run all DeepSparse unit tests.
+File any error found before changes as an Issue and fix any errors found after making changes before submitting a Pull Request.
 
 ## GitHub Workflow
 
@@ -90,7 +85,7 @@ This will do [ENGINEERING: list out concise summary of what these command will d
 4. Create a feature branch to work in.
 
    ```bash
-   git checkout -b feature-xxx remotes/upstream/master
+   git checkout -b feature-xxx remotes/upstream/main
    ```
 
 5. Work in your feature branch.
@@ -108,7 +103,7 @@ This will do [ENGINEERING: list out concise summary of what these command will d
 7. When done, combine ("squash") related commits into a single one
 
    ```bash
-   git rebase -i upstream/master
+   git rebase -i upstream/main
    ```
 
    This will open your editor and allow you to re-order commits and merge them:
