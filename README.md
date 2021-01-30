@@ -136,12 +136,12 @@ Saving to: ‘mobilenetv2-7.onnx’
 
 ```python
 from deepsparse import compile_model
-from deepsparse.utils import generate_random_data
+from deepsparse.utils import generate_random_inputs
 onnx_filepath = "mobilenetv2-7.onnx"
 batch_size = 16
 
 # Generate random sample input
-inputs = generate_random_data(onnx_filepath, batch_size)
+inputs = generate_random_inputs(onnx_filepath, batch_size)
 
 # Compile and run
 engine = compile_model(onnx_filepath, batch_size)
