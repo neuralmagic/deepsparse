@@ -25,7 +25,7 @@ limitations under the License.
     <a href="https://github.com/neuralmagic/deepsparse/blob/master/LICENSE">
         <img alt="GitHub" src="https://img.shields.io/github/license/neuralmagic/comingsoon.svg?color=purple&style=for-the-badge" height=25>
     </a>
-    <a href="https://docs.neuralmagic.com/deepsparse/">
+    <a href="https://docs.neuralmagic.com/deepsparse/deepsparse">
         <img alt="Documentation" src="https://img.shields.io/website/http/neuralmagic.com/engine/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/releases">
