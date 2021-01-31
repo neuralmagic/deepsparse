@@ -33,9 +33,9 @@ except Exception:
 
 try:
     # flake8: noqa
-    from deepsparse.version import *
     from deepsparse.cpu import cpu_details
     from deepsparse.lib import init_deepsparse_lib
+    from deepsparse.version import *
 except ImportError:
     raise ImportError(
         "Unable to import deepsparse python apis. "

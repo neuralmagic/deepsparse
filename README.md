@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# ![icon for DeepSparse](docs/icon-engine.png) DeepSparse Engine
+# ![icon for DeepSparse](https://github.com/neuralmagic/deepsparse/blob/main/docs/icon-engine.png) DeepSparse Engine
 
 ### CPU inference engine that delivers unprecedented performance for sparse models
 
 <br>
 <p>
-    <a href="https://github.com/neuralmagic/comingsoon/blob/master/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
+    <a href="https://github.com/neuralmagic/deepsparse/blob/master/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
     </a>
-    <a href="https://github.com/neuralmagic/comingsoon/blob/master/LICENSE">
+    <a href="https://github.com/neuralmagic/deepsparse/blob/master/LICENSE">
         <img alt="GitHub" src="https://img.shields.io/github/license/neuralmagic/comingsoon.svg?color=purple&style=for-the-badge" height=25>
     </a>
     <a href="https://docs.neuralmagic.com/deepsparse/">
@@ -31,7 +31,7 @@ limitations under the License.
     <a href="https://github.com/neuralmagic/deepsparse/releases">
         <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/engine.svg?style=for-the-badge" height=25>
     </a>
-    <a href="https://github.com/neuralmagic.com/comingsoon/blob/master/CODE_OF_CONDUCT.md">
+    <a href="https://github.com/neuralmagic.com/deepsparse/blob/master/CODE_OF_CONDUCT.md">
         <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height=25>
     </a>
      <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
@@ -148,7 +148,7 @@ engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
 
-For a more in-depth read on available APIs and workflows, check out the [examples](examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/).
+For a more in-depth read on available APIs and workflows, check out the [examples](examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/deepsparse).
 
 ## Hardware Support
 
@@ -183,17 +183,17 @@ For some step-by-step examples, we have Jupyter [notebooks](notebooks/) showing 
   
 ## Available Models and Recipes
 
-A number of pre-trained baseline and recalibrated models models in the [SparseZoo](https://docs.neuralmagic.com/sparsezoo/) can be used with the engine for higher performance. The types available for each model architecture are noted in its [SparseZoo model repository listing](https://docs.neuralmagic.com/sparsezoo/available-models).
+A number of pre-trained baseline and recalibrated models models in the [SparseZoo](https://github.com/neuralmagic/sparsezoo) can be used with the engine for higher performance. The types available for each model architecture are noted in its [SparseZoo model repository listing](https://github.com/neuralmagic/sparsezoo/blob/main/docs/available-models.md).
 
 ## Resources and Learning More
 
-- DeepSparse Engine [Documentation](https://docs.neuralmagic.com/deepsparse/), [Notebooks](notebooks/), [Examples](examples/)
+- DeepSparse Engine [Documentation](https://docs.neuralmagic.com/deepsparse/deepsparse), [Notebooks](notebooks/), [Examples](examples/)
 - APIs to Invoke and Run the DeepSparse Engine
 - Passing a Model to the Deep Sparse Engine and Deploying
 - Debugging and Optimizing Performance
-- [SparseML Documentation](https://docs.neuralmagic.com/sparseml/)
-- [Sparsify Documentation](https://docs.neuralmagic.com/sparsify/)
-- [SparseZoo Documentation](https://docs.neuralmagic.com/sparsezoo/)
+- [SparseML Documentation](https://docs.neuralmagic.com/sparseml/sparseml)
+- [Sparsify Documentation](https://docs.neuralmagic.com/sparsify/sparsify)
+- [SparseZoo Documentation](https://docs.neuralmagic.com/sparsezoo/sparsezoo)
 - Neural Magic [Blog](https://www.neuralmagic.com/blog/), [Resources](https://www.neuralmagic.com/resources/), [Website](https://www.neuralmagic.com/)
 
 ## Contributing

@@ -18,12 +18,13 @@ using the DeepSparse Engine as the inference backend
 
 ##########
 Command help:
-usage: server.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] onnx_filepath
+usage: server.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] [-a ADDRESS] [-p PORT]
+ onnx_filepath
 
 Host an ONNX model as a server, using the DeepSparse Engine and Flask
 
 positional arguments:
-  onnx_filepath         The full filepath of the ONNX model file being benchmarked
+  onnx_filepath         The full filepath of the ONNX model file
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -32,6 +33,9 @@ optional arguments:
   -j NUM_CORES, --num_cores NUM_CORES
                         The number of physical cores to run the analysis on,
                         defaults to all physical cores available on the system
+  -a ADDRESS, --address ADDRESS
+                        The IP address of the hosted model
+  -p PORT, --port PORT  The port that the model is hosted on
 
 ##########
 Example command for hosting a downloaded ResNet-50 model:
@@ -78,12 +82,26 @@ def parse_args():
             "defaults to all physical cores available on the system"
         ),
     )
+    parser.add_argument(
+        "-a",
+        "--address",
+        type=str,
+        default="0.0.0.0",
+        help="The IP address of the hosted model",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=str,
+        default="5543",
+        help="The port that the model is hosted on",
+    )
 
     return parser.parse_args()
 
 
 def create_model_inference_app(
-    model_path: str, batch_size: int, num_cores: int
+    model_path: str, batch_size: int, num_cores: int, address: str, port: str
 ) -> flask.Flask:
     print(f"Compiling model at {model_path}")
     engine = compile_model(model_path, batch_size, num_cores)
@@ -111,7 +129,7 @@ def create_model_inference_app(
         return flask.jsonify({"model_path": model_path, "engine": repr(engine)})
 
     print("Starting Flask app")
-    app.run(host="0.0.0.0", port="5543", debug=False, threaded=True)
+    app.run(host=address, port=port, debug=False, threaded=True)
 
 
 def main():
@@ -119,8 +137,10 @@ def main():
     onnx_filepath = args.onnx_filepath
     batch_size = args.batch_size
     num_cores = args.num_cores
+    address = args.address
+    port = args.port
 
-    create_model_inference_app(onnx_filepath, batch_size, num_cores)
+    create_model_inference_app(onnx_filepath, batch_size, num_cores, address, port)
 
 
 if __name__ == "__main__":

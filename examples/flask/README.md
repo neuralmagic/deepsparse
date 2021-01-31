@@ -39,11 +39,11 @@ python server.py ~/Downloads/resnet18_pruned.onnx
 
 You can leave that running as a detached process or in a spare terminal.
 
-This starts a Flask app with the DeepSparse Engine as the inference backend, accessible at `http://0.0.0.0:5543`.
+This starts a Flask app with the DeepSparse Engine as the inference backend, accessible at `http://0.0.0.0:5543` by default.
 
 The app exposes HTTP endpoints at:
-- `http://0.0.0.0:5543/info` to get information about the compiled model
-- `http://0.0.0.0:5543/predict` to send inputs to the model and recieve predicted outputs in response.
+- `/info` to get information about the compiled model
+- `/predict` to send inputs to the model and recieve predicted outputs in response.
 
 ### Client
 

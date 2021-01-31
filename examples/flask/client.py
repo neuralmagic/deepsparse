@@ -18,7 +18,7 @@ ONNX model with the DeepSparse Engine as inference backend.
 
 ##########
 Command help:
-usage: client.py [-h] [-s BATCH_SIZE] onnx_filepath
+usage: client.py [-h] [-s BATCH_SIZE] [-a ADDRESS] [-p PORT] onnx_filepath
 
 Communicate with a Flask server hosting an ONNX model with the
 DeepSparse Engine as inference backend.
@@ -30,6 +30,9 @@ optional arguments:
   -h, --help            show this help message and exit
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
+  -a ADDRESS, --address ADDRESS
+                        The IP address of the hosted model
+  -p PORT, --port PORT  The port that the model is hosted on
 
 ##########
 Example command for communicating with a ResNet-50 model already hosted with server.py:
@@ -67,6 +70,20 @@ def parse_args():
         default=1,
         help="The batch size to run the analysis for",
     )
+    parser.add_argument(
+        "-a",
+        "--address",
+        type=str,
+        default="0.0.0.0",
+        help="The IP address of the hosted model",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=str,
+        default="5543",
+        help="The port that the model is hosted on",
+    )
 
     return parser.parse_args()
 
@@ -75,17 +92,20 @@ def main():
     args = parse_args()
     onnx_filepath = args.onnx_filepath
     batch_size = args.batch_size
+    address = args.address
+    port = args.port
+
+    prediction_url = f"http://{address}:{port}/predict"
 
     inputs = generate_random_inputs(onnx_filepath, batch_size)
 
-    server_url = "http://0.0.0.0:5543/predict"
-    print(f"Sending {len(inputs)} input tensors to {server_url}")
+    print(f"Sending {len(inputs)} input tensors to {prediction_url}")
 
     start = time.time()
     # Encode inputs
     data = tensors_to_bytes(inputs)
     # Send data to server for inference
-    response = requests.post(server_url, data=data)
+    response = requests.post(prediction_url, data=data)
     # Decode outputs
     outputs = bytes_to_tensors(response.content)
     end = time.time()
