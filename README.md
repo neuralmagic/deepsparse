@@ -148,7 +148,7 @@ engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
 
-For a more in-depth read on available APIs and workflows, check out the [examples](examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/deepsparse).
+For a more in-depth read on available APIs and workflows, check out the [examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse).
 
 ## Hardware Support
 
@@ -175,11 +175,11 @@ Install with pip using:
 pip install deepsparse
 ```
 
-Then if you want to explore the [examples](examples/), clone the repository and any install additional dependencies found in example folders.
+Then if you want to explore the [examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/), clone the repository and any install additional dependencies found in example folders.
 
 ## Notebooks
 
-For some step-by-step examples, we have Jupyter [notebooks](notebooks/) showing how to compile models with the DeepSparse Engine, check the predictions for accuracy, and benchmark them on your hardware.
+For some step-by-step examples, we have Jupyter [notebooks](https://github.com/neuralmagic/deepsparse/blob/main/notebooks/) showing how to compile models with the DeepSparse Engine, check the predictions for accuracy, and benchmark them on your hardware.
   
 ## Available Models and Recipes
 
