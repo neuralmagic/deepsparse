@@ -210,7 +210,7 @@ For more general questions about Neural Magic, please email us at [learnmore@neu
 
 ## License
 
-The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License 1.0](LICENSE-NEURALMAGIC). 
+The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License](LICENSE-NEURALMAGIC). 
 
 Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](LICENSE) as noted.
 
