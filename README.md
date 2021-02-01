@@ -187,7 +187,7 @@ A number of pre-trained baseline and recalibrated models models in the [SparseZo
 
 ## Resources and Learning More
 
-- DeepSparse Engine [Documentation](https://docs.neuralmagic.com/deepsparse/deepsparse), [Notebooks](notebooks/), [Examples](examples/)
+- DeepSparse Engine [Documentation](https://docs.neuralmagic.com/deepsparse/deepsparse), [Notebooks](https://github.com/neuralmagic/deepsparse/blob/main/notebooks/), [Examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/)
 - APIs to Invoke and Run the DeepSparse Engine
 - Passing a Model to the Deep Sparse Engine and Deploying
 - Debugging and Optimizing Performance
@@ -198,7 +198,7 @@ A number of pre-trained baseline and recalibrated models models in the [SparseZo
 
 ## Contributing
 
-We appreciate contributions to the code, examples, and documentation as well as bug reports and feature requests! [Learn how here](CONTRIBUTING.md).
+We appreciate contributions to the code, examples, and documentation as well as bug reports and feature requests! [Learn how here](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md).
 
 ## Join the Community
 
@@ -210,9 +210,9 @@ For more general questions about Neural Magic, please email us at [learnmore@neu
 
 ## License
 
-The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License](LICENSE-NEURALMAGIC). 
+The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC). 
 
-Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](LICENSE) as noted.
+Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 
 ## Release History
 
