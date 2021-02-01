@@ -34,11 +34,15 @@ COPYRIGHT_LINES = [
     "See the License for the specific language governing permissions and",
     "limitations under the License.",
 ]
+NO_COPYRIGHT_LINE = "neuralmagic: no copyright"
 QUALITY_COMMAND = "quality"
 STYLE_COMMAND = "style"
 
 
 def parse_args():
+    """
+    Setup and parse command line arguments for using the script
+    """
     parser = argparse.ArgumentParser(
         description=(
             "Add Neuralmagic copyright to the beginning of all "
@@ -73,12 +77,19 @@ def parse_args():
     return parser.parse_args()
 
 
-def quality(patterns: str):
+def quality(patterns: List[str]):
+    """
+    Run a quality check across all files in the given glob patterns.
+    This checks to make sure all matching files have the NM copyright present.
+    If any do not, it will list them out and exit with an error.
+
+    :param patterns: The glob file patterns to run quality check on
+    """
     check_files = _get_files(patterns)
     error_files = []
 
     for file in check_files:
-        if not _contains_copyright(file):
+        if not _dont_copyright(file) and not _contains_copyright(file):
             print(f"would add copyright to {file}")
             error_files.append(file)
 
@@ -91,12 +102,20 @@ def quality(patterns: str):
         print(f"{len(check_files)} files have copyrights")
 
 
-def style(patterns: str):
+def style(patterns: List[str]):
+    """
+    Run a style application across all files in the given glob patterns.
+    This checks to make sure all matching files have the NM copyright present.
+    If any do not, it will append the copyright to above the file after
+    any already contained headers such as shebang lines.
+
+    :param patterns: The glob file patterns to run quality check on
+    """
     check_files = _get_files(patterns)
     copyrighted_files = []
 
     for file in check_files:
-        if not _contains_copyright(file):
+        if not _dont_copyright(file) and not _contains_copyright(file):
             _add_copyright(file)
             print(f"copyrighted {file}")
             copyrighted_files.append(file)
@@ -110,7 +129,7 @@ def style(patterns: str):
         print(f"{len(check_files)} files unchanged")
 
 
-def _get_files(patterns: str) -> List[str]:
+def _get_files(patterns: List[str]) -> List[str]:
     files = []
 
     for pattern in patterns:
@@ -120,6 +139,18 @@ def _get_files(patterns: str) -> List[str]:
     files.sort()
 
     return files
+
+
+def _dont_copyright(file_path: str) -> bool:
+    with open(file_path, "r") as file:
+        content = file.read()
+
+    try:
+        content.index(NO_COPYRIGHT_LINE)
+
+        return True
+    except ValueError:
+        return False
 
 
 def _contains_copyright(file_path: str) -> bool:
@@ -146,17 +177,24 @@ def _add_copyright(file_path: str):
     with open(file_path, "r+") as file:
         lines = file.readlines()
         header_info = _file_header_info(lines, file_type)
-        inject_index = -1
+        inject_index = 0
 
         if header_info.end_index > -1:
-            lines.insert(header_info.end_index + 1, "\n")
+            # if there is already a header, we want to inject the copyright after it
+            # additionally we'll need a new line between the prev header and copyright
             inject_index = header_info.end_index + 1
+            lines.insert(inject_index, "\n")
+            inject_index += 1
 
+        # add the copyright at the inject index
         file_copyright = _file_copyright(file_type)
-        lines.insert(inject_index + 1, file_copyright)
+        lines.insert(inject_index, file_copyright)
 
         if not header_info.new_line_after:
-            lines.insert(inject_index + 2, "\n")
+            # if there wasn't a new line after the header,
+            # add in a new line after to create space between the code and copyright
+            inject_index += 1
+            lines.insert(inject_index, "\n")
 
         file.seek(0)
         file.writelines(lines)
