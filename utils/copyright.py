@@ -16,7 +16,7 @@ import argparse
 import glob
 import os
 import sys
-from typing import List, NamedTuple, Tuple
+from typing import List, NamedTuple
 
 
 COPYRIGHT_LINES = [
@@ -202,14 +202,24 @@ def _add_copyright(file_path: str):
 
 
 def _file_copyright(file_type: str) -> str:
-    prefix, suffix = _code_comment_prefix_suffix(file_type)
+    comment_formatting = _code_comment_formatting(file_type)
+    lines = []
 
-    if not suffix:
-        # append the prefix to all lines
-        lines = [f"{prefix} {line}" for line in COPYRIGHT_LINES] + [""]
-    else:
-        # append prefix and suffix before and after lines
-        lines = [prefix, *COPYRIGHT_LINES, suffix, ""]
+    if comment_formatting.block_prefix:
+        lines.append(comment_formatting.block_prefix)
+
+    for line in COPYRIGHT_LINES:
+        lines.append(
+            f"{comment_formatting.line_prefix} {line}"
+            if comment_formatting.line_prefix
+            else line
+        )
+
+    if comment_formatting.block_suffix:
+        lines.append(comment_formatting.block_suffix)
+
+    # make sure there is a new line after last line of the copyright
+    lines.append("")
 
     return "\n".join(lines)
 
@@ -231,7 +241,7 @@ def _file_header_info(lines: List[str], file_type: str) -> _HeaderInfo:
     new_line_before = False
     new_line_after = False
 
-    prefix, suffix = _code_comment_prefix_suffix(file_type)
+    comment_formatting = _code_comment_formatting(file_type)
     prefix_found = False
     suffix_found = False
 
@@ -242,19 +252,29 @@ def _file_header_info(lines: List[str], file_type: str) -> _HeaderInfo:
             # empty line, record the state of new lines before and after header
             if not prefix_found:
                 new_line_before = True
-            elif prefix_found and (suffix_found or not suffix):
+            elif prefix_found and (suffix_found or not comment_formatting.block_suffix):
                 new_line_after = True
-        elif line.startswith(prefix):
+        elif (
+            comment_formatting.block_prefix
+            and line.startswith(comment_formatting.block_prefix)
+        ) or (
+            not comment_formatting.block_prefix
+            and line.startswith(comment_formatting.line_prefix)
+        ):
             # start of header
             prefix_found = True
             start_index = index
             end_index = index
-            suffix_found = suffix and line.endswith(suffix)
-        elif suffix and line.endswith(suffix):
+            suffix_found = comment_formatting.block_suffix and line.endswith(
+                comment_formatting.block_suffix
+            )
+        elif comment_formatting.block_suffix and line.endswith(
+            comment_formatting.block_suffix
+        ):
             # end of header
             suffix_found = True
             end_index = index
-        elif prefix_found and suffix and not suffix_found:
+        elif prefix_found and comment_formatting.block_suffix and not suffix_found:
             # in the middle of the header, searching for the end
             # reset new_line_after in case there was a break in the header
             new_line_after = True
@@ -265,13 +285,25 @@ def _file_header_info(lines: List[str], file_type: str) -> _HeaderInfo:
     return _HeaderInfo(start_index, end_index, new_line_before, new_line_after)
 
 
-def _code_comment_prefix_suffix(file_type: str) -> Tuple[str, str]:
+_CommentFormatting = NamedTuple(
+    "CommentFormatting",
+    [
+        ("line_prefix", str),
+        ("block_prefix", str),
+        ("block_suffix", str),
+    ],
+)
+
+
+def _code_comment_formatting(file_type: str) -> _CommentFormatting:
     if file_type == "python":
-        return "#", ""
+        return _CommentFormatting("#", "", "")
     elif file_type == "html" or file_type == "markdown":
-        return "<!--", "-->"
+        return _CommentFormatting("", "<!--", "-->")
     elif file_type == "css" or file_type == "javascript":
-        return "/*", "*/"
+        return _CommentFormatting("", "/*", "*/")
+    elif file_type == "restructuredtext":
+        return _CommentFormatting("    ", ".. comment::", "")
 
     raise ValueError(f"unsupported file_type given for code prefix suffix: {file_type}")
 
@@ -293,6 +325,8 @@ def _file_type(file_path: str) -> str:
         return "css"
     elif file_path.endswith(".md"):
         return "markdown"
+    elif file_path.endswith(".rst"):
+        return "restructuredtext"
 
     return "unknown"
 

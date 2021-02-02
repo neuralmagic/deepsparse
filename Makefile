@@ -4,7 +4,7 @@ BUILDDIR := $(PWD)
 CHECKDIRS := examples tests src utils notebooks setup.py
 PYCHECKGLOBS := 'examples/**/*.py' 'scripts/**/*.py' 'src/**/*.py' 'tests/**/*.py' 'utils/**/*.py' setup.py
 DOCDIR := docs
-MDCHECKGLOBS := 'docs/**/*.md' 'examples/**/*.md' 'notebooks/**/*.md' 'scripts/**/*.md'
+MDCHECKGLOBS := 'docs/**/*.md' 'docs/**/*.rst' 'examples/**/*.md' 'notebooks/**/*.md' 'scripts/**/*.md'
 MDCHECKFILES := CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPING.md README.md
 
 # run checks on all files for the repo
@@ -38,7 +38,7 @@ test-examples:
 
 # create docs
 docs:
-	sphinx-apidoc -o "$(DOCDIR)/source/" src/deepsparse;
+	sphinx-apidoc -o "$(DOCDIR)/source/api" src/deepsparse;
 	cd $(DOCDIR) && $(MAKE) html;
 
 # creates wheel file
