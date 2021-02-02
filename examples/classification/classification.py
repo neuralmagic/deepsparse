@@ -112,8 +112,9 @@ def calculate_top1_accuracy(pred: numpy.array, labels: numpy.array) -> float:
     """
     batch_size = pred.shape[0]
     pred = numpy.argmax(pred, axis=-1)
+    labels = numpy.argmax(labels, axis=-1)
 
-    correct = (pred == labels.reshape(pred.shape)).sum()
+    correct = (pred == labels).sum()
     correct *= 100.0 / batch_size
 
     return correct
