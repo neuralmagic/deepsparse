@@ -303,7 +303,7 @@ def _code_comment_formatting(file_type: str) -> _CommentFormatting:
     elif file_type == "css" or file_type == "javascript":
         return _CommentFormatting("", "/*", "*/")
     elif file_type == "restructuredtext":
-        return _CommentFormatting("    ", ".. comment::", "")
+        return _CommentFormatting("   ", "..", "")
 
     raise ValueError(f"unsupported file_type given for code prefix suffix: {file_type}")
 
