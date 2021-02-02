@@ -56,7 +56,7 @@ fitting seamlessly into your existing deployments as an inference backend.
 This repository includes package APIs along with examples to quickly get started learning about and
 actually running sparse models.
 
-Compatability
+Compatibility
 =============
 
 The DeepSparse Engine ingests models in the `ONNX <https://onnx.ai/ />`_ format,
