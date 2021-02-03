@@ -14,24 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# ![icon for DeepSparse](https://github.com/neuralmagic/deepsparse/blob/main/docs/icon-engine.png) DeepSparse Engine
+# ![icon for DeepSparse](https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png) DeepSparse Engine
 
 ### CPU inference engine that delivers unprecedented performance for sparse models
 
 <br>
 <p>
-    <a href="https://github.com/neuralmagic/deepsparse/blob/master/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
+    <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
     </a>
-    <a href="https://github.com/neuralmagic/deepsparse/blob/master/LICENSE">
+    <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE">
         <img alt="GitHub" src="https://img.shields.io/github/license/neuralmagic/comingsoon.svg?color=purple&style=for-the-badge" height=25>
     </a>
-    <a href="https://docs.neuralmagic.com/deepsparse/deepsparse">
-        <img alt="Documentation" src="https://img.shields.io/website/http/neuralmagic.com/engine/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25>
+    <a href="https://docs.neuralmagic.com/deepsparse/">
+        <img alt="Documentation" src="https://img.shields.io/website/http/docs.neuralmagic.com/deepsparse/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/releases">
-        <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/engine.svg?style=for-the-badge" height=25>
+        <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height=25>
     </a>
-    <a href="https://github.com/neuralmagic.com/deepsparse/blob/master/CODE_OF_CONDUCT.md">
+    <a href="https://github.com/neuralmagic/deepsparse/blob/main/CODE_OF_CONDUCT.md">
         <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height=25>
     </a>
      <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
@@ -183,17 +183,16 @@ For some step-by-step examples, we have Jupyter [notebooks](https://github.com/n
   
 ## Available Models and Recipes
 
-A number of pre-trained baseline and recalibrated models models in the [SparseZoo](https://github.com/neuralmagic/sparsezoo) can be used with the engine for higher performance. The types available for each model architecture are noted in its [SparseZoo model repository listing](https://github.com/neuralmagic/sparsezoo/blob/main/docs/available-models.md).
+A number of pre-trained baseline and recalibrated models models in the [SparseZoo](https://github.com/neuralmagic/sparsezoo) can be used with the engine for higher performance. The types available for each model architecture are noted in its [SparseZoo model repository listing](https://docs.neuralmagic.com/sparsezoo/models).
 
 ## Resources and Learning More
 
-- DeepSparse Engine [Documentation](https://docs.neuralmagic.com/deepsparse/deepsparse), [Notebooks](https://github.com/neuralmagic/deepsparse/blob/main/notebooks/), [Examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/)
-- APIs to Invoke and Run the DeepSparse Engine
-- Passing a Model to the Deep Sparse Engine and Deploying
-- Debugging and Optimizing Performance
-- [SparseML Documentation](https://docs.neuralmagic.com/sparseml/sparseml)
-- [Sparsify Documentation](https://docs.neuralmagic.com/sparsify/sparsify)
-- [SparseZoo Documentation](https://docs.neuralmagic.com/sparsezoo/sparsezoo)
+- DeepSparse Engine [Documentation](https://docs.neuralmagic.com/deepsparse/), [Notebooks](https://github.com/neuralmagic/deepsparse/blob/main/notebooks/), [Examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/)
+- [DeepSparse API](https://docs.neuralmagic.com/deepsparse/api/deepsparse/)
+- [Debugging and Optimizing Performance](https://docs.neuralmagic.com/deepsparse/debugging-optimizing/)
+- [SparseML Documentation](https://docs.neuralmagic.com/sparseml/)
+- [Sparsify Documentation](https://docs.neuralmagic.com/sparsify/)
+- [SparseZoo Documentation](https://docs.neuralmagic.com/sparsezoo/)
 - Neural Magic [Blog](https://www.neuralmagic.com/blog/), [Resources](https://www.neuralmagic.com/resources/), [Website](https://www.neuralmagic.com/)
 
 ## Contributing
@@ -210,13 +209,14 @@ For more general questions about Neural Magic, please email us at [learnmore@neu
 
 ## License
 
-The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC). 
+The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC).
 
 Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 
 ## Release History
 
 Official builds are hosted on PyPi
+
 - stable: [deepsparse](https://pypi.org/project/deepsparse/)
 - nightly (dev): [deepsparse-nightly](https://pypi.org/project/deepsparse-nightly/)
 
