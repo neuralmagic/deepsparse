@@ -17,7 +17,7 @@
 DeepSparse |version|
 ====================
 
-CPU inference engine that delivers unprecedented performance for sparse models.
+CPU inference engine that delivers unprecedented performance for sparse models
 
 .. raw:: html
 
