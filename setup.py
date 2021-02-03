@@ -39,6 +39,9 @@ _dev_deps = [
     "wheel>=0.36.2",
     "pytest>=6.0.0",
     "sphinx-rtd-theme",
+    "onnxruntime>=1.4.0,<=1.6.0",
+    "flask>=1.0.0",
+    "flask-cors>=3.0.0",
 ]
 
 
