@@ -92,7 +92,7 @@ outputs, inference_time = engine.timed_run(inputs)
 
 **MobileNetV1 Optimized**
 
-When exploring available optimized models, you can use the `Zoo.search_optimized_models` utility to find models that share a base. 
+When exploring available optimized models, you can use the `Zoo.search_optimized_models` utility to find models that share a base.
 
 Let us try this on the dense MobileNetV1 to see what is available.
 
@@ -101,8 +101,10 @@ from sparsezoo import Zoo
 from sparsezoo.models import classification
 print(Zoo.search_optimized_models(classification.mobilenet_v1()))
 ```
+
 Output:
-```
+
+```shell
 [Model(stub=cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/base-none),
  Model(stub=cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-conservative),
  Model(stub=cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate),
@@ -188,7 +190,7 @@ A number of pre-trained baseline and recalibrated models models in the [SparseZo
 ## Resources and Learning More
 
 - DeepSparse Engine [Documentation](https://docs.neuralmagic.com/deepsparse/), [Notebooks](https://github.com/neuralmagic/deepsparse/blob/main/notebooks/), [Examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/)
-- [DeepSparse API](https://docs.neuralmagic.com/deepsparse/api/deepsparse/)
+- [DeepSparse API](https://docs.neuralmagic.com/deepsparse/api/deepsparse)
 - [Debugging and Optimizing Performance](https://docs.neuralmagic.com/deepsparse/debugging-optimizing/)
 - [SparseML Documentation](https://docs.neuralmagic.com/sparseml/)
 - [Sparsify Documentation](https://docs.neuralmagic.com/sparsify/)
