@@ -22,16 +22,16 @@ CPU inference engine that delivers unprecedented performance for sparse models.
 .. raw:: html
 
     <div style="margin-bottom:16px;">
-        <a href="https://github.com/neuralmagic/deepsparse/blob/master/LICENSE">
+        <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE">
             <img alt="GitHub" src="https://img.shields.io/github/license/neuralmagic/deepsparse.svg?color=purple&style=for-the-badge" height=25 style="margin-bottom:4px;">
         </a>
         <a href="https://docs.neuralmagic.com/deepsparse/index.html">
-            <img alt="Documentation" src="https://img.shields.io/website/http/neuralmagic.com/deepsparse/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25 style="margin-bottom:4px;">
+            <img alt="Documentation" src="https://img.shields.io/website/http/docs.neuralmagic.com/deepsparse/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25 style="margin-bottom:4px;">
         </a>
         <a href="https://github.com/neuralmagic/deepsparse/releases">
             <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height=25 style="margin-bottom:4px;">
         </a>
-        <a href="https://github.com/neuralmagic.com/deepsparse/blob/master/CODE_OF_CONDUCT.md">
+        <a href="https://github.com/neuralmagic/deepsparse/blob/main/CODE_OF_CONDUCT.md">
             <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height=25 style="margin-bottom:4px;">
         </a>
          <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
@@ -53,7 +53,7 @@ natural sparsity within neural networks to reduce compute required as well as ac
 It is focused on model deployment and scaling machine learning pipelines,
 fitting seamlessly into your existing deployments as an inference backend.
 
-This repository includes package APIs along with examples to quickly get started learning about and
+`This GitHub repository <https://github.com/neuralmagic/deepsparse />`_ includes package APIs along with examples to quickly get started learning about and
 actually running sparse models.
 
 Compatibility
@@ -68,7 +68,7 @@ This reduces the extra work of preparing your trained model for inference to jus
 Related Products
 ================
 
-- `Sparse Zoo <https://github.com/neuralmagic/sparsezoo />`_:
+- `SparseZoo <https://github.com/neuralmagic/sparsezoo />`_:
   Neural network model repository for highly sparse models and optimization recipes
 - `SparseML <https://github.com/neuralmagic/sparseml />`_:
   Libraries for state-of-the-art deep neural network optimization algorithms,
@@ -83,7 +83,6 @@ Resources and Learning More
 - `SparseZoo Documentation <https://docs.neuralmagic.com/sparsezoo/ />`_
 - `SparseML Documentation <https://docs.neuralmagic.com/sparseml/ />`_
 - `Sparsify Documentation <https://docs.neuralmagic.com/sparsify/ />`_
-- `DeepSparse Documentation <https://docs.neuralmagic.com/deepsparse/ />`_
 - `Neural Magic Blog <https://www.neuralmagic.com/blog/ />`_,
   `Resources <https://www.neuralmagic.com/resources/ />`_,
   `Website <https://www.neuralmagic.com/ />`_
@@ -117,3 +116,10 @@ Additionally, more information can be found via
     :caption: API
 
     api/deepsparse
+
+.. toctree::
+    :maxdepth: 2
+    :caption: Help and Support
+
+    `Bugs, Feature Requests <https://github.com/neuralmagic/deepsparse/discussions>`_ 
+    `Support, General Q&A <https://github.com/neuralmagic/deepsparse/issues>`_ 
