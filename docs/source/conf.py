@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 project = "DeepSparse"
 copyright = (
     "2021 - present / Neuralmagic, Inc. All Rights Reserved. "
-    'Licensed under the Apache License, Version 2.0 (the "License")'
+    'Licensed under the Neural Magic Engine License and Apache License, Version 2.0 as noted.'
 )
 author = "Neural Magic"
 
