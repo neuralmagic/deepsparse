@@ -121,5 +121,5 @@ Additionally, more information can be found via
     :maxdepth: 2
     :caption: Help and Support
 
-    Bugs, Feature Requests <https://github.com/neuralmagic/deepsparse/discussions>
-    Support, General Q&A <https://github.com/neuralmagic/deepsparse/issues>
+    Bugs, Feature Requests <https://github.com/neuralmagic/deepsparse/issues>
+    Support, General Q&A <https://github.com/neuralmagic/deepsparse/discussions>
