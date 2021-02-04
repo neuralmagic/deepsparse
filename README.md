@@ -18,12 +18,11 @@ limitations under the License.
 
 ### CPU inference engine that delivers unprecedented performance for sparse models
 
-<br>
 <p>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE">
-        <img alt="GitHub" src="https://img.shields.io/github/license/neuralmagic/sparseml.svg?color=purple&style=for-the-badge" height=25>
+         <img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=apache-2.0&color=purple&style=for-the-badge" height=25>
     </a>
     <a href="https://docs.neuralmagic.com/deepsparse/">
         <img alt="Documentation" src="https://img.shields.io/website/http/docs.neuralmagic.com/deepsparse/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25>
