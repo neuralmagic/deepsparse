@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# ![icon for DeepSparse](https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-engine.png) DeepSparse Engine
+# ![icon for DeepSparse](https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png) DeepSparse Engine
 
 ### CPU inference engine that delivers unprecedented performance for sparse models
 
