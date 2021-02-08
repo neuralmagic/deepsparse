@@ -1,6 +1,7 @@
 .PHONY: build docs test
 
 BUILDDIR := $(PWD)
+BUILD_ARGS :=  # set nightly to build nightly release
 CHECKDIRS := examples tests src utils notebooks setup.py
 PYCHECKGLOBS := 'examples/**/*.py' 'scripts/**/*.py' 'src/**/*.py' 'tests/**/*.py' 'utils/**/*.py' setup.py
 DOCDIR := docs
@@ -43,7 +44,7 @@ docs:
 
 # creates wheel file
 build:
-	python3 setup.py sdist bdist_wheel
+	python3 setup.py sdist bdist_wheel $(BUILD_ARGS)
 
 # clean package
 clean:

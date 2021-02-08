@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import sys
+from datetime import date
 from distutils import log
 from fnmatch import fnmatch
 from typing import Dict, List, Tuple
@@ -21,11 +23,24 @@ from setuptools import find_packages, setup
 from setuptools.command.install import install
 
 
+_PACKAGE_NAME = "deepsparse"
+_VERSION = "0.1.0"
+_NIGHTLY = "nightly" in sys.argv
+
+if _NIGHTLY:
+    _PACKAGE_NAME += "-nightly"
+    _VERSION += "." + date.today().strftime("%Y%m%d")
+    # remove nightly param so it does not break bdist_wheel
+    sys.argv.remove("nightly")
+
+
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 
-_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "sparsezoo>=0.1.0"]
+_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0"]
+
+_nm_deps = [f"{'sparsezoo-nightly' if _NIGHTLY else 'sparsezoo'}~={_VERSION}"]
 
 _dev_deps = [
     "black>=20.8b1",
@@ -69,7 +84,7 @@ def _setup_package_data() -> Dict:
 
 
 def _setup_install_requires() -> List:
-    return _deps
+    return _nm_deps + _deps
 
 
 def _setup_extras() -> Dict:
@@ -85,8 +100,8 @@ def _setup_long_description() -> Tuple[str, str]:
 
 
 setup(
-    name="deepsparse",
-    version="0.1.0",
+    name=_PACKAGE_NAME,
+    version=_VERSION,
     author="Neuralmagic, Inc.",
     author_email="support@neuralmagic.com",
     description="CPU runtime that delivers unprecedented performance for sparse models",
