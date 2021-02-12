@@ -22,11 +22,12 @@ CPU inference engine that delivers unprecedented performance for sparse models.
 .. raw:: html
 
     <div style="margin-bottom:16px;">
-    <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
-    </a>
-    <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE">
-        <img alt="GitHub" src="https://img.shields.io/github/license/neuralmagic/sparseml.svg?color=purple&style=for-the-badge" height=25>
-    </a>
+        <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC">
+            <img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge"  height=25 style="margin-bottom:4px;">
+        </a>
+         <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE">
+            <img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=apache-2.0&color=purple&style=for-the-badge" height=25 style="margin-bottom:4px;">
+        </a>
         <a href="https://docs.neuralmagic.com/deepsparse/index.html">
             <img alt="Documentation" src="https://img.shields.io/website/http/docs.neuralmagic.com/deepsparse/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25 style="margin-bottom:4px;">
         </a>
@@ -55,13 +56,13 @@ natural sparsity within neural networks to reduce compute required as well as ac
 It is focused on model deployment and scaling machine learning pipelines,
 fitting seamlessly into your existing deployments as an inference backend.
 
-`This GitHub repository <https://github.com/neuralmagic/deepsparse />`_ includes package APIs along with examples to quickly get started learning about and
+`This repository <https://github.com/neuralmagic/deepsparse />`_ includes package APIs along with examples to quickly get started learning about and
 actually running sparse models.
 
 Compatibility
 =============
 
-The DeepSparse Engine ingests models in the `ONNX <https://onnx.ai/ />`_ format,
+The DeepSparse Engine ingests models in the `ONNX <https://onnx.ai />`_ format,
 allowing for compatibility with `PyTorch <https://pytorch.org/docs/stable/onnx.html />`_,
 `TensorFlow <https://github.com/onnx/tensorflow-onnx />`_, `Keras <https://github.com/onnx/keras-onnx />`_,
 and `many other frameworks <https://github.com/onnx/onnxmltools />`_ that support it.
@@ -82,19 +83,19 @@ Related Products
 Resources and Learning More
 ===========================
 
-- `SparseZoo Documentation <https://docs.neuralmagic.com/sparsezoo/ />`_
-- `SparseML Documentation <https://docs.neuralmagic.com/sparseml/ />`_
-- `Sparsify Documentation <https://docs.neuralmagic.com/sparsify/ />`_
-- `Neural Magic Blog <https://www.neuralmagic.com/blog/ />`_,
-  `Resources <https://www.neuralmagic.com/resources/ />`_,
-  `Website <https://www.neuralmagic.com/ />`_
+- `SparseZoo Documentation <https://docs.neuralmagic.com/sparsezoo />`_
+- `SparseML Documentation <https://docs.neuralmagic.com/sparseml />`_
+- `Sparsify Documentation <https://docs.neuralmagic.com/sparsify />`_
+- `Neural Magic Blog <https://www.neuralmagic.com/blog />`_,
+  `Resources <https://www.neuralmagic.com/resources />`_,
+  `Website <https://www.neuralmagic.com />`_
 
 Release History
 ===============
 
 Official builds are hosted on PyPi
-- stable: `deepsparse <https://pypi.org/project/deepsparse/ />`_
-- nightly (dev): `deepsparse-nightly <https://pypi.org/project/deepsparse-nightly/ />`_
+- stable: `deepsparse <https://pypi.org/project/deepsparse />`_
+- nightly (dev): `deepsparse-nightly <https://pypi.org/project/deepsparse-nightly />`_
 
 Additionally, more information can be found via
 `GitHub Releases <https://github.com/neuralmagic/deepsparse/releases />`_.
@@ -120,8 +121,9 @@ Additionally, more information can be found via
     api/deepsparse
 
 .. toctree::
-    :maxdepth: 2
-    :caption: Help and Support
+    :maxdepth: 3
+    :caption: Help
 
     Bugs, Feature Requests <https://github.com/neuralmagic/deepsparse/issues>
     Support, General Q&A <https://github.com/neuralmagic/deepsparse/discussions>
+    Neural Magic Docs <https://docs.neuralmagic.com>
