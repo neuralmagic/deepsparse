@@ -125,11 +125,19 @@ class Engine(object):
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         in one socket for the current machine, default None
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
+    :param use_batch_splitting: Manually control whether batch splitting is
+        enabled when running the model.  When True, the model is split into
+        batch_size/num_sockets sections where each section is run on a separate
+        socket.  When False, batch splitting is disabled.  If set to None, batch
+        splitting is automatically enabled when num_sockets > 1, default None
     """
 
     def __init__(
-        self, model: Union[str, Model, File], batch_size: int, num_cores: int, num_sockets: int,
-        use_batch_splitting: bool = True
+        self, model: Union[str, Model, File], batch_size: int, num_cores: int,
+        num_sockets: int = None, use_batch_splitting: bool = None
     ):
         self._model_path = _model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
@@ -140,7 +148,7 @@ class Engine(object):
         self._cpu_vnni = VNNI
         self._eng_net = LIB.deepsparse_engine(
             self._model_path, self._batch_size, self._num_cores, self._num_sockets,
-            self._use_batch_splitting
+            True if self._use_batch_splitting or self._num_sockets > 1 else False
         )
 
     def __call__(
@@ -465,8 +473,8 @@ class Engine(object):
 
 
 def compile_model(
-    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None, num_sockets: int = None,
-    use_batch_splitting: bool = False
+    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None,
+    num_sockets: int = None, use_batch_splitting: bool = None
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -480,6 +488,14 @@ def compile_model(
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         in one socket for the current machine, default None
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
+    :param use_batch_splitting: Manually control whether batch splitting is
+        enabled when running the model.  When True, the model is split into
+        batch_size/num_sockets sections where each section is run on a separate
+        socket.  When False, batch splitting is disabled.  If set to None, batch
+        splitting is automatically enabled when num_sockets > 1, default None
     :return: The created Engine after compiling the model
     """
     return Engine(model, batch_size, num_cores, num_sockets, use_batch_splitting)
@@ -494,6 +510,8 @@ def benchmark_model(
     num_warmup_iterations: int = 5,
     include_inputs: bool = False,
     include_outputs: bool = False,
+    num_sockets: int = None,
+    use_batch_splitting: bool = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -521,7 +539,7 @@ def benchmark_model(
         will be added to the results. Default is False
     :return: the results of benchmarking
     """
-    model = compile_model(model, batch_size, num_cores)
+    model = compile_model(model, batch_size, num_cores, num_sockets, use_batch_splitting)
 
     return model.benchmark(
         inp, num_iterations, num_warmup_iterations, include_inputs, include_outputs
@@ -538,6 +556,8 @@ def analyze_model(
     optimization_level: int = 1,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
+    num_sockets: int = None,
+    use_batch_splitting: bool = None
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
@@ -568,13 +588,21 @@ def analyze_model(
         Will force all prunable layers in the graph to have weights with
         this desired sparsity level (percentage of 0's in the tensor).
         Beneficial for seeing how pruning affects the performance of the model.
+    :param use_batch_splitting: Manually control whether batch splitting is
+        enabled when running the model.  When True, the model is split into
+        batch_size/num_sockets sections where each section is run on a separate
+        socket.  When False, batch splitting is disabled.  If set to None, batch
+        splitting is automatically enabled when num_sockets > 1, default None
     :return: the analysis structure containing the performance details of each layer
     """
     model = _model_to_path(model)
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
-    num_sockets = 1
-    eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, num_sockets, True)
+    num_sockets = _validate_num_sockets(num_sockets)
+    use_batch_splitting = True if use_batch_splitting or num_sockets > 1 else False
+    eng_net = LIB.deepsparse_engine(
+        model, batch_size, num_cores, num_sockets, use_batch_splitting
+    )
 
     return eng_net.benchmark(
         inp,
