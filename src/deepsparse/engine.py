@@ -33,7 +33,7 @@ except Exception:
 
 try:
     # flake8: noqa
-    from deepsparse.cpu import cpu_details
+    from deepsparse.cpu import cpu_architecture
     from deepsparse.lib import init_deepsparse_lib
     from deepsparse.version import *
 except ImportError:
@@ -46,7 +46,11 @@ except ImportError:
 __all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model"]
 
 
-CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu_details()
+ARCH = cpu_architecture()
+CORES_PER_SOCKET = ARCH.available_cores_per_socket
+NUM_SOCKETS = ARCH.available_sockets
+AVX_TYPE = ARCH.isa
+VNNI = ARCH.vnni
 
 LIB = init_deepsparse_lib()
 
@@ -90,6 +94,16 @@ def _validate_num_cores(num_cores: Union[None, int]) -> int:
     return num_cores
 
 
+def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
+    if not num_sockets:
+        num_sockets = NUM_SOCKETS
+
+    if num_sockets < 1:
+        raise ValueError("num_sockets must be greater than 0")
+
+    return num_sockets
+
+
 class Engine(object):
     """
     Create a new DeepSparse Engine that compiles the given onnx file
@@ -113,15 +127,20 @@ class Engine(object):
         in one socket for the current machine, default None
     """
 
-    def __init__(self, model: Union[str, Model, File], batch_size: int, num_cores: int):
+    def __init__(
+        self, model: Union[str, Model, File], batch_size: int, num_cores: int, num_sockets: int,
+        use_batch_splitting: bool = True
+    ):
         self._model_path = _model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
-        self._num_sockets = 1  # only single socket is supported currently
+        self._num_sockets = _validate_num_sockets(num_sockets)
+        self._use_batch_splitting = use_batch_splitting
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
         self._eng_net = LIB.deepsparse_engine(
-            self._model_path, self._batch_size, self._num_cores, self._num_sockets
+            self._model_path, self._batch_size, self._num_cores, self._num_sockets,
+            self._use_batch_splitting
         )
 
     def __call__(
@@ -439,13 +458,15 @@ class Engine(object):
             "batch_size": self._batch_size,
             "num_cores": self._num_cores,
             "num_sockets": self._num_sockets,
+            "use_batch_splitting": self._use_bactch_splitting,
             "cpu_avx_type": self._cpu_avx_type,
             "cpu_vnni": self._cpu_vnni,
         }
 
 
 def compile_model(
-    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None
+    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None, num_sockets: int = None,
+    use_batch_splitting: bool = False
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -461,7 +482,7 @@ def compile_model(
         in one socket for the current machine, default None
     :return: The created Engine after compiling the model
     """
-    return Engine(model, batch_size, num_cores)
+    return Engine(model, batch_size, num_cores, num_sockets, use_batch_splitting)
 
 
 def benchmark_model(
@@ -553,7 +574,7 @@ def analyze_model(
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
     num_sockets = 1
-    eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, num_sockets)
+    eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, num_sockets, True)
 
     return eng_net.benchmark(
         inp,
