@@ -26,10 +26,15 @@ from deepsparse.benchmark import BenchmarkResults
 
 
 try:
+    from sparsezoo import Zoo
     from sparsezoo.objects import File, Model
-except Exception:
+
+    sparsezoo_import_error = None
+except Exception as sparsezoo_err:
+    Zoo = None
     Model = object
     File = object
+    sparsezoo_import_error = sparsezoo_err
 
 try:
     # flake8: noqa
@@ -55,8 +60,10 @@ def _model_to_path(model: Union[str, Model, File]) -> str:
     if not model:
         raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
 
-    if isinstance(model, str):
-        pass
+    if isinstance(model, str) and model.startswith("zoo:"):
+        if sparsezoo_import_error is not None:
+            raise sparsezoo_import_error
+        model = Zoo.load_model_from_stub(model).onnx_file.downloaded_path()
     elif Model is not object and isinstance(model, Model):
         # default to the main onnx file for the model
         model = model.onnx_file.downloaded_path()
@@ -105,8 +112,9 @@ class Engine(object):
     |    # create an engine for batch size 1 on all available cores
     |    engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
 
-    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
-        or a sparsezoo ONNX File object that defines the neural network
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the engine
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
@@ -453,8 +461,9 @@ def compile_model(
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
-        or a sparsezoo ONNX File object that defines the neural network
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
@@ -480,8 +489,9 @@ def benchmark_model(
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
-        or a sparsezoo ONNX File object that defines the neural network
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
@@ -524,9 +534,9 @@ def analyze_model(
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
-        or a sparsezoo ONNX File object that defines the neural network
-        graph definition to analyze
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network graph definition to analyze
     :param inp: The list of inputs to pass to the engine for analyzing inference.
         The expected order is the inputs order as defined in the ONNX graph.
     :param batch_size: The batch size of the inputs to be used with the model
