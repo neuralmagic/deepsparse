@@ -62,10 +62,12 @@ def _model_to_path(model: Union[str, Model, File]) -> str:
         raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
 
     if isinstance(model, str) and model.startswith("zoo:"):
+        # load SparseZoo Model from stub
         if sparsezoo_import_error is not None:
             raise sparsezoo_import_error
-        model = Zoo.load_model_from_stub(model).onnx_file.downloaded_path()
-    elif Model is not object and isinstance(model, Model):
+        model = Zoo.load_model_from_stub(model)
+
+    if Model is not object and isinstance(model, Model):
         # default to the main onnx file for the model
         model = model.onnx_file.downloaded_path()
     elif File is not object and isinstance(model, File):

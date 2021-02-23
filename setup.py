@@ -38,7 +38,7 @@ if _NIGHTLY:
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 
-_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0"]
+_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "tqdm>=4.0.0"]
 
 _nm_deps = [f"{'sparsezoo-nightly' if _NIGHTLY else 'sparsezoo'}~={_VERSION}"]
 
