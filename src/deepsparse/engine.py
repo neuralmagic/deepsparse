@@ -23,6 +23,7 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 import numpy
 
 from deepsparse.benchmark import BenchmarkResults
+from tqdm.auto import tqdm
 
 
 try:
@@ -332,6 +333,7 @@ class Engine(object):
         num_warmup_iterations: int = 5,
         include_inputs: bool = False,
         include_outputs: bool = False,
+        show_progress: bool = False,
     ) -> BenchmarkResults:
         """
         A convenience function for quickly benchmarking the instantiated model
@@ -350,6 +352,7 @@ class Engine(object):
             will be added to the results. Default is False
         :param include_outputs: If True, outputs from forward passes during benchmarking
             will be added to the results. Default is False
+        :param show_progress: If True, will display a progress bar. Default is False
         :return: the results of benchmarking
         """
         # define data loader
@@ -363,6 +366,7 @@ class Engine(object):
             num_warmup_iterations=num_warmup_iterations,
             include_inputs=include_inputs,
             include_outputs=include_outputs,
+            show_progress=show_progress,
         )
 
     def benchmark_loader(
@@ -372,6 +376,7 @@ class Engine(object):
         num_warmup_iterations: int = 5,
         include_inputs: bool = False,
         include_outputs: bool = False,
+        show_progress: bool = False,
     ) -> BenchmarkResults:
         """
         A convenience function for quickly benchmarking the instantiated model
@@ -390,6 +395,7 @@ class Engine(object):
             will be added to the results. Default is False
         :param include_outputs: If True, outputs from forward passes during benchmarking
             will be added to the results. Default is False
+        :param show_progress: If True, will display a progress bar. Default is False
         :return: the results of benchmarking
         """
         assert num_iterations >= 1 and num_warmup_iterations >= 0, (
@@ -399,13 +405,15 @@ class Engine(object):
         completed_iterations = 0
         results = BenchmarkResults()
 
+        if show_progress:
+            progress_bar = tqdm(total=num_iterations)
+
         while completed_iterations < num_warmup_iterations + num_iterations:
             for batch in loader:
                 # run benchmark
                 start = time.time()
                 out = self.run(batch)
                 end = time.time()
-                completed_iterations += 1
 
                 if completed_iterations >= num_warmup_iterations:
                     # update results if warmup iterations are completed
@@ -416,9 +424,16 @@ class Engine(object):
                         inputs=batch if include_inputs else None,
                         outputs=out if include_outputs else None,
                     )
+                    if show_progress:
+                        progress_bar.update(1)
+
+                completed_iterations += 1
 
                 if completed_iterations >= num_warmup_iterations + num_iterations:
                     break
+
+        if show_progress:
+            progress_bar.close()
 
         return results
 
@@ -482,6 +497,7 @@ def benchmark_model(
     num_warmup_iterations: int = 5,
     include_inputs: bool = False,
     include_outputs: bool = False,
+    show_progress: bool = False,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -508,12 +524,18 @@ def benchmark_model(
         will be added to the results. Default is False
     :param include_outputs: If True, outputs from forward passes during benchmarking
         will be added to the results. Default is False
+    :param show_progress: If True, will display a progress bar. Default is False
     :return: the results of benchmarking
     """
     model = compile_model(model, batch_size, num_cores)
 
     return model.benchmark(
-        inp, num_iterations, num_warmup_iterations, include_inputs, include_outputs
+        inp,
+        num_iterations,
+        num_warmup_iterations,
+        include_inputs,
+        include_outputs,
+        show_progress,
     )
 
 
