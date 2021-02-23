@@ -24,7 +24,9 @@ from setuptools.command.install import install
 
 
 _PACKAGE_NAME = "deepsparse"
-_VERSION = "0.1.0"
+_VERSION = "0.1.1"
+_VERSION_MAJOR, _VERSION_MINOR, _VERSION_BUG = _VERSION.split(".")
+_VERSION_MAJOR_MINOR = f"{_VERSION_MAJOR}.{_VERSION_MINOR}"
 _NIGHTLY = "nightly" in sys.argv
 
 if _NIGHTLY:
@@ -40,7 +42,9 @@ binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 _deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0"]
 
-_nm_deps = [f"{'sparsezoo-nightly' if _NIGHTLY else 'sparsezoo'}~={_VERSION}"]
+_nm_deps = [
+    f"{'sparsezoo-nightly' if _NIGHTLY else 'sparsezoo'}~={_VERSION_MAJOR_MINOR}"
+]
 
 _dev_deps = [
     "black>=20.8b1",
