@@ -55,7 +55,7 @@ This repository includes package APIs along with examples to quickly get started
 Sparsification is the process of taking a trained deep learning model and removing redundant information from the over precise and over parameterized network resulting in a faster and smaller model.
 Techniques for sparsification are all encompassing including everything from inducing sparsity using [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061) to enabling naturally occurring sparsity using [activation sparsity](http://proceedings.mlr.press/v119/kurtz20a.html) or [winograd/FFT](https://arxiv.org/abs/1509.09308). 
 When implemented correctly, these techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics.
-For example, pruning plus quantization can give over [7x improvements in performance](resnet50link) while recovering to nearly the same baseline.
+For example, pruning plus quantization can give over [7x improvements in performance](resnet50link) while recovering to nearly the same baseline accuracy.
 
 The DeepSparse product suite builds on top of sparsification enabling you to easily apply the techniques to your datasets/models using recipe driven approaches.
 Recipes encode the directions for how to sparsify a model into a simple, easily editable format.
@@ -122,7 +122,7 @@ Output:
 We can see there are two pruned versions targeting FP32 and two pruned, quantized versions targeting INT8.
 The `conservative`, `moderate`, and `aggressive` tags recover to 100%, >=99%, and <99% of baseline accuracy respectively.
 
-Let's say that we want something that recovers close to the baseline and is very performant, we can choose the pruned_quant-moderate model.
+Let's say that we want a version of ResNet-50 that recovers close to the baseline and is very performant, we can choose the pruned_quant-moderate model.
 This model will run [nearly 7 times faster](linktoresnet50example) than the baseline model on a compatible CPU (VNNI instruction set enabled).
 For hardware compatibility, see the Hardware Support section.
 

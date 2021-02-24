@@ -71,7 +71,7 @@ Output:
 We can see there are two pruned versions targeting FP32 and two pruned, quantized versions targeting INT8.
 The `conservative`, `moderate`, and `aggressive` tags recover to 100%, >=99%, and <99% of baseline accuracy respectively.
 
-Let's say that we want something that recovers close to the baseline and is very performant, we can choose the pruned_quant-moderate model.
+Let's say that we want a version of ResNet-50 that recovers close to the baseline and is very performant, we can choose the pruned_quant-moderate model.
 This model will run [nearly 7 times faster](linktoresnet50example) than the baseline model on a compatible CPU (VNNI instruction set enabled).
 For hardware compatibility, see the Hardware Support section.
 
