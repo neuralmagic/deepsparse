@@ -17,7 +17,7 @@
 DeepSparse |version|
 ====================
 
-CPU inference engine that delivers unprecedented performance for sparse models.
+Neural network inference engine that delivers unprecedented performance for sparsified models on CPUs
 
 .. raw:: html
 
@@ -51,13 +51,25 @@ CPU inference engine that delivers unprecedented performance for sparse models.
 Overview
 ========
 
-The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of
-natural sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads.
-It is focused on model deployment and scaling machine learning pipelines,
-fitting seamlessly into your existing deployments as an inference backend.
+The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
 `This repository <https://github.com/neuralmagic/deepsparse />`_ includes package APIs along with examples to quickly get started learning about and
 actually running sparse models.
+
+Sparsification
+==============
+
+Sparsification is the process of taking a trained deep learning model and removing redundant information from the over precise and over parameterized network resulting in a faster and smaller model.
+Techniques for sparsification are all encompassing including everything from inducing sparsity using `pruning <https://neuralmagic.com/blog/pruning-overview/>`_ and `quantization <https://arxiv.org/abs/1609.07061>`_ to enabling naturally occurring sparsity using `activation sparsity <http://proceedings.mlr.press/v119/kurtz20a.html>`_ or `winograd/FFT <https://arxiv.org/abs/1509.09308>`_.
+When implemented correctly, these techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics.
+For example, pruning plus quantization can give over [7x improvements in performance](resnet50link) while recovering to nearly the same baseline.
+
+The DeepSparse product suite builds on top of sparsification enabling you to easily apply the techniques to your datasets/models using recipe driven approaches.
+Recipes encode the directions for how to sparsify a model into a simple, easily editable format.
+Download a sparsification recipe/sparsified model from the `SparseZoo <https://github.com/neuralmagic/sparsezoo>`_ or create one using `Sparsify <https://github.com/neuralmagic/sparsify>`_, apply it using `SparseML <https://github.com/neuralmagic/sparseml>`_ with only a few lines of code, and deploy with the `DeepSparse Engine <https://github.com/neuralmagic/deepsparse>`_ for unprecedented performance on CPUs.
+Visualization of the full product flow:
+
+<img src="https://docs.neuralmagic.com/docs/source/sparsification/flow-overview.svg" width="960px">
 
 Compatibility
 =============
@@ -67,18 +79,6 @@ allowing for compatibility with `PyTorch <https://pytorch.org/docs/stable/onnx.h
 `TensorFlow <https://github.com/onnx/tensorflow-onnx />`_, `Keras <https://github.com/onnx/keras-onnx />`_,
 and `many other frameworks <https://github.com/onnx/onnxmltools />`_ that support it.
 This reduces the extra work of preparing your trained model for inference to just one step of exporting.
-
-Related Products
-================
-
-- `SparseZoo <https://github.com/neuralmagic/sparsezoo />`_:
-  Neural network model repository for highly sparse models and optimization recipes
-- `SparseML <https://github.com/neuralmagic/sparseml />`_:
-  Libraries for state-of-the-art deep neural network optimization algorithms,
-  enabling simple pipelines integration with a few lines of code
-- `Sparsify <https://github.com/neuralmagic/sparsify />`_:
-  Easy-to-use autoML interface to optimize deep neural networks for
-  better inference performance and a smaller footprint
 
 Resources and Learning More
 ===========================
