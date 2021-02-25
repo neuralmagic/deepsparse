@@ -21,9 +21,9 @@ import time
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
+from tqdm.auto import tqdm
 
 from deepsparse.benchmark import BenchmarkResults
-from tqdm.auto import tqdm
 
 
 try:
@@ -142,8 +142,11 @@ class Engine(object):
     """
 
     def __init__(
-        self, model: Union[str, Model, File], batch_size: int, num_cores: int,
-        num_sockets: int = None
+        self,
+        model: Union[str, Model, File],
+        batch_size: int,
+        num_cores: int,
+        num_sockets: int = None,
     ):
         self._model_path = _model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
@@ -490,8 +493,10 @@ class Engine(object):
 
 
 def compile_model(
-    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None,
-    num_sockets: int = None
+    model: Union[str, Model, File],
+    batch_size: int = 1,
+    num_cores: int = None,
+    num_sockets: int = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -524,7 +529,7 @@ def benchmark_model(
     include_inputs: bool = False,
     include_outputs: bool = False,
     show_progress: bool = False,
-    num_sockets: int = None
+    num_sockets: int = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -579,7 +584,7 @@ def analyze_model(
     optimization_level: int = 1,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
-    num_sockets: int = None
+    num_sockets: int = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
