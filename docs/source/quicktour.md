@@ -103,7 +103,7 @@ print(benchmarks_sparse)
 print(f"Speedup: {benchmarks_sparse.items_per_second / benchmarks_base.items_per_second:.2f}x")
 ```
 
-### Quickstart with custom ONNX models
+### Quickstart with Custom ONNX Models
 
 We accept ONNX files for custom models, too. Simply plug in your model to compare performance with other solutions.
 
