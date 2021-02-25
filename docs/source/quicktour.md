@@ -16,10 +16,7 @@ limitations under the License.
 
 ## Quick Tour
 
-To expedite inference and benchmarking on real models, we include the `sparsezoo` package. 
-[SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference-optimized models, 
-trained on repeatable sparsification recipes using state-of-the-art techniques from 
-[SparseML](https://github.com/neuralmagic/sparseml).
+To expedite inference and benchmarking on real models, we include the `sparsezoo` package. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference-optimized models, trained on repeatable sparsification recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
 
 ### Quickstart with SparseZoo ONNX Models
 
@@ -46,7 +43,7 @@ outputs, inference_time = engine.timed_run(inputs)
 
 When exploring available optimized models, you can use the `Zoo.search_optimized_models` utility to find models that share a base.
 
-Let us try this on the dense ResNet-50 to see what is available.
+Try this on the dense ResNet-50 to see what is available:
 
 ```python
 from sparsezoo import Zoo
@@ -71,8 +68,8 @@ Output:
 We can see there are two pruned versions targeting FP32 and two pruned, quantized versions targeting INT8.
 The `conservative`, `moderate`, and `aggressive` tags recover to 100%, >=99%, and <99% of baseline accuracy respectively.
 
-Let's say that we want a version of ResNet-50 that recovers close to the baseline and is very performant, we can choose the pruned_quant-moderate model.
-This model will run [nearly 7 times faster](linktoresnet50example) than the baseline model on a compatible CPU (VNNI instruction set enabled).
+For a version of ResNet-50 that recovers close to the baseline and is very performant, choose the pruned_quant-moderate model.
+This model will run [nearly 7x faster](https://neuralmagic.com/blog/benchmark-resnet50-with-deepsparse) than the baseline model on a compatible CPU (with the VNNI instruction set enabled).
 For hardware compatibility, see the Hardware Support section.
 
 ```python
