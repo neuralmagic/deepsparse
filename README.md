@@ -16,7 +16,7 @@ limitations under the License.
 
 # ![icon for DeepSparse](https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png) DeepSparse Engine
 
-### Neural network inference engine that delivers unprecedented performance for sparsified models on CPUs
+### Neural network inference engine that delivers GPU-class performance for sparsified models on CPUs
 
 <p>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
@@ -46,16 +46,17 @@ limitations under the License.
 
 ## Overview
 
-The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of natural sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
+The DeepSparse Engine is a CPU runtime that delivers GPU-class performance by taking advantage of sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. 
+It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
-This repository includes package APIs along with examples to quickly get started learning about and actually running sparse models.
+This repository includes package APIs along with examples to quickly get started benchmarking and inferencing sparse models. 
 
 ## Sparsification
 
 Sparsification is the process of taking a trained deep learning model and removing redundant information from the overprecise and over-parameterized network resulting in a faster and smaller model.
 Techniques for sparsification are all encompassing including everything from inducing sparsity using [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061) to enabling naturally occurring sparsity using [activation sparsity](http://proceedings.mlr.press/v119/kurtz20a.html) or [winograd/FFT](https://arxiv.org/abs/1509.09308). 
 When implemented correctly, these techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics.
-For example, pruning plus quantization can give over [7x improvements in performance](resnet50link) while recovering to nearly the same baseline accuracy.
+For example, pruning plus quantization can give over [7x improvements in performance](https://neuralmagic.com/blog/benchmark-resnet50-with-deepsparse) while recovering to nearly the same baseline accuracy.
 
 The Deep Sparse product suite builds on top of sparsification enabling you to easily apply the techniques to your datasets and models using recipe-driven approaches.
 Recipes encode the directions for how to sparsify a model into a simple, easily editable format.

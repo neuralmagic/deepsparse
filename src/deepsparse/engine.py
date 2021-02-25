@@ -21,9 +21,9 @@ import time
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
+from tqdm.auto import tqdm
 
 from deepsparse.benchmark import BenchmarkResults
-from tqdm.auto import tqdm
 
 
 try:
