@@ -65,7 +65,7 @@ Recipes encode the directions for how to sparsify a model into a simple, easily 
 - Finally, for GPU-level performance on CPUs, deploy your sparse-quantized model with the [DeepSparse Engine](https://github.com/neuralmagic/deepsparse).
 
 
-Visualization of the full product flow:
+**Full Deep Sparse product flow:**  
 
 <img src="https://docs.neuralmagic.com/docs/source/sparsification/flow-overview.svg" width="960px">
 
