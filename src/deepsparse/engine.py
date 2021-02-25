@@ -39,7 +39,7 @@ except Exception as sparsezoo_err:
 
 try:
     # flake8: noqa
-    from deepsparse.cpu import cpu_details
+    from deepsparse.cpu import cpu_architecture
     from deepsparse.lib import init_deepsparse_lib
     from deepsparse.version import *
 except ImportError:
@@ -52,7 +52,11 @@ except ImportError:
 __all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model"]
 
 
-CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu_details()
+ARCH = cpu_architecture()
+CORES_PER_SOCKET = ARCH.available_cores_per_socket
+NUM_SOCKETS = ARCH.available_sockets
+AVX_TYPE = ARCH.isa
+VNNI = ARCH.vnni
 
 LIB = init_deepsparse_lib()
 
@@ -100,6 +104,16 @@ def _validate_num_cores(num_cores: Union[None, int]) -> int:
     return num_cores
 
 
+def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
+    if not num_sockets:
+        num_sockets = NUM_SOCKETS
+
+    if num_sockets < 1:
+        raise ValueError("num_sockets must be greater than 0")
+
+    return num_sockets
+
+
 class Engine(object):
     """
     Create a new DeepSparse Engine that compiles the given onnx file
@@ -122,13 +136,22 @@ class Engine(object):
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         in one socket for the current machine, default None
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
     """
 
-    def __init__(self, model: Union[str, Model, File], batch_size: int, num_cores: int):
+    def __init__(
+        self,
+        model: Union[str, Model, File],
+        batch_size: int,
+        num_cores: int,
+        num_sockets: int = None,
+    ):
         self._model_path = _model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
-        self._num_sockets = 1  # only single socket is supported currently
+        self._num_sockets = _validate_num_sockets(num_sockets)
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
         self._eng_net = LIB.deepsparse_engine(
@@ -470,7 +493,10 @@ class Engine(object):
 
 
 def compile_model(
-    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None
+    model: Union[str, Model, File],
+    batch_size: int = 1,
+    num_cores: int = None,
+    num_sockets: int = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -485,9 +511,12 @@ def compile_model(
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         in one socket for the current machine, default None
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
     :return: The created Engine after compiling the model
     """
-    return Engine(model, batch_size, num_cores)
+    return Engine(model, batch_size, num_cores, num_sockets)
 
 
 def benchmark_model(
@@ -500,6 +529,7 @@ def benchmark_model(
     include_inputs: bool = False,
     include_outputs: bool = False,
     show_progress: bool = False,
+    num_sockets: int = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -527,9 +557,12 @@ def benchmark_model(
     :param include_outputs: If True, outputs from forward passes during benchmarking
         will be added to the results. Default is False
     :param show_progress: If True, will display a progress bar. Default is False
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
     :return: the results of benchmarking
     """
-    model = compile_model(model, batch_size, num_cores)
+    model = compile_model(model, batch_size, num_cores, num_sockets)
 
     return model.benchmark(
         inp,
@@ -551,6 +584,7 @@ def analyze_model(
     optimization_level: int = 1,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
+    num_sockets: int = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
@@ -581,12 +615,15 @@ def analyze_model(
         Will force all prunable layers in the graph to have weights with
         this desired sparsity level (percentage of 0's in the tensor).
         Beneficial for seeing how pruning affects the performance of the model.
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
     :return: the analysis structure containing the performance details of each layer
     """
     model = _model_to_path(model)
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
-    num_sockets = 1
+    num_sockets = _validate_num_sockets(num_sockets)
     eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, num_sockets)
 
     return eng_net.benchmark(
