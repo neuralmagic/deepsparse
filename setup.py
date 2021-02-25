@@ -114,7 +114,10 @@ setup(
     version=_VERSION,
     author="Neuralmagic, Inc.",
     author_email="support@neuralmagic.com",
-    description="CPU runtime that delivers unprecedented performance for sparse models",
+    description=(
+        "Neural network inference engine that delivers GPU-class performance "
+        "for sparsified models on CPUs"
+    ),
     long_description=_setup_long_description()[0],
     long_description_content_type=_setup_long_description()[1],
     keywords=(

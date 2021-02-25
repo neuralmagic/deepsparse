@@ -17,7 +17,7 @@
 DeepSparse |version|
 ====================
 
-CPU inference engine that delivers unprecedented performance for sparse models.
+Neural network inference engine that delivers GPU-class performance for sparsified models on CPUs
 
 .. raw:: html
 
@@ -51,54 +51,59 @@ CPU inference engine that delivers unprecedented performance for sparse models.
 Overview
 ========
 
-The DeepSparse Engine is a CPU runtime that delivers unprecedented performance by taking advantage of
-natural sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads.
-It is focused on model deployment and scaling machine learning pipelines,
-fitting seamlessly into your existing deployments as an inference backend.
+The DeepSparse Engine is a CPU runtime that delivers GPU-class performance by taking advantage of sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads.
+It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
-`This repository <https://github.com/neuralmagic/deepsparse />`_ includes package APIs along with examples to quickly get started learning about and
-actually running sparse models.
+`This repository <https://github.com/neuralmagic/deepsparse />`_ includes package APIs along with examples to quickly get started benchmarking and inferencing sparse models.
+
+Sparsification
+==============
+
+Sparsification is the process of taking a trained deep learning model and removing redundant information from the overprecise and over-parameterized network resulting in a faster and smaller model.
+Techniques for sparsification are all encompassing including everything from inducing sparsity using `pruning <https://neuralmagic.com/blog/pruning-overview/>`_ and `quantization <https://arxiv.org/abs/1609.07061>`_ to enabling naturally occurring sparsity using `activation sparsity <http://proceedings.mlr.press/v119/kurtz20a.html>`_ or `winograd/FFT <https://arxiv.org/abs/1509.09308>`_.
+When implemented correctly, these techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics.
+For example, pruning plus quantization can give over `7x improvements in performance <https://neuralmagic.com/blog/benchmark-resnet50-with-deepsparse>`_ while recovering to nearly the same baseline accuracy.
+
+The Deep Sparse product suite builds on top of sparsification enabling you to easily apply the techniques to your datasets and models using recipe-driven approaches.
+Recipes encode the directions for how to sparsify a model into a simple, easily editable format.
+- Download a sparsification recipe and sparsified model from the `SparseZoo <https://github.com/neuralmagic/sparsezoo>`_.
+- Alternatively, create a recipe for your model using `Sparsify <https://github.com/neuralmagic/sparsify>`_.
+- Apply your recipe with only a few lines of code using `SparseML <https://github.com/neuralmagic/sparseml>`_.
+- Finally, for GPU-level performance on CPUs, deploy your sparse-quantized model with the `DeepSparse Engine <https://github.com/neuralmagic/deepsparse>`_.
+
+
+**Full Deep Sparse product flow:**
+
+<img src="https://docs.neuralmagic.com/docs/source/sparsification/flow-overview.svg" width="960px">
 
 Compatibility
 =============
 
-The DeepSparse Engine ingests models in the `ONNX <https://onnx.ai />`_ format,
-allowing for compatibility with `PyTorch <https://pytorch.org/docs/stable/onnx.html />`_,
-`TensorFlow <https://github.com/onnx/tensorflow-onnx />`_, `Keras <https://github.com/onnx/keras-onnx />`_,
-and `many other frameworks <https://github.com/onnx/onnxmltools />`_ that support it.
+The DeepSparse Engine ingests models in the `ONNX <https://onnx.ai>`_ format,
+allowing for compatibility with `PyTorch <https://pytorch.org/docs/stable/onnx.html>`_,
+`TensorFlow <https://github.com/onnx/tensorflow-onnx>`_, `Keras <https://github.com/onnx/keras-onnx>`_,
+and `many other frameworks <https://github.com/onnx/onnxmltools>`_ that support it.
 This reduces the extra work of preparing your trained model for inference to just one step of exporting.
-
-Related Products
-================
-
-- `SparseZoo <https://github.com/neuralmagic/sparsezoo />`_:
-  Neural network model repository for highly sparse models and optimization recipes
-- `SparseML <https://github.com/neuralmagic/sparseml />`_:
-  Libraries for state-of-the-art deep neural network optimization algorithms,
-  enabling simple pipelines integration with a few lines of code
-- `Sparsify <https://github.com/neuralmagic/sparsify />`_:
-  Easy-to-use autoML interface to optimize deep neural networks for
-  better inference performance and a smaller footprint
 
 Resources and Learning More
 ===========================
 
-- `SparseZoo Documentation <https://docs.neuralmagic.com/sparsezoo />`_
-- `SparseML Documentation <https://docs.neuralmagic.com/sparseml />`_
-- `Sparsify Documentation <https://docs.neuralmagic.com/sparsify />`_
-- `Neural Magic Blog <https://www.neuralmagic.com/blog />`_,
-  `Resources <https://www.neuralmagic.com/resources />`_,
-  `Website <https://www.neuralmagic.com />`_
+- `SparseZoo Documentation <https://docs.neuralmagic.com/sparsezoo>`_
+- `SparseML Documentation <https://docs.neuralmagic.com/sparseml>`_
+- `Sparsify Documentation <https://docs.neuralmagic.com/sparsify>`_
+- `Neural Magic Blog <https://www.neuralmagic.com/blog>`_,
+  `Resources <https://www.neuralmagic.com/resources>`_,
+  `Website <https://www.neuralmagic.com>`_
 
 Release History
 ===============
 
 Official builds are hosted on PyPi
-- stable: `deepsparse <https://pypi.org/project/deepsparse />`_
-- nightly (dev): `deepsparse-nightly <https://pypi.org/project/deepsparse-nightly />`_
+- stable: `deepsparse <https://pypi.org/project/deepsparse>`_
+- nightly (dev): `deepsparse-nightly <https://pypi.org/project/deepsparse-nightly>`_
 
 Additionally, more information can be found via
-`GitHub Releases <https://github.com/neuralmagic/deepsparse/releases />`_.
+`GitHub Releases <https://github.com/neuralmagic/deepsparse/releases>`_.
 
 .. toctree::
     :maxdepth: 3
