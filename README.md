@@ -52,7 +52,7 @@ This repository includes package APIs along with examples to quickly get started
 
 ## Sparsification
 
-Sparsification is the process of taking a trained deep learning model and removing redundant information from the over precise and over parameterized network resulting in a faster and smaller model.
+Sparsification is the process of taking a trained deep learning model and removing redundant information from the overprecise and over-parameterized network resulting in a faster and smaller model.
 Techniques for sparsification are all encompassing including everything from inducing sparsity using [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061) to enabling naturally occurring sparsity using [activation sparsity](http://proceedings.mlr.press/v119/kurtz20a.html) or [winograd/FFT](https://arxiv.org/abs/1509.09308). 
 When implemented correctly, these techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics.
 For example, pruning plus quantization can give over [7x improvements in performance](resnet50link) while recovering to nearly the same baseline accuracy.
