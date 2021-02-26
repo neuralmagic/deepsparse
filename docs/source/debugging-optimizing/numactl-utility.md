@@ -16,7 +16,7 @@ limitations under the License.
 
 # Using the numactl Utility to Control Resource Utilization with the DeepSparse Engine
 
-The DeepSparse Engine supports multiple-socket systems. With hyper-threading disabled, models with larger batch sizes are likely to see improvement. One standard way of controlling compute/memory resources when running processes is to use the **numactl** utility. **numactl** can be used when multiple processes need to run on the same hardware but require their own CPU/memory resources to run optimally.
+The DeepSparse Engine achieves better performance on multiple-socket systems as well as with hyperthreading disabled; models with larger batch sizes are likely to see an improvement. One standard way of controlling compute/memory resources when running processes is to use the **numactl** utility. **numactl** can be used when multiple processes need to run on the same hardware but require their own CPU/memory resources to run optimally.
 
 To run the DeepSparse Engine on a single socket (N) of a multi-socket system, you would start the DeepSparse Engine using **numactl**. For example:
 
