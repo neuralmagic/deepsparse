@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Benchmarking and Correctness Examples
+# Benchmarking Examples
 
-This directory holds examples for comparing inference on an ONNX model, both for performance and correctness.
+This directory holds examples for comparing inference on ONNX models, both for performance and correctness.
 
 ## Installation
 
@@ -24,7 +24,16 @@ Install DeepSparse with `pip install deepsparse` and the additional external req
 
 ## Execution
 
-### Benchmark
+### ResNet-50 Benchmark
+
+`resnet50_benchmark.py` is a script for benchmarking all of the sparsified ResNet50 V1 models hosted on SparseZoo, on the DeepSparse engine.
+
+Example command for ResNet50 benchmarks with batch size 128 and 16 cores used:
+```bash
+python resnet50_benchmark.py --batch_size 128 --num_cores 16
+```
+
+### ONNX Benchmark
 
 `run_benchmark.py` is a script for benchmarking an ONNX model over random inputs and using both the DeepSparse Engine and ONNXRuntime, comparing results.
 

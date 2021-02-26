@@ -21,19 +21,25 @@ import time
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
+from tqdm.auto import tqdm
 
 from deepsparse.benchmark import BenchmarkResults
 
 
 try:
+    from sparsezoo import Zoo
     from sparsezoo.objects import File, Model
-except Exception:
+
+    sparsezoo_import_error = None
+except Exception as sparsezoo_err:
+    Zoo = None
     Model = object
     File = object
+    sparsezoo_import_error = sparsezoo_err
 
 try:
     # flake8: noqa
-    from deepsparse.cpu import cpu_details
+    from deepsparse.cpu import cpu_architecture
     from deepsparse.lib import init_deepsparse_lib
     from deepsparse.version import *
 except ImportError:
@@ -46,7 +52,11 @@ except ImportError:
 __all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model"]
 
 
-CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu_details()
+ARCH = cpu_architecture()
+CORES_PER_SOCKET = ARCH.available_cores_per_socket
+NUM_SOCKETS = ARCH.available_sockets
+AVX_TYPE = ARCH.isa
+VNNI = ARCH.vnni
 
 LIB = init_deepsparse_lib()
 
@@ -55,9 +65,13 @@ def _model_to_path(model: Union[str, Model, File]) -> str:
     if not model:
         raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
 
-    if isinstance(model, str):
-        pass
-    elif Model is not object and isinstance(model, Model):
+    if isinstance(model, str) and model.startswith("zoo:"):
+        # load SparseZoo Model from stub
+        if sparsezoo_import_error is not None:
+            raise sparsezoo_import_error
+        model = Zoo.load_model_from_stub(model)
+
+    if Model is not object and isinstance(model, Model):
         # default to the main onnx file for the model
         model = model.onnx_file.downloaded_path()
     elif File is not object and isinstance(model, File):
@@ -90,6 +104,16 @@ def _validate_num_cores(num_cores: Union[None, int]) -> int:
     return num_cores
 
 
+def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
+    if not num_sockets:
+        num_sockets = NUM_SOCKETS
+
+    if num_sockets < 1:
+        raise ValueError("num_sockets must be greater than 0")
+
+    return num_sockets
+
+
 class Engine(object):
     """
     Create a new DeepSparse Engine that compiles the given onnx file
@@ -105,19 +129,29 @@ class Engine(object):
     |    # create an engine for batch size 1 on all available cores
     |    engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
 
-    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
-        or a sparsezoo ONNX File object that defines the neural network
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the engine
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         in one socket for the current machine, default None
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
     """
 
-    def __init__(self, model: Union[str, Model, File], batch_size: int, num_cores: int):
+    def __init__(
+        self,
+        model: Union[str, Model, File],
+        batch_size: int,
+        num_cores: int,
+        num_sockets: int = None,
+    ):
         self._model_path = _model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
-        self._num_sockets = 1  # only single socket is supported currently
+        self._num_sockets = _validate_num_sockets(num_sockets)
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
         self._eng_net = LIB.deepsparse_engine(
@@ -324,6 +358,7 @@ class Engine(object):
         num_warmup_iterations: int = 5,
         include_inputs: bool = False,
         include_outputs: bool = False,
+        show_progress: bool = False,
     ) -> BenchmarkResults:
         """
         A convenience function for quickly benchmarking the instantiated model
@@ -342,6 +377,7 @@ class Engine(object):
             will be added to the results. Default is False
         :param include_outputs: If True, outputs from forward passes during benchmarking
             will be added to the results. Default is False
+        :param show_progress: If True, will display a progress bar. Default is False
         :return: the results of benchmarking
         """
         # define data loader
@@ -355,6 +391,7 @@ class Engine(object):
             num_warmup_iterations=num_warmup_iterations,
             include_inputs=include_inputs,
             include_outputs=include_outputs,
+            show_progress=show_progress,
         )
 
     def benchmark_loader(
@@ -364,6 +401,7 @@ class Engine(object):
         num_warmup_iterations: int = 5,
         include_inputs: bool = False,
         include_outputs: bool = False,
+        show_progress: bool = False,
     ) -> BenchmarkResults:
         """
         A convenience function for quickly benchmarking the instantiated model
@@ -382,6 +420,7 @@ class Engine(object):
             will be added to the results. Default is False
         :param include_outputs: If True, outputs from forward passes during benchmarking
             will be added to the results. Default is False
+        :param show_progress: If True, will display a progress bar. Default is False
         :return: the results of benchmarking
         """
         assert num_iterations >= 1 and num_warmup_iterations >= 0, (
@@ -391,13 +430,15 @@ class Engine(object):
         completed_iterations = 0
         results = BenchmarkResults()
 
+        if show_progress:
+            progress_bar = tqdm(total=num_iterations)
+
         while completed_iterations < num_warmup_iterations + num_iterations:
             for batch in loader:
                 # run benchmark
                 start = time.time()
                 out = self.run(batch)
                 end = time.time()
-                completed_iterations += 1
 
                 if completed_iterations >= num_warmup_iterations:
                     # update results if warmup iterations are completed
@@ -408,9 +449,16 @@ class Engine(object):
                         inputs=batch if include_inputs else None,
                         outputs=out if include_outputs else None,
                     )
+                    if show_progress:
+                        progress_bar.update(1)
+
+                completed_iterations += 1
 
                 if completed_iterations >= num_warmup_iterations + num_iterations:
                     break
+
+        if show_progress:
+            progress_bar.close()
 
         return results
 
@@ -445,7 +493,10 @@ class Engine(object):
 
 
 def compile_model(
-    model: Union[str, Model, File], batch_size: int = 1, num_cores: int = None
+    model: Union[str, Model, File],
+    batch_size: int = 1,
+    num_cores: int = None,
+    num_sockets: int = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -453,15 +504,19 @@ def compile_model(
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
-        or a sparsezoo ONNX File object that defines the neural network
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         in one socket for the current machine, default None
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
     :return: The created Engine after compiling the model
     """
-    return Engine(model, batch_size, num_cores)
+    return Engine(model, batch_size, num_cores, num_sockets)
 
 
 def benchmark_model(
@@ -473,6 +528,8 @@ def benchmark_model(
     num_warmup_iterations: int = 5,
     include_inputs: bool = False,
     include_outputs: bool = False,
+    show_progress: bool = False,
+    num_sockets: int = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -480,8 +537,9 @@ def benchmark_model(
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
-        or a sparsezoo ONNX File object that defines the neural network
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
@@ -498,12 +556,21 @@ def benchmark_model(
         will be added to the results. Default is False
     :param include_outputs: If True, outputs from forward passes during benchmarking
         will be added to the results. Default is False
+    :param show_progress: If True, will display a progress bar. Default is False
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
     :return: the results of benchmarking
     """
-    model = compile_model(model, batch_size, num_cores)
+    model = compile_model(model, batch_size, num_cores, num_sockets)
 
     return model.benchmark(
-        inp, num_iterations, num_warmup_iterations, include_inputs, include_outputs
+        inp,
+        num_iterations,
+        num_warmup_iterations,
+        include_inputs,
+        include_outputs,
+        show_progress,
     )
 
 
@@ -517,6 +584,7 @@ def analyze_model(
     optimization_level: int = 1,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
+    num_sockets: int = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
@@ -524,9 +592,9 @@ def analyze_model(
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    :param model: Either a path to the model's onnx file, a sparsezoo Model object,
-        or a sparsezoo ONNX File object that defines the neural network
-        graph definition to analyze
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network graph definition to analyze
     :param inp: The list of inputs to pass to the engine for analyzing inference.
         The expected order is the inputs order as defined in the ONNX graph.
     :param batch_size: The batch size of the inputs to be used with the model
@@ -547,12 +615,15 @@ def analyze_model(
         Will force all prunable layers in the graph to have weights with
         this desired sparsity level (percentage of 0's in the tensor).
         Beneficial for seeing how pruning affects the performance of the model.
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
     :return: the analysis structure containing the performance details of each layer
     """
     model = _model_to_path(model)
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
-    num_sockets = 1
+    num_sockets = _validate_num_sockets(num_sockets)
     eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, num_sockets)
 
     return eng_net.benchmark(
