@@ -16,12 +16,18 @@ limitations under the License.
 
 # Using the numactl Utility to Control Resource Utilization with the DeepSparse Engine
 
-The DeepSparse Engine works best when run on a single socket and with hyper-threading disabled. One standard way of controlling compute/memory resources when running processes is to use the **numactl** utility. **numactl** can be used when multiple processes need to run on the same hardware but require their own CPU/memory resources to run optimally.
+The DeepSparse Engine supports multiple-socket systems. With hyper-threading disabled, models with larger batch sizes are likely to see improvement. One standard way of controlling compute/memory resources when running processes is to use the **numactl** utility. **numactl** can be used when multiple processes need to run on the same hardware but require their own CPU/memory resources to run optimally.
 
 To run the DeepSparse Engine on a single socket (N) of a multi-socket system, you would start the DeepSparse Engine using **numactl**. For example:
 
 ```bash
     numactl --cpunodebind N <deepsparseengine-process>
+```
+
+To run the DeepSparse Engine on multiple sockets (N,M), run:
+
+```bash
+    numactl --cpunodebind N,M <deepsparseengine-process>
 ```
 
 It is advised to also allocate memory from the same socket on which the engine is running. So, `--membind` or `--preferred` should be used when using `--cpunodebind.` For example:
@@ -44,7 +50,10 @@ Given the architecture above, to run the DeepSparse Engine on the first four CPU
     numactl --physcpubind 8-11 --preferred 1 <deepsparseengine-process>
 ```
 
-Note that `--preferred 1` is needed here since the DeepSparse Engine is being bound to CPUs on the second socket.
+Appending `--preferred 1` is needed here since the DeepSparse Engine is being bound to CPUs on the second socket.
+
+Note that using more than two sockets may not offer improvements over two sockets; if you have options, try different scenarios to see which setup is ideal for your use case. For batch size considerations, use an amount that is evenly divisible by the number of sockets you intend to use.
+
 
 ## DeepSparse Engine and Thread Pinning
 
@@ -59,8 +68,6 @@ However, the engine works best when threads are pinned (i.e., not allowed to mig
 ```
 
 `NM_BIND_THREADS_TO_CORES` should be used with care since it forces the DeepSparse Engine to run on only the threads it has been allocated at startup. If any other process ends up running on the same threads, it could result in a major degradation of performance.
-
-When using server mode with multiple engines, it is advisable to keep thread pinning disabled.
 
 **Note:** The threads-to-cores mappings described above are specific to Intel only. AMD has a different mapping. For AMD, all the threads for a single core are consecutive, i.e., if each core has two threads and there are N cores, the threads for a particular core K are 2*K and 2*K+1.  The mapping of cores to sockets is also straightforward, for a N socket system with C cores per socket, the cores for a particular socket S are numbered S*C to ((S+1)*C)-1.
 
