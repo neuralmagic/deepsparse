@@ -51,4 +51,4 @@ clean:
 	rm -fr .pytest_cache;
 	rm -fr docs/_build docs/build;
 	find $(CHECKDIRS) | grep -E "(__pycache__|\.pyc|\.pyo)" | xargs rm -fr;
-	find $(DOCDIR) | grep .rst | xargs rm -fr;
+	find $(DOCDIR)/source/api | grep .rst | xargs rm -rf;
