@@ -28,25 +28,25 @@ Install DeepSparse with `pip install deepsparse` and the additional external req
 
 `resnet50_benchmark.py` is a script for benchmarking all of the sparsified ResNet50 V1 models hosted on SparseZoo, on the DeepSparse engine.
 
-Example command for ResNet50 benchmarks with batch size 128 and 16 cores used:
+Example command for ResNet50 benchmarks with batch size 128:
 ```bash
-python resnet50_benchmark.py --batch_size 128 --num_cores 16
+python resnet50_benchmark.py --batch_size 128
 ```
 
 ### ONNX Benchmark
 
 `run_benchmark.py` is a script for benchmarking an ONNX model over random inputs and using both the DeepSparse Engine and ONNXRuntime, comparing results.
 
-Example command for benchmarking a downloaded resnet50 model for batch size 8 and 4 cores, over 100 iterations:
+Example command for benchmarking a downloaded resnet50 model for batch size 8, over 100 iterations:
 ```bash
-python run_benchmark.py ~/Downloads/resnet50.onnx --batch_size 8 --num_cores 4 --num_iterations 100
+python run_benchmark.py ~/Downloads/resnet50.onnx --batch_size 8 --num_iterations 100
 ```
 
 ### Check Correctness
 
 `check_correctness.py` is a script for generating random input from an ONNX model and running the model both through the DeepSparse Engine and ONNXRuntime, comparing outputs to confirm they are the same.
 
-Example command for checking a downloaded resnet50 model for batch size 8 and 4 cores:
+Example command for checking a downloaded resnet50 model for batch size 8:
 ```bash
-python check_correctness.py resnet50.onnx --batch_size 8 --num_cores 4
+python check_correctness.py resnet50.onnx --batch_size 8
 ```

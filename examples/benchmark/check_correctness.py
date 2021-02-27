@@ -22,7 +22,7 @@ In this method, we can assume that ONNXRuntime will give the
 
 ##########
 Command help:
-usage: check_correctness.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] onnx_filepath
+usage: check_correctness.py [-h] [-s BATCH_SIZE] onnx_filepath
 
 Run an ONNX model, comparing outputs between the DeepSparse Engine and ONNXRuntime
 
@@ -33,17 +33,13 @@ optional arguments:
   -h, --help            show this help message and exit
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
-  -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on,
-                        defaults to all physical cores available on the system
 
 ##########
 Example command for checking a downloaded resnet50 model
-for batch size 8 and 4 cores:
+for batch size 8:
 python examples/benchmark/check_correctness.py \
     ~/Downloads/resnet50.onnx \
-    --batch_size 8 \
-    --num_cores 4
+    --batch_size 8
 """
 
 import argparse
@@ -84,16 +80,6 @@ def parse_args():
         default=1,
         help="The batch size to run the analysis for",
     )
-    parser.add_argument(
-        "-j",
-        "--num_cores",
-        type=int,
-        default=CORES_PER_SOCKET,
-        help=(
-            "The number of physical cores to run the analysis on, "
-            "defaults to all physical cores available on the system"
-        ),
-    )
 
     return parser.parse_args()
 
@@ -102,7 +88,6 @@ def main():
     args = parse_args()
     onnx_filepath = args.onnx_filepath
     batch_size = args.batch_size
-    num_cores = args.num_cores
 
     inputs = generate_random_inputs(onnx_filepath, batch_size)
     input_names = get_input_names(onnx_filepath)
@@ -112,7 +97,6 @@ def main():
     # ONNXRuntime inference
     print("Executing model with ONNXRuntime...")
     sess_options = onnxruntime.SessionOptions()
-    sess_options.intra_op_num_threads = num_cores
     with override_onnx_batch_size(onnx_filepath, batch_size) as override_onnx_filepath:
         ort_network = onnxruntime.InferenceSession(override_onnx_filepath, sess_options)
 
@@ -120,7 +104,7 @@ def main():
 
     # DeepSparse Engine inference
     print("Executing model with DeepSparse Engine...")
-    dse_network = compile_model(onnx_filepath, batch_size, num_cores)
+    dse_network = compile_model(onnx_filepath, batch_size=batch_size)
     dse_outputs = dse_network(inputs)
 
     verify_outputs(dse_outputs, ort_outputs)
