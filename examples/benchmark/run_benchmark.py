@@ -21,7 +21,7 @@ In this method, we can assume that ONNXRuntime will give the
 
 ##########
 Command help:
-usage: run_benchmark.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] [-b NUM_ITERATIONS]
+usage: run_benchmark.py [-h] [-s BATCH_SIZE] [-b NUM_ITERATIONS]
     [-w NUM_WARMUP_ITERATIONS] onnx_filepath
 
 Benchmark an ONNX model, comparing between DeepSparse and ONNXRuntime
@@ -33,9 +33,6 @@ optional arguments:
   -h, --help            show this help message and exit
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
-  -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on,
-                        defaults to all physical cores available on the system
   -b NUM_ITERATIONS, --num_iterations NUM_ITERATIONS
                         The number of times the benchmark will be run
   -w NUM_WARMUP_ITERATIONS, --num_warmup_iterations NUM_WARMUP_ITERATIONS
@@ -44,11 +41,10 @@ optional arguments:
 
 ##########
 Example command for benchmarking a downloaded resnet50 model
-for batch size 8 and 4 cores, over 100 iterations:
+for batch size 8, over 100 iterations:
 python examples/benchmark/run_benchmark.py \
     ~/Downloads/resnet50.onnx \
     --batch_size 8 \
-    --num_cores 4 \
     --num_iterations 100
 """
 
@@ -92,16 +88,6 @@ def parse_args():
         help="The batch size to run the analysis for",
     )
     parser.add_argument(
-        "-j",
-        "--num_cores",
-        type=int,
-        default=CORES_PER_SOCKET,
-        help=(
-            "The number of physical cores to run the analysis on, "
-            "defaults to all physical cores available on the system"
-        ),
-    )
-    parser.add_argument(
         "-b",
         "--num_iterations",
         help="The number of times the benchmark will be run",
@@ -126,7 +112,6 @@ def main():
     args = parse_args()
     onnx_filepath = args.onnx_filepath
     batch_size = args.batch_size
-    num_cores = args.num_cores
     num_iterations = args.num_iterations
     num_warmup_iterations = args.num_warmup_iterations
 
@@ -138,7 +123,6 @@ def main():
     # Benchmark ONNXRuntime
     print("Benchmarking model with ONNXRuntime...")
     sess_options = onnxruntime.SessionOptions()
-    sess_options.intra_op_num_threads = num_cores
     with override_onnx_batch_size(onnx_filepath, batch_size) as override_onnx_filepath:
         ort_network = onnxruntime.InferenceSession(override_onnx_filepath, sess_options)
 
@@ -155,7 +139,7 @@ def main():
 
     # Benchmark DeepSparse Engine
     print("Benchmarking model with DeepSparse Engine...")
-    dse_network = compile_model(onnx_filepath, batch_size, num_cores)
+    dse_network = compile_model(onnx_filepath, batch_size=batch_size)
     dse_results = dse_network.benchmark(
         inputs, num_iterations, num_warmup_iterations, include_outputs=True
     )
