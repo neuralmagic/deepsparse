@@ -74,7 +74,9 @@ Recipes encode the directions for how to sparsify a model into a simple, easily 
 
 **Full Deep Sparse product flow:**
 
-<img src="https://docs.neuralmagic.com/docs/source/sparsification/flow-overview.svg" width="960px">
+.. raw:: html
+
+    <img src="https://docs.neuralmagic.com/docs/source/sparsification/flow-overview.svg" width="960px">
 
 Compatibility
 =============
