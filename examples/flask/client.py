@@ -45,8 +45,11 @@ import time
 
 import requests
 
-from deepsparse.utils import generate_random_inputs
-from utils_flask import bytes_to_tensors, tensors_to_bytes
+from deepsparse.utils import (
+    arrays_to_bytes,
+    bytes_to_arrays,
+    generate_random_inputs,
+)
 
 
 def parse_args():
@@ -103,11 +106,11 @@ def main():
 
     start = time.time()
     # Encode inputs
-    data = tensors_to_bytes(inputs)
+    data = arrays_to_bytes(inputs)
     # Send data to server for inference
     response = requests.post(prediction_url, data=data)
     # Decode outputs
-    outputs = bytes_to_tensors(response.content)
+    outputs = bytes_to_arrays(response.content)
     end = time.time()
     elapsed_time = end - start
 
