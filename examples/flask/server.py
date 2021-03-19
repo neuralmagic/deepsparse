@@ -49,7 +49,7 @@ import flask
 from flask_cors import CORS
 
 from deepsparse import compile_model
-from utils_flask import bytes_to_tensors, tensors_to_bytes
+from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
 
 
 def parse_args():
@@ -114,7 +114,7 @@ def create_model_inference_app(
     def predict():
         data = flask.request.get_data()
 
-        inputs = bytes_to_tensors(data)
+        inputs = bytes_to_arrays(data)
         print(f"Received {len(inputs)} inputs from client")
 
         print("Executing model")
@@ -122,7 +122,7 @@ def create_model_inference_app(
 
         print(f"Inference time took {elapsed_time * 1000.0:.4f} milliseconds")
         print(f"Produced {len(outputs)} output tensors")
-        return tensors_to_bytes(outputs)
+        return arrays_to_bytes(outputs)
 
     @app.route("/info", methods=["GET"])
     def info():
