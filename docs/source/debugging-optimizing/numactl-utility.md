@@ -52,7 +52,7 @@ Given the architecture above, to run the DeepSparse Engine on the first four CPU
 
 Appending `--preferred 1` is needed here since the DeepSparse Engine is being bound to CPUs on the second socket.
 
-Note that using more than two sockets may not offer improvements over two sockets; if you have options, try different scenarios to see which setup is ideal for your use case. For batch size considerations, use an amount that is evenly divisible by the number of sockets you intend to use.
+Note: When running on multiple sockets using a batch size that is evenly divisible by the number of sockets will yield the best performance.
 
 
 ## DeepSparse Engine and Thread Pinning
