@@ -122,9 +122,6 @@ class Engine(object):
     Note 1: Engines are compiled for a specific batch size and
     for a specific number of CPU cores.
 
-    Note 2: multi socket support is not yet built in to the Engine,
-    all execution assumes single socket
-
     | Example:
     |    # create an engine for batch size 1 on all available cores
     |    engine = Engine("path/to/onnx", batch_size=1, num_cores=None)
@@ -224,8 +221,7 @@ class Engine(object):
     @property
     def num_sockets(self) -> int:
         """
-        :return: The number of sockets the engine is compiled to run on;
-            only current support is 1
+        :return: The number of sockets the engine is compiled to run on
         """
         return self._num_sockets
 
@@ -501,8 +497,8 @@ def compile_model(
     """
     Convenience function to compile a model in the DeepSparse Engine
     from an ONNX file for inference.
-    Gives defaults of batch_size == 1 and num_cores == None
-    (will use all physical cores available on a single socket).
+    Gives defaults of batch_size == 1, num_cores == None and num_sockets = None
+    (will use all physical cores available on all available sockets).
 
     :param model: Either a path to the model's onnx file, a SparseZoo model stub
         prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
@@ -536,6 +532,8 @@ def benchmark_model(
     from an ONNX file for inference.
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
+
+    Note 1: Benchmarking is currently only supported on a single socket.
 
     :param model: Either a path to the model's onnx file, a SparseZoo model stub
         prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
@@ -591,6 +589,8 @@ def analyze_model(
     The model must be defined in an ONNX graph and stored in a local file.
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
+
+    Note 1: Analysis is currently only supported on a single socket.
 
     :param model: Either a path to the model's onnx file, a SparseZoo model stub
         prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
