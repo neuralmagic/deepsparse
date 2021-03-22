@@ -533,7 +533,7 @@ def benchmark_model(
     Gives defaults of batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
-    Note 1: Benchmarking is currenlty only supoorted on a single socket.
+    Note 1: Benchmarking is currently only supported on a single socket.
 
     :param model: Either a path to the model's onnx file, a SparseZoo model stub
         prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
