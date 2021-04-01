@@ -62,7 +62,7 @@ To enable diagnostic logs on a per-run basis, specify it manually before each sc
 Then, to enable diagnostic logs, run:
 
 ```bash
-    NM_OGGING_LEVEL=diagnose python run_model.py
+    NM_LOGGING_LEVEL=diagnose python run_model.py
 ```
 
 To enable logging for your entire shell instance, execute within your shell:
