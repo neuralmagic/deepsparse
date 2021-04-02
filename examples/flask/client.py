@@ -45,11 +45,7 @@ import time
 
 import requests
 
-from deepsparse.utils import (
-    arrays_to_bytes,
-    bytes_to_arrays,
-    generate_random_inputs,
-)
+from deepsparse.utils import arrays_to_bytes, bytes_to_arrays, generate_random_inputs
 
 
 def parse_args():
