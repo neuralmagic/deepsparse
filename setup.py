@@ -14,7 +14,6 @@
 
 import os
 import sys
-from datetime import date
 from distutils import log
 from fnmatch import fnmatch
 from typing import Dict, List, Tuple
@@ -22,16 +21,19 @@ from typing import Dict, List, Tuple
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
+from deepsparse import __version__
+
 
 _PACKAGE_NAME = "deepsparse"
-_VERSION = "0.2.0"
-_VERSION_MAJOR, _VERSION_MINOR, _VERSION_BUG = _VERSION.split(".")
+_VERSION = __version__
+_VERSION_MAJOR, _VERSION_MINOR, _VERSION_BUG, _VERSION_BUILD = _VERSION.split(".") + (
+    [None] if len(_VERSION.split(".")) < 4 else []
+)
 _VERSION_MAJOR_MINOR = f"{_VERSION_MAJOR}.{_VERSION_MINOR}"
 _NIGHTLY = "nightly" in sys.argv
 
 if _NIGHTLY:
     _PACKAGE_NAME += "-nightly"
-    _VERSION += "." + date.today().strftime("%Y%m%d")
     # remove nightly param so it does not break bdist_wheel
     sys.argv.remove("nightly")
 

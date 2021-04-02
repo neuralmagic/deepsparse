@@ -19,4 +19,9 @@ for Neural Networks on commodity CPUs.
 
 # flake8: noqa
 
+try:
+    from deepsparse.version import version as __version__
+except Exception as err:
+    __version__ = "unknown"
+
 from .engine import *

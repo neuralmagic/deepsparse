@@ -13,6 +13,8 @@
 import os
 import sys
 
+from deepsparse import __version__
+
 sys.path.insert(0, os.path.abspath("../.."))
 
 
@@ -21,13 +23,17 @@ sys.path.insert(0, os.path.abspath("../.."))
 project = "DeepSparse"
 copyright = (
     "2021 - present / Neuralmagic, Inc. All Rights Reserved. "
-    'Licensed under the Neural Magic Engine License and Apache License, Version 2.0 as noted.'
+    "Licensed under the Neural Magic Engine License and Apache License, "
+    "Version 2.0 as noted."
 )
 author = "Neural Magic"
 
 # The full version, including alpha/beta/rc tags
-version = "0.1"
-release = "0.1.0"
+ver_major, ver_minor, ver_bug, ver_build = __version__.split(".") + (
+    [None] if len(__version__.split(".")) < 4 else []
+)
+version = f"{ver_major}.{ver_minor}"
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------
