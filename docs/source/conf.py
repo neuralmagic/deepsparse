@@ -29,7 +29,9 @@ copyright = (
 author = "Neural Magic"
 
 # The full version, including alpha/beta/rc tags
-ver_major, ver_minor, ver_bug = __version__.split(".")
+ver_major, ver_minor, ver_bug, ver_build = __version__.split(".") + (
+    [None] if len(__version__.split(".")) < 4 else []
+)
 version = f"{ver_major}.{ver_minor}"
 release = __version__
 
