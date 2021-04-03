@@ -17,7 +17,14 @@ Placeholder file, will be overwritten by the backend on build.
 Functionality for storing and setting the version info for DeepSparse
 """
 
-__all__ = ["__version__"]
+__all__ = [
+    "__version__",
+    "version",
+    "version_major",
+    "version_minor",
+    "version_bug",
+    "version_major_minor",
+]
 __version__ = "0.0.0"
 
 version = __version__
