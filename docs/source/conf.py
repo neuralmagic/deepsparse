@@ -29,11 +29,13 @@ copyright = (
 author = "Neural Magic"
 
 # The full version, including alpha/beta/rc tags
-ver_major, ver_minor, ver_bug, ver_build = __version__.split(".") + (
-    [None] if len(__version__.split(".")) < 4 else []
-)
-version = f"{ver_major}.{ver_minor}"
-release = __version__
+version = "unknown"
+version_major_minor = version
+# load and overwrite version info from sparseml package
+exec(open(os.path.join(os.pardir, os.pardir, "src", "deepsparse", "version.py")).read())
+release = version
+version = version_major_minor
+print(f"loaded versions from src/deepsparse/version.py and set to {release}, {version}")
 
 
 # -- General configuration ---------------------------------------------------
