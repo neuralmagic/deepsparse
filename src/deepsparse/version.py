@@ -23,6 +23,7 @@ __all__ = [
     "version_major",
     "version_minor",
     "version_bug",
+    "version_build",
     "version_major_minor",
 ]
 __version__ = "0.0.0"
