@@ -23,7 +23,15 @@ import sys
 from typing import Any, Tuple
 
 
-__all__ = ["VALID_VECTOR_EXTENSIONS", "architecture", "cpu_architecture", "cpu_details"]
+__all__ = [
+    "VALID_VECTOR_EXTENSIONS",
+    "architecture",
+    "cpu_architecture",
+    "cpu_details",
+    "cpu_vnni_compatible",
+    "cpu_avx2_compatible",
+    "cpu_avx512_compatible",
+]
 
 
 VALID_VECTOR_EXTENSIONS = {"avx2", "avx512"}
@@ -161,6 +169,31 @@ def cpu_architecture() -> architecture:
         )
 
     return arch
+
+
+def cpu_vnni_compatible() -> bool:
+    """
+    :return: True if the current cpu has the VNNI instruction set,
+        used for running int8 quantized networks performantly.
+    """
+    return cpu_architecture().vnni
+
+
+def cpu_avx512_compatible() -> bool:
+    """
+    :return: True if the current cpu has the AVX512 instruction set,
+        used for running neural networks performantly
+    """
+    return cpu_architecture().isa == "avx512"
+
+
+def cpu_avx2_compatible() -> bool:
+    """
+    :return: True if the current cpu has the AVX2 or AVX512 instruction sets,
+        used for running neural networks performantly
+        (if AVX2 only then less performant compared to strictly AVX512)
+    """
+    return cpu_architecture().isa == "avx2" or cpu_avx512_compatible()
 
 
 def cpu_details() -> Tuple[int, str, bool]:
