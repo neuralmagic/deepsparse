@@ -24,7 +24,7 @@ from setuptools.command.install import install
 
 version = "unknown"
 version_major_minor = version
-# load and overwrite version info from sparseml package
+# load and overwrite version info from deepsparse package
 exec(open(os.path.join("src", "deepsparse", "version.py")).read())
 print(f"loaded version {version} from src/deepsparse/version.py")
 
