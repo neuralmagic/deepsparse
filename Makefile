@@ -39,7 +39,7 @@ test-examples:
 
 # create docs
 docs:
-	sphinx-apidoc -o "$(DOCDIR)/source/api" src/deepsparse;
+	@echo "Running docs creation";
 	python utils/docs_builder.py --src $(DOCDIR) --dest $(DOCDIR)/build/html;
 
 docsupdate:
