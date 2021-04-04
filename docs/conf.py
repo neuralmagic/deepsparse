@@ -30,7 +30,7 @@ author = "Neural Magic"
 version = "unknown"
 version_major_minor = version
 # load and overwrite version info from deepsparse package
-exec(open(os.path.join(os.pardir, os.pardir, "src", "deepsparse", "version.py")).read())
+exec(open(os.path.join(os.pardir, "src", "deepsparse", "version.py")).read())
 release = version
 version = version_major_minor
 print(f"loaded versions from src/deepsparse/version.py and set to {release}, {version}")
