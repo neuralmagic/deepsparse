@@ -52,12 +52,31 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
     "sphinx_markdown_tables",
+    "sphinx_multiversion",
     "sphinx_rtd_theme",
     "recommonmark",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
+
+# Whitelist pattern for tags (set to None to ignore all tags)
+smv_tag_whitelist = r'^v.*$'
+
+# Whitelist pattern for branches (set to None to ignore all branches)
+smv_branch_whitelist = r'^(main)|(docs-upgrades)$'
+
+# Whitelist pattern for remotes (set to None to use local branches only)
+smv_remote_whitelist = r'^.*$'
+
+# Pattern for released versions
+smv_released_pattern = r'^tags/v.*$'
+
+# Format for versioned output directories inside the build directory
+smv_outputdir_format = '{ref.name}'
+
+# Determines whether remote or local git branches/tags are preferred if their output dirs conflict
+smv_prefer_remote_refs = False
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -102,6 +121,8 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_css_files = ["css/nm-theme-adjustment.css"]
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

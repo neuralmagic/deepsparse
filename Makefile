@@ -40,7 +40,12 @@ test-examples:
 # create docs
 docs:
 	sphinx-apidoc -o "$(DOCDIR)/source/api" src/deepsparse;
-	cd $(DOCDIR) && $(MAKE) html;
+	python utils/docs_builder.py --src $(DOCDIR) --dest $(DOCDIR)/build/html;
+
+docsupdate:
+	@echo "Runnning update to api docs";
+	find $(DOCDIR)/api | grep .rst | xargs rm -rf;
+	sphinx-apidoc -o "$(DOCDIR)/api" src/deepsparse;
 
 # creates wheel file
 build:
