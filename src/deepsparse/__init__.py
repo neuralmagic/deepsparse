@@ -24,4 +24,10 @@ try:
 except Exception as err:
     __version__ = "unknown"
 
+from .cpu import (
+    cpu_architecture,
+    cpu_avx2_compatible,
+    cpu_avx512_compatible,
+    cpu_vnni_compatible,
+)
 from .engine import *
