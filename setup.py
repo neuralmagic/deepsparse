@@ -21,15 +21,14 @@ from typing import Dict, List, Tuple
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
-from deepsparse import __version__
 
+version = "unknown"
+version_major_minor = version
+# load and overwrite version info from deepsparse package
+exec(open(os.path.join("src", "deepsparse", "version.py")).read())
+print(f"loaded version {version} from src/deepsparse/version.py")
 
 _PACKAGE_NAME = "deepsparse"
-_VERSION = __version__
-_VERSION_MAJOR, _VERSION_MINOR, _VERSION_BUG, _VERSION_BUILD = _VERSION.split(".") + (
-    [None] if len(_VERSION.split(".")) < 4 else []
-)
-_VERSION_MAJOR_MINOR = f"{_VERSION_MAJOR}.{_VERSION_MINOR}"
 _NIGHTLY = "nightly" in sys.argv
 
 if _NIGHTLY:
@@ -45,7 +44,7 @@ binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 _deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "tqdm>=4.0.0"]
 
 _nm_deps = [
-    f"{'sparsezoo-nightly' if _NIGHTLY else 'sparsezoo'}~={_VERSION_MAJOR_MINOR}"
+    f"{'sparsezoo-nightly' if _NIGHTLY else 'sparsezoo'}~={version_major_minor}"
 ]
 
 _dev_deps = [
@@ -113,7 +112,7 @@ def _setup_long_description() -> Tuple[str, str]:
 
 setup(
     name=_PACKAGE_NAME,
-    version=_VERSION,
+    version=version,
     author="Neuralmagic, Inc.",
     author_email="support@neuralmagic.com",
     description=(
