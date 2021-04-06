@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# ![icon for DeepSparse](https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/icon-deepsparse.png) DeepSparse Engine
+# ![icon for DeepSparse](https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png) DeepSparse Engine
 
 ### Neural network inference engine that delivers GPU-class performance for sparsified models on CPUs
 
@@ -68,7 +68,7 @@ Recipes encode the directions for how to sparsify a model into a simple, easily 
 
 **Full Deep Sparse product flow:**  
 
-<img src="https://docs.neuralmagic.com/docs/sparsification/flow-overview.svg" width="960px">
+<img src="https://docs.neuralmagic.com/docs/source/sparsification/flow-overview.svg" width="960px">
 
 ## Compatibility
 
