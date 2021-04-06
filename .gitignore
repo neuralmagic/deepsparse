@@ -763,7 +763,5 @@ MigrationBackup/
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos,linux,python,react,pycharm,emacs,vim,visualstudio,visualstudiocode
 
-/docs/source/api/*.rst
-
 licenses/
 engine-version.txt

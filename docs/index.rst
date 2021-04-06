@@ -111,9 +111,9 @@ Additionally, more information can be found via
     :maxdepth: 3
     :caption: General
 
-    quicktour
-    installation
-    hardware
+    source/quicktour
+    source/installation
+    source/hardware
 
 .. toctree::
     :maxdepth: 3
