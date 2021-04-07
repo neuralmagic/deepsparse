@@ -26,7 +26,7 @@ __all__ = [
     "version_build",
     "version_major_minor",
 ]
-__version__ = "0.0.0"
+__version__ = "0.2.0"
 
 version = __version__
 version_major, version_minor, version_bug, version_build = version.split(".") + (
