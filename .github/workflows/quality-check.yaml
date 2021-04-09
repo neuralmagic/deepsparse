@@ -1,0 +1,11 @@
+name: Quality Checks
+on: [push]
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: "⚙️ Install dependencies"
+        run: pip3 install .[dev]
+      - name: "🧹 Running quality checks"
+        run: make quality
