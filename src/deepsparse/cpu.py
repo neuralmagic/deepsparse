@@ -156,9 +156,10 @@ def cpu_architecture() -> architecture:
         )
         if avx_type_override not in VALID_VECTOR_EXTENSIONS:
             raise OSError(
-                "neuralmagic: invalid avx instruction set '{}' must be one of {}.".format(
-                    avx_type_override, ",".join(VALID_VECTOR_EXTENSIONS)
-                )
+                (
+                    "neuralmagic: invalid avx instruction set '{}' must be "
+                    "one of {}."
+                ).format(avx_type_override, ",".join(VALID_VECTOR_EXTENSIONS))
             )
         arch.override_isa(avx_type_override)
 
@@ -206,7 +207,8 @@ def cpu_details() -> Tuple[int, str, bool]:
         - detects the vector instruction set available (avx2, avx512)
         - if vnni is available
 
-    NM_ARCH environment variable can be used to override the avx instruction set detection
+    NM_ARCH environment variable can be used to override the avx instruction
+    set detection
 
     :return: a tuple containing the detected cpu information
              (number of physical cores per socket, avx instruction set, vnni support)

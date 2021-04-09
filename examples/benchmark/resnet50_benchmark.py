@@ -18,7 +18,8 @@ the SparseZoo on the DeepSparse Engine.
 
 ##########
 Command help:
-usage: resnet50_benchmark.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] [-b NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS]
+usage: resnet50_benchmark.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] \
+    [-b NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS]
 
 Benchmark sparsified ResNet50 models from the SparseZoo
 
@@ -27,11 +28,13 @@ optional arguments:
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
   -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on, defaults to all physical cores available on the system
+                        The number of physical cores to run the analysis on, defaults
+                        to all physical cores available on the system
   -b NUM_ITERATIONS, --num_iterations NUM_ITERATIONS
                         The number of times the benchmark will be run
   -w NUM_WARMUP_ITERATIONS, --num_warmup_iterations NUM_WARMUP_ITERATIONS
-                        The number of warmup runs that will be executed before the actual benchmarking
+                        The number of warmup runs that will be executed before the
+                        actual benchmarking
 
 ##########
 Example command for ResNet50 benchmarks with batch size 128 and 16 cores used:
@@ -103,7 +106,8 @@ def main():
     sample_inputs = [numpy.random.randn(batch_size, 3, 224, 224).astype(numpy.float32)]
 
     print(
-        f"Starting DeepSparse benchmarks using batch size {batch_size} and {num_cores} cores"
+        f"Starting DeepSparse benchmarks using batch size {batch_size} and {num_cores}"
+        " cores"
     )
 
     results = benchmark_model(
@@ -117,7 +121,10 @@ def main():
     print(f"ResNet-50 v1 Dense FP32 {results}")
 
     results = benchmark_model(
-        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-conservative",
+        (
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+            "pruned-conservative"
+        ),
         sample_inputs,
         batch_size=batch_size,
         num_cores=num_cores,
@@ -127,7 +134,10 @@ def main():
     print(f"ResNet-50 v1 Pruned Conservative FP32 {results}")
 
     results = benchmark_model(
-        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate",
+        (
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+            "pruned-moderate"
+        ),
         sample_inputs,
         batch_size=batch_size,
         num_cores=num_cores,
@@ -137,7 +147,10 @@ def main():
     print(f"ResNet-50 v1 Pruned Moderate FP32 {results}")
 
     results = benchmark_model(
-        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned_quant-moderate",
+        (
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+            "pruned_quant-moderate"
+        ),
         sample_inputs,
         batch_size=batch_size,
         num_cores=num_cores,
@@ -147,7 +160,10 @@ def main():
     print(f"ResNet-50 v1 Pruned Moderate INT8 {results}")
 
     results = benchmark_model(
-        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet-augmented/pruned_quant-aggressive",
+        (
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet-augmented/"
+            "pruned_quant-aggressive"
+        ),
         sample_inputs,
         batch_size=batch_size,
         num_cores=num_cores,
