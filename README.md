@@ -19,13 +19,18 @@ limitations under the License.
 ### Neural network inference engine that delivers GPU-class performance for sparsified models on CPUs
 
 <p>
+    <a href="https://docs.neuralmagic.com/deepsparse/">
+        <img alt="Documentation" src="https://img.shields.io/website/http/docs.neuralmagic.com/deepsparse/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25>
+    </a>
+    <a href="https://github.com/neuralmagic/deepsparse/actions/workflows/quality-check.yaml">
+        <img alt="Quality Check" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=Quality%20Checks&style=for-the-badge" height=25>
+    </a>
+</p>
+<p>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC"><img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=neural%20magic%20engine&color=purple&style=for-the-badge" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/LICENSE">
          <img alt="GitHub" src="https://img.shields.io/static/v1.svg?label=LICENSE&message=apache-2.0&color=purple&style=for-the-badge" height=25>
-    </a>
-    <a href="https://docs.neuralmagic.com/deepsparse/">
-        <img alt="Documentation" src="https://img.shields.io/website/http/docs.neuralmagic.com/deepsparse/index.html.svg?down_color=red&down_message=offline&up_message=online&style=for-the-badge" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/releases">
         <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height=25>
@@ -42,7 +47,7 @@ limitations under the License.
     <a href="https://twitter.com/neuralmagic">
         <img src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height=25>
     </a>
- </p>
+</p>
 
 ## Overview
 
