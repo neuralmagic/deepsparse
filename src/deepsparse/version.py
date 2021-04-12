@@ -12,24 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+
 """
-Placeholder file, will be overwritten by the backend on build.
-Functionality for storing and setting the version info for DeepSparse
+Functionality for storing and setting the version info for DeepSparse.  If
+a file named 'generated-version.py' exists, read version info from there, otherwise
+fall back to defaults.
 """
 
-__all__ = [
-    "__version__",
-    "version",
-    "version_major",
-    "version_minor",
-    "version_bug",
-    "version_build",
-    "version_major_minor",
-]
-__version__ = "0.2.0"
+version_file = os.path.join("src", "deepsparse", "generated-version.py")
 
-version = __version__
-version_major, version_minor, version_bug, version_build = version.split(".") + (
-    [None] if len(version.split(".")) < 4 else []
-)  # handle conditional for version being 3 parts or 4 (4 containing build date)
-version_major_minor = f"{version_major}.{version_minor}"
+if os.path.isfile(version_file):
+    exec(open(version_file).read())
+else:
+    __all__ = [
+        "__version__",
+        "version",
+        "version_major",
+        "version_minor",
+        "version_bug",
+        "version_build",
+        "version_major_minor",
+    ]
+    __version__ = "0.2.0"
+
+    version = __version__
+    version_major, version_minor, version_bug, version_build = version.split(".") + (
+        [None] if len(version.split(".")) < 4 else []
+    )  # handle conditional for version being 3 parts or 4 (4 containing build date)
+    version_major_minor = f"{version_major}.{version_minor}"
