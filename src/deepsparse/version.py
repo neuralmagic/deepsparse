@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import pathlib
 
 
 """
@@ -21,24 +22,30 @@ a file named 'generated-version.py' exists, read version info from there, otherw
 fall back to defaults.
 """
 
-version_file = os.path.join("src", "deepsparse", "generated-version.py")
 
-if os.path.isfile(version_file):
-    exec(open(version_file).read())
+__all__ = [
+    "__version__",
+    "version",
+    "version_major",
+    "version_minor",
+    "version_bug",
+    "version_build",
+    "version_major_minor",
+]
+
+
+# check for the backend's built version file, if it exists use that for version info
+# otherwise, fall back to version info in this file
+_deepsparse_dir = pathlib.Path(__file__).parent.absolute()
+_gen_version_file = os.path.join(_deepsparse_dir, "generated-version.py")
+
+if os.path.isfile(_gen_version_file):
+    exec(open(_gen_version_file).read())
 else:
-    __all__ = [
-        "__version__",
-        "version",
-        "version_major",
-        "version_minor",
-        "version_bug",
-        "version_build",
-        "version_major_minor",
-    ]
     __version__ = "0.2.0"
-
     version = __version__
-    version_major, version_minor, version_bug, version_build = version.split(".") + (
-        [None] if len(version.split(".")) < 4 else []
-    )  # handle conditional for version being 3 parts or 4 (4 containing build date)
-    version_major_minor = f"{version_major}.{version_minor}"
+
+version_major, version_minor, version_bug, version_build = version.split(".") + (
+    [None] if len(version.split(".")) < 4 else []
+)  # handle conditional for version being 3 parts or 4 (4 containing build date)
+version_major_minor = f"{version_major}.{version_minor}"
