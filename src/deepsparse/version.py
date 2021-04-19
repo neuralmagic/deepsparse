@@ -31,6 +31,7 @@ __all__ = [
     "version_bug",
     "version_build",
     "version_major_minor",
+    "splash",
 ]
 
 
@@ -49,3 +50,7 @@ version_major, version_minor, version_bug, version_build = version.split(".") + 
     [None] if len(version.split(".")) < 4 else []
 )  # handle conditional for version being 3 parts or 4 (4 containing build date)
 version_major_minor = f"{version_major}.{version_minor}"
+splash = (
+    "DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. "
+    f"version: {version} (release)"
+)
