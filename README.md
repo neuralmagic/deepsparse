@@ -122,7 +122,6 @@ Output:
 
 ```shell
 [
-    Model(stub=cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/base-none), 
     Model(stub=cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-conservative), 
     Model(stub=cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate), 
     Model(stub=cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned_quant-moderate), 
