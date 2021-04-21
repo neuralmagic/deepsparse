@@ -20,6 +20,7 @@ from typing import Dict, List, Tuple
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
+
 # default variables to be overwritten by the version.py file
 is_release = None
 version = "unknown"
