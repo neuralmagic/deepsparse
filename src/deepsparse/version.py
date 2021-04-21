@@ -32,25 +32,31 @@ __all__ = [
     "version_build",
     "version_major_minor",
     "splash",
+    "is_release",
 ]
 
 
 # check for the backend's built version file, if it exists use that for version info
 # otherwise, fall back to version info in this file
 _deepsparse_dir = pathlib.Path(__file__).parent.absolute()
-_gen_version_file = os.path.join(_deepsparse_dir, "generated-version.py")
+_gen_version_file = (
+    os.path.join(_deepsparse_dir, "generated-version.py")
+    if __file__ != "<input>"
+    else os.path.join(_deepsparse_dir, "src", "deepsparse", "generated-version.py")
+)  # <input> is a special case from exec on the file done in setup.py and docs build
 
 if os.path.isfile(_gen_version_file):
     exec(open(_gen_version_file).read())
 else:
     __version__ = "0.2.0"
     version = __version__
+    splash = (
+        "DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. "
+        f"version: {version} (release)"
+    )
 
+is_release = len(version.split(".")) < 4  # build number not included for releases
 version_major, version_minor, version_bug, version_build = version.split(".") + (
-    [None] if len(version.split(".")) < 4 else []
+    [None] if is_release else []
 )  # handle conditional for version being 3 parts or 4 (4 containing build date)
 version_major_minor = f"{version_major}.{version_minor}"
-splash = (
-    "DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. "
-    f"version: {version} (release)"
-)

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import sys
 from distutils import log
 from fnmatch import fnmatch
 from typing import Dict, List, Tuple
@@ -22,31 +21,24 @@ from setuptools import find_packages, setup
 from setuptools.command.install import install
 
 
+# default variables to be overwritten by the version.py file
+is_release = None
 version = "unknown"
 version_major_minor = version
-# load and overwrite version info from deepsparse package
+
+# load and overwrite version and release info from deepsparse package
 exec(open(os.path.join("src", "deepsparse", "version.py")).read())
 print(f"loaded version {version} from src/deepsparse/version.py")
 
-_PACKAGE_NAME = "deepsparse"
-_NIGHTLY = "nightly" in sys.argv
-
-if _NIGHTLY:
-    _PACKAGE_NAME += "-nightly"
-    # remove nightly param so it does not break bdist_wheel
-    sys.argv.remove("nightly")
-
+_PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
-
 _deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "tqdm>=4.0.0"]
-
 _nm_deps = [
-    f"{'sparsezoo-nightly' if _NIGHTLY else 'sparsezoo'}~={version_major_minor}"
+    f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_major_minor}"
 ]
-
 _dev_deps = [
     "beautifulsoup4==4.9.3",
     "black>=20.8b1",
