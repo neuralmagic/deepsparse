@@ -114,6 +114,16 @@ def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
     return num_sockets
 
 
+def _validate_scheduler(scheduler: Union[None, str]) -> str:
+    if not scheduler:
+        scheduler = "default"
+
+    if not isinstance(scheduler, str):
+        raise ValueError("unsupported type for scheduler: {}".format(type(scheduler)))
+
+    return scheduler
+
+
 class Engine(object):
     """
     Create a new DeepSparse Engine that compiles the given onnx file
@@ -136,6 +146,8 @@ class Engine(object):
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
+    :param scheduler: The kind of scheduler to execute with, either "single-stream"
+        or "multi-stream". Pass None for the default.
     """
 
     def __init__(
@@ -144,15 +156,21 @@ class Engine(object):
         batch_size: int,
         num_cores: int,
         num_sockets: int = None,
+        scheduler: str = None,
     ):
         self._model_path = _model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
         self._num_sockets = _validate_num_sockets(num_sockets)
+        self._scheduler = _validate_scheduler(scheduler)
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
         self._eng_net = LIB.deepsparse_engine(
-            self._model_path, self._batch_size, self._num_cores, self._num_sockets
+            self._model_path,
+            self._batch_size,
+            self._num_cores,
+            self._num_sockets,
+            self._scheduler,
         )
 
     def __call__(
@@ -483,6 +501,7 @@ class Engine(object):
             "batch_size": self._batch_size,
             "num_cores": self._num_cores,
             "num_sockets": self._num_sockets,
+            "scheduler": self._scheduler,
             "cpu_avx_type": self._cpu_avx_type,
             "cpu_vnni": self._cpu_vnni,
         }
@@ -493,6 +512,7 @@ def compile_model(
     batch_size: int = 1,
     num_cores: int = None,
     num_sockets: int = None,
+    scheduler: str = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -510,9 +530,17 @@ def compile_model(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
+    :param scheduler: The kind of scheduler to execute with, either "single-stream"
+        or "multi-stream". Pass None for the default.
     :return: The created Engine after compiling the model
     """
-    return Engine(model, batch_size, num_cores, num_sockets)
+    return Engine(
+        model,
+        batch_size,
+        num_cores,
+        num_sockets=num_sockets,
+        scheduler=scheduler,
+    )
 
 
 def benchmark_model(
@@ -526,6 +554,7 @@ def benchmark_model(
     include_outputs: bool = False,
     show_progress: bool = False,
     num_sockets: int = None,
+    scheduler: str = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -558,9 +587,17 @@ def benchmark_model(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
+    :param scheduler: The kind of scheduler to execute with, either "single-stream"
+        or "multi-stream". Pass None for the default.
     :return: the results of benchmarking
     """
-    model = compile_model(model, batch_size, num_cores, num_sockets)
+    model = compile_model(
+        model,
+        batch_size,
+        num_cores,
+        num_sockets=num_sockets,
+        scheduler=scheduler,
+    )
 
     return model.benchmark(
         inp,
