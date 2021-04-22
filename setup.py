@@ -96,12 +96,12 @@ class OverrideInstall(install):
 
         # unknown system, raise error on install
         raise OSError(
-                f"Unknown OS given of {sys.platform}, "
-                "it is unsupported for DeepSparse. "
-                "Please run on a Linux system. "
-                "More info can be found in our docs here: "
-                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-            )
+            f"Unknown OS given of {sys.platform}, "
+            "it is unsupported for DeepSparse. "
+            "Please run on a Linux system. "
+            "More info can be found in our docs here: "
+            "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+        )
 
     def _fix_file_modes(self):
         mode = 0o755
