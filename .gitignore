@@ -765,4 +765,4 @@ MigrationBackup/
 
 licenses/
 engine-version.txt
-src/deepsparse/generated-version.py
+src/deepsparse/generated_version.py

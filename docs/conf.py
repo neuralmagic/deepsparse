@@ -29,11 +29,15 @@ author = "Neural Magic"
 # The full version, including alpha/beta/rc tags
 version = "unknown"
 version_major_minor = version
-# load and overwrite version info from deepsparse package
-exec(open(os.path.join(os.pardir, "src", "deepsparse", "version.py")).read())
+
+# load and overwrite version and release info from deepsparse package
+version_path = os.path.join(os.pardir, "src", "deepsparse", "generated_version.py")
+if not os.path.exists(version_path):
+    version_path = os.path.join(os.pardir, "src", "deepsparse", "version.py")
+exec(open(version_path).read())
 release = version
 version = version_major_minor
-print(f"loaded versions from src/deepsparse/version.py and set to {release}, {version}")
+print(f"loaded version {release} from {version_path}")
 
 
 # -- General configuration ---------------------------------------------------
