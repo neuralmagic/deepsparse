@@ -63,9 +63,31 @@ LIB = init_deepsparse_lib()
 
 
 class Scheduler(Enum):
-    DEFAULT = "default"
-    SINGLESTREAM = "single-stream"
-    MULTISTREAM = "multi-stream"
+    """
+    Scheduler kinds to determine Engine execution strategy.
+    For most synchronous cases, the default single_stream is recommended.
+    For running a model server or parallel inferences, try multi_stream for
+    maximum utilization of hardware.
+
+    - default: maps to single_stream
+    - single_stream: requests from separate threads execute serially
+    - multi_stream: requests from separate threads execute in parallel
+    """
+
+    default = "default"
+    single_stream = "single_stream"
+    multi_stream = "multi_stream"
+
+    @staticmethod
+    def from_str(key: str):
+        if key in ("default"):
+            return Scheduler.default
+        elif key in ("single", "single_stream"):
+            return Scheduler.single_stream
+        elif key in ("multi", "multi_stream"):
+            return Scheduler.multi_stream
+        else:
+            raise ValueError(f"unsupported Scheduler: {key}")
 
 
 def _model_to_path(model: Union[str, Model, File]) -> str:
@@ -626,6 +648,7 @@ def analyze_model(
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
     num_sockets: int = None,
+    scheduler: Scheduler = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
@@ -661,13 +684,17 @@ def analyze_model(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the analysis structure containing the performance details of each layer
     """
     model = _model_to_path(model)
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
     num_sockets = _validate_num_sockets(num_sockets)
-    eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, num_sockets)
+    scheduler = _validate_scheduler(scheduler)
+    eng_net = LIB.deepsparse_engine(
+        model, batch_size, num_cores, num_sockets, scheduler.value
+    )
 
     return eng_net.benchmark(
         inp,
