@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 from distutils import log
 from fnmatch import fnmatch
 from typing import Dict, List, Tuple
@@ -61,12 +62,48 @@ _dev_deps = [
 
 class OverrideInstall(install):
     """
-    This class adds a hook that runs after regular install that
-    changes the permissions of all the binary files to 0755.
+    Install class to run checks for supported systems before install
+    and correcting binary file permissions after install.
     """
 
     def run(self):
-        install.run(self)
+        self._check_supported_system()
+        super().run()
+        self._fix_file_modes()
+
+    def _check_supported_system(self):
+        if sys.platform.startswith("linux"):
+            # linux is supported, allow install to go through
+            return
+
+        if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
+            # windows is not supported, raise error on install
+            raise OSError(
+                "Native Windows is currently unsupported for DeepSparse. "
+                "Please run on a Linux system or within a Linux container on Windows. "
+                "More info can be found in our docs here: "
+                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+            )
+
+        if sys.platform.startswith("darwin"):
+            # mac is not supported, raise error on install
+            raise OSError(
+                "Native Mac is currently unsupported for DeepSparse. "
+                "Please run on a Linux system or within a Linux container on Mac. "
+                "More info can be found in our docs here: "
+                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+            )
+
+        # unknown system, raise error on install
+        raise OSError(
+            f"Unknown OS given of {sys.platform}, "
+            "it is unsupported for DeepSparse. "
+            "Please run on a Linux system. "
+            "More info can be found in our docs here: "
+            "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+        )
+
+    def _fix_file_modes(self):
         mode = 0o755
         for filepath in self.get_outputs():
             if any(fnmatch(filepath, regex) for regex in binary_regexes):
