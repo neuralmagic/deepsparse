@@ -18,6 +18,7 @@ Code related to interfacing with a Neural Network in the DeepSparse Engine using
 
 import os
 import time
+from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
@@ -49,7 +50,7 @@ except ImportError:
     )
 
 
-__all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model"]
+__all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model", "Scheduler"]
 
 
 ARCH = cpu_architecture()
@@ -59,6 +60,12 @@ AVX_TYPE = ARCH.isa
 VNNI = ARCH.vnni
 
 LIB = init_deepsparse_lib()
+
+
+class Scheduler(Enum):
+    DEFAULT = "default"
+    SINGLESTREAM = "single-stream"
+    MULTISTREAM = "multi-stream"
 
 
 def _model_to_path(model: Union[str, Model, File]) -> str:
@@ -114,12 +121,14 @@ def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
     return num_sockets
 
 
-def _validate_scheduler(scheduler: Union[None, str]) -> str:
+def _validate_scheduler(scheduler: Union[None, Scheduler]) -> Scheduler:
     if not scheduler:
-        scheduler = "default"
+        scheduler = Scheduler.DEFAULT
 
-    if not isinstance(scheduler, str):
-        raise ValueError("unsupported type for scheduler: {}".format(type(scheduler)))
+    if not isinstance(scheduler, Scheduler):
+        raise ValueError(
+            "unsupported type for scheduler: {} ({})".format(scheduler, type(scheduler))
+        )
 
     return scheduler
 
@@ -146,8 +155,7 @@ class Engine(object):
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
-    :param scheduler: The kind of scheduler to execute with, either "single-stream"
-        or "multi-stream". Pass None for the default.
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     """
 
     def __init__(
@@ -156,7 +164,7 @@ class Engine(object):
         batch_size: int,
         num_cores: int,
         num_sockets: int = None,
-        scheduler: str = None,
+        scheduler: Scheduler = None,
     ):
         self._model_path = _model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
@@ -170,7 +178,7 @@ class Engine(object):
             self._batch_size,
             self._num_cores,
             self._num_sockets,
-            self._scheduler,
+            self._scheduler.value,
         )
 
     def __call__(
@@ -512,7 +520,7 @@ def compile_model(
     batch_size: int = 1,
     num_cores: int = None,
     num_sockets: int = None,
-    scheduler: str = None,
+    scheduler: Scheduler = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -530,8 +538,7 @@ def compile_model(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
-    :param scheduler: The kind of scheduler to execute with, either "single-stream"
-        or "multi-stream". Pass None for the default.
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: The created Engine after compiling the model
     """
     return Engine(
@@ -554,7 +561,7 @@ def benchmark_model(
     include_outputs: bool = False,
     show_progress: bool = False,
     num_sockets: int = None,
-    scheduler: str = None,
+    scheduler: Scheduler = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -587,8 +594,7 @@ def benchmark_model(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
-    :param scheduler: The kind of scheduler to execute with, either "single-stream"
-        or "multi-stream". Pass None for the default.
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the results of benchmarking
     """
     model = compile_model(
