@@ -18,6 +18,7 @@ Code related to interfacing with a Neural Network in the DeepSparse Engine using
 
 import os
 import time
+from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
@@ -49,7 +50,7 @@ except ImportError:
     )
 
 
-__all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model"]
+__all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model", "Scheduler"]
 
 
 ARCH = cpu_architecture()
@@ -59,6 +60,34 @@ AVX_TYPE = ARCH.isa
 VNNI = ARCH.vnni
 
 LIB = init_deepsparse_lib()
+
+
+class Scheduler(Enum):
+    """
+    Scheduler kinds to determine Engine execution strategy.
+    For most synchronous cases, the default single_stream is recommended.
+    For running a model server or parallel inferences, try multi_stream for
+    maximum utilization of hardware.
+
+    - default: maps to single_stream
+    - single_stream: requests from separate threads execute serially
+    - multi_stream: requests from separate threads execute in parallel
+    """
+
+    default = "default"
+    single_stream = "single_stream"
+    multi_stream = "multi_stream"
+
+    @staticmethod
+    def from_str(key: str):
+        if key in ("default"):
+            return Scheduler.default
+        elif key in ("single", "single_stream"):
+            return Scheduler.single_stream
+        elif key in ("multi", "multi_stream"):
+            return Scheduler.multi_stream
+        else:
+            raise ValueError(f"unsupported Scheduler: {key}")
 
 
 def _model_to_path(model: Union[str, Model, File]) -> str:
@@ -114,6 +143,18 @@ def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
     return num_sockets
 
 
+def _validate_scheduler(scheduler: Union[None, Scheduler]) -> Scheduler:
+    if not scheduler:
+        scheduler = Scheduler.default
+
+    if not isinstance(scheduler, Scheduler):
+        raise ValueError(
+            "unsupported type for scheduler: {} ({})".format(scheduler, type(scheduler))
+        )
+
+    return scheduler
+
+
 class Engine(object):
     """
     Create a new DeepSparse Engine that compiles the given onnx file
@@ -136,6 +177,7 @@ class Engine(object):
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     """
 
     def __init__(
@@ -144,15 +186,21 @@ class Engine(object):
         batch_size: int,
         num_cores: int,
         num_sockets: int = None,
+        scheduler: Scheduler = None,
     ):
         self._model_path = _model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
         self._num_sockets = _validate_num_sockets(num_sockets)
+        self._scheduler = _validate_scheduler(scheduler)
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
         self._eng_net = LIB.deepsparse_engine(
-            self._model_path, self._batch_size, self._num_cores, self._num_sockets
+            self._model_path,
+            self._batch_size,
+            self._num_cores,
+            self._num_sockets,
+            self._scheduler.value,
         )
 
     def __call__(
@@ -483,6 +531,7 @@ class Engine(object):
             "batch_size": self._batch_size,
             "num_cores": self._num_cores,
             "num_sockets": self._num_sockets,
+            "scheduler": self._scheduler,
             "cpu_avx_type": self._cpu_avx_type,
             "cpu_vnni": self._cpu_vnni,
         }
@@ -493,6 +542,7 @@ def compile_model(
     batch_size: int = 1,
     num_cores: int = None,
     num_sockets: int = None,
+    scheduler: Scheduler = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -510,9 +560,16 @@ def compile_model(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: The created Engine after compiling the model
     """
-    return Engine(model, batch_size, num_cores, num_sockets)
+    return Engine(
+        model,
+        batch_size,
+        num_cores,
+        num_sockets=num_sockets,
+        scheduler=scheduler,
+    )
 
 
 def benchmark_model(
@@ -526,6 +583,7 @@ def benchmark_model(
     include_outputs: bool = False,
     show_progress: bool = False,
     num_sockets: int = None,
+    scheduler: Scheduler = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -558,9 +616,16 @@ def benchmark_model(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the results of benchmarking
     """
-    model = compile_model(model, batch_size, num_cores, num_sockets)
+    model = compile_model(
+        model,
+        batch_size,
+        num_cores,
+        num_sockets=num_sockets,
+        scheduler=scheduler,
+    )
 
     return model.benchmark(
         inp,
@@ -583,6 +648,7 @@ def analyze_model(
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
     num_sockets: int = None,
+    scheduler: Scheduler = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
@@ -618,13 +684,17 @@ def analyze_model(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the analysis structure containing the performance details of each layer
     """
     model = _model_to_path(model)
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
     num_sockets = _validate_num_sockets(num_sockets)
-    eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, num_sockets)
+    scheduler = _validate_scheduler(scheduler)
+    eng_net = LIB.deepsparse_engine(
+        model, batch_size, num_cores, num_sockets, scheduler.value
+    )
 
     return eng_net.benchmark(
         inp,
