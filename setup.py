@@ -27,8 +27,11 @@ version = "unknown"
 version_major_minor = version
 
 # load and overwrite version and release info from deepsparse package
-exec(open(os.path.join("src", "deepsparse", "version.py")).read())
-print(f"loaded version {version} from src/deepsparse/version.py")
+version_path = os.path.join("src", "deepsparse", "generated_version.py")
+if not os.path.exists(version_path):
+    version_path = os.path.join("src", "deepsparse", "version.py")
+exec(open(version_path).read())
+print(f"loaded version {version} from {version_path}")
 
 _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 
