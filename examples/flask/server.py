@@ -48,70 +48,46 @@ import argparse
 import flask
 from flask_cors import CORS
 
-from deepsparse import compile_model
+from deepsparse import Scheduler, compile_model
 from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description=(
-            "Host an ONNX model as a server, using the DeepSparse Engine and Flask"
-        )
-    )
-
-    parser.add_argument(
-        "onnx_filepath",
-        type=str,
-        help="The full filepath of the ONNX model file",
-    )
-
-    parser.add_argument(
-        "-s",
-        "--batch_size",
-        type=int,
-        default=1,
-        help="The batch size to run the analysis for",
-    )
-    parser.add_argument(
-        "-j",
-        "--num_cores",
-        type=int,
-        default=0,
-        help=(
-            "The number of physical cores to run the analysis on, "
-            "defaults to all physical cores available on the system"
-        ),
-    )
-    parser.add_argument(
-        "-a",
-        "--address",
-        type=str,
-        default="0.0.0.0",
-        help="The IP address of the hosted model",
-    )
-    parser.add_argument(
-        "-p",
-        "--port",
-        type=str,
-        default="5543",
-        help="The port that the model is hosted on",
-    )
-
-    return parser.parse_args()
-
-
-def create_model_inference_app(
-    model_path: str, batch_size: int, num_cores: int, address: str, port: str
+def engine_flask_server(
+    model_path: str,
+    batch_size: int = 1,
+    num_cores: int = None,
+    num_sockets: int = None,
+    scheduler: Scheduler = None,
+    address: str = "0.0.0.0",
+    port: str = "5543",
 ) -> flask.Flask:
+    """
+
+    :param model_path: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
+    :param batch_size: The batch size of the inputs to be used with the model
+    :param num_cores: The number of physical cores to run the model on.
+        Pass None or 0 to run on the max number of cores
+        in one socket for the current machine, default None
+    :param num_sockets: The number of physical sockets to run the model on.
+        Pass None or 0 to run on the max number of sockets for the
+        current machine, default None
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    :param address: IP address to run on. Default is 0.0.0.0
+    :param port: port to run on. Default is 5543
+    :return: launches a flask server on the given address and port can run the
+        given model on the DeepSparse engine via HTTP requests
+    """
     print(f"Compiling model at {model_path}")
-    engine = compile_model(model_path, batch_size, num_cores)
+    engine = compile_model(model_path, batch_size, num_cores, num_sockets, scheduler)
     print(engine)
 
     app = flask.Flask(__name__)
     CORS(app)
 
-    @app.route("/predict", methods=["POST"])
-    def predict():
+    @app.route("/run", methods=["POST"])
+    def run():
         data = flask.request.get_data()
 
         inputs = bytes_to_arrays(data)
@@ -132,15 +108,82 @@ def create_model_inference_app(
     app.run(host=address, port=port, debug=False, threaded=True)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Host an ONNX model as a server, using the DeepSparse Engine and Flask"
+        )
+    )
+
+    parser.add_argument(
+        "model_path",
+        type=str,
+        help="The full filepath of the ONNX model file or SparseZoo stub for the model",
+    )
+
+    parser.add_argument(
+        "-b",
+        "--batch-size",
+        type=int,
+        default=1,
+        help="The batch size to run the engine with",
+    )
+    parser.add_argument(
+        "-c",
+        "--num-cores",
+        type=int,
+        default=0,
+        help=(
+            "The number of physical cores to run the engine on, "
+            "defaults to all physical cores available on the system"
+        ),
+    )
+    parser.add_argument(
+        "-s",
+        "--num-sockets",
+        type=int,
+        default=None,
+        help=(
+            "The number of physical sockets to run the engine on, "
+            "defaults to all physical sockets available on the system"
+        ),
+    )
+    parser.add_argument(
+        "--scheduler",
+        type=str,
+        default=None,
+        help="The kind of scheduler to run with",
+    )
+    parser.add_argument(
+        "-a",
+        "--address",
+        type=str,
+        default="0.0.0.0",
+        help="The IP address of the hosted model",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=str,
+        default="5543",
+        help="The port that the model is hosted on",
+    )
+
+    return parser.parse_args()
+
+
 def main():
     args = parse_args()
-    onnx_filepath = args.onnx_filepath
-    batch_size = args.batch_size
-    num_cores = args.num_cores
-    address = args.address
-    port = args.port
 
-    create_model_inference_app(onnx_filepath, batch_size, num_cores, address, port)
+    engine_flask_server(
+        args.model_path,
+        args.batch_size,
+        args.num_cores,
+        args.num_sockets,
+        args.scheduler,
+        args.address,
+        args.port,
+    )
 
 
 if __name__ == "__main__":
