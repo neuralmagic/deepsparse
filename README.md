@@ -115,7 +115,7 @@ from sparsezoo import Zoo
 from sparsezoo.models import classification
 
 model = classification.resnet_50()
-print(Zoo.search_optimized_models(model))
+print(Zoo.search_sparse_models(model))
 ```
 
 Output:
