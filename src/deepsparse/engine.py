@@ -143,9 +143,12 @@ def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
     return num_sockets
 
 
-def _validate_scheduler(scheduler: Union[None, Scheduler]) -> Scheduler:
+def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
     if not scheduler:
         scheduler = Scheduler.default
+
+    if isinstance(scheduler, str):
+        scheduler = Scheduler.from_str(scheduler)
 
     if not isinstance(scheduler, Scheduler):
         raise ValueError(
