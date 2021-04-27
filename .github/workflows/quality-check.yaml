@@ -5,6 +5,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: "neuralmagic/sparsezoo"
+          path: "sparsezoo"
+      - name: "⚙️ Install sparsezoo dependencies"
+        run: pip3 install sparsezoo/
+      - name: "Clean sparsezoo directory"
+        run: rm -r sparsezoo/
       - name: "⚙️ Install dependencies"
         run: pip3 install .[dev]
       - name: "🧹 Running quality checks"
