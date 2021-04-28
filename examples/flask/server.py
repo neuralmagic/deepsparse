@@ -40,7 +40,7 @@ optional arguments:
                         defaults to all physical sockets available on the
                         system
   --scheduler SCHEDULER
-                        The kind of scheduler to run with
+                        The kind of scheduler to run with. Defaults to multi_stream
   -a ADDRESS, --address ADDRESS
                         The IP address of the hosted model
   -p PORT, --port PORT  The port that the model is hosted on
@@ -69,7 +69,7 @@ def engine_flask_server(
     batch_size: int = 1,
     num_cores: int = None,
     num_sockets: int = None,
-    scheduler: Scheduler = None,
+    scheduler: Scheduler = Scheduler.multi_stream,
     address: str = "0.0.0.0",
     port: str = "5543",
 ) -> flask.Flask:
@@ -85,7 +85,7 @@ def engine_flask_server(
     :param num_sockets: The number of physical sockets to run the model on.
         Pass None or 0 to run on the max number of sockets for the
         current machine, default None
-    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    :param scheduler: The kind of scheduler to execute with. Defaults to multi_stream
     :param address: IP address to run on. Default is 0.0.0.0
     :param port: port to run on. Default is 5543
     :return: launches a flask server on the given address and port can run the
@@ -163,8 +163,8 @@ def parse_args():
     parser.add_argument(
         "--scheduler",
         type=str,
-        default=None,
-        help="The kind of scheduler to run with",
+        default=Scheduler.multi_stream,
+        help="The kind of scheduler to run with. Defaults to multi_stream",
     )
     parser.add_argument(
         "-a",
