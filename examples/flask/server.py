@@ -44,12 +44,16 @@ python examples/flask/server.py \
 """
 
 import argparse
+import os
 
 import flask
 from flask_cors import CORS
 
 from deepsparse import Scheduler, compile_model
-from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
+from deepsparse.utils import arrays_to_bytes, bytes_to_arrays, log_init
+
+
+_LOGGER = log_init(os.path.basename(__file__))
 
 
 def engine_flask_server(
@@ -79,9 +83,9 @@ def engine_flask_server(
     :return: launches a flask server on the given address and port can run the
         given model on the DeepSparse engine via HTTP requests
     """
-    print(f"Compiling model at {model_path}")
+    _LOGGER.info(f"Compiling model at {model_path}")
     engine = compile_model(model_path, batch_size, num_cores, num_sockets, scheduler)
-    print(engine)
+    _LOGGER.info(engine)
 
     app = flask.Flask(__name__)
     CORS(app)
@@ -91,20 +95,20 @@ def engine_flask_server(
         data = flask.request.get_data()
 
         inputs = bytes_to_arrays(data)
-        print(f"Received {len(inputs)} inputs from client")
+        _LOGGER.info(f"Received {len(inputs)} inputs from client")
 
-        print("Executing model")
+        _LOGGER.info("Executing model")
         outputs, elapsed_time = engine.timed_run(inputs)
 
-        print(f"Inference time took {elapsed_time * 1000.0:.4f} milliseconds")
-        print(f"Produced {len(outputs)} output tensors")
+        _LOGGER.info(f"Inference time took {elapsed_time * 1000.0:.4f} milliseconds")
+        _LOGGER.info(f"Produced {len(outputs)} output tensors")
         return arrays_to_bytes(outputs)
 
     @app.route("/info", methods=["GET"])
     def info():
         return flask.jsonify({"model_path": model_path, "engine": repr(engine)})
 
-    print("Starting Flask app")
+    _LOGGER.info("Starting Flask app")
     app.run(host=address, port=port, debug=False, threaded=True)
 
 

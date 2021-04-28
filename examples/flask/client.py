@@ -41,13 +41,22 @@ python examples/flask/client.py \
 """
 
 import argparse
+import os
 import time
-from typing import Any, List
+from typing import Any, Callable, List
 
 import numpy
 import requests
 
-from deepsparse.utils import arrays_to_bytes, bytes_to_arrays, generate_random_inputs
+from deepsparse.utils import (
+    arrays_to_bytes,
+    bytes_to_arrays,
+    generate_random_inputs,
+    log_init,
+)
+
+
+_LOGGER = log_init(os.path.basename(__file__))
 
 
 class EngineFlaskClient:
@@ -56,10 +65,24 @@ class EngineFlaskClient:
 
     :param address: IP address of server to query
     :param port: port that the server is running on
+    :param preprocessing_fn: function to preprocess inputs to the run argument before
+        sending inputs to the model server. Defaults to the `arrays_to_bytes` function
+        for serializing lists of numpy arrays
+    :param preprocessing_fn: function to postprocess outputs from model server
+        inferences. Defaults to the `bytes_to_arrays` function for de-serializing
+        lists of numpy arrays
     """
 
-    def __init__(self, address: str, port: str):
+    def __init__(
+        self,
+        address: str,
+        port: str,
+        preprocessing_fn: Callable[[Any], Any] = arrays_to_bytes,
+        postprocessing_fn: Callable[[Any], Any] = bytes_to_arrays,
+    ):
         self.url = f"http://{address}:{port}"
+        self.preprocessing_fn = preprocessing_fn
+        self.postprocessing_fn = postprocessing_fn
 
     def run(self, inp: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
@@ -69,12 +92,13 @@ class EngineFlaskClient:
             The expected order is the inputs order as defined in the ONNX graph
         :return: the list of outputs from the server after executing over the inputs
         """
-        data = arrays_to_bytes(inp)
+        data = self.preprocessing_fn(inp)
         response = self._post("run", data=data)
-        return bytes_to_arrays(response)
+        return self.postprocessing_fn(response)
 
     def _post(self, route: str, data: Any):
         route_url = f"{self.url}/{route}"
+        _LOGGER.debug(f"Sending POST request to {route_url}")
         return requests.post(route_url, data=data).content
 
 
@@ -124,18 +148,18 @@ def main():
 
     inputs = generate_random_inputs(args.model_path, args.batch_size)
 
-    print(f"Sending {len(inputs)} input tensors to {engine.url}/run")
+    _LOGGER.info(f"Sending {len(inputs)} input tensors to {engine.url}/run")
 
     start = time.time()
     outputs = engine.run(inputs)
     end = time.time()
     elapsed_time = end - start
 
-    print(f"Received response of {len(outputs)} output tensors:")
-    print(f"Round-trip time took {elapsed_time * 1000.0:.4f} milliseconds")
+    _LOGGER.info(f"Round-trip time took {elapsed_time * 1000.0:.4f} milliseconds")
+    _LOGGER.info(f"Received response of {len(outputs)} output tensors:")
 
     for i, out in enumerate(outputs):
-        print(f"\toutput #{i}: shape {out.shape}")
+        _LOGGER.info(f"\toutput #{i}: shape {out.shape}")
 
 
 if __name__ == "__main__":
