@@ -18,21 +18,29 @@ using the DeepSparse Engine as the inference backend
 
 ##########
 Command help:
-usage: server.py [-h] [-s BATCH_SIZE] [-j NUM_CORES] [-a ADDRESS] [-p PORT]
- onnx_filepath
+usage: server.py [-h] [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
+                 [--scheduler SCHEDULER] [-a ADDRESS] [-p PORT]
+                 model_path
 
 Host an ONNX model as a server, using the DeepSparse Engine and Flask
 
 positional arguments:
-  onnx_filepath         The full filepath of the ONNX model file
+  model_path            The full filepath of the ONNX model file or SparseZoo
+                        stub for the model
 
 optional arguments:
   -h, --help            show this help message and exit
-  -s BATCH_SIZE, --batch_size BATCH_SIZE
-                        The batch size to run the analysis for
-  -j NUM_CORES, --num_cores NUM_CORES
-                        The number of physical cores to run the analysis on,
+  -b BATCH_SIZE, --batch-size BATCH_SIZE
+                        The batch size to run the engine with
+  -c NUM_CORES, --num-cores NUM_CORES
+                        The number of physical cores to run the engine on,
                         defaults to all physical cores available on the system
+  -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
+                        The number of physical sockets to run the engine on,
+                        defaults to all physical sockets available on the
+                        system
+  --scheduler SCHEDULER
+                        The kind of scheduler to run with
   -a ADDRESS, --address ADDRESS
                         The IP address of the hosted model
   -p PORT, --port PORT  The port that the model is hosted on

@@ -18,17 +18,18 @@ ONNX model with the DeepSparse Engine as inference backend.
 
 ##########
 Command help:
-usage: client.py [-h] [-s BATCH_SIZE] [-a ADDRESS] [-p PORT] model_path
+usage: client.py [-h] [-b BATCH_SIZE] [-a ADDRESS] [-p PORT] model_path
 
-Communicate with a Flask server hosting an ONNX model with the
-DeepSparse Engine as inference backend.
+Communicate with a Flask server hosting an ONNX model with the DeepSparse
+Engine as inference backend.
 
 positional arguments:
-  model_path         The full filepath of the ONNX model file
+  model_path            The full filepath of the ONNX model file or SparseZoo
+                        stub of model
 
 optional arguments:
   -h, --help            show this help message and exit
-  -s BATCH_SIZE, --batch_size BATCH_SIZE
+  -b BATCH_SIZE, --batch-size BATCH_SIZE
                         The batch size to run the analysis for
   -a ADDRESS, --address ADDRESS
                         The IP address of the hosted model
