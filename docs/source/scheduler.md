@@ -40,7 +40,7 @@ The most common use cases for the multi-stream scheduler are where parallelism i
 
 Depending on your engine execution strategy, enable one of these options by running:
 
-```
+```python
 engine = compile_model(model_path, batch_size, num_cores, num_sockets, "single_stream")
 ```
 
