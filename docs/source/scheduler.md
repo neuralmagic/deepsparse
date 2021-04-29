@@ -46,7 +46,7 @@ engine = compile_model(model_path, batch_size, num_cores, num_sockets, "single_s
 
 or
 
-```
+```python
 engine = compile_model(model_path, batch_size, num_cores, num_sockets, "multi_stream")
 ```
 
