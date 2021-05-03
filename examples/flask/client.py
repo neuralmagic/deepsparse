@@ -18,17 +18,18 @@ ONNX model with the DeepSparse Engine as inference backend.
 
 ##########
 Command help:
-usage: client.py [-h] [-s BATCH_SIZE] [-a ADDRESS] [-p PORT] onnx_filepath
+usage: client.py [-h] [-b BATCH_SIZE] [-a ADDRESS] [-p PORT] model_path
 
-Communicate with a Flask server hosting an ONNX model with the
-DeepSparse Engine as inference backend.
+Communicate with a Flask server hosting an ONNX model with the DeepSparse
+Engine as inference backend.
 
 positional arguments:
-  onnx_filepath         The full filepath of the ONNX model file
+  model_path            The full filepath of the ONNX model file or SparseZoo
+                        stub of model
 
 optional arguments:
   -h, --help            show this help message and exit
-  -s BATCH_SIZE, --batch_size BATCH_SIZE
+  -b BATCH_SIZE, --batch-size BATCH_SIZE
                         The batch size to run the analysis for
   -a ADDRESS, --address ADDRESS
                         The IP address of the hosted model
@@ -41,11 +42,65 @@ python examples/flask/client.py \
 """
 
 import argparse
+import os
 import time
+from typing import Any, Callable, List
 
+import numpy
 import requests
 
-from deepsparse.utils import arrays_to_bytes, bytes_to_arrays, generate_random_inputs
+from deepsparse.utils import (
+    arrays_to_bytes,
+    bytes_to_arrays,
+    generate_random_inputs,
+    log_init,
+)
+
+
+_LOGGER = log_init(os.path.basename(__file__))
+
+
+class EngineFlaskClient:
+    """
+    Client object for interacting with HTTP server invoked with `engine_flask_server`.
+
+    :param address: IP address of server to query
+    :param port: port that the server is running on
+    :param preprocessing_fn: function to preprocess inputs to the run argument before
+        sending inputs to the model server. Defaults to the `arrays_to_bytes` function
+        for serializing lists of numpy arrays
+    :param preprocessing_fn: function to postprocess outputs from model server
+        inferences. Defaults to the `bytes_to_arrays` function for de-serializing
+        lists of numpy arrays
+    """
+
+    def __init__(
+        self,
+        address: str,
+        port: str,
+        preprocessing_fn: Callable[[Any], Any] = arrays_to_bytes,
+        postprocessing_fn: Callable[[Any], Any] = bytes_to_arrays,
+    ):
+        self.url = f"http://{address}:{port}"
+        self.preprocessing_fn = preprocessing_fn
+        self.postprocessing_fn = postprocessing_fn
+
+    def run(self, inp: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        """
+        Client function for running a forward pass of the server model.
+
+        :param inp: the list of inputs to pass to the server for inference.
+            The expected order is the inputs order as defined in the ONNX graph
+        :return: the list of outputs from the server after executing over the inputs
+        """
+        data = self.preprocessing_fn(inp)
+        response = self._post("run", data=data)
+        return self.postprocessing_fn(response)
+
+    def _post(self, route: str, data: Any):
+        route_url = f"{self.url}/{route}"
+        _LOGGER.debug(f"Sending POST request to {route_url}")
+        return requests.post(route_url, data=data).content
 
 
 def parse_args():
@@ -57,14 +112,14 @@ def parse_args():
     )
 
     parser.add_argument(
-        "onnx_filepath",
+        "model_path",
         type=str,
-        help="The full filepath of the ONNX model file",
+        help="The full filepath of the ONNX model file or SparseZoo stub of model",
     )
 
     parser.add_argument(
-        "-s",
-        "--batch_size",
+        "-b",
+        "--batch-size",
         type=int,
         default=1,
         help="The batch size to run the analysis for",
@@ -89,32 +144,23 @@ def parse_args():
 
 def main():
     args = parse_args()
-    onnx_filepath = args.onnx_filepath
-    batch_size = args.batch_size
-    address = args.address
-    port = args.port
 
-    prediction_url = f"http://{address}:{port}/predict"
+    engine = EngineFlaskClient(args.address, args.port)
 
-    inputs = generate_random_inputs(onnx_filepath, batch_size)
+    inputs = generate_random_inputs(args.model_path, args.batch_size)
 
-    print(f"Sending {len(inputs)} input tensors to {prediction_url}")
+    _LOGGER.info(f"Sending {len(inputs)} input tensors to {engine.url}/run")
 
     start = time.time()
-    # Encode inputs
-    data = arrays_to_bytes(inputs)
-    # Send data to server for inference
-    response = requests.post(prediction_url, data=data)
-    # Decode outputs
-    outputs = bytes_to_arrays(response.content)
+    outputs = engine.run(inputs)
     end = time.time()
     elapsed_time = end - start
 
-    print(f"Received response of {len(outputs)} output tensors:")
-    print(f"Round-trip time took {elapsed_time * 1000.0:.4f} milliseconds")
+    _LOGGER.info(f"Round-trip time took {elapsed_time * 1000.0:.4f} milliseconds")
+    _LOGGER.info(f"Received response of {len(outputs)} output tensors:")
 
     for i, out in enumerate(outputs):
-        print(f"    output #{i}: shape {out.shape}")
+        _LOGGER.info(f"\toutput #{i}: shape {out.shape}")
 
 
 if __name__ == "__main__":
