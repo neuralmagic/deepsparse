@@ -55,11 +55,11 @@ python client.py ~/Downloads/resnet18_pruned.onnx
 ```
 Output:
 ```bash
-[     INFO            onnx.py:  92 - generate_random_inputs() ] Generating 1 random inputs
-[     INFO            onnx.py: 102 - generate_random_inputs() ] -- random input #0 of shape = [1, 3, 224, 224]
-Sending 1 input tensors to http://0.0.0.0:5543/predict
-Recieved response of 2 output tensors:
-Round-trip time took 13.4261 milliseconds
-    output #0: shape (1, 1000)
-    output #1: shape (1, 1000)
+[     INFO            onnx.py: 127 - generate_random_inputs() ] -- generating random input #0 of shape = [1, 3, 224, 224]
+[     INFO          client.py: 152 -                 main() ] Sending 1 input tensors to http://0.0.0.0:5543/run
+[    DEBUG          client.py: 102 -                _post() ] Sending POST request to http://0.0.0.0:5543/run
+[     INFO          client.py: 159 -                 main() ] Round-trip time took 13.3283 milliseconds
+[     INFO          client.py: 160 -                 main() ] Received response of 2 output tensors:
+[     INFO          client.py: 163 -                 main() ]   output #0: shape (1, 1000)
+[     INFO          client.py: 163 -                 main() ]   output #1: shape (1, 1000)
 ```
