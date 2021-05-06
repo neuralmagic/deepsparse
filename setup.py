@@ -39,7 +39,7 @@ _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
-_deps = ["numpy>=1.16.3", "onnx>=1.5.0", "requests>=2.0.0", "tqdm>=4.0.0"]
+_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "tqdm>=4.0.0"]
 _nm_deps = [
     f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_major_minor}"
 ]
@@ -57,7 +57,7 @@ _dev_deps = [
     "pytest>=6.0.0",
     "sphinx-multiversion==0.2.4",
     "sphinx-rtd-theme",
-    "onnxruntime>=1.4.0",
+    "onnxruntime>=1.4.0,<=1.6.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
 ]
