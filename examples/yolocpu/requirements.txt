@@ -1,0 +1,13 @@
+cython
+gpiozero==1.5.1
+numpy
+opencv-python==3.4.6.27
+pytz
+flask
+flask-cors
+numpy==1.17.3
+scipy
+flask-socketio
+python-socketio
+deepsparse-nightly
+torch
