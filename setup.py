@@ -117,7 +117,7 @@ class OverrideInstall(install):
         ):
             raise EnvironmentError(
                 f"Python {supported_major}.{supported_minor} "
-                f"is currently only supported for DeepSparse. "
+                f"is currently only supported for DeepSparse; found {sys.version}. "
                 "Please run on a system with the proper Python version installed. "
                 "More info can be found in our docs here: "
                 "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
