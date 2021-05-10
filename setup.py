@@ -71,6 +71,7 @@ class OverrideInstall(install):
 
     def run(self):
         self._check_supported_system()
+        self._check_supported_python_version()
         super().run()
         self._fix_file_modes()
 
@@ -105,6 +106,22 @@ class OverrideInstall(install):
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
         )
+
+    def _check_supported_python_version(self):
+        supported_major = 3
+        supported_minor = [6, 7, 8]
+
+        if (
+            sys.version_info[0] != supported_major
+            or sys.version_info[1] not in supported_minor
+        ):
+            raise EnvironmentError(
+                f"Python {supported_major}.{supported_minor} "
+                f"is currently only supported for DeepSparse. "
+                "Please run on a system with the proper Python version installed. "
+                "More info can be found in our docs here: "
+                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+            )
 
     def _fix_file_modes(self):
         mode = 0o755
