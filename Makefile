@@ -31,12 +31,12 @@ style:
 # run tests for the repo
 test:
 	@echo "Running python tests";
-	@pytest ./tests/;
+	@SPARSEZOO_TEST_MODE="true" pytest ./tests/;
 
 # run example tests for the repo
 test-examples:
 	@echo "Running python example tests";
-	@pytest ./examples/;
+	@SPARSEZOO_TEST_MODE="true" pytest ./examples/;
 
 # create docs
 docs:
