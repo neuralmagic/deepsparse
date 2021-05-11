@@ -101,6 +101,9 @@ Release History
 ===============
 
 Official builds are hosted on PyPi
+=======
+Official builds are hosted on PyPI
+
 - stable: `deepsparse <https://pypi.org/project/deepsparse>`_
 - nightly (dev): `deepsparse-nightly <https://pypi.org/project/deepsparse-nightly>`_
 
@@ -129,8 +132,9 @@ Additionally, more information can be found via
 
 .. toctree::
     :maxdepth: 3
-    :caption: Help
+    :caption: Connect Online
 
     Bugs, Feature Requests <https://github.com/neuralmagic/deepsparse/issues>
-    Support, General Q&A <https://github.com/neuralmagic/deepsparse/discussions>
+    Support, General Q&A Forums <https://discuss.neuralmagic.com/>
+    Deep Sparse Slack Community <https://discuss-neuralmagic.slack.com/>
     Neural Magic Docs <https://docs.neuralmagic.com>

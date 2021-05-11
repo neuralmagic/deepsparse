@@ -77,7 +77,7 @@ For documentation edits, include:
 
 ## Question or Problem
 
-- Go to: [GitHub Discussions](https://github.com/neuralmagic/deepsparse/discussions/)
+- Sign up or log in: **Deep Sparse Community** [Discourse Forum](https://discuss.neuralmagic.com/c/deepsparse-engine/6) and/or [Slack](https://discuss-neuralmagic.slack.com/). We are growing the community member by member and happy to see you there.
 
 Post all other questions including support or how to contribute. Don’t forget to search through existing discussions to avoid duplication! Thanks!
 
