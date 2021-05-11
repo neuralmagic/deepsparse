@@ -100,8 +100,6 @@ Resources and Learning More
 Release History
 ===============
 
-Official builds are hosted on PyPi
-=======
 Official builds are hosted on PyPI
 
 - stable: `deepsparse <https://pypi.org/project/deepsparse>`_
