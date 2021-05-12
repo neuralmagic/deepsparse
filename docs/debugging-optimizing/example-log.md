@@ -16,7 +16,7 @@ limitations under the License.
 
 # Example Log, Verbose Level = diagnose
 
-The following is an example log with `NM_LOGGING_LEVEL=diagnose` running a super_resolution network, where we only support running 70% of it. Different portions of the log are explained in [Parsing an Example Log](./diagnostics-debugging.md#parsing-an-example-log).
+The following is an example log with `NM_LOGGING_LEVEL=diagnose` running a super_resolution network, where we only support running 70% of it. Different portions of the log are explained in [Parsing an Example Log](diagnostics-debugging.md#parsing-an-example-log).
 
 ```bash
 onnx_filename : test-models/cv-resolution/super_resolution/none-bsd300-onnx-repo/model.onnx

@@ -66,6 +66,7 @@ For example, pruning plus quantization can give noticeable improvements in perfo
 
 The Deep Sparse product suite builds on top of sparsification enabling you to easily apply the techniques to your datasets and models using recipe-driven approaches.
 Recipes encode the directions for how to sparsify a model into a simple, easily editable format.
+
 - Download a sparsification recipe and sparsified model from the `SparseZoo <https://github.com/neuralmagic/sparsezoo>`_.
 - Alternatively, create a recipe for your model using `Sparsify <https://github.com/neuralmagic/sparsify>`_.
 - Apply your recipe with only a few lines of code using `SparseML <https://github.com/neuralmagic/sparseml>`_.
@@ -121,6 +122,7 @@ Additionally, more information can be found via
     :caption: Performance
 
     debugging-optimizing/index
+    source/scheduler
 
 .. toctree::
     :maxdepth: 2
