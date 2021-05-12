@@ -38,7 +38,7 @@ try:
     from deepsparse.generated_version import is_release, splash, version
 except Exception:
     # otherwise, fall back to version info in this file
-    version = "0.3.0"
+    version = "0.3.1"
     is_release = False
     splash = (
         "DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. "

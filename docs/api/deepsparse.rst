@@ -51,6 +51,22 @@ deepsparse.engine module
    :undoc-members:
    :show-inheritance:
 
+deepsparse.generated\-version module
+------------------------------------
+
+.. automodule:: deepsparse.generated-version
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+deepsparse.generated\_version module
+------------------------------------
+
+.. automodule:: deepsparse.generated_version
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 deepsparse.lib module
 ---------------------
 

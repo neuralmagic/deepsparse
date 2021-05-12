@@ -240,7 +240,7 @@ We appreciate contributions to the code, examples, and documentation as well as 
 
 ## Join the Community
 
-For user help or questions about the DeepSparse Engine, use our [GitHub Discussions](https://www.github.com/neuralmagic/deepsparse/discussions/). Everyone is welcome!
+For user help or questions about the DeepSparse Engine, sign up or log in: **Deep Sparse Community** [Discourse Forum](https://discuss.neuralmagic.com/) and/or [Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there.
 
 You can get the latest news, webinar and event invites, research papers, and other ML Performance tidbits by [subscribing](https://neuralmagic.com/subscribe/) to the Neural Magic community.
 
@@ -254,7 +254,7 @@ Example files and scripts included in this repository are licensed under the [Ap
 
 ## Release History
 
-Official builds are hosted on PyPi
+Official builds are hosted on PyPI
 
 - stable: [deepsparse](https://pypi.org/project/deepsparse/)
 - nightly (dev): [deepsparse-nightly](https://pypi.org/project/deepsparse-nightly/)
