@@ -105,7 +105,7 @@ anchor grids should be updated.
 ### Client
 
 `client.py` provides a `YoloDetectionClient` object to make requests to the server easy.
-The file is self documented.  See example usage below:
+The file is self-documented.  See example usage below:
 
 ```python
 from client import YoloDetectionClient
