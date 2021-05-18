@@ -99,7 +99,7 @@ The app exposes HTTP endpoints at:
 For a full list of options, run `python server.py -h`.
 
 Currently, the server is set to do pre-processing for the yolov3-spp
-model, if other models are used, the image shape, output shapes, and
+model; if other models are used, the image shape, output shapes, and
 anchor grids should be updated. 
 
 ### Client
