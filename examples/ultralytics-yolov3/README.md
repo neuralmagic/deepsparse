@@ -93,7 +93,7 @@ This starts a Flask app with the DeepSparse Engine as the inference backend, acc
 
 The app exposes HTTP endpoints at:
 - `/info` to get information about the compiled model
-- `/predict` to send images to the model and receive detected in response.
+- `/predict` to send images to the model and receive as detected in response.
     The number of images should match the compiled model's batch size.
 
 For a full list of options, run `python server.py -h`.
