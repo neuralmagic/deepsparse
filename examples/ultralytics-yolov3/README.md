@@ -17,7 +17,7 @@ limitations under the License.
 # Ultralytics/yolov3-DeepSparse Inference Examples
 This directory contains examples of benchmarking, annotating, and serving inferences
 of YOLOv3 models from the [ultralytics/yolov3](https://github.com/ultralytics/yolov5)
-repository using the DeepSparse engine. The DeepSparse engine is able to achieve
+repository using the DeepSparse Engine. The DeepSparse Engine is able to achieve
 [real-time inferencing of YOLOv3 on CPUs](https://neuralmagic.com/blog/benchmark-yolov3-on-cpus-with-deepsparse/)
 by leveraging pruned and quantized YOLOv3 models. These examples can load pre-trained,
 sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) or you can
