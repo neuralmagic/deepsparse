@@ -68,7 +68,7 @@ Note for quantized performance, your CPU must support VNNI instructions.
 
 # Example YOLO DeepSparse Flask Server
 
-To illustrate how the DeepSparse engine can be used for YOLO model deployments, this directory
+To illustrate how the DeepSparse Engine can be used for YOLO model deployments, this directory
 contains a sample model server and client. 
 
 The server uses Flask to create an app with the DeepSparse Engine hosting a
