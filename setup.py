@@ -43,9 +43,7 @@ _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 _deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "tqdm>=4.0.0"]
-_nm_deps = [
-    f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"
-]
+_nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
     "beautifulsoup4==4.9.3",
     "black>=20.8b1",
