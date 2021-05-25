@@ -25,7 +25,9 @@ from setuptools.command.install import install
 # default variables to be overwritten by the version.py file
 is_release = None
 version = "unknown"
-version_major_minor = version
+version_major = version
+version_minor = version
+version_bug = version
 
 # load and overwrite version and release info from deepsparse package
 version_path = os.path.join("src", "deepsparse", "generated_version.py")
@@ -33,6 +35,7 @@ if not os.path.exists(version_path):
     version_path = os.path.join("src", "deepsparse", "version.py")
 exec(open(version_path).read())
 print(f"loaded version {version} from {version_path}")
+version_base = f"{version_major}.{version_minor}.{version_bug}"
 
 _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 
@@ -41,7 +44,7 @@ binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 _deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "tqdm>=4.0.0"]
 _nm_deps = [
-    f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_major_minor}"
+    f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"
 ]
 _dev_deps = [
     "beautifulsoup4==4.9.3",
