@@ -2,10 +2,10 @@
 
 BUILDDIR := $(PWD)
 BUILD_ARGS :=  # set nightly to build nightly release
-CHECKDIRS := examples tests src utils notebooks setup.py
+CHECKDIRS := examples tests src utils setup.py
 PYCHECKGLOBS := 'examples/**/*.py' 'scripts/**/*.py' 'src/**/*.py' 'tests/**/*.py' 'utils/**/*.py' setup.py
 DOCDIR := docs
-MDCHECKGLOBS := 'docs/**/*.md' 'docs/**/*.rst' 'examples/**/*.md' 'notebooks/**/*.md' 'scripts/**/*.md'
+MDCHECKGLOBS := 'docs/**/*.md' 'docs/**/*.rst' 'examples/**/*.md' 'scripts/**/*.md'
 MDCHECKFILES := CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPING.md README.md
 SPARSEZOO_TEST_MODE := "true"
 
