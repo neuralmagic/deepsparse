@@ -61,10 +61,10 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
 
 <p>
     <a href="https://neuralmagic.com/blog/benchmark-resnet50-with-deepsparse/">
-        <img src="https://docs.neuralmagic.com/docs/source/highlights/deepsparse/resnet-50.png" />
+        <img src="https://docs.neuralmagic.com/docs/source/highlights/deepsparse/resnet-50.png" width="256px" />
     </a>
     <a href="https://neuralmagic.com/blog/benchmark-yolov3-on-cpus-with-deepsparse/">
-        <img src="https://docs.neuralmagic.com/docs/source/highlights/deepsparse/yolov3.png" />
+        <img src="https://docs.neuralmagic.com/docs/source/highlights/deepsparse/yolov3.png" width="256px" />
     </a>
 </p>
 
