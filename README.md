@@ -64,7 +64,7 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
         <img alt="ResNet-50, b64 - ORT: 296 images/sec vs DeepSparse: 2305 images/sec on 24 cores" src="https://docs.neuralmagic.com/docs/source/highlights/deepsparse/resnet-50.png" width="256px" />
     </a>
     <a href="https://neuralmagic.com/blog/benchmark-yolov3-on-cpus-with-deepsparse/">
-        <img src="https://docs.neuralmagic.com/docs/source/highlights/deepsparse/yolov3.png" width="256px" />
+        <img alt="YOLOv3, b64 - PyTorch: 6.9 images/sec vs. DeepSparse: 46.5 images/sec" src="https://docs.neuralmagic.com/docs/source/highlights/deepsparse/yolov3.png" width="256px" />
     </a>
 </p>
 
