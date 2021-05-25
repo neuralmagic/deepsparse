@@ -50,7 +50,7 @@ limitations under the License.
 
 ## Overview
 
-The DeepSparse Engine is a CPU runtime that delivers GPU-class performance by taking advantage of sparsity (read more about sparsification here) within neural networks to reduce compute required as well as accelerate memory bound workloads. 
+The DeepSparse Engine is a CPU runtime that delivers GPU-class performance by taking advantage of sparsity (read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification)) within neural networks to reduce compute required as well as accelerate memory bound workloads. 
 It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
 The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes package APIs along with examples to quickly get started benchmarking and inferencing sparse models.
