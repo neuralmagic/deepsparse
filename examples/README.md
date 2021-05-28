@@ -30,3 +30,4 @@ Open a Pull Request to [contribute](https://github.com/neuralmagic/deepsparse/bl
 | [Classification](https://github.com/neuralmagic/deepsparse/blob/main/examples/classification/)  | How to use classification models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine  |
 | [Detection](https://github.com/neuralmagic/deepsparse/blob/main/examples/detection/)  | How to use object detection models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine  |
 | [Model Server](https://github.com/neuralmagic/deepsparse/blob/main/examples/flask/)  | Simple model server and client example, showing how to use the DeepSparse Engine as an inference backend for a real-time inference server |
+| [YOLOv3](https://github.com/neuralmagic/deepsparse/blob/main/examples/ultralytics-yolov3/) | Serving, benchmarking, and running annotation inferences with YOLOv3 models |
