@@ -27,7 +27,7 @@ create your own using the
 ## Installation
 The dependencies for this example can be installed using `pip`:
 ```bash
-pip3 install deepsparse sparseml[torchvision] flask flask-cors opencv-python
+pip3 install -r requirements.txt
 ```
 
 ## Annotation Example
