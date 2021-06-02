@@ -24,7 +24,7 @@ Install DeepSparse with `pip install deepsparse`.
 
 ## Notebook
 
-There is a step-by-step [detection.ipynb notebook](https://github.com/neuralmagic/deepsparse/blob/main/notebooks/detection.ipynb) for this example.
+There is a step-by-step [detection.ipynb notebook](https://github.com/neuralmagic/deepsparse/blob/main/examples/detection/detection.ipynb) for this example.
 
 ## Execution
 
