@@ -217,8 +217,8 @@ outputs = engine.run(inputs)
 ```
 **Compatibility/Support Notes**
 - ONNX version 1.5-1.7
-- opset version 11+
-- IR version has not been tested at this time
+- ONNX opset version 11+
+- ONNX IR version has not been tested at this time
 
 For a more in-depth read on available APIs and workflows, check out the [examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse).
 
