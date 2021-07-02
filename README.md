@@ -215,6 +215,10 @@ inputs = generate_random_inputs(onnx_filepath, batch_size)
 engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
+**Compatibility/Support Notes**
+- ONNX version 1.5-1.7
+- ONNX opset version 11+
+- ONNX IR version has not been tested at this time
 
 For a more in-depth read on available APIs and workflows, check out the [examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse).
 
