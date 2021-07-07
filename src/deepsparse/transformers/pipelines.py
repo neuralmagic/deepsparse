@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import csv
-import json
 import os
 import pickle
 import sys
@@ -52,17 +50,8 @@ from deepsparse import Engine, compile_model, cpu
 from psutil import cpu_count
 from sparsezoo import Zoo
 from transformers.configuration_utils import PretrainedConfig
-from transformers.convert_graph_to_onnx import (
-    convert_pytorch,
-    convert_tensorflow,
-    infer_shapes,
-)
 from transformers.data import SquadExample, squad_convert_examples_to_features
-from transformers.file_utils import (
-    add_end_docstrings,
-    is_tf_available,
-    is_torch_available,
-)
+from transformers.file_utils import add_end_docstrings
 from transformers.models.auto import AutoConfig, AutoTokenizer
 from transformers.tokenization_utils import PreTrainedTokenizer
 from transformers.tokenization_utils_base import BatchEncoding, PaddingStrategy
@@ -71,7 +60,6 @@ from transformers.utils import logging
 
 __all__ = ["Pipeline", "QuestionAnsweringPipeline", "pipeline"]
 
-ONNX_CACHE_DIR = Path(os.path.dirname(__file__)).parent.joinpath(".onnx")
 MAX_LENGTH = 128
 
 logger = logging.get_logger(__name__)
