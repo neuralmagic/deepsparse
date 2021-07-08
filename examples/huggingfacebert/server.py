@@ -47,6 +47,7 @@ import argparse
 import json
 import sys
 import time
+from typing import Any, Callable
 
 import flask
 from flask import Flask, jsonify, make_response
@@ -59,7 +60,12 @@ app = Flask(__name__)
 CORS(app)
 
 
-def run_server(predictor, host="0.0.0.0", port="5543", info=None):
+def run_server(
+    predictor: Callable[[Any, Any], Any],
+    host: str = "0.0.0.0",
+    port: str = "5543",
+    info: str = None,
+):
     """
     Method to create routes and serve predictor on the specified port
     """
@@ -94,7 +100,7 @@ def run_server(predictor, host="0.0.0.0", port="5543", info=None):
         )
 
     @app.route("/<page_name>")
-    def unimplemented(page_name):
+    def unimplemented(page_name: str):
         """
         Route for unimplemented pages
         """

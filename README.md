@@ -177,7 +177,7 @@ engine_base = compile_model(
     model="zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/base-none", 
     batch_size=batch_size,
 )
-benchmarks_base = engine_base.benchmark(sample_inputs)
+benchmarks_base = engine_base.benchmark_bert(sample_inputs)
 print(benchmarks_base)
 
 # run sparse benchmarking
@@ -187,7 +187,7 @@ engine_sparse = compile_model(
 )
 if not engine_sparse.cpu_vnni:
     print("WARNING: VNNI instructions not detected, quantization speedup not well supported")
-benchmarks_sparse = engine_sparse.benchmark(sample_inputs)
+benchmarks_sparse = engine_sparse.benchmark_bert(sample_inputs)
 print(benchmarks_sparse)
 
 print(f"Speedup: {benchmarks_sparse.items_per_second / benchmarks_base.items_per_second:.2f}x")
