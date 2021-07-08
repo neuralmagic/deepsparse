@@ -18,8 +18,7 @@ using the DeepSparse Engine as the inference backend
 
 ##########
 Command help:
-usage: server.py [-h] [-b BATCH_SIZE] [-c NUM_CORES] [-a ADDRESS] [-p PORT]
-                 [-q]
+usage: server.py [-h] [-c NUM_CORES] [-a ADDRESS] [-p PORT]
                  onnx_filepath
 
 Host a BERT ONNX model as a server, using the DeepSparse Engine and Flask
@@ -30,8 +29,6 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -b BATCH_SIZE, --batch-size BATCH_SIZE
-                        The batch size to run the analysis for
   -c NUM_CORES, --num-cores NUM_CORES
                         The number of physical cores to run the analysis on,
                         defaults to all physical cores available on the system
@@ -41,13 +38,13 @@ optional arguments:
 ##########
 Example command for running:
 python server.py \
-    ~/models/bert-base-uncased.onnx
+    ~/huggingfacebert/bert-base-uncased.onnx
 """
 import argparse
 import json
 import sys
 import time
-from typing import Any, Callable
+from typing import Any, Callable, List
 
 import flask
 from flask import Flask, jsonify, make_response
@@ -81,9 +78,13 @@ def run_server(
         :returns: A json with results from predictor and the inputs
         """
         data = json.loads(flask.request.get_data())
+        assert "question" in data and type(data["question"]) in [str, List[str]]
+        assert "context" in data and type(data["context"]) in [str, List[str]]
+
         start = time.time()
         result = predictor(question=data["question"], context=data["context"])
         inference_time = (time.time() - start) * 1000
+
         print(f"inference time: {inference_time:.4f} ms")
         return jsonify({"result": result, "inputs": data})
 
@@ -125,13 +126,6 @@ def parse_args(args=None):
         help="The full filepath of the ONNX model file or SparseZoo stub to the model",
     )
 
-    parser.add_argument(
-        "-b",
-        "--batch-size",
-        type=int,
-        default=1,
-        help="The batch size to run the analysis for",
-    )
     parser.add_argument(
         "-c",
         "--num-cores",

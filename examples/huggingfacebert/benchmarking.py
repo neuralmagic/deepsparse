@@ -12,12 +12,83 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Benchmarking script for BERT ONNX models with the DeepSparse engine.
+
+
+##########
+Command help:
+usage: benchmark_bert.py [-h] [-e {deepsparse,onnxruntime,torch}]
+                    [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
+                    [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS] [-q]
+                    [--fp16] [--device DEVICE]
+                    model_filepath
+
+Benchmark sparsified BERT models
+
+positional arguments:
+  model_filepath        The full filepath of the ONNX model file or SparseZoo
+                        stub to the model for deepsparse and onnxruntime
+                        benchmarks. Path to a .pt loadable PyTorch Module for
+                        torch benchmarks - the Module can be the top-level
+                        object loaded or loaded into 'model' in a state dict
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -e {deepsparse,onnxruntime,torch}, --engine {deepsparse,onnxruntime,torch}
+                        Inference engine backend to run benchmark_bert on. Choices
+                        are 'deepsparse', 'onnxruntime', and 'torch'. Default
+                        is 'deepsparse'
+  -b BATCH_SIZE, --batch-size BATCH_SIZE
+                        The batch size to run the benchmark_bert for
+  -c NUM_CORES, --num-cores NUM_CORES
+                        The number of physical cores to run the benchmark_bert on,
+                        defaults to None where it uses all physical cores
+                        available on the system. For DeepSparse benchmarks,
+                        this value is the number of cores per socket
+  -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
+                        For DeepSparse benchmarks only. The number of physical
+                        cores to run the benchmark_bert on. Defaults to None where
+                        is uses all sockets available on the system
+  -i NUM_ITERATIONS, --num-iterations NUM_ITERATIONS
+                        The number of iterations the benchmark_bert will be run for
+  -w NUM_WARMUP_ITERATIONS, --num-warmup-iterations NUM_WARMUP_ITERATIONS
+                        The number of warmup iterations that will be executed
+                        before the actual benchmarking
+  -q, --quantized-inputs
+                        Set flag to execute benchmark_bert with int8 inputs instead
+                        of float32
+  --fp16                Set flag to execute torch benchmark_bert in half precision
+                        (fp16)
+  --device DEVICE       Torch device id to benchmark_bert the model with. Default
+                        is cpu. Non cpu benchmarking only supported for torch
+                        benchmarking. Default is 'cpu' unless running a torch
+                        benchmark_bert and cuda is available, then cuda on device
+                        0. i.e. 'cuda', 'cpu', 0, 'cuda:1'
+
+
+##########
+Example for benchmarking on a local BERT PyTorch model on GPU with half precision:
+python benchmarking.py \
+    /PATH/TO/bert.pt \
+    --engine torch \
+    --batch-size 32 \
+    --device cuda:0 \
+    --half-precision
+
+##########
+Example for benchmarking on a local BERT ONNX with onnxruntime:
+python benchmark_bert.py \
+    /PATH/TO/bert.onnx \
+    --engine onnxruntime \
+    --batch-size 32 \
+"""
+
 import argparse
 import glob
 import os
 import sys
 import time
-from pathlib import Path
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import numpy
@@ -29,8 +100,6 @@ import torch
 from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
 from sparseml.onnx.utils import override_model_batch_size
-from sparsezoo.models.detection import yolo_v3 as zoo_yolo_v3
-from sparsezoo.utils import load_numpy_list
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
