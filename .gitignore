@@ -766,3 +766,4 @@ MigrationBackup/
 licenses/
 engine-version.txt
 src/deepsparse/generated_version.py
+.idea/*
