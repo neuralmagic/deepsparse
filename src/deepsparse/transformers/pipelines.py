@@ -21,7 +21,6 @@ https://github.com/patil-suraj/onnx_transformers/blob/master/onnx_transformers/p
 
 """
 
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import chain
@@ -33,27 +32,35 @@ import onnx
 from onnxruntime import GraphOptimizationLevel, InferenceSession, SessionOptions
 
 from deepsparse import Engine, compile_model, cpu
-from psutil import cpu_count
 from sparsezoo import Zoo
-from transformers.configuration_utils import PretrainedConfig
-from transformers.data import SquadExample, squad_convert_examples_to_features
-from transformers.file_utils import add_end_docstrings
-from transformers.models.auto import AutoConfig, AutoTokenizer
-from transformers.tokenization_utils import PreTrainedTokenizer
-from transformers.tokenization_utils_base import PaddingStrategy
-from transformers.utils import logging
+
+
+try:
+    from transformers.configuration_utils import PretrainedConfig
+    from transformers.data import SquadExample, squad_convert_examples_to_features
+    from transformers.models.auto import AutoConfig, AutoTokenizer
+    from transformers.tokenization_utils import PreTrainedTokenizer
+    from transformers.tokenization_utils_base import PaddingStrategy
+    from transformers.utils import logging
+
+    transformers_import_error = None
+except Exception as transformers_import_err:
+    PretrainedConfig = object
+    SquadExample = object
+    squad_convert_examples_to_features = None
+    AutoConfig = object
+    AutoTokenizer = object
+    PreTrainedTokenizer = object
+    PaddingStrategy = object
+    logging = None
+    transformers_import_error = transformers_import_err
 
 
 __all__ = ["ArgumentHandler", "Pipeline", "QuestionAnsweringPipeline", "pipeline"]
 
 MAX_LENGTH = 128
 
-logger = logging.get_logger(__name__)
-
-# Constants from the performance optimization available in onnxruntime
-# It needs to be done before importing onnxruntime
-os.environ["OMP_NUM_THREADS"] = str(cpu_count(logical=True))
-os.environ["OMP_WAIT_POLICY"] = "ACTIVE"
+logger = logging.get_logger(__name__) if logging else None
 
 
 class ArgumentHandler(ABC):
@@ -140,22 +147,6 @@ class _ScikitCompat(ABC):
         raise NotImplementedError()
 
 
-_PIPELINE_INIT_ARGS = r"""
-    :param model: loaded inference engine to run the model with, can be a
-        deepsparse Engine or onnxruntime InferenceSession
-    :param tokenizer: tokenizer to be used for preprocessing
-    :param config: transformers model config for this model
-    :param engine: name of inference engine that is used. Options are
-        deepsparse and onnxruntime
-    :param input_names: list of input names to the neural network
-    :param args_parser: Reference to the object in charge of parsing supplied
-        pipeline parameters. A default is provided if None
-    :param binary_output: if True, stores outputs as pickled binaries to avoid
-        storing large amount of textual data. Default is False
-"""
-
-
-@add_end_docstrings(_PIPELINE_INIT_ARGS)
 class Pipeline(_ScikitCompat):
     """
     The Pipeline class is the class from which all pipelines inherit.
@@ -171,6 +162,18 @@ class Pipeline(_ScikitCompat):
     Pipeline supports running with the DeepSparse engine or onnxruntime.
 
     Some pipeline, output large tensor object as nested-lists.
+
+    :param model: loaded inference engine to run the model with, can be a
+        deepsparse Engine or onnxruntime InferenceSession
+    :param tokenizer: tokenizer to be used for preprocessing
+    :param config: transformers model config for this model
+    :param engine: name of inference engine that is used. Options are
+        deepsparse and onnxruntime
+    :param input_names: list of input names to the neural network
+    :param args_parser: Reference to the object in charge of parsing supplied
+        pipeline parameters. A default is provided if None
+    :param binary_output: if True, stores outputs as pickled binaries to avoid
+        storing large amount of textual data. Default is False
     """
 
     default_input_names = None
@@ -186,6 +189,8 @@ class Pipeline(_ScikitCompat):
         args_parser: ArgumentHandler = None,
         binary_output: bool = False,
     ):
+
+        _validate_transformers_import()
 
         self.model = model
         self.tokenizer = tokenizer
@@ -318,7 +323,6 @@ class QuestionAnsweringArgumentHandler(ArgumentHandler):
         return inputs
 
 
-@add_end_docstrings(_PIPELINE_INIT_ARGS)
 class QuestionAnsweringPipeline(Pipeline):
     """
     Question Answering pipeline using any `ModelForQuestionAnswering` See the
@@ -328,6 +332,18 @@ class QuestionAnsweringPipeline(Pipeline):
 
     The models that this pipeline can use are models that have been fine-tuned on
     a question answering task.
+
+    :param model: loaded inference engine to run the model with, can be a
+        deepsparse Engine or onnxruntime InferenceSession
+    :param tokenizer: tokenizer to be used for preprocessing
+    :param config: transformers model config for this model
+    :param engine: name of inference engine that is used. Options are
+        deepsparse and onnxruntime
+    :param input_names: list of input names to the neural network
+    :param args_parser: Reference to the object in charge of parsing supplied
+        pipeline parameters. A default is provided if None
+    :param binary_output: if True, stores outputs as pickled binaries to avoid
+        storing large amount of textual data. Default is False
     """
 
     default_input_names = "question,context"
@@ -670,6 +686,8 @@ def pipeline(
     :param kwargs: additional key word arguments for task specific pipeline constructor
     :return: Pipeline object for the given taks and model
     """
+    _validate_transformers_import()
+
     # Retrieve the task
     if task not in SUPPORTED_TASKS:
         raise KeyError(
@@ -773,3 +791,8 @@ def _create_model(
         )
 
     return model, input_names
+
+
+def _validate_transformers_import():
+    if transformers_import_error is not None:
+        raise transformers_import_error
