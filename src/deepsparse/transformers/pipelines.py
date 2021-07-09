@@ -16,7 +16,7 @@
 Adaptation of transformers.pipelines and onnx_transformers.pipelines
 
 adapted from:
-https://github.com/huggingface/transformers/blob/master/src/transformers/pipelines.py
+https://github.com/huggingface/transformers/blob/master/src/transformers/pipelines/base.py
 https://github.com/patil-suraj/onnx_transformers/blob/master/onnx_transformers/pipelines.py
 
 """
@@ -331,7 +331,7 @@ class QuestionAnsweringArgumentHandler(ArgumentHandler):
 
 class QuestionAnsweringPipeline(Pipeline):
     """
-    Question Answering pipeline using any `ModelForQuestionAnswering` See the
+    Question Answering pipeline using any `ModelForQuestionAnswering`
 
     This question answering pipeline can currently be loaded from `pipeline()`
     using the following task identifier: `"question-answering"`.
