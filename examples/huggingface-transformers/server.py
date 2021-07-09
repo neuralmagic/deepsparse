@@ -18,8 +18,7 @@ using the DeepSparse Engine as the inference backend
 
 ##########
 Command help:
-usage: server.py [-h] [-c NUM_CORES] [-a ADDRESS] [-p PORT]
-                 onnx_filepath
+usage: server.py [-h] [-c NUM_CORES] [-a ADDRESS] [-p PORT] onnx_filepath
 
 Host a BERT ONNX model as a server, using the DeepSparse Engine and Flask
 
@@ -35,14 +34,14 @@ optional arguments:
   -a ADDRESS, --address ADDRESS
                         The IP address of the hosted model
   -p PORT, --port PORT  The port that the model is hosted on
+
 ##########
-Example command for running:
+Example command for running using a model from sparsezoo:
 python server.py \
-    ~/huggingfacebert/bert-base-uncased.onnx
+    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate
 """
 import argparse
 import json
-import sys
 import time
 from typing import Any, Callable, List
 
@@ -55,6 +54,14 @@ from deepsparse.transformers import pipeline
 
 app = Flask(__name__)
 CORS(app)
+
+
+def is_str_list_or_str(val):
+    if isinstance(val, str):
+        return True
+    if isinstance(val, List):
+        return all(isinstance(elem, str) for elem in val)
+    return False
 
 
 def run_server(
@@ -78,8 +85,11 @@ def run_server(
         :returns: A json with results from predictor and the inputs
         """
         data = json.loads(flask.request.get_data())
-        assert "question" in data and type(data["question"]) in [str, List[str]]
-        assert "context" in data and type(data["context"]) in [str, List[str]]
+
+        assert "question" in data and "context" in data
+        assert is_str_list_or_str(data["question"]) and is_str_list_or_str(
+            data["context"]
+        )
 
         start = time.time()
         result = predictor(question=data["question"], context=data["context"])
@@ -114,7 +124,7 @@ def run_server(
     app.run(host=host, port=port, debug=False, threaded=True)
 
 
-def parse_args(args=None):
+def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             "Host a BERT ONNX model as a server, using the DeepSparse Engine and Flask"
@@ -150,14 +160,14 @@ def parse_args(args=None):
         default="5543",
         help="The port that the model is hosted on",
     )
-    return parser.parse_args(args)
+    return parser.parse_args()
 
 
-def main(args=None):
+def main():
     """
     process arguments and run server
     """
-    _config = parse_args(args=args)
+    _config = parse_args()
 
     # Get deepsparse question-answering pipeline
     qa_pipeline = pipeline(
@@ -176,4 +186,4 @@ def main(args=None):
 
 
 if __name__ == "__main__":
-    main(args=sys.argv[1:])
+    main()
