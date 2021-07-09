@@ -58,7 +58,6 @@ except Exception as transformers_import_err:
 
 __all__ = ["ArgumentHandler", "Pipeline", "QuestionAnsweringPipeline", "pipeline"]
 
-MAX_LENGTH = 128
 
 logger = logging.get_logger(__name__) if logging else None
 
@@ -161,14 +160,14 @@ class Pipeline(_ScikitCompat):
 
     Pipeline supports running with the DeepSparse engine or onnxruntime.
 
-    Some pipeline, output large tensor object as nested-lists.
-
     :param model: loaded inference engine to run the model with, can be a
         deepsparse Engine or onnxruntime InferenceSession
     :param tokenizer: tokenizer to be used for preprocessing
     :param config: transformers model config for this model
-    :param engine: name of inference engine that is used. Options are
+    :param engine_type: name of inference engine that is used. Options are
         deepsparse and onnxruntime
+    :param max_length: maximum sequence length to set for model inputs by default.
+        default value is 128
     :param input_names: list of input names to the neural network
     :param args_parser: Reference to the object in charge of parsing supplied
         pipeline parameters. A default is provided if None
@@ -183,8 +182,8 @@ class Pipeline(_ScikitCompat):
         model: Union[Engine, InferenceSession],
         tokenizer: PreTrainedTokenizer,
         config: PretrainedConfig,
-        engine: str,
-        task: str = "",
+        engine_type: str,
+        max_length: int = 128,
         input_names: Optional[List[str]] = None,
         args_parser: ArgumentHandler = None,
         binary_output: bool = False,
@@ -195,12 +194,13 @@ class Pipeline(_ScikitCompat):
         self.model = model
         self.tokenizer = tokenizer
         self.config = config
-        self.engine = engine
+        self.engine_type = engine_type
+        self.max_length = max_length
         self.input_names = input_names
         self.binary_output = binary_output
         self._args_parser = args_parser or DefaultArgumentHandler()
         self._framework = (
-            "np" if self.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE] else "pt"
+            "np" if self.engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE] else "pt"
         )
 
     def transform(self, X):
@@ -237,12 +237,12 @@ class Pipeline(_ScikitCompat):
 
     def _forward(self, inputs, return_tensors=False):
 
-        if self.engine == ORT_ENGINE:
+        if self.engine_type == ORT_ENGINE:
 
             # TODO: filter by valid name
             #  inputs = {k: v for k, v in inputs.items() if k in self.input_names}
             return self.model.run(None, dict(zip(self.input_names, inputs.values())))
-        elif self.engine == DEEPSPARSE_ENGINE:
+        elif self.engine_type == DEEPSPARSE_ENGINE:
             return self.model.run(list(inputs.values()))
         # TODO: torch
         # with self.device_placement():
@@ -337,7 +337,7 @@ class QuestionAnsweringPipeline(Pipeline):
         deepsparse Engine or onnxruntime InferenceSession
     :param tokenizer: tokenizer to be used for preprocessing
     :param config: transformers model config for this model
-    :param engine: name of inference engine that is used. Options are
+    :param engine_type: name of inference engine that is used. Options are
         deepsparse and onnxruntime
     :param input_names: list of input names to the neural network
     :param args_parser: Reference to the object in charge of parsing supplied
@@ -352,14 +352,14 @@ class QuestionAnsweringPipeline(Pipeline):
         self,
         model: Union[Engine, InferenceSession],
         tokenizer: PreTrainedTokenizer,
-        engine: str,
+        engine_type: str,
         input_names: Optional[List[str]] = None,
         **kwargs,
     ):
         super().__init__(
             model=model,
             tokenizer=tokenizer,
-            engine=engine,
+            engine_type=engine_type,
             args_parser=QuestionAnsweringArgumentHandler(),
             input_names=input_names,
             **kwargs,
@@ -416,7 +416,7 @@ class QuestionAnsweringPipeline(Pipeline):
         kwargs.setdefault("topk", 1)
         kwargs.setdefault("doc_stride", 128)
         kwargs.setdefault("max_answer_len", 15)
-        kwargs.setdefault("max_seq_len", MAX_LENGTH)
+        kwargs.setdefault("max_seq_len", self.max_length)
         kwargs.setdefault("max_question_len", 64)
         kwargs.setdefault("handle_impossible_answer", False)
 
@@ -661,9 +661,10 @@ def pipeline(
     task: str,
     model_name: Optional[str] = None,
     model_path: Optional[str] = None,
-    engine: str = DEEPSPARSE_ENGINE,
+    engine_type: str = DEEPSPARSE_ENGINE,
     config: Optional[Union[str, PretrainedConfig]] = None,
     tokenizer: Optional[Union[str, PreTrainedTokenizer]] = None,
+    max_length: int = 128,
     num_cores: Optional[int] = None,
     num_sockets: Optional[int] = None,
     **kwargs,
@@ -675,10 +676,11 @@ def pipeline(
         supported task - "question-answering"
     :param model_name: canonical name of the hugging face model this model is based on
     :param model_path: path to (ONNX) model file to run
-    :param engine: inference engine name to use. Supported options are 'deepsparse' and
-        'onnxruntime'
+    :param engine_type: inference engine name to use. Supported options are 'deepsparse'
+        and 'onnxruntime'
     :param config: huggingface model config, if none provided, default will be used
     :param tokenizer: huggingface tokenizer, if none provided, default will be used
+    :param max_length: maximum sequence length of model inputs. default is 128
     :param num_cores: number of CPU cores to run engine with. Default is the maximum
         available
     :param num_sockets: number of CPU sockets to run engine with. Default is the maximum
@@ -693,9 +695,10 @@ def pipeline(
         raise KeyError(
             f"Unknown task {task}, available tasks are {list(SUPPORTED_TASKS.keys())}"
         )
-    if engine not in SUPPORTED_ENGINES:
+    if engine_type not in SUPPORTED_ENGINES:
         raise ValueError(
-            f"Unsupported engine {engine}, supported engines are {SUPPORTED_ENGINES}"
+            f"Unsupported engine {engine_type}, supported engines "
+            f"are {SUPPORTED_ENGINES}"
         )
 
     task_info = SUPPORTED_TASKS[task]
@@ -709,7 +712,7 @@ def pipeline(
     # create model
     if model_path.startswith("zoo:"):
         model_path = _download_zoo_model(model_path)
-    model, input_names = _create_model(model_path, engine, num_cores, num_sockets)
+    model, input_names = _create_model(model_path, engine_type, num_cores, num_sockets)
 
     # Instantiate tokenizer if needed
     if isinstance(tokenizer, (str, tuple)):
@@ -727,7 +730,8 @@ def pipeline(
         model=model,
         tokenizer=tokenizer,
         config=config,
-        engine=engine,
+        engine_type=engine_type,
+        max_length=max_length,
         input_names=input_names,
         **kwargs,
     )
@@ -746,6 +750,7 @@ def _download_zoo_model(model_path: str) -> str:
 
 def _overwrite_model_inputs(
     path: str,
+    max_length: int = 128,
 ) -> Tuple[str, List[str], Optional[NamedTemporaryFile]]:
     # overwrite input shapes
     model = onnx.load(path)
@@ -756,7 +761,7 @@ def _overwrite_model_inputs(
     input_names = []
     for external_input in external_inputs:
         external_input.type.tensor_type.shape.dim[0].dim_value = 1
-        external_input.type.tensor_type.shape.dim[1].dim_value = MAX_LENGTH
+        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
         input_names.append(external_input.name)
 
     # Save modified model
@@ -768,31 +773,32 @@ def _overwrite_model_inputs(
 
 def _create_model(
     model_path: str,
-    engine: str,
+    engine_type: str,
     num_cores: Optional[int],
     num_sockets: Optional[int],
 ) -> Tuple[Union[Engine, InferenceSession], List[str]]:
     onnx_path, input_names, _ = _overwrite_model_inputs(model_path)
 
-    if engine == DEEPSPARSE_ENGINE:
+    if engine_type == DEEPSPARSE_ENGINE:
         model = compile_model(
             onnx_path, batch_size=1, num_cores=num_cores, num_sockets=num_sockets
         )
-    elif engine == ORT_ENGINE:
+    elif engine_type == ORT_ENGINE:
         sess_options = SessionOptions()
         if num_cores is not None:
             sess_options.intra_op_num_threads = num_cores
         sess_options.log_severity_level = 3
         sess_options.graph_optimization_level = GraphOptimizationLevel.ORT_ENABLE_ALL
 
-        onnx_model = onnx.load(onnx_path)
-        model = InferenceSession(
-            onnx_model.SerializeToString(), sess_options=sess_options
-        )
+        model = InferenceSession(onnx_path, sess_options=sess_options)
 
     return model, input_names
 
 
 def _validate_transformers_import():
     if transformers_import_error is not None:
-        raise transformers_import_error
+        raise ImportError(
+            "An exception occured when importing from the transformers library. "
+            "Please verify that transformers~=4.8 is installed or install deepsparse "
+            "with `pip install deepsparse[transformers]`"
+        )
