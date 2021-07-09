@@ -712,7 +712,9 @@ def pipeline(
     # create model
     if model_path.startswith("zoo:"):
         model_path = _download_zoo_model(model_path)
-    model, input_names = _create_model(model_path, engine_type, num_cores, num_sockets)
+    model, input_names = _create_model(
+        model_path, engine_type, num_cores, num_sockets, max_length
+    )
 
     # Instantiate tokenizer if needed
     if isinstance(tokenizer, (str, tuple)):
@@ -776,8 +778,9 @@ def _create_model(
     engine_type: str,
     num_cores: Optional[int],
     num_sockets: Optional[int],
+    max_length: int = 128,
 ) -> Tuple[Union[Engine, InferenceSession], List[str]]:
-    onnx_path, input_names, _ = _overwrite_model_inputs(model_path)
+    onnx_path, input_names, _ = _overwrite_model_inputs(model_path, max_length)
 
     if engine_type == DEEPSPARSE_ENGINE:
         model = compile_model(
