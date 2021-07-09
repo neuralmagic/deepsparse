@@ -18,85 +18,69 @@ Benchmarking script for BERT ONNX models with the DeepSparse engine.
 
 ##########
 Command help:
-usage: benchmark_bert.py [-h] [-e {deepsparse,onnxruntime,torch}]
-                    [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
-                    [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS] [-q]
-                    [--fp16] [--device DEVICE]
+usage: benchmark.py [-h] [-e {deepsparse,onnxruntime}] [-b BATCH_SIZE]
+                    [-c NUM_CORES] [-s NUM_SOCKETS] [-i NUM_ITERATIONS]
+                    [-w NUM_WARMUP_ITERATIONS]
                     model_filepath
 
-Benchmark sparsified BERT models
+Benchmark sparsified transformer models
 
 positional arguments:
   model_filepath        The full filepath of the ONNX model file or SparseZoo
                         stub to the model for deepsparse and onnxruntime
-                        benchmarks. Path to a .pt loadable PyTorch Module for
-                        torch benchmarks - the Module can be the top-level
-                        object loaded or loaded into 'model' in a state dict
+                        benchmarks
 
 optional arguments:
   -h, --help            show this help message and exit
-  -e {deepsparse,onnxruntime,torch}, --engine {deepsparse,onnxruntime,torch}
-                        Inference engine backend to run benchmark_bert on. Choices
-                        are 'deepsparse', 'onnxruntime', and 'torch'. Default
-                        is 'deepsparse'
+  -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
+                        Inference engine backend to run benchmark on. Choices
+                        are 'deepsparse', 'onnxruntime'. Default is
+                        'deepsparse'
   -b BATCH_SIZE, --batch-size BATCH_SIZE
-                        The batch size to run the benchmark_bert for
+                        The batch size to run the benchmark for
   -c NUM_CORES, --num-cores NUM_CORES
-                        The number of physical cores to run the benchmark_bert on,
+                        The number of physical cores to run the benchmark on,
                         defaults to None where it uses all physical cores
                         available on the system. For DeepSparse benchmarks,
                         this value is the number of cores per socket
   -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
                         For DeepSparse benchmarks only. The number of physical
-                        cores to run the benchmark_bert on. Defaults to None where
+                        cores to run the benchmark on. Defaults to None where
                         is uses all sockets available on the system
   -i NUM_ITERATIONS, --num-iterations NUM_ITERATIONS
-                        The number of iterations the benchmark_bert will be run for
+                        The number of iterations the benchmark will be run for
   -w NUM_WARMUP_ITERATIONS, --num-warmup-iterations NUM_WARMUP_ITERATIONS
                         The number of warmup iterations that will be executed
                         before the actual benchmarking
-  -q, --quantized-inputs
-                        Set flag to execute benchmark_bert with int8 inputs instead
-                        of float32
-  --fp16                Set flag to execute torch benchmark_bert in half precision
-                        (fp16)
-  --device DEVICE       Torch device id to benchmark_bert the model with. Default
-                        is cpu. Non cpu benchmarking only supported for torch
-                        benchmarking. Default is 'cpu' unless running a torch
-                        benchmark_bert and cuda is available, then cuda on device
-                        0. i.e. 'cuda', 'cpu', 0, 'cuda:1'
-
 
 ##########
-Example for benchmarking on a local BERT PyTorch model on GPU with half precision:
-python benchmarking.py \
-    /PATH/TO/bert.pt \
-    --engine torch \
-    --batch-size 32 \
-    --device cuda:0 \
-    --half-precision
+Example for benchmarking on a pruned BERT model from sparsezoo with deepsparse:
+python benchmark.py \
+    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate \
 
 ##########
-Example for benchmarking on a local BERT ONNX with onnxruntime:
-python benchmark_bert.py \
+Example for benchmarking on a local ONNX model with deepsparse:
+python benchmark.py \
+    /PATH/TO/bert.onnx \
+    --batch-size 1 \
+
+##########
+Example for benchmarking on a local ONNX model with onnxruntime:
+python benchmark.py \
     /PATH/TO/bert.onnx \
     --engine onnxruntime \
     --batch-size 32 \
 """
 
 import argparse
-import glob
-import os
-import sys
 import time
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List
 
 import numpy
 import onnx
 import onnxruntime
 from tqdm.auto import tqdm
 
-import torch
 from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
 from sparseml.onnx.utils import override_model_batch_size
@@ -104,7 +88,6 @@ from sparseml.onnx.utils import override_model_batch_size
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-TORCH_ENGINE = "torch"
 
 
 def load_random_data():
@@ -115,7 +98,7 @@ def load_random_data():
     pass
 
 
-def modify_bert_onnx_input_shape(model_filepath, image_shape):
+def modify_bert_onnx_input_shape(model_filepath):
     """
     Method to scale onnx static graph to desired shape
     TODO
@@ -147,17 +130,17 @@ def _iter_batches(
                     break
 
 
-def parse_args(args=None):
-    parser = argparse.ArgumentParser(description="Benchmark sparsified YOLOv3 models")
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Benchmark sparsified transformer models"
+    )
 
     parser.add_argument(
         "model_filepath",
         type=str,
         help=(
             "The full filepath of the ONNX model file or SparseZoo stub to the model "
-            "for deepsparse and onnxruntime benchmarks. Path to a .pt loadable PyTorch "
-            "Module for torch benchmarks - the Module can be the top-level object "
-            "loaded or loaded into 'model' in a state dict"
+            "for deepsparse and onnxruntime benchmarks"
         ),
     )
 
@@ -166,22 +149,10 @@ def parse_args(args=None):
         "--engine",
         type=str,
         default=DEEPSPARSE_ENGINE,
-        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE, TORCH_ENGINE],
+        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE],
         help=(
-            "Inference engine backend to run benchmark_bert on. Choices are 'deepsparse', "
-            "'onnxruntime', and 'torch'. Default is 'deepsparse'"
-        ),
-    )
-
-    parser.add_argument(
-        "--data-path",
-        type=Optional[str],
-        default=None,
-        help=(
-            "Optional filepath to image examples to run the benchmark_bert on. Can be path "
-            "to directory, single image jpg file, or a glob path. All files should be "
-            "in jpg format. If not provided, sample COCO images will be downloaded "
-            "from the SparseZoo"
+            "Inference engine backend to run benchmark on. Choices are 'deepsparse', "
+            "'onnxruntime'. Default is 'deepsparse'"
         ),
     )
 
@@ -190,7 +161,7 @@ def parse_args(args=None):
         "--batch-size",
         type=int,
         default=32,
-        help="The batch size to run the benchmark_bert for",
+        help="The batch size to run the benchmark for",
     )
     parser.add_argument(
         "-c",
@@ -198,7 +169,7 @@ def parse_args(args=None):
         type=int,
         default=None,
         help=(
-            "The number of physical cores to run the benchmark_bert on, "
+            "The number of physical cores to run the benchmark on, "
             "defaults to None where it uses all physical cores available on the system."
             " For DeepSparse benchmarks, this value is the number of cores per socket"
         ),
@@ -210,14 +181,14 @@ def parse_args(args=None):
         default=None,
         help=(
             "For DeepSparse benchmarks only. The number of physical cores to run the "
-            "benchmark_bert on. Defaults to None where is uses all sockets available on the "
+            "benchmark on. Defaults to None where is uses all sockets available on the "
             "system"
         ),
     )
     parser.add_argument(
         "-i",
         "--num-iterations",
-        help="The number of iterations the benchmark_bert will be run for",
+        help="The number of iterations the benchmark will be run for",
         type=int,
         default=80,
     )
@@ -231,50 +202,19 @@ def parse_args(args=None):
         type=int,
         default=25,
     )
-    parser.add_argument(
-        "-q",
-        "--quantized-inputs",
-        help="Set flag to execute benchmark_bert with int8 inputs instead of float32",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--fp16",
-        help="Set flag to execute torch benchmark_bert in half precision (fp16)",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--device",
-        type=_parse_device,
-        default=None,
-        help=(
-            "Torch device id to benchmark_bert the model with. Default is cpu. Non cpu "
-            "benchmarking only supported for torch benchmarking. Default is 'cpu' "
-            "unless running a torch benchmark_bert and cuda is available, then cuda on "
-            "device 0. i.e. 'cuda', 'cpu', 0, 'cuda:1'"
-        ),
-    )
 
-    args = parser.parse_args(args=args)
-    if args.engine == TORCH_ENGINE and args.device is None:
-        args.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    args = parser.parse_args()
 
     return args
 
 
-def _parse_device(device: Union[str, int]) -> Union[str, int]:
-    try:
-        return int(device)
-    except Exception:
-        return device
-
-
-def benchmark_bert(args):
+def benchmark(args):
     """
-    Method to benchmark_bert inference times for BERT
+    Method to benchmark inference times for BERT and transformer models
     """
     model = _load_model(args)
     print("Loading dataset")
-    dataset, _ = load_random_data(args.data_path, tuple(args.image_shape))
+    dataset, _ = load_random_data()
     total_iterations = args.num_iterations + args.num_warmup_iterations
     data_loader = _iter_batches(dataset, args.batch_size, total_iterations)
 
@@ -290,15 +230,11 @@ def benchmark_bert(args):
     progress_bar = tqdm(total=args.num_iterations)
 
     for iteration, batch in enumerate(data_loader):
-        if args.device not in ["cpu", None]:
-            torch.cuda.synchronize()
         iter_start = time.time()
 
         # inference
-        outputs = _run_model(args, model, batch)
+        _ = _run_model(args, model, batch)
 
-        if args.device not in ["cpu", None]:
-            torch.cuda.synchronize()
         iter_end = time.time()
 
         if iteration >= args.num_warmup_iterations:
@@ -317,16 +253,6 @@ def benchmark_bert(args):
 
 def _load_model(args) -> Any:
     # validation
-    if args.device not in [None, "cpu"] and args.engine != TORCH_ENGINE:
-        raise ValueError(f"device {args.device} is not supported for {args.engine}")
-    if args.fp16 and args.engine != TORCH_ENGINE:
-        raise ValueError(f"half precision is not supported for {args.engine}")
-    if args.quantized_inputs and args.engine == TORCH_ENGINE:
-        raise ValueError(f"quantized inputs not supported for {args.engine}")
-    if args.num_cores is not None and args.engine == TORCH_ENGINE:
-        raise ValueError(
-            f"overriding default num_cores not supported for {args.engine}"
-        )
     if (
         args.num_cores is not None
         and args.engine == ORT_ENGINE
@@ -342,9 +268,7 @@ def _load_model(args) -> Any:
 
     # scale static ONNX graph to desired image shape
     if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
-        args.model_filepath, _ = modify_bert_onnx_input_shape(
-            args.model_filepath, args.image_shape
-        )
+        args.model_filepath, _ = modify_bert_onnx_input_shape(args.model_filepath)
 
     # load model
     if args.engine == DEEPSPARSE_ENGINE:
@@ -352,11 +276,6 @@ def _load_model(args) -> Any:
         model = compile_model(
             args.model_filepath, args.batch_size, args.num_cores, args.num_sockets
         )
-        if args.quantized_inputs and not model.cpu_vnni:
-            print(
-                "WARNING: VNNI instructions not detected, "
-                "quantization speedup not well supported"
-            )
     elif args.engine == ORT_ENGINE:
         print(f"loading onnxruntime model for {args.model_filepath}")
 
@@ -373,28 +292,12 @@ def _load_model(args) -> Any:
         model = onnxruntime.InferenceSession(
             onnx_model.SerializeToString(), sess_options=sess_options
         )
-    elif args.engine == TORCH_ENGINE:
-        print(f"loading torch model for {args.model_filepath}")
-        model = torch.load(args.model_filepath)
-        if isinstance(model, dict):
-            model = model["model"]
-        model.to(args.device)
-        model.eval()
-        if args.fp16:
-            print("Using half precision")
-            model.half()
-        else:
-            print("Using full precision")
     return model
 
 
-def _run_model(
-    args, model: Any, batch: Union[numpy.ndarray, torch.Tensor]
-) -> List[Union[numpy.ndarray, torch.Tensor]]:
+def _run_model(args, model: Any, batch: List[numpy.ndarray]) -> List[numpy.ndarray]:
     outputs = None
-    if args.engine == TORCH_ENGINE:
-        outputs = model(batch)[0]
-    elif args.engine == ORT_ENGINE:
+    if args.engine == ORT_ENGINE:
         outputs = model.run(
             [out.name for out in model.get_outputs()],  # outputs
             {model.get_inputs()[0].name: batch},  # inputs dict
@@ -404,10 +307,10 @@ def _run_model(
     return outputs
 
 
-def main(args: List[str] = None):
-    _config = parse_args(args=args)
-    benchmark_bert(args=_config)
+def main():
+    _config = parse_args()
+    benchmark(args=_config)
 
 
 if __name__ == "__main__":
-    main(sys.argv[:1])
+    main()
