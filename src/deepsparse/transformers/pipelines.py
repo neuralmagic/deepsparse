@@ -56,7 +56,13 @@ except Exception as transformers_import_err:
     transformers_import_error = transformers_import_err
 
 
-__all__ = ["ArgumentHandler", "Pipeline", "QuestionAnsweringPipeline", "pipeline"]
+__all__ = [
+    "ArgumentHandler",
+    "Pipeline",
+    "QuestionAnsweringPipeline",
+    "pipeline",
+    "overwrite_transformer_onnx_model_inputs",
+]
 
 
 logger = logging.get_logger(__name__) if logging else None
@@ -739,6 +745,50 @@ def pipeline(
     )
 
 
+def overwrite_transformer_onnx_model_inputs(
+    path: str,
+    batch_size: int = 1,
+    max_length: int = 128,
+    output_path: Optional[str] = None,
+) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
+    """
+    Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
+    Assumes that these are the first and second shape indices of the given model inputs
+    respectively
+
+    :param path: path to the ONNX model to override
+    :param batch_size: batch size to set
+    :param max_length: max sequence length to set
+    :param output_path: if provided, the model will be saved to the given path,
+        otherwise, the model will be saved to a named temporary file that will
+        be deleted after the program exits
+    :return: if no output path, a tuple of the saved path to the model, list of
+        model input names, and reference to the tempfile object will be returned
+        otherwise, only the model input names will be returned
+    """
+    # overwrite input shapes
+    model = onnx.load(path)
+    initializer_input_names = set([node.name for node in model.graph.initializer])
+    external_inputs = [
+        inp for inp in model.graph.input if inp.name not in initializer_input_names
+    ]
+    input_names = []
+    for external_input in external_inputs:
+        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
+        input_names.append(external_input.name)
+
+    # Save modified model
+    if output_path is None:
+        tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
+        onnx.save(model, tmp_file.name)
+
+        return tmp_file.name, input_names, tmp_file
+    else:
+        onnx.save(model, output_path)
+        return input_names
+
+
 def _get_default_model_path(task_info: TaskInfo) -> str:
     if cpu.cpu_vnni_compatible() and task_info.default_quant_stub:
         return task_info.default_quant_stub
@@ -750,29 +800,6 @@ def _download_zoo_model(model_path: str) -> str:
     return model.onnx_file.downloaded_path()
 
 
-def _overwrite_model_inputs(
-    path: str,
-    max_length: int = 128,
-) -> Tuple[str, List[str], Optional[NamedTemporaryFile]]:
-    # overwrite input shapes
-    model = onnx.load(path)
-    initializer_input_names = set([node.name for node in model.graph.initializer])
-    external_inputs = [
-        inp for inp in model.graph.input if inp.name not in initializer_input_names
-    ]
-    input_names = []
-    for external_input in external_inputs:
-        external_input.type.tensor_type.shape.dim[0].dim_value = 1
-        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
-        input_names.append(external_input.name)
-
-    # Save modified model
-    tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-    onnx.save(model, tmp_file.name)
-
-    return tmp_file.name, input_names, tmp_file
-
-
 def _create_model(
     model_path: str,
     engine_type: str,
@@ -780,7 +807,9 @@ def _create_model(
     num_sockets: Optional[int],
     max_length: int = 128,
 ) -> Tuple[Union[Engine, InferenceSession], List[str]]:
-    onnx_path, input_names, _ = _overwrite_model_inputs(model_path, max_length)
+    onnx_path, input_names, _ = overwrite_transformer_onnx_model_inputs(
+        model_path, max_length=max_length
+    )
 
     if engine_type == DEEPSPARSE_ENGINE:
         model = compile_model(
