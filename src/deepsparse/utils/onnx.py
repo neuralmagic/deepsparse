@@ -24,6 +24,7 @@ from deepsparse.utils.log import log_init
 
 
 __all__ = [
+    "ONNX_TENSOR_TYPE_MAP",
     "get_external_inputs",
     "get_external_outputs",
     "get_input_names",
@@ -34,7 +35,7 @@ __all__ = [
 
 log = log_init(os.path.basename(__file__))
 
-onnx_tensor_type_map = {
+ONNX_TENSOR_TYPE_MAP = {
     1: numpy.float32,
     2: numpy.uint8,
     3: numpy.int8,
@@ -58,9 +59,9 @@ def translate_onnx_type_to_numpy(tensor_type: int):
     :param tensor_type: Integer representing a type in ONNX spec
     :return: Corresponding numpy type
     """
-    if tensor_type not in onnx_tensor_type_map:
+    if tensor_type not in ONNX_TENSOR_TYPE_MAP:
         raise Exception("Unknown ONNX tensor type = {}".format(tensor_type))
-    return onnx_tensor_type_map[tensor_type]
+    return ONNX_TENSOR_TYPE_MAP[tensor_type]
 
 
 def get_external_inputs(onnx_filepath: str) -> List:

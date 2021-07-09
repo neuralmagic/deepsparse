@@ -57,6 +57,7 @@ optional arguments:
 Example for benchmarking on a pruned BERT model from sparsezoo with deepsparse:
 python benchmark.py \
     zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate \
+    --attention-mask-input 1
 
 ##########
 Example for benchmarking on a local ONNX model with deepsparse:
@@ -74,7 +75,7 @@ python benchmark.py \
 
 import argparse
 import time
-from typing import Any, Iterable, List
+from typing import Any, Generator, Iterable, List
 
 import numpy
 import onnx
@@ -83,6 +84,7 @@ from tqdm.auto import tqdm
 
 from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
+from deepsparse.utils import ONNX_TENSOR_TYPE_MAP
 from sparseml.onnx.utils import override_model_batch_size
 
 
@@ -128,6 +130,19 @@ def _iter_batches(
 
                 if iteration >= iterations:
                     break
+
+
+def parse_attention_input_name(val):
+    if val is None:
+        return val
+    try:
+        val = int(val)
+        if val < 0:
+            raise ValueError(
+                f"attention input idx must be greater than 0. given: {val}"
+            )
+    except Exception:
+        return str(val)
 
 
 def parse_args():
@@ -201,6 +216,28 @@ def parse_args():
         ),
         type=int,
         default=25,
+    )
+    parser.add_argument(
+        "--sequence-length",
+        help="the sequence length to benchmark with. Defualt is 128",
+        type=int,
+        default=128,
+    )
+    parser.add_argument(
+        "--vocab-size",
+        help="vocabulary size to create sample model inputs from. Default is 30k",
+        type=int,
+        default=30000,
+    )
+    parser.add_argument(
+        "--attention-mask-input",
+        help=(
+            "string name or integer index of the attention mask input of the model. "
+            "e.g. 'attention_mask' or 1. If provided, the attention mask input will "
+            "be set to all ones"
+        ),
+        type=parse_attention_input_name,
+        default=None,
     )
 
     args = parser.parse_args()
@@ -293,6 +330,54 @@ def _load_model(args) -> Any:
             onnx_model.SerializeToString(), sess_options=sess_options
         )
     return model
+
+
+def _iter_random_benchmarking_batches(
+    args,
+    model_path: str,
+    input_names: List[str],
+) -> Generator[List[numpy.ndarray], None, None]:
+    # extract model input shapes, types, and the attention mask
+    model_tmp = onnx.load(model_path)
+    is_attention_mask = [False] * len(input_names)
+    input_shapes = []
+    input_dtypes = []
+    for idx, inp in enumerate(model_tmp.graph.input):
+        if inp.name not in input_names:
+            continue
+        if args.attention_mask_input in [idx, inp.name]:
+            is_attention_mask[idx] = True
+        input_shapes.append([dim.dim_value for dim in inp.type.tensor_type.shape.dim])
+        input_dtypes.append(ONNX_TENSOR_TYPE_MAP[inp.type.tensor_type.elem_type])
+
+    # free loaded model from memory
+    del model_tmp
+
+    def _generate_sample_input(input_idx):
+        if is_attention_mask[input_idx]:
+            sample_input = numpy.ones(
+                input_shapes[input_idx], dtype=input_dtypes[input_idx]
+            )
+        else:
+            try:
+                sample_input = numpy.random.randint(
+                    -1,
+                    args.vocab_size + 1,
+                    size=input_shapes[input_idx],
+                    dtype=input_dtypes[input_idx],
+                )
+            except Exception:
+                sample_input = numpy.random.rand(*input_shapes[input_idx]).astype(
+                    input_dtypes[input_idx]
+                )
+        return numpy.ascontiguousarray(sample_input)
+
+    for _ in range(args.num_warmup_iterations + args.num_iterations):
+        sample_inputs = [
+            _generate_sample_input(inp_idx) for inp_idx in range(len(input_shapes))
+        ]
+        yield sample_inputs
+        del sample_inputs
 
 
 def _run_model(args, model: Any, batch: List[numpy.ndarray]) -> List[numpy.ndarray]:
