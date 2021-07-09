@@ -32,7 +32,7 @@ class PipelineClient:
     :param port: Port the server is hosted on, default is 5543
     """
 
-    def __init__(self, address: str = "0.0.0.0", port: str = 5543):
+    def __init__(self, address: str = "0.0.0.0", port: str = "5543"):
         self._url = f"http://{address}:{port}/predict"
 
     def __call__(self, **kwargs) -> List[numpy.ndarray]:

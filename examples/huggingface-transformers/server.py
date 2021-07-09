@@ -56,74 +56,6 @@ app = Flask(__name__)
 CORS(app)
 
 
-def is_str_list_or_str(val):
-    if isinstance(val, str):
-        return True
-    if isinstance(val, List):
-        return all(isinstance(elem, str) for elem in val)
-    return False
-
-
-def run_server(
-    predictor: Callable[[Any, Any], Any],
-    host: str = "0.0.0.0",
-    port: str = "5543",
-    info: str = None,
-):
-    """
-    Method to create routes and serve predictor on the specified port
-    """
-    assert callable(predictor), "predictor should be callable"
-
-    @app.route("/predict", methods=["POST"])
-    def predict():
-        """
-        Expects data in json format with question and context
-
-        '{"question":"what's my name?","context":"my name is snorlax"}'
-
-        :returns: A json with results from predictor and the inputs
-        """
-        data = json.loads(flask.request.get_data())
-
-        assert "question" in data and "context" in data
-        assert is_str_list_or_str(data["question"]) and is_str_list_or_str(
-            data["context"]
-        )
-
-        start = time.time()
-        result = predictor(question=data["question"], context=data["context"])
-        inference_time = (time.time() - start) * 1000
-
-        print(f"inference time: {inference_time:.4f} ms")
-        return jsonify({"result": result, "inputs": data})
-
-    @app.route("/info", methods=["GET"])
-    def information():
-        """
-        Route for model information
-        """
-        return jsonify(
-            {
-                "model_path": info,
-                "engine": predictor.engine,
-            }
-        )
-
-    @app.route("/<page_name>")
-    def unimplemented(page_name: str):
-        """
-        Route for unimplemented pages
-        """
-        return make_response(
-            f"The page named {page_name} has not been implemented.",
-            404,
-        )
-
-    print("Starting Flask app")
-    app.run(host=host, port=port, debug=False, threaded=True)
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description=(
@@ -161,6 +93,82 @@ def parse_args():
         help="The port that the model is hosted on",
     )
     return parser.parse_args()
+
+
+def run_server(
+    predictor: Callable[[Any, Any], Any],
+    host: str = "0.0.0.0",
+    port: str = "5543",
+    info: str = None,
+):
+    """
+    Method to create routes and serve predictor on the specified port
+    """
+    assert callable(predictor), "predictor should be callable"
+
+    @app.route("/predict", methods=["POST"])
+    def predict():
+        """
+        Expects data in json format with question and context
+
+        '{"question":"what's my name?","context":"my name is snorlax"}'
+
+        :returns: A json with results from predictor and the inputs
+        """
+        data = json.loads(flask.request.get_data())
+
+        assert "question" in data and "context" in data
+        assert _is_str_list_or_str(data["question"]) and _is_str_list_or_str(
+            data["context"]
+        )
+
+        start = time.time()
+        result = predictor(question=data["question"], context=data["context"])
+        inference_time = (time.time() - start) * 1000
+
+        print(f"inference time: {inference_time:.4f} ms")
+        return jsonify({"result": result, "inputs": data})
+
+    @app.route("/info", methods=["GET"])
+    def information():
+        """
+        Route for model information
+        """
+        return jsonify(
+            {
+                "model_path": info,
+                "engine": predictor.engine,
+            }
+        )
+
+    @app.route("/<page_name>")
+    def unimplemented(page_name: str):
+        """
+        Route for unimplemented pages
+        """
+        routes = [
+            rule
+            for rule in app.url_map.iter_rules()
+            if "static" not in rule.endpoint and "page_name" not in rule.endpoint
+        ]
+        return make_response(
+            (
+                f"The page named {page_name} has not been implemented. Supported "
+                f"routes include {routes}"
+            ),
+            404,
+        )
+
+    print("Starting Flask app")
+    app.run(host=host, port=port, debug=False, threaded=True)
+
+
+def _is_str_list_or_str(val):
+    if isinstance(val, str):
+        return True
+    if isinstance(val, List):
+        return all(isinstance(elem, str) for elem in val)
+    return False
 
 
 def main():
