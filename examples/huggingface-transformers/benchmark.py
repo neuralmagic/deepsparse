@@ -74,62 +74,24 @@ python benchmark.py \
 """
 
 import argparse
+import os
 import time
-from typing import Any, Generator, Iterable, List
+import warnings
+from typing import Any, Generator, List, Tuple
 
 import numpy
-import onnx
 import onnxruntime
 from tqdm.auto import tqdm
 
 from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
-from deepsparse.utils import ONNX_TENSOR_TYPE_MAP
-from sparseml.onnx.utils import override_model_batch_size
+from deepsparse.transformers import overwrite_transformer_onnx_model_inputs
+from sparsezoo import Zoo
+from sparsezoo.utils import load_numpy_list
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-
-
-def load_random_data():
-    """
-    Load random tensors for benchmarking bert
-    TODO
-    """
-    pass
-
-
-def modify_bert_onnx_input_shape(model_filepath):
-    """
-    Method to scale onnx static graph to desired shape
-    TODO
-    """
-    pass
-
-
-def _iter_batches(
-    dataset: List[Any],
-    batch_size: int,
-    iterations: int,
-) -> Iterable[Any]:
-    iteration = 0
-    batch = []
-    batch_template = numpy.ascontiguousarray(
-        numpy.zeros((batch_size, *dataset[0].shape), dtype=dataset[0].dtype)
-    )
-    while iteration < iterations:
-        for item in dataset:
-            batch.append(item)
-
-            if len(batch) == batch_size:
-                yield numpy.stack(batch, out=batch_template)
-
-                batch = []
-                iteration += 1
-
-                if iteration >= iterations:
-                    break
 
 
 def parse_attention_input_name(val):
@@ -156,6 +118,20 @@ def parse_args():
         help=(
             "The full filepath of the ONNX model file or SparseZoo stub to the model "
             "for deepsparse and onnxruntime benchmarks"
+        ),
+    )
+
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        help=(
+            "path to sparsezoo stub for data sample to benchmark with, or to directory "
+            "of .npz files with named sample inputs to the given model, inputs should "
+            "be for a single sample with no batch dimension included. Defaults to load "
+            "data samples from a question-answering bert model in sparsezoo"
+        ),
+        default=(
+            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none"
         ),
     )
 
@@ -218,7 +194,7 @@ def parse_args():
         default=25,
     )
     parser.add_argument(
-        "--sequence-length",
+        "--max-sequence-length",
         help="the sequence length to benchmark with. Defualt is 128",
         type=int,
         default=128,
@@ -249,11 +225,8 @@ def benchmark(args):
     """
     Method to benchmark inference times for BERT and transformer models
     """
-    model = _load_model(args)
-    print("Loading dataset")
-    dataset, _ = load_random_data()
-    total_iterations = args.num_iterations + args.num_warmup_iterations
-    data_loader = _iter_batches(dataset, args.batch_size, total_iterations)
+    model, input_names = _load_model(args)
+    dataset = _load_data(args, input_names)
 
     print(
         (
@@ -264,13 +237,15 @@ def benchmark(args):
     )
 
     results = BenchmarkResults()
+    total_iterations = args.num_warmup_iterations + args.num_iterations
+    data_loader = _iter_batches(dataset, args.batch_size, total_iterations)
     progress_bar = tqdm(total=args.num_iterations)
 
     for iteration, batch in enumerate(data_loader):
         iter_start = time.time()
 
         # inference
-        _ = _run_model(args, model, batch)
+        _ = _run_model(args, model, batch, input_names)
 
         iter_end = time.time()
 
@@ -285,10 +260,9 @@ def benchmark(args):
     progress_bar.close()
 
     print(f"Benchmarking complete. End-to-end results:\n{results}")
-    print(f"End-to-end per image time: {results.ms_per_batch / args.batch_size}ms")
 
 
-def _load_model(args) -> Any:
+def _load_model(args) -> Tuple[Any, List[str]]:
     # validation
     if (
         args.num_cores is not None
@@ -303,9 +277,21 @@ def _load_model(args) -> Any:
     if args.num_sockets is not None and args.engine != DEEPSPARSE_ENGINE:
         raise ValueError(f"Overriding num_sockets is not supported for {args.engine}")
 
+    # load model from sparsezoo if necessary
+    if args.model_filepath.startswith("zoo:"):
+        zoo_model = Zoo.load_model_from_stub(args.model_filepath)
+        downloaded_path = zoo_model.onnx_file.downloaded_path()
+        print(f"downloaded sparsezoo model {args.model_filepath} to {downloaded_path}")
+        args.model_filepath = downloaded_path
+
     # scale static ONNX graph to desired image shape
+    input_names = []
     if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
-        args.model_filepath, _ = modify_bert_onnx_input_shape(args.model_filepath)
+        args.model_filepath, input_names, _ = overwrite_transformer_onnx_model_inputs(
+            args.model_filepath,
+            batch_size=args.batch_size,
+            max_length=args.max_sequence_length,
+        )
 
     # load model
     if args.engine == DEEPSPARSE_ENGINE:
@@ -323,72 +309,99 @@ def _load_model(args) -> Any:
         sess_options.graph_optimization_level = (
             onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         )
-
-        onnx_model = onnx.load(args.model_filepath)
-        override_model_batch_size(onnx_model, args.batch_size)
         model = onnxruntime.InferenceSession(
-            onnx_model.SerializeToString(), sess_options=sess_options
+            args.model_filepath, sess_options=sess_options
         )
-    return model
+
+    return model, input_names
 
 
-def _iter_random_benchmarking_batches(
-    args,
-    model_path: str,
-    input_names: List[str],
-) -> Generator[List[numpy.ndarray], None, None]:
-    # extract model input shapes, types, and the attention mask
-    model_tmp = onnx.load(model_path)
-    is_attention_mask = [False] * len(input_names)
-    input_shapes = []
-    input_dtypes = []
-    for idx, inp in enumerate(model_tmp.graph.input):
-        if inp.name not in input_names:
-            continue
-        if args.attention_mask_input in [idx, inp.name]:
-            is_attention_mask[idx] = True
-        input_shapes.append([dim.dim_value for dim in inp.type.tensor_type.shape.dim])
-        input_dtypes.append(ONNX_TENSOR_TYPE_MAP[inp.type.tensor_type.elem_type])
-
-    # free loaded model from memory
-    del model_tmp
-
-    def _generate_sample_input(input_idx):
-        if is_attention_mask[input_idx]:
-            sample_input = numpy.ones(
-                input_shapes[input_idx], dtype=input_dtypes[input_idx]
+def _load_data(args, input_names) -> List[List[numpy.ndarray]]:
+    if args.data_path.startswith("zoo:"):
+        data_dir = Zoo.load_model_from_stub(
+            args.data_path
+        ).data_inputs.downloaded_path()
+    else:
+        data_dir = args.data_path
+        data_files = os.listdir(data_dir)
+        if any(".npz" not in file_name for file_name in data_files):
+            raise RuntimeError(
+                f"All files in data directory {data_dir} must have a .npz extension "
+                f"found {[name for name in data_files if '.npz' not in name]}"
             )
+
+    samples = load_numpy_list(data_dir)
+    processed_samples = []
+    warning_given = False
+    for sample in samples:
+        if not all(inp_name in sample for inp_name in input_names) or len(
+            input_names
+        ) != len(sample):
+            if not warning_given:
+                warnings.warn(
+                    "input sample found whose input names do not match the model input "
+                    "names, this may cause an exception during benchmarking"
+                )
+                warning_given = True
+            sample = list(sample.values())
         else:
-            try:
-                sample_input = numpy.random.randint(
-                    -1,
-                    args.vocab_size + 1,
-                    size=input_shapes[input_idx],
-                    dtype=input_dtypes[input_idx],
-                )
-            except Exception:
-                sample_input = numpy.random.rand(*input_shapes[input_idx]).astype(
-                    input_dtypes[input_idx]
-                )
-        return numpy.ascontiguousarray(sample_input)
+            sample = [sample[inp_name] for inp_name in input_names]
 
-    for _ in range(args.num_warmup_iterations + args.num_iterations):
-        sample_inputs = [
-            _generate_sample_input(inp_idx) for inp_idx in range(len(input_shapes))
-        ]
-        yield sample_inputs
-        del sample_inputs
+        for idx, array in enumerate(sample):
+            processed_array = numpy.zeros(
+                [args.max_sequence_length, *array.shape[1:]],
+                dtype=array.dtype,
+            )
+            if array.shape[0] < args.max_sequence_length:
+                processed_array[: array.shape[0], ...] = array
+            else:
+                processed_array[:, ...] = array[: args.max_sequence_length, ...]
+            sample[idx] = processed_array
+        processed_samples.append(sample)
+    return processed_samples
 
 
-def _run_model(args, model: Any, batch: List[numpy.ndarray]) -> List[numpy.ndarray]:
+def _iter_batches(
+    dataset: List[List[numpy.ndarray]],
+    batch_size: int,
+    iterations: int,
+) -> Generator[List[numpy.ndarray], None, None]:
+    iteration = 0
+    batch_buffer = []
+    batch_template = [
+        numpy.ascontiguousarray(
+            numpy.zeros((batch_size, *array.shape), dtype=array.dtype)
+        )
+        for array in dataset[0]
+    ]
+    while iteration < iterations:
+        for sample in dataset:
+            batch_buffer.append(sample)
+
+            if len(batch_buffer) == batch_size:
+                yield [
+                    numpy.stack([sample[idx] for sample in batch_buffer], out=template)
+                    for idx, template in enumerate(batch_template)
+                ]
+
+                batch_buffer = []
+                iteration += 1
+
+                if iteration >= iterations:
+                    break
+
+
+def _run_model(
+    args, model: Any, batch: List[numpy.ndarray], input_names: List[str]
+) -> List[numpy.ndarray]:
     outputs = None
     if args.engine == ORT_ENGINE:
         outputs = model.run(
-            [out.name for out in model.get_outputs()],  # outputs
-            {model.get_inputs()[0].name: batch},  # inputs dict
+            None,
+            dict(zip(batch, input_names)),  # inputs dict
         )
-    else:  # deepsparse
-        outputs = model.run([batch])
+    elif args.engine == DEEPSPARSE_ENGINE:  # deepsparse
+        outputs = model.run(batch)
     return outputs
 
 
