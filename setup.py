@@ -63,6 +63,7 @@ _dev_deps = [
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
 ]
+_transformers_deps = ["transformers~=4.8"]
 
 
 class OverrideInstall(install):
@@ -152,7 +153,10 @@ def _setup_install_requires() -> List:
 
 
 def _setup_extras() -> Dict:
-    return {"dev": _dev_deps}
+    return {
+        "dev": _dev_deps,
+        "transformers": _transformers_deps,
+    }
 
 
 def _setup_entry_points() -> Dict:
