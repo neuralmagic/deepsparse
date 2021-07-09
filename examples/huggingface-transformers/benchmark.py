@@ -18,9 +18,10 @@ Benchmarking script for BERT ONNX models with the DeepSparse engine.
 
 ##########
 Command help:
-usage: benchmark.py [-h] [-e {deepsparse,onnxruntime}] [-b BATCH_SIZE]
-                    [-c NUM_CORES] [-s NUM_SOCKETS] [-i NUM_ITERATIONS]
-                    [-w NUM_WARMUP_ITERATIONS]
+usage: benchmark.py [-h] [--data-path DATA_PATH] [-e {deepsparse,onnxruntime}]
+                    [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
+                    [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS]
+                    [--max-sequence-length MAX_SEQUENCE_LENGTH]
                     model_filepath
 
 Benchmark sparsified transformer models
@@ -32,6 +33,13 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --data-path DATA_PATH
+                        path to sparsezoo stub for data sample to benchmark
+                        with, or to directory of .npz files with named sample
+                        inputs to the given model, inputs should be for a
+                        single sample with no batch dimension included.
+                        Defaults to load data samples from a question-
+                        answering bert model in sparsezoo
   -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
                         Inference engine backend to run benchmark on. Choices
                         are 'deepsparse', 'onnxruntime'. Default is
@@ -52,12 +60,13 @@ optional arguments:
   -w NUM_WARMUP_ITERATIONS, --num-warmup-iterations NUM_WARMUP_ITERATIONS
                         The number of warmup iterations that will be executed
                         before the actual benchmarking
+  --max-sequence-length MAX_SEQUENCE_LENGTH
+                        the sequence length to benchmark with. Defualt is 128
 
 ##########
 Example for benchmarking on a pruned BERT model from sparsezoo with deepsparse:
 python benchmark.py \
     zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate \
-    --attention-mask-input 1
 
 ##########
 Example for benchmarking on a local ONNX model with deepsparse:
@@ -92,19 +101,6 @@ from sparsezoo.utils import load_numpy_list
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-
-
-def parse_attention_input_name(val):
-    if val is None:
-        return val
-    try:
-        val = int(val)
-        if val < 0:
-            raise ValueError(
-                f"attention input idx must be greater than 0. given: {val}"
-            )
-    except Exception:
-        return str(val)
 
 
 def parse_args():
@@ -198,22 +194,6 @@ def parse_args():
         help="the sequence length to benchmark with. Defualt is 128",
         type=int,
         default=128,
-    )
-    parser.add_argument(
-        "--vocab-size",
-        help="vocabulary size to create sample model inputs from. Default is 30k",
-        type=int,
-        default=30000,
-    )
-    parser.add_argument(
-        "--attention-mask-input",
-        help=(
-            "string name or integer index of the attention mask input of the model. "
-            "e.g. 'attention_mask' or 1. If provided, the attention mask input will "
-            "be set to all ones"
-        ),
-        type=parse_attention_input_name,
-        default=None,
     )
 
     args = parser.parse_args()
