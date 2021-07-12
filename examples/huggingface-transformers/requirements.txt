@@ -1,0 +1,8 @@
+Flask_Cors==3.0.10
+sparsezoo==0.5.1
+requests==2.25.1
+Flask==2.0.1
+numpy==1.19.5
+onnxruntime==1.6.0
+tqdm==4.61.2
+deepsparse==0.5.1
