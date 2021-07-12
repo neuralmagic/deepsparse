@@ -56,7 +56,7 @@ my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
 
 ## Benchmarking Example
-`benchmark.py` is a script for benchmarking sparsified hugging face transformers
+`benchmark.py` is a script for benchmarking sparsified Hugging Face Transformers
 performance with DeepSparse.  For a full list of options run `python 
 benchmark.py -h`.
 
