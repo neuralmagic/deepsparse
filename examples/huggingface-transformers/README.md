@@ -35,7 +35,9 @@ Question-Answering task.
 ```python
 from deepsparse.transformers import pipeline
 
+# SparseZoo model stub or path to ONNX file
 onnx_filepath='zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate'
+
 num_cores=None
 
 # Get deepsparse question-answering pipeline
@@ -52,8 +54,7 @@ my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
 
 ## Benchmarking Example
-`benchmark.py` is a script for benchmarking sparsified and quantized 
-hugging face transformers
+`benchmark.py` is a script for benchmarking sparsified hugging face transformers
 performance with DeepSparse.  For a full list of options run `python 
 benchmark.py -h`.
 
@@ -73,7 +74,8 @@ transformers, this directory contains a sample model server and client.
 
 The server uses Flask to create an app with the DeepSparse Engine hosting a
 compiled Hugging Face transformer model.
-The client can make requests into the server returning object detection results for given images.
+The client can make requests into the server returning inference results for 
+given inputs.
 
 ### Server
 
@@ -92,8 +94,8 @@ This starts a Flask app with the DeepSparse Engine as the inference backend, acc
 
 The app exposes HTTP endpoints at:
 - `/info` to get information about the compiled model
-- `/predict` to send images to the model and receive as detected in response.
-    The number of images should match the compiled model's batch size.
+- `/predict` to send inputs to the model and receive a response.
+    The number of inputs should match the compiled model's batch size.
 
 For a full list of options, run `python server.py -h`.
 
