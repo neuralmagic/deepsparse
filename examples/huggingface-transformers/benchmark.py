@@ -96,7 +96,7 @@ from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.transformers import overwrite_transformer_onnx_model_inputs
 from sparsezoo import Zoo
-from sparsezoo.utils import load_numpy_list
+from sparsezoo.utils import load_numpy, load_numpy_list
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -311,6 +311,12 @@ def _load_data(args, input_names) -> List[List[numpy.ndarray]]:
             )
 
     samples = load_numpy_list(data_dir)
+
+    # unwrap unloaded numpy files
+    samples = [
+        load_numpy(sample) if isinstance(sample, str) else sample for sample in samples
+    ]
+
     processed_samples = []
     warning_given = False
     for sample in samples:
