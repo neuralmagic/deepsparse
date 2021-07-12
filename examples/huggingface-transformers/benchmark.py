@@ -378,7 +378,7 @@ def _run_model(
     if args.engine == ORT_ENGINE:
         outputs = model.run(
             None,
-            dict(zip(batch, input_names)),  # inputs dict
+            dict(zip(input_names, batch)),  # inputs dict
         )
     elif args.engine == DEEPSPARSE_ENGINE:  # deepsparse
         outputs = model.run(batch)
