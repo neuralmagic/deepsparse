@@ -29,7 +29,7 @@ pip3 install -r requirements.txt
 
 The DeepSparse-HuggingFace pipeline integration provides a simple API 
 dedicated to several tasks,
-following is an example using a pruned BERT model from sparsezoo for 
+following is an example using a pruned BERT model from the SparseZoo for 
 Question-Answering task. The current version of the pipeline supports only 
 `question-answering` tasks, 
 
