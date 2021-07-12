@@ -38,7 +38,7 @@ from deepsparse.transformers import pipeline
 # SparseZoo model stub or path to ONNX file
 onnx_filepath='zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate'
 
-num_cores=None
+num_cores=None  # uses all available CPU cores by default
 
 # Get deepsparse question-answering pipeline
 
