@@ -66,7 +66,7 @@ python benchmark.py \
 
 
 
-# Example [transformer](https://github.com/huggingface/transformers) DeepSparse Flask Server
+## Example [transformers](https://github.com/huggingface/transformers) DeepSparse Flask Deployment
 
 To illustrate how the DeepSparse Engine can be used with Hugging Face 
 transformers, this directory contains a sample model server and client. 
