@@ -18,7 +18,7 @@ limitations under the License.
 This directory contains examples of benchmarking, and serving Hugging Face transformers from the [hugging-face-transformers](https://github.com/huggingface/transformers)
 repository using the DeepSparse Engine. These examples can load pre-trained,
 sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
-or you can specify your own transformer ONNX file
+or you can specify your own transformer [ONNX](https://onnx.ai/) file.
 
 ## Installation
 The dependencies for this example can be installed using `pip`:
