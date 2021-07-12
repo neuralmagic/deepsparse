@@ -54,6 +54,13 @@ qa_pipeline = pipeline(
 
 my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
+The pipeline can also infer a default sparse model to run on the system
+
+```python
+from deepsparse.transformers import pipeline
+qa_pipeline = pipeline('question-answering')
+my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
+```
 
 ## Benchmarking Example
 `benchmark.py` is a script for benchmarking sparsified Hugging Face Transformers
