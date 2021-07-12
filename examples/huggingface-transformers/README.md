@@ -25,6 +25,31 @@ The dependencies for this example can be installed using `pip`:
 ```bash
 pip3 install -r requirements.txt
 ```
+## Deepsparse pipeline Example
+
+The deepsparse pipeline integration provides a simple API dedicated to several 
+tasks, 
+following is an example using a pruned BERT model from sparsezoo for 
+Question-Answering task. 
+
+```python
+from deepsparse.transformers import pipeline
+
+onnx_filepath='zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate'
+num_cores=None
+
+# Get deepsparse question-answering pipeline
+
+qa_pipeline = pipeline(
+    task="question-answering",
+    model_path=onnx_filepath,
+    num_cores=num_cores,
+)
+
+# inference
+
+my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
+```
 
 ## Benchmarking Example
 `benchmark.py` is a script for benchmarking sparsified and quantized 
