@@ -25,12 +25,13 @@ The dependencies for this example can be installed using `pip` and the supplied 
 ```bash
 pip3 install -r requirements.txt
 ```
-## Deepsparse pipeline Example
+## DeepSparse pipeline Example
 
-The deepsparse pipeline integration provides a simple API dedicated to several 
-tasks, 
+The DeepSparse-HuggingFace pipeline integration provides a simple API 
+dedicated to several tasks,
 following is an example using a pruned BERT model from sparsezoo for 
-Question-Answering task. 
+Question-Answering task. The current version of the pipeline supports only 
+`question-answering` tasks, 
 
 ```python
 from deepsparse.transformers import pipeline
@@ -40,7 +41,7 @@ onnx_filepath='zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pr
 
 num_cores=None  # uses all available CPU cores by default
 
-# Get deepsparse question-answering pipeline
+# Get DeepSparse question-answering pipeline
 
 qa_pipeline = pipeline(
     task="question-answering",
@@ -99,7 +100,7 @@ The app exposes HTTP endpoints at:
 
 For a full list of options, run `python server.py -h`.
 
-Currently, the server uses deepsparse-huggingface pipeline integration 
+Currently, the server uses DeepSparse-HuggingFace pipeline integration 
 for end to end prediction.  
 
 ### Client
@@ -113,3 +114,16 @@ from client import PipelineClient
 remote_model = PipelineClient()
 model_outputs = remote_model(question="What's my name?", context="My name is Snorlax")
 ```
+
+### SparseZoo Stubs
+
+
+| Model Name     |      Stub      |
+|----------|-------------|
+| [bert-pruned-moderate](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate/) | Moderately pruned BERT |
+[bert-6layers-aggressive-pruned](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96) | Aggressively pruned 6 layer BERT |
+ [bert-pruned-conservative](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-conservative) | Conservatively pruned BERT |
+ [pruned_6layers-moderate](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-moderate) | Moderately pruned 6 layer BERT |
+ [pruned-aggressive_94](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_94)| Aggressively pruned BERT|
+ [pruned_6layers-conservative](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-conservative) |Conservatively pruned 6 layer BERT|
+ [bert-base](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none) | BERT base

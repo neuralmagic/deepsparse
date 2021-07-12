@@ -51,9 +51,8 @@ corresponding webcam is available, an exception will be raised.
 
 
 ## Benchmarking Example
-`benchmark.py` is a script for benchmarking sparsified and quantized YOLOv3
-performance with DeepSparse.  For a full list of options run `python 
-benchmark.py -h`.
+`benchmarking.py` is a script for benchmarking sparsified and quantized YOLOv3
+performance with DeepSparse.  For a full list of options run `python benchmarking.py -h`.
 
 To run a benchmark run:
 ```bash
