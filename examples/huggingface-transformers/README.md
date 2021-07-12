@@ -26,7 +26,7 @@ The dependencies for this example can be installed using `pip` and the supplied 
 ```bash
 pip3 install -r requirements.txt
 ```
-## DeepSparse pipeline Example
+## DeepSparse Pipeline Example
 
 The DeepSparse-HuggingFace pipeline integration provides a simple API 
 dedicated to several tasks,
