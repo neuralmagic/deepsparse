@@ -102,7 +102,7 @@ The app exposes HTTP endpoints at:
 For a full list of options, run `python server.py -h`.
 
 Currently, the server uses DeepSparse-HuggingFace pipeline integration 
-for end to end prediction.  
+for end-to-end prediction.  
 
 ### Client
 
