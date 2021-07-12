@@ -21,7 +21,7 @@ sparsified models from the [SparseZoo](https://github.com/neuralmagic/sparsezoo)
 or you can specify your own transformer [ONNX](https://onnx.ai/) file.
 
 ## Installation
-The dependencies for this example can be installed using `pip`:
+The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file:
 ```bash
 pip3 install -r requirements.txt
 ```
