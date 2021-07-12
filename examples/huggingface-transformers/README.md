@@ -112,7 +112,7 @@ The file is self-documented.  See example usage below:
 
 ```python
 from client import PipelineClient
-remote_model = PipelineClient()
+remote_model = PipelineClient(address='0.0.0.0', port='5543')
 model_outputs = remote_model(question="What's my name?", context="My name is Snorlax")
 ```
 
