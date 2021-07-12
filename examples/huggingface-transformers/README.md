@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Hugging Face transformers - DeepSparse Inference Examples
+# Hugging Face Transformers - DeepSparse Inference Examples
 This directory contains examples for serving, benchmarking, and running NLP models from the [HuggingFace Transformers](https://github.com/huggingface/transformers)
 repository using the DeepSparse Engine. These examples can load pre-trained,
 sparsified models from the [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
@@ -105,7 +105,7 @@ for end to end prediction.
 
 ### Client
 
-`client.py` provides a Callable `PipelineClient` object to make requests to the 
+`client.py` provides a callable `PipelineClient` object to make requests to the 
 server easy.
 The file is self-documented.  See example usage below:
 
