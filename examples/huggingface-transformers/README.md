@@ -28,7 +28,7 @@ pip3 install -r requirements.txt
 ```
 ## DeepSparse Pipeline Example
 
-The DeepSparse-HuggingFace pipeline integration provides a simple API 
+The DeepSparse-Hugging Face pipeline integration provides a simple API 
 dedicated to several tasks,
 following is an example using a pruned BERT model from the SparseZoo for 
 Question-Answering task. The current version of the pipeline supports only 
