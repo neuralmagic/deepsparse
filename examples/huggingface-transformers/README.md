@@ -121,10 +121,10 @@ model_outputs = remote_model(question="What's my name?", context="My name is Sno
 
 | Model Name     |      Stub      |
 |----------|-------------|
-| [bert-pruned-moderate](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate/) | Moderately pruned BERT |
-[bert-6layers-aggressive-pruned](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96) | Aggressively pruned 6 layer BERT |
- [bert-pruned-conservative](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-conservative) | Conservatively pruned BERT |
- [pruned_6layers-moderate](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-moderate) | Moderately pruned 6 layer BERT |
- [pruned-aggressive_94](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_94)| Aggressively pruned BERT|
- [pruned_6layers-conservative](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-conservative) |Conservatively pruned 6 layer BERT|
- [bert-base](zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none) | BERT base
+| [bert-pruned-moderate]() | zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate/ |
+[bert-6layers-aggressive-pruned]()| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96 |
+ [bert-pruned-conservative]()| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-conservative |
+ [pruned_6layers-moderate]() | zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-moderate |
+ [pruned-aggressive_94]() | zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_94|
+ [pruned_6layers-conservative]()| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-conservative|
+ [bert-base]()|zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none) |
