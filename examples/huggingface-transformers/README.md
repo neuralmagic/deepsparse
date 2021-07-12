@@ -15,7 +15,8 @@ limitations under the License.
 -->
 
 # Hugging Face Transformers - DeepSparse Inference Examples
-This directory contains examples for serving, benchmarking, and running NLP models from the [HuggingFace Transformers](https://github.com/huggingface/transformers)
+This directory contains examples for serving, benchmarking, and running NLP 
+models from the [Hugging Face Transformers](https://github.com/huggingface/transformers)
 repository using the DeepSparse Engine. These examples can load pre-trained,
 sparsified models from the [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
 or you can specify your own transformer [ONNX](https://onnx.ai/) file.
