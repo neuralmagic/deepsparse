@@ -75,7 +75,7 @@ To illustrate how the DeepSparse Engine can be used with Hugging Face
 Transformers, this directory contains a sample model server and client. 
 
 The server uses Flask to create an app with the DeepSparse Engine hosting a
-compiled Hugging Face transformer model.
+compiled Hugging Face Transformer model.
 The client can make requests into the server returning inference results for 
 given inputs.
 
