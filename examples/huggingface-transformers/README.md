@@ -57,7 +57,7 @@ hugging face transformers
 performance with DeepSparse.  For a full list of options run `python 
 benchmark.py -h`.
 
-To run a benchmark run:
+To run a benchmark using the DeepSparse engine with a pruned BERT model that uses all available CPU cores and batch size 1, run:
 ```bash
 python benchmark.py \
     zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate \
