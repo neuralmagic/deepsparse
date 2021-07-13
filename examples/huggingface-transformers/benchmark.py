@@ -94,7 +94,7 @@ from tqdm.auto import tqdm
 
 from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
-from deepsparse.transformers import overwrite_transformer_onnx_model_inputs
+from pipelines import overwrite_transformer_onnx_model_inputs
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy, load_numpy_list
 
