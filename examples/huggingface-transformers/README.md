@@ -135,8 +135,8 @@ Each model in the SparseZoo has a specific stub that identifies it. The stubs ar
 `DOMAIN/SUB_DOMAIN/ARCHITECTURE{-SUB_ARCHITECTURE}/FRAMEWORK/REPO/DATASET{-TRAINING_SCHEME}/SPARSE_NAME-SPARSE_CATEGORY-{SPARSE_TARGET}`
 
 Learn more at 
-- [SparseZoo Docs](https://github.com/neuralmagic/sparsezoo)
-- [SparseZoo Website](https://github.com/neuralmagic/sparsezoo) 
+- [SparseZoo Docs](https://docs.neuralmagic.com/sparsezoo/)
+- [SparseZoo Website](http://sparsezoo.neuralmagic.com/) 
 - [SparseZoo GitHub Repository](https://github.com/neuralmagic/sparsezoo)
 
 
