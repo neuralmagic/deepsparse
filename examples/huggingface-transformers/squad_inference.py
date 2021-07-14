@@ -167,7 +167,7 @@ def squad_inference(args):
         max_length=args.max_sequence_length,
     )
 
-    print(chr(27) + "[2J")  # clear screen
+    print(_TermColors.CLEAR_SCREEN)  # clear screen
     for idx in tqdm(range(num_samples), position=0, leave=False):
         # run inference
         pred = question_answer(
@@ -179,7 +179,7 @@ def squad_inference(args):
         # display every display_frequency samples
         if idx % args.display_frequency == 0:
             tqdm.write(
-                f"\033[2J"  # clear previous output
+                f"{_TermColors.CLEAR_SCREEN}"  # clear previous output
                 f"question: {_color_text(squad[idx]['question'], _TermColors.BLUE)}\n"
                 f"answer: {_color_text(pred['answer'], _TermColors.RED)}"
             )
@@ -189,6 +189,7 @@ class _TermColors:
     RED = "\033[91m"
     BLUE = "\033[94m"
     END = "\033[0m"
+    CLEAR_SCREEN = "\033[2J"
 
 
 def _color_text(text: str, color: str) -> str:
