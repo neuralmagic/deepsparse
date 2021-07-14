@@ -190,7 +190,7 @@ def squad_inference(args):
         # display every display_frequency samples
         if idx % args.display_frequency == 0:
             tqdm.write(
-                f"{_TermColors.CLEAR_SCREEN}"  # clear previous output
+                f"{_TermColors.CLEAR_SCREEN}{_TermColors.CURSOR_TOP}"
                 f"question: {_color_text(squad[idx]['question'], _TermColors.BLUE)}\n"
                 f"answer: {_color_text(pred['answer'], _TermColors.RED)}"
             )
@@ -201,6 +201,7 @@ class _TermColors:
     BLUE = "\033[94m"
     END = "\033[0m"
     CLEAR_SCREEN = "\033[2J"
+    CURSOR_TOP = "\033[0H"
 
 
 def _color_text(text: str, color: str) -> str:
