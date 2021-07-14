@@ -63,10 +63,6 @@ python server.py \
     zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate
 """
 import argparse
-import json
-import subprocess
-import time
-from typing import Any, Callable, Dict, List
 
 from tqdm.auto import tqdm
 
@@ -80,7 +76,7 @@ ORT_ENGINE = "onnxruntime"
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description=("Run a BERT ONNX model on the SQuAD dataset")
+        description="Run a BERT ONNX model on the SQuAD dataset"
     )
     parser.add_argument(
         "onnx_filepath",
