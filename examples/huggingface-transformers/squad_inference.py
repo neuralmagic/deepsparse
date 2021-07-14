@@ -58,10 +58,13 @@ optional arguments:
                         1
 
 ##########
-Example command for running using a model from sparsezoo:
-python server.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate
+Example command for running 1000 samples using a model from sparsezoo:
+python squad_inference.py \
+    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate \
+    --num-samples 1000
 """
+
+
 import argparse
 
 from tqdm.auto import tqdm
