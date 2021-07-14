@@ -417,6 +417,11 @@ class QuestionAnsweringPipeline(Pipeline):
             It will be truncated if needed
         :param handle_impossible_answer: whether or not we accept impossible as an
             answer
+        :param max_doc_strides: maximum number of strides to use as input from a long
+            context. Default is to stride the entire context string
+        :param preprocessed_inputs: if provided, preprocessing will be skipped in favor
+            of these inputs. Expected format is the output of self.preprocess; a tuple
+            of (examples, features_list)
         :return: dict or list of dictionaries, each containing the following keys:
             `"score"` - The probability associated to the answer
             `"start"` - The start index of the answer
@@ -425,12 +430,9 @@ class QuestionAnsweringPipeline(Pipeline):
         """
         # Set defaults values
         kwargs.setdefault("topk", 1)
-        kwargs.setdefault("doc_stride", 128)
         kwargs.setdefault("max_answer_len", 15)
-        kwargs.setdefault("max_seq_len", self.max_length)
-        kwargs.setdefault("max_question_len", 64)
         kwargs.setdefault("handle_impossible_answer", False)
-        kwargs.setdefault("max_doc_strides", None)
+        kwargs.setdefault("preprocessed_inputs", None)  # (examples, features_list)
 
         if kwargs["topk"] < 1:
             raise ValueError(f"topk parameter should be >= 1 (got {kwargs['topk']})")
@@ -441,25 +443,12 @@ class QuestionAnsweringPipeline(Pipeline):
                 f"(got {kwargs['max_answer_len']})"
             )
 
-        # Convert inputs to features
-        examples = self._args_parser(*args, **kwargs)
-        features_list = [
-            squad_convert_examples_to_features(
-                examples=[example],
-                tokenizer=self.tokenizer,
-                max_seq_length=kwargs["max_seq_len"],
-                doc_stride=kwargs["doc_stride"],
-                max_query_length=kwargs["max_question_len"],
-                padding_strategy=PaddingStrategy.MAX_LENGTH.value,
-                is_training=False,
-                tqdm_enabled=False,
-            )
-            for example in examples
-        ]
-        if kwargs["max_doc_strides"]:
-            features_list = [
-                features[: kwargs["max_doc_strides"]] for features in features_list
-            ]
+        # run pre-processing if not provided
+        examples, features_list = kwargs["preprocessed_inputs"] or self.preprocess(
+            *args, **kwargs
+        )
+
+        # forward pass and post-processing
         all_answers = []
         for features, example in zip(features_list, examples):
             model_input_names = self.tokenizer.model_input_names + ["input_ids"]
@@ -547,6 +536,54 @@ class QuestionAnsweringPipeline(Pipeline):
         if len(all_answers) == 1:
             return all_answers[0]
         return all_answers
+
+    def preprocess(self, *args, **kwargs) -> Tuple[Any, Any]:
+        """
+        preprocess the given QA model inputs using squad_convert_examples_to_features
+
+        :param args: SquadExample or list of them containing the question and context
+        :param X: SquadExample or list of them containing the question and context
+        :param data: SquadExample or list of them containing the question and context
+        :param question: single question or list of question strings
+        :param context: single context or list of context strings
+        :param doc_stride: if the context is too long to fit with the question for the
+            model, it will be split in several chunks with some overlap. This argument
+            controls the size of that overlap
+        :param max_seq_len: maximum length of the total sentence (context + question)
+            after tokenization. The context will be split in several chunks
+            (using the doc_stride) if needed
+        :param max_question_len: maximum length of the question after tokenization.
+            It will be truncated if needed
+        :param max_doc_strides: maximum number of strides to use as input from a long
+            context. Default is to stride the entire context string
+        :return: tuple of SquadExample inputs and preprocessed features list
+        """
+        kwargs.setdefault("doc_stride", 128)
+        kwargs.setdefault("max_seq_len", self.max_length)
+        kwargs.setdefault("max_question_len", 64)
+        kwargs.setdefault("max_doc_strides", None)
+
+        # Convert inputs to features
+        examples = self._args_parser(*args, **kwargs)
+        features_list = [
+            squad_convert_examples_to_features(
+                examples=[example],
+                tokenizer=self.tokenizer,
+                max_seq_length=kwargs["max_seq_len"],
+                doc_stride=kwargs["doc_stride"],
+                max_query_length=kwargs["max_question_len"],
+                padding_strategy=PaddingStrategy.MAX_LENGTH.value,
+                is_training=False,
+                tqdm_enabled=False,
+            )
+            for example in examples
+        ]
+        if kwargs["max_doc_strides"]:
+            features_list = [
+                features[: kwargs["max_doc_strides"]] for features in features_list
+            ]
+
+        return examples, features_list
 
     def decode(
         self, start: np.ndarray, end: np.ndarray, topk: int, max_answer_len: int

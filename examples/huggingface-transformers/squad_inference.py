@@ -170,14 +170,22 @@ def squad_inference(args):
         max_length=args.max_sequence_length,
     )
 
-    print(_TermColors.CLEAR_SCREEN)  # clear screen
-    for idx in tqdm(range(num_samples), position=0, leave=False):
-        # run inference
-        pred = question_answer(
-            question=squad[idx]["question"],
-            context=squad[idx]["context"],
-            max_doc_strides=1,  # only look at first part of long contexts
+    # preprocess inputs
+    preprocessed_inputs_list = []
+    for idx in tqdm(range(num_samples), desc="pre-processing"):
+        preprocessed_inputs_list.append(
+            question_answer.preprocess(
+                question=squad[idx]["question"],
+                context=squad[idx]["context"],
+                max_doc_strides=1,  # only look at first part of long contexts
+            )
         )
+
+    print(_TermColors.CLEAR_SCREEN)  # clear screen
+    progress_bar = tqdm(preprocessed_inputs_list, position=0, leave=False)
+    for idx, preprocessed_inputs in enumerate(progress_bar):
+        # run inference
+        pred = question_answer(preprocessed_inputs=preprocessed_inputs)
 
         # display every display_frequency samples
         if idx % args.display_frequency == 0:
