@@ -241,15 +241,20 @@ class Pipeline(_ScikitCompat):
         inputs = self._parse_and_tokenize(*args, **kwargs)
         self._forward(inputs)
 
-    def _forward(self, inputs, return_tensors=False):
+    def _forward(self, inputs):
+
+        # TODO: filter inputs  by valid name
+        #  inputs = {k: v for k, v in inputs.items() if k in self.input_names}
+        # temporary fix: reorder by expected QA input order
+        inps = list(inputs.values())
+        inps[1], inps[2] = inps[2], inps[1]
 
         if self.engine_type == ORT_ENGINE:
-
-            # TODO: filter by valid name
-            #  inputs = {k: v for k, v in inputs.items() if k in self.input_names}
-            return self.model.run(None, dict(zip(self.input_names, inputs.values())))
+            return self.model.run(None, dict(zip(self.input_names, inps)))
+            # return self.model.run(None, dict(zip(self.input_names, inputs.values())))
         elif self.engine_type == DEEPSPARSE_ENGINE:
-            return self.model.run(list(inputs.values()))
+            return self.model.run(inps)
+            # return self.model.run(list(inputs.values()))
         # TODO: torch
         # with self.device_placement():
         #         with torch.no_grad():
@@ -425,6 +430,7 @@ class QuestionAnsweringPipeline(Pipeline):
         kwargs.setdefault("max_seq_len", self.max_length)
         kwargs.setdefault("max_question_len", 64)
         kwargs.setdefault("handle_impossible_answer", False)
+        kwargs.setdefault("max_doc_strides", None)
 
         if kwargs["topk"] < 1:
             raise ValueError(f"topk parameter should be >= 1 (got {kwargs['topk']})")
@@ -450,6 +456,10 @@ class QuestionAnsweringPipeline(Pipeline):
             )
             for example in examples
         ]
+        if kwargs["max_doc_strides"]:
+            features_list = [
+                features[: kwargs["max_doc_strides"]] for features in features_list
+            ]
         all_answers = []
         for features, example in zip(features_list, examples):
             model_input_names = self.tokenizer.model_input_names + ["input_ids"]
