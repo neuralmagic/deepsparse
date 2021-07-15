@@ -177,7 +177,7 @@ def squad_inference(args):
             question_answer.preprocess(
                 question=squad[idx]["question"],
                 context=squad[idx]["context"],
-                max_doc_strides=1,  # only look at first part of long contexts
+                num_spans=1,  # only look at first part of long contexts
             )
         )
 
