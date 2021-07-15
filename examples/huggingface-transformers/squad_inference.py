@@ -66,6 +66,7 @@ python squad_inference.py \
 
 
 import argparse
+import os
 
 from tqdm.auto import tqdm
 
@@ -181,7 +182,7 @@ def squad_inference(args):
             )
         )
 
-    print(_TermColors.CLEAR_SCREEN)  # clear screen
+    tqdm.write("\n" * os.get_terminal_size().lines)  # clear screen w/ cursor to bottom
     progress_bar = tqdm(preprocessed_inputs_list, position=0, leave=False)
     for idx, preprocessed_inputs in enumerate(progress_bar):
         # run inference
@@ -190,7 +191,6 @@ def squad_inference(args):
         # display every display_frequency samples
         if idx % args.display_frequency == 0:
             tqdm.write(
-                f"{_TermColors.CLEAR_SCREEN}{_TermColors.CURSOR_TOP}"
                 f"question: {_color_text(squad[idx]['question'], _TermColors.BLUE)}\n"
                 f"answer: {_color_text(pred['answer'], _TermColors.RED)}"
             )
@@ -200,8 +200,6 @@ class _TermColors:
     RED = "\033[91m"
     BLUE = "\033[94m"
     END = "\033[0m"
-    CLEAR_SCREEN = "\033[2J"
-    CURSOR_TOP = "\033[0H"
 
 
 def _color_text(text: str, color: str) -> str:
