@@ -140,6 +140,7 @@ def main():
     # Benchmark DeepSparse Engine
     print("Benchmarking model with DeepSparse Engine...")
     dse_network = compile_model(onnx_filepath, batch_size=batch_size)
+    print(f"Engine info: {dse_network}")
     dse_results = dse_network.benchmark(
         inputs, num_iterations, num_warmup_iterations, include_outputs=True
     )

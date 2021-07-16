@@ -279,6 +279,7 @@ def _load_model(args) -> Tuple[Any, List[str]]:
         model = compile_model(
             args.model_filepath, args.batch_size, args.num_cores, args.num_sockets
         )
+        print(f"Engine info: {model}")
     elif args.engine == ORT_ENGINE:
         print(f"loading onnxruntime model for {args.model_filepath}")
 
