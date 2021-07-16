@@ -190,9 +190,12 @@ def squad_inference(args):
 
         # display every display_frequency samples
         if idx % args.display_frequency == 0:
+            progress = f"{idx + 1}/{num_samples}"
+            question_str = _color_text(squad[idx]["question"], _TermColors.BLUE)
+            answer_str = _color_text(pred["answer"], _TermColors.RED)
             tqdm.write(
-                f"question: {_color_text(squad[idx]['question'], _TermColors.BLUE)}\n"
-                f"answer: {_color_text(pred['answer'], _TermColors.RED)}"
+                f"question {progress}: {question_str}\n"
+                f"answer {progress}: {answer_str}"
             )
 
 
