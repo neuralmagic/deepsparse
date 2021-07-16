@@ -247,19 +247,17 @@ class Pipeline(_ScikitCompat):
         self._forward(inputs)
 
     def _forward(self, inputs):
-
-        # TODO: filter inputs  by valid name
-        #  inputs = {k: v for k, v in inputs.items() if k in self.input_names}
-        # temporary fix: reorder by expected QA input order
-        inps = list(inputs.values())
-        inps[1], inps[2] = inps[2], inps[1]
+        if not all(name in inputs for name in self.input_names):
+            raise ValueError(
+                f"pipeline expected arrays with names {self.input_names}, received "
+                f"inputs: {list(inputs.keys())}"
+            )
 
         if self.engine_type == ORT_ENGINE:
-            return self.model.run(None, dict(zip(self.input_names, inps)))
-            # return self.model.run(None, dict(zip(self.input_names, inputs.values())))
+            inputs = {k: v for k, v in inputs.items() if k in self.input_names}
+            return self.model.run(None, inputs)
         elif self.engine_type == DEEPSPARSE_ENGINE:
-            return self.model.run(inps)
-            # return self.model.run(list(inputs.values()))
+            return self.model.run([inputs[name] for name in self.input_names])
         # TODO: torch
         # with self.device_placement():
         #         with torch.no_grad():
