@@ -243,17 +243,13 @@ class Pipeline(_ScikitCompat):
 
     def _forward(self, inputs, return_tensors=False):
 
-        if not all(name in inputs for name in self.input_names):
-            raise ValueError(
-                f"pipeline expected arrays with names {self.input_names}, received "
-                f"inputs: {list(inputs.keys())}"
-            )
-
         if self.engine_type == ORT_ENGINE:
-            inputs = {k: v for k, v in inputs.items() if k in self.input_names}
-            return self.model.run(None, inputs)
+
+            # TODO: filter by valid name
+            #  inputs = {k: v for k, v in inputs.items() if k in self.input_names}
+            return self.model.run(None, dict(zip(self.input_names, inputs.values())))
         elif self.engine_type == DEEPSPARSE_ENGINE:
-            return self.model.run([inputs[name] for name in self.input_names])
+            return self.model.run(list(inputs.values()))
         # TODO: torch
         # with self.device_placement():
         #         with torch.no_grad():
