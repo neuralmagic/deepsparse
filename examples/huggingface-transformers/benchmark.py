@@ -61,7 +61,7 @@ optional arguments:
                         The number of warmup iterations that will be executed
                         before the actual benchmarking
   --max-sequence-length MAX_SEQUENCE_LENGTH
-                        the sequence length to benchmark with. Defualt is 128
+                        the sequence length to benchmark with. Default is 128
 
 ##########
 Example for benchmarking on a pruned BERT model from sparsezoo with deepsparse:
@@ -191,7 +191,7 @@ def parse_args():
     )
     parser.add_argument(
         "--max-sequence-length",
-        help="the sequence length to benchmark with. Defualt is 128",
+        help="the sequence length to benchmark with. Default is 128",
         type=int,
         default=128,
     )
