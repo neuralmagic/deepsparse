@@ -133,7 +133,7 @@ def run_server(
         inference_time = (time.time() - start) * 1000
 
         print(f"inference time: {inference_time:.4f} ms")
-        return arrays_to_bytes(result)
+        return arrays_to_bytes(result[0])
 
     @app.route("/info", methods=["GET"])
     def information():
@@ -174,8 +174,10 @@ def main():
     process arguments and run server
     """
     _config = parse_args()
+    # Get model
     print(f"Compiling model at {_config.onnx_filepath}")
     engine = compile_model(_config.onnx_filepath, _config.batch_size, _config.num_cores)
+
     print(engine)
 
     # Serve model

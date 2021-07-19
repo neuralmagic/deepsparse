@@ -11,12 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import Generator, Iterable, List, Tuple, Union
+import os
+from typing import Generator, Iterable, List, Optional, Tuple, Union
 
 import numpy
 
 import cv2
+from sparseml.utils import load_numpy
+from sparsezoo import Zoo
+from sparsezoo.utils import load_numpy_list
+
+
+"""
+A file with utility functions and helper classes for loading data
+"""
 
 
 class _BatchLoader:
@@ -112,16 +120,64 @@ class _BatchLoader:
 
 
 def load_image(
-    img: Union[str, numpy.ndarray], image_size: Tuple[int] = (640, 640)
+    img: Union[str, numpy.ndarray], image_size: Optional[Tuple[int]] = None
 ) -> Tuple[numpy.ndarray, numpy.ndarray]:
     """
-    :param img: file path to image or raw image array
-    :param image_size: target shape for image
+    :param img: file path to image or raw image array with 3 channels
+    :param image_size: optional target shape for image
     :return: Image loaded into numpy and reshaped to the given shape and the original
         image
     """
     img = cv2.imread(img) if isinstance(img, str) else img
-    img_resized = cv2.resize(img, image_size)
-    img_transposed = img_resized[:, :, ::-1].transpose(2, 0, 1)
-
+    img_resized = cv2.resize(img, image_size) if image_size else img
+    img_transposed = img_resized[:, :, ::-1].transpose(3, 0, 1, 2)
     return img_transposed, img
+
+
+def load_data(
+    data_path: str,
+) -> List[List[numpy.ndarray]]:
+    """
+    Loads data from given sparseZoo stub or directory with .npz files
+    :param data_path: directory path to .npz files to load or SparseZoo stub
+    :return: List of loaded npz files
+    """
+
+    if data_path.startswith("zoo:"):
+        data_dir = Zoo.load_model_from_stub(data_path).data_inputs.downloaded_path()
+    else:
+        data_dir = data_path
+        data_files = os.listdir(data_dir)
+        if any(".npz" not in file_name for file_name in data_files):
+            raise RuntimeError(
+                f"All files in data directory {data_dir} must have a .npz extension "
+                f"found {[name for name in data_files if '.npz' not in name]}"
+            )
+
+    samples = load_numpy_list(data_dir)
+    # unwrap unloaded numpy files
+    samples = [
+        load_numpy(sample) if isinstance(sample, str) else sample for sample in samples
+    ]
+
+    processed_samples = []
+    for idx, sample in enumerate(samples):
+        sample = list(sample.values())
+        processed_samples.append(sample)
+
+    return processed_samples
+
+
+def _load_random_data(
+    batch_size: int, iterations: int, image_size: Tuple[int]
+) -> Generator[List[numpy.ndarray], None, None]:
+    _channels = 3
+    iteration = 0
+
+    while iteration < iterations:
+        yield [
+            (numpy.random.rand(*(batch_size, _channels, *image_size))).astype(
+                numpy.float32
+            )
+        ]
+        iteration += 1

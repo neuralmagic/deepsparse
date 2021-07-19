@@ -70,10 +70,9 @@ optional arguments:
 
 """
 import argparse
-import os
 import time
 from tempfile import NamedTemporaryFile
-from typing import Any, Generator, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -82,15 +81,13 @@ from tqdm import tqdm
 
 from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
-from examples.classification.helper import _BatchLoader
+from examples.classification.helper import _BatchLoader, _load_random_data, load_data
 from sparseml.onnx.utils import (
     get_tensor_dim_shape,
     override_model_batch_size,
     set_tensor_dim_shape,
 )
-from sparseml.utils import load_numpy
 from sparsezoo import Zoo
-from sparsezoo.utils import load_numpy_list
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -100,6 +97,7 @@ ORT_ENGINE = "onnxruntime"
 def _run_model(
     args, model: Any, batch: Union[numpy.ndarray]
 ) -> List[Union[numpy.ndarray]]:
+    # run model according to engine type
     if args.engine == ORT_ENGINE:
         outputs = model.run(
             [out.name for out in model.get_outputs()],  # outputs
@@ -108,55 +106,6 @@ def _run_model(
     else:  # deepsparse
         outputs = model.run(batch)
     return outputs
-
-
-def load_data(
-    data_path: str,
-) -> List[List[numpy.ndarray]]:
-    """
-    Loads data from given sparseZoo stub or directory with .npz files
-    :param data_path: directory path to .npz files to load or SparseZoo stub
-    :return: List of loaded npz files
-    """
-
-    if data_path.startswith("zoo:"):
-        data_dir = Zoo.load_model_from_stub(data_path).data_inputs.downloaded_path()
-    else:
-        data_dir = data_path
-        data_files = os.listdir(data_dir)
-        if any(".npz" not in file_name for file_name in data_files):
-            raise RuntimeError(
-                f"All files in data directory {data_dir} must have a .npz extension "
-                f"found {[name for name in data_files if '.npz' not in name]}"
-            )
-
-    samples = load_numpy_list(data_dir)
-    # unwrap unloaded numpy files
-    samples = [
-        load_numpy(sample) if isinstance(sample, str) else sample for sample in samples
-    ]
-
-    processed_samples = []
-    for idx, sample in enumerate(samples):
-        sample = list(sample.values())
-        processed_samples.append(sample)
-
-    return processed_samples
-
-
-def _load_random_data(
-    batch_size: int, iterations: int, image_size: Tuple[int]
-) -> Generator[List[numpy.ndarray], None, None]:
-    _channels = 3
-    iteration = 0
-
-    while iteration < iterations:
-        yield [
-            (numpy.random.rand(*(batch_size, _channels, *image_size))).astype(
-                numpy.float32
-            )
-        ]
-        iteration += 1
 
 
 def _get_data_loader(config, new_image_shape, total_iterations):

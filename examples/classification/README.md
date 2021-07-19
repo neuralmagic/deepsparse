@@ -16,9 +16,9 @@ limitations under the License.
 
 # Image Classification Example
 
-This directory holds an examples scripts and notebooks for benchmarking and serving torchvision classification models using [DeepSparse](https://docs.neuralmagic.com/deepsparse//index.html).
+This directory holds an examples scripts and notebooks for benchmarking and serving [torchvision](https://pytorch.org/vision/stable/index.html) classification models using [DeepSparse](https://docs.neuralmagic.com/deepsparse//index.html).
 These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
-or you can specify your own transformer [ONNX](https://onnx.ai/) file.
+or you can specify your own [ONNX](https://onnx.ai/) file.
 ## Installation
 The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file:
 ```bash
@@ -53,6 +53,7 @@ python benchmark.py path_to_onnx_file \
 --data-path path_to_data_directory
 ```
 
+Replace `path_to_onnx_file` with [SparseZoo](http://sparsezoo.neuralmagic.com/) stub or filepath to [ONNX](https://onnx.ai/) model file and replace `path_to_data_directory` with appropriate SparseZoo stub or path to a directory containing `.npz` files.
 ## Example Transformers DeepSparse Flask Deployment
 To illustrate how the DeepSparse Engine can be used with torchvision classification models.
 The server uses Flask to create an app with the DeepSparse Engine hosting a compiled torchvision classification model. The client can make requests into the server returning inference results for given inputs.
@@ -62,8 +63,7 @@ First, start up the host server.py with your model of choice, SparseZoo stubs ar
 
 Example command:
 ```bash
-
-python server.py zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate
+python server.py "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
 ```
 
 You can leave that running as a detached process or in a spare terminal.
@@ -84,9 +84,15 @@ The file is self-documented.  See example usage below:
 
 ```python
 from client import Client
-image_path = "~/home/images/img1.png"
-my_client = Client(address='0.0.0.0', port='5543')
-model_outputs = my_client.detect(images=image_path)
+from helpers import load_data, _BatchLoader
+
+myclient = Client()
+resnet_stub = "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
+batch_loader = _BatchLoader(data=load_data(resnet_stub), batch_size=1, iterations=1)
+
+for batch in batch_loader:
+    out = myclient.detect(images=batch,)
+    print(f"outputs:{out}")
 ```
 
 ### SparseZoo Stubs

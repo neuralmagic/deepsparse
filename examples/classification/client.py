@@ -19,7 +19,7 @@ import numpy
 import requests
 
 from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
-from examples.classification.helper import load_image
+from examples.classification.helper import _BatchLoader, load_data
 
 
 class Client:
@@ -37,25 +37,49 @@ class Client:
         images: Union[str, numpy.ndarray, List[str], List[numpy.ndarray]],
     ) -> List[numpy.ndarray]:
         """
-        :param images: list of or singular file paths or numpy arrays of images to
+        :param images: list of numpy arrays of images to
             run the detection model on. Number of images should equal model batch size
         :return: list of post-processed object detection results for each image
             including class label, likelihood, and bounding box coordinates
         """
+
         if not isinstance(images, List):
             images = [images]
-        images = numpy.stack([load_image(image)[0] for image in images])
 
         print(f"Sending batch of {len(images)} images for detection to {self._url}")
 
         start = time.time()
         # Encode inputs
-        data = arrays_to_bytes([images])
+        data = arrays_to_bytes(images)
         # Send data to server for inference
         response = requests.post(self._url, data=data)
         # Decode outputs
+
         outputs = bytes_to_arrays(response.content)
         total_time = time.time() - start
         print(f"Round-trip time took {total_time * 1000.0:.4f}ms")
 
         return outputs
+
+
+def sanity_check():
+    """
+    This function shows example usage of Client class,
+    run this function after running server.py with the resnet stub
+
+    $python3 server.py MODEL_STUB
+    """
+    myclient = Client()
+    model_data_stub = (
+        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/"
+        "imagenet/pruned-moderate"
+    )
+    batch_loader = _BatchLoader(
+        data=load_data(model_data_stub), batch_size=1, iterations=1
+    )
+
+    for batch in batch_loader:
+        out = myclient.detect(
+            images=batch,
+        )
+        print(f"outputs:{out}")
