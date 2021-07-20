@@ -54,13 +54,26 @@ class Client:
         start = time.time()
         # Encode inputs
         data = arrays_to_bytes(images)
+        preprocessing_end = time.time()
+        preprocessing_time = preprocessing_end - start
+
         # Send data to server for inference
         response = requests.post(self._url, data=data)
-        # Decode outputs
+        execution_end_time = time.time()
+        engine_execution_time = execution_end_time - preprocessing_end
 
+        # Decode outputs
         outputs = bytes_to_arrays(response.content)
+        postprocessing_time = time.time() - execution_end_time
         total_time = time.time() - start
-        print(f"Round-trip time took {total_time * 1000.0:.4f}ms")
+
+        print(
+            f"Preprocessing time {preprocessing_time * 1000:.4f}ms",
+            f"Engine run time {engine_execution_time * 1000:.4f}ms",
+            f"Postprocessing time {postprocessing_time * 1000:.4f}ms",
+            f"Round-trip time  {total_time * 1000.0:.4f}ms",
+            sep="\n",
+        )
 
         return outputs
 

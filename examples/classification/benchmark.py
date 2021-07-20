@@ -74,6 +74,7 @@ python benchmark.py \
 """
 import argparse
 import time
+from collections import namedtuple
 from tempfile import NamedTemporaryFile
 from typing import Any, List, Optional, Tuple, Union
 
@@ -95,6 +96,8 @@ from sparsezoo import Zoo
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
+
+_Timer = namedtuple("_Timer", ("start", "end"))
 
 
 def benchmark():
@@ -126,17 +129,14 @@ def benchmark():
     progress_bar = tqdm(total=config.num_iterations)
 
     for iteration, batch in enumerate(data_loader):
-        iter_start = time.time()
 
         # inference
-        _ = _run_model(args=config, model=model, batch=batch)
-
-        iter_end = time.time()
+        _, _timer = _timed_run(args=config, model=model, batch=batch)
 
         if iteration >= config.num_warmup_iterations:
             results.append_batch(
-                time_start=iter_start,
-                time_end=iter_end,
+                time_start=_timer.start,
+                time_end=_timer.end,
                 batch_size=config.batch_size,
             )
             progress_bar.update(1)
@@ -195,18 +195,25 @@ def fix_onnx_input_shape(
     return tmp_file.name, tmp_file, image_shape
 
 
-def _run_model(
+def _timed_run(
     args, model: Any, batch: Union[numpy.ndarray]
-) -> List[Union[numpy.ndarray]]:
+) -> Tuple[List[Union[numpy.ndarray]]]:
     # run model according to engine type
     if args.engine == ORT_ENGINE:
+        outputs_ = [out.name for out in model.get_outputs()]
+        inputs_ = {model.get_inputs()[0].name: batch}
+        start_time = time.time()
         outputs = model.run(
-            [out.name for out in model.get_outputs()],  # outputs
-            {model.get_inputs()[0].name: batch},  # inputs dict
+            outputs_,  # outputs
+            inputs_,  # inputs dict
         )
+        end_time = time.time()
+
     else:  # deepsparse
+        start_time = time.time()
         outputs = model.run(batch)
-    return outputs
+        end_time = time.time()
+    return outputs, _Timer(start=start_time, end=end_time)
 
 
 def _get_data_loader(config, new_image_shape, total_iterations):
