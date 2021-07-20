@@ -20,7 +20,7 @@ Schedulers are special system software which handle the distribution of work acr
 
 In most use cases, the default scheduler is the preferred choice when running inferences with the DeepSparse Engine. It's highly optimized for minimum per-request latency, using all of the system's resources provided to it on every request it gets. Often, particularly when working with large batch sizes, the scheduler is able to distribute the workload of a single request across as many cores as it's provided.
 
-![Single-stream scheduling diagram](single-stream.png)
+<img src="https://docs.neuralmagic.com/deepsparse/_images/single-stream.png" alt="single stream diagram" />
 
 _Single stream scheduling; requests execute serially by default_
 
@@ -30,7 +30,7 @@ An alternative, "multi-stream" scheduler is provided with the software. In cases
 
 If increasing core count doesn't decrease latency, that's a strong indicator that parallelism is low in your particular model/batch-size combination. It may be that total throughput can be increased by making more requests simultaneously. Using the [deepsparse.engine.Scheduler API](https://docs.neuralmagic.com/deepsparse/api/deepsparse.html), the multi-stream scheduler can be selected, and requests made by multiple Python threads will be handled concurrently.
 
-![Multi-stream scheduling diagram](multi-stream.png)
+<img src="https://docs.neuralmagic.com/deepsparse/_images/multi-stream.png" alt="multi stream diagram" />
 
 _Multi-stream scheduling; requests execute in parallel and may utilize hardware resources better_
 
