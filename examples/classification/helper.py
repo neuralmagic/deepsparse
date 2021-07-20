@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from typing import Generator, Iterable, List, Optional, Tuple, Union
+from typing import Generator, Iterable, List, Tuple, Union
 
 import numpy
 
-import cv2
 from sparseml.utils import load_numpy
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy_list
@@ -117,21 +116,6 @@ class _BatchLoader:
         if self._single_input:
             batch = batch[0]
         return batch
-
-
-def load_image(
-    img: Union[str, numpy.ndarray], image_size: Optional[Tuple[int]] = None
-) -> Tuple[numpy.ndarray, numpy.ndarray]:
-    """
-    :param img: file path to image or raw image array with 3 channels
-    :param image_size: optional target shape for image
-    :return: Image loaded into numpy and reshaped to the given shape and the original
-        image
-    """
-    img = cv2.imread(img) if isinstance(img, str) else img
-    img_resized = cv2.resize(img, image_size) if image_size else img
-    img_transposed = img_resized[:, :, ::-1].transpose(3, 0, 1, 2)
-    return img_transposed, img
 
 
 def load_data(

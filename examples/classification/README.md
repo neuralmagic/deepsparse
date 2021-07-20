@@ -16,9 +16,10 @@ limitations under the License.
 
 # Image Classification Example
 
-This directory holds an examples scripts and notebooks for benchmarking and serving image classification models using the [DeepSparse](https://docs.neuralmagic.com/deepsparse//index.html) inference engine.
+This directory holds example scripts and notebooks for benchmarking and serving image classification models using the [DeepSparse](https://docs.neuralmagic.com/deepsparse//index.html) inference engine.
 These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
 or you can specify your own [ONNX](https://github.com/onnx/onnx) file.
+
 ## Installation
 The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file:
 ```bash
@@ -78,20 +79,20 @@ For a full list of options, run `python server.py -h`.
   
 ### Client
 
-`client.py` provides a `Client` object to make requests to the 
+`client_examples.py` provides a `Client` object to make requests to the 
 server easy.
 The file is self-documented.  See example usage below:
 
 ```python
-from client import Client
+from client_example import Client
 from helpers import load_data, _BatchLoader
 
-myclient = Client()
+client = Client()
 resnet_stub = "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
 batch_loader = _BatchLoader(data=load_data(resnet_stub), batch_size=1, iterations=1)
 
 for batch in batch_loader:
-    out = myclient.detect(images=batch,)
+    out = client.classify(images=batch, )
     print(f"outputs:{out}")
 ```
 
@@ -117,3 +118,5 @@ A few classification models from [SparseZoo](https://sparsezoo.neuralmagic.com/)
 |----------|-------------|-------------|
 | resnet-pruned-moderate | zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate |This model is a sparse, [ResNet-50](https://arxiv.org/abs/1512.03385) model that achieves 99% of the accuracy of the original baseline model (76.1% top1). Pruned layers achieve 88% sparsity.|
 |resnet-pruned-conservative|zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-conservative|This model is a sparse, [ResNet-50](https://arxiv.org/abs/1512.03385) model that achieves full recovery original baseline model accuracy (76.1% top1). Pruned layers achieve 80% sparsity.|
+|resnet-pruned-quantized-moderate|zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned_quant-moderate|This model is a sparse, INT8 quantized ResNet-50 model that achieves 99% of the original baseline accuracy. The average model sparsity is about 72% with pruned layers achieving between 70-80% sparsity. This pruned quantized model achieves 75.46% top1 accuracy on the ImageNet dataset.|
+|mobilenetv1-pruned-quantized|zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned_quant-moderate|Pruned [MobileNet](https://arxiv.org/abs/1704.04861) architecture with width=1.0 trained on the ImageNet dataset. Recalibrated performance model: within 99% of baseline validation top1 accuracy (70.9%)|

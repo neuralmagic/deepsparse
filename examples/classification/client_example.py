@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""
+An example client to help make requests to an image classification server
+"""
 import time
 from typing import List, Union
 
@@ -25,6 +27,7 @@ from examples.classification.helper import _BatchLoader, load_data
 class Client:
     """
     Client object for making requests to the example DeepSparse inference server
+
     :param address: IP address of the server, default is 0.0.0.0
     :param port: Port the server is hosted on, default is 5543
     """
@@ -32,7 +35,7 @@ class Client:
     def __init__(self, address: str = "0.0.0.0", port: str = 5543):
         self._url = f"http://{address}:{port}/predict"
 
-    def detect(
+    def classify(
         self,
         images: Union[str, numpy.ndarray, List[str], List[numpy.ndarray]],
     ) -> List[numpy.ndarray]:
@@ -69,7 +72,7 @@ def sanity_check():
 
     $python3 server.py MODEL_STUB
     """
-    myclient = Client()
+    client = Client()
     model_data_stub = (
         "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/"
         "imagenet/pruned-moderate"
@@ -79,7 +82,7 @@ def sanity_check():
     )
 
     for batch in batch_loader:
-        out = myclient.detect(
+        out = client.classify(
             images=batch,
         )
         print(f"outputs:{out}")

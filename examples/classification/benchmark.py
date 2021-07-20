@@ -18,7 +18,7 @@ An example script to benchmark a classification model
 Supports ONNX files or SparseZoo stubs for models
 Supports benchmarking on random or provided data
 Supports overriding original input shape
-Supports both ONNX and DeepSparse runtimes
+Supports both onnxruntime and DeepSparse runtimes
 
 #########
 Command help:
@@ -67,7 +67,10 @@ optional arguments:
   -w NUM_WARMUP_ITERATIONS, --num-warmup-iterations NUM_WARMUP_ITERATIONS
                         The number of warmup iterations that will be executed
                         before the actual benchmarking
-
+#####
+Example
+python benchmark.py \
+    "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
 """
 import argparse
 import time
@@ -94,34 +97,52 @@ DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 
-def _run_model(
-    args, model: Any, batch: Union[numpy.ndarray]
-) -> List[Union[numpy.ndarray]]:
-    # run model according to engine type
-    if args.engine == ORT_ENGINE:
-        outputs = model.run(
-            [out.name for out in model.get_outputs()],  # outputs
-            {model.get_inputs()[0].name: batch},  # inputs dict
-        )
-    else:  # deepsparse
-        outputs = model.run(batch)
-    return outputs
-
-
-def _get_data_loader(config, new_image_shape, total_iterations):
+def benchmark():
     """
-    Helper function to get appropriate batch data loader
+    Driver function for benchmarking a torchvision classification model
+    according to provided arguments
     """
-    if not config.data_path:
-        data_loader = _load_random_data(
-            batch_size=config.batch_size,
-            iterations=total_iterations,
-            image_size=new_image_shape,
-        )
-    else:
-        dataset = load_data(config.data_path)
-        data_loader = _BatchLoader(dataset, config.batch_size, total_iterations)
-    return data_loader
+
+    config = _parse_args(arguments=None)
+    model, new_image_shape = _load_model(
+        model_filepath=config.model_filepath,
+        batch_size=config.batch_size,
+        num_cores=config.num_cores,
+        num_sockets=config.num_sockets,
+        engine=config.engine,
+        image_shape=config.image_shape,
+    )
+
+    total_iterations = config.num_iterations + config.num_warmup_iterations
+    data_loader = _get_data_loader(config, new_image_shape, total_iterations)
+
+    print(
+        f"Running for {config.num_warmup_iterations} warmup iterations "
+        f"and {config.num_iterations} benchmarking iterations",
+        flush=True,
+    )
+
+    results = BenchmarkResults()
+    progress_bar = tqdm(total=config.num_iterations)
+
+    for iteration, batch in enumerate(data_loader):
+        iter_start = time.time()
+
+        # inference
+        _ = _run_model(args=config, model=model, batch=batch)
+
+        iter_end = time.time()
+
+        if iteration >= config.num_warmup_iterations:
+            results.append_batch(
+                time_start=iter_start,
+                time_end=iter_end,
+                batch_size=config.batch_size,
+            )
+            progress_bar.update(1)
+
+    progress_bar.close()
+    print(f"Benchmarking complete. End-to-end results:\n{results}")
 
 
 def fix_onnx_input_shape(
@@ -132,6 +153,7 @@ def fix_onnx_input_shape(
     Creates a new ONNX model from the given path that accepts the given input
     shape. If the given model already has the given input shape no modifications are
     made. Uses a tempfile to store the modified model file.
+
     :param model_path: file path to ONNX model or SparseZoo stub of the model
         to be loaded
     :param image_shape: 2-tuple of the image shape to resize this model to, or None if
@@ -155,13 +177,6 @@ def fix_onnx_input_shape(
     original_y = get_tensor_dim_shape(model_input, 3)
     original_image_shape = (original_x, original_y)
 
-    if not (isinstance(original_x, int) and isinstance(original_y, int)):
-        return (
-            model_path,
-            None,
-            original_image_shape,
-        )  # model graph does not have static integer input shape
-
     if image_shape is None or original_image_shape == tuple(image_shape):
         return model_path, None, original_image_shape  # no shape modification needed
 
@@ -178,6 +193,34 @@ def fix_onnx_input_shape(
     )
 
     return tmp_file.name, tmp_file, image_shape
+
+
+def _run_model(
+    args, model: Any, batch: Union[numpy.ndarray]
+) -> List[Union[numpy.ndarray]]:
+    # run model according to engine type
+    if args.engine == ORT_ENGINE:
+        outputs = model.run(
+            [out.name for out in model.get_outputs()],  # outputs
+            {model.get_inputs()[0].name: batch},  # inputs dict
+        )
+    else:  # deepsparse
+        outputs = model.run(batch)
+    return outputs
+
+
+def _get_data_loader(config, new_image_shape, total_iterations):
+    # Helper function to get appropriate batch data loader
+    if not config.data_path:
+        data_loader = _load_random_data(
+            batch_size=config.batch_size,
+            iterations=total_iterations,
+            image_size=new_image_shape,
+        )
+    else:
+        dataset = load_data(config.data_path)
+        data_loader = _BatchLoader(dataset, config.batch_size, total_iterations)
+    return data_loader
 
 
 def _load_model(
@@ -235,20 +278,7 @@ def _load_model(
     return model, image_shape
 
 
-def _parse_device(device: Union[str, int]) -> Union[str, int]:
-    try:
-        return int(device)
-    except Exception:
-        return device
-
-
-def _add_and_parse_args(arguments=None):
-    parser = _get_parser()
-    args = parser.parse_args(args=arguments)
-    return args
-
-
-def _get_parser():
+def _parse_args(arguments=None):
     parser = argparse.ArgumentParser(description="Benchmark classification model")
     parser.add_argument(
         "model_filepath",
@@ -338,55 +368,9 @@ def _get_parser():
         type=int,
         default=25,
     )
-    return parser
 
-
-def benchmark():
-    """
-    Driver function for benchmarking a torchvision classification model
-    according to provided arguments
-    """
-
-    config = _add_and_parse_args(arguments=None)
-    model, new_image_shape = _load_model(
-        model_filepath=config.model_filepath,
-        batch_size=config.batch_size,
-        num_cores=config.num_cores,
-        num_sockets=config.num_sockets,
-        engine=config.engine,
-        image_shape=config.image_shape,
-    )
-
-    total_iterations = config.num_iterations + config.num_warmup_iterations
-    data_loader = _get_data_loader(config, new_image_shape, total_iterations)
-
-    print(
-        f"Running for {config.num_warmup_iterations} warmup iterations "
-        f"and {config.num_iterations} benchmarking iterations",
-        flush=True,
-    )
-
-    results = BenchmarkResults()
-    progress_bar = tqdm(total=config.num_iterations)
-
-    for iteration, batch in enumerate(data_loader):
-        iter_start = time.time()
-
-        # inference
-        _ = _run_model(args=config, model=model, batch=batch)
-
-        iter_end = time.time()
-
-        if iteration >= config.num_warmup_iterations:
-            results.append_batch(
-                time_start=iter_start,
-                time_end=iter_end,
-                batch_size=config.batch_size,
-            )
-            progress_bar.update(1)
-
-    progress_bar.close()
-    print(f"Benchmarking complete. End-to-end results:\n{results}")
+    args = parser.parse_args(args=arguments)
+    return args
 
 
 if __name__ == "__main__":
