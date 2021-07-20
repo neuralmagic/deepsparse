@@ -996,7 +996,8 @@ def _validate_ort_import():
     if ort_import_error is not None:
         raise ImportError(
             "An exception occurred when importing onxxruntime. Please verify that "
-            "onnxruntime is installed in order to use the onnxruntime inference engine"
+            "onnxruntime is installed in order to use the onnxruntime inference "
+            f"engine. \n\nException info: {ort_import_error}"
         )
 
 
@@ -1005,5 +1006,6 @@ def _validate_transformers_import():
         raise ImportError(
             "An exception occurred when importing from the transformers library. "
             "Please verify that transformers~=4.8 is installed or install deepsparse "
-            "with `pip install deepsparse[transformers]`"
+            "with `pip install deepsparse[transformers]`. \n\nException info: "
+            f"{transformers_import_error}"
         )
