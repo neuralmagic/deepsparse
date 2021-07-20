@@ -183,6 +183,7 @@ def main():
         model_path=_config.onnx_filepath,
         num_cores=_config.num_cores,
     )
+    print(f"Engine info: {qa_pipeline.model}")
 
     # Serve model
     run_server(

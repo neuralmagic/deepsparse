@@ -345,6 +345,7 @@ def _load_model(args) -> Any:
         model = compile_model(
             args.model_filepath, args.batch_size, args.num_cores, args.num_sockets
         )
+        print(f"Engine info: {model}")
         if args.quantized_inputs and not model.cpu_vnni:
             print(
                 "WARNING: VNNI instructions not detected, "
