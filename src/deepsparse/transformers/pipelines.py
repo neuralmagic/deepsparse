@@ -29,10 +29,18 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tupl
 
 import numpy as np
 import onnx
-from onnxruntime import GraphOptimizationLevel, InferenceSession, SessionOptions
 
 from deepsparse import Engine, compile_model, cpu
 from sparsezoo import Zoo
+
+
+try:
+    import onnxruntime
+
+    ort_import_error = None
+except Exception as ort_import_err:
+    onnxruntime = None
+    ort_import_error = ort_import_err
 
 
 try:
@@ -122,7 +130,7 @@ class DefaultArgumentHandler(ArgumentHandler):
             if all([isinstance(arg, str) for arg in args]):
                 return list(args)
 
-            # If not instance of list, then it should instance of iterable
+            # If not instance of list, then it should be an instance of iterable
             elif isinstance(args, Iterable):
                 return list(chain.from_iterable(chain(args)))
             else:
@@ -190,7 +198,7 @@ class Pipeline(_ScikitCompat):
 
     def __init__(
         self,
-        model: Union[Engine, InferenceSession],
+        model: Union[Engine, "onnxruntime.InferenceSession"],
         tokenizer: PreTrainedTokenizer,
         config: PretrainedConfig,
         engine_type: str,
@@ -247,19 +255,17 @@ class Pipeline(_ScikitCompat):
         self._forward(inputs)
 
     def _forward(self, inputs):
-
-        # TODO: filter inputs  by valid name
-        #  inputs = {k: v for k, v in inputs.items() if k in self.input_names}
-        # temporary fix: reorder by expected QA input order
-        inps = list(inputs.values())
-        inps[1], inps[2] = inps[2], inps[1]
+        if not all(name in inputs for name in self.input_names):
+            raise ValueError(
+                f"pipeline expected arrays with names {self.input_names}, received "
+                f"inputs: {list(inputs.keys())}"
+            )
 
         if self.engine_type == ORT_ENGINE:
-            return self.model.run(None, dict(zip(self.input_names, inps)))
-            # return self.model.run(None, dict(zip(self.input_names, inputs.values())))
+            inputs = {k: v for k, v in inputs.items() if k in self.input_names}
+            return self.model.run(None, inputs)
         elif self.engine_type == DEEPSPARSE_ENGINE:
-            return self.model.run(inps)
-            # return self.model.run(list(inputs.values()))
+            return self.model.run([inputs[name] for name in self.input_names])
         # TODO: torch
         # with self.device_placement():
         #         with torch.no_grad():
@@ -366,7 +372,7 @@ class QuestionAnsweringPipeline(Pipeline):
 
     def __init__(
         self,
-        model: Union[Engine, InferenceSession],
+        model: Union[Engine, "onnxruntime.InferenceSession"],
         tokenizer: PreTrainedTokenizer,
         engine_type: str,
         input_names: Optional[List[str]] = None,
@@ -962,7 +968,7 @@ def _create_model(
     num_cores: Optional[int],
     num_sockets: Optional[int],
     max_length: int = 128,
-) -> Tuple[Union[Engine, InferenceSession], List[str]]:
+) -> Tuple[Union[Engine, "onnxruntime.InferenceSession"], List[str]]:
     onnx_path, input_names, _ = overwrite_transformer_onnx_model_inputs(
         model_path, max_length=max_length
     )
@@ -972,21 +978,34 @@ def _create_model(
             onnx_path, batch_size=1, num_cores=num_cores, num_sockets=num_sockets
         )
     elif engine_type == ORT_ENGINE:
-        sess_options = SessionOptions()
+        _validate_ort_import()
+        sess_options = onnxruntime.SessionOptions()
         if num_cores is not None:
             sess_options.intra_op_num_threads = num_cores
         sess_options.log_severity_level = 3
-        sess_options.graph_optimization_level = GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_options.graph_optimization_level = (
+            onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        )
 
-        model = InferenceSession(onnx_path, sess_options=sess_options)
+        model = onnxruntime.InferenceSession(onnx_path, sess_options=sess_options)
 
     return model, input_names
+
+
+def _validate_ort_import():
+    if ort_import_error is not None:
+        raise ImportError(
+            "An exception occurred when importing onxxruntime. Please verify that "
+            "onnxruntime is installed in order to use the onnxruntime inference "
+            f"engine. \n\nException info: {ort_import_error}"
+        )
 
 
 def _validate_transformers_import():
     if transformers_import_error is not None:
         raise ImportError(
-            "An exception occured when importing from the transformers library. "
+            "An exception occurred when importing from the transformers library. "
             "Please verify that transformers~=4.8 is installed or install deepsparse "
-            "with `pip install deepsparse[transformers]`"
+            "with `pip install deepsparse[transformers]`. \n\nException info: "
+            f"{transformers_import_error}"
         )

@@ -130,7 +130,7 @@ class DefaultArgumentHandler(ArgumentHandler):
             if all([isinstance(arg, str) for arg in args]):
                 return list(args)
 
-            # If not instance of list, then it should instance of iterable
+            # If not instance of list, then it should be an instance of iterable
             elif isinstance(args, Iterable):
                 return list(chain.from_iterable(chain(args)))
             else:
