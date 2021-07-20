@@ -16,9 +16,9 @@ limitations under the License.
 
 # Image Classification Example
 
-This directory holds an examples scripts and notebooks for benchmarking and serving [torchvision](https://pytorch.org/vision/stable/index.html) classification models using [DeepSparse](https://docs.neuralmagic.com/deepsparse//index.html).
+This directory holds an examples scripts and notebooks for benchmarking and serving image classification models using the [DeepSparse](https://docs.neuralmagic.com/deepsparse//index.html) inference engine.
 These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
-or you can specify your own [ONNX](https://onnx.ai/) file.
+or you can specify your own [ONNX](https://github.com/onnx/onnx) file.
 ## Installation
 The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file:
 ```bash
@@ -39,7 +39,7 @@ python classification.py mobilenet_v2 --batch_size 8 --num_cores 4
 Run with the `-h` flag to see all available models.
 
 ## Benchmarking Example
-`benchmark.py` is a script for benchmarking sparsified [torchvision](https://pytorch.org/vision/stable/index.html) classification model performance with DeepSparse. For a full list of options run `python benchmark.py -h`.
+`benchmark.py` is a script for benchmarking sparsified image classification model performance with DeepSparse. For a full list of options run `python benchmark.py -h`.
 To run a benchmark using the DeepSparse Engine with a moderately pruned resnet model that uses all available CPU cores and batch size 1, run:
 
 ```bash
@@ -53,12 +53,12 @@ python benchmark.py path_to_onnx_file \
 --data-path path_to_data_directory
 ```
 
-Replace `path_to_onnx_file` with [SparseZoo](http://sparsezoo.neuralmagic.com/) stub or filepath to [ONNX](https://onnx.ai/) model file and replace `path_to_data_directory` with appropriate SparseZoo stub or path to a directory containing `.npz` files.
-## Example Transformers DeepSparse Flask Deployment
-To illustrate how the DeepSparse Engine can be used with torchvision classification models.
-The server uses Flask to create an app with the DeepSparse Engine hosting a compiled torchvision classification model. The client can make requests into the server returning inference results for given inputs.
+Replace `path_to_onnx_file` with [SparseZoo](http://sparsezoo.neuralmagic.com/) stub or filepath to ONNX model file and replace `path_to_data_directory` with appropriate SparseZoo stub or path to a directory containing `.npz` files to be used as model inputs.
+## Example Image Classification DeepSparse Flask Deployment
+To illustrate how the DeepSparse Engine can be used with image classification models.
+The server uses Flask to create an app with the DeepSparse Engine hosting a compiled image classification model. The client can make requests into the server returning inference results for given inputs.
 
-Server
+### Server
 First, start up the host server.py with your model of choice, SparseZoo stubs are also supported.
 
 Example command:
