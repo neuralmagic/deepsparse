@@ -74,9 +74,8 @@ python benchmark.py \
 """
 import argparse
 import time
-from collections import namedtuple
 from tempfile import NamedTemporaryFile
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, NamedTuple, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -97,7 +96,13 @@ from sparsezoo import Zoo
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
-_Timer = namedtuple("_Timer", ("start", "end"))
+_Timer = NamedTuple(
+    "_Timer",
+    [
+        ("start", float),
+        ("end", float),
+    ],
+)
 
 
 def benchmark():

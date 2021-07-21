@@ -72,11 +72,14 @@ You can leave that running as a detached process or in a spare terminal.
 
 This starts a Flask app with the DeepSparse Engine as the inference backend, accessible at http://0.0.0.0:5543 by default.
 
-The app exposes HTTP endpoints at:
+Once the server is running, our app creates two URLs, exposing the following HTTP endpoints:
 
-- `/info` to get information about the compiled model
-- `/predict` to send inputs to the model and receive a response. The number of inputs should match the compiled model's batch size.
+- `http://0.0.0.0:5543/info` to get information about the compiled model
+- `http://0.0.0.0:5543/predict` to post inputs to the model and get inference results. The number of inputs should match the compiled model's batch size.
+
+Here http://0.0.0.0:5543 is the default url and port number, user can also specify their own url while running [server.py](https://github.com/neuralmagic/deepsparse/blob/main/examples/classification/server.py)
 For a full list of options, run `python server.py -h`.
+  
   
 ### Client
 
