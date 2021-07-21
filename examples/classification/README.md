@@ -41,7 +41,7 @@ Run with the `-h` flag to see all available models.
 
 ## Benchmarking Example
 `benchmark.py` is a script for benchmarking sparsified image classification model performance with DeepSparse. For a full list of options run `python benchmark.py -h`.
-To run a benchmark using the DeepSparse Engine with a moderately pruned resnet model that uses all available CPU cores and batch size 1, run:
+To run a benchmark using the DeepSparse Engine with a moderately pruned ResNet model that uses all available CPU cores and batch size 1, run:
 
 ```bash
 python benchmark.py "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
@@ -56,8 +56,9 @@ python benchmark.py path_to_onnx_file \
 
 Replace `path_to_onnx_file` with [SparseZoo](http://sparsezoo.neuralmagic.com/) stub or filepath to ONNX model file and replace `path_to_data_directory` with appropriate SparseZoo stub or path to a directory containing `.npz` files to be used as model inputs.
 ## Example Image Classification DeepSparse Flask Deployment
-To illustrate how the DeepSparse Engine can be used with image classification models.
-The server uses Flask to create an app with the DeepSparse Engine hosting a compiled image classification model. The client can make requests into the server returning inference results for given inputs.
+
+The [server.py](https://github.com/neuralmagic/deepsparse/blob/main/examples/classification/server.py) script uses Flask for hosting a compiled image classification model with the DeepSparse Engine.
+Client can make requests into the server returning inference results for given inputs.
 
 ### Server
 First, start up the host server.py with your model of choice, SparseZoo stubs are also supported.
@@ -97,8 +98,8 @@ for batch in batch_loader:
 ```
 
 ### SparseZoo Stubs
-[SparseZoo](http://sparsezoo.neuralmagic.com/) is a constantly-growing repository of sparsified (pruned and 
-pruned-quantized) models with matching sparsification recipes for neural networks. It simplifies and accelerates your time-to-value in building performant deep learning models with a collection of inference-optimized models and recipes to prototype from.
+[SparseZoo](http://sparsezoo.neuralmagic.com/) is a constantly growing repository of sparsified (pruned and 
+pruned-quantized) models with matching sparsification recipes for neural networks. It simplifies and accelerates your time to value in building performant deep learning models with a collection of inference-optimized models and recipes to prototype.
 
 Available via API and hosted in the cloud, the [SparseZoo](http://sparsezoo.neuralmagic.com/) contains both 
 baseline and models sparsified to different degrees of inference performance vs. baseline loss recovery. Recipe-driven approaches built around sparsification algorithms allow you to take the models as given, transfer-learn from the models onto private datasets, or transfer the recipes to your architectures.
