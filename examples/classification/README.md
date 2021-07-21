@@ -16,7 +16,7 @@ limitations under the License.
 
 # Image Classification Example
 
-This directory holds example scripts and notebooks for benchmarking and serving image classification models using the [DeepSparse](https://docs.neuralmagic.com/deepsparse//index.html) inference engine.
+This directory holds example scripts and notebooks for benchmarking and serving image classification models using the [DeepSparse Engine](https://docs.neuralmagic.com/deepsparse/index.html).
 These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
 or you can specify your own [ONNX](https://github.com/onnx/onnx) file.
 
