@@ -23,6 +23,7 @@ usage: annotate.py [-h] --source SOURCE [-e {deepsparse,onnxruntime,torch}]
                    [-c NUM_CORES] [-s NUM_SOCKETS] [-q] [--fp16]
                    [--device DEVICE] [--save-dir SAVE_DIR] [--name NAME]
                    [--target-fps TARGET_FPS] [--no-save]
+                   [--model-config MODEL_CONFIG]
                    model_filepath
 
 Annotate images, videos, and streams with sparsified YOLO models
@@ -77,6 +78,10 @@ optional arguments:
                         None
   --no-save             set flag when source is from webcam to not save
                         results. not supported for non-webcam sources
+  --model-config MODEL_CONFIG
+                        YOLO config YAML file to override default anchor
+                        points when post-processing. Defaults to use standard
+                        YOLOv3/YOLOv5 anchors
 
 ##########
 Example command for running webcam annotations with pruned quantized YOLOv3:
@@ -253,6 +258,15 @@ def parse_args(arguments=None):
             "for non-webcam sources"
         ),
     )
+    parser.add_argument(
+        "--model-config",
+        type=str,
+        default=None,
+        help=(
+            "YOLO config YAML file to override default anchor points when "
+            "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
+        ),
+    )
 
     args = parser.parse_args(args=arguments)
     if args.engine == TORCH_ENGINE and args.device is None:
@@ -391,7 +405,7 @@ def annotate(args):
     is_webcam = args.source.isnumeric()
 
     postprocessor = (
-        YoloPostprocessor(args.image_shape)
+        YoloPostprocessor(args.image_shape, args.model_config)
         if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]
         else None
     )
