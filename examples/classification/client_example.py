@@ -21,7 +21,7 @@ import numpy
 import requests
 
 from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
-from examples.classification.helper import _BatchLoader, load_data
+from helper import _BatchLoader, load_data
 
 
 class Client:
