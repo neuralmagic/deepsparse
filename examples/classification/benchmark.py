@@ -84,7 +84,7 @@ from tqdm import tqdm
 
 from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
-from examples.classification.helper import _BatchLoader, _load_random_data, load_data
+from helper import _BatchLoader, _load_random_data, load_data
 from sparseml.onnx.utils import (
     get_tensor_dim_shape,
     override_model_batch_size,

@@ -21,7 +21,8 @@ These examples can load pre-trained, sparsified models from [SparseZoo](https://
 or you can specify your own [ONNX](https://github.com/onnx/onnx) file.
 
 ## Installation
-The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file:
+The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file, make sure to upgrade `pip` using `python -m pip install -U pip
+` before running the following:
 ```bash
 pip3 install -r requirements.txt
 ```
@@ -89,7 +90,7 @@ The file is self-documented.  See example usage below:
 
 ```python
 from client_example import Client
-from helpers import load_data, _BatchLoader
+from helper import load_data, _BatchLoader
 
 client = Client()
 resnet_stub = "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
