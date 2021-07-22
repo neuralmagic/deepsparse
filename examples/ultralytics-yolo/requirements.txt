@@ -1,0 +1,10 @@
+# pip install -r requirements.txt
+
+# NM Deps
+deepsparse>=0.3.1
+sparseml[torchvision]>=0.3.1
+
+# Example Deps
+flask
+flask-cors
+opencv-python
