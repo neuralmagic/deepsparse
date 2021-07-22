@@ -13,11 +13,7 @@
 # limitations under the License.
 
 """
-<<<<<<< HEAD
 Utilities for YOLO pre- and post-processing for DeepSparse pipelines
-=======
-Utilities for YOLO pre and post processing for DeepSparse pipelines
->>>>>>> moving YOLOv3 examples to unified YOLO examples
 
 Postprocessing is currently tied to yolov3-spp, modify anchor and output
 variables if using a different model.
@@ -37,10 +33,7 @@ import onnx
 import cv2
 import torch
 import torchvision
-<<<<<<< HEAD
 import yaml
-=======
->>>>>>> moving YOLOv3 examples to unified YOLO examples
 from sparseml.onnx.utils import get_tensor_dim_shape, set_tensor_dim_shape
 from sparseml.utils import create_dirs
 from sparsezoo import Zoo
@@ -56,27 +49,15 @@ __all__ = [
 ]
 
 
-<<<<<<< HEAD
-# available local YOLO configs
-
-
 # Default YOLO anchor grids
 _YOLO_DEFAULT_ANCHORS = [
-=======
-# Yolo V3 specific variables
-_YOLO_V3_ANCHORS = [
->>>>>>> moving YOLOv3 examples to unified YOLO examples
     torch.Tensor([[10, 13], [16, 30], [33, 23]]),
     torch.Tensor([[30, 61], [62, 45], [59, 119]]),
     torch.Tensor([[116, 90], [156, 198], [373, 326]]),
 ]
-<<<<<<< HEAD
 _YOLO_DEFAULT_ANCHOR_GRIDS = [
     t.clone().view(1, -1, 1, 1, 2) for t in _YOLO_DEFAULT_ANCHORS
 ]
-=======
-_YOLO_V3_ANCHOR_GRIDS = [t.clone().view(1, -1, 1, 1, 2) for t in _YOLO_V3_ANCHORS]
->>>>>>> moving YOLOv3 examples to unified YOLO examples
 
 
 def get_yolo_loader_and_saver(
@@ -378,26 +359,17 @@ def load_image(
 
 class YoloPostprocessor:
     """
-<<<<<<< HEAD
     Class for performing post-processing of YOLO model predictions
-=======
-    Class for performing postprocessing of YOLO model predictions
->>>>>>> moving YOLOv3 examples to unified YOLO examples
 
     :param image_size: size of input image to model. used to calculate stride based on
         output shapes
     """
 
-<<<<<<< HEAD
     def __init__(self, image_size: Tuple[int] = (640, 640), cfg: Optional[str] = None):
         self._image_size = image_size
         self._anchor_grids = (
             self._load_cfg_anchor_grid(cfg) if cfg else _YOLO_DEFAULT_ANCHOR_GRIDS
         )
-=======
-    def __init__(self, image_size: Tuple[int] = (640, 640)):
-        self._image_size = image_size
->>>>>>> moving YOLOv3 examples to unified YOLO examples
         self._grids = {}  # Dict[Tuple[int], torch.Tensor]
 
     def pre_nms_postprocess(self, outputs: List[numpy.ndarray]) -> torch.Tensor:
@@ -414,19 +386,11 @@ class YoloPostprocessor:
             # get grid and stride
             grid_shape = pred.shape[2:4]
             grid = self._get_grid(grid_shape)
-<<<<<<< HEAD
-=======
-            anchor_grid = _YOLO_V3_ANCHOR_GRIDS[idx]
->>>>>>> moving YOLOv3 examples to unified YOLO examples
             stride = self._image_size[0] / grid_shape[0]
 
             # decode xywh box values
             pred[..., 0:2] = (pred[..., 0:2] * 2.0 - 0.5 + grid) * stride
-<<<<<<< HEAD
             pred[..., 2:4] = (pred[..., 2:4] * 2) ** 2 * self._anchor_grids[idx]
-=======
-            pred[..., 2:4] = (pred[..., 2:4] * 2) ** 2 * anchor_grid
->>>>>>> moving YOLOv3 examples to unified YOLO examples
             # flatten anchor and grid dimensions ->
             #       (bs, num_predictions, num_classes + 5)
             processed_outputs.append(pred.view(pred.size(0), -1, pred.size(-1)))
@@ -444,7 +408,6 @@ class YoloPostprocessor:
             ).float()
         return self._grids[grid_shape]
 
-<<<<<<< HEAD
     @staticmethod
     def _load_cfg_anchor_grid(cfg: str) -> List[torch.Tensor]:
         with open(cfg) as f:
@@ -459,8 +422,6 @@ class YoloPostprocessor:
         anchors = [torch.Tensor(_split_to_coords(coords)) for coords in anchors]
         return [t.clone().view(1, -1, 1, 1, 2) for t in anchors]
 
-=======
->>>>>>> moving YOLOv3 examples to unified YOLO examples
 
 def postprocess_nms(outputs: torch.Tensor) -> List[numpy.ndarray]:
     """
