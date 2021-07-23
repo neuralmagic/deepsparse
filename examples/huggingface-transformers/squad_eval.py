@@ -130,6 +130,7 @@ def squad_eval(args):
         num_sockets=args.num_sockets,
         max_length=args.max_sequence_length,
     )
+    print(f"Engine info: {question_answer.model}")
 
     for sample in tqdm(squad):
         pred = question_answer(
@@ -143,7 +144,7 @@ def squad_eval(args):
             references=[{"answers": sample["answers"], "id": sample["id"]}],
         )
 
-    print(f"SQuAD eval results: {squad_eval.compute()}")
+    print(f"\nSQuAD eval results: {squad_eval.compute()}")
 
 
 def main():
