@@ -119,7 +119,7 @@ def parse_args():
 def squad_eval(args):
     # load squad validation dataset and eval tool
     squad = load_dataset("squad")["validation"]
-    squad_eval = load_metric("squad")
+    squad_metrics = load_metric("squad")
 
     # load QA pipeline
     question_answer = pipeline(
@@ -139,12 +139,12 @@ def squad_eval(args):
             num_spans=1,  # only look at first part of long contexts
         )
 
-        squad_eval.add_batch(
+        squad_metrics.add_batch(
             predictions=[{"prediction_text": pred["answer"], "id": sample["id"]}],
             references=[{"answers": sample["answers"], "id": sample["id"]}],
         )
 
-    print(f"\nSQuAD eval results: {squad_eval.compute()}")
+    print(f"\nSQuAD eval results: {squad_metrics.compute()}")
 
 
 def main():
