@@ -54,7 +54,7 @@ run the following examples.
 to run inferences on images, videos, or webcam streams. For a full list of options
 `python annotate.py -h`.
 
-To run pruned-quantized YOLOv3 on a local webcam run:
+To run pruned-quantized YOLOv3 on a local webcam run:https://github.com/neuralmagic/deepsparse/pull/147
 ```bash
 python annotate.py \
     zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
@@ -64,7 +64,7 @@ python annotate.py \
     --no-save  # webcam only
 ```
 
-In addition to webcam `--source` can take a path to a `.jpg` file, directory or glog pat
+In addition to webcam `--source` can take a path to a `.jpg` file, directory or glob path
 of `.jpg` files, or path to a `.mp4` video file.  If source is an integer and no
 corresponding webcam is available, an exception will be raised.
 
@@ -82,6 +82,7 @@ python benchmark.py \
 ```
 
 Note for quantized performance, your CPU must support VNNI instructions.
+Review `/proc/cpuinfo` for the flag `avx512_vnni` to verify chipset compatibility.
 
 
 
@@ -115,6 +116,7 @@ The app exposes HTTP endpoints at:
 - `/predict` to send images to the model and receive as detected in response.
     The number of images should match the compiled model's batch size.
 
+http://0.0.0.0:5543 is the default url and the user can also specify their own url while running the server.
 For a full list of options, run `python server.py -h`.
 
 Currently, the server is set to do pre-processing for the yolov3-spp
