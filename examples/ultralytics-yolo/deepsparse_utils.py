@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Utilities for YOLO pre and post processing for DeepSparse pipelines
+Utilities for YOLO pre- and post-processing for DeepSparse pipelines
 
 Postprocessing is currently tied to yolov3-spp, modify anchor and output
 variables if using a different model.
@@ -356,7 +356,7 @@ def load_image(
 
 class YoloPostprocessor:
     """
-    Class for performing postprocessing of YOLO model predictions
+    Class for performing post-processing of YOLO model predictions
 
     :param image_size: size of input image to model. used to calculate stride based on
         output shapes

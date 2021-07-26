@@ -38,7 +38,7 @@ from the [SparseZoo](https://sparsezoo.neuralmagic.com/).
 The [SparseZoo](https://sparsezoo.neuralmagic.com/) contains both 
 baseline and models sparsified to different degrees of inference performance vs. baseline loss recovery.
 
-Each model in the SparseZoo has a specific stub that identifies it, any YOLO model stub in the SparseZoo can be used to
+Each model in the SparseZoo has a specific stub that identifies it; any YOLO model stub in the SparseZoo can be used to
 run the following examples.
 
 
