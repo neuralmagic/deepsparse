@@ -101,7 +101,7 @@ def parse_args():
         type=int,
         default=None,
         help=(
-            "For DeepSparse only. The number of physical cores to run the "
+            "For DeepSparse only. The number of physical sockets to run the "
             "eval on. Defaults to None where is uses all sockets available on the "
             "system"
         ),
