@@ -61,7 +61,11 @@ from flask_cors import CORS
 
 from deepsparse import compile_model
 from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
-from deepsparse_utils import YoloPostprocessor, postprocess_nms
+from deepsparse_utils import (
+    YoloPostprocessor,
+    postprocess_nms,
+    yolo_onnx_has_postprocessing,
+)
 
 
 def parse_args():
@@ -130,11 +134,15 @@ def parse_args():
 def create_and_run_model_server(
     args, model_path: str, batch_size: int, num_cores: int, address: str, port: str
 ) -> flask.Flask:
+    has_postprocessing = yolo_onnx_has_postprocessing(model_path)
+
     print(f"Compiling model at {model_path}")
     engine = compile_model(model_path, batch_size, num_cores)
     print(engine)
 
-    postprocessor = YoloPostprocessor(cfg=args.model_config)
+    postprocessor = (
+        YoloPostprocessor(cfg=args.model_config) if not has_postprocessing else None
+    )
 
     app = flask.Flask(__name__)
     CORS(app)
@@ -159,10 +167,13 @@ def create_and_run_model_server(
         print(f"Inference time: {elapsed_time * 1000.0:.4f}ms")
 
         # post-processing
-        postprocess_start_time = time.time()
-        outputs = postprocessor.pre_nms_postprocess(outputs)
-        postprocess_time = time.time() - postprocess_start_time
-        print(f"Post-processing, pre-nms time: {postprocess_time * 1000.0:.4f}ms")
+        if postprocessor:
+            postprocess_start_time = time.time()
+            outputs = postprocessor.pre_nms_postprocess(outputs)
+            postprocess_time = time.time() - postprocess_start_time
+            print(f"Post-processing, pre-nms time: {postprocess_time * 1000.0:.4f}ms")
+        else:
+            outputs = outputs[0]  # post-processed values stored in first output
 
         # NMS
         nms_start_time = time.time()
