@@ -54,7 +54,7 @@ run the following examples.
 to run inferences on images, videos, or webcam streams. For a full list of options
 `python annotate.py -h`.
 
-To run pruned-quantized YOLOv3 on a local webcam run:https://github.com/neuralmagic/deepsparse/pull/147
+To run pruned-quantized YOLOv3 on a local webcam run:
 ```bash
 python annotate.py \
     zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \

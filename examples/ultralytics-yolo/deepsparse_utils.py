@@ -45,11 +45,9 @@ __all__ = [
     "YoloPostprocessor",
     "postprocess_nms",
     "modify_yolo_onnx_input_shape",
+    "yolo_onnx_has_postprocessing",
     "annotate_image",
 ]
-
-
-# available local YOLO configs
 
 
 # Default YOLO anchor grids
@@ -432,6 +430,8 @@ def postprocess_nms(outputs: torch.Tensor) -> List[numpy.ndarray]:
     :return: List of numpy arrays of NMS predictions for each image in the batch
     """
     # run nms in PyTorch, only post-process first output
+    if isinstance(outputs, numpy.ndarray):
+        outputs = torch.from_numpy(outputs)
     nms_outputs = _non_max_suppression(outputs)
     return [output.cpu().numpy() for output in nms_outputs]
 
@@ -491,6 +491,27 @@ def modify_yolo_onnx_input_shape(
     )
 
     return tmp_file.name, tmp_file
+
+
+def yolo_onnx_has_postprocessing(model_path: str) -> bool:
+    """
+    :param model_path: file path to YOLO ONNX model
+    :return: True if YOLO postprocessing (pre-nms) is included in the ONNX graph,
+        this is assumed to be when the first output of the model has fewer dimensions
+        than the other outputs as the grid dimensions have been flattened
+    """
+    model = onnx.load(model_path)
+
+    # get number of dimensions in each output
+    outputs_num_dims = [
+        len(output.type.tensor_type.shape.dim) for output in model.graph.output
+    ]
+
+    # assume if only one output, then it is post-processed
+    if len(outputs_num_dims) == 1:
+        return True
+
+    return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
 
 
 _YOLO_CLASSES = [

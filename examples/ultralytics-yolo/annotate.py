@@ -127,6 +127,7 @@ from deepsparse_utils import (
     get_yolo_loader_and_saver,
     modify_yolo_onnx_input_shape,
     postprocess_nms,
+    yolo_onnx_has_postprocessing,
 )
 from sparseml.onnx.utils import override_model_batch_size
 
@@ -323,6 +324,7 @@ def _load_model(args) -> Any:
         args.model_filepath, _ = modify_yolo_onnx_input_shape(
             args.model_filepath, args.image_shape
         )
+        has_postprocessing = yolo_onnx_has_postprocessing(args.model_filepath)
 
     # load model
     if args.engine == DEEPSPARSE_ENGINE:
@@ -362,7 +364,9 @@ def _load_model(args) -> Any:
         else:
             _LOGGER.info("Using full precision")
             model.float()
-    return model
+        has_postprocessing = True
+
+    return model, has_postprocessing
 
 
 def _preprocess_batch(args, batch: numpy.ndarray) -> Union[numpy.ndarray, torch.Tensor]:
@@ -385,7 +389,7 @@ def _run_model(
 ) -> List[Union[numpy.ndarray, torch.Tensor]]:
     outputs = None
     if args.engine == TORCH_ENGINE:
-        outputs = model(batch)[0]
+        outputs = model(batch)
     elif args.engine == ORT_ENGINE:
         outputs = model.run(
             [out.name for out in model.get_outputs()],  # outputs
@@ -398,7 +402,7 @@ def _run_model(
 
 def annotate(args):
     save_dir = _get_save_dir(args)
-    model = _load_model(args)
+    model, has_postprocessing = _load_model(args)
     loader, saver, is_video = get_yolo_loader_and_saver(
         args.source, save_dir, args.image_shape, args
     )
@@ -406,7 +410,7 @@ def annotate(args):
 
     postprocessor = (
         YoloPostprocessor(args.image_shape, args.model_config)
-        if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]
+        if not has_postprocessing
         else None
     )
 
@@ -424,6 +428,8 @@ def annotate(args):
         # post-processing
         if postprocessor:
             outputs = postprocessor.pre_nms_postprocess(outputs)
+        else:
+            outputs = outputs[0]  # post-processed values stored in first output
 
         # NMS
         outputs = postprocess_nms(outputs)[0]
