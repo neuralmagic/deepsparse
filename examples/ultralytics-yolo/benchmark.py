@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Benchmarking script for YOLOv3 ONNX models with the DeepSparse engine.
+Benchmarking script for YOLO ONNX models with the DeepSparse engine.
 
 
 ##########
@@ -26,7 +26,7 @@ usage: benchmark.py [-h] [-e {deepsparse,onnxruntime,torch}]
                     [--fp16] [--device DEVICE]
                     model_filepath
 
-Benchmark sparsified YOLOv3 models
+Benchmark sparsified YOLO models
 
 positional arguments:
   model_filepath        The full filepath of the ONNX model file or SparseZoo
@@ -143,7 +143,7 @@ TORCH_ENGINE = "torch"
 
 
 def parse_args(arguments=None):
-    parser = argparse.ArgumentParser(description="Benchmark sparsified YOLOv3 models")
+    parser = argparse.ArgumentParser(description="Benchmark sparsified YOLO models")
 
     parser.add_argument(
         "model_filepath",

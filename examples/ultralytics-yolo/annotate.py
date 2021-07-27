@@ -25,7 +25,7 @@ usage: annotate.py [-h] --source SOURCE [-e {deepsparse,onnxruntime,torch}]
                    [--target-fps TARGET_FPS] [--no-save]
                    model_filepath
 
-Annotate images, videos, and streams with sparsified YOLOv3 models
+Annotate images, videos, and streams with sparsified YOLO models
 
 positional arguments:
   model_filepath        The full file path of the ONNX model file or SparseZoo
@@ -135,7 +135,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def parse_args(arguments=None):
     parser = argparse.ArgumentParser(
-        description="Annotate images, videos, and streams with sparsified YOLOv3 models"
+        description="Annotate images, videos, and streams with sparsified YOLO models"
     )
 
     parser.add_argument(

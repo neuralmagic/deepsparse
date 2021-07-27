@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Example script for hosting a Yolo ONNX model as a Flask server
+Example script for hosting a YOLO ONNX model as a Flask server
 using the DeepSparse Engine as the inference backend
 
 ##########

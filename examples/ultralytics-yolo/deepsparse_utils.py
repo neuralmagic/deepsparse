@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Utilities for Yolo V3 pre and post processing for DeepSparse pipelines
+Utilities for YOLO pre- and post-processing for DeepSparse pipelines
 
 Postprocessing is currently tied to yolov3-spp, modify anchor and output
 variables if using a different model.
@@ -356,7 +356,7 @@ def load_image(
 
 class YoloPostprocessor:
     """
-    Class for performing postprocessing of YOLOv3 model predictions
+    Class for performing post-processing of YOLO model predictions
 
     :param image_size: size of input image to model. used to calculate stride based on
         output shapes
@@ -368,7 +368,7 @@ class YoloPostprocessor:
 
     def pre_nms_postprocess(self, outputs: List[numpy.ndarray]) -> torch.Tensor:
         """
-        :param outputs: raw outputs of a YOLOv3 model before anchor grid processing
+        :param outputs: raw outputs of a YOLO model before anchor grid processing
         :return: post-processed model outputs without NMS.
         """
         # postprocess and transform raw outputs into single torch tensor
@@ -418,11 +418,11 @@ def modify_yolo_onnx_input_shape(
     model_path: str, image_shape: Tuple[int]
 ) -> Tuple[str, Optional[NamedTemporaryFile]]:
     """
-    Creates a new YOLOv3 ONNX model from the given path that accepts the given input
+    Creates a new YOLO ONNX model from the given path that accepts the given input
     shape. If the given model already has the given input shape no modifications are
     made. Uses a tempfile to store the modified model file.
 
-    :param model_path: file path to YOLOv3 ONNX model or SparseZoo stub of the model
+    :param model_path: file path to YOLO ONNX model or SparseZoo stub of the model
         to be loaded
     :param image_shape: 2-tuple of the image shape to resize this yolo model to
     :return: filepath to an onnx model reshaped to the given input shape will be the

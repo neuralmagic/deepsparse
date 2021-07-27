@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Client object for making requests to the example DeepSparse Yolo inference server
+Client object for making requests to the example DeepSparse YOLO inference server
 """
 
 
