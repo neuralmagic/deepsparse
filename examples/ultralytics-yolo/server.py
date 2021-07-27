@@ -19,7 +19,7 @@ using the DeepSparse Engine as the inference backend
 ##########
 Command help:
 usage: server.py [-h] [-b BATCH_SIZE] [-c NUM_CORES] [-a ADDRESS] [-p PORT]
-                 [-q]
+                 [-q] [--model-config MODEL_CONFIG]
                  onnx_filepath
 
 Host a Yolo ONNX model as a server, using the DeepSparse Engine and Flask
@@ -41,6 +41,10 @@ optional arguments:
   -q, --quantized-inputs
                         Set flag to execute inferences with int8 inputs
                         instead of float32
+  --model-config MODEL_CONFIG
+                        YOLO config YAML file to override default anchor
+                        points when post-processing. Defaults to use standard
+                        YOLOv3/YOLOv5 anchors
 
 ##########
 Example command for running:
@@ -107,8 +111,17 @@ def parse_args():
     parser.add_argument(
         "-q",
         "--quantized-inputs",
-        help=("Set flag to execute inferences with int8 inputs instead of float32"),
+        help="Set flag to execute inferences with int8 inputs instead of float32",
         action="store_true",
+    )
+    parser.add_argument(
+        "--model-config",
+        type=str,
+        default=None,
+        help=(
+            "YOLO config YAML file to override default anchor points when "
+            "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
+        ),
     )
 
     return parser.parse_args()
@@ -121,7 +134,7 @@ def create_and_run_model_server(
     engine = compile_model(model_path, batch_size, num_cores)
     print(engine)
 
-    postprocessor = YoloPostprocessor()
+    postprocessor = YoloPostprocessor(cfg=args.model_config)
 
     app = flask.Flask(__name__)
     CORS(app)

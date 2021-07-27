@@ -24,6 +24,7 @@ usage: benchmark.py [-h] [-e {deepsparse,onnxruntime,torch}]
                     [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
                     [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS] [-q]
                     [--fp16] [--device DEVICE]
+                    [--model-config MODEL_CONFIG]
                     model_filepath
 
 Benchmark sparsified YOLO models
@@ -76,6 +77,10 @@ optional arguments:
                         benchmarking. Default is 'cpu' unless running a torch
                         benchmark and cuda is available, then cuda on device
                         0. i.e. 'cuda', 'cpu', 0, 'cuda:1'
+  --model-config MODEL_CONFIG
+                        YOLO config YAML file to override default anchor
+                        points when post-processing. Defaults to use standard
+                        YOLOv3/YOLOv5 anchors
 
 ##########
 Example command for running a benchmark on a pruned quantized YOLOv3:
@@ -254,6 +259,15 @@ def parse_args(arguments=None):
             "benchmarking only supported for torch benchmarking. Default is 'cpu' "
             "unless running a torch benchmark and cuda is available, then cuda on "
             "device 0. i.e. 'cuda', 'cpu', 0, 'cuda:1'"
+        ),
+    )
+    parser.add_argument(
+        "--model-config",
+        type=str,
+        default=None,
+        help=(
+            "YOLO config YAML file to override default anchor points when "
+            "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
         ),
     )
 
@@ -449,7 +463,7 @@ def benchmark_yolo(args):
     )
 
     postprocessor = (
-        YoloPostprocessor(args.image_shape)
+        YoloPostprocessor(args.image_shape, args.model_config)
         if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]
         else None
     )
