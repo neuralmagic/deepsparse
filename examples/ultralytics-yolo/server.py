@@ -63,6 +63,7 @@ from deepsparse import compile_model
 from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
 from deepsparse_utils import (
     YoloPostprocessor,
+    download_model_if_stub,
     postprocess_nms,
     yolo_onnx_has_postprocessing,
 )
@@ -134,6 +135,7 @@ def parse_args():
 def create_and_run_model_server(
     args, model_path: str, batch_size: int, num_cores: int, address: str, port: str
 ) -> flask.Flask:
+    model_path = download_model_if_stub(model_path)
     has_postprocessing = yolo_onnx_has_postprocessing(model_path)
 
     print(f"Compiling model at {model_path}")

@@ -47,6 +47,7 @@ __all__ = [
     "modify_yolo_onnx_input_shape",
     "yolo_onnx_has_postprocessing",
     "annotate_image",
+    "download_model_if_stub",
 ]
 
 
@@ -452,11 +453,7 @@ def modify_yolo_onnx_input_shape(
         NamedTemporaryFile for managing the scope of the object for file deletion
     """
     original_model_path = model_path
-    if model_path.startswith("zoo:"):
-        # load SparseZoo Model from stub
-        model = Zoo.load_model_from_stub(model_path)
-        model_path = model.onnx_file.downloaded_path()
-        print(f"Downloaded {original_model_path} to {model_path}")
+    model_path = download_model_if_stub(model_path)
 
     model = onnx.load(model_path)
     model_input = model.graph.input[0]
@@ -512,6 +509,23 @@ def yolo_onnx_has_postprocessing(model_path: str) -> bool:
         return True
 
     return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
+
+
+def download_model_if_stub(path: str) -> str:
+    """
+    Utility method to download model if path is a SparseZoo stub
+
+    :param path: file path to YOLO ONNX model or SparseZoo stub of the model
+        to be loaded
+    :return: filepath to the downloaded ONNX model or
+        original path if it's not a SparseZoo Stub
+    """
+    if path.startswith("zoo"):
+        model = Zoo.load_model_from_stub(path)
+        downloded_path = model.onnx_file.downloaded_path()
+        print(f"model with stub {path} downloaded to {downloded_path}")
+        return downloded_path
+    return path
 
 
 _YOLO_CLASSES = [
