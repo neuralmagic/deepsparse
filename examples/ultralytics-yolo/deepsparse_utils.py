@@ -514,6 +514,15 @@ def yolo_onnx_has_postprocessing(model_path: str) -> bool:
     return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
 
 
+def _download_model_if_stub(path: str) -> str:
+    if path.startswith("zoo"):
+        model = Zoo.load_model_from_stub(path)
+        downloded_path = model.onnx_file.downloaded_path()
+        print(f"model with stub {path} downloaded to {downloded_path}")
+        return downloded_path
+    return path
+
+
 _YOLO_CLASSES = [
     "person",
     "bicycle",
