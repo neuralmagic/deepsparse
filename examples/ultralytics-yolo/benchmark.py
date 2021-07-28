@@ -395,6 +395,7 @@ def _load_model(args) -> (Any, bool):
             model.half()
         else:
             print("Using full precision")
+            model.float()
         has_postprocessing = True
     return model, has_postprocessing
 
