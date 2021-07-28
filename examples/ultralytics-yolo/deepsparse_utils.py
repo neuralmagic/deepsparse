@@ -455,6 +455,8 @@ def modify_yolo_onnx_input_shape(
     original_model_path = model_path
     model_path = download_model_if_stub(model_path)
 
+    has_postprocessing = yolo_onnx_has_postprocessing(model_path)
+
     model = onnx.load(model_path)
     model_input = model.graph.input[0]
 
@@ -472,11 +474,27 @@ def modify_yolo_onnx_input_shape(
     set_tensor_dim_shape(model_input, 2, image_shape[0])
     set_tensor_dim_shape(model_input, 3, image_shape[1])
 
-    for model_output in model.graph.output:
+    for idx, model_output in enumerate(model.graph.output):
+        if idx == 0 and has_postprocessing:
+            continue
         output_x = get_tensor_dim_shape(model_output, 2)
         output_y = get_tensor_dim_shape(model_output, 3)
         set_tensor_dim_shape(model_output, 2, int(output_x / scale_x))
         set_tensor_dim_shape(model_output, 3, int(output_y / scale_y))
+
+    # fix number of predictions in post-processed output for new strides
+    if has_postprocessing:
+        # sum number of predictions across the other outputs
+        num_predictions = sum(
+            numpy.prod(
+                [
+                    get_tensor_dim_shape(output_tensor, dim_idx)
+                    for dim_idx in range(1, 4)
+                ]
+            )
+            for output_tensor in model.graph.output[1:]
+        )
+        set_tensor_dim_shape(model.graph.output[0], 1, num_predictions)
 
     tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
     onnx.save(model, tmp_file.name)
