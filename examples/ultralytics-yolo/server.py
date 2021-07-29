@@ -13,13 +13,13 @@
 # limitations under the License.
 
 """
-Example script for hosting a Yolo ONNX model as a Flask server
+Example script for hosting a YOLO ONNX model as a Flask server
 using the DeepSparse Engine as the inference backend
 
 ##########
 Command help:
 usage: server.py [-h] [-b BATCH_SIZE] [-c NUM_CORES] [-a ADDRESS] [-p PORT]
-                 [-q]
+                 [-q] [--model-config MODEL_CONFIG]
                  onnx_filepath
 
 Host a Yolo ONNX model as a server, using the DeepSparse Engine and Flask
@@ -41,6 +41,10 @@ optional arguments:
   -q, --quantized-inputs
                         Set flag to execute inferences with int8 inputs
                         instead of float32
+  --model-config MODEL_CONFIG
+                        YOLO config YAML file to override default anchor
+                        points when post-processing. Defaults to use standard
+                        YOLOv3/YOLOv5 anchors
 
 ##########
 Example command for running:
@@ -57,7 +61,12 @@ from flask_cors import CORS
 
 from deepsparse import compile_model
 from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
-from deepsparse_utils import YoloPostprocessor, postprocess_nms
+from deepsparse_utils import (
+    YoloPostprocessor,
+    download_model_if_stub,
+    postprocess_nms,
+    yolo_onnx_has_postprocessing,
+)
 
 
 def parse_args():
@@ -107,8 +116,17 @@ def parse_args():
     parser.add_argument(
         "-q",
         "--quantized-inputs",
-        help=("Set flag to execute inferences with int8 inputs instead of float32"),
+        help="Set flag to execute inferences with int8 inputs instead of float32",
         action="store_true",
+    )
+    parser.add_argument(
+        "--model-config",
+        type=str,
+        default=None,
+        help=(
+            "YOLO config YAML file to override default anchor points when "
+            "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
+        ),
     )
 
     return parser.parse_args()
@@ -117,11 +135,16 @@ def parse_args():
 def create_and_run_model_server(
     args, model_path: str, batch_size: int, num_cores: int, address: str, port: str
 ) -> flask.Flask:
+    model_path = download_model_if_stub(model_path)
+    has_postprocessing = yolo_onnx_has_postprocessing(model_path)
+
     print(f"Compiling model at {model_path}")
     engine = compile_model(model_path, batch_size, num_cores)
     print(engine)
 
-    postprocessor = YoloPostprocessor()
+    postprocessor = (
+        YoloPostprocessor(cfg=args.model_config) if not has_postprocessing else None
+    )
 
     app = flask.Flask(__name__)
     CORS(app)
@@ -146,10 +169,13 @@ def create_and_run_model_server(
         print(f"Inference time: {elapsed_time * 1000.0:.4f}ms")
 
         # post-processing
-        postprocess_start_time = time.time()
-        outputs = postprocessor.pre_nms_postprocess(outputs)
-        postprocess_time = time.time() - postprocess_start_time
-        print(f"Post-processing, pre-nms time: {postprocess_time * 1000.0:.4f}ms")
+        if postprocessor:
+            postprocess_start_time = time.time()
+            outputs = postprocessor.pre_nms_postprocess(outputs)
+            postprocess_time = time.time() - postprocess_start_time
+            print(f"Post-processing, pre-nms time: {postprocess_time * 1000.0:.4f}ms")
+        else:
+            outputs = outputs[0]  # post-processed values stored in first output
 
         # NMS
         nms_start_time = time.time()

@@ -23,9 +23,10 @@ usage: annotate.py [-h] --source SOURCE [-e {deepsparse,onnxruntime,torch}]
                    [-c NUM_CORES] [-s NUM_SOCKETS] [-q] [--fp16]
                    [--device DEVICE] [--save-dir SAVE_DIR] [--name NAME]
                    [--target-fps TARGET_FPS] [--no-save]
+                   [--model-config MODEL_CONFIG]
                    model_filepath
 
-Annotate images, videos, and streams with sparsified YOLOv3 models
+Annotate images, videos, and streams with sparsified or non-sparsified YOLO models
 
 positional arguments:
   model_filepath        The full file path of the ONNX model file or SparseZoo
@@ -77,6 +78,10 @@ optional arguments:
                         None
   --no-save             set flag when source is from webcam to not save
                         results. not supported for non-webcam sources
+  --model-config MODEL_CONFIG
+                        YOLO config YAML file to override default anchor
+                        points when post-processing. Defaults to use standard
+                        YOLOv3/YOLOv5 anchors
 
 ##########
 Example command for running webcam annotations with pruned quantized YOLOv3:
@@ -122,6 +127,7 @@ from deepsparse_utils import (
     get_yolo_loader_and_saver,
     modify_yolo_onnx_input_shape,
     postprocess_nms,
+    yolo_onnx_has_postprocessing,
 )
 from sparseml.onnx.utils import override_model_batch_size
 
@@ -135,7 +141,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def parse_args(arguments=None):
     parser = argparse.ArgumentParser(
-        description="Annotate images, videos, and streams with sparsified YOLOv3 models"
+        description="Annotate images, videos, and streams with sparsified YOLO models"
     )
 
     parser.add_argument(
@@ -253,6 +259,15 @@ def parse_args(arguments=None):
             "for non-webcam sources"
         ),
     )
+    parser.add_argument(
+        "--model-config",
+        type=str,
+        default=None,
+        help=(
+            "YOLO config YAML file to override default anchor points when "
+            "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
+        ),
+    )
 
     args = parser.parse_args(args=arguments)
     if args.engine == TORCH_ENGINE and args.device is None:
@@ -309,6 +324,7 @@ def _load_model(args) -> Any:
         args.model_filepath, _ = modify_yolo_onnx_input_shape(
             args.model_filepath, args.image_shape
         )
+        has_postprocessing = yolo_onnx_has_postprocessing(args.model_filepath)
 
     # load model
     if args.engine == DEEPSPARSE_ENGINE:
@@ -348,7 +364,9 @@ def _load_model(args) -> Any:
         else:
             _LOGGER.info("Using full precision")
             model.float()
-    return model
+        has_postprocessing = True
+
+    return model, has_postprocessing
 
 
 def _preprocess_batch(args, batch: numpy.ndarray) -> Union[numpy.ndarray, torch.Tensor]:
@@ -371,7 +389,7 @@ def _run_model(
 ) -> List[Union[numpy.ndarray, torch.Tensor]]:
     outputs = None
     if args.engine == TORCH_ENGINE:
-        outputs = model(batch)[0]
+        outputs = model(batch)
     elif args.engine == ORT_ENGINE:
         outputs = model.run(
             [out.name for out in model.get_outputs()],  # outputs
@@ -384,15 +402,15 @@ def _run_model(
 
 def annotate(args):
     save_dir = _get_save_dir(args)
-    model = _load_model(args)
+    model, has_postprocessing = _load_model(args)
     loader, saver, is_video = get_yolo_loader_and_saver(
         args.source, save_dir, args.image_shape, args
     )
     is_webcam = args.source.isnumeric()
 
     postprocessor = (
-        YoloPostprocessor(args.image_shape)
-        if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]
+        YoloPostprocessor(args.image_shape, args.model_config)
+        if not has_postprocessing
         else None
     )
 
@@ -410,6 +428,8 @@ def annotate(args):
         # post-processing
         if postprocessor:
             outputs = postprocessor.pre_nms_postprocess(outputs)
+        else:
+            outputs = outputs[0]  # post-processed values stored in first output
 
         # NMS
         outputs = postprocess_nms(outputs)[0]

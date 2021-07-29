@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Utilities for Yolo V3 pre and post processing for DeepSparse pipelines
+Utilities for YOLO pre- and post-processing for DeepSparse pipelines
 
 Postprocessing is currently tied to yolov3-spp, modify anchor and output
 variables if using a different model.
@@ -33,6 +33,7 @@ import onnx
 import cv2
 import torch
 import torchvision
+import yaml
 from sparseml.onnx.utils import get_tensor_dim_shape, set_tensor_dim_shape
 from sparseml.utils import create_dirs
 from sparsezoo import Zoo
@@ -44,17 +45,21 @@ __all__ = [
     "YoloPostprocessor",
     "postprocess_nms",
     "modify_yolo_onnx_input_shape",
+    "yolo_onnx_has_postprocessing",
     "annotate_image",
+    "download_model_if_stub",
 ]
 
 
-# Yolo V3 specific variables
-_YOLO_V3_ANCHORS = [
+# Default YOLO anchor grids
+_YOLO_DEFAULT_ANCHORS = [
     torch.Tensor([[10, 13], [16, 30], [33, 23]]),
     torch.Tensor([[30, 61], [62, 45], [59, 119]]),
     torch.Tensor([[116, 90], [156, 198], [373, 326]]),
 ]
-_YOLO_V3_ANCHOR_GRIDS = [t.clone().view(1, -1, 1, 1, 2) for t in _YOLO_V3_ANCHORS]
+_YOLO_DEFAULT_ANCHOR_GRIDS = [
+    t.clone().view(1, -1, 1, 1, 2) for t in _YOLO_DEFAULT_ANCHORS
+]
 
 
 def get_yolo_loader_and_saver(
@@ -356,19 +361,22 @@ def load_image(
 
 class YoloPostprocessor:
     """
-    Class for performing postprocessing of YOLOv3 model predictions
+    Class for performing post-processing of YOLO model predictions
 
     :param image_size: size of input image to model. used to calculate stride based on
         output shapes
     """
 
-    def __init__(self, image_size: Tuple[int] = (640, 640)):
+    def __init__(self, image_size: Tuple[int] = (640, 640), cfg: Optional[str] = None):
         self._image_size = image_size
+        self._anchor_grids = (
+            self._load_cfg_anchor_grid(cfg) if cfg else _YOLO_DEFAULT_ANCHOR_GRIDS
+        )
         self._grids = {}  # Dict[Tuple[int], torch.Tensor]
 
     def pre_nms_postprocess(self, outputs: List[numpy.ndarray]) -> torch.Tensor:
         """
-        :param outputs: raw outputs of a YOLOv3 model before anchor grid processing
+        :param outputs: raw outputs of a YOLO model before anchor grid processing
         :return: post-processed model outputs without NMS.
         """
         # postprocess and transform raw outputs into single torch tensor
@@ -380,12 +388,11 @@ class YoloPostprocessor:
             # get grid and stride
             grid_shape = pred.shape[2:4]
             grid = self._get_grid(grid_shape)
-            anchor_grid = _YOLO_V3_ANCHOR_GRIDS[idx]
             stride = self._image_size[0] / grid_shape[0]
 
             # decode xywh box values
             pred[..., 0:2] = (pred[..., 0:2] * 2.0 - 0.5 + grid) * stride
-            pred[..., 2:4] = (pred[..., 2:4] * 2) ** 2 * anchor_grid
+            pred[..., 2:4] = (pred[..., 2:4] * 2) ** 2 * self._anchor_grids[idx]
             # flatten anchor and grid dimensions ->
             #       (bs, num_predictions, num_classes + 5)
             processed_outputs.append(pred.view(pred.size(0), -1, pred.size(-1)))
@@ -403,6 +410,20 @@ class YoloPostprocessor:
             ).float()
         return self._grids[grid_shape]
 
+    @staticmethod
+    def _load_cfg_anchor_grid(cfg: str) -> List[torch.Tensor]:
+        with open(cfg) as f:
+            anchors = yaml.safe_load(f)["anchors"]
+
+        def _split_to_coords(coords_list):
+            return [
+                [coords_list[idx], coords_list[idx + 1]]
+                for idx in range(0, len(coords_list), 2)
+            ]
+
+        anchors = [torch.Tensor(_split_to_coords(coords)) for coords in anchors]
+        return [t.clone().view(1, -1, 1, 1, 2) for t in anchors]
+
 
 def postprocess_nms(outputs: torch.Tensor) -> List[numpy.ndarray]:
     """
@@ -410,6 +431,8 @@ def postprocess_nms(outputs: torch.Tensor) -> List[numpy.ndarray]:
     :return: List of numpy arrays of NMS predictions for each image in the batch
     """
     # run nms in PyTorch, only post-process first output
+    if isinstance(outputs, numpy.ndarray):
+        outputs = torch.from_numpy(outputs)
     nms_outputs = _non_max_suppression(outputs)
     return [output.cpu().numpy() for output in nms_outputs]
 
@@ -418,11 +441,11 @@ def modify_yolo_onnx_input_shape(
     model_path: str, image_shape: Tuple[int]
 ) -> Tuple[str, Optional[NamedTemporaryFile]]:
     """
-    Creates a new YOLOv3 ONNX model from the given path that accepts the given input
+    Creates a new YOLO ONNX model from the given path that accepts the given input
     shape. If the given model already has the given input shape no modifications are
     made. Uses a tempfile to store the modified model file.
 
-    :param model_path: file path to YOLOv3 ONNX model or SparseZoo stub of the model
+    :param model_path: file path to YOLO ONNX model or SparseZoo stub of the model
         to be loaded
     :param image_shape: 2-tuple of the image shape to resize this yolo model to
     :return: filepath to an onnx model reshaped to the given input shape will be the
@@ -430,11 +453,9 @@ def modify_yolo_onnx_input_shape(
         NamedTemporaryFile for managing the scope of the object for file deletion
     """
     original_model_path = model_path
-    if model_path.startswith("zoo:"):
-        # load SparseZoo Model from stub
-        model = Zoo.load_model_from_stub(model_path)
-        model_path = model.onnx_file.downloaded_path()
-        print(f"Downloaded {original_model_path} to {model_path}")
+    model_path = download_model_if_stub(model_path)
+
+    has_postprocessing = yolo_onnx_has_postprocessing(model_path)
 
     model = onnx.load(model_path)
     model_input = model.graph.input[0]
@@ -453,11 +474,27 @@ def modify_yolo_onnx_input_shape(
     set_tensor_dim_shape(model_input, 2, image_shape[0])
     set_tensor_dim_shape(model_input, 3, image_shape[1])
 
-    for model_output in model.graph.output:
+    for idx, model_output in enumerate(model.graph.output):
+        if idx == 0 and has_postprocessing:
+            continue
         output_x = get_tensor_dim_shape(model_output, 2)
         output_y = get_tensor_dim_shape(model_output, 3)
         set_tensor_dim_shape(model_output, 2, int(output_x / scale_x))
         set_tensor_dim_shape(model_output, 3, int(output_y / scale_y))
+
+    # fix number of predictions in post-processed output for new strides
+    if has_postprocessing:
+        # sum number of predictions across the other outputs
+        num_predictions = sum(
+            numpy.prod(
+                [
+                    get_tensor_dim_shape(output_tensor, dim_idx)
+                    for dim_idx in range(1, 4)
+                ]
+            )
+            for output_tensor in model.graph.output[1:]
+        )
+        set_tensor_dim_shape(model.graph.output[0], 1, num_predictions)
 
     tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
     onnx.save(model, tmp_file.name)
@@ -469,6 +506,44 @@ def modify_yolo_onnx_input_shape(
     )
 
     return tmp_file.name, tmp_file
+
+
+def yolo_onnx_has_postprocessing(model_path: str) -> bool:
+    """
+    :param model_path: file path to YOLO ONNX model
+    :return: True if YOLO postprocessing (pre-nms) is included in the ONNX graph,
+        this is assumed to be when the first output of the model has fewer dimensions
+        than the other outputs as the grid dimensions have been flattened
+    """
+    model = onnx.load(model_path)
+
+    # get number of dimensions in each output
+    outputs_num_dims = [
+        len(output.type.tensor_type.shape.dim) for output in model.graph.output
+    ]
+
+    # assume if only one output, then it is post-processed
+    if len(outputs_num_dims) == 1:
+        return True
+
+    return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
+
+
+def download_model_if_stub(path: str) -> str:
+    """
+    Utility method to download model if path is a SparseZoo stub
+
+    :param path: file path to YOLO ONNX model or SparseZoo stub of the model
+        to be loaded
+    :return: filepath to the downloaded ONNX model or
+        original path if it's not a SparseZoo Stub
+    """
+    if path.startswith("zoo"):
+        model = Zoo.load_model_from_stub(path)
+        downloded_path = model.onnx_file.downloaded_path()
+        print(f"model with stub {path} downloaded to {downloded_path}")
+        return downloded_path
+    return path
 
 
 _YOLO_CLASSES = [

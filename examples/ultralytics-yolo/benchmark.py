@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Benchmarking script for YOLOv3 ONNX models with the DeepSparse engine.
+Benchmarking script for YOLO ONNX models with the DeepSparse engine.
 
 
 ##########
@@ -24,9 +24,10 @@ usage: benchmark.py [-h] [-e {deepsparse,onnxruntime,torch}]
                     [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
                     [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS] [-q]
                     [--fp16] [--device DEVICE]
+                    [--model-config MODEL_CONFIG]
                     model_filepath
 
-Benchmark sparsified YOLOv3 models
+Benchmark sparsified YOLO models
 
 positional arguments:
   model_filepath        The full filepath of the ONNX model file or SparseZoo
@@ -76,6 +77,10 @@ optional arguments:
                         benchmarking. Default is 'cpu' unless running a torch
                         benchmark and cuda is available, then cuda on device
                         0. i.e. 'cuda', 'cpu', 0, 'cuda:1'
+  --model-config MODEL_CONFIG
+                        YOLO config YAML file to override default anchor
+                        points when post-processing. Defaults to use standard
+                        YOLOv3/YOLOv5 anchors
 
 ##########
 Example command for running a benchmark on a pruned quantized YOLOv3:
@@ -131,6 +136,7 @@ from deepsparse_utils import (
     load_image,
     modify_yolo_onnx_input_shape,
     postprocess_nms,
+    yolo_onnx_has_postprocessing,
 )
 from sparseml.onnx.utils import override_model_batch_size
 from sparsezoo.models.detection import yolo_v3 as zoo_yolo_v3
@@ -143,7 +149,7 @@ TORCH_ENGINE = "torch"
 
 
 def parse_args(arguments=None):
-    parser = argparse.ArgumentParser(description="Benchmark sparsified YOLOv3 models")
+    parser = argparse.ArgumentParser(description="Benchmark sparsified YOLO models")
 
     parser.add_argument(
         "model_filepath",
@@ -256,6 +262,15 @@ def parse_args(arguments=None):
             "device 0. i.e. 'cuda', 'cpu', 0, 'cuda:1'"
         ),
     )
+    parser.add_argument(
+        "--model-config",
+        type=str,
+        default=None,
+        help=(
+            "YOLO config YAML file to override default anchor points when "
+            "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
+        ),
+    )
 
     args = parser.parse_args(args=arguments)
     if args.engine == TORCH_ENGINE and args.device is None:
@@ -308,7 +323,7 @@ def load_images(
     return model_images, original_images
 
 
-def _load_model(args) -> Any:
+def _load_model(args) -> (Any, bool):
     # validation
     if args.device not in [None, "cpu"] and args.engine != TORCH_ENGINE:
         raise ValueError(f"device {args.device} is not supported for {args.engine}")
@@ -338,6 +353,7 @@ def _load_model(args) -> Any:
         args.model_filepath, _ = modify_yolo_onnx_input_shape(
             args.model_filepath, args.image_shape
         )
+        has_postprocessing = yolo_onnx_has_postprocessing(args.model_filepath)
 
     # load model
     if args.engine == DEEPSPARSE_ENGINE:
@@ -379,7 +395,9 @@ def _load_model(args) -> Any:
             model.half()
         else:
             print("Using full precision")
-    return model
+            model.float()
+        has_postprocessing = True
+    return model, has_postprocessing
 
 
 def _iter_batches(
@@ -422,7 +440,7 @@ def _run_model(
 ) -> List[Union[numpy.ndarray, torch.Tensor]]:
     outputs = None
     if args.engine == TORCH_ENGINE:
-        outputs = model(batch)[0]
+        outputs = model(batch)
     elif args.engine == ORT_ENGINE:
         outputs = model.run(
             [out.name for out in model.get_outputs()],  # outputs
@@ -434,7 +452,7 @@ def _run_model(
 
 
 def benchmark_yolo(args):
-    model = _load_model(args)
+    model, has_postprocessing = _load_model(args)
     print("Loading dataset")
     dataset, _ = load_images(args.data_path, tuple(args.image_shape))
     total_iterations = args.num_iterations + args.num_warmup_iterations
@@ -449,8 +467,8 @@ def benchmark_yolo(args):
     )
 
     postprocessor = (
-        YoloPostprocessor(args.image_shape)
-        if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]
+        YoloPostprocessor(args.image_shape, args.model_config)
+        if not has_postprocessing
         else None
     )
 
@@ -471,6 +489,8 @@ def benchmark_yolo(args):
         # post-processing
         if postprocessor:
             outputs = postprocessor.pre_nms_postprocess(outputs)
+        else:
+            outputs = outputs[0]  # post-processed values stored in first output
 
         # NMS
         outputs = postprocess_nms(outputs)
