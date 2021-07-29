@@ -39,7 +39,7 @@ optional arguments:
                         'deepsparse', 'onnxruntime'. Default is 'deepsparse'
   -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
                         For DeepSparse only. The number of physical cores to
-                        run the eval on. Defaults to None where is uses all
+                        run the eval on. Defaults to None where it uses all
                         sockets available on the system
   --max-sequence-length MAX_SEQUENCE_LENGTH
                         the max sequence length for model inputs. Default is

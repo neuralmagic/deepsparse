@@ -26,7 +26,7 @@ usage: annotate.py [-h] --source SOURCE [-e {deepsparse,onnxruntime,torch}]
                    [--model-config MODEL_CONFIG]
                    model_filepath
 
-Annotate images, videos, and streams with sparsified YOLO models
+Annotate images, videos, and streams with sparsified or non-sparsified YOLO models
 
 positional arguments:
   model_filepath        The full file path of the ONNX model file or SparseZoo
