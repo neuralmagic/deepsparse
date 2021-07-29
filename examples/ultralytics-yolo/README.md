@@ -30,7 +30,7 @@ The dependencies for this example can be installed using `pip`:
 ```bash
 pip3 install -r requirements.txt
 ```
-
+Note: upgrade pip using `python -m pip install -U pip` before installing requirements
 ## SparseZoo Stubs
 The following examples may be run with local ONNX YOLO models, or by using pre-trained, pre-sparsified YOLO models
 from the [SparseZoo](https://sparsezoo.neuralmagic.com/).
@@ -44,13 +44,13 @@ run the following examples.
 
 | Model Name     |      Stub      | Description |
 |----------|-------------|-------------|
-| yolov3-pruned-aggressive | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned-aggressive_97 | Sparse YOLOv3 model train with full FP32 precision that recovers 97% of its baseline mAP |
+| yolov3-pruned-aggressive | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned-aggressive_97 | Sparse YOLOv3 model trained with full FP32 precision that recovers 97% of its baseline mAP |
 | yolov3-pruned_quant-aggressive | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 | Sparse INT8 quantized YOLOv3 model that recovers 94% of its baseline mAP |
 | yolov3-base | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/base-none | Dense full precision YOLOv3-SPP model |
 
 
 ## Annotation Example
-`annotate.py` is a script for using YOLO sparsified (and not sparsified) models
+`annotate.py` is a script for using YOLO sparsified (or non-sparsified) models
 to run inferences on images, videos, or webcam streams. For a full list of options
 `python annotate.py -h`.
 
@@ -64,7 +64,7 @@ python annotate.py \
     --no-save  # webcam only
 ```
 
-In addition to webcam `--source` can take a path to a `.jpg` file, directory or glob path
+In addition to webcam, `--source` can take a path to a `.jpg` file, directory or glob path
 of `.jpg` files, or path to a `.mp4` video file.  If source is an integer and no
 corresponding webcam is available, an exception will be raised.
 
