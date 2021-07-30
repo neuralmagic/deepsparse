@@ -18,10 +18,14 @@ Benchmarking script for BERT ONNX models with the DeepSparse engine.
 
 ##########
 Command help:
-usage: benchmark.py [-h] [--data-path DATA_PATH] [-e {deepsparse,onnxruntime}]
-                    [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
-                    [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS]
-                    [--max-sequence-length MAX_SEQUENCE_LENGTH]
+usage: benchmark.py [-h] [--data-path DATA_PATH]
+                    [-e {deepsparse,onnxruntime,torch}] [-b BATCH_SIZE]
+                    [-c NUM_CORES] [-s NUM_SOCKETS] [-i NUM_ITERATIONS]
+                    [-w NUM_WARMUP_ITERATIONS]
+                    [--max-sequence-length MAX_SEQUENCE_LENGTH] [--fp16]
+                    [--device DEVICE]
+                    [--transformers-model-name TRANSFORMERS_MODEL_NAME]
+                    [--recipe-path RECIPE_PATH]
                     model_filepath
 
 Benchmark sparsified transformer models
@@ -29,7 +33,9 @@ Benchmark sparsified transformer models
 positional arguments:
   model_filepath        The full filepath of the ONNX model file or SparseZoo
                         stub to the model for deepsparse and onnxruntime
-                        benchmarks
+                        benchmarks. Path to a PyTorch checkpoint also be
+                        provided for torch benchmarks, but --transformers-
+                        model-name must also be provided
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -40,10 +46,10 @@ optional arguments:
                         single sample with no batch dimension included.
                         Defaults to load data samples from a question-
                         answering bert model in sparsezoo
-  -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
+  -e {deepsparse,onnxruntime,torch}, --engine {deepsparse,onnxruntime,torch}
                         Inference engine backend to run benchmark on. Choices
-                        are 'deepsparse', 'onnxruntime'. Default is
-                        'deepsparse'
+                        are 'deepsparse', 'onnxruntime', and 'torch'. Default
+                        is 'deepsparse'
   -b BATCH_SIZE, --batch-size BATCH_SIZE
                         The batch size to run the benchmark for
   -c NUM_CORES, --num-cores NUM_CORES
@@ -62,31 +68,56 @@ optional arguments:
                         before the actual benchmarking
   --max-sequence-length MAX_SEQUENCE_LENGTH
                         the sequence length to benchmark with. Default is 128
+  --fp16                Set flag to execute torch benchmark in half precision
+                        (fp16)
+  --device DEVICE       Torch device id to benchmark the model with. Default
+                        is cpu. Non cpu benchmarking only supported for torch
+                        benchmarking. Default is 'cpu' unless running a torch
+                        benchmark and cuda is available, then cuda on device
+                        0. i.e. 'cuda', 'cpu', 0, 'cuda:1'
+  --transformers-model-name TRANSFORMERS_MODEL_NAME
+                        canonical name of the model from the transformers
+                        repository. e.g. bert-base-uncased. required for
+                        running torch benchmarks unless the given model is
+                        from the SparseZoo
+  --recipe-path RECIPE_PATH
+                        path to recipe used to modify the pytorch model (i.e.
+                        layer dropping). will be applied to the model before
+                        running benchmark. Defaults to None, if given model is
+                        from SparseZoo, the SparseZoo recipe will be used as
+                        default
 
 ##########
 Example for benchmarking on a pruned BERT model from sparsezoo with deepsparse:
 python benchmark.py \
-   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98 \
+  zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98 \
 
 ##########
 Example for benchmarking on a local ONNX model with deepsparse:
 python benchmark.py \
-    /PATH/TO/bert.onnx \
-    --batch-size 1 \
+  /PATH/TO/bert.onnx \
+  --batch-size 1 \
 
 ##########
 Example for benchmarking on a local ONNX model with onnxruntime:
 python benchmark.py \
-    /PATH/TO/bert.onnx \
-    --engine onnxruntime \
-    --batch-size 32 \
+  /PATH/TO/bert.onnx \
+  --engine onnxruntime \
+  --batch-size 32 \
+
+##########
+Example for benchmarking a SparseZoo BERT model using PyTorch CPU:
+python benchmark.py \
+  zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98 \
+  --engine torch\
 """
 
 import argparse
+import json
 import os
 import time
 import warnings
-from typing import Any, Generator, List, Tuple
+from typing import Any, Generator, List, Tuple, Union
 
 import numpy
 import onnxruntime
@@ -99,8 +130,34 @@ from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy, load_numpy_list
 
 
+try:
+    import torch
+
+    torch_import_error = None
+except Exception as torch_import_err:
+    torch = None
+    torch_import_error = torch_import_err
+
+try:
+    import transformers
+
+    hf_import_error = None
+except Exception as hf_import_err:
+    transformers = None
+    hf_import_error = hf_import_err
+
+try:
+    from sparseml.pytorch.optim import ScheduledModifierManager
+
+    sparseml_import_error = None
+except Exception as sparseml_import_err:
+    ScheduledModifierManager = None
+    sparseml_import_error = sparseml_import_err
+
+
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
+TORCH_ENGINE = "torch"
 
 
 def parse_args():
@@ -113,7 +170,9 @@ def parse_args():
         type=str,
         help=(
             "The full filepath of the ONNX model file or SparseZoo stub to the model "
-            "for deepsparse and onnxruntime benchmarks"
+            "for deepsparse and onnxruntime benchmarks. Path to a PyTorch checkpoint "
+            "also be provided for torch benchmarks, but --transformers-model-name must"
+            " also be provided"
         ),
     )
 
@@ -136,10 +195,10 @@ def parse_args():
         "--engine",
         type=str,
         default=DEEPSPARSE_ENGINE,
-        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE],
+        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE, TORCH_ENGINE],
         help=(
             "Inference engine backend to run benchmark on. Choices are 'deepsparse', "
-            "'onnxruntime'. Default is 'deepsparse'"
+            "'onnxruntime', and 'torch'. Default is 'deepsparse'"
         ),
     )
 
@@ -195,8 +254,55 @@ def parse_args():
         type=int,
         default=128,
     )
+    parser.add_argument(
+        "--fp16",
+        help="Set flag to execute torch benchmark in half precision (fp16)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--device",
+        type=_parse_device,
+        default=None,
+        help=(
+            "Torch device id to benchmark the model with. Default is cpu. Non cpu "
+            "benchmarking only supported for torch benchmarking. Default is 'cpu' "
+            "unless running a torch benchmark and cuda is available, then cuda on "
+            "device 0. i.e. 'cuda', 'cpu', 0, 'cuda:1'"
+        ),
+    )
+    parser.add_argument(
+        "--transformers-model-name",
+        type=str,
+        default=None,
+        help=(
+            "canonical name of the model from the transformers repository. e.g. "
+            "bert-base-uncased. required for running torch benchmarks unless "
+            "the given model is from the SparseZoo"
+        ),
+    )
+    parser.add_argument(
+        "--recipe-path",
+        type=str,
+        default=None,
+        help=(
+            "path to recipe used to modify the pytorch model (i.e. layer dropping). "
+            "will be applied to the model before running benchmark. Defaults to None, "
+            "if given model is from SparseZoo, the SparseZoo recipe will be used as "
+            "default"
+        ),
+    )
 
     args = parser.parse_args()
+
+    if args.engine == TORCH_ENGINE and (torch_import_error or hf_import_error):
+        raise ImportError(
+            "torch and transformers~=4.3 are requried to run benchmarks using the "
+            "PyTorch backbone. Try installing deepsparse as deepsparse[transformers]. "
+            f"Error message: {torch_import_error or hf_import_error}"
+        )
+
+    if args.engine == TORCH_ENGINE and args.device is None:
+        args.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
     return args
 
@@ -222,10 +328,16 @@ def benchmark(args):
     progress_bar = tqdm(total=args.num_iterations)
 
     for iteration, batch in enumerate(data_loader):
+        if args.device not in ["cpu", None] and torch:
+            torch.cuda.synchronize()
+
         iter_start = time.time()
 
         # inference
         _ = _run_model(args, model, batch, input_names)
+
+        if args.device not in ["cpu", None] and torch:
+            torch.cuda.synchronize()
 
         iter_end = time.time()
 
@@ -244,6 +356,14 @@ def benchmark(args):
 
 def _load_model(args) -> Tuple[Any, List[str]]:
     # validation
+    if args.device not in [None, "cpu"] and args.engine != TORCH_ENGINE:
+        raise ValueError(f"device {args.device} is not supported for {args.engine}")
+    if args.fp16 and args.engine != TORCH_ENGINE:
+        raise ValueError(f"half precision is not supported for {args.engine}")
+    if args.num_cores is not None and args.engine == TORCH_ENGINE:
+        raise ValueError(
+            f"overriding default num_cores not supported for {args.engine}"
+        )
     if (
         args.num_cores is not None
         and args.engine == ORT_ENGINE
@@ -256,12 +376,48 @@ def _load_model(args) -> Tuple[Any, List[str]]:
         )
     if args.num_sockets is not None and args.engine != DEEPSPARSE_ENGINE:
         raise ValueError(f"Overriding num_sockets is not supported for {args.engine}")
+    if args.transformers_model_name and args.engine in [ORT_ENGINE, DEEPSPARSE_ENGINE]:
+        raise ValueError(
+            "--transformers-model-name may only be supplied for torch benchmarks "
+            f"given --transformers-model-name={args.transformers_model_name}"
+        )
+    if (
+        not args.transformers_model_name
+        and args.engine == TORCH_ENGINE
+        and not args.model_filepath.startswith("zoo:")
+    ):
+        raise ValueError(
+            "--transformers-model-name must be supplied for torch benchmarks unless "
+            "a model file from the SparseZoo"
+        )
 
     # load model from sparsezoo if necessary
     if args.model_filepath.startswith("zoo:"):
         zoo_model = Zoo.load_model_from_stub(args.model_filepath)
-        downloaded_path = zoo_model.onnx_file.downloaded_path()
-        print(f"downloaded sparsezoo model {args.model_filepath} to {downloaded_path}")
+        if args.engine == TORCH_ENGINE:
+            file_paths = [file.downloaded_path() for file in zoo_model.framework_files]
+
+            # parse model name if necessary
+            if not args.transformers_model_name:
+                config_path = [
+                    path for path in file_paths if path.endswith("/config.json")
+                ][0]
+                with open(config_path) as config_file:
+                    config = json.load(config_file)
+                args.transformers_model_name = config.get("_name_or_path")
+
+            # download recipe if necessary
+            args.recipe_path = (
+                args.recipe_path or zoo_model.original_recipe.downloaded_path()
+            )
+            downloaded_path = [
+                path for path in file_paths if path.endswith("/pytorch_model.bin")
+            ][0]
+
+        else:
+            downloaded_path = zoo_model.onnx_file.downloaded_path()
+
+        print(f"downloaded SparseZoo model {args.model_filepath} to {downloaded_path}")
         args.model_filepath = downloaded_path
 
     # scale static ONNX graph to desired image shape
@@ -293,6 +449,34 @@ def _load_model(args) -> Tuple[Any, List[str]]:
         model = onnxruntime.InferenceSession(
             args.model_filepath, sess_options=sess_options
         )
+    elif args.engine == TORCH_ENGINE:
+        state_dict = torch.load(args.model_filepath)
+        model = transformers.AutoModelForQuestionAnswering.from_pretrained(
+            args.transformers_model_name,
+            state_dict=state_dict,
+        )
+
+        model.to(args.device)
+        model.eval()
+        if args.fp16:
+            print("Using half precision")
+            model.half()
+        else:
+            print("Using full precision")
+            model.float()
+
+        if args.recipe_path:
+            if sparseml_import_error:
+                raise ImportError(
+                    "SparseML is required to run PyTorch benchmarks with for models "
+                    f"created with a recipe. Error: {sparseml_import_error}"
+                )
+            print("applying sparsification recipe")
+            manager = ScheduledModifierManager.from_yaml(args.recipe_path)
+            manager.apply(model)
+            model.load_state_dict(state_dict)
+
+        input_names = None
 
     return model, input_names
 
@@ -319,11 +503,13 @@ def _load_data(args, input_names) -> List[List[numpy.ndarray]]:
     ]
 
     processed_samples = []
-    warning_given = False
+    warning_given = not input_names
     for sample in samples:
-        if not all(inp_name in sample for inp_name in input_names) or len(
-            input_names
-        ) != len(sample):
+        if (
+            not input_names
+            or any(inp_name not in sample for inp_name in input_names)
+            or len(input_names) != len(sample)
+        ):
             if not warning_given:
                 warnings.warn(
                     "input sample found whose input names do not match the model input "
@@ -385,11 +571,21 @@ def _run_model(
     if args.engine == ORT_ENGINE:
         outputs = model.run(
             None,
-            dict(zip(input_names, batch)),  # inputs dict
-        )
+            dict(zip(input_names, batch)),
+        )  # inputs dict
     elif args.engine == DEEPSPARSE_ENGINE:  # deepsparse
         outputs = model.run(batch)
+    elif args.engine == TORCH_ENGINE:
+        batch = [torch.from_numpy(item).to(args.device) for item in batch]
+        outputs = model(*batch)
     return outputs
+
+
+def _parse_device(device: Union[str, int]) -> Union[str, int]:
+    try:
+        return int(device)
+    except Exception:
+        return device
 
 
 def main():
