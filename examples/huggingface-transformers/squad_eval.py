@@ -48,7 +48,7 @@ optional arguments:
 ##########
 Example command for evaluating a sparse BERT QA model from sparsezoo:
 python squad_eval.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate
+    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
 """
 
 

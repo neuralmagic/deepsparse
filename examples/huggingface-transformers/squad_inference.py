@@ -60,7 +60,7 @@ optional arguments:
 ##########
 Example command for running 1000 samples using a model from sparsezoo:
 python squad_inference.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate \
+   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98 \
     --num-samples 1000
 """
 

@@ -38,7 +38,7 @@ optional arguments:
 ##########
 Example command for running using a model from sparsezoo:
 python server.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate
+    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
 """
 import argparse
 import json
