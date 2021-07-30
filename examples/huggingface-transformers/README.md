@@ -38,7 +38,7 @@ Question-Answering task. The current version of the pipeline supports only
 from pipelines import pipeline
 
 # SparseZoo model stub or path to ONNX file
-onnx_filepath="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate"
+onnx_filepath="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
 
 num_cores=None  # uses all available CPU cores by default
 
@@ -70,7 +70,7 @@ benchmark.py -h`.
 To run a benchmark using the DeepSparse Engine with a pruned BERT model that uses all available CPU cores and batch size 1, run:
 ```bash
 python benchmark.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate \
+    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98 \
     --batch-size 1
 ```
 
@@ -94,7 +94,7 @@ also supported.
 Example command:
 ```bash
 python server.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate
+    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
 ```
 
 You can leave that running as a detached process or in a spare terminal.
@@ -142,10 +142,8 @@ Learn more at
 
 | Model Name     |      Stub      | Description |
 |----------|-------------|-------------|
-| bert-pruned-moderate | zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate |This model is the result of pruning BERT base uncased on the SQuAD dataset. The sparsity level is 90% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
-| bert-6layers-aggressive-pruned| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96 |This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 95% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
+| bert-6layers-aggressive-pruned-96| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96 |This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 95% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
 | bert-pruned-conservative| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-conservative |This model is the result of pruning BERT base uncased on the SQuAD dataset. The sparsity level is 80% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
-| pruned_6layers-moderate | zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-moderate |This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 90% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs. The integration with Hugging Face's Transformers can be found [here](https://github.com/neuralmagic/sparseml/tree/main/integrations/huggingface-transformers).|
-| pruned-aggressive_94 | zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_94|This model is the result of pruning BERT base uncased on the SQuAD dataset. The sparsity level is 95% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
-| pruned_6layers-conservative| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-conservative|This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 80% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
+| pruned-aggressive_94 | zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_94|This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 90% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
+| bert-3layers-pruned-aggressive-89| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_89|This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 89% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
 | bert-base|zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none |This model is the result of a BERT base uncased model fine-tuned on the SQuAD dataset for two epochs.|

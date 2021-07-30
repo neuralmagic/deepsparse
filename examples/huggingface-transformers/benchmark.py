@@ -66,7 +66,7 @@ optional arguments:
 ##########
 Example for benchmarking on a pruned BERT model from sparsezoo with deepsparse:
 python benchmark.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-moderate \
+   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98 \
 
 ##########
 Example for benchmarking on a local ONNX model with deepsparse:
