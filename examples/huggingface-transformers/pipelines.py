@@ -814,7 +814,7 @@ SUPPORTED_TASKS = {
         ),
         default_pruned_stub=(
             "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-            "pruned-moderate"
+            "pruned-aggressive_98"
         ),
     )
 }
