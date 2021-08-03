@@ -149,7 +149,7 @@ def main():
     if not VNNI:
         print(
             "WARNING: VNNI instructions not detected, "
-            "quantization speedup not well supported"
+            "quantization (INT8) speedup not well supported"
         )
 
     results = benchmark_model(
