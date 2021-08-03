@@ -302,7 +302,7 @@ class VideoSaver(ImagesSaver):
         perform any clean-up tasks
         """
         self._writer.release()
-        if self._target_fps is not None and target_fps < original_fps:
+        if self._target_fps is not None and self._target_fps < self._original_fps:
             self._write_target_fps_video()
 
     def _write_target_fps_video(self):
