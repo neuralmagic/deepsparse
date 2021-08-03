@@ -50,7 +50,7 @@ import numpy
 from deepsparse import benchmark_model, cpu
 
 
-CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
+CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu.cpu_details()
 
 
 def parse_args():
@@ -145,6 +145,12 @@ def main():
         num_warmup_iterations=num_warmup_iterations,
     )
     print(f"ResNet-50 v1 Pruned Moderate FP32 {results}")
+
+    if not VNNI:
+        print(
+            "WARNING: VNNI instructions not detected, "
+            "quantization speedup not well supported"
+        )
 
     results = benchmark_model(
         (
