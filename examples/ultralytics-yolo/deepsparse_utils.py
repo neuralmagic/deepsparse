@@ -277,7 +277,7 @@ class VideoSaver(ImagesSaver):
         if target_fps is not None and target_fps >= original_fps:
             print(
                 f"target_fps {target_fps} is greater than source_fps "
-                f"{original_fps}. additional target fps file will not be produced"
+                f"{original_fps}. target fps file will not be invoked"
             )
         self._target_fps = target_fps
 
@@ -302,7 +302,7 @@ class VideoSaver(ImagesSaver):
         perform any clean-up tasks
         """
         self._writer.release()
-        if self._target_fps is not None:
+        if self._target_fps is not None and target_fps < original_fps:
             self._write_target_fps_video()
 
     def _write_target_fps_video(self):
