@@ -24,7 +24,7 @@ usage: benchmark.py [-h] [-e {deepsparse,onnxruntime,torch}]
                     [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
                     [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS] [-q]
                     [--fp16] [--device DEVICE]
-                    [--model-config MODEL_CONFIG]
+                    [--model-config MODEL_CONFIG] [--recipe RECIPE]
                     model_filepath
 
 Benchmark sparsified YOLO models
@@ -81,6 +81,8 @@ optional arguments:
                         YOLO config YAML file to override default anchor
                         points when post-processing. Defaults to use standard
                         YOLOv3/YOLOv5 anchors
+  --recipe RECIPE       filepath or zoo stub to SparseML recipe to apply to
+                        PyTorch models before benchmarking
 
 ##########
 Example command for running a benchmark on a pruned quantized YOLOv3:
@@ -139,6 +141,7 @@ from deepsparse_utils import (
     yolo_onnx_has_postprocessing,
 )
 from sparseml.onnx.utils import override_model_batch_size
+from sparseml.pytorch.optim import ScheduledModifierManager
 from sparsezoo.models.detection import yolo_v3 as zoo_yolo_v3
 from sparsezoo.utils import load_numpy_list
 
@@ -271,6 +274,15 @@ def parse_args(arguments=None):
             "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
         ),
     )
+    parser.add_argument(
+        "--recipe",
+        type=str,
+        default=None,
+        help=(
+            "filepath or zoo stub to SparseML recipe to apply to PyTorch models before "
+            "benchmarking"
+        ),
+    )
 
     args = parser.parse_args(args=arguments)
     if args.engine == TORCH_ENGINE and args.device is None:
@@ -386,6 +398,11 @@ def _load_model(args) -> (Any, bool):
     elif args.engine == TORCH_ENGINE:
         print(f"loading torch model for {args.model_filepath}")
         model = torch.load(args.model_filepath)
+
+        if args.recipe:
+            manager = ScheduledModifierManager.from_yaml(args.recipe)
+            manager.apply(model)
+
         if isinstance(model, dict):
             model = model["model"]
         model.to(args.device)
@@ -397,6 +414,14 @@ def _load_model(args) -> (Any, bool):
             print("Using full precision")
             model.float()
         has_postprocessing = True
+
+        if args.device == "cpu":
+            # convert any QAT models to fully quantized for CPU execution
+            try:
+                model = torch.quantization.convert(model)
+            except Exception:
+                pass
+
     return model, has_postprocessing
 
 
