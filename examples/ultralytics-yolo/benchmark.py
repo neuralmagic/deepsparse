@@ -139,6 +139,7 @@ from deepsparse_utils import (
     load_image,
     modify_yolo_onnx_input_shape,
     postprocess_nms,
+    set_params_requires_grad,
     yolo_onnx_has_postprocessing,
 )
 from sparseml.onnx.utils import override_model_batch_size
@@ -407,8 +408,9 @@ def _load_model(args) -> (Any, bool):
 
         if args.recipe:
             manager = ScheduledModifierManager.from_yaml(args.recipe)
-            model.train()
+            set_params_requires_grad(model, True)  # required to enable recipe hooks
             manager.apply(model)
+            set_params_requires_grad(model, False)  # disable for benchmarking
 
         model.eval()
         model.to(args.device)
@@ -417,7 +419,6 @@ def _load_model(args) -> (Any, bool):
             print("Using half precision")
             model.half()
         else:
-            print("Using full precision")
             model.float()
 
         if args.device == "cpu":

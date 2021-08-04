@@ -50,6 +50,7 @@ __all__ = [
     "annotate_image",
     "download_model_if_stub",
     "download_torch_model_if_stub",
+    "set_params_requires_grad",
 ]
 
 
@@ -573,6 +574,15 @@ def download_torch_model_if_stub(path: str) -> str:
         print(f"model with stub {path} downloaded to {downloaded_path}")
         return downloaded_path
     return path
+
+
+def set_params_requires_grad(module: torch.nn.Module, requires_grad: bool):
+    """
+    :param module: module to set the requires_grad attribute of each param for
+    :param requires_grad: value to set requires_grad to
+    """
+    for param in module.parameters():
+        param.requires_grad = requires_grad
 
 
 _YOLO_CLASSES = [
