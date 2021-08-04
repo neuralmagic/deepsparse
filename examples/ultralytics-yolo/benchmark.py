@@ -405,12 +405,12 @@ def _load_model(args) -> (Any, bool):
         if isinstance(model, dict):
             model = model["model"]
 
-        model.eval()
-        model.to(args.device)
-
         if args.recipe:
             manager = ScheduledModifierManager.from_yaml(args.recipe)
             manager.apply(model)
+
+        model.eval()
+        model.to(args.device)
 
         if args.fp16:
             print("Using half precision")
