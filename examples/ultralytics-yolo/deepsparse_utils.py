@@ -21,6 +21,7 @@ variables if using a different model.
 
 
 import glob
+import itertools
 import os
 import shutil
 import time
@@ -630,6 +631,10 @@ _YOLO_CLASSES = [
 ]
 
 
+_YOLO_CLASS_COLORS = list(itertools.product([0, 255, 128, 64, 192], repeat=3))
+_YOLO_CLASS_COLORS.remove((255, 255, 255))  # remove white from possible colors
+
+
 def annotate_image(
     img: numpy.ndarray,
     outputs: numpy.ndarray,
@@ -675,21 +680,42 @@ def annotate_image(
             right = boxes[idx][2] * scale_x
             bottom = boxes[idx][3] * scale_y
 
+            # calculate text size
+            (text_width, text_height), text_baseline = cv2.getTextSize(
+                annotation_text,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.9,  # font scale
+                2,  # thickness
+            )
+            text_height += text_baseline
+
+            # make solid background for annotation text
+            cv2.rectangle(
+                img_res,
+                (int(left), int(top) - 33),
+                (int(left) + text_width, int(top) - 28 + text_height),
+                _YOLO_CLASS_COLORS[label],
+                thickness=-1,  # filled solid
+            )
+
+            # add white annotation text
             cv2.putText(
                 img_res,
                 annotation_text,
                 (int(left), int(top) - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.9,  # font scale
-                (245, 46, 6),  # color
+                (255, 255, 255),  # white text
                 2,  # thickness
                 cv2.LINE_AA,
             )
+
+            # draw bounding box
             cv2.rectangle(
                 img_res,
                 (int(left), int(top)),
                 (int(right), int(bottom)),
-                (245, 46, 6),
+                _YOLO_CLASS_COLORS[label],
                 thickness=2,
             )
 
