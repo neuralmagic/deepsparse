@@ -49,6 +49,7 @@ __all__ = [
     "yolo_onnx_has_postprocessing",
     "annotate_image",
     "download_model_if_stub",
+    "download_torch_model_if_stub",
 ]
 
 
@@ -541,9 +542,34 @@ def download_model_if_stub(path: str) -> str:
     """
     if path.startswith("zoo"):
         model = Zoo.load_model_from_stub(path)
-        downloded_path = model.onnx_file.downloaded_path()
-        print(f"model with stub {path} downloaded to {downloded_path}")
-        return downloded_path
+        downloaded_path = model.onnx_file.downloaded_path()
+        print(f"model with stub {path} downloaded to {downloaded_path}")
+        return downloaded_path
+    return path
+
+
+def download_torch_model_if_stub(path: str) -> str:
+    """
+    Utility method to download torch model if path is a SparseZoo stub
+    If the model ckpt file exists, that checkpoint will be prefered
+
+    :param path: file path to YOLO PyTorch model or SparseZoo stub of the model
+        to be loaded
+    :return: filepath to the downloaded torch checkpoint model or
+        original path if it's not a SparseZoo Stub
+    """
+    if path.startswith("zoo"):
+        model = Zoo.load_model_from_stub(path)
+
+        ckpt_file_idxs = [
+            idx for idx, file in model.framework_files if ".ckpt.pt" in file.path
+        ]
+
+        # return first ckpt file if it exists, otherwise, first framework file
+        target_file_idx = ckpt_file_idxs[0] if ckpt_file_idxs else 0
+        downloaded_path = model.framework_files[target_file_idx].downloaded_path()
+        print(f"model with stub {path} downloaded to {downloaded_path}")
+        return downloaded_path
     return path
 
 
