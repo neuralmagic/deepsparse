@@ -408,6 +408,7 @@ def _load_model(args) -> (Any, bool):
 
         if args.recipe:
             manager = ScheduledModifierManager.from_yaml(args.recipe)
+            model.float()  # apply recipe with float32 params
             set_params_requires_grad(model, True)  # required to enable recipe hooks
             manager.apply(model)
             set_params_requires_grad(model, False)  # disable for benchmarking
