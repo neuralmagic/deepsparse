@@ -407,6 +407,7 @@ def _load_model(args) -> (Any, bool):
 
         if args.recipe:
             manager = ScheduledModifierManager.from_yaml(args.recipe)
+            model.train()
             manager.apply(model)
 
         model.eval()
