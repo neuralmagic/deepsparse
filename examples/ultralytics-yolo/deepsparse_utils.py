@@ -562,7 +562,9 @@ def download_torch_model_if_stub(path: str) -> str:
         model = Zoo.load_model_from_stub(path)
 
         ckpt_file_idxs = [
-            idx for idx, file in model.framework_files if ".ckpt.pt" in file.path
+            idx
+            for idx, file in enumerate(model.framework_files)
+            if ".ckpt.pt" in file.path
         ]
 
         # return first ckpt file if it exists, otherwise, first framework file
