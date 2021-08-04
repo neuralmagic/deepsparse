@@ -397,23 +397,24 @@ def _load_model(args) -> (Any, bool):
         )
     elif args.engine == TORCH_ENGINE:
         print(f"loading torch model for {args.model_filepath}")
-        model = torch.load(args.model_filepath)
+        model = torch.load(args.model_filepath, map_location=args.device)
+
+        if isinstance(model, dict):
+            model = model["model"]
+
+        model.eval()
+        model.to(args.device)
 
         if args.recipe:
             manager = ScheduledModifierManager.from_yaml(args.recipe)
             manager.apply(model)
 
-        if isinstance(model, dict):
-            model = model["model"]
-        model.to(args.device)
-        model.eval()
         if args.fp16:
             print("Using half precision")
             model.half()
         else:
             print("Using full precision")
             model.float()
-        has_postprocessing = True
 
         if args.device == "cpu":
             # convert any QAT models to fully quantized for CPU execution
@@ -421,6 +422,8 @@ def _load_model(args) -> (Any, bool):
                 model = torch.quantization.convert(model)
             except Exception:
                 pass
+
+        has_postprocessing = True
 
     return model, has_postprocessing
 
