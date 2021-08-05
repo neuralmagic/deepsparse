@@ -92,9 +92,9 @@ python annotate.py \
     --image-shape 416 416
 
 ##########
-Example command for running video annotations with pruned quantized YOLOv3:
+Example command for running video annotations with pruned YOLOv5l:
 python annotate.py \
-    zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned-aggressive_97 \
+    zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98 \
     --source my_video.mp4 \
     --image-shape 416 416
 
