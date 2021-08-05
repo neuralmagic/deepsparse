@@ -122,6 +122,7 @@ import argparse
 import glob
 import os
 import time
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
@@ -424,10 +425,8 @@ def _load_model(args) -> (Any, bool):
 
         if args.device == "cpu":
             # convert any QAT models to fully quantized for CPU execution
-            try:
+            with suppress(Exception):
                 model = torch.quantization.convert(model)
-            except Exception:
-                pass
 
         has_postprocessing = True
 
