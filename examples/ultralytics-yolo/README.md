@@ -44,8 +44,14 @@ run the following examples.
 
 | Model Name     |      Stub      | Description |
 |----------|-------------|-------------|
-| yolov3-pruned-aggressive | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned-aggressive_97 | Sparse YOLOv3 model trained with full FP32 precision that recovers 97% of its baseline mAP |
-| yolov3-pruned_quant-aggressive | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 | Sparse INT8 quantized YOLOv3 model that recovers 94% of its baseline mAP |
+| yolov5l-pruned | zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98 | Sparse YOLOv5l model trained with full FP32 precision that recovers 98% of its baseline mAP |
+| yolov5l-pruned_quant | zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant-aggressive_95 | Sparse INT8 quantized YOLOv5l model that recovers 95% of its baseline mAP |
+| yolov5s-pruned | zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96 | Sparse YOLOv5l model trained with full FP32 precision that recovers 96% of its baseline mAP |
+| yolov5s-pruned_quant | zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 | Sparse INT8 quantized YOLOv5s model that recovers 94% of its baseline mAP |
+| yolov3-pruned | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned-aggressive_97 | Sparse YOLOv3 model trained with full FP32 precision that recovers 97% of its baseline mAP |
+| yolov3-pruned_quant | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 | Sparse INT8 quantized YOLOv3 model that recovers 94% of its baseline mAP |
+| yolov5l-base | zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/base-none | Dense full precision YOLOv5l model |
+| yolov5s-base | zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none | Dense full precision YOLOv5s model |
 | yolov3-base | zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/base-none | Dense full precision YOLOv3-SPP model |
 
 
