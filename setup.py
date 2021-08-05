@@ -35,7 +35,7 @@ if not os.path.exists(version_path):
     version_path = os.path.join("src", "deepsparse", "version.py")
 exec(open(version_path).read())
 print(f"loaded version {version} from {version_path}")
-version_base = f"{version_major}.{version_minor}.{version_bug}"
+version_base = f"{version_major}.{version_minor}.0"
 
 _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 
