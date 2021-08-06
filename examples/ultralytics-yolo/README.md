@@ -60,10 +60,10 @@ run the following examples.
 to run inferences on images, videos, or webcam streams. For a full list of options
 `python annotate.py -h`.
 
-To run pruned-quantized YOLOv3 on a local webcam run:
+To run pruned-quantized YOLOv5s on a local webcam run:
 ```bash
 python annotate.py \
-    zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
+    zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
     --source 0 \
     --quantized-inputs \
     --image-shape 416 416 \
@@ -79,10 +79,18 @@ corresponding webcam is available, an exception will be raised.
 `benchmark.py` is a script for benchmarking sparsified and quantized YOLO
 performance with DeepSparse.  For a full list of options run `python benchmark.py -h`.
 
-To run a benchmark run:
+To run a YOLOv3 pruned-quantized benchmark run:
 ```bash
 python benchmark.py \
     zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
+    --batch-size 1 \
+    --quantized-inputs
+```
+
+To run a YOLOv5s pruned-quantized benchmark run:
+```bash
+python benchmark.py \
+    zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
     --batch-size 1 \
     --quantized-inputs
 ```
@@ -106,10 +114,17 @@ The client can make requests into the server returning object detection results 
 First, start up the host `server.py` with your model of choice, SparseZoo stubs are
 also supported.
 
-Example command:
+Example YOLOv3 Pruned Quantized command:
 ```bash
 python server.py \
     zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
+    --quantized-inputs
+```
+
+Example YOLOv5s Pruned Quantized command:
+```bash
+python server.py \
+    zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
     --quantized-inputs
 ```
 

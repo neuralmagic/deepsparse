@@ -83,9 +83,9 @@ optional arguments:
                         YOLOv3/YOLOv5 anchors
 
 ##########
-Example command for running a benchmark on a pruned quantized YOLOv3:
+Example command for running a benchmark on a pruned quantized YOLOv5s:
 python benchmark.py \
-    zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
+    zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
     --batch-size 32 \
     --quantized-inputs
 
@@ -99,9 +99,9 @@ python benchmark.py \
     --half-precision
 
 ##########
-Example for benchmarking on a local YOLOv3 ONNX with onnxruntime:
+Example for benchmarking on a local YOLOv5l ONNX with onnxruntime:
 python benchmark.py \
-    /PATH/TO/yolov3-spp.onnx \
+    /PATH/TO/yolov5l.onnx \
     --engine onnxruntime \
     --batch-size 32 \
 
@@ -112,7 +112,19 @@ Full list of SparseZoo stubs for benchmarking
 * Pruned YOLOv3 (87% sparse) -
     "zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned-aggressive-97"
 * Pruned-Quantized YOLOv3 (83% sparse, CPU must support VNNI) -
- "zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive-94"
+    "zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive-94"
+* Baseline dense YOLOv5l -
+    "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/base-none"
+* Pruned YOLOv5l (86.3% sparse) -
+    "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
+* Pruned-Quantized YOLOv5l (79.6% sparse, CPU must support VNNI) -
+    "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant-aggressive_95"
+* Baseline dense YOLOv5s -
+    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none"
+* Pruned YOLOv5s (75.6% sparse) -
+    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96"
+* Pruned-Quantized YOLOv5s (68.2% sparse, CPU must support VNNI) -
+    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94"
 """
 
 
