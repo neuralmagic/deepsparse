@@ -47,9 +47,14 @@ optional arguments:
                         YOLOv3/YOLOv5 anchors
 
 ##########
-Example command for running:
+Example command for running from a local YOLOv3 file:
 python server.py \
-    ~/models/yolo-v3-pruned_quant.onnx
+    ~/models/yolo-v3-pruned.onnx
+
+##########
+Example command for running from a pruned YOLOv5s file:
+python server.py \
+    zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96
 """
 
 import argparse
