@@ -48,6 +48,7 @@ python examples/classification/classification.py \
 """
 
 import argparse
+import logging
 from inspect import getmembers, isfunction
 
 import numpy
@@ -60,18 +61,105 @@ from sparsezoo.objects import Model
 
 CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
 
-model_registry = dict(getmembers(classification, isfunction))
+# Get the top-level logger object
+log = logging.getLogger()
+
+console = logging.StreamHandler()
+log.addHandler(console)
 
 
-def fetch_model(model_name: str) -> Model:
-    if model_name not in model_registry:
-        raise Exception(
-            f"Could not find model '{model_name}' in classification model registry."
+class Predictor:
+    model_registry = dict(getmembers(classification, isfunction))
+
+    def __init__(self, model_name, batch_size, num_cores):
+        self._model = self._fetch_model(model_name=model_name)
+        self.batch_size = batch_size
+        self._num_cores = num_cores
+        self._engine = self._compile()
+
+    def sample_batch(self):
+        """
+        Gather a batch of sample inputs, outputs and labels if available for the model
+        """
+        batch = self._model.sample_batch(batch_size=self.batch_size)
+        return batch["inputs"], batch["outputs"], batch.get("labels")
+
+    def predict(self, inputs):
+        """
+        Utility method to run inputs through the DeepSparse engine
+
+        :param inputs: numpy array of inputs
+        """
+        return self._engine(inputs)
+
+    def predict_and_verify(self, inputs, outputs):
+        """
+        Run the inputs through DeepSparse engine and
+        Compare results against reference model output
+
+        :param inputs: numpy array of inputs
+        :param outputs: reference outputs to verify predictions
+        """
+
+        _predictions = self.predict(inputs=inputs)
+        verify_outputs(_predictions, outputs)
+        return _predictions
+
+    def benchmark_on_sample_data(self):
+        """
+        Benchmark DeepSparse engine on sample data and return results
+        """
+        sample_inputs, _, _ = self.sample_batch()
+        return self.benchmark(batched_inputs=sample_inputs)
+
+    def benchmark(self, batched_inputs):
+        """
+        Benchmark DeepSparse Engine on a given batch of inputs
+
+        :returns: Results from ben
+        """
+        return self._engine.benchmark(batched_inputs)
+
+    def _fetch_model(self, model_name: str) -> Model:
+        if model_name not in self.model_registry:
+            raise Exception(
+                f"Could not find model '{model_name}' in classification model registry."
+            )
+        return self.model_registry[model_name]()
+
+    def _compile(self):
+        # Compile model for inference
+        log.info(
+            f"Compiling {self._model.architecture_id} model with DeepSparse Engine"
         )
-    return model_registry[model_name]()
+        engine = compile_model(self._model, self.batch_size, self._num_cores)
+        log.info(f"Compiled Model: {engine}")
+        return engine
+
+    @staticmethod
+    def top1_accuracy(pred: numpy.array, labels: numpy.array) -> float:
+        """
+        :param pred: the model's prediction to compare with
+        :param labels: the labels for the data to compare to
+        :return: the calculated top1 accuracy
+        """
+        batch_size = pred.shape[0]
+        pred = numpy.argmax(pred, axis=-1)
+        labels = numpy.argmax(labels, axis=-1)
+
+        correct = (pred == labels).sum()
+        correct *= 100.0 / batch_size
+        return correct
 
 
-def parse_args():
+def parse_args(args=None):
+    """
+    Add and parse arguments
+
+    :params args: optional arguments to parse; if None,
+        arguments are read from command line
+    :returns: argparse.NameSpace object containing args
+    """
     parser = argparse.ArgumentParser(
         description="Benchmark and check accuracy of image classification models"
     )
@@ -79,7 +167,7 @@ def parse_args():
     parser.add_argument(
         "model_name",
         type=str,
-        choices=model_registry.keys(),
+        choices=Predictor.model_registry.keys(),
         help="Model type to analyze",
     )
 
@@ -101,61 +189,45 @@ def parse_args():
         ),
     )
 
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
-def calculate_top1_accuracy(pred: numpy.array, labels: numpy.array) -> float:
+def main(args=None):
     """
-    :param pred: the model's prediction to compare with
-    :param labels: the labels for the data to compare to
-    :return: the calculated top1 accuracy
+    Main driver function that runs predictions,
+    and benchmarks the DeepSparse engine
+
+    :params args: optional arguments; if None,
+        arguments are read from command line
     """
-    batch_size = pred.shape[0]
-    pred = numpy.argmax(pred, axis=-1)
-    labels = numpy.argmax(labels, axis=-1)
+    args = parse_args(args)
+    predictor = Predictor(args.model_name, args.batch_size, args.num_cores)
+    inputs, outputs, labels = predictor.sample_batch()
 
-    correct = (pred == labels).sum()
-    correct *= 100.0 / batch_size
-
-    return correct
-
-
-def main():
-    args = parse_args()
-    model = fetch_model(args.model_name)
-    batch_size = args.batch_size
-    num_cores = args.num_cores
-
-    # Gather batch of data
-    batch = model.sample_batch(batch_size=batch_size)
-    batched_inputs = batch["inputs"]
-    batched_outputs = batch["outputs"]
-
-    # Compile model for inference
-    print("Compiling {} model with DeepSparse Engine".format(model.architecture_id))
-    engine = compile_model(model, batch_size, num_cores)
-    print(engine)
-
-    # INFERENCE
-    # Record output from inference through the DeepSparse Engine
-    print("Executing...")
-    predicted_outputs = engine(batched_inputs)
-
-    # Compare against reference model output
-    verify_outputs(predicted_outputs, batched_outputs)
-
-    if "labels" in batch:
-        batched_labels = batch["labels"]
+    if labels:
+        predictions = predictor.predict(inputs=inputs)
         # Measure accuracy against ground truth labels
-        accuracy = calculate_top1_accuracy(predicted_outputs[-1], batched_labels[0])
-        print("Top-1 Accuracy for batch size {}: {:.2f}%".format(batch_size, accuracy))
+        accuracy = Predictor.top1_accuracy(predictions[-1], labels[0])
+        log.info(
+            "Top-1 Accuracy for batch size {}: {:.2f}%".format(
+                predictor.batch_size, accuracy
+            )
+        )
 
     # BENCHMARK
     # Record output from executing through the DeepSparse engine
-    print("Benchmarking...")
-    results = engine.benchmark(batched_inputs)
-    print(results)
+    results = predictor.benchmark_on_sample_data()
+    log.info(results)
+
+
+def sanity_check():
+    """
+    Dummy test function
+    """
+    test_args = "mobilenet_v2 --batch_size 8 --num_cores 4".split()
+    main(args=test_args)
 
 
 if __name__ == "__main__":
+    # sanity_check()
     main()

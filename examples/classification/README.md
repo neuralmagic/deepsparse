@@ -101,6 +101,15 @@ for batch in batch_loader:
     print(f"outputs:{out}")
 ```
 
+## DeepSparse Example Application
+
+We also provide a minimal example application using [streamlit](https://streamlit.io/) for benchmarking DeepSparse engine,
+use the following command to run the application server.
+
+```bash
+streamlit run example-application.py
+```
+
 ### SparseZoo Stubs
 [SparseZoo](http://sparsezoo.neuralmagic.com/) is a constantly growing repository of sparsified (pruned and 
 pruned-quantized) models with matching sparsification recipes for neural networks. It simplifies and accelerates your time to value in building performant deep learning models with a collection of inference-optimized models and recipes to prototype.
