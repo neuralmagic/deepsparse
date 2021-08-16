@@ -40,8 +40,9 @@ num_cores = st.sidebar.select_slider(
     value=CORES_PER_SOCKET,
 )
 
-show_engine_info = st.sidebar.checkbox("Show Engine info")
 show_sample_data = st.sidebar.checkbox("Show Sample Data")
+show_engine_info = st.sidebar.checkbox("Show Engine info")
+show_top1_accuracy = st.sidebar.checkbox("Show top-1 accuracy")
 
 st.subheader("Code to run Benchmark")
 
@@ -64,7 +65,7 @@ if st.button("Execute"):
     predictor = Predictor(
         model_name=model_name, batch_size=batch_size, num_cores=num_cores
     )
-    inputs, _, _ = predictor.sample_batch()
+    inputs, outputs, labels = predictor.sample_batch()
 
     subheading.text("Running Benchmark on Sample Data...")
 
@@ -80,6 +81,16 @@ if st.button("Execute"):
     if show_engine_info:
         st.write("Engine Info:")
         st.write(predictor._engine._properties_dict())
+
+    if show_top1_accuracy:
+        if not labels:
+            st.write("Sorry Sample Data does not have labels")
+        else:
+            st.subheader("Top1 accuracy with code")
+            with st.echo("above"):
+                predictions = predictor.predict(inputs=inputs)
+                top1_accuracy = Predictor.top1_accuracy(predictions[-1], labels[0])
+            top1_accuracy
 
     if show_sample_data:
         st.write("Sample Input:")
