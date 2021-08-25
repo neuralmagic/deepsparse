@@ -112,7 +112,7 @@ class OverrideInstall(install):
 
     def _check_supported_python_version(self):
         supported_major = 3
-        supported_minor = [6, 7, 8]
+        supported_minor = [6, 7, 8, 9]
 
         if (
             sys.version_info[0] != supported_major
