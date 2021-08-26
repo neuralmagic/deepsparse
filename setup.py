@@ -59,7 +59,7 @@ _dev_deps = [
     "pytest>=6.0.0",
     "sphinx-multiversion==0.2.4",
     "sphinx-rtd-theme",
-    "onnxruntime>=1.4.0,<=1.8.0",
+    "onnxruntime>=1.4.0,<1.9.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
 ]
