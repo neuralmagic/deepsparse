@@ -42,7 +42,7 @@ _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
-_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<1.8.0", "requests>=2.0.0", "tqdm>=4.0.0"]
+_deps = ["numpy>=1.16.3", "onnx>=1.5.0,<=1.10.1", "requests>=2.0.0", "tqdm>=4.0.0"]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
     "beautifulsoup4==4.9.3",
@@ -112,7 +112,7 @@ class OverrideInstall(install):
 
     def _check_supported_python_version(self):
         supported_major = 3
-        supported_minor = [6, 7, 8]
+        supported_minor = [6, 7, 8, 9]
 
         if (
             sys.version_info[0] != supported_major
