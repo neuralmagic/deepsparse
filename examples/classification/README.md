@@ -16,7 +16,9 @@ limitations under the License.
 
 # Image Classification Example
 
-This directory holds example scripts and notebooks for benchmarking and serving image classification models using the [DeepSparse Engine](https://docs.neuralmagic.com/deepsparse/index.html).
+This directory holds example scripts and notebooks for annotating, benchmarking 
+and serving
+image classification models using the [DeepSparse Engine](https://docs.neuralmagic.com/deepsparse/index.html).
 These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
 or you can specify your own [ONNX](https://github.com/onnx/onnx) file.
 
@@ -31,7 +33,7 @@ pip3 install -r requirements.txt
 
 There is a step-by-step [classification.ipynb notebook](https://github.com/neuralmagic/deepsparse/blob/main/examples/classification/classification.ipynb) for this example.
 
-## Execution
+## Classification Example
 
 Example command for running a `mobilenet_v2` model with batch size 8 and 4 cores used:
 ```bash
@@ -101,6 +103,27 @@ for batch in batch_loader:
     print(f"outputs:{out}")
 ```
 
+## Annotation Example
+
+[annotate.py](./annotate.py) is a script for using sparsified (or 
+non-sparsified) Image classification models to run annotation on images, 
+videos, or webcam streams. For a full list of 
+options
+`python annotate.py -h`.
+
+To run pruned resnet-50 on a local webcam run:
+```bash
+python annotate.py \
+    zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-conservative \
+    --source 0 \
+    --image-shape 224 224 \
+    --no-save  # webcam only
+```
+
+In addition to webcam, `--source` can take a path to a `.jpg` file, directory or glob path
+of `.jpg` files, or path to a `.mp4` video file.  If source is an integer and no
+corresponding webcam is available, an exception will be raised.
+ 
 ### SparseZoo Stubs
 [SparseZoo](http://sparsezoo.neuralmagic.com/) is a constantly growing repository of sparsified (pruned and 
 pruned-quantized) models with matching sparsification recipes for neural networks. It simplifies and accelerates your time to value in building performant deep learning models with a collection of inference-optimized models and recipes to prototype.

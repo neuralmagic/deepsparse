@@ -767,3 +767,7 @@ licenses/
 engine-version.txt
 src/deepsparse/generated_version.py
 .idea/*
+
+# Annotation results
+
+examples/classification/annotation_results/
