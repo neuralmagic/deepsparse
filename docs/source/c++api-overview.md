@@ -48,7 +48,7 @@ To download a demo file, use the curl command:
 
 
 ```
-curl https://neuralmagic.com/wp-content/uploads/2021/10/deepsparse_api_demo.tar.gz --output deepsparse_api_demo.tar.gz
+curl https://github.com/neuralmagic/deepsparse/releases/download/v0.8.0/deepsparse_api_demo.tar.gz --output deepsparse_api_demo.tar.gz
 ```
 or visit our [DeepSparse Engine Release page](https://github.com/neuralmagic/deepsparse/releases/tag/v0.7.0) and download `deepsparse_api_demo.tar.gz` from there.
 
