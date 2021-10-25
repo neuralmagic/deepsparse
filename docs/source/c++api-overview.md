@@ -11,10 +11,10 @@ You can find more information about the engine at [https://docs.neuralmagic.com/
 
 The following is required to build and run the demo.
 
-**OS** - Our engine binary is manylinux2014-compatible and built on CentOS7.  Linux distributions such as Ubuntu20, which are compatible with manylinux2014, should support it. 
+**OS** - Our engine binary is manylinux2014-compatible and built on CentOS 7.  Linux distributions such as Ubuntu 20.04, which are compatible with manylinux2014, should support it. 
 
 
-**Hardware** - Run `arch.bin` to check hardware support. The “isa” field in the output states whether you are running on a machine that supports the avx512 or avx2 instruction set.
+**Hardware** - The utility arch.bin is included in deepsparse_api_demo.tar.gz. Run `arch.bin` to check hardware support. The “isa” field in the output states whether you are running on a machine that supports the avx512 or avx2 instruction set.
 
 ```
 ./arch.bin 
@@ -32,12 +32,12 @@ To download a demo file, use the curl command:
 
 
 ```
-curl https://your-domain/deepsparse_api_demo.tar.gz
+curl https://neuralmagic.com/wp-content/uploads/2021/10/deepsparse_api_demo.tar.gz --output deepsparse_api_demo.tar.gz
 ```
 
 
 Once you obtain the file deepsparse-api.tar.gz, follow these steps to unpack and build the demo:
-
+<YOUR ARCH> should be either avx2 or avx512 based on the result of arch.bin.
 
 ```
 tar xzvf deepsparse_api_demo.tar.gz
@@ -46,7 +46,7 @@ make
 ./bin/<YOUR ARCH>/demo.bin ./data/model.onnx
 ```
 
-**Note**.  The makefile defaults to avx512 support. For tar files and machines with avx2 instruction set, to build, you must set the ARCH flag on the command line when you make the demo.
+**Note**.  The makefile defaults to avx512 support. For tar files and machines with avx2 instruction set, to build, you must set the ARCH flag on the command line when you make the demo. 
 
 ```
 make ARCH=avx2
@@ -104,8 +104,9 @@ A tensor is an n-dimensional array of data elements and metadata. An element is 
 
 The data that tensor_t points to may have either of two different lifetime models for the memory.
 
-1. The tensor owns the lifetime of the data memory. 
+1. The tensor owns the data memory. 
 2. The tensor aliases a pointer to the memory location. The lifetime of the data memory is delegated to a lambda passed to the tensor.
+3. For externally-owned data pointers, the lambda can be a no-op.
 
 _Code Example: Memory lifetime allocated and owned by tensor_t_
 
