@@ -20,7 +20,7 @@ Supports .jpg images, .mp4 movies, and webcam streaming.
 Command help:
 usage: annotate.py [-h] --source SOURCE [-e {deepsparse,onnxruntime,torch}]
                    [--image-shape IMAGE_SHAPE [IMAGE_SHAPE ...]]
-                   [-c NUM_CORES] [-s NUM_SOCKETS] [-q] [--fp16]
+                   [-c NUM_CORES] [-q] [--fp16]
                    [--device DEVICE] [--save-dir SAVE_DIR] [--name NAME]
                    [--target-fps TARGET_FPS] [--no-save]
                    [--model-config MODEL_CONFIG]
@@ -52,10 +52,6 @@ optional arguments:
                         cores available on the system. For DeepSparse
                         benchmarks, this value is the number of cores per
                         socket
-  -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
-                        For DeepSparse Engine only. The number of physical
-                        cores to run the annotations. Defaults to None where
-                        it uses all sockets available on the system
   -q, --quantized-inputs
                         Set flag to execute with int8 inputs instead of
                         float32
@@ -193,17 +189,6 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
-        "-s",
-        "--num-sockets",
-        type=int,
-        default=None,
-        help=(
-            "For DeepSparse Engine only. The number of physical cores to run the "
-            "annotations. Defaults to None where it uses all sockets available on the "
-            "system"
-        ),
-    )
-    parser.add_argument(
         "-q",
         "--quantized-inputs",
         help=("Set flag to execute with int8 inputs instead of float32"),
@@ -316,8 +301,6 @@ def _load_model(args) -> Any:
             "If using an older build with OpenMP, try setting the OMP_NUM_THREADS "
             "environment variable"
         )
-    if args.num_sockets is not None and args.engine != DEEPSPARSE_ENGINE:
-        raise ValueError(f"Overriding num_sockets is not supported for {args.engine}")
 
     # scale static ONNX graph to desired image shape
     if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
@@ -329,7 +312,7 @@ def _load_model(args) -> Any:
     # load model
     if args.engine == DEEPSPARSE_ENGINE:
         _LOGGER.info(f"Compiling DeepSparse model for {args.model_filepath}")
-        model = compile_model(args.model_filepath, 1, args.num_cores, args.num_sockets)
+        model = compile_model(args.model_filepath, 1, args.num_cores)
         if args.quantized_inputs and not model.cpu_vnni:
             _LOGGER.warning(
                 "WARNING: VNNI instructions not detected, "

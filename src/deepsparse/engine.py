@@ -50,7 +50,13 @@ except ImportError:
     )
 
 
-__all__ = ["Engine", "compile_model", "benchmark_model", "analyze_model", "Scheduler"]
+__all__ = [
+    "Engine",
+    "compile_model",
+    "benchmark_model",
+    "analyze_model",
+    "Scheduler",
+]
 
 
 ARCH = cpu_architecture()
@@ -134,13 +140,12 @@ def _validate_num_cores(num_cores: Union[None, int]) -> int:
 
 
 def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
-    if not num_sockets:
-        num_sockets = NUM_SOCKETS
+    if num_sockets:
+        raise ValueError(
+            "num_sockets is no longer supported. Just specify the total num_cores."
+        )
 
-    if num_sockets < 1:
-        raise ValueError("num_sockets must be greater than 0")
-
-    return num_sockets
+    return 0
 
 
 def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
@@ -174,12 +179,11 @@ class Engine(object):
         prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
         object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the engine
-    :param num_cores: The number of physical cores to run the model on.
-        Pass None or 0 to run on the max number of cores
-        in one socket for the current machine, default None
-    :param num_sockets: The number of physical sockets to run the model on.
-        Pass None or 0 to run on the max number of sockets for the
-        current machine, default None
+    :param num_cores: The number of physical cores to run the model on. If more
+        cores are requested than are available on a single socket, the engine
+        will try to distribute them evenly across as few sockets as possible.
+    :param num_sockets: This parameter no longer functions and will be removed
+        in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     """
 
@@ -202,7 +206,6 @@ class Engine(object):
             self._model_path,
             self._batch_size,
             self._num_cores,
-            self._num_sockets,
             self._scheduler.value,
         )
 
@@ -544,33 +547,36 @@ def compile_model(
     model: Union[str, Model, File],
     batch_size: int = 1,
     num_cores: int = None,
-    num_sockets: int = None,
+    num_sockets=None,
     scheduler: Scheduler = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
     from an ONNX file for inference.
-    Gives defaults of batch_size == 1, num_cores == None and num_sockets = None
-    (will use all physical cores available on all available sockets).
+    Gives defaults of batch_size == 1, num_cores == None
+    (will use all physical cores available on the system).
 
     :param model: Either a path to the model's onnx file, a SparseZoo model stub
         prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
         object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
-        Pass None or 0 to run on the max number of cores
-        in one socket for the current machine, default None
-    :param num_sockets: The number of physical sockets to run the model on.
-        Pass None or 0 to run on the max number of sockets for the
-        current machine, default None
+        Pass None or 0 to run on the max number of cores for the current
+        machine; default None
+    :param num_sockets: This parameter no longer functions and will be removed
+        in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: The created Engine after compiling the model
     """
+    if num_sockets:
+        raise ValueError(
+            "num_sockets is no longer supported. Just specify the total num_cores."
+        )
+
     return Engine(
         model,
         batch_size,
         num_cores,
-        num_sockets=num_sockets,
         scheduler=scheduler,
     )
 
@@ -585,7 +591,6 @@ def benchmark_model(
     include_inputs: bool = False,
     include_outputs: bool = False,
     show_progress: bool = False,
-    num_sockets: int = None,
     scheduler: Scheduler = None,
 ) -> BenchmarkResults:
     """
@@ -602,7 +607,7 @@ def benchmark_model(
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
-        in one socket for the current machine, default None
+        for the current machine; default None
     :param inp: The list of inputs to pass to the engine for benchmarking.
         The expected order is the inputs order as defined in the ONNX graph.
     :param num_iterations: The number of iterations to run benchmarking for.
@@ -616,17 +621,20 @@ def benchmark_model(
     :param include_outputs: If True, outputs from forward passes during benchmarking
         will be added to the results. Default is False
     :param show_progress: If True, will display a progress bar. Default is False
-    :param num_sockets: The number of physical sockets to run the model on.
-        Pass None or 0 to run on the max number of sockets for the
-        current machine, default None
+    :param num_sockets: This parameter no longer functions and will be removed
+        in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the results of benchmarking
     """
+    if num_sockets:
+        raise ValueError(
+            "num_sockets is no longer supported. Just specify the total num_cores."
+        )
+
     model = compile_model(
         model,
         batch_size,
         num_cores,
-        num_sockets=num_sockets,
         scheduler=scheduler,
     )
 
@@ -669,7 +677,7 @@ def analyze_model(
     :param batch_size: The batch size of the inputs to be used with the model
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
-        in one socket for the current machine, default None
+        for the current machine; default None
     :param num_iterations: The number of times to repeat execution of the model
         while analyzing, default is 20
     :param num_warmup_iterations: The number of times to repeat execution of the model
@@ -684,20 +692,17 @@ def analyze_model(
         Will force all prunable layers in the graph to have weights with
         this desired sparsity level (percentage of 0's in the tensor).
         Beneficial for seeing how pruning affects the performance of the model.
-    :param num_sockets: The number of physical sockets to run the model on.
-        Pass None or 0 to run on the max number of sockets for the
-        current machine, default None
+    :param num_sockets: This parameter no longer functions and will be removed
+        in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the analysis structure containing the performance details of each layer
     """
     model = _model_to_path(model)
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
-    num_sockets = _validate_num_sockets(num_sockets)
+    _validate_num_sockets(num_sockets)
     scheduler = _validate_scheduler(scheduler)
-    eng_net = LIB.deepsparse_engine(
-        model, batch_size, num_cores, num_sockets, scheduler.value
-    )
+    eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, scheduler.value)
 
     return eng_net.benchmark(
         inp,
