@@ -32,6 +32,7 @@
     :maxdepth: 2
     :caption: API
 
+    source/c++api-overview
     api/deepsparse
 
 .. toctree::
