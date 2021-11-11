@@ -41,13 +41,13 @@ The most common use cases for the multi-stream scheduler are where parallelism i
 Depending on your engine execution strategy, enable one of these options by running:
 
 ```python
-engine = compile_model(model_path, batch_size, num_cores, num_sockets, "single_stream")
+engine = compile_model(model_path, batch_size, num_cores, "single_stream")
 ```
 
 or
 
 ```python
-engine = compile_model(model_path, batch_size, num_cores, num_sockets, "multi_stream")
+engine = compile_model(model_path, batch_size, num_cores, "multi_stream")
 ```
 
 or pass in the enum value directly, since` "multi_stream" == Scheduler.multi_stream`

@@ -19,7 +19,6 @@ BERT-QA ONNX model and the DeepSparse engine
 ##########
 Command help:
 usage: squad_inference.py [-h] [-c NUM_CORES] [-e {deepsparse,onnxruntime}]
-                          [-s NUM_SOCKETS]
                           [--max-sequence-length MAX_SEQUENCE_LENGTH]
                           [--num-samples NUM_SAMPLES]
                           [--display-frequency DISPLAY_FREQUENCY]
@@ -41,10 +40,6 @@ optional arguments:
                         Inference engine backend to run application on.
                         Choices are 'deepsparse', 'onnxruntime'. Default is
                         'deepsparse'
-  -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
-                        For DeepSparse only. The number of physical cores to
-                        run the benchmark on. Defaults to None where is uses
-                        all sockets available on the system
   --max-sequence-length MAX_SEQUENCE_LENGTH
                         the max sequence length for model inputs. Default is
                         384
@@ -110,17 +105,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "-s",
-        "--num-sockets",
-        type=int,
-        default=None,
-        help=(
-            "For DeepSparse only. The number of physical cores to run the "
-            "benchmark on. Defaults to None where is uses all sockets available on the "
-            "system"
-        ),
-    )
-    parser.add_argument(
         "--max-sequence-length",
         help="the max sequence length for model inputs. Default is 384",
         type=int,
@@ -167,7 +151,6 @@ def squad_inference(args):
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
-        num_sockets=args.num_sockets,
         max_length=args.max_sequence_length,
     )
 

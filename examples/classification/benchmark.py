@@ -24,7 +24,7 @@ Supports both onnxruntime and DeepSparse runtimes
 Command help:
 usage: benchmark.py [-h] [-e {deepsparse,onnxruntime}] [--data-path DATA_PATH]
                     [--image-shape IMAGE_SHAPE [IMAGE_SHAPE ...]]
-                    [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
+                    [-b BATCH_SIZE] [-c NUM_CORES]
                     [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS]
                     model_filepath
 
@@ -58,10 +58,6 @@ optional arguments:
                         defaults to None where it uses all physical cores
                         available on the system. For DeepSparse benchmarks,
                         this value is the number of cores per socket
-  -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
-                        For DeepSparse benchmarks only. The number of physical
-                        cores to run the benchmark on. Defaults to None where
-                        is uses all sockets available on the system
   -i NUM_ITERATIONS, --num-iterations NUM_ITERATIONS
                         The number of iterations the benchmark will be run for
   -w NUM_WARMUP_ITERATIONS, --num-warmup-iterations NUM_WARMUP_ITERATIONS
@@ -116,7 +112,6 @@ def benchmark():
         model_filepath=config.model_filepath,
         batch_size=config.batch_size,
         num_cores=config.num_cores,
-        num_sockets=config.num_sockets,
         engine=config.engine,
         image_shape=config.image_shape,
     )
@@ -239,7 +234,6 @@ def _load_model(
     model_filepath: str,
     batch_size: int,
     num_cores: Optional[int],
-    num_sockets: Optional[int],
     engine: str,
     image_shape: Tuple[int, int],
 ):
@@ -255,8 +249,6 @@ def _load_model(
             "If using an older build with OpenMP, try setting the OMP_NUM_THREADS "
             "environment variable"
         )
-    if num_sockets is not None and engine != DEEPSPARSE_ENGINE:
-        raise ValueError(f"Overriding num_sockets is not supported for {engine}")
 
     # scale static ONNX graph to desired image shape
     if engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
@@ -267,7 +259,7 @@ def _load_model(
     # load model
     if engine == DEEPSPARSE_ENGINE:
         print(f"Compiling deepsparse model for {model_filepath}")
-        model = compile_model(model_filepath, batch_size, num_cores, num_sockets)
+        model = compile_model(model_filepath, batch_size, num_cores)
         print(f"Engine info: {model}")
 
     elif engine == ORT_ENGINE:
@@ -350,17 +342,6 @@ def _parse_args(arguments=None):
             "The number of physical cores to run the benchmark on, "
             "defaults to None where it uses all physical cores available on the system."
             " For DeepSparse benchmarks, this value is the number of cores per socket"
-        ),
-    )
-    parser.add_argument(
-        "-s",
-        "--num-sockets",
-        type=int,
-        default=None,
-        help=(
-            "For DeepSparse benchmarks only. The number of physical cores to run the "
-            "benchmark on. Defaults to None where is uses all sockets available on the "
-            "system"
         ),
     )
     parser.add_argument(
