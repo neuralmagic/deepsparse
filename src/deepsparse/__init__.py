@@ -28,11 +28,10 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
-from .version import __version__
+from .version import __version__, is_release
 
 
 _check_package_version(
-    package_name=__name__,
-    package_integration=None,
+    package_name=__name__ if is_release else f"{__name__}-nightly",
     package_version=__version__,
 )
