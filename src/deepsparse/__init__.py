@@ -36,7 +36,7 @@ try:
     is_release = True
     _check_package_version(
         package_name=__name__ if is_release else f"{__name__}-nightly",
-        package_version=version_base,
+        package_version=version,
     )
 except Exception as err:
     print(
