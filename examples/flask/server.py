@@ -84,7 +84,7 @@ def engine_flask_server(
         given model on the DeepSparse engine via HTTP requests
     """
     _LOGGER.info(f"Compiling model at {model_path}")
-    engine = compile_model(model_path, batch_size, num_cores, scheduler)
+    engine = compile_model(model_path, batch_size, num_cores, scheduler=scheduler)
     _LOGGER.info(engine)
 
     app = flask.Flask(__name__)

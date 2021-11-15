@@ -591,6 +591,7 @@ def benchmark_model(
     include_inputs: bool = False,
     include_outputs: bool = False,
     show_progress: bool = False,
+    num_sockets: int = None,
     scheduler: Scheduler = None,
 ) -> BenchmarkResults:
     """
