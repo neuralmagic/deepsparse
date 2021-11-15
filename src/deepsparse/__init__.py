@@ -19,6 +19,8 @@ for Neural Networks on commodity CPUs.
 
 # flake8: noqa
 
+from sparsezoo.package import check_package_version as _check_package_version
+
 from .cpu import (
     cpu_architecture,
     cpu_avx2_compatible,
@@ -27,3 +29,10 @@ from .cpu import (
 )
 from .engine import *
 from .version import __version__
+
+
+_check_package_version(
+    package_name=__name__,
+    package_integration=None,
+    package_version=version_base,
+)
