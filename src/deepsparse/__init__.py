@@ -34,5 +34,5 @@ from .version import __version__
 _check_package_version(
     package_name=__name__,
     package_integration=None,
-    package_version=version_base,
+    package_version=__version__,
 )
