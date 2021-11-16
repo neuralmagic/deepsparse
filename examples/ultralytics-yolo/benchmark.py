@@ -21,7 +21,7 @@ Command help:
 usage: benchmark.py [-h] [-e {deepsparse,onnxruntime,torch}]
                     [--data-path DATA_PATH]
                     [--image-shape IMAGE_SHAPE [IMAGE_SHAPE ...]]
-                    [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
+                    [-b BATCH_SIZE] [-c NUM_CORES]
                     [-i NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS] [-q]
                     [--fp16] [--device DEVICE]
                     [--model-config MODEL_CONFIG]
@@ -58,10 +58,6 @@ optional arguments:
                         defaults to None where it uses all physical cores
                         available on the system. For DeepSparse benchmarks,
                         this value is the number of cores per socket
-  -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
-                        For DeepSparse benchmarks only. The number of physical
-                        cores to run the benchmark on. Defaults to None where
-                        is uses all sockets available on the system
   -i NUM_ITERATIONS, --num-iterations NUM_ITERATIONS
                         The number of iterations the benchmark will be run for
   -w NUM_WARMUP_ITERATIONS, --num-warmup-iterations NUM_WARMUP_ITERATIONS
@@ -225,17 +221,6 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
-        "-s",
-        "--num-sockets",
-        type=int,
-        default=None,
-        help=(
-            "For DeepSparse benchmarks only. The number of physical cores to run the "
-            "benchmark on. Defaults to None where is uses all sockets available on the "
-            "system"
-        ),
-    )
-    parser.add_argument(
         "-i",
         "--num-iterations",
         help="The number of iterations the benchmark will be run for",
@@ -357,8 +342,6 @@ def _load_model(args) -> (Any, bool):
             "If using an older build with OpenMP, try setting the OMP_NUM_THREADS "
             "environment variable"
         )
-    if args.num_sockets is not None and args.engine != DEEPSPARSE_ENGINE:
-        raise ValueError(f"Overriding num_sockets is not supported for {args.engine}")
 
     # scale static ONNX graph to desired image shape
     if args.engine in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
@@ -370,9 +353,7 @@ def _load_model(args) -> (Any, bool):
     # load model
     if args.engine == DEEPSPARSE_ENGINE:
         print(f"Compiling deepsparse model for {args.model_filepath}")
-        model = compile_model(
-            args.model_filepath, args.batch_size, args.num_cores, args.num_sockets
-        )
+        model = compile_model(args.model_filepath, args.batch_size, args.num_cores)
         print(f"Engine info: {model}")
         if args.quantized_inputs and not model.cpu_vnni:
             print(

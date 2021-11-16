@@ -69,9 +69,7 @@ make
 make ARCH=avx2
 ```
 
-#
-
-# API
+## C++ API
 
 This document discusses the high-level overview of the API. For the exact signatures and classes of the API, review the header files under
 
@@ -89,11 +87,11 @@ tensor.hpp
 engine.hpp
 ```
 
-## Compiler
+### Compiler
 
 Helper header to export the API to a shared object.
 
-## Config
+### Config
 
 This file contains a structure that is used in the call to create the engine. The **engine_config_t** fields are:
 
@@ -102,12 +100,12 @@ This file contains a structure that is used in the call to create the engine. Th
 **batch_size** - The batch size refers to the process of concatenating input and output tensors into a contiguous batched tensor. See [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/) about the performance trade-offs of batching.
 
 
-## Dimensions
+### Dimensions
 
 Review the [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/) about expected input and output tensors. The **dimensions_t** object describes the extent or count of elements along each dimension of a tensor_t.
 
 
-## Tensor
+### Tensor
 
 A tensor is an n-dimensional array of data elements and metadata. An element is a concrete value of a supported primitive type (for example, an element of type float or uint8).
 
@@ -188,7 +186,7 @@ void my_engine_inference()
 }
 ```
 
-## Engine
+### Engine
 
 The engine API is the primary interface for external code to load and run the [Neural Magic DeepSparse Engine](https://docs.neuralmagic.com/deepsparse/).
 
@@ -199,7 +197,7 @@ The engine API is the primary interface for external code to load and run the [N
 **Input and output getters** - these methods are used to get metadata on the input and output tensors of the loaded model.
 
 
-### Utility Functions
+#### Utility Functions
 
 **generate_random_inputs()** - Once the engine is instantiated and has a model loaded, this function can use the model’s definition of input tensors to generate a set of tensors with random values with the correct type and shape. Random input can be used to test the engine or its performance.
 
@@ -210,7 +208,7 @@ The engine API is the primary interface for external code to load and run the [N
 **allclose()** - Returns true if two tensors are less elementwise different than the specified absolute and relative tolerances.
 
 
-## User Calling Code
+### User Calling Code
 
 The expected workflow is that the calling code will create one engine per model. The model path will specify an ONNX file. During creation, the engine will load and compile the model from the file.
 

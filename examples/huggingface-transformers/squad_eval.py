@@ -19,7 +19,6 @@ DeepSparse Engine or onnxruntime
 ##########
 Command help:
 usage: squad_eval.py [-h] [-c NUM_CORES] [-e {deepsparse,onnxruntime}]
-                     [-s NUM_SOCKETS]
                      [--max-sequence-length MAX_SEQUENCE_LENGTH]
                      onnx_filepath
 
@@ -37,10 +36,6 @@ optional arguments:
   -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
                         Inference engine backend to run eval on. Choices are
                         'deepsparse', 'onnxruntime'. Default is 'deepsparse'
-  -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
-                        For DeepSparse only. The number of physical cores to
-                        run the eval on. Defaults to None where it uses all
-                        sockets available on the system
   --max-sequence-length MAX_SEQUENCE_LENGTH
                         the max sequence length for model inputs. Default is
                         384
@@ -96,17 +91,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "-s",
-        "--num-sockets",
-        type=int,
-        default=None,
-        help=(
-            "For DeepSparse only. The number of physical sockets to run the "
-            "eval on. Defaults to None where is uses all sockets available on the "
-            "system"
-        ),
-    )
-    parser.add_argument(
         "--max-sequence-length",
         help="the max sequence length for model inputs. Default is 384",
         type=int,
@@ -127,7 +111,6 @@ def squad_eval(args):
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
-        num_sockets=args.num_sockets,
         max_length=args.max_sequence_length,
     )
     print(f"Engine info: {question_answer.model}")
