@@ -15,28 +15,22 @@ limitations under the License.
 -->
 
 # YOLACT DeepSparse Inference Examples
-This directory contains examples of benchmarking, annotating using YOLACT segmentation models from the [dbolya/yolact](https://github.com/dbolya/yolact)
-repositories using the DeepSparse Engine. The DeepSparse Engine is able to achieve
-[real-time inferencing of YOLACT on CPUs]()
-by leveraging pruned and quantized YOLACT models. These examples can load pre-trained,
-sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) or you can
-create your own using the 
-[Sparseml-yolact integration](https://github.com/neuralmagic/sparseml/blob/main/integrations/yolact/README.md).
+This directory contains examples of benchmarking, annotating using YOLACT segmentation models from the [dbolya/yolact](https://github.com/dbolya/yolact) repositories using the DeepSparse Engine. 
+The DeepSparse Engine achieves [real-time inferencing of YOLACT on CPUs]() by leveraging sparse-quantized YOLACT models. 
+These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) or a custom trained model created using the [SparseML YOLACT integration](https://github.com/neuralmagic/sparseml/blob/main/integrations/yolact/README.md).
 
 ## Installation
-The [Neural Magic YOLACT Fork](https://github.com/neuralmagic/yolact) has been modified to make annotation, benchmarking 
-using deepsparse engine easier. Run the following commands to clone the Fork and install dependencies. The dependencies for this example can be installed using `pip`:
+The [Neural Magic YOLACT Fork](https://github.com/neuralmagic/yolact) is modified to make annotation and benchmarking using the DeepSparse engine easier. To begin, run the following command in the root directory of this example (`cd examples/dbolya-yolact`).
+
 ```bash
-git clone https://github.com/neuralmagic/yolact
-cd yolact
-pip install -r requirements.txt
-pip install deepsparse
+bash setup_integration.sh
 ```
-Note: upgrade pip using `python -m pip install -U pip` before installing requirements. We also recommend creating a 
-`virtualenv` to keep project dependencies isolated.
+
+Note: if you run into issues, try upgrading pip using `python -m pip install -U pip` before running the setup. 
+We also recommend creating a `virtualenv` to keep project dependencies isolated.
 
 ## SparseZoo Stubs
-The following examples may be run with local ONNX YOLACT models, or by using pre-trained, pre-sparsified models
+The following examples may be run with local ONNX YOLACT models or by using pre-trained, pre-sparsified models
 from the [SparseZoo](https://sparsezoo.neuralmagic.com/).
 
 [SparseZoo](https://sparsezoo.neuralmagic.com/) contains both 
@@ -56,14 +50,14 @@ run the following examples.
 to run inferences on images, videos, or webcam streams. For a full list of options
 `python eval.py -h`.
 
-To run image segmentation using YOLACT with deepsparse on a local webcam run:
+To run image segmentation using YOLACT with DeepSparse on a local webcam run:
 ```bash
 python eval.py \
     --trained_model PATH_OR_STUB_TO_YOLACT_ONNX \
     --source 0 
 ```
 
-In addition to webcam, `--source` can take a path to a `.jpg` file, directory or glob path
+In addition to a webcam, `--source` can take a path to a `.jpg` file, directory or glob path
 of `.jpg` files, or path to a `.mp4` video file.  If source is an integer and no
 corresponding webcam is available, an exception will be raised.
 
