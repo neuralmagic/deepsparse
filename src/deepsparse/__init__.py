@@ -27,7 +27,7 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
-from .version import *
+from .version import __version__, is_release
 
 
 try:
