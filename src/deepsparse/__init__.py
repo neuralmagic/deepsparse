@@ -27,7 +27,7 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
-from .version import *
+from .version import __version__, is_release
 
 
 try:
@@ -36,7 +36,7 @@ try:
     is_release = True
     _check_package_version(
         package_name=__name__ if is_release else f"{__name__}-nightly",
-        package_version=version,
+        package_version=__version__,
     )
 except Exception as err:
     print(
