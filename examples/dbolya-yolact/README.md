@@ -46,7 +46,7 @@ run the following examples.
 
 
 ## Annotation Example
-`eval.py` inside the yolact repository has been updated for using YOLACT sparsified (or non-sparsified) models
+`eval.py` inside the `yolact` repository has been updated for using YOLACT sparsified (or non-sparsified) models
 to run inferences on images, videos, or webcam streams. For a full list of options
 `python eval.py -h`.
 
