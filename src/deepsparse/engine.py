@@ -131,7 +131,7 @@ def _validate_batch_size(batch_size: int) -> int:
 
 def _validate_num_cores(num_cores: Union[None, int]) -> int:
     if not num_cores:
-        num_cores = CORES_PER_SOCKET
+        num_cores = CORES_PER_SOCKET * NUM_SOCKETS
 
     if num_cores < 1:
         raise ValueError("num_cores must be greater than 0")
