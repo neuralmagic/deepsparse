@@ -78,9 +78,11 @@ Note: for quantized performance, your CPU must support VNNI instructions.
 Review `/proc/cpuinfo` for the flag `avx512_vnni` to verify chipset compatibility.
 
 ## Citation
+```bibtex
 @inproceedings{yolact-iccv2019,
   author    = {Daniel Bolya and Chong Zhou and Fanyi Xiao and Yong Jae Lee},
   title     = {YOLACT: {Real-time} Instance Segmentation},
   booktitle = {ICCV},
   year      = {2019},
 }
+```
