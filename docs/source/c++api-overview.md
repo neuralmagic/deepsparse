@@ -99,6 +99,8 @@ This file contains a structure that is used in the call to create the engine. Th
 
 **batch_size** - The batch size refers to the process of concatenating input and output tensors into a contiguous batched tensor. See [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse/) about the performance trade-offs of batching.
 
+**num_threads** - The number of worker threads for the engine to use while executing a model.  If left as 0, the engine will select a default number of worker threads.
+
 
 ### Dimensions
 
