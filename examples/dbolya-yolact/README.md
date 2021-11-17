@@ -17,10 +17,10 @@ limitations under the License.
 # YOLACT DeepSparse Inference Examples
 This directory contains examples of benchmarking, annotating using YOLACT segmentation models from the [dbolya/yolact](https://github.com/dbolya/yolact) repositories using the DeepSparse Engine. 
 The DeepSparse Engine achieves [real-time inferencing of YOLACT on CPUs]() by leveraging sparse-quantized YOLACT models. 
-These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) or a custom trained model created using the [SparseML YOLACT integration](https://github.com/neuralmagic/sparseml/blob/main/integrations/yolact/README.md).
+These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) or a custom-trained model created using the [SparseML YOLACT integration](https://github.com/neuralmagic/sparseml/blob/main/integrations/yolact/README.md).
 
 ## Installation
-The [Neural Magic YOLACT Fork](https://github.com/neuralmagic/yolact) is modified to make annotation and benchmarking using the DeepSparse engine easier. To begin, run the following command in the root directory of this example (`cd examples/dbolya-yolact`).
+The [Neural Magic YOLACT Fork](https://github.com/neuralmagic/yolact) is modified to make annotation and benchmarking using the DeepSparse Engine easier. To begin, run the following command in the root directory of this example (`cd examples/dbolya-yolact`).
 
 ```bash
 bash setup_integration.sh
@@ -42,7 +42,7 @@ run the following examples.
 
 | Model Name     |      Stub      | Description |
 |----------|-------------|-------------|
-| yolact-base |  | Dense full precision YOLACT model with darknet53 backbone|
+| yolact-base |  | Dense full precision YOLACT model with a DarkNet-53 backbone|
 
 
 ## Annotation Example
@@ -76,3 +76,11 @@ python eval.py \
 
 Note: for quantized performance, your CPU must support VNNI instructions.
 Review `/proc/cpuinfo` for the flag `avx512_vnni` to verify chipset compatibility.
+
+## Citation
+@inproceedings{yolact-iccv2019,
+  author    = {Daniel Bolya and Chong Zhou and Fanyi Xiao and Yong Jae Lee},
+  title     = {YOLACT: {Real-time} Instance Segmentation},
+  booktitle = {ICCV},
+  year      = {2019},
+}
