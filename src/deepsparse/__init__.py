@@ -20,8 +20,6 @@ for Neural Networks on commodity CPUs.
 # flake8: noqa
 # isort: skip_file
 
-from sparsezoo.package import check_package_version as _check_package_version
-
 from .cpu import (
     cpu_architecture,
     cpu_avx2_compatible,
