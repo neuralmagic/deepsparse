@@ -76,7 +76,7 @@ class architecture(dict):
     def __setattr__(self, name: str, value: Any):
         if name != "__dict__":
             raise AttributeError(
-                "neuralmagic: architecture: can't modify {}".format(name)
+                "Neural Magic: Architecture: can't modify {}".format(name)
             )
         else:
             super(architecture, self).__setattr__(name, value)
@@ -106,7 +106,7 @@ class architecture(dict):
     @property
     def num_physical_cores(self):
         """
-        :return: the totla number of cores available on the current machine
+        :return: the total number of cores available on the current machine
         """
         return self.cores_per_socket * self.num_sockets
 
@@ -122,7 +122,7 @@ def _parse_arch_bin() -> architecture:
 
     except Exception as ex:
         raise OSError(
-            "neuralmagic: encountered exception while trying read arch.bin: {}".format(
+            "Neural Magic: Encountered exception while trying read arch.bin: {}".format(
                 ex
             )
         )
@@ -144,21 +144,21 @@ def cpu_architecture() -> architecture:
     :return: an instance of the architecture class
     """
     if not sys.platform.startswith("linux"):
-        raise OSError("neuralmagic: only Linux platforms are supported.")
+        raise OSError("Neural Magic: Only Linux is supported.")
 
     arch = _parse_arch_bin()
     avx_type_override = os.getenv("NM_ARCH", None)
 
     if avx_type_override and avx_type_override != arch.isa:
         print(
-            "neuralmagic: using env variable NM_ARCH={} for avx_type".format(
+            "Neural Magic: Using env variable NM_ARCH={} for avx_type".format(
                 avx_type_override
             )
         )
         if avx_type_override not in VALID_VECTOR_EXTENSIONS:
             raise OSError(
                 (
-                    "neuralmagic: invalid avx instruction set '{}' must be "
+                    "Neural Magic: Invalid AVX instruction set '{}' must be "
                     "one of {}."
                 ).format(avx_type_override, ",".join(VALID_VECTOR_EXTENSIONS))
             )
@@ -166,7 +166,7 @@ def cpu_architecture() -> architecture:
 
     if arch.isa not in VALID_VECTOR_EXTENSIONS:
         raise OSError(
-            "neuralmagic: cannot determine avx instruction set. Set NM_ARCH to one of"
+            "Neural Magic: Cannot determine the AVX instruction set. Set NM_ARCH to one of"
             " {} to continue.".format(",".join(VALID_VECTOR_EXTENSIONS))
         )
 
@@ -222,7 +222,7 @@ def cpu_details() -> Tuple[int, str, bool]:
 def print_hardware_capability():
     """
     Print out the detected CPU's hardware capability and general support for
-    model performance within the DeepSparse engine.
+    model performance within the DeepSparse Engine.
     """
     arch = cpu_architecture()
     message = (
@@ -236,8 +236,8 @@ def print_hardware_capability():
 
     if cpu_avx2_compatible() and not cpu_avx512_compatible():
         message += (
-            "AVX2 instruction set detected. Performance speedups are avaiable, "
-            "but inference time will be slower compared with an AVX512 system.\n\n"
+            "AVX2 instruction set detected. Performance speedups are available, "
+            "but inference time will be slower compared with an AVX-512 system.\n\n"
         )
 
     message += f"Additional CPU info: {arch}"
