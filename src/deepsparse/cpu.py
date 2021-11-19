@@ -31,6 +31,7 @@ __all__ = [
     "cpu_vnni_compatible",
     "cpu_avx2_compatible",
     "cpu_avx512_compatible",
+    "print_hardware_capability",
 ]
 
 
@@ -216,3 +217,28 @@ def cpu_details() -> Tuple[int, str, bool]:
     arch = cpu_architecture()
 
     return arch.available_cores_per_socket, arch.isa, arch.vnni
+
+
+def print_hardware_capability():
+    """
+    Print out the detected CPU's hardware capability and general support for
+    model performance within the DeepSparse engine.
+    """
+    arch = cpu_architecture()
+    message = (
+        f"{arch.vendor} CPU detected with {arch.num_physical_cores} cores "
+        f"and {arch.num_sockets} sockets available.\n"
+        "DeepSparse FP32 model performance supported: "
+        f"{cpu_avx2_compatible() or cpu_avx512_compatible()}.\n"
+        "DeepSparse INT8 (quantized) model performance supported: "
+        f"{cpu_vnni_compatible()}.\n\n"
+    )
+
+    if cpu_avx2_compatible() and not cpu_avx512_compatible():
+        message += (
+            "AVX2 instruction set detected. Performance speedups are avaiable, "
+            "but inference time will be slower compared with an AVX512 system.\n\n"
+        )
+
+    message += f"Additional CPU info: {arch}"
+    print(message)
