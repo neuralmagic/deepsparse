@@ -160,7 +160,11 @@ def _setup_extras() -> Dict:
 
 
 def _setup_entry_points() -> Dict:
-    return {}
+    return {
+        "console_scripts": [
+            "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
+        ]
+    }
 
 
 def _setup_long_description() -> Tuple[str, str]:
