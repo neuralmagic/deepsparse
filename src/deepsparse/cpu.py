@@ -166,7 +166,7 @@ def cpu_architecture() -> architecture:
 
     if arch.isa not in VALID_VECTOR_EXTENSIONS:
         raise OSError(
-            "Neural Magic: Cannot determine the AVX instruction set. Set NM_ARCH to one of"
+            "Neural Magic: The AVX instruction set is unknown. Set NM_ARCH to one of"
             " {} to continue.".format(",".join(VALID_VECTOR_EXTENSIONS))
         )
 
