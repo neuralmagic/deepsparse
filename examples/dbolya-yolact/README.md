@@ -30,22 +30,24 @@ Note: if you run into issues, try upgrading pip using `python -m pip install -U 
 We also recommend creating a `virtualenv` to keep project dependencies isolated.
 
 ## SparseZoo Stubs
-The following examples may be run with local ONNX YOLACT models or by using pre-trained, pre-sparsified models
-from the [SparseZoo](https://sparsezoo.neuralmagic.com/).
 
-[SparseZoo](https://sparsezoo.neuralmagic.com/) contains both 
+The following examples may be run with local ONNX YOLACT models or by using pre-trained, pre-sparsified models
+from the [SparseZoo](https://staging-sparsezoo.neuralmagic.com/?domain=cv&sub_domain=segmentation&page=1).
+
+[SparseZoo](https://staging-sparsezoo.neuralmagic.com/?domain=cv&sub_domain=segmentation&page=1) contains both 
 baseline and models sparsified to different degrees of inference performance vs. baseline loss recovery.
 
 Each model in the SparseZoo has a specific stub that identifies it; any YOLACT model stub in the SparseZoo can be used to
 run the following examples.
 
-
-| Model Name     |      Stub      | Description |
-|----------|-------------|-------------|
-| yolact-base |  | Dense full precision YOLACT model with a DarkNet-53 backbone|
-
+| Sparsification Type | Description                                                                       | Zoo Stub                                                                     | COCO mAP@all | Size on Disk | DeepSparse Performance** |
+|---------------------|-----------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------------|--------------|--------------------------|
+| Baseline            | The baseline, pretrained model on the COCO dataset.                               | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none           | 0.288        | 170 MB       | -- img/sec               |
+| Pruned              | A highly sparse, FP32 model that recovers close to the baseline model.            | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned90-none       | 0.286        | 30.1 MB      | -- img/sec               |
+| Pruned Quantized    | A highly sparse, INT8 model that recovers reasonably close to the baseline model. | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none | 0.282        | 9.7 MB       | -- img/sec               |
 
 ## Annotation Example
+
 `eval.py` inside the `yolact` repository has been updated for using YOLACT sparsified (or non-sparsified) models
 to run inferences on images, videos, or webcam streams. For a full list of options
 `python eval.py -h`.
