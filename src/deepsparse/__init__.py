@@ -33,7 +33,6 @@ from .version import __version__, is_release
 try:
     from sparsezoo.package import check_package_version as _check_package_version
 
-    is_release = True
     _check_package_version(
         package_name=__name__ if is_release else f"{__name__}-nightly",
         package_version=__version__,
