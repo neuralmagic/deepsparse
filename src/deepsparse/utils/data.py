@@ -109,7 +109,11 @@ def verify_outputs(
         if not numpy.allclose(output, gt_output, rtol=rtol, atol=atol):
             raise Exception(
                 "output data doesn't match\n"
-                f"output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}"
+                f"output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}\n"
+                f"    mean = {numpy.mean(output):.5f} {numpy.mean(gt_output):.5f}\n"
+                f"    std  = {numpy.std(output):.5f} {numpy.std(gt_output):.5f}\n"
+                f"    max  = {numpy.max(output):.5f} {numpy.max(gt_output):.5f}\n"
+                f"    min  = {numpy.min(output):.5f} {numpy.min(gt_output):.5f}"
             )
 
     return max_diffs
