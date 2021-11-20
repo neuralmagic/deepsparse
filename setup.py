@@ -86,7 +86,7 @@ class OverrideInstall(install):
         if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
             # windows is not supported, raise error on install
             raise OSError(
-                "Native Windows is currently unsupported for DeepSparse. "
+                "Native Windows is currently unsupported for the DeepSparse Engine. "
                 "Please run on a Linux system or within a Linux container on Windows. "
                 "More info can be found in our docs here: "
                 "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -95,7 +95,7 @@ class OverrideInstall(install):
         if sys.platform.startswith("darwin"):
             # mac is not supported, raise error on install
             raise OSError(
-                "Native Mac is currently unsupported for DeepSparse. "
+                "Native Mac is currently unsupported for the DeepSparse Engine. "
                 "Please run on a Linux system or within a Linux container on Mac. "
                 "More info can be found in our docs here: "
                 "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -103,8 +103,8 @@ class OverrideInstall(install):
 
         # unknown system, raise error on install
         raise OSError(
-            f"Unknown OS given of {sys.platform}, "
-            "it is unsupported for DeepSparse. "
+            f"Unknown OS given of {sys.platform}; "
+            "it is unsupported for the DeepSparse Engine. "
             "Please run on a Linux system. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -120,7 +120,7 @@ class OverrideInstall(install):
         ):
             raise EnvironmentError(
                 f"Python {supported_major}.{supported_minor} "
-                f"is currently only supported for DeepSparse; found {sys.version}. "
+                f"is only supported for the DeepSparse Engine; found {sys.version}. "
                 "Please run on a system with the proper Python version installed. "
                 "More info can be found in our docs here: "
                 "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -160,7 +160,11 @@ def _setup_extras() -> Dict:
 
 
 def _setup_entry_points() -> Dict:
-    return {}
+    return {
+        "console_scripts": [
+            "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
+        ]
+    }
 
 
 def _setup_long_description() -> Tuple[str, str]:
