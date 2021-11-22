@@ -22,6 +22,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   deepsparse.transformers
    deepsparse.utils
 
 Submodules
