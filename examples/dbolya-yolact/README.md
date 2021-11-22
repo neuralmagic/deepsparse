@@ -16,11 +16,13 @@ limitations under the License.
 
 # YOLACT DeepSparse Inference Examples
 This directory contains examples of benchmarking, annotating using YOLACT segmentation models from the [dbolya/yolact](https://github.com/dbolya/yolact) repositories using the DeepSparse Engine. 
-The DeepSparse Engine achieves [real-time inferencing of YOLACT on CPUs]() by leveraging sparse-quantized YOLACT models. 
-These examples can load pre-trained, sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) or a custom-trained model created using the [SparseML YOLACT integration](https://github.com/neuralmagic/sparseml/blob/main/integrations/yolact/README.md).
+The DeepSparse Engine achieves real-time inferencing of YOLACT on CPUs by leveraging sparse-quantized [YOLACT](https://arxiv.org/abs/1904.02689) models. 
+These examples can load pre-trained, sparsified models from [SparseZoo](https://sparsezoo.neuralmagic.com/) or a custom-trained model created using the 
+[SparseML YOLACT integration](https://github.com/neuralmagic/sparseml/blob/main/integrations/dbolya-yolact/README.md).
 
 ## Installation
-The [Neural Magic YOLACT Fork](https://github.com/neuralmagic/yolact) is modified to make annotation and benchmarking using the DeepSparse Engine easier. To begin, run the following command in the root directory of this example (`cd examples/dbolya-yolact`).
+The [Neural Magic YOLACT Fork](https://github.com/neuralmagic/yolact) is modified to make annotation and benchmarking using the DeepSparse Engine easier. 
+To begin, run the following command in the root directory of this example (`cd examples/dbolya-yolact`).
 
 ```bash
 bash setup_integration.sh
@@ -56,26 +58,76 @@ To run image segmentation using YOLACT with DeepSparse on a local webcam run:
 ```bash
 python eval.py \
     --trained_model PATH_OR_STUB_TO_YOLACT_ONNX \
-    --source 0 
+    --video 0 
 ```
 
-In addition to a webcam, `--source` can take a path to a `.jpg` file, directory or glob path
-of `.jpg` files, or path to a `.mp4` video file.  If source is an integer and no
+In addition to a webcam, `eval.py` can take a path to a `.jpg` file, directory, or glob path
+of `.jpg` files, or path to a `.mp4` video file.  If the source is an integer and no
 corresponding webcam is available, an exception will be raised.
 
+Example commands are as follows:
+
+```bash
+# Annotate an Image using DeepSparse
+# python eval.py --trained_model PRETRAINED_ONNX_WEIGHTS \
+# --image input.png:output.png
+
+python eval.py --trained_model weights/model.onnx \
+--image data/yolact_example_0.png:data/yolact_example_out_0.png
+
+# Annotate Images using DeepSparse
+# python eval.py --trained_model PRETRAINED_ONNX_WEIGHTS \
+# --images input_dir:output_dir --score SCORE_THRESHOLD
+
+python eval.py --trained_model weights/model.onnx \
+--images input_dir:output_dir --score 0.6
+
+# Annotate Video using DeepSparse
+# python eval.py --trained_model PRETRAINED_ONNX_WEIGHTS \
+# --video input.mp4:output.mp4 --score 0.6
+
+python eval.py --trained_model weights/model.onnx \
+--video input.mp4:output.mp4 --score 0.6
+
+# Annotate Webcam using DeepSparse
+# python eval.py --trained_model PRETRAINED_ONNX_WEIGHTS \
+# --video 0 --score 0.6
+
+python eval.py --trained_model weights/model.onnx \
+--video 0 --score 0.6
+```
 
 ## Benchmarking Example
 `eval.py` can also be used to benchmark sparsified and quantized YOLACT
-performance with DeepSparse.  For a full list of options run `python eval.py -h`.
+performance with DeepSparse on the [COCO](https://cocodataset.org/#home) validation set.  For a full list of options run `python eval.py -h`.
 
-To run a benchmark simply pass in the `--benchmark` flag while calling the script:
+First setup the validation data by running `bash data/scripts/COCO.sh` inside the `yolact` folder. 
+Then, to run a benchmark simply pass in the `--benchmark` flag while calling the script:
 ```bash
-python eval.py \
-    --trained_model PATH_OR_STUB_TO_YOLACT_ONNX \
-    --source PATH_TO_IMAGE_DIRECTORY \
-    --benchmark
+# Using DeepSparse and the entire COCO validation set
+# python eval.py --trained_model PRETRAINED_ONNX_WEIGHTS 
+python eval.py --trained_model weights/model.onnx --score 0.6 --benchmark
+
+# Using DeepSparse and the entire COCO validation set,
+# using a valid YOLACT SparseZoo stubs
+# python eval.py --trained_model SPARSEZOO_STUB \
+# --benchmark
+python eval.py --trained_model \
+zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none \
+--score 0.6 --benchmark
+
+# Using DeepSparse on the COCO validation set for fixed num of iterations
+# python eval.py --trained_model PRETRAINED_ONNX_WEIGHTS \
+# --score SCORE_THRESHOLD --warm_up_iterations WARM_UP_ITERATIONS \
+# --num_iterations NUM_ITERATIONS \
+# --benchmark
+python eval.py --trained_model weights/model.onnx \
+--score 0.6  --warm_up_iterations 10 \
+--num_iterations 100 \
+--benchmark
 ```
 
+The average fps (frames per second) will be calculated and displayed on the console. 
 Note: for quantized performance, your CPU must support VNNI instructions.
 Review `/proc/cpuinfo` for the flag `avx512_vnni` to verify chipset compatibility.
 
