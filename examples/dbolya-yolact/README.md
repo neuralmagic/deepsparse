@@ -61,9 +61,10 @@ python eval.py \
     --video 0 
 ```
 
-In addition to a webcam, `eval.py` can take a path to a `.jpg` file, directory, or glob path
-of `.jpg` files, or path to a `.mp4` video file.  If the source is an integer and no
-corresponding webcam is available, an exception will be raised.
+
+In addition to a webcam, `eval.py` can take a path to a `.jpg` file, directory, 
+or path to a `.mp4` video file.  If the source is an integer and no
+ corresponding webcam is available, an exception will be raised.
 
 Example commands are as follows:
 
