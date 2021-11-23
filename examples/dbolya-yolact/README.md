@@ -44,9 +44,9 @@ run the following examples.
 
 | Sparsification Type | Description                                                                       | Zoo Stub                                                                     | COCO mAP@all | Size on Disk | DeepSparse Performance** |
 |---------------------|-----------------------------------------------------------------------------------|------------------------------------------------------------------------------|--------------|--------------|--------------------------|
-| Baseline            | The baseline, pretrained model on the COCO dataset.                               | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none           | 0.288        | 170 MB       | -- img/sec               |
-| Pruned              | A highly sparse, FP32 model that recovers close to the baseline model.            | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned90-none       | 0.286        | 30.1 MB      | -- img/sec               |
-| Pruned Quantized    | A highly sparse, INT8 model that recovers reasonably close to the baseline model. | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none | 0.282        | 9.7 MB       | -- img/sec               |
+| Baseline            | The baseline, pretrained model on the COCO dataset.                               | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none           | 0.288        | 170 MB       | 8.22 img/sec             |
+| Pruned              | A highly sparse, FP32 model that recovers close to the baseline model.            | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned90-none       | 0.286        | 30.1 MB      | 11.56 img/sec            |
+| Pruned Quantized    | A highly sparse, INT8 model that recovers reasonably close to the baseline model. | zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none | 0.282        | 9.7 MB       | 15.47 img/sec            |
 
 ## Annotation Example
 
