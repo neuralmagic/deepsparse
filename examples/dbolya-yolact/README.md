@@ -113,17 +113,21 @@ python eval.py --trained_model weights/model.onnx --score 0.6 --benchmark
 # using a valid YOLACT SparseZoo stubs
 # python eval.py --trained_model SPARSEZOO_STUB \
 # --benchmark
-python eval.py --trained_model \
-zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none \
---score 0.6 --benchmark
+python eval.py \
+--trained_model zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none \
+--score 0.6 \
+--batch_size 1 \
+--benchmark
 
 # Using DeepSparse on the COCO validation set for fixed num of iterations
 # python eval.py --trained_model PRETRAINED_ONNX_WEIGHTS \
 # --score SCORE_THRESHOLD --warm_up_iterations WARM_UP_ITERATIONS \
 # --num_iterations NUM_ITERATIONS \
 # --benchmark
-python eval.py --trained_model weights/model.onnx \
---score 0.6  --warm_up_iterations 10 \
+python eval.py \
+--trained_model weights/model.onnx \
+--score 0.6  \
+--warm_up_iterations 10 \
 --num_iterations 100 \
 --benchmark
 ```
