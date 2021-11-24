@@ -30,7 +30,7 @@ An alternative, "multi-stream" scheduler is provided with the software. In cases
 
 If increasing core count doesn't decrease latency, that's a strong indicator that parallelism is low in your particular model/batch-size combination. It may be that total throughput can be increased by making more requests simultaneously. Using the [deepsparse.engine.Scheduler API](https://docs.neuralmagic.com/deepsparse/api/deepsparse.html), the multi-stream scheduler can be selected, and requests made by multiple Python threads will be handled concurrently.
 
-<img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/multie-stream.png" alt="multi stream diagram" />
+<img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/multi-stream.png" alt="multi stream diagram" />
 
 _Multi-stream scheduling; requests execute in parallel and may utilize hardware resources better_
 
