@@ -102,7 +102,7 @@ python eval.py --trained_model weights/model.onnx \
 `eval.py` can also be used to benchmark sparsified and quantized YOLACT
 performance with DeepSparse on the [COCO](https://cocodataset.org/#home) validation set.  For a full list of options run `python eval.py -h`.
 
-First setup the validation data by running `bash data/scripts/COCO.sh` inside the `yolact` folder. 
+First, set up the validation data by running `bash data/scripts/COCO.sh` inside the `yolact` folder. 
 Then, to run a benchmark simply pass in the `--benchmark` flag while calling the script:
 ```bash
 # Using DeepSparse and the entire COCO validation set
