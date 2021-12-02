@@ -34,9 +34,9 @@ We also recommend creating a `virtualenv` to keep project dependencies isolated.
 ## SparseZoo Stubs
 
 The following examples may be run with local ONNX YOLACT models or by using pre-trained, pre-sparsified models
-from the [SparseZoo](https://staging-sparsezoo.neuralmagic.com/?domain=cv&sub_domain=segmentation&page=1).
+from the [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=segmentation&page=1).
 
-[SparseZoo](https://staging-sparsezoo.neuralmagic.com/?domain=cv&sub_domain=segmentation&page=1) contains both 
+[SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=segmentation&page=1) contains both 
 baseline and models sparsified to different degrees of inference performance vs. baseline loss recovery.
 
 Each model in the SparseZoo has a specific stub that identifies it; any YOLACT model stub in the SparseZoo can be used to
