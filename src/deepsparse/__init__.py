@@ -18,6 +18,7 @@ for Neural Networks on commodity CPUs.
 """
 
 # flake8: noqa
+# isort: skip_file
 
 from .cpu import (
     cpu_architecture,
@@ -26,4 +27,17 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
-from .version import __version__
+from .version import __version__, is_release
+
+
+try:
+    from sparsezoo.package import check_package_version as _check_package_version
+
+    _check_package_version(
+        package_name=__name__ if is_release else f"{__name__}-nightly",
+        package_version=__version__,
+    )
+except Exception as err:
+    print(
+        f"Need sparsezoo version above 0.9.0 to run Neural Magic's latest-version check\n{err}"
+    )

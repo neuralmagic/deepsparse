@@ -1259,7 +1259,6 @@ def pipeline(
     tokenizer: Optional[Union[str, PreTrainedTokenizer]] = None,
     max_length: int = 128,
     num_cores: Optional[int] = None,
-    num_sockets: Optional[int] = None,
     **kwargs,
 ) -> Pipeline:
     """
@@ -1276,8 +1275,6 @@ def pipeline(
     :param tokenizer: huggingface tokenizer, if none provided, default will be used
     :param max_length: maximum sequence length of model inputs. default is 128
     :param num_cores: number of CPU cores to run engine with. Default is the maximum
-        available
-    :param num_sockets: number of CPU sockets to run engine with. Default is the maximum
         available
     :param kwargs: additional key word arguments for task specific pipeline constructor
     :return: Pipeline object for the given taks and model
@@ -1308,9 +1305,7 @@ def pipeline(
     if model_path.startswith("zoo:"):
         zoo_model_path = model_path
         model_path = _download_zoo_model(model_path)
-    model, input_names = _create_model(
-        model_path, engine_type, num_cores, num_sockets, max_length
-    )
+    model, input_names = _create_model(model_path, engine_type, num_cores, max_length)
 
     # Instantiate tokenizer if needed
     if isinstance(tokenizer, (str, tuple)):
@@ -1411,7 +1406,6 @@ def _create_model(
     model_path: str,
     engine_type: str,
     num_cores: Optional[int],
-    num_sockets: Optional[int],
     max_length: int = 128,
 ) -> Tuple[Union[Engine, "onnxruntime.InferenceSession"], List[str]]:
     onnx_path, input_names, _ = overwrite_transformer_onnx_model_inputs(
@@ -1419,9 +1413,7 @@ def _create_model(
     )
 
     if engine_type == DEEPSPARSE_ENGINE:
-        model = compile_model(
-            onnx_path, batch_size=1, num_cores=num_cores, num_sockets=num_sockets
-        )
+        model = compile_model(onnx_path, batch_size=1, num_cores=num_cores)
     elif engine_type == ORT_ENGINE:
         _validate_ort_import()
         sess_options = onnxruntime.SessionOptions()

@@ -18,7 +18,7 @@ using the DeepSparse Engine as the inference backend
 
 ##########
 Command help:
-usage: server.py [-h] [-b BATCH_SIZE] [-c NUM_CORES] [-s NUM_SOCKETS]
+usage: server.py [-h] [-b BATCH_SIZE] [-c NUM_CORES]
                  [--scheduler SCHEDULER] [-a ADDRESS] [-p PORT]
                  model_path
 
@@ -35,10 +35,6 @@ optional arguments:
   -c NUM_CORES, --num-cores NUM_CORES
                         The number of physical cores to run the engine on,
                         defaults to all physical cores available on the system
-  -s NUM_SOCKETS, --num-sockets NUM_SOCKETS
-                        The number of physical sockets to run the engine on,
-                        defaults to all physical sockets available on the
-                        system
   --scheduler SCHEDULER
                         The kind of scheduler to run with. Defaults to multi_stream
   -a ADDRESS, --address ADDRESS
@@ -68,7 +64,6 @@ def engine_flask_server(
     model_path: str,
     batch_size: int = 1,
     num_cores: int = None,
-    num_sockets: int = None,
     scheduler: Scheduler = Scheduler.multi_stream,
     address: str = "0.0.0.0",
     port: str = "5543",
@@ -82,9 +77,6 @@ def engine_flask_server(
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         in one socket for the current machine, default None
-    :param num_sockets: The number of physical sockets to run the model on.
-        Pass None or 0 to run on the max number of sockets for the
-        current machine, default None
     :param scheduler: The kind of scheduler to execute with. Defaults to multi_stream
     :param address: IP address to run on. Default is 0.0.0.0
     :param port: port to run on. Default is 5543
@@ -92,7 +84,7 @@ def engine_flask_server(
         given model on the DeepSparse engine via HTTP requests
     """
     _LOGGER.info(f"Compiling model at {model_path}")
-    engine = compile_model(model_path, batch_size, num_cores, num_sockets, scheduler)
+    engine = compile_model(model_path, batch_size, num_cores, scheduler=scheduler)
     _LOGGER.info(engine)
 
     app = flask.Flask(__name__)
@@ -151,16 +143,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "-s",
-        "--num-sockets",
-        type=int,
-        default=None,
-        help=(
-            "The number of physical sockets to run the engine on, "
-            "defaults to all physical sockets available on the system"
-        ),
-    )
-    parser.add_argument(
         "--scheduler",
         type=str,
         default=Scheduler.multi_stream,
@@ -191,7 +173,6 @@ def main():
         args.model_path,
         args.batch_size,
         args.num_cores,
-        args.num_sockets,
         args.scheduler,
         args.address,
         args.port,
