@@ -11,22 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import logging
-
-
-def log_init(name):
-    logger = logging.getLogger(name)
-
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        "[%(levelname)6s %(filename)14s:%(lineno)4s] %(message)s"
-    )
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
-
-    logger.propagate = 0
-    logger.setLevel(logging.DEBUG)
-
-    return logger

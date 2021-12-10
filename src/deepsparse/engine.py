@@ -25,6 +25,7 @@ import numpy
 from tqdm.auto import tqdm
 
 from deepsparse.benchmark import BenchmarkResults
+from deepsparse.utils import model_to_path, override_onnx_input_shapes
 
 
 try:
@@ -88,38 +89,12 @@ class Scheduler(Enum):
     def from_str(key: str):
         if key in ("default"):
             return Scheduler.default
-        elif key in ("single", "single_stream"):
+        elif key in ("sync", "single", "single_stream"):
             return Scheduler.single_stream
-        elif key in ("multi", "multi_stream"):
+        elif key in ("async", "multi", "multi_stream"):
             return Scheduler.multi_stream
         else:
             raise ValueError(f"unsupported Scheduler: {key}")
-
-
-def _model_to_path(model: Union[str, Model, File]) -> str:
-    if not model:
-        raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
-
-    if isinstance(model, str) and model.startswith("zoo:"):
-        # load SparseZoo Model from stub
-        if sparsezoo_import_error is not None:
-            raise sparsezoo_import_error
-        model = Zoo.load_model_from_stub(model)
-
-    if Model is not object and isinstance(model, Model):
-        # default to the main onnx file for the model
-        model = model.onnx_file.downloaded_path()
-    elif File is not object and isinstance(model, File):
-        # get the downloaded_path -- will auto download if not on local system
-        model = model.downloaded_path()
-
-    if not isinstance(model, str):
-        raise ValueError("unsupported type for model: {}".format(type(model)))
-
-    if not os.path.exists(model):
-        raise ValueError("model path must exist: given {}".format(model))
-
-    return model
 
 
 def _validate_batch_size(batch_size: int) -> int:
@@ -185,6 +160,7 @@ class Engine(object):
     :param num_sockets: This parameter no longer functions and will be removed
         in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     """
 
     def __init__(
@@ -194,20 +170,33 @@ class Engine(object):
         num_cores: int,
         num_sockets: int = None,
         scheduler: Scheduler = None,
+        input_shapes: List[List[int]] = None,
     ):
-        self._model_path = _model_to_path(model)
+        self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
         self._num_sockets = _validate_num_sockets(num_sockets)
         self._scheduler = _validate_scheduler(scheduler)
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
-        self._eng_net = LIB.deepsparse_engine(
-            self._model_path,
-            self._batch_size,
-            self._num_cores,
-            self._scheduler.value,
-        )
+
+        if input_shapes:
+            with override_onnx_input_shapes(
+                self._model_path, input_shapes
+            ) as model_path:
+                self._eng_net = LIB.deepsparse_engine(
+                    model_path,
+                    self._batch_size,
+                    self._num_cores,
+                    self._scheduler.value,
+                )
+        else:
+            self._eng_net = LIB.deepsparse_engine(
+                self._model_path,
+                self._batch_size,
+                self._num_cores,
+                self._scheduler.value,
+            )
 
     def __call__(
         self,
@@ -549,6 +538,7 @@ def compile_model(
     num_cores: int = None,
     num_sockets=None,
     scheduler: Scheduler = None,
+    input_shapes: List[List[int]] = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -566,6 +556,7 @@ def compile_model(
     :param num_sockets: This parameter no longer functions and will be removed
         in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     :return: The created Engine after compiling the model
     """
     if num_sockets:
@@ -574,10 +565,11 @@ def compile_model(
         )
 
     return Engine(
-        model,
-        batch_size,
-        num_cores,
+        model=model,
+        batch_size=batch_size,
+        num_cores=num_cores,
         scheduler=scheduler,
+        input_shapes=input_shapes,
     )
 
 
@@ -633,9 +625,9 @@ def benchmark_model(
         )
 
     model = compile_model(
-        model,
-        batch_size,
-        num_cores,
+        model=model,
+        batch_size=batch_size,
+        num_cores=num_cores,
         scheduler=scheduler,
     )
 
@@ -698,7 +690,7 @@ def analyze_model(
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the analysis structure containing the performance details of each layer
     """
-    model = _model_to_path(model)
+    model = model_to_path(model)
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
     _validate_num_sockets(num_sockets)
