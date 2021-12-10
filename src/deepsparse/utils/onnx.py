@@ -15,7 +15,7 @@
 import contextlib
 import os
 import tempfile
-from typing import List
+from typing import List, Union
 
 import numpy
 import onnx
@@ -23,14 +23,28 @@ import onnx
 from deepsparse.utils.log import log_init
 
 
+try:
+    from sparsezoo import Zoo
+    from sparsezoo.objects import File, Model
+
+    sparsezoo_import_error = None
+except Exception as sparsezoo_err:
+    Zoo = None
+    Model = object
+    File = object
+    sparsezoo_import_error = sparsezoo_err
+
+
 __all__ = [
     "ONNX_TENSOR_TYPE_MAP",
+    "model_to_path",
     "get_external_inputs",
     "get_external_outputs",
     "get_input_names",
     "get_output_names",
     "generate_random_inputs",
     "override_onnx_batch_size",
+    "override_onnx_input_shapes",
 ]
 
 log = log_init(os.path.basename(__file__))
@@ -62,6 +76,37 @@ def translate_onnx_type_to_numpy(tensor_type: int):
     if tensor_type not in ONNX_TENSOR_TYPE_MAP:
         raise Exception("Unknown ONNX tensor type = {}".format(tensor_type))
     return ONNX_TENSOR_TYPE_MAP[tensor_type]
+
+
+def model_to_path(model: Union[str, Model, File]) -> str:
+    """
+    Deals with the various forms a model can take. Either an ONNX file,
+    a SparseZoo model stub prefixed by 'zoo:', a SparseZoo Model object,
+    or a SparseZoo ONNX File object that defines the neural network
+    """
+    if not model:
+        raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
+
+    if isinstance(model, str) and model.startswith("zoo:"):
+        # load SparseZoo Model from stub
+        if sparsezoo_import_error is not None:
+            raise sparsezoo_import_error
+        model = Zoo.load_model_from_stub(model)
+
+    if Model is not object and isinstance(model, Model):
+        # default to the main onnx file for the model
+        model = model.onnx_file.downloaded_path()
+    elif File is not object and isinstance(model, File):
+        # get the downloaded_path -- will auto download if not on local system
+        model = model.downloaded_path()
+
+    if not isinstance(model, str):
+        raise ValueError("unsupported type for model: {}".format(type(model)))
+
+    if not os.path.exists(model):
+        raise ValueError("model path must exist: given {}".format(model))
+
+    return model
 
 
 def get_external_inputs(onnx_filepath: str) -> List:
@@ -135,7 +180,7 @@ def generate_random_inputs(
 
 
 @contextlib.contextmanager
-def override_onnx_batch_size(onnx_filepath: str, batch_size: int):
+def override_onnx_batch_size(onnx_filepath: str, batch_size: int) -> str:
     """
     Rewrite batch sizes of ONNX model, saving the modified model and returning its path
     :param onnx_filepath: File path to ONNX model
@@ -150,6 +195,51 @@ def override_onnx_batch_size(onnx_filepath: str, batch_size: int):
     ]
     for external_input in external_inputs:
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+
+    # Save modified model
+    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
+    onnx.save(model, shaped_model.name)
+
+    try:
+        yield shaped_model.name
+    finally:
+        os.unlink(shaped_model.name)
+        shaped_model.close()
+
+
+@contextlib.contextmanager
+def override_onnx_input_shapes(
+    onnx_filepath: str, input_shapes: Union[List[int], List[List[int]]]
+) -> str:
+    """
+    Rewrite input shapes of ONNX model, saving the modified model and returning its path
+    :param onnx_filepath: File path to ONNX model
+    :param input_shapes: Override for model's input shapes
+    :return: File path to modified ONNX model
+    """
+
+    if input_shapes is None:
+        return onnx_filepath
+
+    model = onnx.load(onnx_filepath)
+    all_inputs = model.graph.input
+    initializer_input_names = [node.name for node in model.graph.initializer]
+    external_inputs = [
+        input for input in all_inputs if input.name not in initializer_input_names
+    ]
+
+    # Make sure that given input shapes can map to the ONNX model
+    assert len(external_inputs) == len(input_shapes)
+
+    # Input shapes should be a list of lists, even if there is only one input
+    assert all(isinstance(inp, list) for inp in input_shapes)
+
+    # Overwrite the shapes
+    for input_idx, external_input in enumerate(external_inputs):
+        for dim_idx in len(external_input.type.tensor_type.shape.dim):
+            external_input.type.tensor_type.shape.dim[dim_idx].dim_value = input_shapes[
+                input_idx
+            ][dim_idx]
 
     # Save modified model
     shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
