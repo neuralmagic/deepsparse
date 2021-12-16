@@ -64,7 +64,7 @@ _YOLO_DEFAULT_ANCHOR_GRIDS = [
 
 
 def get_yolo_loader_and_saver(
-    path: str, save_dir: str, image_size: Tuple[int] = (640, 640), args: Any = None
+    path: str, save_dir: str, image_size: Tuple[int, int] = (640, 640), args: Any = None
 ) -> Union[Iterable, Any, bool]:
     """
 
@@ -110,7 +110,7 @@ class YoloImageLoader:
     :param image_size: size of input images to model
     """
 
-    def __init__(self, path: str, image_size: Tuple[int] = (640, 640)):
+    def __init__(self, path: str, image_size: Tuple[int, int] = (640, 640)):
         self._path = path
         self._image_size = image_size
 
@@ -140,7 +140,7 @@ class YoloVideoLoader:
     :param image_size: size of input images to model
     """
 
-    def __init__(self, path: str, image_size: Tuple[int] = (640, 640)):
+    def __init__(self, path: str, image_size: Tuple[int, int] = (640, 640)):
         self._path = path
         self._image_size = image_size
         self._vid = cv2.VideoCapture(self._path)
@@ -191,7 +191,7 @@ class YoloWebcamLoader:
     :param image_size: size of input images to model
     """
 
-    def __init__(self, camera: int, image_size: Tuple[int] = (640, 640)):
+    def __init__(self, camera: int, image_size: Tuple[int, int] = (640, 640)):
 
         self._camera = camera
         self._image_size = image_size
@@ -345,7 +345,7 @@ class VideoSaver(ImagesSaver):
 
 
 def load_image(
-    img: Union[str, numpy.ndarray], image_size: Tuple[int] = (640, 640)
+    img: Union[str, numpy.ndarray], image_size: Tuple[int, int] = (640, 640)
 ) -> Tuple[numpy.ndarray, numpy.ndarray]:
     """
     :param img: file path to image or raw image array
@@ -368,7 +368,7 @@ class YoloPostprocessor:
         output shapes
     """
 
-    def __init__(self, image_size: Tuple[int] = (640, 640), cfg: Optional[str] = None):
+    def __init__(self, image_size: Tuple[int, int] = (640, 640), cfg: Optional[str] = None):
         self._image_size = image_size
         self._anchor_grids = (
             self._load_cfg_anchor_grid(cfg) if cfg else _YOLO_DEFAULT_ANCHOR_GRIDS
@@ -399,7 +399,7 @@ class YoloPostprocessor:
             processed_outputs.append(pred.view(pred.size(0), -1, pred.size(-1)))
         return torch.cat(processed_outputs, 1)
 
-    def _get_grid(self, grid_shape: Tuple[int]) -> torch.Tensor:
+    def _get_grid(self, grid_shape: Tuple[int, int]) -> torch.Tensor:
         if grid_shape not in self._grids:
             # adapted from yolov5.yolo.Detect._make_grid
             coords_y, coords_x = torch.meshgrid(
@@ -426,7 +426,7 @@ class YoloPostprocessor:
         return [t.clone().view(1, -1, 1, 1, 2) for t in anchors]
 
 
-def postprocess_nms(outputs: torch.Tensor) -> List[numpy.ndarray]:
+def postprocess_nms(outputs: Union[torch.Tensor, numpy.ndarray]) -> List[numpy.ndarray]:
     """
     :param outputs: Tensor of post-processed model outputs
     :return: List of numpy arrays of NMS predictions for each image in the batch
@@ -439,7 +439,7 @@ def postprocess_nms(outputs: torch.Tensor) -> List[numpy.ndarray]:
 
 
 def modify_yolo_onnx_input_shape(
-    model_path: str, image_shape: Tuple[int]
+    model_path: str, image_shape: Tuple[int, int]
 ) -> Tuple[str, Optional[NamedTemporaryFile]]:
     """
     Creates a new YOLO ONNX model from the given path that accepts the given input
@@ -838,7 +838,7 @@ def _non_max_suppression(
     return output
 
 
-def _xywh2xyxy(x):
+def _xywh2xyxy(x: Union[torch.Tensor, numpy.ndarray]) -> Union[torch.Tensor, numpy.ndarray]:
     # ported from ultralytics/yolov5
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2]
     # where xy1=top-left, xy2=bottom-right
@@ -850,7 +850,7 @@ def _xywh2xyxy(x):
     return y
 
 
-def _box_iou(box1, box2):
+def _box_iou(box1: torch.Tensor, box2: torch.Tensor) -> torch.Tensor:
     # https://github.com/pytorch/vision/blob/master/torchvision/ops/boxes.py
     """
     Return intersection-over-union (Jaccard index) of boxes.
