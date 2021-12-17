@@ -368,7 +368,11 @@ class YoloPostprocessor:
         output shapes
     """
 
-    def __init__(self, image_size: Tuple[int, int] = (640, 640), cfg: Optional[str] = None):
+    def __init__(
+        self,
+        image_size: Tuple[int, int] = (640, 640),
+        cfg: Optional[str] = None
+    ):
         self._image_size = image_size
         self._anchor_grids = (
             self._load_cfg_anchor_grid(cfg) if cfg else _YOLO_DEFAULT_ANCHOR_GRIDS
@@ -426,7 +430,9 @@ class YoloPostprocessor:
         return [t.clone().view(1, -1, 1, 1, 2) for t in anchors]
 
 
-def postprocess_nms(outputs: Union[torch.Tensor, numpy.ndarray]) -> List[numpy.ndarray]:
+def postprocess_nms(
+    outputs: Union[torch.Tensor, numpy.ndarray]
+) -> List[numpy.ndarray]:
     """
     :param outputs: Tensor of post-processed model outputs
     :return: List of numpy arrays of NMS predictions for each image in the batch
@@ -838,7 +844,9 @@ def _non_max_suppression(
     return output
 
 
-def _xywh2xyxy(x: Union[torch.Tensor, numpy.ndarray]) -> Union[torch.Tensor, numpy.ndarray]:
+def _xywh2xyxy(
+    x: Union[torch.Tensor, numpy.ndarray]
+) -> Union[torch.Tensor, numpy.ndarray]:
     # ported from ultralytics/yolov5
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2]
     # where xy1=top-left, xy2=bottom-right
@@ -850,7 +858,10 @@ def _xywh2xyxy(x: Union[torch.Tensor, numpy.ndarray]) -> Union[torch.Tensor, num
     return y
 
 
-def _box_iou(box1: torch.Tensor, box2: torch.Tensor) -> torch.Tensor:
+def _box_iou(
+    box1: torch.Tensor,
+    box2: torch.Tensor
+) -> torch.Tensor:
     # https://github.com/pytorch/vision/blob/master/torchvision/ops/boxes.py
     """
     Return intersection-over-union (Jaccard index) of boxes.
