@@ -12,38 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
-import json
 import queue
 import threading
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import numpy as np
 
-from deepsparse import Engine, Scheduler, compile_model
-from deepsparse.utils import generate_random_inputs
+from deepsparse import Engine
 
 
 __all__ = ["model_stream_benchmark"]
-
-
-def verify_output(outputs: List[np.ndarray], correct_outputs: List[np.ndarray]):
-    assert len(correct_outputs) == len(outputs)
-    for i in range(len(correct_outputs)):
-        gt_output = correct_outputs[i]
-        nm_output = outputs[i]
-
-        assert gt_output.shape == nm_output.shape
-        assert type(gt_output) == type(nm_output)
-
-        max_diff = np.max(np.abs(nm_output - gt_output))
-        if not np.allclose(nm_output, gt_output, 0.0, 8.0e-4):
-            raise Exception(
-                "ERROR: output {}: {} {} MAX DIFF: {}".format(
-                    i, gt_output.shape, nm_output.shape, max_diff
-                )
-            )
 
 
 def iteration(model: Engine, input: List[np.ndarray]):
@@ -56,17 +35,14 @@ def iteration(model: Engine, input: List[np.ndarray]):
 def singlestream_benchmark(
     model: Engine,
     input_list: List[np.ndarray],
-    output_list: Optional[List[np.ndarray]],
     seconds_to_run: float,
 ) -> List[float]:
     batch_times = []
 
     stream_end_time = time.time() + seconds_to_run
     while time.time() < stream_end_time:
-        output, start, end = iteration(model, input_list)
+        _, start, end = iteration(model, input_list)
         batch_times.append([start, end])
-        if output_list:
-            verify_output(output, output_list)
 
     return batch_times
 
@@ -76,29 +52,24 @@ class EngineExecutorThread(threading.Thread):
         self,
         model: Engine,
         input_list: List[np.ndarray],
-        output_list: Optional[List[np.ndarray]],
         time_queue: queue.Queue,
         max_time: float,
     ):
         super(EngineExecutorThread, self).__init__()
         self._model = model
         self._input_list = input_list
-        self._output_list = output_list
         self._time_queue = time_queue
         self._max_time = max_time
 
     def run(self):
         while time.time() < self._max_time:
-            output, start, end = iteration(self._model, self._input_list)
+            _, start, end = iteration(self._model, self._input_list)
             self._time_queue.put([start, end])
-            if self._output_list:
-                verify_output(output, self._output_list)
 
 
 def multistream_benchmark(
     model: Engine,
     input_list: List[np.ndarray],
-    output_list: Optional[List[np.ndarray]],
     seconds_to_run: float,
     num_streams: int,
 ) -> List[float]:
@@ -107,9 +78,7 @@ def multistream_benchmark(
     threads = []
 
     for thread in range(num_streams):
-        threads.append(
-            EngineExecutorThread(model, input_list, output_list, time_queue, max_time)
-        )
+        threads.append(EngineExecutorThread(model, input_list, time_queue, max_time))
 
     for thread in threads:
         thread.start()
@@ -123,7 +92,6 @@ def multistream_benchmark(
 def model_stream_benchmark(
     model: Engine,
     input_list: List[np.ndarray],
-    output_list: Optional[List[np.ndarray]],
     scenario: str,
     seconds_to_run: float,
     num_streams: int,
@@ -132,12 +100,10 @@ def model_stream_benchmark(
 
     # Run the benchmark scenario and collect batch times
     if scenario == "singlestream":
-        batch_times = singlestream_benchmark(
-            model, input_list, output_list, seconds_to_run
-        )
+        batch_times = singlestream_benchmark(model, input_list, seconds_to_run)
     elif scenario == "multistream":
         batch_times = multistream_benchmark(
-            model, input_list, output_list, seconds_to_run, num_streams
+            model, input_list, seconds_to_run, num_streams
         )
     else:
         raise Exception(f"Unknown scenario '{scenario}'")

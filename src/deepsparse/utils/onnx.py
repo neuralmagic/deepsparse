@@ -165,17 +165,18 @@ def generate_random_inputs(
     input_data_list = []
     for i, external_input in enumerate(get_external_inputs(onnx_filepath)):
         input_tensor_type = external_input.type.tensor_type
+        elem_type = translate_onnx_type_to_numpy(input_tensor_type.elem_type)
         in_shape = [int(d.dim_value) for d in input_tensor_type.shape.dim]
 
         if batch_size is not None:
             in_shape[0] = batch_size
 
-        log.info("-- generating random input #{} of shape = {}".format(i, in_shape))
-        input_data_list.append(
-            numpy.random.rand(*in_shape).astype(
-                translate_onnx_type_to_numpy(input_tensor_type.elem_type)
+        log.info(
+            "Generating input '{}', type = {}, shape = {}".format(
+                external_input.name, numpy.dtype(elem_type).name, in_shape
             )
         )
+        input_data_list.append(numpy.random.rand(*in_shape).astype(elem_type))
     return input_data_list
 
 
@@ -196,7 +197,7 @@ def override_onnx_batch_size(onnx_filepath: str, batch_size: int) -> str:
     for external_input in external_inputs:
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
-    # Save modified model
+    # Save modified model, this will be cleaned up when context is exited
     shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
     onnx.save(model, shaped_model.name)
 
@@ -236,12 +237,10 @@ def override_onnx_input_shapes(
 
     # Overwrite the shapes
     for input_idx, external_input in enumerate(external_inputs):
-        for dim_idx in len(external_input.type.tensor_type.shape.dim):
-            external_input.type.tensor_type.shape.dim[dim_idx].dim_value = input_shapes[
-                input_idx
-            ][dim_idx]
+        for dim_idx, dim in enumerate(external_input.type.tensor_type.shape.dim):
+            dim.dim_value = input_shapes[input_idx][dim_idx]
 
-    # Save modified model
+    # Save modified model, this will be cleaned up when context is exited
     shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
     onnx.save(model, shaped_model.name)
 

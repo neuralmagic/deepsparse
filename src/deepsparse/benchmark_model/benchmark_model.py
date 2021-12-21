@@ -14,12 +14,19 @@
 
 import argparse
 import json
+import logging
 import os
+import re
 from typing import List, Union
 
 from deepsparse import Scheduler, compile_model
 from deepsparse.benchmark_model.benchmark import model_stream_benchmark
-from deepsparse.utils import generate_random_inputs, override_onnx_input_shapes
+from deepsparse.utils import (
+    generate_random_inputs,
+    model_to_path,
+    override_onnx_input_shapes,
+    parse_input_shapes,
+)
 from deepsparse.utils.log import log_init
 
 
@@ -49,7 +56,8 @@ def parse_args():
         "--input_shapes",
         type=str,
         default="",
-        help='Set shape for input, i.e. "input1[1 3 224 224],input2[1 4]" or "[1 3 224 224],[1 4]"',
+        help='Override the shapes of the inputs, i.e. -shapes "[1,2,3],[4,5,6],[7,8,9]" '
+        "results in input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]",
     )
     parser.add_argument(
         "-ncores",
@@ -101,6 +109,13 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "-q",
+        "--quiet",
+        help="Lower logging verbosity",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
         "-x",
         "--export_path",
         help="Store results into a JSON file",
@@ -116,41 +131,30 @@ def decide_thread_pinning(pinning_mode: str):
 
     if pinning_mode == "true":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
-        print("Thread pinning to cores enabled")
+        log.info("Thread pinning to cores enabled")
     elif pinning_mode == "false":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
-        print("Thread pinning to cores disabled, performance may be sub-optimal")
+        log.info("Thread pinning to cores disabled, performance may be sub-optimal")
     elif pinning_mode == "numa":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
         os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "1"
-        print("Thread pinning to cores and sockets enabled")
+        log.info("Thread pinning to cores and sockets enabled")
     else:
-        print(
+        log.info(
             "Recieved invalid option for thread_pinning '{}', skipping".format(
                 pinning_mode
             )
         )
 
 
-def parse_input_shapes(shapes: str) -> List[List[int]]:
-    """
-    Reduces a string representation of a list of shapes to an actual list of shapes.
-    Examples:
-    "[[1,2,3],[4,5,6],[7,8,9]]" -> input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]
-    """
-    if not shapes:
-        return None
-    shapes = shapes.replace("[", "").split("],")
-    input_shapes = [map(int, s.replace("]", "").split(",")) for s in shapes]
-    return input_shapes
-
-
 def main():
 
     args = parse_args()
 
+    if args.quiet:
+        log.setLevel(logging.WARN)
+
     decide_thread_pinning(args.thread_pinning)
-    input_shapes = parse_input_shapes(args.input_shapes)
 
     scheduler = (
         Scheduler.multi_stream
@@ -158,8 +162,9 @@ def main():
         else Scheduler.single_stream
     )
     scenario = "multistream" if scheduler is Scheduler.multi_stream else "singlestream"
+    input_shapes = parse_input_shapes(args.input_shapes)
 
-    print("Initializing DeepSparse Engine")
+    args.model_path = model_to_path(args.model_path)
 
     # Compile the ONNX into the DeepSparse Engine
     model = compile_model(
@@ -167,9 +172,9 @@ def main():
         batch_size=args.batch_size,
         num_cores=args.num_cores,
         scheduler=scheduler,
-        # input_shapes=input_shapes,
+        input_shapes=input_shapes,
     )
-    print(model)
+    log.info(model)
 
     # Generate random inputs to feed the model
     # TODO(mgoin): should be able to query the Engine class instead of loading the ONNX again
@@ -181,18 +186,18 @@ def main():
 
     # If num_streams isn't defined, find a default
     if not args.num_streams and scenario is not "singlestream":
-        args.num_streams = int(model.num_cores / 4)
-        print(
-            "--num_streams default value chosen of {}. This requires tuning and may be sub-optimal".format(
+        args.num_streams = int(model.num_cores / 2)
+        log.info(
+            "num_streams default value chosen of {}. This requires tuning and may be sub-optimal".format(
                 args.num_streams
             )
         )
 
-    _, first_run_ms = model.timed_run(input_list)
+    # Run the model once to warm up
+    _, first_run_time = model.timed_run(input_list)
+    log.info("Initial inference took {:.4f} ms".format(first_run_time * 1000.0))
 
-    print("Initial inference took {:.4f} ms".format(first_run_ms))
-
-    print(
+    log.info(
         "Starting '{}' performance measurements for {} seconds".format(
             args.scenario, args.time
         )
@@ -201,7 +206,6 @@ def main():
     benchmark_result = model_stream_benchmark(
         model,
         input_list,
-        None,
         scenario,
         args.time,
         args.num_streams,
@@ -216,9 +220,9 @@ def main():
         "Std (ms)",
         "Iterations",
     ]
-    header_format = " {:<13} |" * len(headers)
+    header_format = "| {:<13} " * len(headers)
     print(header_format.format(*headers))
-    row_format = " {:<13} |" + " {:<13.4f} |" * (len(headers) - 1)
+    row_format = "| {:<13} " + "| {:<13.4f} " * (len(headers) - 1)
     print(
         row_format.format(
             scenario,
@@ -226,7 +230,7 @@ def main():
             benchmark_result["mean"],
             benchmark_result["median"],
             benchmark_result["std"],
-            benchmark_result["iterations"],
+            int(benchmark_result["iterations"]),
         )
     )
 
@@ -241,10 +245,10 @@ def main():
             "num_streams": args.num_streams,
             "benchmark_result": benchmark_result,
         }
+        print(f"Saving JSON output to {args.export_path}")
         print(export_dict)
 
         with open(args.export_path, "w") as out:
-            print(f"Saving JSON output to {args.export_path}")
             json.dump(export_dict, out, indent=2)
 
 
