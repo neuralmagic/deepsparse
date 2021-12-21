@@ -21,7 +21,7 @@ def log_init(name):
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
-        "[%(levelname)6s %(filename)14s:%(lineno)4s] %(message)s"
+        "[%(levelname)s %(filename)18s:%(lineno)-4s] %(message)s"
     )
     ch.setFormatter(formatter)
     logger.addHandler(ch)

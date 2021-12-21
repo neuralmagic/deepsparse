@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import re
 from typing import List
 
 import numpy
@@ -24,6 +25,7 @@ __all__ = [
     "arrays_to_bytes",
     "bytes_to_arrays",
     "verify_outputs",
+    "parse_input_shapes",
 ]
 
 log = log_init(os.path.basename(__file__))
@@ -86,7 +88,7 @@ def verify_outputs(
 
     if len(outputs) != len(gt_outputs):
         raise Exception(
-            f"number of outputs doesn't match, {len(outputs)} != {len(gt_outputs)}"
+            f"Number of outputs doesn't match, {len(outputs)} != {len(gt_outputs)}"
         )
 
     for i in range(len(gt_outputs)):
@@ -95,20 +97,20 @@ def verify_outputs(
 
         if output.shape != gt_output.shape:
             raise Exception(
-                f"output shapes don't match, {output.shape} != {gt_output.shape}"
+                f"Output shapes don't match, {output.shape} != {gt_output.shape}"
             )
         if type(output) != type(gt_output):
             raise Exception(
-                f"output types don't match, {type(output)} != {type(gt_output)}"
+                f"Output types don't match, {type(output)} != {type(gt_output)}"
             )
 
         max_diff = numpy.max(numpy.abs(output - gt_output))
         max_diffs.append(max_diff)
-        log.info(f"output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}")
+        log.info(f"Output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}")
 
         if not numpy.allclose(output, gt_output, rtol=rtol, atol=atol):
             raise Exception(
-                "output data doesn't match\n"
+                "Output data doesn't match\n"
                 f"output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}\n"
                 f"    mean = {numpy.mean(output):.5f} {numpy.mean(gt_output):.5f}\n"
                 f"    std  = {numpy.std(output):.5f} {numpy.std(gt_output):.5f}\n"
@@ -117,3 +119,29 @@ def verify_outputs(
             )
 
     return max_diffs
+
+
+def parse_input_shapes(shape_string: str) -> List[List[int]]:
+    """
+    Reduces a string representation of a list of shapes to an actual list of shapes.
+    Examples:
+        "[1,2,3]" -> input0=[1,2,3]
+        "[1,2,3],[4,5,6],[7,8,9]" -> input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]
+    """
+    if not shape_string:
+        return None
+
+    shapes_list = []
+    if shape_string:
+        matches = re.findall(r"\[(.*?)\],?", shape_string)
+        if matches:
+            for match in matches:
+                # Clean up stray extra brackets
+                value = match.replace("[", "").replace("]", "")
+                # Parse comma-separated dims into shape list
+                shape = [int(s) for s in value.split(",")]
+                shapes_list.append(shape)
+        else:
+            raise Exception(f"Can't parse input shapes parameter: {shape_string}")
+
+    return shapes_list
