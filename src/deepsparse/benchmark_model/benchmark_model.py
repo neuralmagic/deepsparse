@@ -16,8 +16,6 @@ import argparse
 import json
 import logging
 import os
-import re
-from typing import List, Union
 
 from deepsparse import Scheduler, compile_model
 from deepsparse.benchmark_model.benchmark import model_stream_benchmark
@@ -56,8 +54,9 @@ def parse_args():
         "--input_shapes",
         type=str,
         default="",
-        help='Override the shapes of the inputs, i.e. -shapes "[1,2,3],[4,5,6],[7,8,9]" '
-        "results in input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]",
+        help="Override the shapes of the inputs, "
+        'i.e. -shapes "[1,2,3],[4,5,6],[7,8,9]" results in '
+        "input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]",
     )
     parser.add_argument(
         "-ncores",
@@ -93,8 +92,9 @@ def parse_args():
         type=int,
         default=None,
         help=(
-            "The number of streams that will execute in parallel using async scenario. "
-            "Default is automatically determined for given hardware and may be sub-optimal."
+            "The number of streams that will submit inferences in parallel using "
+            "async scenario. Default is automatically determined for given hardware "
+            "and may be sub-optimal."
         ),
     )
     parser.add_argument(
@@ -177,7 +177,7 @@ def main():
     log.info(model)
 
     # Generate random inputs to feed the model
-    # TODO(mgoin): should be able to query the Engine class instead of loading the ONNX again
+    # TODO(mgoin): should be able to query Engine class instead of loading ONNX
     if input_shapes:
         with override_onnx_input_shapes(args.model_path, input_shapes) as model_path:
             input_list = generate_random_inputs(model_path, args.batch_size)
@@ -185,12 +185,11 @@ def main():
         input_list = generate_random_inputs(args.model_path, args.batch_size)
 
     # If num_streams isn't defined, find a default
-    if not args.num_streams and scenario is not "singlestream":
+    if not args.num_streams and scenario not in "singlestream":
         args.num_streams = int(model.num_cores / 2)
         log.info(
-            "num_streams default value chosen of {}. This requires tuning and may be sub-optimal".format(
-                args.num_streams
-            )
+            "num_streams default value chosen of {}. "
+            "This requires tuning and may be sub-optimal".format(args.num_streams)
         )
 
     # Run the model once to warm up
