@@ -96,7 +96,9 @@ def model_stream_benchmark(
     seconds_to_run: float,
     num_streams: int,
 ) -> Dict:
-    batch_times = []
+
+    # Warmup the engine for a second
+    singlestream_benchmark(model, input_list, 1.0)
 
     # Run the benchmark scenario and collect batch times
     if scenario == "singlestream":

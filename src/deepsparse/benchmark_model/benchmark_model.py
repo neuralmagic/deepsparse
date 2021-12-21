@@ -101,11 +101,11 @@ def parse_args():
         "-pin",
         "--thread_pinning",
         type=str,
-        default="true",
-        choices=["true", "false", "numa"],
+        default="core",
+        choices=["none", "core", "numa"],
         help=(
-            "Enable binding threads to cores ('true' the default), "
-            "threads to cores on sockets ('numa'), or disable ('false')"
+            "Enable binding threads to cores ('core' the default), "
+            "threads to cores on sockets ('numa'), or disable ('none')"
         ),
     )
     parser.add_argument(
@@ -129,14 +129,13 @@ def parse_args():
 def decide_thread_pinning(pinning_mode: str):
     pinning_mode = pinning_mode.lower()
 
-    if pinning_mode == "true":
+    if pinning_mode in "core":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
         log.info("Thread pinning to cores enabled")
-    elif pinning_mode == "false":
+    elif pinning_mode in "none":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
         log.info("Thread pinning to cores disabled, performance may be sub-optimal")
-    elif pinning_mode == "numa":
-        os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
+    elif pinning_mode in "numa":
         os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "1"
         log.info("Thread pinning to cores and sockets enabled")
     else:
@@ -192,16 +191,12 @@ def main():
             "This requires tuning and may be sub-optimal".format(args.num_streams)
         )
 
-    # Run the model once to warm up
-    _, first_run_time = model.timed_run(input_list)
-    log.info("Initial inference took {:.4f} ms".format(first_run_time * 1000.0))
-
+    # Benchmark
     log.info(
         "Starting '{}' performance measurements for {} seconds".format(
             args.scenario, args.time
         )
     )
-
     benchmark_result = model_stream_benchmark(
         model,
         input_list,
@@ -210,7 +205,7 @@ def main():
         args.num_streams,
     )
 
-    # Print Summary
+    # Results summary
     headers = [
         "Scenario",
         "Throughput",
@@ -233,6 +228,7 @@ def main():
         )
     )
 
+    # Export results
     if args.export_path:
         export_dict = {
             "engine": model,
