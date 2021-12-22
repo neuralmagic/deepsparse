@@ -116,6 +116,10 @@ def model_stream_benchmark(
     ]
 
     # Calculate statistics
+    # Note: We want to know all of the executions that could be performed within a
+    # given amount of wallclock time. This calculation as-is includes the test overhead
+    # such as saving timing results for each iteration so it isn't a best-case but is a
+    # realistic case.
     first_start_time = min([b[0] for b in batch_times])
     last_end_time = max([b[1] for b in batch_times])
     total_time_executing = last_end_time - first_start_time

@@ -18,7 +18,7 @@ import logging
 import os
 
 from deepsparse import Scheduler, compile_model
-from deepsparse.benchmark_model.benchmark import model_stream_benchmark
+from deepsparse.benchmark_model.stream_benchmark import model_stream_benchmark
 from deepsparse.utils import (
     generate_random_inputs,
     model_to_path,
@@ -132,12 +132,14 @@ def decide_thread_pinning(pinning_mode: str):
     if pinning_mode in "core":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
         log.info("Thread pinning to cores enabled")
+    elif pinning_mode in "numa":
+        os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
+        os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "1"
+        log.info("Thread pinning to socket/numa nodes enabled")
     elif pinning_mode in "none":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
-        log.info("Thread pinning to cores disabled, performance may be sub-optimal")
-    elif pinning_mode in "numa":
-        os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "1"
-        log.info("Thread pinning to cores and sockets enabled")
+        os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "0"
+        log.info("Thread pinning disabled, performance may be sub-optimal")
     else:
         log.info(
             "Recieved invalid option for thread_pinning '{}', skipping".format(
