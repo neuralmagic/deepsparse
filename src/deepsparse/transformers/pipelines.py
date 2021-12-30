@@ -1296,7 +1296,7 @@ def pipeline(
         )
     if task == "question-answering" and batch_size != 1:
         raise ValueError(
-            f"{task} task does not only supports batch_size 1. "
+            f"{task} pipeline only supports batch_size 1. "
             f"Supplied batch_size = {batch_size}"
         )
     task_info = SUPPORTED_TASKS[task]
