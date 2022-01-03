@@ -544,22 +544,26 @@ class TokenClassificationPipeline(Pipeline):
             special_tokens_mask = tokens.pop("special_tokens_mask")[0]
 
             # Forward
-            entities = self._forward(tokens)[0][0]
-            input_ids = tokens["input_ids"][0]
+            for entities_index, current_entities in enumerate(self._forward(tokens)[0]):
+                input_ids = tokens["input_ids"][entities_index]
 
-            scores = np.exp(entities) / np.exp(entities).sum(-1, keepdims=True)
-            pre_entities = self.gather_pre_entities(
-                sentence, input_ids, scores, offset_mapping, special_tokens_mask
-            )
-            grouped_entities = self.aggregate(pre_entities, self.aggregation_strategy)
-            # Filter anything that is in self.ignore_labels
-            entities = [
-                entity
-                for entity in grouped_entities
-                if entity.get("entity", None) not in self.ignore_labels
-                and entity.get("entity_group", None) not in self.ignore_labels
-            ]
-            answers.append(entities)
+                scores = np.exp(current_entities) / np.exp(current_entities).sum(
+                    -1, keepdims=True
+                )
+                pre_entities = self.gather_pre_entities(
+                    sentence, input_ids, scores, offset_mapping, special_tokens_mask
+                )
+                grouped_entities = self.aggregate(
+                    pre_entities, self.aggregation_strategy
+                )
+                # Filter anything that is in self.ignore_labels
+                current_entities = [
+                    entity
+                    for entity in grouped_entities
+                    if entity.get("entity", None) not in self.ignore_labels
+                    and entity.get("entity_group", None) not in self.ignore_labels
+                ]
+                answers.append(current_entities)
 
         if len(answers) == 1:
             return answers[0]
