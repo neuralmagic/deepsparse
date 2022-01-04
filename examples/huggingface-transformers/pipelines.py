@@ -395,7 +395,18 @@ class TextClassificationPipeline(Pipeline):
 
         self.return_all_scores = return_all_scores
 
-    def _classify(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
+        """
+        Classify the text(s) given as inputs.
+
+        :param args: One or several texts (or one list of prompts) to classify
+        :param args: kwargs for inner call function
+        :return: A list or a list of list of dicts: Each result comes as list of dicts
+            with the following keys:
+            - `label` -- The label predicted.
+            - `score` -- The corresponding probability.
+            If ``self.return_all_scores=True``, one dictionary is returned per label
+        """
         outputs = super().__call__(*args, **kwargs)
 
         if isinstance(outputs, list) and outputs:
@@ -421,25 +432,6 @@ class TextClassificationPipeline(Pipeline):
                 }
                 for item in scores
             ]
-
-    def __call__(self, *args, **kwargs):
-        """
-        Classify the text(s) given as inputs.
-
-        :param args: One or several texts (or one list of prompts) to classify
-        :param args: kwargs for inner call function
-        :return: A list or a list of list of dicts: Each result comes as list of dicts
-            with the following keys:
-            - `label` -- The label predicted.
-            - `score` -- The corresponding probability.
-            If ``self.return_all_scores=True``, one dictionary is returned per label
-        """
-        (args,) = args
-        is_batched = args and isinstance(args, list) and isinstance(args[0], list)
-        if is_batched:
-            return [self._classify(batch, kwargs) for batch in args]
-        else:
-            return self._classify(args, kwargs)
 
 
 class AggregationStrategy(ExplicitEnum):
@@ -532,46 +524,47 @@ class TokenClassificationPipeline(Pipeline):
 
         answers = []
 
-        for i, sentence in enumerate(_inputs):
+        tokens = self.tokenizer(
+            _inputs,
+            return_tensors=self._framework,
+            truncation=TruncationStrategy.LONGEST_FIRST.value,
+            padding=PaddingStrategy.MAX_LENGTH.value,
+            return_special_tokens_mask=True,
+            return_offsets_mapping=self.tokenizer.is_fast,
+        )
 
-            tokens = self.tokenizer(
-                sentence,
-                return_tensors=self._framework,
-                truncation=TruncationStrategy.LONGEST_FIRST.value,
-                padding=PaddingStrategy.MAX_LENGTH.value,
-                return_special_tokens_mask=True,
-                return_offsets_mapping=self.tokenizer.is_fast,
+        if self.tokenizer.is_fast:
+            offset_mapping = tokens.pop("offset_mapping")
+        elif not offset_mappings:
+            offset_mapping = [None] * len(_inputs)
+
+        special_tokens_mask = tokens.pop("special_tokens_mask")
+
+        # Forward
+        _forward_pass = self._forward(tokens)
+        for entities_index, current_entities in enumerate(_forward_pass[0]):
+
+            input_ids = tokens["input_ids"][entities_index]
+
+            scores = np.exp(current_entities) / np.exp(current_entities).sum(
+                -1, keepdims=True
             )
-            if self.tokenizer.is_fast:
-                offset_mapping = tokens.pop("offset_mapping")[0]
-            elif offset_mappings:
-                offset_mapping = offset_mappings[i]
-            else:
-                offset_mapping = None
-
-            special_tokens_mask = tokens.pop("special_tokens_mask")[0]
-
-            # Forward
-            for entities_index, current_entities in enumerate(self._forward(tokens)[0]):
-                input_ids = tokens["input_ids"][entities_index]
-
-                scores = np.exp(current_entities) / np.exp(current_entities).sum(
-                    -1, keepdims=True
-                )
-                pre_entities = self.gather_pre_entities(
-                    sentence, input_ids, scores, offset_mapping, special_tokens_mask
-                )
-                grouped_entities = self.aggregate(
-                    pre_entities, self.aggregation_strategy
-                )
-                # Filter anything that is in self.ignore_labels
-                current_entities = [
-                    entity
-                    for entity in grouped_entities
-                    if entity.get("entity", None) not in self.ignore_labels
-                    and entity.get("entity_group", None) not in self.ignore_labels
-                ]
-                answers.append(current_entities)
+            pre_entities = self.gather_pre_entities(
+                _inputs[entities_index],
+                input_ids,
+                scores,
+                offset_mapping[entities_index],
+                special_tokens_mask[entities_index],
+            )
+            grouped_entities = self.aggregate(pre_entities, self.aggregation_strategy)
+            # Filter anything that is in self.ignore_labels
+            current_entities = [
+                entity
+                for entity in grouped_entities
+                if entity.get("entity", None) not in self.ignore_labels
+                and entity.get("entity_group", None) not in self.ignore_labels
+            ]
+            answers.append(current_entities)
 
         if len(answers) == 1:
             return answers[0]
