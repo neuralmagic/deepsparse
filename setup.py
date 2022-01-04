@@ -164,6 +164,7 @@ def _setup_entry_points() -> Dict:
         "console_scripts": [
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
+            "deepsparse.pipeline=deepsparse.transformers.pipelines_cli:cli",
         ]
     }
 
