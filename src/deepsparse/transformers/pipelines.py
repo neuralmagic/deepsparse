@@ -395,18 +395,7 @@ class TextClassificationPipeline(Pipeline):
 
         self.return_all_scores = return_all_scores
 
-    def __call__(self, *args, **kwargs):
-        """
-        Classify the text(s) given as inputs.
-
-        :param args: One or several texts (or one list of prompts) to classify
-        :param args: kwargs for inner call function
-        :return: A list or a list of list of dicts: Each result comes as list of dicts
-            with the following keys:
-            - `label` -- The label predicted.
-            - `score` -- The corresponding probability.
-            If ``self.return_all_scores=True``, one dictionary is returned per label
-        """
+    def _classify(self, *args, **kwargs):
         outputs = super().__call__(*args, **kwargs)
 
         if isinstance(outputs, list) and outputs:
@@ -432,6 +421,25 @@ class TextClassificationPipeline(Pipeline):
                 }
                 for item in scores
             ]
+
+    def __call__(self, *args, **kwargs):
+        """
+        Classify the text(s) given as inputs.
+
+        :param args: One or several texts (or one list of prompts) to classify
+        :param args: kwargs for inner call function
+        :return: A list or a list of list of dicts: Each result comes as list of dicts
+            with the following keys:
+            - `label` -- The label predicted.
+            - `score` -- The corresponding probability.
+            If ``self.return_all_scores=True``, one dictionary is returned per label
+        """
+        (args,) = args
+        is_batched = args and isinstance(args, list) and isinstance(args[0], list)
+        if is_batched:
+            return [self._classify(batch, kwargs) for batch in args]
+        else:
+            return self._classify(args, kwargs)
 
 
 class AggregationStrategy(ExplicitEnum):
