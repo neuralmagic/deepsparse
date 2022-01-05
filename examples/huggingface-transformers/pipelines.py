@@ -42,7 +42,6 @@ except Exception as ort_import_err:
     onnxruntime = None
     ort_import_error = ort_import_err
 
-
 try:
     from transformers.configuration_utils import PretrainedConfig
     from transformers.data import (
@@ -71,7 +70,6 @@ except Exception as transformers_import_err:
     logging = None
     transformers_import_error = transformers_import_err
 
-
 __all__ = [
     "ArgumentHandler",
     "Pipeline",
@@ -81,7 +79,6 @@ __all__ = [
     "pipeline",
     "overwrite_transformer_onnx_model_inputs",
 ]
-
 
 logger = logging.get_logger(__name__) if logging else None
 
@@ -527,42 +524,47 @@ class TokenClassificationPipeline(Pipeline):
 
         answers = []
 
-        for i, sentence in enumerate(_inputs):
+        tokens = self.tokenizer(
+            _inputs,
+            return_tensors=self._framework,
+            truncation=TruncationStrategy.LONGEST_FIRST.value,
+            padding=PaddingStrategy.MAX_LENGTH.value,
+            return_special_tokens_mask=True,
+            return_offsets_mapping=self.tokenizer.is_fast,
+        )
 
-            tokens = self.tokenizer(
-                sentence,
-                return_tensors=self._framework,
-                truncation=TruncationStrategy.LONGEST_FIRST.value,
-                padding=PaddingStrategy.MAX_LENGTH.value,
-                return_special_tokens_mask=True,
-                return_offsets_mapping=self.tokenizer.is_fast,
+        if self.tokenizer.is_fast:
+            offset_mapping = tokens.pop("offset_mapping")
+        elif not offset_mappings:
+            offset_mapping = [None] * len(_inputs)
+
+        special_tokens_mask = tokens.pop("special_tokens_mask")
+
+        # Forward
+        _forward_pass = self._forward(tokens)
+        for entities_index, current_entities in enumerate(_forward_pass[0]):
+
+            input_ids = tokens["input_ids"][entities_index]
+
+            scores = np.exp(current_entities) / np.exp(current_entities).sum(
+                -1, keepdims=True
             )
-            if self.tokenizer.is_fast:
-                offset_mapping = tokens.pop("offset_mapping")[0]
-            elif offset_mappings:
-                offset_mapping = offset_mappings[i]
-            else:
-                offset_mapping = None
-
-            special_tokens_mask = tokens.pop("special_tokens_mask")[0]
-
-            # Forward
-            entities = self._forward(tokens)[0][0]
-            input_ids = tokens["input_ids"][0]
-
-            scores = np.exp(entities) / np.exp(entities).sum(-1, keepdims=True)
             pre_entities = self.gather_pre_entities(
-                sentence, input_ids, scores, offset_mapping, special_tokens_mask
+                _inputs[entities_index],
+                input_ids,
+                scores,
+                offset_mapping[entities_index],
+                special_tokens_mask[entities_index],
             )
             grouped_entities = self.aggregate(pre_entities, self.aggregation_strategy)
             # Filter anything that is in self.ignore_labels
-            entities = [
+            current_entities = [
                 entity
                 for entity in grouped_entities
                 if entity.get("entity", None) not in self.ignore_labels
                 and entity.get("entity_group", None) not in self.ignore_labels
             ]
-            answers.append(entities)
+            answers.append(current_entities)
 
         if len(answers) == 1:
             return answers[0]
@@ -1259,6 +1261,8 @@ def pipeline(
     tokenizer: Optional[Union[str, PreTrainedTokenizer]] = None,
     max_length: int = 128,
     num_cores: Optional[int] = None,
+    scheduler: Optional[str] = None,
+    batch_size: Optional[int] = 1,
     **kwargs,
 ) -> Pipeline:
     """
@@ -1267,7 +1271,8 @@ def pipeline(
     :param task: name of the task to define which pipeline to create. Currently
         supported task - "question-answering"
     :param model_name: canonical name of the hugging face model this model is based on
-    :param model_path: path to (ONNX) model file to run
+    :param model_path: path to (ONNX) model file. Also supports a SparseZoo
+        stub
     :param engine_type: inference engine name to use. Supported options are 'deepsparse'
         and 'onnxruntime'
     :param config: huggingface model config, if none provided, default will be used
@@ -1276,6 +1281,9 @@ def pipeline(
     :param max_length: maximum sequence length of model inputs. default is 128
     :param num_cores: number of CPU cores to run engine with. Default is the maximum
         available
+    :param scheduler: The scheduler to use for the engine. Can be None, single or multi.
+    :param batch_size: The batch_size to use for the pipeline. Defaults to 1
+        Note: `question-answering` pipeline only supports a batch_size of 1.
     :param kwargs: additional key word arguments for task specific pipeline constructor
     :return: Pipeline object for the given taks and model
     """
@@ -1291,8 +1299,13 @@ def pipeline(
             f"Unsupported engine {engine_type}, supported engines "
             f"are {SUPPORTED_ENGINES}"
         )
-
+    if task == "question-answering" and batch_size != 1:
+        raise ValueError(
+            f"{task} pipeline only supports batch_size 1. "
+            f"Supplied batch_size = {batch_size}"
+        )
     task_info = SUPPORTED_TASKS[task]
+
     model_path = model_path or _get_default_model_path(task_info)
     model_name = model_name or task_info.default_model_name
 
@@ -1305,7 +1318,14 @@ def pipeline(
     if model_path.startswith("zoo:"):
         zoo_model_path = model_path
         model_path = _download_zoo_model(model_path)
-    model, input_names = _create_model(model_path, engine_type, num_cores, max_length)
+    model, input_names = _create_model(
+        model_path,
+        engine_type,
+        num_cores,
+        max_length,
+        scheduler=scheduler,
+        batch_size=batch_size,
+    )
 
     # Instantiate tokenizer if needed
     if isinstance(tokenizer, (str, tuple)):
@@ -1407,13 +1427,20 @@ def _create_model(
     engine_type: str,
     num_cores: Optional[int],
     max_length: int = 128,
+    scheduler: Optional[str] = None,
+    batch_size: int = 1,
 ) -> Tuple[Union[Engine, "onnxruntime.InferenceSession"], List[str]]:
     onnx_path, input_names, _ = overwrite_transformer_onnx_model_inputs(
         model_path, max_length=max_length
     )
 
     if engine_type == DEEPSPARSE_ENGINE:
-        model = compile_model(onnx_path, batch_size=1, num_cores=num_cores)
+        model = compile_model(
+            onnx_path,
+            batch_size=batch_size,
+            num_cores=num_cores,
+            scheduler=scheduler,
+        )
     elif engine_type == ORT_ENGINE:
         _validate_ort_import()
         sess_options = onnxruntime.SessionOptions()
