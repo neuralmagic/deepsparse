@@ -63,6 +63,8 @@ __all__ = [
     "QuestionAnsweringPipeline",
     "pipeline",
     "overwrite_transformer_onnx_model_inputs",
+    "SUPPORTED_ENGINES",
+    "SUPPORTED_TASKS",
 ]
 
 logger = logging.get_logger(__name__) if logging else None

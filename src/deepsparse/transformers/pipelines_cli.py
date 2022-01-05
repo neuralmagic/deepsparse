@@ -45,21 +45,22 @@ optional arguments:
                         Canonical name of the hugging face model this model is
                         based on
   --model-path MODEL_PATH, --model_path MODEL_PATH
-                        path to (ONNX) model file to run
+                        Path to (ONNX) model file to run, can also be a
+                        SparseZoo stub
   --engine-type {deepsparse,onnxruntime}, --engine_type {deepsparse,onnxruntime}
                         inference engine name to use. Supported options are
                         'deepsparse'and 'onnxruntime'
-  --config CONFIG       huggingface model config, if none provided, default
+  --config CONFIG       Huggingface model config, if none provided, default
                         will be usedwhich will be from the model name or
                         sparsezoo stub if given for model path
   --tokenizer TOKENIZER
-                        huggingface tokenizer, if none provided, default will
+                        Huggingface tokenizer, if none provided, default will
                         be used
   --max-length MAX_LENGTH, --max_length MAX_LENGTH
-                        maximum sequence length of model inputs. default is
+                        Maximum sequence length of model inputs. default is
                         128
   --num-cores NUM_CORES, --num_cores NUM_CORES
-                        number of CPU cores to run engine with. Default is the
+                        Number of CPU cores to run engine with. Default is the
                         maximum available
   -b BATCH_SIZE, --batch-size BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to use for pipelines
@@ -90,14 +91,10 @@ Example commands:
 """
 
 import argparse
-import json
-from csv import reader
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Optional
 
-from transformers import PretrainedConfig, PreTrainedTokenizer
-
+from .loaders import get_batch_loader
 from .pipelines import SUPPORTED_ENGINES, SUPPORTED_TASKS, pipeline
 
 
@@ -106,82 +103,7 @@ __all__ = [
 ]
 
 
-@dataclass
-class _PipelineCliArgs:
-    """
-    :param task: name of the task to define which pipeline to create. Currently
-        supported task - ['ner', 'question-answering', 'sentiment-analysis',
-        'text-classification', 'token-classification']
-    :param data: str, List[str], file containing List of strings representing input
-    :param model_name: canonical name of the hugging face model this model is based on
-    :param model_path: path to (ONNX) model file to run
-    :param engine_type: inference engine name to use. Supported options are 'deepsparse'
-        and 'onnxruntime'
-    :param config: huggingface model config, if none provided, default will be used
-        which will be from the model name or sparsezoo stub if given for model path
-    :param tokenizer: huggingface tokenizer, if none provided, default will be used
-    :param max_length: maximum sequence length of model inputs. default is 128
-    :param num_cores: number of CPU cores to run engine with. Default is the maximum
-        available
-    :param batch_size: The batch size to use for pipelines. Defaults to 1.
-    :param scheduler: The scheduler to use for the engine. Can be None, single or multi.
-    :param output_file: File to write output to, omit to print output to stdout
-    :return: Inference results  for each input
-    """
-
-    task: str
-    data: Union[List, str]
-    model_name: Optional[str] = None
-    model_path: Optional[str] = None
-    engine_type: str = SUPPORTED_ENGINES[0]
-    config: Optional[Union[str, PretrainedConfig]] = None
-    tokenizer: Optional[Union[str, PreTrainedTokenizer]] = None
-    max_length: int = 128
-    num_cores: Optional[int] = None
-    batch_size: int = 1
-    scheduler: Optional[str] = None
-    output_file: Optional[argparse.FileType] = None
-
-    def __post_init__(self):
-        data_file = Path(self.data)
-        assert data_file.exists(), f"The input data file must exist, {data_file}"
-        assert data_file.is_file(), f"The input data file must be a file, {data_file}"
-        supported_extensions = [".json", ".csv", ".txt"]
-        assert data_file.suffix in supported_extensions, (
-            f"The input data file must be one of {supported_extensions}, "
-            f"found {data_file.suffix}"
-        )
-
-    @property
-    def data_loader(self):
-        data_file = Path(self.data)
-        extension = data_file.suffix
-        with open(data_file) as f:
-            if extension == ".json":
-                data = json.load(f)
-                gen = data.values()
-
-            elif extension == ".csv":
-                gen = reader(f)
-
-            elif extension == ".txt":
-                gen = (line.strip() for line in f)
-
-            for _input in gen:
-                yield _input
-
-    @property
-    def batch_loader(self):
-        batch = []
-
-        for _ in self.data_loader:
-            batch.append(_)
-            if len(batch) == self.batch_size:
-                yield batch
-                batch = []
-
-
-def _parse_args() -> _PipelineCliArgs:
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Cli utility for one shot inference using pipelines"
     )
@@ -216,7 +138,7 @@ def _parse_args() -> _PipelineCliArgs:
     parser.add_argument(
         "--model-path",
         "--model_path",
-        help="path to (ONNX) model file to run",
+        help="Path to (ONNX) model file to run, can also be a SparseZoo stub",
         required=True,
         type=str,
     )
@@ -224,7 +146,7 @@ def _parse_args() -> _PipelineCliArgs:
     parser.add_argument(
         "--engine-type",
         "--engine_type",
-        help="inference engine name to use. Supported options are 'deepsparse'"
+        help="Inference engine name to use. Supported options are 'deepsparse'"
         "and 'onnxruntime'",
         type=str,
         choices=SUPPORTED_ENGINES,
@@ -233,7 +155,7 @@ def _parse_args() -> _PipelineCliArgs:
 
     parser.add_argument(
         "--config",
-        help="huggingface model config, if none provided, default will be used"
+        help="Huggingface model config, if none provided, default will be used"
         "which will be from the model name or sparsezoo stub if given for "
         "model path",
         type=str,
@@ -242,7 +164,7 @@ def _parse_args() -> _PipelineCliArgs:
 
     parser.add_argument(
         "--tokenizer",
-        help="huggingface tokenizer, if none provided, default will be used",
+        help="Huggingface tokenizer, if none provided, default will be used",
         type=str,
         default=None,
     )
@@ -250,7 +172,7 @@ def _parse_args() -> _PipelineCliArgs:
     parser.add_argument(
         "--max-length",
         "--max_length",
-        help="maximum sequence length of model inputs. default is 128",
+        help="Maximum sequence length of model inputs. default is 128",
         type=int,
         default=128,
     )
@@ -258,7 +180,7 @@ def _parse_args() -> _PipelineCliArgs:
     parser.add_argument(
         "--num-cores",
         "--num_cores",
-        help="number of CPU cores to run engine with. Default is the maximum "
+        help="Number of CPU cores to run engine with. Default is the maximum "
         "available",
         type=int,
         default=None,
@@ -292,7 +214,16 @@ def _parse_args() -> _PipelineCliArgs:
     )
 
     _args = parser.parse_args()
-    return _PipelineCliArgs(**vars(_args))
+    data_file = Path(_args.data)
+    assert data_file.exists(), f"The input data file must exist, {data_file}"
+    assert data_file.is_file(), f"The input data file must be a file, {data_file}"
+    supported_extensions = [".json", ".csv", ".txt"]
+    assert data_file.suffix in supported_extensions, (
+        f"The input data file must be one of {supported_extensions}, "
+        f"found {data_file.suffix}"
+    )
+
+    return _args
 
 
 def cli():
@@ -314,8 +245,14 @@ def cli():
         scheduler=_args.scheduler,
     )
 
-    for batch in _args.batch_loader:
-        batch_output = pipe(batch)
+    batch_loader = get_batch_loader(
+        data_file=_args.data,
+        batch_size=_args.batch_size,
+        task=_args.task,
+    )
+
+    for batch in batch_loader:
+        batch_output = pipe(**batch)
         _args.output_file.write(str(batch_output))
 
 
