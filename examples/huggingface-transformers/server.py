@@ -49,7 +49,7 @@ import flask
 from flask import Flask, jsonify, make_response
 from flask_cors import CORS
 
-from pipelines import pipeline
+from deepsparse.transformers import pipeline
 
 
 app = Flask(__name__)
