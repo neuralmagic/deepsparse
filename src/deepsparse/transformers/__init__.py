@@ -19,5 +19,26 @@ huggingface/transformers
 
 # flake8: noqa
 
+try:
+    import transformers as _transformers
 
+    transformers_import_error = None
+except Exception as transformers_import_err:
+    transformers_import_error = transformers_import_err
+
+
+def _check_transformers_install():
+    if transformers_import_error is None:
+        return
+    raise ImportError(
+        "No installation of transformers found. It is recommended to use the "
+        "sparseml fork of transformers which can be installed under "
+        "git+https://github.com/neuralmagic/transformers.git or sparseml[transformers]"
+    )
+
+
+_check_transformers_install()
+
+
+from .helpers import *
 from .pipelines import *
