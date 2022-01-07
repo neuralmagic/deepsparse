@@ -91,16 +91,21 @@ Example commands:
 """
 
 import argparse
+import os
 from pathlib import Path
 from typing import Optional
 
-from .loaders import get_batch_loader
+from .loaders import SUPPORTED_EXTENSIONS, get_batch_loader
 from .pipelines import SUPPORTED_ENGINES, SUPPORTED_TASKS, pipeline
 
 
 __all__ = [
     "cli",
 ]
+
+MODEL_DIR = os.getenv("MODEL_DIR")
+if MODEL_DIR is None:
+    MODEL_DIR = "MODEL"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -135,11 +140,13 @@ def _parse_args() -> argparse.Namespace:
         type=Optional[str],
     )
 
+    default_model_path = os.path.join(MODEL_DIR, "model.onnx")
     parser.add_argument(
         "--model-path",
         "--model_path",
-        help="Path to (ONNX) model file to run, can also be a SparseZoo stub",
-        required=True,
+        help="Path to (ONNX) model file to run, can also be a SparseZoo stub."
+        f"Defaults to {default_model_path}",
+        default=default_model_path,
         type=str,
     )
 
@@ -214,16 +221,27 @@ def _parse_args() -> argparse.Namespace:
     )
 
     _args = parser.parse_args()
-    data_file = Path(_args.data)
-    assert data_file.exists(), f"The input data file must exist, {data_file}"
-    assert data_file.is_file(), f"The input data file must be a file, {data_file}"
-    supported_extensions = [".json", ".csv", ".txt"]
-    assert data_file.suffix in supported_extensions, (
-        f"The input data file must be one of {supported_extensions}, "
-        f"found {data_file.suffix}"
-    )
-
+    _validate_input_file(_args.data)
+    _validate_file_exists(_args.model_path)
     return _args
+
+
+def _validate_input_file(data_file_path: str):
+    _validate_file_exists(data_file_path=data_file_path)
+    data_file = Path(data_file_path)
+    if data_file.suffix not in SUPPORTED_EXTENSIONS:
+        raise ValueError(
+            f"The input data file must be one of {SUPPORTED_EXTENSIONS}, "
+            f"found {data_file.suffix}"
+        )
+
+
+def _validate_file_exists(data_file_path: str):
+    data_file = Path(data_file_path)
+    if not data_file.exists():
+        raise ValueError(f"The file must exist, {data_file}")
+    if not data_file.is_file():
+        raise ValueError(f"Must be a file, {data_file}")
 
 
 def cli():

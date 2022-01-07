@@ -25,7 +25,10 @@ from typing import Any, Dict, List, Optional
 
 __all__ = [
     "get_batch_loader",
+    "SUPPORTED_EXTENSIONS",
 ]
+
+SUPPORTED_EXTENSIONS = [".json", ".csv", ".txt"]
 
 
 class _BatchLoader(ABC):
@@ -36,11 +39,9 @@ class _BatchLoader(ABC):
         self.header = None
 
     @abstractmethod
-    def __iter__(self) -> Optional[Dict[str, Any]]:
+    def _get_reader(self):
         raise NotImplementedError
 
-
-class _DictBatchLoader(_BatchLoader):
     def add_to_batch(
         self,
         input_sample: Dict[str, Any],
@@ -81,18 +82,10 @@ class _DictBatchLoader(_BatchLoader):
             yield batch
 
     def __iter__(self) -> Optional[Dict[str, Any]]:
-        raise NotImplementedError
-
-
-class _JSONBatchLoader(_DictBatchLoader):
-    # Convenience class to read batches from JSON files
-
-    def __iter__(self) -> Optional[Dict[str, Any]]:
         # Note: json file should contain one json object per line
         batch = None
         with open(self.data_file) as f:
-            for line in f:
-                _input = json.loads(line)
+            for _input in self._get_reader(f):
                 batch = self.add_to_batch(_input, batch)
                 if len(batch[self.header[0]]) == self.batch_size:
                     yield batch
@@ -100,19 +93,18 @@ class _JSONBatchLoader(_DictBatchLoader):
         yield from self.pad_last_batch(batch)
 
 
-class _CSVBatchLoader(_DictBatchLoader):
+class _JSONBatchLoader(_BatchLoader):
+    # Convenience class to read batches from JSON files
+
+    def _get_reader(self, f):
+        return (json.loads(line) for line in f)
+
+
+class _CSVBatchLoader(_BatchLoader):
     # Convenience class to read batches from CSV files
 
-    def __iter__(self) -> Optional[Dict[str, Any]]:
-        batch = None
-        with open(self.data_file) as f:
-            reader = DictReader(f)
-            for _input in reader:
-                batch = self.add_to_batch(_input, batch)
-                if len(batch[self.header[0]]) == self.batch_size:
-                    yield batch
-                    batch = {key: [] for key in batch}
-        yield from self.pad_last_batch(batch)
+    def _get_reader(self, f):
+        return DictReader(f)
 
 
 class _TextBatchLoader(_BatchLoader):
@@ -122,23 +114,14 @@ class _TextBatchLoader(_BatchLoader):
     def __init__(self, data_file: str, batch_size: int = 1, task: str = None):
         super().__init__(data_file=data_file, batch_size=batch_size)
         if task in ["ner", "token-classification"]:
-            self.header = "inputs"
+            self.header = ["inputs"]
         elif task in ["sentiment-analysis", "text-classification"]:
-            self.header = "sequences"
+            self.header = ["sequences"]
         else:
             raise ValueError(f"{task} does not support text file as input")
 
-    def __iter__(self) -> Optional[Dict[str, Any]]:
-        batch = []
-        with open(self.data_file) as f:
-            for line in f:
-                batch.append(line.strip())
-                if len(batch) == self.batch_size:
-                    yield {self.header: batch}
-                    batch = []
-        if 0 < len(batch) < self.batch_size:
-            batch.extend([batch[-1]] * (self.batch_size - len(batch)))
-            yield {self.header: batch}
+    def _get_reader(self, f):
+        return ({self.header[0]: line.strip()} for line in f)
 
 
 def get_batch_loader(
