@@ -95,6 +95,7 @@ from sparsezoo.utils import load_numpy, load_numpy_list
 
 try:
     import onnxruntime
+
     ort_error = None
 except Exception as err:
     onnxruntime = None
