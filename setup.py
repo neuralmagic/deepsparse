@@ -173,6 +173,7 @@ def _setup_entry_points() -> Dict:
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
+            "deepsparse.transformers.server=deepsparse.transformers.server.serve:main",
         ]
     }
 
