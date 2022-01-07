@@ -66,7 +66,6 @@ _transformers_deps = ["transformers~=4.8"]
 _transformers_server_deps = [
     "uvicorn>=0.15.0",
     "fastapi>=0.70.0",
-    "deepsparse[transformers]",
     "starlette>=0.16.0",
     "pydantic>=1.8.2",
     "requests>=2.26.0",
