@@ -103,9 +103,7 @@ __all__ = [
     "cli",
 ]
 
-MODEL_DIR = os.getenv("MODEL_DIR")
-if MODEL_DIR is None:
-    MODEL_DIR = "MODEL"
+MODEL_DIR = os.getenv("MODEL_DIR") or ""
 
 
 def _parse_args() -> argparse.Namespace:
