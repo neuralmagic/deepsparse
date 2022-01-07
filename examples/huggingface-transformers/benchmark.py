@@ -85,7 +85,6 @@ import warnings
 from typing import Any, Generator, List, Tuple
 
 import numpy
-import onnxruntime
 from tqdm.auto import tqdm
 
 from deepsparse import compile_model
@@ -93,6 +92,15 @@ from deepsparse.benchmark import BenchmarkResults
 from deepsparse.transformers import overwrite_transformer_onnx_model_inputs
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy, load_numpy_list
+
+
+try:
+    import onnxruntime
+
+    ort_error = None
+except Exception as err:
+    onnxruntime = None
+    ort_error = err
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -228,6 +236,9 @@ def benchmark(args):
 
 
 def _load_model(args) -> Tuple[Any, List[str]]:
+    if args.engine == ORT_ENGINE and ort_error is not None:
+        raise ort_error
+
     # validation
     if (
         args.num_cores is not None
