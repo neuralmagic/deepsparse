@@ -21,7 +21,6 @@ from typing import Dict, List, Tuple
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
-
 # default variables to be overwritten by the version.py file
 is_release = None
 version = "unknown"
@@ -64,6 +63,14 @@ _dev_deps = [
     "flask-cors>=3.0.0",
 ]
 _transformers_deps = ["transformers~=4.8"]
+_transformers_server_deps = [
+    "uvicorn>=0.15.0",
+    "fastapi>=0.70.0",
+    "deepsparse[transformers]",
+    "starlette>=0.16.0",
+    "pydantic>=1.8.2",
+    "requests>=2.26.0",
+]
 
 
 class OverrideInstall(install):
@@ -115,8 +122,8 @@ class OverrideInstall(install):
         supported_minor = [6, 7, 8, 9]
 
         if (
-            sys.version_info[0] != supported_major
-            or sys.version_info[1] not in supported_minor
+                sys.version_info[0] != supported_major
+                or sys.version_info[1] not in supported_minor
         ):
             raise EnvironmentError(
                 f"Python {supported_major}.{supported_minor} "
@@ -156,6 +163,7 @@ def _setup_extras() -> Dict:
     return {
         "dev": _dev_deps,
         "transformers": _transformers_deps,
+        "server": _transformers_server_deps,
     }
 
 
