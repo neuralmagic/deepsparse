@@ -12,6 +12,74 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Benchmarking script for ONNX models with the DeepSparse engine.
+
+##########
+Command help:
+usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
+                            [-ncores NUM_CORES] [-s {async,sync}] [-t TIME]
+                            [-nstreams NUM_STREAMS] [-pin {none,core,numa}]
+                            [-q] [-x EXPORT_PATH]
+                            model_path
+
+Benchmark ONNX models in the DeepSparse Engine
+
+positional arguments:
+  model_path            Path to an ONNX model file or SparseZoo model stub
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -b BATCH_SIZE, --batch_size BATCH_SIZE
+                        The batch size to run the analysis for. Must be
+                        greater than 0
+  -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
+                        Override the shapes of the inputs, i.e. -shapes
+                        "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
+                        input1=[4,5,6] input2=[7,8,9]
+  -ncores NUM_CORES, --num_cores NUM_CORES
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system
+  -s {async,sync}, --scenario {async,sync}
+                        Choose between using a sync/async scenarios. This is
+                        similar to the single-stream/multi-stream scenarios.
+                        Default value is async.
+  -t TIME, --time TIME  The number of seconds the benchmark will run. Default
+                        is 10 seconds.
+  -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
+                        The number of streams that will submit inferences in
+                        parallel using async scenario. Default is
+                        automatically determined for given hardware and may be
+                        sub-optimal.
+  -pin {none,core,numa}, --thread_pinning {none,core,numa}
+                        Enable binding threads to cores ('core' the default),
+                        threads to cores on sockets ('numa'), or disable
+                        ('none')
+  -q, --quiet           Lower logging verbosity
+  -x EXPORT_PATH, --export_path EXPORT_PATH
+                        Store results into a JSON file
+
+##########
+Example on a pruned quantized 3-layer BERT from SparseZoo:
+deepsparse.benchmark \
+   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_89
+
+##########
+Example on a local ONNX model:
+deepsparse.benchmark /PATH/TO/model.onnx
+
+##########
+Example on a local ONNX model at large batch size with synchronous execution (singlestream):
+deepsparse.benchmark /PATH/TO/model.onnx --batch_size 32 --scenario sync
+
+##########
+Example on a pruned BERT from SparseZoo with sequence length 512:
+deepsparse.benchmark \
+   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_89 \
+   --input_shapes "[1,512],[1,512],[1,512]"
+
+"""
+
 import argparse
 import json
 import logging
