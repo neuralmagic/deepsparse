@@ -160,8 +160,10 @@ def _setup_extras() -> Dict:
 
 
 def _setup_entry_points() -> Dict:
+    data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     return {
         "console_scripts": [
+            f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
         ]
