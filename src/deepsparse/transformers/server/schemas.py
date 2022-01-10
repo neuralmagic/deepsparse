@@ -1,28 +1,43 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Schemas for requests and responses to/from the Inference Server
 Note: The Schemas are specific to the task at hand and are used by FastApi
 for validation and docs generation
 """
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
+
 __all__ = [
-    'response_models',
-    'request_models',
-    'TaskRequestModel',
-    'TaskResponseModel',
+    "RESPONSE_MODELS",
+    "REQUEST_MODELS",
+    "TaskRequestModel",
+    "TaskResponseModel",
 ]
 
 
-################################################################################
-### Request Schemas
-################################################################################
+# REQUEST SCHEMAS
+
 
 class TaskRequestModel(BaseModel):
     """
     Base class for Task requests
     """
+
     pass
 
 
@@ -34,6 +49,7 @@ class QuestionAnsweringRequest(TaskRequestModel):
     :param context: Either a string or List of strings representing the context
         for each question
     """
+
     question: Union[List[str], str]
     context: Union[List[str], str]
 
@@ -45,6 +61,7 @@ class TokenClassificationRequest(TaskRequestModel):
     :param inputs: A string or List of strings representing input to
         TokenClassificationPipeline task
     """
+
     inputs: Union[List[str], str]
 
 
@@ -55,17 +72,18 @@ class TextClassificationRequest(TaskRequestModel):
     :param sequences: A string or List of strings representing input to
         TextClassificationPipeline task
     """
+
     sequences: Union[List[str], str]
 
 
-################################################################################
-### Response Schemas
-################################################################################
+# RESPONSE SCHEMAS
+
 
 class TaskResponseModel(BaseModel):
     """
     Base class for Task responses
     """
+
     pass
 
 
@@ -78,6 +96,7 @@ class QuestionAnsweringResponse(TaskResponseModel):
     :param end: int The end index of the answer
     :param answer: str The predicted answer
     """
+
     score: float
     start: int
     end: int
@@ -98,6 +117,7 @@ class TokenClassificationResponse(TaskResponseModel):
     :param end: The index of the end of the corresponding entity in the sentence.
         Only exists if the offsets are available within the tokenizer
     """
+
     entity: str
     score: float
     index: int
@@ -113,41 +133,37 @@ class TextClassificationResponse(TaskResponseModel):
     :param label: The label predicted.
     :param score: The corresponding probability.
     """
+
     label: str
     score: float
 
 
-################################################################################
-### Model Registries
-################################################################################
+# DATA MODEL REGISTRY
 
-request_models = {
-    'question-answering': QuestionAnsweringRequest,
-    'sentiment-analysis': TextClassificationRequest,
-    'ner': TokenClassificationRequest,
-    'text-classification': TextClassificationRequest,
-    'token-classification': TokenClassificationRequest,
+REQUEST_MODELS = {
+    "question-answering": QuestionAnsweringRequest,
+    "sentiment-analysis": TextClassificationRequest,
+    "ner": TokenClassificationRequest,
+    "text-classification": TextClassificationRequest,
+    "token-classification": TokenClassificationRequest,
 }
 
-response_models = {
-    'question-answering': Union[
+RESPONSE_MODELS = {
+    "question-answering": Union[
         List[QuestionAnsweringResponse],
         QuestionAnsweringResponse,
     ],
-    'sentiment-analysis': Union[
+    "sentiment-analysis": Union[
         List[TextClassificationResponse],
         List[List[TextClassificationResponse]],
     ],
-    'ner': Union[
-        List[TokenClassificationResponse],
-        List[List[TokenClassificationResponse]]
+    "ner": Union[
+        List[TokenClassificationResponse], List[List[TokenClassificationResponse]]
     ],
-    'text-classification': Union[
-        List[TextClassificationResponse],
-        List[List[TextClassificationResponse]]
+    "text-classification": Union[
+        List[TextClassificationResponse], List[List[TextClassificationResponse]]
     ],
-    'token-classification': Union[
-        List[TokenClassificationResponse],
-        List[List[TokenClassificationResponse]]
+    "token-classification": Union[
+        List[TokenClassificationResponse], List[List[TokenClassificationResponse]]
     ],
 }
