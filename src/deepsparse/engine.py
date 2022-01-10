@@ -269,6 +269,13 @@ class Engine(object):
         return self._num_sockets
 
     @property
+    def scheduler(self) -> Scheduler:
+        """
+        :return: The kind of scheduler to execute with
+        """
+        return self._scheduler
+
+    @property
     def cpu_avx_type(self) -> str:
         """
         :return: The detected cpu avx type that neural magic is running with.

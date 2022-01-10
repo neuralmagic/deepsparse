@@ -60,23 +60,23 @@ optional arguments:
                         Store results into a JSON file
 
 ##########
-Example on a pruned quantized 3-layer BERT from SparseZoo:
+Example on a BERT from SparseZoo:
 deepsparse.benchmark \
-   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_89
+   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
 
 ##########
-Example on a local ONNX model:
+Example on a BERT from SparseZoo with sequence length 512:
+deepsparse.benchmark \
+   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none \
+   --input_shapes "[1,512],[1,512],[1,512]"
+
+##########
+Example on local ONNX model:
 deepsparse.benchmark /PATH/TO/model.onnx
 
 ##########
-Example on a local ONNX model at large batch size with synchronous execution (singlestream):
+Example on local ONNX model at batch size 32 with synchronous (singlestream) execution:
 deepsparse.benchmark /PATH/TO/model.onnx --batch_size 32 --scenario sync
-
-##########
-Example on a pruned BERT from SparseZoo with sequence length 512:
-deepsparse.benchmark \
-   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_89 \
-   --input_shapes "[1,512],[1,512],[1,512]"
 
 """
 
@@ -305,7 +305,8 @@ def main():
             "onnx_filename": args.model_path,
             "batch_size": args.batch_size,
             "num_cores": args.num_cores,
-            "scheduler": model.scheduler,
+            "scenario": args.scenario,
+            "scheduler": model.scheduler(),
             "seconds_to_run": args.time,
             "num_streams": args.num_streams,
             "benchmark_result": benchmark_result,
