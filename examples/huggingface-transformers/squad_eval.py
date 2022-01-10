@@ -52,7 +52,7 @@ import argparse
 from tqdm.auto import tqdm
 
 from datasets import load_dataset, load_metric
-from pipelines import pipeline
+from deepsparse.transformers import pipeline
 
 
 DEEPSPARSE_ENGINE = "deepsparse"

@@ -22,20 +22,21 @@ sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo)
 or you can specify your own transformer [ONNX](https://onnx.ai/) file.
 
 ## Installation
-The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file:
+The dependencies for these examples can be installed using `pip` and the supplied `requirements.txt` file:
 ```bash
 pip3 install -r requirements.txt
 ```
+
 ## DeepSparse Pipeline Example
 
 The DeepSparse-Hugging Face pipeline integration provides a simple API 
 dedicated to several tasks,
 following is an example using a pruned BERT model from the SparseZoo for 
-Question-Answering task. The current version of the pipeline supports only 
-`question-answering` tasks, with more to be added in the future.
+Question-Answering task. Other currently supported tasks include
+`text-classification`, `sentiment-analysis`, `ner`, and `token-classification`.
 
 ```python
-from pipelines import pipeline
+from deepsparse.transformers import pipeline
 
 # SparseZoo model stub or path to ONNX file
 onnx_filepath="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
@@ -57,7 +58,7 @@ my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 The pipeline can also infer a default sparse model to run on the system.
 
 ```python
-from pipelines import pipeline
+from deepsparse.transformers import pipeline
 qa_pipeline = pipeline("question-answering")
 my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```

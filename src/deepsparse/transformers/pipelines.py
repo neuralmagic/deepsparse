@@ -24,14 +24,26 @@ https://github.com/patil-suraj/onnx_transformers/blob/master/onnx_transformers/p
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import chain
-from tempfile import NamedTemporaryFile
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
-import onnx
+from transformers.configuration_utils import PretrainedConfig
+from transformers.data import (
+    SquadExample,
+    SquadFeatures,
+    squad_convert_examples_to_features,
+)
+from transformers.file_utils import ExplicitEnum
+from transformers.models.auto import AutoConfig, AutoTokenizer
+from transformers.tokenization_utils import PreTrainedTokenizer
+from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
+from transformers.utils import logging
 
 from deepsparse import Engine, compile_model, cpu
-from sparsezoo import Zoo
+from deepsparse.transformers.helpers import (
+    get_onnx_path_and_configs,
+    overwrite_transformer_onnx_model_inputs,
+)
 
 
 try:
@@ -43,35 +55,6 @@ except Exception as ort_import_err:
     ort_import_error = ort_import_err
 
 
-try:
-    from transformers.configuration_utils import PretrainedConfig
-    from transformers.data import (
-        SquadExample,
-        SquadFeatures,
-        squad_convert_examples_to_features,
-    )
-    from transformers.file_utils import ExplicitEnum
-    from transformers.models.auto import AutoConfig, AutoTokenizer
-    from transformers.tokenization_utils import PreTrainedTokenizer
-    from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
-    from transformers.utils import logging
-
-    transformers_import_error = None
-except Exception as transformers_import_err:
-    PretrainedConfig = object
-    SquadExample = object
-    SquadFeatures = object
-    squad_convert_examples_to_features = None
-    ExplicitEnum = object
-    AutoConfig = object
-    AutoTokenizer = object
-    PreTrainedTokenizer = object
-    PaddingStrategy = object
-    TruncationStrategy = object
-    logging = None
-    transformers_import_error = transformers_import_err
-
-
 __all__ = [
     "ArgumentHandler",
     "Pipeline",
@@ -81,7 +64,6 @@ __all__ = [
     "pipeline",
     "overwrite_transformer_onnx_model_inputs",
 ]
-
 
 logger = logging.get_logger(__name__) if logging else None
 
@@ -212,8 +194,6 @@ class Pipeline(_ScikitCompat):
         args_parser: ArgumentHandler = None,
         binary_output: bool = False,
     ):
-
-        _validate_transformers_import()
 
         self.model = model
         self.tokenizer = tokenizer
@@ -527,42 +507,47 @@ class TokenClassificationPipeline(Pipeline):
 
         answers = []
 
-        for i, sentence in enumerate(_inputs):
+        tokens = self.tokenizer(
+            _inputs,
+            return_tensors=self._framework,
+            truncation=TruncationStrategy.LONGEST_FIRST.value,
+            padding=PaddingStrategy.MAX_LENGTH.value,
+            return_special_tokens_mask=True,
+            return_offsets_mapping=self.tokenizer.is_fast,
+        )
 
-            tokens = self.tokenizer(
-                sentence,
-                return_tensors=self._framework,
-                truncation=TruncationStrategy.LONGEST_FIRST.value,
-                padding=PaddingStrategy.MAX_LENGTH.value,
-                return_special_tokens_mask=True,
-                return_offsets_mapping=self.tokenizer.is_fast,
+        if self.tokenizer.is_fast:
+            offset_mapping = tokens.pop("offset_mapping")
+        elif not offset_mappings:
+            offset_mapping = [None] * len(_inputs)
+
+        special_tokens_mask = tokens.pop("special_tokens_mask")
+
+        # Forward
+        _forward_pass = self._forward(tokens)
+        for entities_index, current_entities in enumerate(_forward_pass[0]):
+
+            input_ids = tokens["input_ids"][entities_index]
+
+            scores = np.exp(current_entities) / np.exp(current_entities).sum(
+                -1, keepdims=True
             )
-            if self.tokenizer.is_fast:
-                offset_mapping = tokens.pop("offset_mapping")[0]
-            elif offset_mappings:
-                offset_mapping = offset_mappings[i]
-            else:
-                offset_mapping = None
-
-            special_tokens_mask = tokens.pop("special_tokens_mask")[0]
-
-            # Forward
-            entities = self._forward(tokens)[0][0]
-            input_ids = tokens["input_ids"][0]
-
-            scores = np.exp(entities) / np.exp(entities).sum(-1, keepdims=True)
             pre_entities = self.gather_pre_entities(
-                sentence, input_ids, scores, offset_mapping, special_tokens_mask
+                _inputs[entities_index],
+                input_ids,
+                scores,
+                offset_mapping[entities_index],
+                special_tokens_mask[entities_index],
             )
             grouped_entities = self.aggregate(pre_entities, self.aggregation_strategy)
             # Filter anything that is in self.ignore_labels
-            entities = [
+            current_entities = [
                 entity
                 for entity in grouped_entities
                 if entity.get("entity", None) not in self.ignore_labels
                 and entity.get("entity_group", None) not in self.ignore_labels
             ]
-            answers.append(entities)
+            answers.append(current_entities)
 
         if len(answers) == 1:
             return answers[0]
@@ -1260,6 +1245,7 @@ def pipeline(
     max_length: int = 128,
     num_cores: Optional[int] = None,
     scheduler: Optional[str] = None,
+    batch_size: Optional[int] = 1,
     **kwargs,
 ) -> Pipeline:
     """
@@ -1268,7 +1254,8 @@ def pipeline(
     :param task: name of the task to define which pipeline to create. Currently
         supported task - "question-answering"
     :param model_name: canonical name of the hugging face model this model is based on
-    :param model_path: path to (ONNX) model file to run
+    :param model_path: path to model directory containing `model.onnx`, `config.json`,
+        and `tokenizer.json` files, ONNX model file, or SparseZoo stub
     :param engine_type: inference engine name to use. Supported options are 'deepsparse'
         and 'onnxruntime'
     :param config: huggingface model config, if none provided, default will be used
@@ -1278,10 +1265,11 @@ def pipeline(
     :param num_cores: number of CPU cores to run engine with. Default is the maximum
         available
     :param scheduler: The scheduler to use for the engine. Can be None, single or multi.
+    :param batch_size: The batch_size to use for the pipeline. Defaults to 1
+        Note: `question-answering` pipeline only supports a batch_size of 1.
     :param kwargs: additional key word arguments for task specific pipeline constructor
     :return: Pipeline object for the given taks and model
     """
-    _validate_transformers_import()
 
     # Retrieve the task
     if task not in SUPPORTED_TASKS:
@@ -1293,26 +1281,30 @@ def pipeline(
             f"Unsupported engine {engine_type}, supported engines "
             f"are {SUPPORTED_ENGINES}"
         )
-
+    if task == "question-answering" and batch_size != 1:
+        raise ValueError(
+            f"{task} pipeline only supports batch_size 1. "
+            f"Supplied batch_size = {batch_size}"
+        )
     task_info = SUPPORTED_TASKS[task]
+
     model_path = model_path or _get_default_model_path(task_info)
     model_name = model_name or task_info.default_model_name
 
-    # default the tokenizer and config to given model name
-    tokenizer = tokenizer or model_name
-    config = config or model_name
+    onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(model_path)
+
+    # default the tokenizer and config to file in model directory or given model name
+    config = config or config_path or model_name
+    tokenizer = tokenizer or tokenizer_path or model_name
 
     # create model
-    zoo_model_path = None
-    if model_path.startswith("zoo:"):
-        zoo_model_path = model_path
-        model_path = _download_zoo_model(model_path)
     model, input_names = _create_model(
-        model_path,
+        onnx_path,
         engine_type,
         num_cores,
         max_length,
         scheduler=scheduler,
+        batch_size=batch_size,
     )
 
     # Instantiate tokenizer if needed
@@ -1329,10 +1321,6 @@ def pipeline(
 
     # Instantiate config if needed
     if config is not None and isinstance(config, str):
-        if zoo_model_path:
-            zoo_config = _download_zoo_config(zoo_model_path)
-            if zoo_config:
-                config = zoo_config
         config = AutoConfig.from_pretrained(config, finetuning_task=task)
 
     return task_info.pipeline_constructor(
@@ -1346,68 +1334,10 @@ def pipeline(
     )
 
 
-def overwrite_transformer_onnx_model_inputs(
-    path: str,
-    batch_size: int = 1,
-    max_length: int = 128,
-    output_path: Optional[str] = None,
-) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
-    """
-    Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
-    Assumes that these are the first and second shape indices of the given model inputs
-    respectively
-
-    :param path: path to the ONNX model to override
-    :param batch_size: batch size to set
-    :param max_length: max sequence length to set
-    :param output_path: if provided, the model will be saved to the given path,
-        otherwise, the model will be saved to a named temporary file that will
-        be deleted after the program exits
-    :return: if no output path, a tuple of the saved path to the model, list of
-        model input names, and reference to the tempfile object will be returned
-        otherwise, only the model input names will be returned
-    """
-    # overwrite input shapes
-    model = onnx.load(path)
-    initializer_input_names = set([node.name for node in model.graph.initializer])
-    external_inputs = [
-        inp for inp in model.graph.input if inp.name not in initializer_input_names
-    ]
-    input_names = []
-    for external_input in external_inputs:
-        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
-        input_names.append(external_input.name)
-
-    # Save modified model
-    if output_path is None:
-        tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-        onnx.save(model, tmp_file.name)
-
-        return tmp_file.name, input_names, tmp_file
-    else:
-        onnx.save(model, output_path)
-        return input_names
-
-
 def _get_default_model_path(task_info: TaskInfo) -> str:
     if cpu.cpu_vnni_compatible() and task_info.default_quant_stub:
         return task_info.default_quant_stub
     return task_info.default_pruned_stub or task_info.base_stub
-
-
-def _download_zoo_model(model_path: str) -> str:
-    model = Zoo.load_model_from_stub(model_path)
-    return model.onnx_file.downloaded_path()
-
-
-def _download_zoo_config(model_path: str) -> Optional[str]:
-    model = Zoo.load_model_from_stub(model_path)
-    config_file = None
-    for framework_file in model.framework_files:
-        if framework_file.display_name == "config.json":
-            config_file = framework_file
-    return config_file.downloaded_path() if config_file else None
 
 
 def _create_model(
@@ -1416,6 +1346,7 @@ def _create_model(
     num_cores: Optional[int],
     max_length: int = 128,
     scheduler: Optional[str] = None,
+    batch_size: int = 1,
 ) -> Tuple[Union[Engine, "onnxruntime.InferenceSession"], List[str]]:
     onnx_path, input_names, _ = overwrite_transformer_onnx_model_inputs(
         model_path, max_length=max_length
@@ -1424,7 +1355,7 @@ def _create_model(
     if engine_type == DEEPSPARSE_ENGINE:
         model = compile_model(
             onnx_path,
-            batch_size=1,
+            batch_size=batch_size,
             num_cores=num_cores,
             scheduler=scheduler,
         )
@@ -1449,14 +1380,4 @@ def _validate_ort_import():
             "An exception occurred when importing onxxruntime. Please verify that "
             "onnxruntime is installed in order to use the onnxruntime inference "
             f"engine. \n\nException info: {ort_import_error}"
-        )
-
-
-def _validate_transformers_import():
-    if transformers_import_error is not None:
-        raise ImportError(
-            "An exception occurred when importing from the transformers library. "
-            "Please verify that transformers~=4.8 is installed or install deepsparse "
-            "with `pip install deepsparse[transformers]`. \n\nException info: "
-            f"{transformers_import_error}"
         )
