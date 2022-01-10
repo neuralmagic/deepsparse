@@ -39,7 +39,7 @@ class _BatchLoader(ABC):
         self.header = None
 
     @abstractmethod
-    def _get_reader(self):
+    def _get_reader(self) -> List[Dict[str, str]]:
         raise NotImplementedError
 
     def add_to_batch(
@@ -84,8 +84,8 @@ class _BatchLoader(ABC):
     def __iter__(self) -> Optional[Dict[str, Any]]:
         # Note: json file should contain one json object per line
         batch = None
-        with open(self.data_file) as f:
-            for _input in self._get_reader(f):
+        with open(self.data_file) as _input_file:
+            for _input in self._get_reader(_input_file):
                 batch = self.add_to_batch(_input, batch)
                 if len(batch[self.header[0]]) == self.batch_size:
                     yield batch
@@ -96,15 +96,15 @@ class _BatchLoader(ABC):
 class _JSONBatchLoader(_BatchLoader):
     # Convenience class to read batches from JSON files
 
-    def _get_reader(self, f):
-        return (json.loads(line) for line in f)
+    def _get_reader(self, filename):
+        return (json.loads(line) for line in filename)
 
 
 class _CSVBatchLoader(_BatchLoader):
     # Convenience class to read batches from CSV files
 
-    def _get_reader(self, f):
-        return DictReader(f)
+    def _get_reader(self, filename):
+        return DictReader(filename)
 
 
 class _TextBatchLoader(_BatchLoader):
@@ -120,8 +120,8 @@ class _TextBatchLoader(_BatchLoader):
         else:
             raise ValueError(f"{task} does not support text file as input")
 
-    def _get_reader(self, f):
-        return ({self.header[0]: line.strip()} for line in f)
+    def _get_reader(self, filename):
+        return ({self.header[0]: line.strip()} for line in filename)
 
 
 def get_batch_loader(
@@ -148,4 +148,4 @@ def get_batch_loader(
     if file_type == ".txt":
         return _TextBatchLoader(data_file=data_file, batch_size=batch_size, task=task)
 
-    raise ValueError(f"input file type {file_type} not supported")
+    raise ValueError(f"input file {data_file} not supported")

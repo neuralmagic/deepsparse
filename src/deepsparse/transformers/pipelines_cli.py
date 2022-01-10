@@ -71,18 +71,18 @@ optional arguments:
                         Directs the output to a name of your choice
 ####################
 Example commands:
-1) deepsparse.pipeline --task ner \
+1) deepsparse.transformers.pipeline --task ner \
     --model-path bert-ner-test.onnx \
     --data input.txt
 
-2) deepsparse.pipeline --task ner \
+2) deepsparse.transformers.pipeline --task ner \
     --model-path models/bert-ner-test.onnx \
     --data input.txt \
     --config ner-config.json \
     --output-file out.txt \
     --batch_size 2
 
-3) deepsparse.pipeline --task sentiment-analysis \
+3) deepsparse.transformers.pipeline --task sentiment-analysis \
     --model_path models/bert-sst-test.onnx \
     --data models/input.txt \
     --batch_size 2 \
@@ -91,8 +91,7 @@ Example commands:
 """
 
 import argparse
-import os
-from pathlib import Path
+import json
 from typing import Optional
 
 from .loaders import SUPPORTED_EXTENSIONS, get_batch_loader
@@ -102,8 +101,6 @@ from .pipelines import SUPPORTED_ENGINES, SUPPORTED_TASKS, pipeline
 __all__ = [
     "cli",
 ]
-
-MODEL_DIR = os.getenv("MODEL_DIR") or ""
 
 
 def _parse_args() -> argparse.Namespace:
@@ -125,7 +122,8 @@ def _parse_args() -> argparse.Namespace:
         "-d",
         "--data",
         help="Path to file containing data for inferences, "
-        "inputs should be separated via newline",
+        f"inputs should be separated via newline, Supports "
+        f"{SUPPORTED_EXTENSIONS} files",
         required=True,
         type=str,
     )
@@ -138,13 +136,12 @@ def _parse_args() -> argparse.Namespace:
         type=Optional[str],
     )
 
-    default_model_path = os.path.join(MODEL_DIR, "model.onnx")
     parser.add_argument(
         "--model-path",
         "--model_path",
-        help="Path to (ONNX) model file to run, can also be a SparseZoo stub."
-        f"Defaults to {default_model_path}",
-        default=default_model_path,
+        help="Path to model directory containing `model.onnx`, `config.json`,"
+        "and `tokenizer.json` files, ONNX model file, or SparseZoo stub",
+        required=True,
         type=str,
     )
 
@@ -213,33 +210,32 @@ def _parse_args() -> argparse.Namespace:
         "--output_file",
         action="store",
         dest="output_file",
-        type=argparse.FileType("w"),
-        help="Directs the output to a name of your choice",
-        default="-",
+        type=str,
+        help="Directs json output to a name of your choice, defaults to " "out.json",
+        default="out.json",
     )
 
     _args = parser.parse_args()
-    _validate_input_file(_args.data)
-    _validate_file_exists(_args.model_path)
     return _args
 
 
-def _validate_input_file(data_file_path: str):
-    _validate_file_exists(data_file_path=data_file_path)
-    data_file = Path(data_file_path)
-    if data_file.suffix not in SUPPORTED_EXTENSIONS:
-        raise ValueError(
-            f"The input data file must be one of {SUPPORTED_EXTENSIONS}, "
-            f"found {data_file.suffix}"
-        )
+def _pipeline_inference(
+    pipeline_object,
+    data_path: str,
+    batch_size: int,
+    task: str,
+    output_path: str,
+):
+    batch_loader = get_batch_loader(
+        data_file=data_path,
+        batch_size=batch_size,
+        task=task,
+    )
 
-
-def _validate_file_exists(data_file_path: str):
-    data_file = Path(data_file_path)
-    if not data_file.exists():
-        raise ValueError(f"The file must exist, {data_file}")
-    if not data_file.is_file():
-        raise ValueError(f"Must be a file, {data_file}")
+    with open(output_path, "a") as output_file:
+        for batch in batch_loader:
+            batch_output = pipeline_object(**batch)
+            json.dump(batch_output, output_file)
 
 
 def cli():
@@ -260,16 +256,13 @@ def cli():
         batch_size=_args.batch_size,
         scheduler=_args.scheduler,
     )
-
-    batch_loader = get_batch_loader(
-        data_file=_args.data,
+    _pipeline_inference(
+        pipeline_object=pipe,
+        data_path=_args.data,
+        output_path=_args.output_file,
         batch_size=_args.batch_size,
         task=_args.task,
     )
-
-    for batch in batch_loader:
-        batch_output = pipe(**batch)
-        _args.output_file.write(str(batch_output))
 
 
 if __name__ == "__main__":
