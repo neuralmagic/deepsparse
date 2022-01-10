@@ -39,7 +39,7 @@ class _BatchLoader(ABC):
         self.header = None
 
     @abstractmethod
-    def _get_reader(self) -> List[Dict[str, str]]:
+    def _get_reader(self, filename) -> List[Dict[str, str]]:
         raise NotImplementedError
 
     def add_to_batch(
@@ -96,14 +96,14 @@ class _BatchLoader(ABC):
 class _JSONBatchLoader(_BatchLoader):
     # Convenience class to read batches from JSON files
 
-    def _get_reader(self, filename):
+    def _get_reader(self, filename) -> List[Dict[str, str]]:
         return (json.loads(line) for line in filename)
 
 
 class _CSVBatchLoader(_BatchLoader):
     # Convenience class to read batches from CSV files
 
-    def _get_reader(self, filename):
+    def _get_reader(self, filename) -> List[Dict[str, str]]:
         return DictReader(filename)
 
 
@@ -120,7 +120,7 @@ class _TextBatchLoader(_BatchLoader):
         else:
             raise ValueError(f"{task} does not support text file as input")
 
-    def _get_reader(self, filename):
+    def _get_reader(self, filename) -> List[Dict[str, str]]:
         return ({self.header[0]: line.strip()} for line in filename)
 
 

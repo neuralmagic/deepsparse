@@ -21,6 +21,7 @@ https://github.com/patil-suraj/onnx_transformers/blob/master/onnx_transformers/p
 
 """
 
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import chain
@@ -44,6 +45,7 @@ from deepsparse.transformers.helpers import (
     get_onnx_path_and_configs,
     overwrite_transformer_onnx_model_inputs,
 )
+from src.deepsparse.transformers.loaders import get_batch_loader
 
 
 try:
@@ -53,7 +55,6 @@ try:
 except Exception as ort_import_err:
     onnxruntime = None
     ort_import_error = ort_import_err
-
 
 __all__ = [
     "ArgumentHandler",
@@ -528,7 +529,6 @@ class TokenClassificationPipeline(Pipeline):
         # Forward
         _forward_pass = self._forward(tokens)
         for entities_index, current_entities in enumerate(_forward_pass[0]):
-
             input_ids = tokens["input_ids"][entities_index]
 
             scores = np.exp(current_entities) / np.exp(current_entities).sum(
@@ -1383,3 +1383,29 @@ def _validate_ort_import():
             "onnxruntime is installed in order to use the onnxruntime inference "
             f"engine. \n\nException info: {ort_import_error}"
         )
+
+
+def process_dataset(
+    pipeline_object: Callable,
+    data_path: str,
+    batch_size: int,
+    task: str,
+    output_path: str,
+) -> None:
+    """
+    :param pipeline_object: An instantiated pipeline Callable object
+    :param data_path: Path to input file, supports csv, json and text files
+    :param batch_size: batch_size to use for inference
+    :param task: The task pipeline is instantiated for
+    :param output_path: Path to a json file to output inference results to
+    """
+    batch_loader = get_batch_loader(
+        data_file=data_path,
+        batch_size=batch_size,
+        task=task,
+    )
+
+    with open(output_path, "a") as output_file:
+        for batch in batch_loader:
+            batch_output = pipeline_object(**batch)
+            json.dump(batch_output, output_file)

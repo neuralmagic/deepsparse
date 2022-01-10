@@ -36,9 +36,9 @@ optional arguments:
   --task {ner,question-answering,sentiment-analysis,text-classification,
   token-classification}
                         Name of the task to define which pipeline to
-                        create.Currently supported tasks dict_keys(['ner',
+                        create.Currently supported tasks ['ner',
                         'question-answering', 'sentiment-analysis', 'text-
-                        classification', 'token-classification'])
+                        classification', 'token-classification']
   -d DATA, --data DATA  Path to file containing data for inferences, inputs
                         should be separated via newline
   --model-name MODEL_NAME, --model_name MODEL_NAME
@@ -91,11 +91,10 @@ Example commands:
 """
 
 import argparse
-import json
 from typing import Optional
 
-from .loaders import SUPPORTED_EXTENSIONS, get_batch_loader
-from .pipelines import SUPPORTED_ENGINES, SUPPORTED_TASKS, pipeline
+from .loaders import SUPPORTED_EXTENSIONS
+from .pipelines import SUPPORTED_ENGINES, SUPPORTED_TASKS, pipeline, process_dataset
 
 
 __all__ = [
@@ -112,7 +111,7 @@ def _parse_args() -> argparse.Namespace:
         "-t",
         "--task",
         help="Name of the task to define which pipeline to create."
-        f"Currently supported tasks {SUPPORTED_TASKS.keys()}",
+        f" Currently supported tasks {list(SUPPORTED_TASKS.keys())}",
         choices=SUPPORTED_TASKS.keys(),
         type=str,
         default="sentiment-analysis",
@@ -219,25 +218,6 @@ def _parse_args() -> argparse.Namespace:
     return _args
 
 
-def _pipeline_inference(
-    pipeline_object,
-    data_path: str,
-    batch_size: int,
-    task: str,
-    output_path: str,
-):
-    batch_loader = get_batch_loader(
-        data_file=data_path,
-        batch_size=batch_size,
-        task=task,
-    )
-
-    with open(output_path, "a") as output_file:
-        for batch in batch_loader:
-            batch_output = pipeline_object(**batch)
-            json.dump(batch_output, output_file)
-
-
 def cli():
     """
     Cli entrypoint for one-shot inference using pipelines
@@ -256,7 +236,7 @@ def cli():
         batch_size=_args.batch_size,
         scheduler=_args.scheduler,
     )
-    _pipeline_inference(
+    process_dataset(
         pipeline_object=pipe,
         data_path=_args.data,
         output_path=_args.output_file,
