@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-deepsparse.transformers.run_inferences entrypoint cli script for one shot
+deepsparse.transformers.run_inference entrypoint cli script for one shot
 inference using pipelines
 
 ####################
