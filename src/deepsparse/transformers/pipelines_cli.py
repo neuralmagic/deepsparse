@@ -13,11 +13,11 @@
 # limitations under the License.
 
 """
-deepsparse.pipelines entrypoint cli script for one shot inference using
-pipelines
+deepsparse.transformers.run_inferences entrypoint cli script for one shot
+inference using pipelines
 
 ####################
-usage: deepsparse.pipeline [-h]
+usage: deepsparse.transformers.run_inference [-h]
                            [-t {ner,question-answering,sentiment-analysis,
                            text-classification,token-classification}]
                            -d DATA [--model-name MODEL_NAME] --model-path
@@ -71,18 +71,18 @@ optional arguments:
                         Directs the output to a name of your choice
 ####################
 Example commands:
-1) deepsparse.transformers.pipeline --task ner \
+1) deepsparse.transformers.run_inference --task ner \
     --model-path bert-ner-test.onnx \
     --data input.txt
 
-2) deepsparse.transformers.pipeline --task ner \
+2) deepsparse.transformers.run_inference --task ner \
     --model-path models/bert-ner-test.onnx \
     --data input.txt \
     --config ner-config.json \
     --output-file out.txt \
     --batch_size 2
 
-3) deepsparse.transformers.pipeline --task sentiment-analysis \
+3) deepsparse.transformers.run_inference --task sentiment-analysis \
     --model_path models/bert-sst-test.onnx \
     --data models/input.txt \
     --batch_size 2 \
