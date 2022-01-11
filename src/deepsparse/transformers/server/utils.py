@@ -22,6 +22,7 @@ from typing import Optional, TypeVar
 
 import numpy as np
 
+from deepsparse.cpu import cpu_architecture
 from pydantic import BaseModel, BaseSettings, Field
 
 
@@ -91,6 +92,7 @@ def parse_api_settings() -> APIConfig:
 DEFAULT_BATCH_SIZE = 1
 DEFAULT_MAX_LENGTH = 128
 DEFAULT_SCHEDULER = "multi"
+DEFAULT_CONCURRENT_WORKERS = cpu_architecture().num_physical_cores // 2
 PipelineConfigType = TypeVar(
     "PipelineEngineSettingsType",
     bound="PipelineEngineConfig",
@@ -130,7 +132,7 @@ class PipelineEngineConfig(BaseSettings):
     batch_size: Optional[int] = DEFAULT_BATCH_SIZE
     max_length: int = DEFAULT_MAX_LENGTH
     scheduler: str = DEFAULT_SCHEDULER
-    concurrent_engine_requests: int = 3
+    concurrent_engine_requests: int = DEFAULT_CONCURRENT_WORKERS
 
     @staticmethod
     @lru_cache()

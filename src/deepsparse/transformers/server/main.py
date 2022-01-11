@@ -82,13 +82,13 @@ def docs_redirect():
     response_model=TASK_RESPONSE_MODEL,
 )
 def predict(
-    qa_item: TASK_REQUEST_MODEL,
+    input_item: get_request_model(),
 ):
     """
     Process a pipeline task
     """
     _setup()
-    results_future = ENGINE(**vars(qa_item))
+    results_future = ENGINE(**vars(input_item))
     return _resolve_future(future=results_future)
 
 
