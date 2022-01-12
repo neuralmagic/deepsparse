@@ -61,8 +61,7 @@ __all__ = [
 
 
 ARCH = cpu_architecture()
-CORES_PER_SOCKET = ARCH.available_cores_per_socket
-NUM_SOCKETS = ARCH.available_sockets
+NUM_CORES = ARCH.num_physical_cores
 AVX_TYPE = ARCH.isa
 VNNI = ARCH.vnni
 
@@ -106,21 +105,12 @@ def _validate_batch_size(batch_size: int) -> int:
 
 def _validate_num_cores(num_cores: Union[None, int]) -> int:
     if not num_cores:
-        num_cores = CORES_PER_SOCKET * NUM_SOCKETS
+        num_cores = NUM_CORES
 
     if num_cores < 1:
         raise ValueError("num_cores must be greater than 0")
 
     return num_cores
-
-
-def _validate_num_sockets(num_sockets: Union[None, int]) -> int:
-    if num_sockets:
-        raise ValueError(
-            "num_sockets is no longer supported. Just specify the total num_cores."
-        )
-
-    return 0
 
 
 def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
@@ -157,8 +147,6 @@ class Engine(object):
     :param num_cores: The number of physical cores to run the model on. If more
         cores are requested than are available on a single socket, the engine
         will try to distribute them evenly across as few sockets as possible.
-    :param num_sockets: This parameter no longer functions and will be removed
-        in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     """
@@ -168,14 +156,12 @@ class Engine(object):
         model: Union[str, Model, File],
         batch_size: int,
         num_cores: int,
-        num_sockets: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
-        self._num_sockets = _validate_num_sockets(num_sockets)
         self._scheduler = _validate_scheduler(scheduler)
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
@@ -260,13 +246,6 @@ class Engine(object):
         :return: The number of physical cores the current instance is running on
         """
         return self._num_cores
-
-    @property
-    def num_sockets(self) -> int:
-        """
-        :return: The number of sockets the engine is compiled to run on
-        """
-        return self._num_sockets
 
     @property
     def scheduler(self) -> Scheduler:
@@ -532,7 +511,6 @@ class Engine(object):
             "onnx_file_path": self._model_path,
             "batch_size": self._batch_size,
             "num_cores": self._num_cores,
-            "num_sockets": self._num_sockets,
             "scheduler": self._scheduler,
             "cpu_avx_type": self._cpu_avx_type,
             "cpu_vnni": self._cpu_vnni,
@@ -543,7 +521,6 @@ def compile_model(
     model: Union[str, Model, File],
     batch_size: int = 1,
     num_cores: int = None,
-    num_sockets=None,
     scheduler: Scheduler = None,
     input_shapes: List[List[int]] = None,
 ) -> Engine:
@@ -560,17 +537,10 @@ def compile_model(
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores for the current
         machine; default None
-    :param num_sockets: This parameter no longer functions and will be removed
-        in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     :return: The created Engine after compiling the model
     """
-    if num_sockets:
-        raise ValueError(
-            "num_sockets is no longer supported. Just specify the total num_cores."
-        )
-
     return Engine(
         model=model,
         batch_size=batch_size,
@@ -590,7 +560,6 @@ def benchmark_model(
     include_inputs: bool = False,
     include_outputs: bool = False,
     show_progress: bool = False,
-    num_sockets: int = None,
     scheduler: Scheduler = None,
 ) -> BenchmarkResults:
     """
@@ -621,16 +590,9 @@ def benchmark_model(
     :param include_outputs: If True, outputs from forward passes during benchmarking
         will be added to the results. Default is False
     :param show_progress: If True, will display a progress bar. Default is False
-    :param num_sockets: This parameter no longer functions and will be removed
-        in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the results of benchmarking
     """
-    if num_sockets:
-        raise ValueError(
-            "num_sockets is no longer supported. Just specify the total num_cores."
-        )
-
     model = compile_model(
         model=model,
         batch_size=batch_size,
@@ -658,7 +620,6 @@ def analyze_model(
     optimization_level: int = 1,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
-    num_sockets: int = None,
     scheduler: Scheduler = None,
 ) -> dict:
     """
@@ -692,15 +653,12 @@ def analyze_model(
         Will force all prunable layers in the graph to have weights with
         this desired sparsity level (percentage of 0's in the tensor).
         Beneficial for seeing how pruning affects the performance of the model.
-    :param num_sockets: This parameter no longer functions and will be removed
-        in a future version.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the analysis structure containing the performance details of each layer
     """
     model = model_to_path(model)
     num_cores = _validate_num_cores(num_cores)
     batch_size = _validate_batch_size(batch_size)
-    _validate_num_sockets(num_sockets)
     scheduler = _validate_scheduler(scheduler)
     eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, scheduler.value)
 
