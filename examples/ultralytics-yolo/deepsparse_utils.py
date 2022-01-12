@@ -369,9 +369,7 @@ class YoloPostprocessor:
     """
 
     def __init__(
-        self,
-        image_size: Tuple[int, int] = (640, 640),
-        cfg: Optional[str] = None
+        self, image_size: Tuple[int, int] = (640, 640), cfg: Optional[str] = None
     ):
         self._image_size = image_size
         self._anchor_grids = (
@@ -430,9 +428,7 @@ class YoloPostprocessor:
         return [t.clone().view(1, -1, 1, 1, 2) for t in anchors]
 
 
-def postprocess_nms(
-    outputs: Union[torch.Tensor, numpy.ndarray]
-) -> List[numpy.ndarray]:
+def postprocess_nms(outputs: Union[torch.Tensor, numpy.ndarray]) -> List[numpy.ndarray]:
     """
     :param outputs: Tensor of post-processed model outputs
     :return: List of numpy arrays of NMS predictions for each image in the batch
@@ -858,10 +854,7 @@ def _xywh2xyxy(
     return y
 
 
-def _box_iou(
-    box1: torch.Tensor,
-    box2: torch.Tensor
-) -> torch.Tensor:
+def _box_iou(box1: torch.Tensor, box2: torch.Tensor) -> torch.Tensor:
     # https://github.com/pytorch/vision/blob/master/torchvision/ops/boxes.py
     """
     Return intersection-over-union (Jaccard index) of boxes.

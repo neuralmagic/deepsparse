@@ -37,6 +37,14 @@ exec(open(version_path).read())
 print(f"loaded version {version} from {version_path}")
 version_base = f"{version_major}.{version_minor}.0"
 
+transformers_branch = (
+    "master" if not is_release else f"release/{version_major}.{version_minor}"
+)
+transformers_requirement = (
+    "transformers @ git+https://github.com/neuralmagic/transformers.git"
+    f"@{transformers_branch}"
+)
+
 _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 
 # File regexes for binaries to include in package_data
@@ -63,7 +71,7 @@ _dev_deps = [
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
 ]
-_transformers_deps = ["transformers~=4.8"]
+_transformers_deps = [transformers_requirement, "datasets"]
 _transformers_server_deps = [
     "uvicorn>=0.15.0",
     "fastapi>=0.70.0",
