@@ -256,7 +256,7 @@ def main():
 
     if args.num_streams:
         log.info("num_streams set to {}".format(args.num_streams))
-    if not args.num_streams and scenario not in "singlestream":
+    elif not args.num_streams and scenario not in "singlestream":
         # If num_streams isn't defined, find a default
         args.num_streams = int(model.num_cores / 2)
         log.info(
