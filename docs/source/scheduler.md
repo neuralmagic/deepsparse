@@ -38,6 +38,12 @@ Whereas the default scheduler will queue up requests made simultaneously and han
 
 The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them. Implementing a model server may fit such a scenario and be ideal for using multi-stream scheduling.
 
+A final "elastic" scheduler is available, designed to allow concurrent requests without multiplexing them on individual NUMA nodes. A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache. The elastic scheduler executes no more than one request on a single NUMA node at any time, inhibiting cache sharing.
+
+Since the multi-stream scheduler will potentially handle multiple requests on a single NUMA node, if you're working on a multi-socket system, you may find it useful to compare performance between the multi-stream and elastic schedulers to determine the profile of your model. Be aware that even apparently minor changes, such as batch size, can radically alter the size of the computation and, therefore, cache behavior.
+
+_Elastic scheduling; requests execute in parallel, but not multiplexed on individual NUMA Nodes_
+
 Depending on your engine execution strategy, enable one of these options by running:
 
 ```python
@@ -48,6 +54,12 @@ or
 
 ```python
 engine = compile_model(model_path, batch_size, num_cores, "multi_stream")
+```
+
+or
+
+```python
+engine = compile_model(model_path, batch_size, num_cores, "elastic")
 ```
 
 or pass in the enum value directly, since` "multi_stream" == Scheduler.multi_stream`
