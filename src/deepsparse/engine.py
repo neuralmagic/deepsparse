@@ -78,11 +78,13 @@ class Scheduler(Enum):
     - default: maps to single_stream
     - single_stream: requests from separate threads execute serially
     - multi_stream: requests from separate threads execute in parallel
+    - elastic: requests from separate threads are distributed across NUMA nodes
     """
 
     default = "default"
     single_stream = "single_stream"
     multi_stream = "multi_stream"
+    elastic = "elastic"
 
     @staticmethod
     def from_str(key: str):
@@ -92,6 +94,8 @@ class Scheduler(Enum):
             return Scheduler.single_stream
         elif key in ("async", "multi", "multi_stream"):
             return Scheduler.multi_stream
+        elif key in ("elastic"):
+            return Scheduler.elastic
         else:
             raise ValueError(f"unsupported Scheduler: {key}")
 
