@@ -306,7 +306,7 @@ def main():
             "batch_size": args.batch_size,
             "num_cores": args.num_cores,
             "scenario": args.scenario,
-            "scheduler": model.scheduler(),
+            "scheduler": model.scheduler,
             "seconds_to_run": args.time,
             "num_streams": args.num_streams,
             "benchmark_result": benchmark_result,
