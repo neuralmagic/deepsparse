@@ -283,9 +283,9 @@ def main():
     print("Batch Size: {}".format(args.batch_size))
     print("Scenario: {}".format(scenario))
     print("Throughput (items/sec): {:.4f}".format(benchmark_result["items_per_sec"]))
-    print("Latency Mean (ms): {:.4f}".format(benchmark_result["mean"]))
-    print("Latency Median (ms): {:.4f}".format(benchmark_result["median"]))
-    print("Latency Std (ms): {:.4f}".format(benchmark_result["std"]))
+    print("Latency Mean (ms/batch): {:.4f}".format(benchmark_result["mean"]))
+    print("Latency Median (ms/batch): {:.4f}".format(benchmark_result["median"]))
+    print("Latency Std (ms/batch): {:.4f}".format(benchmark_result["std"]))
     print("Iterations: {}".format(int(benchmark_result["iterations"])))
 
     if args.export_path:
