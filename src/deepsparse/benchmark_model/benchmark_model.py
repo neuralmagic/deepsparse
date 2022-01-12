@@ -233,6 +233,7 @@ def main():
     scenario = "multistream" if scheduler is Scheduler.multi_stream else "singlestream"
     input_shapes = parse_input_shapes(args.input_shapes)
 
+    orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
 
     # Compile the ONNX into the DeepSparse Engine
@@ -278,34 +279,24 @@ def main():
     )
 
     # Results summary
-    headers = [
-        "Scenario",
-        "Throughput",
-        "Mean (ms)",
-        "Median (ms)",
-        "Std (ms)",
-        "Iterations",
-    ]
-    header_format = "| {:<13} " * len(headers)
-    print(header_format.format(*headers))
-    row_format = "| {:<13} " + "| {:<13.4f} " * (len(headers) - 1)
-    print(
-        row_format.format(
-            scenario,
-            benchmark_result["items_per_sec"],
-            benchmark_result["mean"],
-            benchmark_result["median"],
-            benchmark_result["std"],
-            int(benchmark_result["iterations"]),
-        )
-    )
+    print("Original Model Path: {}".format(orig_model_path))
+    print("Batch Size: {}".format(args.batch_size))
+    print("Scenario: {}".format(scenario))
+    print("Throughput (items/sec): {:.4f}".format(benchmark_result["items_per_sec"]))
+    print("Latency Mean (ms): {:.4f}".format(benchmark_result["mean"]))
+    print("Latency Median (ms): {:.4f}".format(benchmark_result["median"]))
+    print("Latency Std (ms): {:.4f}".format(benchmark_result["std"]))
+    print("Iterations: {}".format(int(benchmark_result["iterations"])))
 
-    # Export results
     if args.export_path:
+        # Export results
+        print("Saving benchamrk results to JSON file at {}".format(args.export_path))
         export_dict = {
             "engine": str(model),
-            "onnx_filename": args.model_path,
+            "orig_model_path": orig_model_path,
+            "model_path": args.model_path,
             "batch_size": args.batch_size,
+            "input_shapes": args.input_shapes,
             "num_cores": args.num_cores,
             "scenario": args.scenario,
             "scheduler": str(model.scheduler),
@@ -313,9 +304,6 @@ def main():
             "num_streams": args.num_streams,
             "benchmark_result": benchmark_result,
         }
-        print(f"Saving JSON output to {args.export_path}")
-        print(export_dict)
-
         with open(args.export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
 
