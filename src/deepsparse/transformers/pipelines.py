@@ -45,7 +45,7 @@ from deepsparse.transformers.helpers import (
     get_onnx_path_and_configs,
     overwrite_transformer_onnx_model_inputs,
 )
-from src.deepsparse.transformers.loaders import get_batch_loader
+from deepsparse.transformers.loaders import get_batch_loader
 
 
 try:
