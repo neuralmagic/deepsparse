@@ -64,6 +64,13 @@ _dev_deps = [
     "flask-cors>=3.0.0",
 ]
 _transformers_deps = ["transformers~=4.8"]
+_transformers_server_deps = [
+    "uvicorn>=0.15.0",
+    "fastapi>=0.70.0",
+    "starlette>=0.16.0",
+    "pydantic>=1.8.2",
+    "requests>=2.26.0",
+]
 
 
 class OverrideInstall(install):
@@ -156,14 +163,18 @@ def _setup_extras() -> Dict:
     return {
         "dev": _dev_deps,
         "transformers": _transformers_deps,
+        "server": _transformers_server_deps,
     }
 
 
 def _setup_entry_points() -> Dict:
+    data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     return {
         "console_scripts": [
+            f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
+            "deepsparse.transformers.serve=deepsparse.transformers.server.main:main",
         ]
     }
 
