@@ -212,7 +212,7 @@ def cpu_details() -> Tuple[int, str, bool]:
     If any other OS is used, will raise an exception
 
     Specifically:
-        - the number of physical cores available per socket on the system
+        - the number of physical cores available on the system
         - detects the vector instruction set available (avx2, avx512)
         - if vnni is available
 
@@ -220,11 +220,11 @@ def cpu_details() -> Tuple[int, str, bool]:
     set detection
 
     :return: a tuple containing the detected cpu information
-             (number of physical cores per socket, avx instruction set, vnni support)
+             (number of physical cores available, avx instruction set, vnni support)
     """
     arch = cpu_architecture()
 
-    return arch.available_cores_per_socket, arch.isa, arch.vnni
+    return arch.num_physical_cores, arch.isa, arch.vnni
 
 
 def print_hardware_capability():
@@ -234,8 +234,8 @@ def print_hardware_capability():
     """
     arch = cpu_architecture()
     message = (
-        f"{arch.vendor} CPU detected with {arch.num_physical_cores} cores "
-        f"and {arch.num_sockets} sockets available.\n"
+        f"{arch.vendor} CPU detected with {arch.num_physical_cores} cores."
+        f"({arch.num_sockets} sockets with {arch.num_threads} cores each.\n"
         "DeepSparse FP32 model performance supported: "
         f"{cpu_avx2_compatible() or cpu_avx512_compatible()}.\n"
         "DeepSparse INT8 (quantized) model performance supported: "
