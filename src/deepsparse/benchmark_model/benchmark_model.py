@@ -12,6 +12,74 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Benchmarking script for ONNX models with the DeepSparse engine.
+
+##########
+Command help:
+usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
+                            [-ncores NUM_CORES] [-s {async,sync}] [-t TIME]
+                            [-nstreams NUM_STREAMS] [-pin {none,core,numa}]
+                            [-q] [-x EXPORT_PATH]
+                            model_path
+
+Benchmark ONNX models in the DeepSparse Engine
+
+positional arguments:
+  model_path            Path to an ONNX model file or SparseZoo model stub
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -b BATCH_SIZE, --batch_size BATCH_SIZE
+                        The batch size to run the analysis for. Must be
+                        greater than 0
+  -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
+                        Override the shapes of the inputs, i.e. -shapes
+                        "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
+                        input1=[4,5,6] input2=[7,8,9]
+  -ncores NUM_CORES, --num_cores NUM_CORES
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system
+  -s {async,sync}, --scenario {async,sync}
+                        Choose between using a sync/async scenarios. This is
+                        similar to the single-stream/multi-stream scenarios.
+                        Default value is async.
+  -t TIME, --time TIME  The number of seconds the benchmark will run. Default
+                        is 10 seconds.
+  -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
+                        The number of streams that will submit inferences in
+                        parallel using async scenario. Default is
+                        automatically determined for given hardware and may be
+                        sub-optimal.
+  -pin {none,core,numa}, --thread_pinning {none,core,numa}
+                        Enable binding threads to cores ('core' the default),
+                        threads to cores on sockets ('numa'), or disable
+                        ('none')
+  -q, --quiet           Lower logging verbosity
+  -x EXPORT_PATH, --export_path EXPORT_PATH
+                        Store results into a JSON file
+
+##########
+Example on a BERT from SparseZoo:
+deepsparse.benchmark \
+   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+
+##########
+Example on a BERT from SparseZoo with sequence length 512:
+deepsparse.benchmark \
+   zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none \
+   --input_shapes "[1,512],[1,512],[1,512]"
+
+##########
+Example on local ONNX model:
+deepsparse.benchmark /PATH/TO/model.onnx
+
+##########
+Example on local ONNX model at batch size 32 with synchronous (singlestream) execution:
+deepsparse.benchmark /PATH/TO/model.onnx --batch_size 32 --scenario sync
+
+"""
+
 import argparse
 import json
 import logging
@@ -165,6 +233,7 @@ def main():
     scenario = "multistream" if scheduler is Scheduler.multi_stream else "singlestream"
     input_shapes = parse_input_shapes(args.input_shapes)
 
+    orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
 
     # Compile the ONNX into the DeepSparse Engine
@@ -185,8 +254,10 @@ def main():
     else:
         input_list = generate_random_inputs(args.model_path, args.batch_size)
 
-    # If num_streams isn't defined, find a default
-    if not args.num_streams and scenario not in "singlestream":
+    if args.num_streams:
+        log.info("num_streams set to {}".format(args.num_streams))
+    elif not args.num_streams and scenario not in "singlestream":
+        # If num_streams isn't defined, find a default
         args.num_streams = int(model.num_cores / 2)
         log.info(
             "num_streams default value chosen of {}. "
@@ -208,43 +279,31 @@ def main():
     )
 
     # Results summary
-    headers = [
-        "Scenario",
-        "Throughput",
-        "Mean (ms)",
-        "Median (ms)",
-        "Std (ms)",
-        "Iterations",
-    ]
-    header_format = "| {:<13} " * len(headers)
-    print(header_format.format(*headers))
-    row_format = "| {:<13} " + "| {:<13.4f} " * (len(headers) - 1)
-    print(
-        row_format.format(
-            scenario,
-            benchmark_result["items_per_sec"],
-            benchmark_result["mean"],
-            benchmark_result["median"],
-            benchmark_result["std"],
-            int(benchmark_result["iterations"]),
-        )
-    )
+    print("Original Model Path: {}".format(orig_model_path))
+    print("Batch Size: {}".format(args.batch_size))
+    print("Scenario: {}".format(scenario))
+    print("Throughput (items/sec): {:.4f}".format(benchmark_result["items_per_sec"]))
+    print("Latency Mean (ms/batch): {:.4f}".format(benchmark_result["mean"]))
+    print("Latency Median (ms/batch): {:.4f}".format(benchmark_result["median"]))
+    print("Latency Std (ms/batch): {:.4f}".format(benchmark_result["std"]))
+    print("Iterations: {}".format(int(benchmark_result["iterations"])))
 
-    # Export results
     if args.export_path:
+        # Export results
+        print("Saving benchamrk results to JSON file at {}".format(args.export_path))
         export_dict = {
-            "engine": model,
-            "onnx_filename": args.model_path,
+            "engine": str(model),
+            "orig_model_path": orig_model_path,
+            "model_path": args.model_path,
             "batch_size": args.batch_size,
+            "input_shapes": args.input_shapes,
             "num_cores": args.num_cores,
-            "scheduler": model.scheduler,
+            "scenario": args.scenario,
+            "scheduler": str(model.scheduler),
             "seconds_to_run": args.time,
             "num_streams": args.num_streams,
             "benchmark_result": benchmark_result,
         }
-        print(f"Saving JSON output to {args.export_path}")
-        print(export_dict)
-
         with open(args.export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
 
