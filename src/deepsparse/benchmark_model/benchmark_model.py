@@ -253,8 +253,10 @@ def main():
     else:
         input_list = generate_random_inputs(args.model_path, args.batch_size)
 
-    # If num_streams isn't defined, find a default
+    if args.num_streams:
+        log.info("num_streams set to {}".format(args.num_streams))
     if not args.num_streams and scenario not in "singlestream":
+        # If num_streams isn't defined, find a default
         args.num_streams = int(model.num_cores / 2)
         log.info(
             "num_streams default value chosen of {}. "
@@ -301,12 +303,12 @@ def main():
     # Export results
     if args.export_path:
         export_dict = {
-            "engine": model,
+            "engine": str(model),
             "onnx_filename": args.model_path,
             "batch_size": args.batch_size,
             "num_cores": args.num_cores,
             "scenario": args.scenario,
-            "scheduler": model.scheduler,
+            "scheduler": str(model.scheduler),
             "seconds_to_run": args.time,
             "num_streams": args.num_streams,
             "benchmark_result": benchmark_result,
