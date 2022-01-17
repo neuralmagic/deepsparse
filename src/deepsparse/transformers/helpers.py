@@ -22,6 +22,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple
 
+import numpy as np
 import onnx
 
 from sparsezoo import Zoo
@@ -30,6 +31,7 @@ from sparsezoo import Zoo
 __all__ = [
     "get_onnx_path_and_configs",
     "overwrite_transformer_onnx_model_inputs",
+    "fix_numpy_types",
 ]
 
 
@@ -134,3 +136,34 @@ def overwrite_transformer_onnx_model_inputs(
 
 def _get_file_parent(file_path: str) -> str:
     return str(Path(file_path).parent.absolute())
+
+
+def fix_numpy_types(func):
+    """
+    Decorator to fix numpy types in Dicts, List[Dicts], List[List[Dicts]]
+    Because `orjson` does not support serializing individual numpy data types
+    yet
+    """
+
+    def _wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+
+        def _normalize_fields(_dict):
+            if isinstance(_dict, dict):
+                for field in _dict:
+                    if isinstance(_dict[field], np.generic):
+                        _dict[field] = _dict[field].item()
+
+        if isinstance(result, dict):
+            _normalize_fields(result)
+        elif result and isinstance(result, list):
+            for element in result:
+                if isinstance(element, list):
+                    for _result in element:
+                        _normalize_fields(_result)
+                else:
+                    _normalize_fields(element)
+
+        return result
+
+    return _wrapper
