@@ -16,13 +16,13 @@ limitations under the License.
 
 # Benchmarking
 
-The command-line (CLI) tool `deepsparse.benchmark` is meant to simplify benchmarking and be the central codepath for benchmarking the engine on ONNX or SparseZoo models.
+The command-line (CLI) tool `deepsparse.benchmark` is meant to simplify benchmarking and be the central code path for benchmarking the engine on ONNX or SparseZoo models.
 
 ## Quickstart
 
-After you have installed `deepsparse` to your Python environment, the benchmark tool is available on your CLI. It is simple to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
+After you have installed `deepsparse` in your Python environment, the benchmark tool is available on your CLI. It is simple to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
 
-To run an sparse FP32 MobileNetV1 at batch size 16 for 10 seconds for throughput using 8 streams of requests:
+To run a sparse FP32 MobileNetV1 at batch size 16 for 10 seconds for throughput using 8 streams of requests:
 
 ```
 deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate --batch_size 8 --time 10 --scenario async --num_streams 8
@@ -55,7 +55,7 @@ The throughput value reported comes from measuring the number of finished infere
 
 ## Usage
 
-In most cases good performance will be found in the default options so it can be as simple as running the command with a SparseZoo model stub or your local ONNX model.
+In most cases, good performance will be found in the default options so it can be as simple as running the command with a SparseZoo model stub or your local ONNX model.
 
 ```
 deepsparse.benchmark <path/to/model>
@@ -88,9 +88,9 @@ optional arguments:
                         The number of physical cores to run the analysis on,
                         defaults to all physical cores available on the system
   -s {async,sync}, --scenario {async,sync}
-                        Choose between using a sync/async scenarios. This is
+                        Choose between using sync/async scenarios. This is
                         similar to the single-stream/multi-stream scenarios.
-                        Default value is async.
+                        The default value is async.
   -t TIME, --time TIME  The number of seconds the benchmark will run. Default
                         is 10 seconds.
   -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
