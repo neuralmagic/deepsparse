@@ -234,8 +234,8 @@ def print_hardware_capability():
     """
     arch = cpu_architecture()
     message = (
-        f"{arch.vendor} CPU detected with {arch.num_physical_cores} cores."
-        f"({arch.num_sockets} sockets with {arch.num_threads} cores each.\n"
+        f"{arch.vendor} CPU detected with {arch.num_physical_cores} cores. "
+        f"({arch.num_sockets} sockets with {arch.cores_per_socket} cores each)\n"
         "DeepSparse FP32 model performance supported: "
         f"{cpu_avx2_compatible() or cpu_avx512_compatible()}.\n"
         "DeepSparse INT8 (quantized) model performance supported: "
