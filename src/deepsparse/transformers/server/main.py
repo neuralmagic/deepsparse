@@ -48,6 +48,8 @@ except Exception:
         "installing them is to use deepsparse[transformers,server]"
     )
 
+from deepsparse.transformers.helpers import fix_numpy_types
+
 from .schemas import TaskRequestModel, TaskResponseModel
 from .throttled_engine import (
     ThrottleWrapper,
@@ -55,7 +57,7 @@ from .throttled_engine import (
     get_response_model,
     get_throttled_engine_pipeline,
 )
-from .utils import fix_numpy_types, parse_api_settings
+from .utils import parse_api_settings
 
 
 app = FastAPI(

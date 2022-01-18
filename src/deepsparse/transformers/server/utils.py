@@ -20,13 +20,11 @@ import argparse
 from functools import lru_cache
 from typing import Optional, TypeVar
 
-import numpy as np
-
 from deepsparse.cpu import cpu_architecture
 from pydantic import BaseModel, BaseSettings, Field
 
 
-__all__ = ["parse_api_settings", "PipelineEngineConfig", "fix_numpy_types"]
+__all__ = ["parse_api_settings", "PipelineEngineConfig"]
 
 # APIConfig
 
@@ -141,37 +139,3 @@ class PipelineEngineConfig(BaseSettings):
         :return: PipelineEngineSettings for setting up the pipeline object
         """
         return PipelineEngineConfig()
-
-
-# UTILITY FUNCTIONS
-
-
-def fix_numpy_types(func):
-    """
-    Decorator to fix numpy types in Dicts, List[Dicts], List[List[Dicts]]
-    Because `orjson` does not support serializing individual numpy data types
-    yet
-    """
-
-    def _wrapper(*args, **kwargs):
-        result = func(*args, **kwargs)
-
-        def _normalize_fields(_dict):
-            if isinstance(_dict, dict):
-                for field in _dict:
-                    if isinstance(_dict[field], np.generic):
-                        _dict[field] = _dict[field].item()
-
-        if isinstance(result, dict):
-            _normalize_fields(result)
-        elif result and isinstance(result, list):
-            for element in result:
-                if isinstance(element, list):
-                    for _result in element:
-                        _normalize_fields(_result)
-                else:
-                    _normalize_fields(element)
-
-        return result
-
-    return _wrapper

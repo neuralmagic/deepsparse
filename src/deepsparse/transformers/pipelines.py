@@ -42,6 +42,7 @@ from transformers.utils import logging
 
 from deepsparse import Engine, compile_model, cpu
 from deepsparse.transformers.helpers import (
+    fix_numpy_types,
     get_onnx_path_and_configs,
     overwrite_transformer_onnx_model_inputs,
 )
@@ -1404,7 +1405,8 @@ def process_dataset(
         batch_size=batch_size,
         task=task,
     )
-
+    # Wraps pipeline object to make numpy types serializable
+    pipeline_object = fix_numpy_types(pipeline_object)
     with open(output_path, "a") as output_file:
         for batch in batch_loader:
             batch_output = pipeline_object(**batch)
