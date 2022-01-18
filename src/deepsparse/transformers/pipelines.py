@@ -1405,6 +1405,7 @@ def process_dataset(
         batch_size=batch_size,
         task=task,
     )
+    # Wraps pipeline object to make numpy types serializable
     pipeline_object = fix_numpy_types(pipeline_object)
     with open(output_path, "a") as output_file:
         for batch in batch_loader:

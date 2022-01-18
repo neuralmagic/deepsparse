@@ -22,7 +22,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple
 
-import numpy as np
+import numpy
 import onnx
 
 from sparsezoo import Zoo
@@ -151,7 +151,7 @@ def fix_numpy_types(func):
         def _normalize_fields(_dict):
             if isinstance(_dict, dict):
                 for field in _dict:
-                    if isinstance(_dict[field], np.generic):
+                    if isinstance(_dict[field], numpy.generic):
                         _dict[field] = _dict[field].item()
 
         if isinstance(result, dict):
