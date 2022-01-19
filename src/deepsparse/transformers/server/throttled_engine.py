@@ -118,6 +118,7 @@ def get_request_model():
     pipeline_config: PipelineEngineConfig = PipelineEngineConfig.get_config()
     return REQUEST_MODELS.get(pipeline_config.task)
 
+
 @lru_cache()
 def get_response_model():
     """
