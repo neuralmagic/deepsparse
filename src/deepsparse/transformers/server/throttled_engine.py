@@ -116,7 +116,7 @@ def get_request_model():
     :return: Request Model Schema
     """
     pipeline_config: PipelineEngineConfig = PipelineEngineConfig.get_config()
-    return REQUEST_MODELS.get([pipeline_config.task])
+    return REQUEST_MODELS.get(pipeline_config.task)
 
 @lru_cache()
 def get_response_model():
@@ -124,4 +124,4 @@ def get_response_model():
     :return: Response Model Schema
     """
     pipeline_config: PipelineEngineConfig = PipelineEngineConfig.get_config()
-    return RESPONSE_MODELS.get([pipeline_config.task])
+    return RESPONSE_MODELS.get(pipeline_config.task)
