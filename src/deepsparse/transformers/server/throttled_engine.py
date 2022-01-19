@@ -82,7 +82,7 @@ class ThrottleWrapper:
 @lru_cache()
 def get_throttled_engine_pipeline(
     config: Optional[PipelineEngineConfig] = None,
-) -> ThrottleWrapper:
+) -> Optional[ThrottleWrapper]:
     """
     Factory method to get a throttled Pipeline ENGINE, based on config read
     from the environment. Recommended safe way to instantiate ThrottleWrapper,
@@ -94,6 +94,8 @@ def get_throttled_engine_pipeline(
         deepsparse.transformers module
     """
     _pipeline_config: PipelineEngineConfig = config or PipelineEngineConfig.get_config()
+    if _pipeline_config.task is None:
+        return None
     _pipeline_engine: Pipeline = pipeline(
         model_path=_pipeline_config.model_file_or_stub,
         task=_pipeline_config.task,

@@ -120,7 +120,7 @@ class PipelineEngineConfig(BaseSettings):
         for sending requests to the Pipeline. Defaults to 3.
     """
 
-    task: str
+    task: Optional[str] = None
     model_file_or_stub: str = (
         "zoo:nlp/question_answering/bert-base/"
         "pytorch/huggingface/squad/"
