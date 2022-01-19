@@ -146,7 +146,6 @@ REQUEST_MODELS = {
     "ner": TokenClassificationRequest,
     "text-classification": TextClassificationRequest,
     "token-classification": TokenClassificationRequest,
-    None: None,
 }
 
 RESPONSE_MODELS = {
@@ -167,5 +166,4 @@ RESPONSE_MODELS = {
     "token-classification": Union[
         List[TokenClassificationResponse], List[List[TokenClassificationResponse]]
     ],
-    None: None,
 }
