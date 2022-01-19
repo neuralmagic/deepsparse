@@ -131,6 +131,7 @@ class PipelineEngineConfig(BaseSettings):
     max_length: int = DEFAULT_MAX_LENGTH
     scheduler: str = DEFAULT_SCHEDULER
     concurrent_engine_requests: int = DEFAULT_CONCURRENT_WORKERS
+    config: Optional[str] = None
 
     @staticmethod
     @lru_cache()

@@ -102,6 +102,7 @@ def get_throttled_engine_pipeline(
         num_cores=_pipeline_config.num_cores,
         scheduler=_pipeline_config.scheduler,
         max_length=_pipeline_config.max_length,
+        config=_pipeline_config.config,
     )
     return ThrottleWrapper(
         engine_callable=_pipeline_engine,
