@@ -66,9 +66,9 @@ app = FastAPI(
     description="DeepSparse Inference Server",
 )
 
-ENGINE: Optional[ThrottleWrapper] = None
-TASK_REQUEST_MODEL: Optional[TaskRequestModel] = None
-TASK_RESPONSE_MODEL: Optional[TaskResponseModel] = None
+ENGINE: Optional[ThrottleWrapper] = get_throttled_engine_pipeline()
+TASK_REQUEST_MODEL: Optional[TaskRequestModel] = get_request_model()
+TASK_RESPONSE_MODEL: Optional[TaskResponseModel] = get_response_model()
 
 
 @app.get("/", include_in_schema=False)
@@ -84,12 +84,11 @@ def docs_redirect():
     response_model=TASK_RESPONSE_MODEL,
 )
 def predict(
-    input_item: get_request_model(),
+    input_item: TASK_REQUEST_MODEL,
 ):
     """
     Process a pipeline task
     """
-    _setup()
     results_future = ENGINE(**vars(input_item))
     return _resolve_future(future=results_future)
 
@@ -103,18 +102,6 @@ def _resolve_future(future: Future):
     return result
 
 
-def _setup():
-    # Initialize ENGINE, Request and Response Models
-    # if not yet initialized
-    global ENGINE, TASK_REQUEST_MODEL, TASK_RESPONSE_MODEL
-    if not ENGINE:
-        ENGINE = get_throttled_engine_pipeline()
-    if not TASK_REQUEST_MODEL:
-        TASK_REQUEST_MODEL = get_request_model()
-    if not TASK_RESPONSE_MODEL:
-        TASK_RESPONSE_MODEL = get_response_model()
-
-
 def main():
     """
     Driver Function
@@ -123,8 +110,8 @@ def main():
     filename = Path(__file__).stem
     package = "deepsparse.transformers.server"
     app_name = f"{package}.{filename}:app"
-    _setup()
-
+    if ENGINE is None:
+        raise ValueError("`TASK` env variable must be set")
     uvicorn.run(
         app_name,
         host=api_settings.host,
