@@ -71,7 +71,7 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
 
 ## Tutorials
 
-- [Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/examples/benchmark)
+- [Benchmarking with `deepsparse.benchmark`](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)
 - [Image Classification](https://github.com/neuralmagic/deepsparse/tree/main/examples/classification)
 - [Object Detection](https://github.com/neuralmagic/deepsparse/tree/main/examples/detection)
 - [Flask Serving](https://github.com/neuralmagic/deepsparse/tree/main/examples/flask)

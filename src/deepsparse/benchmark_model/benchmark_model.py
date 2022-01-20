@@ -41,9 +41,9 @@ optional arguments:
                         The number of physical cores to run the analysis on,
                         defaults to all physical cores available on the system
   -s {async,sync}, --scenario {async,sync}
-                        Choose between using a sync/async scenarios. This is
+                        Choose between using sync/async scenarios. This is
                         similar to the single-stream/multi-stream scenarios.
-                        Default value is async.
+                        The default value is async.
   -t TIME, --time TIME  The number of seconds the benchmark will run. Default
                         is 10 seconds.
   -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
@@ -290,7 +290,7 @@ def main():
 
     if args.export_path:
         # Export results
-        print("Saving benchamrk results to JSON file at {}".format(args.export_path))
+        print("Saving benchmark results to JSON file at {}".format(args.export_path))
         export_dict = {
             "engine": str(model),
             "orig_model_path": orig_model_path,
