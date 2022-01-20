@@ -82,7 +82,7 @@ class ThrottleWrapper:
 @lru_cache()
 def get_throttled_engine_pipeline(
     config: Optional[PipelineEngineConfig] = None,
-) -> ThrottleWrapper:
+) -> Optional[ThrottleWrapper]:
     """
     Factory method to get a throttled Pipeline ENGINE, based on config read
     from the environment. Recommended safe way to instantiate ThrottleWrapper,
@@ -93,17 +93,20 @@ def get_throttled_engine_pipeline(
     :return: ThrottleWrapper callable object that wraps Pipeline from
         deepsparse.transformers module
     """
-    _pipeline_config: PipelineEngineConfig = config or PipelineEngineConfig.get_config()
-    _pipeline_engine: Pipeline = pipeline(
-        model_path=_pipeline_config.model_file_or_stub,
-        task=_pipeline_config.task,
-        num_cores=_pipeline_config.num_cores,
-        scheduler=_pipeline_config.scheduler,
-        max_length=_pipeline_config.max_length,
+    pipeline_config: PipelineEngineConfig = config or PipelineEngineConfig.get_config()
+    if pipeline_config.task is None:
+        return None
+    pipeline_engine: Pipeline = pipeline(
+        model_path=pipeline_config.model_file_or_stub,
+        task=pipeline_config.task,
+        num_cores=pipeline_config.num_cores,
+        scheduler=pipeline_config.scheduler,
+        max_length=pipeline_config.max_length,
+        config=pipeline_config.config,
     )
     return ThrottleWrapper(
-        engine_callable=_pipeline_engine,
-        max_workers=_pipeline_config.concurrent_engine_requests,
+        engine_callable=pipeline_engine,
+        max_workers=pipeline_config.concurrent_engine_requests,
     )
 
 
@@ -112,8 +115,8 @@ def get_request_model():
     """
     :return: Request Model Schema
     """
-    _pipeline_config: PipelineEngineConfig = PipelineEngineConfig.get_config()
-    return REQUEST_MODELS[_pipeline_config.task]
+    pipeline_config: PipelineEngineConfig = PipelineEngineConfig.get_config()
+    return REQUEST_MODELS.get(pipeline_config.task)
 
 
 @lru_cache()
@@ -121,5 +124,5 @@ def get_response_model():
     """
     :return: Response Model Schema
     """
-    _pipeline_config: PipelineEngineConfig = PipelineEngineConfig.get_config()
-    return RESPONSE_MODELS[_pipeline_config.task]
+    pipeline_config: PipelineEngineConfig = PipelineEngineConfig.get_config()
+    return RESPONSE_MODELS.get(pipeline_config.task)
