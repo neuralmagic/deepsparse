@@ -1411,3 +1411,4 @@ def process_dataset(
         for batch in batch_loader:
             batch_output = pipeline_object(**batch)
             json.dump(batch_output, output_file)
+            output_file.write("\n")
