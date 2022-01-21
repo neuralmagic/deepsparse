@@ -45,7 +45,9 @@ try:
 except Exception:
     raise ImportError(
         "Server Dependencies not found, the recommended way of"
-        "installing them is to use deepsparse[transformers,server]"
+        "installing them is to use deepsparse[server], transformers"
+        "dependency is installed automatically if "
+        "NM_NO_AUTOINSTALL_TRANSFORMERS env variable is not set."
     )
 
 from deepsparse.transformers.helpers import fix_numpy_types
