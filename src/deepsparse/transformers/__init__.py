@@ -48,7 +48,9 @@ def _install_transformers_and_deps():
     import deepsparse as _deepsparse
 
     nm_transformers_release = (
-        "nightly" if not _sparseml.is_release else f"v{_sparseml.version_major_minor}"
+        "nightly"
+        if not _deepsparse.is_release
+        else f"v{_deepsparse.version.version_major_minor}"
     )
     transformers_requirement = _NM_TRANSFORMERS_TAR_TEMPLATE.format(
         version=nm_transformers_release
@@ -57,12 +59,11 @@ def _install_transformers_and_deps():
     try:
         _subprocess.check_call(
             [
-                sys.executable,
+                _sys.executable,
                 "-m",
                 "pip",
                 "install",
                 transformers_requirement,
-                "datasets",
                 "datasets<1.18.0",
                 "sklearn",
                 "seqeval",
