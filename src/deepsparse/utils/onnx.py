@@ -232,7 +232,8 @@ def override_onnx_input_shapes(
     # Input shapes should be a list of lists, even if there is only one input
     assert all(isinstance(inp, list) for inp in input_shapes)
 
-    # If there is a single input shape given and multiple inputs, duplicate for all inputs
+    # If there is a single input shape given and multiple inputs,
+    # duplicate for all inputs to apply the same shape
     if len(input_shapes) == 1 and len(external_inputs) > 1:
         for i in range(len(external_inputs) - 1):
             input_shapes.append(input_shapes[0])
