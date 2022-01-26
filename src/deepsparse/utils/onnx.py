@@ -235,7 +235,7 @@ def override_onnx_input_shapes(
     # If there is a single input shape given and multiple inputs,
     # duplicate for all inputs to apply the same shape
     if len(input_shapes) == 1 and len(external_inputs) > 1:
-        for i in range(len(external_inputs) - 1):
+        for _ in range(len(external_inputs) - 1):
             input_shapes.append(input_shapes[0])
 
     # Make sure that input shapes can map to the ONNX model
