@@ -49,7 +49,7 @@ optional arguments:
 ##########
 Example command for evaluating a sparse BERT QA model from sparsezoo:
 python eval_downstream.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98 \
+    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none \
     --dataset squad
 """
 
@@ -264,7 +264,8 @@ def main():
         sst2_eval(args)
     else:
         raise KeyError(
-            f"Unknown downstream dataset {args.dataset}, available datasets are {SUPPORTED_DATASETS}"
+            f"Unknown downstream dataset {args.dataset}, "
+            f"available datasets are {SUPPORTED_DATASETS}"
         )
 
 
