@@ -273,11 +273,6 @@ def main():
         qqp_eval(args)
     elif args.dataset == SST2_KEY:
         sst2_eval(args)
-    else:
-        raise KeyError(
-            f"Unknown downstream dataset {args.dataset}, "
-            f"available datasets are {SUPPORTED_DATASETS}"
-        )
 
 
 if __name__ == "__main__":
