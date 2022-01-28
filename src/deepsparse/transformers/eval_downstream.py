@@ -58,11 +58,10 @@ import argparse
 
 from tqdm.auto import tqdm
 
-# isort: off
 from deepsparse.transformers import pipeline
-from datasets import load_dataset, load_metric
 
-# isort: on
+
+from datasets import load_dataset, load_metric  # isort: skip
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
