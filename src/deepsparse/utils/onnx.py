@@ -229,14 +229,30 @@ def override_onnx_input_shapes(
         input for input in all_inputs if input.name not in initializer_input_names
     ]
 
-    # Make sure that given input shapes can map to the ONNX model
-    assert len(external_inputs) == len(input_shapes)
-
     # Input shapes should be a list of lists, even if there is only one input
     assert all(isinstance(inp, list) for inp in input_shapes)
 
-    # Overwrite the shapes
+    # If there is a single input shape given and multiple inputs,
+    # duplicate for all inputs to apply the same shape
+    if len(input_shapes) == 1 and len(external_inputs) > 1:
+        input_shapes.extend([input_shapes[0] for _ in range(1, len(external_inputs))])
+
+    # Make sure that input shapes can map to the ONNX model
+    assert len(external_inputs) == len(
+        input_shapes
+    ), "Mismatch of number of model inputs ({}) and override shapes ({})".format(
+        len(external_inputs), len(input_shapes)
+    )
+
+    # Overwrite the input shapes of the model
     for input_idx, external_input in enumerate(external_inputs):
+        assert len(external_input.type.tensor_type.shape.dim) == len(
+            input_shapes[input_idx]
+        ), "Input '{}' shape doesn't match shape override: {} vs {}".format(
+            external_input.name,
+            external_input.type.tensor_type.shape.dim,
+            input_shapes[input_idx],
+        )
         for dim_idx, dim in enumerate(external_input.type.tensor_type.shape.dim):
             dim.dim_value = input_shapes[input_idx][dim_idx]
 

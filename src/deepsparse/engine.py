@@ -167,12 +167,13 @@ class Engine(object):
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
         self._scheduler = _validate_scheduler(scheduler)
+        self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
-        if input_shapes:
+        if self._input_shapes:
             with override_onnx_input_shapes(
-                self._model_path, input_shapes
+                self._model_path, self._input_shapes
             ) as model_path:
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
@@ -565,6 +566,7 @@ def benchmark_model(
     include_outputs: bool = False,
     show_progress: bool = False,
     scheduler: Scheduler = None,
+    input_shapes: List[List[int]] = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -602,6 +604,7 @@ def benchmark_model(
         batch_size=batch_size,
         num_cores=num_cores,
         scheduler=scheduler,
+        input_shapes=input_shapes,
     )
 
     return model.benchmark(
@@ -625,6 +628,7 @@ def analyze_model(
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
     scheduler: Scheduler = None,
+    input_shapes: List[List[int]] = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
@@ -660,13 +664,15 @@ def analyze_model(
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the analysis structure containing the performance details of each layer
     """
-    model = model_to_path(model)
-    num_cores = _validate_num_cores(num_cores)
-    batch_size = _validate_batch_size(batch_size)
-    scheduler = _validate_scheduler(scheduler)
-    eng_net = LIB.deepsparse_engine(model, batch_size, num_cores, scheduler.value)
+    model = compile_model(
+        model=model,
+        batch_size=batch_size,
+        num_cores=num_cores,
+        scheduler=scheduler,
+        input_shapes=input_shapes,
+    )
 
-    return eng_net.benchmark(
+    return model._eng_net.benchmark(
         inp,
         num_iterations,
         num_warmup_iterations,
