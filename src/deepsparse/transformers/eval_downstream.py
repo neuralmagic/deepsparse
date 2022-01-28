@@ -87,6 +87,7 @@ def parse_args():
         "-d",
         "--dataset",
         type=str,
+        required=True,
         choices=SUPPORTED_DATASETS,
     )
 
