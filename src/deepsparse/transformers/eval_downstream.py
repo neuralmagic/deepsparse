@@ -163,7 +163,8 @@ def squad_eval(args):
 def mnli_eval(args):
     # load mnli validation dataset and eval tool
     mnli = load_dataset("glue", "mnli")
-    print(mnli)
+    mnli_matched = mnli["validation_matched"]
+    mnli_mismatched = mnli["validation_mismatched"]
     mnli_metrics = load_metric("glue", "mnli")
 
     # load pipeline
@@ -176,9 +177,18 @@ def mnli_eval(args):
     )
     print(f"Engine info: {text_classify.model}")
 
-    for idx, sample in enumerate(tqdm(mnli)):
-        print(sample)
-        pred = text_classify(sample["question1"], sample["question2"])
+    for idx, sample in enumerate(tqdm(mnli_matched)):
+        pred = text_classify(sample["premise"], sample["hypothesis"])
+        mnli_metrics.add_batch(
+            predictions=[int(pred[0]["label"].split("_")[-1])],
+            references=[sample["label"]],
+        )
+
+        if args.max_samples and idx > args.max_samples:
+            break
+
+    for idx, sample in enumerate(tqdm(mnli_mismatched)):
+        pred = text_classify(sample["premise"], sample["hypothesis"])
         mnli_metrics.add_batch(
             predictions=[int(pred[0]["label"].split("_")[-1])],
             references=[sample["label"]],
