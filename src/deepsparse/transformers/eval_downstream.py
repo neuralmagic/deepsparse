@@ -71,60 +71,6 @@ SQUAD_KEY = "squad"
 MNLI_KEY = "mnli"
 QQP_KEY = "qqp"
 SST2_KEY = "sst2"
-SUPPORTED_DATASETS = [SQUAD_KEY, MNLI_KEY, QQP_KEY, SST2_KEY]
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Evaluate a BERT ONNX model on a downstream dataset"
-    )
-    parser.add_argument(
-        "onnx_filepath",
-        type=str,
-        help="The full filepath of the ONNX model file or SparseZoo stub to the model",
-    )
-    parser.add_argument(
-        "-d",
-        "--dataset",
-        type=str,
-        choices=SUPPORTED_DATASETS,
-    )
-
-    parser.add_argument(
-        "-c",
-        "--num-cores",
-        type=int,
-        default=0,
-        help=(
-            "The number of physical cores to run the eval on, "
-            "defaults to all physical cores available on the system"
-        ),
-    )
-    parser.add_argument(
-        "-e",
-        "--engine",
-        type=str,
-        default=DEEPSPARSE_ENGINE,
-        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE],
-        help=(
-            "Inference engine backend to run eval on. Choices are 'deepsparse', "
-            "'onnxruntime'. Default is 'deepsparse'"
-        ),
-    )
-    parser.add_argument(
-        "--max-sequence-length",
-        help="the max sequence length for model inputs. Default is 384",
-        type=int,
-        default=384,
-    )
-    parser.add_argument(
-        "--max-samples",
-        help="the max number of samples to evaluate. Default is None or all samples",
-        type=int,
-        default=None,
-    )
-
-    return parser.parse_args()
 
 
 def squad_eval(args):
@@ -157,7 +103,7 @@ def squad_eval(args):
         if args.max_samples and idx > args.max_samples:
             break
 
-    print(f"\nSQuAD eval results: {squad_metrics.compute()}")
+    return squad_metrics
 
 
 def mnli_eval(args):
@@ -197,7 +143,7 @@ def mnli_eval(args):
         if args.max_samples and idx > args.max_samples:
             break
 
-    print(f"\nMNLI eval results: {mnli_metrics.compute()}")
+    return mnli_metrics
 
 
 def qqp_eval(args):
@@ -226,7 +172,7 @@ def qqp_eval(args):
         if args.max_samples and idx > args.max_samples:
             break
 
-    print(f"\nQQP eval results: {qqp_metrics.compute()}")
+    return qqp_metrics
 
 
 def sst2_eval(args):
@@ -257,26 +203,85 @@ def sst2_eval(args):
         if args.max_samples and idx > args.max_samples:
             break
 
-    print(f"\nSST-2 eval results: {sst2_metrics.compute()}")
+    return sst2_metrics
+
+
+# Register all the supported downstream datasets here
+SUPPORTED_DATASETS = {
+    "squad": squad_eval,
+    "mnli": mnli_eval,
+    "qqp": qqp_eval,
+    "sst2": sst2_eval,
+}
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Evaluate a BERT ONNX model on a downstream dataset"
+    )
+    parser.add_argument(
+        "onnx_filepath",
+        type=str,
+        help="The full filepath of the ONNX model file or SparseZoo stub to the model",
+    )
+    parser.add_argument(
+        "-d",
+        "--dataset",
+        type=str,
+        choices=list(SUPPORTED_DATASETS.keys()),
+    )
+
+    parser.add_argument(
+        "-c",
+        "--num-cores",
+        type=int,
+        default=0,
+        help=(
+            "The number of physical cores to run the eval on, "
+            "defaults to all physical cores available on the system"
+        ),
+    )
+    parser.add_argument(
+        "-e",
+        "--engine",
+        type=str,
+        default=DEEPSPARSE_ENGINE,
+        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE],
+        help=(
+            "Inference engine backend to run eval on. Choices are 'deepsparse', "
+            "'onnxruntime'. Default is 'deepsparse'"
+        ),
+    )
+    parser.add_argument(
+        "--max-sequence-length",
+        help="the max sequence length for model inputs. Default is 384",
+        type=int,
+        default=384,
+    )
+    parser.add_argument(
+        "--max-samples",
+        help="the max number of samples to evaluate. Default is None or all samples",
+        type=int,
+        default=None,
+    )
+
+    return parser.parse_args()
 
 
 def main():
     args = parse_args()
 
-    args.dataset = args.dataset.lower()
-    if args.dataset == SQUAD_KEY:
-        squad_eval(args)
-    elif args.dataset == MNLI_KEY:
-        mnli_eval(args)
-    elif args.dataset == QQP_KEY:
-        qqp_eval(args)
-    elif args.dataset == SST2_KEY:
-        sst2_eval(args)
-    else:
+    dataset = args.dataset.lower()
+
+    if dataset not in SUPPORTED_DATASETS:
         raise KeyError(
             f"Unknown downstream dataset {args.dataset}, "
-            f"available datasets are {SUPPORTED_DATASETS}"
+            f"available datasets are {list(SUPPORTED_DATASETS.keys())}"
         )
+
+    metrics = SUPPORTED_DATASETS[dataset](args)
+
+    print(f"\n{dataset} eval results: {metrics.compute()}")
 
 
 if __name__ == "__main__":
