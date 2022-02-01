@@ -81,6 +81,7 @@ def squad_eval(args):
     # load QA pipeline
     question_answer = pipeline(
         task="question-answering",
+        model_name=args.model_dir,
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
@@ -100,7 +101,7 @@ def squad_eval(args):
             references=[{"answers": sample["answers"], "id": sample["id"]}],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     return squad_metrics
@@ -116,6 +117,7 @@ def mnli_eval(args):
     # load pipeline
     text_classify = pipeline(
         task="text-classification",
+        model_name=args.model_dir,
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
@@ -130,7 +132,7 @@ def mnli_eval(args):
             references=[sample["label"]],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     for idx, sample in enumerate(tqdm(mnli_mismatched)):
@@ -140,7 +142,7 @@ def mnli_eval(args):
             references=[sample["label"]],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     return mnli_metrics
@@ -154,6 +156,7 @@ def qqp_eval(args):
     # load pipeline
     text_classify = pipeline(
         task="text-classification",
+        model_name=args.model_dir,
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
@@ -169,7 +172,7 @@ def qqp_eval(args):
             references=[sample["label"]],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     return qqp_metrics
@@ -183,6 +186,7 @@ def sst2_eval(args):
     # load pipeline
     text_classify = pipeline(
         task="text-classification",
+        model_name=args.model_dir,
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
@@ -200,7 +204,7 @@ def sst2_eval(args):
             references=[sample["label"]],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     return sst2_metrics
@@ -262,6 +266,13 @@ def parse_args():
         "--max-samples",
         help="the max number of samples to evaluate. Default is None or all samples",
         type=int,
+        default=None,
+    )
+    parser.add_argument(
+        "--model-dir",
+        help="The name of the model config to use, or path to directory with "
+        "`config.json` and `tokenizer.json` files. Default is None",
+        type=str,
         default=None,
     )
 
