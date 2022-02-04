@@ -60,7 +60,7 @@ __all__ = [
 
 
 ARCH = cpu_architecture()
-NUM_CORES = ARCH.num_physical_cores
+NUM_CORES = ARCH.num_available_physical_cores
 AVX_TYPE = ARCH.isa
 VNNI = ARCH.vnni
 

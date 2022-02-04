@@ -90,7 +90,7 @@ def parse_api_settings() -> APIConfig:
 DEFAULT_BATCH_SIZE = 1
 DEFAULT_MAX_LENGTH = 128
 DEFAULT_SCHEDULER = "multi"
-DEFAULT_CONCURRENT_WORKERS = cpu_architecture().num_physical_cores // 2
+DEFAULT_CONCURRENT_WORKERS = cpu_architecture().num_available_physical_cores // 2
 PipelineConfigType = TypeVar(
     "PipelineEngineSettingsType",
     bound="PipelineEngineConfig",
