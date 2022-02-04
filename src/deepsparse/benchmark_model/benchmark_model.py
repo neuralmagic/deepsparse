@@ -86,8 +86,8 @@ import logging
 import os
 
 from deepsparse import Scheduler, compile_model
-from deepsparse.benchmark_model.stream_benchmark import model_stream_benchmark
 from deepsparse.benchmark_model.ort_engine import ORTEngine
+from deepsparse.benchmark_model.stream_benchmark import model_stream_benchmark
 from deepsparse.utils import (
     generate_random_inputs,
     model_to_path,
