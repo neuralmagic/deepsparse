@@ -63,6 +63,20 @@ def _validate_batch_size(batch_size: int) -> int:
 
 
 class ORTEngine(object):
+    """
+    Create a new ONNXRuntime Engine that compiles the given onnx file,
+
+    Note 1: ORTEngines are compiled for a specific batch size and
+    for a specific number of CPU cores.
+
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
+    :param batch_size: The batch size of the inputs to be used with the engine
+    :param num_cores: The number of physical cores to run the model on.
+    :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    """
+
     def __init__(
         self,
         model: Union[str, Model, File],
@@ -71,6 +85,7 @@ class ORTEngine(object):
         input_shapes: List[List[int]] = None,
     ):
         _validate_ort_import()
+
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = num_cores
@@ -104,6 +119,21 @@ class ORTEngine(object):
         inp: List[numpy.ndarray],
         val_inp: bool = True,
     ) -> List[numpy.ndarray]:
+        """
+        Convenience function for ORTEngine.run(), see @run for more details
+
+        | Example:
+        |     engine = ORTEngine("path/to/onnx", batch_size=1, num_cores=None)
+        |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
+        |     out = engine(inp)
+        |     assert isinstance(out, List)
+
+        :param inp: The list of inputs to pass to the engine for inference.
+            The expected order is the inputs order as defined in the ONNX graph.
+        :param val_inp: Validate the input to the model to ensure numpy array inputs
+            are setup correctly for inference.
+        :return: The list of outputs from the model after executing over the inputs
+        """
         return self.run(inp, val_inp)
 
     def __repr__(self):
@@ -151,17 +181,105 @@ class ORTEngine(object):
         inp: List[numpy.ndarray],
         val_inp: bool = True,
     ) -> List[numpy.ndarray]:
+        """
+        Run given inputs through the model for inference.
+        Returns the result as a list of numpy arrays corresponding to
+        the outputs of the model as defined in the ONNX graph.
+
+        Note 1: the input dimensions must match what is defined in the ONNX graph.
+        To avoid extra time in memory shuffles, the best use case
+        is to format both the onnx and the input into channels first format;
+        ex: [batch, height, width, channels] => [batch, channels, height, width]
+
+        Note 2: the input type for the numpy arrays must match
+        what is defined in the ONNX graph.
+        Generally float32 is most common,
+        but int8 and int16 are used for certain layer and input types
+        such as with quantized models.
+
+        Note 3: the numpy arrays must be contiguous in memory,
+        use numpy.ascontiguousarray(array) to fix if not.
+
+        | Example:
+        |     engine = ORTEngine("path/to/onnx", batch_size=1, num_cores=None)
+        |     inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
+        |     out = engine.run(inp)
+        |     assert isinstance(out, List)
+
+        :param inp: The list of inputs to pass to the engine for inference.
+            The expected order is the inputs order as defined in the ONNX graph.
+        :param val_inp: Validate the input to the model to ensure numpy array inputs
+            are setup correctly for inference.
+        :return: The list of outputs from the model after executing over the inputs
+        """
+        if val_inp:
+            self._validate_inputs(inp)
         inputs_dict = {name: value for name, value in zip(self._input_names, inp)}
         return self._eng_net.run(self._output_names, inputs_dict)
 
     def timed_run(
         self, inp: List[numpy.ndarray], val_inp: bool = False
     ) -> Tuple[List[numpy.ndarray], float]:
+        """
+        Convenience method for timing a model inference run.
+        Returns the result as a tuple containing (the outputs from @run, time take)
+        See @run for more details.
+
+
+        :param inp: The list of inputs to pass to the engine for inference.
+            The expected order is the inputs order as defined in the ONNX graph.
+        :param val_inp: Validate the input to the model to ensure numpy array inputs
+            are setup correctly for inference.
+        :return: The list of outputs from the model after executing over the inputs
+        """
         start = time.time()
         out = self.run(inp, val_inp)
         end = time.time()
 
         return out, end - start
+
+    def mapped_run(
+        self,
+        inp: List[numpy.ndarray],
+        val_inp: bool = True,
+    ) -> Dict[str, numpy.ndarray]:
+        """
+        Run given inputs through the model for inference.
+        Returns the result as a dictionary of numpy arrays corresponding to
+        the output names of the model as defined in the ONNX graph.
+
+        Note 1: this function can add some a performance hit in certain cases.
+        If using, please validate that you do not incur a performance hit
+        by comparing with the regular run func
+
+        :param inp: The list of inputs to pass to the engine for inference.
+            The expected order is the inputs order as defined in the ONNX graph.
+        :param val_inp: Validate the input to the model to ensure numpy array inputs
+            are setup correctly for inference.
+        :return: The dictionary of outputs from the model after executing
+            over the inputs
+        """
+        out = self.run(inp, val_inp)
+        return zip(self._output_names, out)
+
+    def _validate_inputs(self, inp: List[numpy.ndarray]):
+        if isinstance(inp, str) or not isinstance(inp, List):
+            raise ValueError("inp must be a list, given {}".format(type(inp)))
+
+        for arr in inp:
+            if arr.shape[0] != self._batch_size:
+                raise ValueError(
+                    (
+                        "array batch size of {} must match the batch size "
+                        "the model was instantiated with {}"
+                    ).format(arr.shape[0], self._batch_size)
+                )
+
+            if not arr.flags["C_CONTIGUOUS"]:
+                raise ValueError(
+                    "array must be passed in as C contiguous, "
+                    "call numpy.ascontiguousarray(array)"
+                )
 
     def _properties_dict(self) -> Dict:
         return {
