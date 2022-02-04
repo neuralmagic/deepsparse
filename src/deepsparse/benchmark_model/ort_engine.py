@@ -298,7 +298,7 @@ class ORTEngine(object):
 
     def _properties_dict(self) -> Dict:
         return {
-            "onnx_file_path": self._model_path,
-            "batch_size": self._batch_size,
-            "num_cores": self._num_cores,
+            "onnx_file_path": self.model_path,
+            "batch_size": self.batch_size,
+            "num_cores": self.num_cores,
         }

@@ -512,12 +512,12 @@ class Engine(object):
 
     def _properties_dict(self) -> Dict:
         return {
-            "onnx_file_path": self._model_path,
-            "batch_size": self._batch_size,
-            "num_cores": self._num_cores,
-            "scheduler": self._scheduler,
-            "cpu_avx_type": self._cpu_avx_type,
-            "cpu_vnni": self._cpu_vnni,
+            "onnx_file_path": self.model_path,
+            "batch_size": self.batch_size,
+            "num_cores": self.num_cores,
+            "scheduler": self.scheduler,
+            "cpu_avx_type": self.cpu_avx_type,
+            "cpu_vnni": self.cpu_vnni,
         }
 
 
