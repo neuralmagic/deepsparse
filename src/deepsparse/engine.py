@@ -16,7 +16,6 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
-import os
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
@@ -318,7 +317,7 @@ class Engine(object):
         return self._eng_net.execute_list_out(inp)
 
     def timed_run(
-        self, inp: List[numpy.ndarray], val_inp: bool = True
+        self, inp: List[numpy.ndarray], val_inp: bool = False
     ) -> Tuple[List[numpy.ndarray], float]:
         """
         Convenience method for timing a model inference run.
