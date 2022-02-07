@@ -56,6 +56,7 @@ _dev_deps = [
     "flake8>=3.8.3",
     "isort>=5.7.0",
     "m2r2~=0.2.7",
+    "mistune==0.8.4",
     "myst-parser~=0.14.0",
     "rinohtype>=0.4.2",
     "sphinx>=3.4.0",
