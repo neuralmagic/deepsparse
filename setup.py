@@ -76,6 +76,9 @@ _transformers_server_deps = [
     "pydantic>=1.8.2",
     "requests>=2.26.0",
 ]
+_onnxruntime_deps = [
+    "onnxruntime>=1.7.0",
+]
 
 
 class OverrideInstall(install):
@@ -168,6 +171,7 @@ def _setup_extras() -> Dict:
     return {
         "dev": _dev_deps,
         "server": _transformers_server_deps,
+        "onnxruntime": _onnxruntime_deps,
     }
 
 

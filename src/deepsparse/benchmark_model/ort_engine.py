@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import time
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import numpy
 
-from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (
     get_input_names,
     get_output_names,
@@ -25,6 +24,7 @@ from deepsparse.utils import (
     override_onnx_batch_size,
     override_onnx_input_shapes,
 )
+from sparsezoo.objects import File, Model
 
 
 try:
@@ -35,16 +35,6 @@ except Exception as ort_import_err:
     onnxruntime = None
     ort_import_error = ort_import_err
 
-try:
-    from sparsezoo import Zoo
-    from sparsezoo.objects import File, Model
-
-    sparsezoo_import_error = None
-except Exception as sparsezoo_err:
-    Zoo = None
-    Model = object
-    File = object
-    sparsezoo_import_error = sparsezoo_err
 
 try:
     # flake8: noqa
