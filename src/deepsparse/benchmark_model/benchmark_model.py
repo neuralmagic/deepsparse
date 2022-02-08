@@ -86,6 +86,7 @@ import logging
 import os
 
 from deepsparse import Scheduler, compile_model
+from deepsparse.benchmark_model.ort_engine import ORTEngine
 from deepsparse.benchmark_model.stream_benchmark import model_stream_benchmark
 from deepsparse.utils import (
     generate_random_inputs,
@@ -97,6 +98,9 @@ from deepsparse.utils.log import log_init
 
 
 log = log_init(os.path.basename(__file__))
+
+DEEPSPARSE_ENGINE = "deepsparse"
+ORT_ENGINE = "onnxruntime"
 
 
 def parse_args():
@@ -177,6 +181,17 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "-e",
+        "--engine",
+        type=str,
+        default=DEEPSPARSE_ENGINE,
+        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE],
+        help=(
+            "Inference engine backend to run eval on. Choices are 'deepsparse', "
+            "'onnxruntime'. Default is 'deepsparse'"
+        ),
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         help="Lower logging verbosity",
@@ -236,14 +251,22 @@ def main():
     orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
 
-    # Compile the ONNX into the DeepSparse Engine
-    model = compile_model(
-        model=args.model_path,
-        batch_size=args.batch_size,
-        num_cores=args.num_cores,
-        scheduler=scheduler,
-        input_shapes=input_shapes,
-    )
+    # Compile the ONNX into a runnable model
+    if args.engine == DEEPSPARSE_ENGINE:
+        model = compile_model(
+            model=args.model_path,
+            batch_size=args.batch_size,
+            num_cores=args.num_cores,
+            scheduler=scheduler,
+            input_shapes=input_shapes,
+        )
+    elif args.engine == ORT_ENGINE:
+        model = ORTEngine(
+            model=args.model_path,
+            batch_size=args.batch_size,
+            num_cores=args.num_cores,
+            input_shapes=input_shapes,
+        )
     log.info(model)
 
     # Generate random inputs to feed the model

@@ -16,7 +16,6 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
-import os
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
@@ -61,7 +60,7 @@ __all__ = [
 
 
 ARCH = cpu_architecture()
-NUM_CORES = ARCH.num_physical_cores
+NUM_CORES = ARCH.num_available_physical_cores
 AVX_TYPE = ARCH.isa
 VNNI = ARCH.vnni
 
@@ -318,7 +317,7 @@ class Engine(object):
         return self._eng_net.execute_list_out(inp)
 
     def timed_run(
-        self, inp: List[numpy.ndarray], val_inp: bool = True
+        self, inp: List[numpy.ndarray], val_inp: bool = False
     ) -> Tuple[List[numpy.ndarray], float]:
         """
         Convenience method for timing a model inference run.
@@ -513,12 +512,12 @@ class Engine(object):
 
     def _properties_dict(self) -> Dict:
         return {
-            "onnx_file_path": self._model_path,
-            "batch_size": self._batch_size,
-            "num_cores": self._num_cores,
-            "scheduler": self._scheduler,
-            "cpu_avx_type": self._cpu_avx_type,
-            "cpu_vnni": self._cpu_vnni,
+            "onnx_file_path": self.model_path,
+            "batch_size": self.batch_size,
+            "num_cores": self.num_cores,
+            "scheduler": self.scheduler,
+            "cpu_avx_type": self.cpu_avx_type,
+            "cpu_vnni": self.cpu_vnni,
         }
 
 

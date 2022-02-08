@@ -27,7 +27,7 @@ __all__ = ["model_stream_benchmark"]
 
 def iteration(model: Engine, input: List[np.ndarray]):
     start = time.time()
-    output = model(input)
+    output = model.run(input, val_inp=False)
     end = time.time()
     return output, start, end
 

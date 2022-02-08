@@ -99,16 +99,23 @@ class architecture(dict):
     @property
     def num_threads(self):
         """
-        :return: the total number of hyperthreads available on the current machine
+        :return: the total number of hyperthreads on the current machine
         """
         return self.threads_per_socket * self.num_sockets
 
     @property
     def num_physical_cores(self):
         """
-        :return: the total number of cores available on the current machine
+        :return: the total number of cores on the current machine
         """
         return self.cores_per_socket * self.num_sockets
+
+    @property
+    def num_available_physical_cores(self):
+        """
+        :return: the total number of cores available on the current machine
+        """
+        return self.available_cores_per_socket * self.available_sockets
 
 
 @_Memoize
@@ -224,7 +231,7 @@ def cpu_details() -> Tuple[int, str, bool]:
     """
     arch = cpu_architecture()
 
-    return arch.num_physical_cores, arch.isa, arch.vnni
+    return arch.num_available_physical_cores, arch.isa, arch.vnni
 
 
 def print_hardware_capability():
@@ -234,8 +241,9 @@ def print_hardware_capability():
     """
     arch = cpu_architecture()
     message = (
-        f"{arch.vendor} CPU detected with {arch.num_physical_cores} cores. "
-        f"({arch.num_sockets} sockets with {arch.cores_per_socket} cores each)\n"
+        f"{arch.vendor} CPU detected with {arch.num_available_physical_cores} cores. "
+        f"({arch.available_sockets} sockets with "
+        f"{arch.available_cores_per_socket} cores each)\n"
         "DeepSparse FP32 model performance supported: "
         f"{cpu_avx2_compatible() or cpu_avx512_compatible()}.\n"
         "DeepSparse INT8 (quantized) model performance supported: "
