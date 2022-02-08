@@ -145,7 +145,7 @@ def parse_args():
         "--scenario",
         type=str,
         default="async",
-        choices=["async", "sync"],
+        choices=["async", "sync", "elastic"],
         help=(
             "Choose between using a sync/async scenarios. This is similar to the "
             "single-stream/multi-stream scenarios. Default value is async."
@@ -231,6 +231,33 @@ def decide_thread_pinning(pinning_mode: str):
         )
 
 
+def parse_scheduler(scenario):
+    if scenario == "multistream":
+        return Scheduler.multi_stream
+    elif scenario == "singlestream":
+        return Scheduler.single_stream
+    elif scenario == "elastic":
+        return Scheduler.elastic
+    else:
+        return Scheduler.multi_stream
+
+
+def parse_scenario(scenario):
+    if scenario == "async":
+        return "multistream"
+    elif scenario == "sync":
+        return "singlestream"
+    elif scenario == "elastic":
+        return "elastic"
+    else:
+        log.info(
+            "Recieved invalid option for scenario'{}', defaulting to async".format(
+                scenario
+            )
+        )
+        return "multistream"
+
+
 def main():
 
     args = parse_args()
@@ -240,12 +267,8 @@ def main():
 
     decide_thread_pinning(args.thread_pinning)
 
-    scheduler = (
-        Scheduler.multi_stream
-        if args.scenario.lower() == "async"
-        else Scheduler.single_stream
-    )
-    scenario = "multistream" if scheduler is Scheduler.multi_stream else "singlestream"
+    scenario = parse_scenario(args.scenario.lower())
+    scheduler = parse_scheduler(scenario)
     input_shapes = parse_input_shapes(args.input_shapes)
 
     orig_model_path = args.model_path
