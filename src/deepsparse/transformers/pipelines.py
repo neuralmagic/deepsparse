@@ -231,7 +231,7 @@ class Pipeline(_ScikitCompat):
         # Parse arguments
         inputs = self._args_parser(*args, **kwargs)
         inputs = self.tokenizer(
-            inputs,
+            *inputs,
             add_special_tokens=add_special_tokens,
             return_tensors=self._framework,
             padding=PaddingStrategy.MAX_LENGTH.value,
