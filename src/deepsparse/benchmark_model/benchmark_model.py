@@ -41,9 +41,11 @@ optional arguments:
                         The number of physical cores to run the analysis on,
                         defaults to all physical cores available on the system
   -s {async,sync}, --scenario {async,sync}
-                        Choose between using sync/async scenarios. This is
-                        similar to the single-stream/multi-stream scenarios.
-                        The default value is async.
+                        Choose between using the async, sync and elastic scenarios.
+                        Sync and async are similar to the single-stream/multi-stream
+                        scenarios. Elastic is a newer scenario that behaves similarly
+                        to the async scenario but uses a different scheduling backend.
+                        Default value is async.
   -t TIME, --time TIME  The number of seconds the benchmark will run. Default
                         is 10 seconds.
   -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
@@ -147,8 +149,10 @@ def parse_args():
         default="async",
         choices=["async", "sync", "elastic"],
         help=(
-            "Choose between using a sync/async scenarios. This is similar to the "
-            "single-stream/multi-stream scenarios. Default value is async."
+            "Choose between using the async, sync and elastic scenarios. Sync and "
+            "async are similar to the single-stream/multi-stream scenarios. Elastic "
+            "is a newer scenario that behaves similarly to the async scenario "
+            "but uses a different scheduling backend. Default value is async."
         ),
     )
     parser.add_argument(
