@@ -107,6 +107,10 @@ def model_stream_benchmark(
         batch_times = multistream_benchmark(
             model, input_list, seconds_to_run, num_streams
         )
+    elif scenario == "elastic":
+        batch_times = multistream_benchmark(
+            model, input_list, seconds_to_run, num_streams
+        )
     else:
         raise Exception(f"Unknown scenario '{scenario}'")
 
