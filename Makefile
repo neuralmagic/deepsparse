@@ -8,6 +8,7 @@ DOCDIR := docs
 MDCHECKGLOBS := 'docs/**/*.md' 'docs/**/*.rst' 'examples/**/*.md' 'scripts/**/*.md'
 MDCHECKFILES := CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPING.md README.md
 SPARSEZOO_TEST_MODE := "true"
+PYTEST_ARGS ?= ""
 
 PYTHON := python3
 
@@ -33,12 +34,12 @@ style:
 # run tests for the repo
 test:
 	@echo "Running python tests";
-	@SPARSEZOO_TEST_MODE="true" pytest ./tests/;
+	@SPARSEZOO_TEST_MODE="true" pytest ./tests/ $(PYTEST_ARGS);
 
 # run example tests for the repo
 test-examples:
 	@echo "Running python example tests";
-	@SPARSEZOO_TEST_MODE="true" pytest ./examples/;
+	@SPARSEZOO_TEST_MODE="true" pytest ./examples/ $(PYTEST_ARGS);
 
 # create docs
 docs:
