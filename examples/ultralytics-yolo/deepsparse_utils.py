@@ -544,9 +544,9 @@ def download_model_if_stub(path: str) -> str:
     """
     if path.startswith("zoo"):
         model = Zoo.load_model_from_stub(path)
-        downloded_path = model.onnx_file.downloaded_path()
-        print(f"model with stub {path} downloaded to {downloded_path}")
-        return downloded_path
+        downloaded_path = model.onnx_file.downloaded_path()
+        print(f"model with stub {path} downloaded to {downloaded_path}")
+        return downloaded_path
     return path
 
 
@@ -560,17 +560,16 @@ def download_pytorch_model_if_stub(path: str) -> str:
     """
     if path.startswith("zoo"):
         model = Zoo.load_model_from_stub(path)
-        downloded_path = model.onnx_file.downloaded_path()
         downloaded_pt_path = None
         for file in model.framework_files:
             if file.file_type_framework and file.display_name == "model.pt":
-                downloaded_pt_path = file
+                downloaded_pt_path = file.downloaded_path()
         if downloaded_pt_path is None:
             raise ValueError(
                 f"model with stub {path} has no 'model.pt' associated for PyTorch"
             )
         print(f"model with stub {path} downloaded to {downloaded_pt_path}")
-        return downloded_path
+        return downloaded_pt_path
     return path
 
 
