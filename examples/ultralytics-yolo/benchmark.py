@@ -145,6 +145,7 @@ from deepsparse_utils import (
     modify_yolo_onnx_input_shape,
     postprocess_nms,
     yolo_onnx_has_postprocessing,
+    download_pytorch_model_if_stub,
 )
 from sparseml.onnx.utils import override_model_batch_size
 from sparsezoo.models.detection import yolo_v3 as zoo_yolo_v3
@@ -377,6 +378,7 @@ def _load_model(args) -> (Any, bool):
             onnx_model.SerializeToString(), sess_options=sess_options
         )
     elif args.engine == TORCH_ENGINE:
+        args.model_filepath = download_pytorch_model_if_stub(args.model_filepath)
         print(f"loading torch model for {args.model_filepath}")
         model = torch.load(args.model_filepath)
         if isinstance(model, dict):
