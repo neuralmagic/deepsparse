@@ -549,6 +549,7 @@ def download_model_if_stub(path: str) -> str:
         return downloded_path
     return path
 
+
 def download_pytorch_model_if_stub(path: str) -> str:
     """
     Utility method to download PyTorch model if path is a SparseZoo stub
@@ -565,7 +566,9 @@ def download_pytorch_model_if_stub(path: str) -> str:
             if file.file_type_framework and file.display_name == "model.pt":
                 downloaded_pt_path = file
         if downloaded_pt_path is None:
-            raise ValueError(f"model with stub {path} has no 'model.pt' associated for PyTorch")
+            raise ValueError(
+                f"model with stub {path} has no 'model.pt' associated for PyTorch"
+            )
         print(f"model with stub {path} downloaded to {downloaded_pt_path}")
         return downloded_path
     return path
