@@ -162,7 +162,7 @@ def qqp_eval(args):
     print(f"Engine info: {text_classify.model}")
 
     for idx, sample in enumerate(tqdm(qqp)):
-        pred = text_classify(sample["question1"], sample["question2"])
+        pred = text_classify([[sample["question1"], sample["question2"]]])
 
         qqp_metrics.add_batch(
             predictions=[int(pred[0]["label"].split("_")[-1])],
