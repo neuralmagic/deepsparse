@@ -94,11 +94,12 @@ def model_stream_benchmark(
     input_list: List[np.ndarray],
     scenario: str,
     seconds_to_run: float,
+    seconds_to_warmup: float,
     num_streams: int,
 ) -> Dict:
 
     # Warmup the engine for a second
-    singlestream_benchmark(model, input_list, 1.0)
+    singlestream_benchmark(model, input_list, seconds_to_warmup)
 
     # Run the benchmark scenario and collect batch times
     if scenario == "singlestream":

@@ -18,9 +18,11 @@ Benchmarking script for ONNX models with the DeepSparse engine.
 ##########
 Command help:
 usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
-                            [-ncores NUM_CORES] [-s {async,sync}] [-t TIME]
-                            [-nstreams NUM_STREAMS] [-pin {none,core,numa}]
-                            [-q] [-x EXPORT_PATH]
+                            [-ncores NUM_CORES] [-s {async,sync,elastic}]
+                            [-t TIME] [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
+                            [-pin {none,core,numa}]
+                            [-e {deepsparse,onnxruntime}] [-q]
+                            [-x EXPORT_PATH]
                             model_path
 
 Benchmark ONNX models in the DeepSparse Engine
@@ -40,14 +42,18 @@ optional arguments:
   -ncores NUM_CORES, --num_cores NUM_CORES
                         The number of physical cores to run the analysis on,
                         defaults to all physical cores available on the system
-  -s {async,sync}, --scenario {async,sync}
-                        Choose between using the async, sync and elastic scenarios.
-                        Sync and async are similar to the single-stream/multi-stream
-                        scenarios. Elastic is a newer scenario that behaves similarly
-                        to the async scenario but uses a different scheduling backend.
-                        Default value is async.
+  -s {async,sync,elastic}, --scenario {async,sync,elastic}
+                        Choose between using the async, sync and elastic
+                        scenarios. Sync and async are similar to the single-
+                        stream/multi-stream scenarios. Elastic is a newer
+                        scenario that behaves similarly to the async scenario
+                        but uses a different scheduling backend. Default value
+                        is async.
   -t TIME, --time TIME  The number of seconds the benchmark will run. Default
                         is 10 seconds.
+  -w WARMUP_TIME, --warmup_time WARMUP_TIME
+                        The number of seconds the benchmark will warmup before
+                        running.Default is 2 seconds.
   -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
                         The number of streams that will submit inferences in
                         parallel using async scenario. Default is
@@ -57,6 +63,9 @@ optional arguments:
                         Enable binding threads to cores ('core' the default),
                         threads to cores on sockets ('numa'), or disable
                         ('none')
+  -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
+                        Inference engine backend to run eval on. Choices are
+                        'deepsparse', 'onnxruntime'. Default is 'deepsparse'
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
                         Store results into a JSON file
@@ -161,6 +170,16 @@ def parse_args():
         type=int,
         default=10,
         help="The number of seconds the benchmark will run. Default is 10 seconds.",
+    )
+    parser.add_argument(
+        "-w",
+        "--warmup_time",
+        type=int,
+        default=2,
+        help=(
+            "The number of seconds the benchmark will warmup before running."
+            "Default is 2 seconds."
+        ),
     )
     parser.add_argument(
         "-nstreams",
@@ -308,7 +327,7 @@ def main():
         log.info("num_streams set to {}".format(args.num_streams))
     elif not args.num_streams and scenario not in "singlestream":
         # If num_streams isn't defined, find a default
-        args.num_streams = int(model.num_cores / 2)
+        args.num_streams = max(1, int(model.num_cores / 2))
         log.info(
             "num_streams default value chosen of {}. "
             "This requires tuning and may be sub-optimal".format(args.num_streams)
@@ -323,9 +342,10 @@ def main():
     benchmark_result = model_stream_benchmark(
         model,
         input_list,
-        scenario,
-        args.time,
-        args.num_streams,
+        scenario=scenario,
+        seconds_to_run=args.time,
+        seconds_to_warmup=args.warmup_time,
+        num_streams=args.num_streams,
     )
 
     # Results summary
