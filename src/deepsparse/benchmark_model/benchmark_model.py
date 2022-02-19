@@ -163,6 +163,13 @@ def parse_args():
         help="The number of seconds the benchmark will run. Default is 10 seconds.",
     )
     parser.add_argument(
+        "-w",
+        "--warmup_time",
+        type=int,
+        default=2,
+        help="The number of seconds the benchmark will warmup before running. Default is 2 seconds.",
+    )
+    parser.add_argument(
         "-nstreams",
         "--num_streams",
         type=int,
@@ -308,7 +315,7 @@ def main():
         log.info("num_streams set to {}".format(args.num_streams))
     elif not args.num_streams and scenario not in "singlestream":
         # If num_streams isn't defined, find a default
-        args.num_streams = int(model.num_cores / 2)
+        args.num_streams = max(1, int(model.num_cores / 2))
         log.info(
             "num_streams default value chosen of {}. "
             "This requires tuning and may be sub-optimal".format(args.num_streams)
@@ -323,9 +330,10 @@ def main():
     benchmark_result = model_stream_benchmark(
         model,
         input_list,
-        scenario,
-        args.time,
-        args.num_streams,
+        scenario=scenario,
+        seconds_to_run=args.time,
+        seconds_to_warmup=args.warmup_time,
+        num_streams=args.num_streams,
     )
 
     # Results summary
