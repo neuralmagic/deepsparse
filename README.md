@@ -35,7 +35,7 @@ limitations under the License.
         <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/CODE_OF_CONDUCT.md">
-        <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height=25>
+        <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height=25>
     </a>
     <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
         <img src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height=25>
@@ -70,7 +70,7 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
 
 ## Tutorials
 
-- [Benchmarking with `deepsparse.benchmark`](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)
+- [Benchmarking with deepsparse.benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)
 - [Image Classification](https://github.com/neuralmagic/deepsparse/tree/main/examples/classification)
 - [Object Detection](https://github.com/neuralmagic/deepsparse/tree/main/examples/detection)
 - [Flask Serving](https://github.com/neuralmagic/deepsparse/tree/main/examples/flask)
