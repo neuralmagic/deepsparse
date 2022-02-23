@@ -35,7 +35,7 @@ limitations under the License.
         <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/CODE_OF_CONDUCT.md">
-        <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height=25>
+        <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height=25>
     </a>
     <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
         <img src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height=25>
@@ -50,8 +50,7 @@ limitations under the License.
 
 ## Overview
 
-The DeepSparse Engine is a CPU runtime that delivers GPU-class performance by taking advantage of sparsity (read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification)) within neural networks to reduce compute required as well as accelerate memory bound workloads. 
-It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
+The DeepSparse Engine is a CPU runtime that delivers GPU-class performance by taking advantage of sparsity (read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification)) within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend.
 
 The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes package APIs along with examples to quickly get started benchmarking and inferencing sparse models.
 
@@ -71,7 +70,7 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
 
 ## Tutorials
 
-- [Benchmarking with `deepsparse.benchmark`](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)
+- [Benchmarking with deepsparse.benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)
 - [Image Classification](https://github.com/neuralmagic/deepsparse/tree/main/examples/classification)
 - [Object Detection](https://github.com/neuralmagic/deepsparse/tree/main/examples/detection)
 - [Flask Serving](https://github.com/neuralmagic/deepsparse/tree/main/examples/flask)
@@ -97,20 +96,20 @@ Here is a table detailing specific support for some algorithms over different mi
 
 |   x86 Extension    |          Microarchitectures         | Activation Sparsity | Kernel Sparsity | Sparse Quantization |
 |:------------------:|:-----------------------------------:|:-------------------:|:---------------:|:-------------------:|
-|      [AMD AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)      |             [Zen 2](https://en.wikipedia.org/wiki/Zen_2), [Zen 3](https://en.wikipedia.org/wiki/Zen_3)            |    not supported    |    optimized    |    not supported    |
-|     [Intel AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)     |          [Haswell](<https://en.wikipedia.org/wiki/Haswell_(microarchitecture)>), [Broadwell](<https://en.wikipedia.org/wiki/Broadwell_(microarchitecture)>), and newer         |    not supported    |    optimized    |    not supported    |
-|    [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512)   |         [Skylake](<https://en.wikipedia.org/wiki/Skylake_(microarchitecture)>), [Cannon Lake](<https://en.wikipedia.org/wiki/Cannon_Lake_(microarchitecture)>), and newer        |      optimized      |    optimized    |       emulated      |
-| [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512) VNNI (DL Boost) | [Cascade Lake](<https://en.wikipedia.org/wiki/Cascade_Lake_(microarchitecture)>), [Ice Lake](<https://en.wikipedia.org/wiki/Ice_Lake_(microprocessor)>), [Cooper Lake](<https://en.wikipedia.org/wiki/Cooper_Lake_(microarchitecture)>), [Tiger Lake](<https://en.wikipedia.org/wiki/Tiger_Lake_(microprocessor)>) |      optimized      |    optimized    |      optimized      |
+|      [AMD AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)      |             [Zen 2,](https://en.wikipedia.org/wiki/Zen_2) [Zen 3](https://en.wikipedia.org/wiki/Zen_3)            |    not supported    |    optimized    |    not supported    |
+|     [Intel AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)     |          [Haswell,](<https://en.wikipedia.org/wiki/Haswell_(microarchitecture)>) [Broadwell,](<https://en.wikipedia.org/wiki/Broadwell_(microarchitecture)>) and newer         |    not supported    |    optimized    |    not supported    |
+|    [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512)   |         [Skylake,](<https://en.wikipedia.org/wiki/Skylake_(microarchitecture)>) [Cannon Lake,](<https://en.wikipedia.org/wiki/Cannon_Lake_(microarchitecture)>) and newer        |      optimized      |    optimized    |       emulated      |
+| [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512) VNNI (DL Boost) | [Cascade Lake,](<https://en.wikipedia.org/wiki/Cascade_Lake_(microarchitecture)>) [Ice Lake,](<https://en.wikipedia.org/wiki/Ice_Lake_(microprocessor)>) [Cooper Lake,](<https://en.wikipedia.org/wiki/Cooper_Lake_(microarchitecture)>) [Tiger Lake](<https://en.wikipedia.org/wiki/Tiger_Lake_(microprocessor)>) |      optimized      |    optimized    |      optimized      |
 
 
 ### Compatibility
 
-The DeepSparse Engine ingests models in the [ONNX](https://onnx.ai/) format, allowing for compatibility with [PyTorch](https://pytorch.org/docs/stable/onnx.html), [TensorFlow](https://github.com/onnx/tensorflow-onnx), [Keras](https://github.com/onnx/keras-onnx), and [many other frameworks](https://github.com/onnx/onnxmltools) that support it. This reduces the extra work of preparing your trained model for inference to just one step of exporting.
+The DeepSparse Engine ingests models in the [ONNX](https://onnx.ai/) format, allowing for compatibility with [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools) that support it. This reduces the extra work of preparing your trained model for inference to just one step of exporting.
 
 ## Quick Tour
 
 To expedite inference and benchmarking on real models, we include the `sparsezoo` package. 
-[SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference-optimized models, trained on repeatable sparsification recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
+[SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference-optimized models, trained on repeatable sparsification recipes using state-of-the-art techniques from [SparseML.](https://github.com/neuralmagic/sparseml)
 
 ### Quickstart with SparseZoo ONNX Models
 
@@ -220,14 +219,14 @@ outputs = engine.run(inputs)
 - ONNX opset version 11+
 - ONNX IR version has not been tested at this time
 
-For a more in-depth read on available APIs and workflows, check out the [examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/) and [DeepSparse Engine documentation](https://docs.neuralmagic.com/deepsparse).
+For a more in-depth read on available APIs and workflows, check out the [examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/) and [DeepSparse Engine documentation.](https://docs.neuralmagic.com/deepsparse)
 
 ## Resources
 
 ### Learning More
 
-- Documentation: [SparseML](https://docs.neuralmagic.com/sparseml/), [SparseZoo](https://docs.neuralmagic.com/sparsezoo/), [Sparsify](https://docs.neuralmagic.com/sparsify/), [DeepSparse](https://docs.neuralmagic.com/deepsparse/)
-- Neural Magic: [Blog](https://www.neuralmagic.com/blog/), [Resources](https://www.neuralmagic.com/resources/)
+- Documentation: [SparseML,](https://docs.neuralmagic.com/sparseml/) [SparseZoo,](https://docs.neuralmagic.com/sparsezoo/) [Sparsify,](https://docs.neuralmagic.com/sparsify/) [DeepSparse](https://docs.neuralmagic.com/deepsparse/)
+- Neural Magic: [Blog,](https://www.neuralmagic.com/blog/) [Resources](https://www.neuralmagic.com/resources/)
 
 ### Release History
 
@@ -240,7 +239,7 @@ Additionally, more information can be found via [GitHub Releases.](https://githu
 
 ### License
 
-The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC).
+The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
 
 Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 
@@ -248,15 +247,15 @@ Example files and scripts included in this repository are licensed under the [Ap
 
 ### Contribute
 
-We appreciate contributions to the code, examples, integrations, and documentation as well as bug reports and feature requests! [Learn how here](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md).
+We appreciate contributions to the code, examples, integrations, and documentation as well as bug reports and feature requests! [Learn how here.](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
 
 ### Join
 
-For user help or questions about the DeepSparse Engine, sign up or log in: **Deep Sparse Community** [Discourse Forum](https://discuss.neuralmagic.com/) and/or [Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there.
+For user help or questions about DeepSparse, sign up or log in to our [**Deep Sparse Community Slack**](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there. Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue.](https://github.com/neuralmagic/deepsparse/issues)
 
 You can get the latest news, webinar and event invites, research papers, and other ML Performance tidbits by [subscribing](https://neuralmagic.com/subscribe/) to the Neural Magic community.
 
-For more general questions about Neural Magic, please fill out this [form](http://neuralmagic.com/contact/).
+For more general questions about Neural Magic, please fill out this [form.](http://neuralmagic.com/contact/)
 
 ### Cite
 

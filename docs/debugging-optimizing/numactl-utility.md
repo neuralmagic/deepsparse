@@ -73,10 +73,12 @@ However, the engine works best when threads are pinned (i.e., not allowed to mig
 
 ## Additional Notes
 
-`numactl --hardware` </br>
+`numactl --hardware`
+
 Displays the inventory of available sockets/CPUs on a system.
 
-`numactl --show` </br>
+`numactl --show`
+
 Displays the resources available to the current process.
 
 For further details about these and other parameters, see the man page on **numactl**:
