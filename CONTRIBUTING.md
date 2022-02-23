@@ -52,7 +52,7 @@ Whether you’re a newbie, dabbler, or expert, we appreciate you jumping in.
 
 Please search through existing issues and requests first to avoid duplicates. Neural Magic will work with you further to take next steps.
 
-- Go to: [GitHub Issues](https://github.com/neuralmagic/deepsparse/issues)</br>
+- Go to: [GitHub Issues](https://github.com/neuralmagic/deepsparse/issues)
 
 For bugs, include:
 
