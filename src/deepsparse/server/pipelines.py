@@ -16,7 +16,7 @@
 
 """
 
-from typing import Any, Callable, Dict, List, Type
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 

@@ -99,7 +99,7 @@ class ServerConfig(BaseModel):
         ),
     )
     workers: str = Field(
-        default=cpu_architecture().num_available_physical_cores,
+        default=max(1, cpu_architecture().num_available_physical_cores // 2),
         description=(
             "The number of maximum workers to use for processing pipeline requests. "
             "Defaults to the number of physical cores on the device."

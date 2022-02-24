@@ -135,8 +135,8 @@ def server_app_factory():
 )
 @click.option(
     "--port",
-    type=str,
-    default="5543",
+    type=int,
+    default=5543,
     help="Bind to a socket with this port. Defaults to 5543.",
 )
 @click.option(
@@ -149,7 +149,7 @@ def server_app_factory():
     "--log_level",
     type=str,
     default="info",
-    help="Bind to a socket with this port. Defaults to 5543.",
+    help="Bind to a socket with this port. Defaults to info.",
 )
 @click.option(
     "--config_file",
@@ -162,8 +162,8 @@ def server_app_factory():
     "--task",
     type=str,
     default=None,
-    help="The task the model_path is serving. For example, one of: question_answering, "
-    "text_classification, token_classification. "
+    help="The task the model_path is serving. For example, one of: "
+    "question_answering, text_classification, token_classification. "
     "Ignored if config file is supplied",
 )
 @click.option(
@@ -183,7 +183,7 @@ def server_app_factory():
 )
 def start_server(
     host: str,
-    port: str,
+    port: int,
     workers: int,
     log_level: str,
     config_file: str,
