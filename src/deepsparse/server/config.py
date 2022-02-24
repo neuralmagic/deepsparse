@@ -147,7 +147,8 @@ def server_config_from_env(env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG):
             )
         )
     else:
-        config_dict = yaml.safe_load(config_file)
+        with open(config_file) as file:
+            config_dict = yaml.safe_load(file.read())
         config_dict["models"] = (
             [ServeModelConfig(**model) for model in config_dict["models"]]
             if "models" in config_dict

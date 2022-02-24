@@ -12,8 +12,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
+# flake8: noqa
 
+"""
+Serving script for ONNX models and configurations with the DeepSparse engine.
+
+##########
+Command help:
+deepsparse.server --help
+Usage: deepsparse.server [OPTIONS]
+
+  Start a DeepSparse inference server for serving the models and pipelines
+  given within the config_file or a single model defined by task, model_path,
+  and batch_size
+
+  Example config.yaml for serving:
+      models:
+          - task: question_answering
+            model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+            batch_size: 1
+            alias: question_answering/dense
+          - task: question_answering
+            model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
+            batch_size: 1
+            alias: question_answering/sparse_quantized
+
+Options:
+  --host TEXT           Bind socket to this host. Use --host 0.0.0.0 to make
+                        the application available on your local network. IPv6
+                        addresses are supported, for example: --host '::'.
+                        Defaults to 0.0.0.0
+  --port INTEGER        Bind to a socket with this port. Defaults to 5543.
+  --workers INTEGER     Use multiple worker processes. Defaults to 1.
+  --log_level TEXT      Bind to a socket with this port. Defaults to info.
+  --config_file TEXT    Configuration file containing info on how to serve the
+                        desired models.
+  --task TEXT           The task the model_path is serving. For example, one
+                        of: question_answering, text_classification,
+                        token_classification. Ignored if config file is
+                        supplied
+  --model_path TEXT     The path to a model.onnx file, a model folder
+                        containing the model.onnx and supporting files, or a
+                        SparseZoo model stub. Ignored if config_file is
+                        supplied.
+  --batch_size INTEGER  The batch size to serve the model from model_path
+                        with. Ignored if config_file is supplied.
+  --help                Show this message and exit.
+
+
+##########
+Example for serving a single BERT model from the SparseZoo
+deepsparse.server \
+    --task question_answering \
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none"
+
+##########
+Example for serving models from a config file
+deepsparse.server \
+    --config_file config.yaml
 """
 
 import logging
@@ -102,6 +158,10 @@ def _add_pipeline_route(app, pipeline_def, num_models: int, defined_tasks: set):
 
 
 def server_app_factory():
+    """
+    :return: a FastAPI app initialized with defined routes and ready for inference.
+        Use with a wsgi server such as uvicorn.
+    """
     app = FastAPI(
         title="deepsparse.server",
         version=version,
@@ -155,8 +215,7 @@ def server_app_factory():
     "--config_file",
     type=str,
     default=None,
-    help="Configuration file containing info on how to serve the desired models. "
-    "See deepsparse.server.fastapi file for an example",
+    help="Configuration file containing info on how to serve the desired models.",
 )
 @click.option(
     "--task",
@@ -192,7 +251,19 @@ def start_server(
     batch_size: int,
 ):
     """
-    Start the server
+    Start a DeepSparse inference server for serving the models and pipelines given
+    within the config_file or a single model defined by task, model_path, and batch_size
+
+    Example config.yaml for serving: \n
+        models: \n
+            - task: question_answering \n
+              model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none \n
+              batch_size: 1 \n
+              alias: question_answering/dense \n
+            - task: question_answering \n
+              model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95 \n
+              batch_size: 1 \n
+              alias: question_answering/sparse_quantized \n
     """
     _LOGGER.setLevel(log_level.upper())
     server_config_to_env(config_file, task, model_path, batch_size)
