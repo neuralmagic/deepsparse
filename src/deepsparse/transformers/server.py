@@ -17,31 +17,66 @@ Schemas for requests and responses to/from the Inference Server
 Note: The Schemas are specific to the task at hand and are used by FastApi
 for validation and docs generation
 """
+
 from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
+from deepsparse.server.config import ServeModelConfig, ServerConfig
+from deepsparse.tasks import SupportedTasks
+from deepsparse.transformers import Pipeline, pipeline
+
 
 __all__ = [
-    "RESPONSE_MODELS",
-    "REQUEST_MODELS",
-    "TaskRequestModel",
-    "TaskResponseModel",
+    "create_pipeline_definitions",
+    "QuestionAnsweringRequest",
+    "QuestionAnsweringResponse",
+    "TextClassificationRequest",
+    "TextClassificationResponse",
+    "TokenClassificationRequest",
+    "TokenClassificationResponse",
 ]
 
 
-# REQUEST SCHEMAS
+def create_pipeline_definitions(model_config: ServeModelConfig):
+    if SupportedTasks.nlp.question_answering.matches(model_config.task):
+        request_model = QuestionAnsweringRequest
+        response_model = Union[
+            List[QuestionAnsweringResponse],
+            QuestionAnsweringResponse,
+        ]
+        kwargs = {}
+    elif SupportedTasks.nlp.text_classification.matches(model_config.task):
+        request_model = TextClassificationRequest
+        response_model = Union[
+            List[TextClassificationResponse], List[List[TextClassificationResponse]]
+        ]
+        kwargs = {}
+    elif SupportedTasks.nlp.token_classification.matches(model_config.task):
+        request_model = TokenClassificationRequest
+        response_model = Union[
+            List[TokenClassificationResponse], List[List[TokenClassificationResponse]]
+        ]
+        kwargs = {}
+    else:
+        raise ValueError(
+            f"unrecognized task given of {model_config.task} for config {model_config}"
+        )
+
+    pipeline_instance: Pipeline = pipeline(
+        task=model_config.task,
+        model_path=model_config.model_path,
+        engine_type=model_config.engine,
+        num_cores=model_config.num_cores,
+        scheduler=model_config.scheduler,
+        batch_size=model_config.batch_size,
+        **model_config.kwargs,
+    )
+
+    return pipeline_instance, request_model, response_model, kwargs
 
 
-class TaskRequestModel(BaseModel):
-    """
-    Base class for Task requests
-    """
-
-    pass
-
-
-class QuestionAnsweringRequest(TaskRequestModel):
+class QuestionAnsweringRequest(BaseModel):
     """
     The request model for Question Answering Task
 
@@ -54,7 +89,7 @@ class QuestionAnsweringRequest(TaskRequestModel):
     context: Union[List[str], str]
 
 
-class TokenClassificationRequest(TaskRequestModel):
+class TokenClassificationRequest(BaseModel):
     """
     Schema for TokenClassificationPipeline Request
 
@@ -65,7 +100,7 @@ class TokenClassificationRequest(TaskRequestModel):
     inputs: Union[List[str], str]
 
 
-class TextClassificationRequest(TaskRequestModel):
+class TextClassificationRequest(BaseModel):
     """
     Schema for TextClassificationPipeline Request
 
@@ -76,18 +111,7 @@ class TextClassificationRequest(TaskRequestModel):
     sequences: Union[List[str], str]
 
 
-# RESPONSE SCHEMAS
-
-
-class TaskResponseModel(BaseModel):
-    """
-    Base class for Task responses
-    """
-
-    pass
-
-
-class QuestionAnsweringResponse(TaskResponseModel):
+class QuestionAnsweringResponse(BaseModel):
     """
     Schema for a result from Question Answering Task
 
@@ -103,7 +127,7 @@ class QuestionAnsweringResponse(TaskResponseModel):
     answer: str
 
 
-class TokenClassificationResponse(TaskResponseModel):
+class TokenClassificationResponse(BaseModel):
     """
     Schema for TokenClassificationPipeline Response
 
@@ -126,7 +150,7 @@ class TokenClassificationResponse(TaskResponseModel):
     end: Optional[int]
 
 
-class TextClassificationResponse(TaskResponseModel):
+class TextClassificationResponse(BaseModel):
     """
     Schema for TextClassificationPipeline Response
 
@@ -136,34 +160,3 @@ class TextClassificationResponse(TaskResponseModel):
 
     label: str
     score: float
-
-
-# DATA MODEL REGISTRY
-
-REQUEST_MODELS = {
-    "question-answering": QuestionAnsweringRequest,
-    "sentiment-analysis": TextClassificationRequest,
-    "ner": TokenClassificationRequest,
-    "text-classification": TextClassificationRequest,
-    "token-classification": TokenClassificationRequest,
-}
-
-RESPONSE_MODELS = {
-    "question-answering": Union[
-        List[QuestionAnsweringResponse],
-        QuestionAnsweringResponse,
-    ],
-    "sentiment-analysis": Union[
-        List[TextClassificationResponse],
-        List[List[TextClassificationResponse]],
-    ],
-    "ner": Union[
-        List[TokenClassificationResponse], List[List[TokenClassificationResponse]]
-    ],
-    "text-classification": Union[
-        List[TextClassificationResponse], List[List[TextClassificationResponse]]
-    ],
-    "token-classification": Union[
-        List[TokenClassificationResponse], List[List[TokenClassificationResponse]]
-    ],
-}

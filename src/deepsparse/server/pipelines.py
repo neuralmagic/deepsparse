@@ -16,22 +16,15 @@
 
 """
 
-import logging
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable, Dict, List, Type
 
 from pydantic import BaseModel, Field
 
 from deepsparse.server.config import ServeModelConfig, ServerConfig
+from deepsparse.tasks import SupportedTasks
 
 
-_LOGGER = logging.getLogger(__name__)
-
-
-TRANSFORMER_PIPELINES = [
-    "question_answering",
-    "text_classification",
-    "token_classification",
-]
+__all__ = ["PipelineDefinition", "load_pipelines_definitions"]
 
 
 class PipelineDefinition(BaseModel):
@@ -39,20 +32,23 @@ class PipelineDefinition(BaseModel):
     request_model: Type = Field(description=(""))
     response_model: Type = Field(description=(""))
     kwargs: Dict[str, Any] = Field(description=(""))
-    config: ServeModelConfig = Field(description=())
+    config: ServeModelConfig = Field(description=(""))
 
 
-def load_pipelines_definitions(config: ServerConfig):
+def load_pipelines_definitions(config: ServerConfig) -> List[PipelineDefinition]:
     defs = []
 
     for model_config in config.models:
-        if model_config.task in TRANSFORMER_PIPELINES:
+        if SupportedTasks.is_nlp(model_config.task):
             # dynamically import so we don't install dependencies when unneeded
-            from deepsparse.transformers.server import create_pipeline
+            from deepsparse.transformers.server import create_pipeline_definitions
 
-            pipeline, request_model, response_model, kwargs = create_pipeline(
-                model_config
-            )
+            (
+                pipeline,
+                request_model,
+                response_model,
+                kwargs,
+            ) = create_pipeline_definitions(model_config)
         else:
             raise ValueError(
                 f"unsupported task given of {model_config.task} "

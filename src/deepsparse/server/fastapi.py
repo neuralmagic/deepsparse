@@ -27,6 +27,7 @@ from deepsparse.server.config import (
     server_config_from_env,
     server_config_to_env,
 )
+from deepsparse.server.pipelines import load_pipelines_definitions
 from deepsparse.server.utils import serializable_response
 from deepsparse.version import version
 
