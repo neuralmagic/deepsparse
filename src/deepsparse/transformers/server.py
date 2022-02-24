@@ -13,14 +13,12 @@
 # limitations under the License.
 
 """
-Schemas for requests and responses to/from the Inference Server
-Note: The Schemas are specific to the task at hand and are used by FastApi
-for validation and docs generation
+Specs, schemas, and pipelines for use when serving transformers models
 """
 
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from deepsparse.server.config import ServeModelConfig
 from deepsparse.tasks import SupportedTasks
@@ -38,7 +36,18 @@ __all__ = [
 ]
 
 
-def create_pipeline_definitions(model_config: ServeModelConfig):
+def create_pipeline_definitions(
+    model_config: ServeModelConfig,
+) -> Tuple[Pipeline, Any, Any, Dict]:
+    """
+    Create a pipeline definition and the supporting files for a given model config
+    to use for serving in the DeepSparse inference server
+
+    :param model_config: the config describing the model and params for serving
+    :return: a tuple containing (the pipeline to use for inference,
+        the expected request body, the expected response body,
+        any additional keyword args for use with the server)
+    """
     if SupportedTasks.nlp.question_answering.matches(model_config.task):
         request_model = QuestionAnsweringRequest
         response_model = Union[
@@ -79,84 +88,78 @@ def create_pipeline_definitions(model_config: ServeModelConfig):
 class QuestionAnsweringRequest(BaseModel):
     """
     The request model for Question Answering Task
-
-    :param question: Either a string or a List of string questions to answer
-    :param context: Either a string or List of strings representing the context
-        for each question
     """
 
-    question: Union[List[str], str]
-    context: Union[List[str], str]
+    question: Union[List[str], str] = Field(
+        description="Either a string or a List of string questions to answer"
+    )
+    context: Union[List[str], str] = Field(
+        description="Either a string or List of strings representing the context "
+        "for each question"
+    )
 
 
 class TokenClassificationRequest(BaseModel):
     """
     Schema for TokenClassificationPipeline Request
-
-    :param inputs: A string or List of strings representing input to
-        TokenClassificationPipeline task
     """
 
-    inputs: Union[List[str], str]
+    inputs: Union[List[str], str] = Field(
+        description="A string or List of strings representing input to"
+        "TokenClassificationPipeline task"
+    )
 
 
 class TextClassificationRequest(BaseModel):
     """
     Schema for TextClassificationPipeline Request
-
-    :param sequences: A string or List of strings representing input to
-        TextClassificationPipeline task
     """
 
-    sequences: Union[List[str], str]
+    sequences: Union[List[str], str] = Field(
+        description="A string or List of strings representing input to"
+        "TextClassificationPipeline task"
+    )
 
 
 class QuestionAnsweringResponse(BaseModel):
     """
     Schema for a result from Question Answering Task
-
-    :param score: float confidence score for prediction
-    :param start: int The start index of the answer
-    :param end: int The end index of the answer
-    :param answer: str The predicted answer
     """
 
-    score: float
-    start: int
-    end: int
-    answer: str
+    score: float = Field(description="confidence score for prediction")
+    start: int = Field(description="The start index of the answer")
+    end: int = Field(description="The end index of the answer")
+    answer: str = Field(description="The predicted answer")
 
 
 class TokenClassificationResponse(BaseModel):
     """
     Schema for TokenClassificationPipeline Response
-
-    :param word: The token/word classified.
-    :param score: The corresponding probability for `entity`.
-    :param entity: The entity predicted for that token/word (it is named
-        `entity_group` when `aggregation_strategy` is not `"none"`.
-    :param index: The index of the corresponding token in the sentence.
-    :param start: index of the start of the corresponding entity in the sentence
-        Only exists if the offsets are available within the tokenizer
-    :param end: The index of the end of the corresponding entity in the sentence.
-        Only exists if the offsets are available within the tokenizer
     """
 
-    entity: str
-    score: float
-    index: int
-    word: str
-    start: Optional[int]
-    end: Optional[int]
+    entity: str = Field(
+        description="The entity predicted for that token/word (it is named"
+        "`entity_group` when `aggregation_strategy` is not `none`."
+    )
+    score: float = Field(description="The corresponding probability for `entity`.")
+    index: int = Field(
+        description="The index of the corresponding token in the sentence."
+    )
+    word: str = Field(description="The token/word classified.")
+    start: Optional[int] = Field(
+        description="The index of the start of the corresponding entity in the "
+        "sentence. Only exists if the offsets are available within the tokenizer"
+    )
+    end: Optional[int] = Field(
+        description="The index of the end of the corresponding entity in the sentence. "
+        "Only exists if the offsets are available within the tokenizer"
+    )
 
 
 class TextClassificationResponse(BaseModel):
     """
     Schema for TextClassificationPipeline Response
-
-    :param label: The label predicted.
-    :param score: The corresponding probability.
     """
 
-    label: str
-    score: float
+    label: str = Field(description="The label predicted.")
+    score: float = Field(description="The corresponding probability.")

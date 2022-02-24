@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """
-
+Pipelines that run preprocessing, postprocessing, and model inference
+within the DeepSparse model server.
 """
 
 from typing import Any, Dict, List
@@ -28,14 +29,34 @@ __all__ = ["PipelineDefinition", "load_pipelines_definitions"]
 
 
 class PipelineDefinition(BaseModel):
-    pipeline: Any = Field(description=(""))
-    request_model: Any = Field(description=(""))
-    response_model: Any = Field(description=(""))
-    kwargs: Dict[str, Any] = Field(description=(""))
-    config: ServeModelConfig = Field(description=(""))
+    """
+    A definition of a pipeline to be served by the model server.
+    Used to create a prediction route on construction of the server app.
+    """
+
+    pipeline: Any = Field(description="the callable pipeline to invoke on each request")
+    request_model: Any = Field(
+        description="the pydantic model to validate the request body with"
+    )
+    response_model: Any = Field(
+        description="the pydantic model to validate the response payload with"
+    )
+    kwargs: Dict[str, Any] = Field(
+        description="any additional kwargs that should be passed into the pipeline"
+    )
+    config: ServeModelConfig = Field(
+        description="the config for the model the pipeline is serving"
+    )
 
 
 def load_pipelines_definitions(config: ServerConfig) -> List[PipelineDefinition]:
+    """
+    Load the pipeline definitions to use for creating prediction routes from
+    the given server configuration.
+
+    :param config: the configuration to load pipeline definitions for
+    :return: the loaded pipeline definitions to use for serving inference requests
+    """
     defs = []
 
     for model_config in config.models:

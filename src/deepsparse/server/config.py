@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Configurations for serving models in the DeepSparse inference server
+"""
+
 import json
 import os
 from functools import lru_cache
@@ -36,6 +40,10 @@ ENV_SINGLE_PREFIX = "DEEPSPARSE_SINGLE_MODEL:"
 
 
 class ServeModelConfig(BaseModel):
+    """
+    Configuration for serving a model for a given task in the DeepSparse server
+    """
+
     task: str = Field(
         description=(
             "The task the model_path is serving. For example, one of: "
@@ -92,6 +100,10 @@ class ServeModelConfig(BaseModel):
 
 
 class ServerConfig(BaseModel):
+    """
+    A configuration for serving models in the DeepSparse inference server
+    """
+
     models: List[ServeModelConfig] = Field(
         default=[],
         description=(
@@ -109,6 +121,13 @@ class ServerConfig(BaseModel):
 
 @lru_cache()
 def server_config_from_env(env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG):
+    """
+    Load a server configuration from the targeted environment variable given by env_key.
+
+    :param env_key: the environment variable to load the configuration from.
+        Defaults to ENV_DEEPSPARSE_SERVER_CONFIG
+    :return: the loaded configuration file
+    """
     config_file = os.environ[env_key]
 
     if not config_file:
@@ -152,6 +171,23 @@ def server_config_to_env(
     batch_size: int,
     env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG,
 ):
+    """
+    Put a server configuration in an environment variable given by env_key.
+    If config_file is given, ignores task, model_path, and batch_size.
+    Otherwise, creates a configuration file from task, model_path, and batch_size
+    for serving a single model.
+
+    :param config_file: the path to the config file to store in the environment
+    :param task: the task the model_path is serving such as question_answering.
+        If config_file is supplied, this is ignored.
+    :param model_path: the path to a model.onnx file, a model folder containing
+        the model.onnx and supporting files, or a SparseZoo model stub.
+        If config_file is supplied, this is ignored.
+    :param batch_size: the batch size to serve the model from model_path with.
+        If config_file is supplied, this is ignored.
+    :param env_key: the environment variable to set the configuration in.
+        Defaults to ENV_DEEPSPARSE_SERVER_CONFIG
+    """
     if config_file is not None:
         config = config_file
     else:

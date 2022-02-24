@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Utilities for serving models in the DeepSparse server
+"""
+
 from typing import Any
 
 import numpy
@@ -21,6 +25,12 @@ __all__ = ["serializable_response"]
 
 
 def serializable_response(data: Any) -> Any:
+    """
+    :param data: input data to correct for serialization such as changing numpy
+        arrays to primitives
+    :return: a response that can be used for serialization such as through json
+        for the serving
+    """
     if not data:
         return data
 

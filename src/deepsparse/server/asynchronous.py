@@ -13,6 +13,12 @@
 # limitations under the License.
 
 
+"""
+Threadpools and logic to handle asynchronous requests for pipelines using
+the DeepSparse Engine. Used to enable multiple requests when serving models.
+"""
+
+
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -27,6 +33,11 @@ _THREADPOOL = None  # type: Optional[ThreadPoolExecutor]
 
 
 def initialize_aysnc(max_workers: int = 10):
+    """
+    Initialize the async loop and threadpool for the execute_async function
+
+    :param max_workers: the number of maximum workers that can run at one time
+    """
     global _LOOP, _THREADPOOL
 
     if _LOOP is not None or _THREADPOOL is not None:
@@ -40,6 +51,9 @@ def initialize_aysnc(max_workers: int = 10):
 
 
 def check_initialized():
+    """
+    Check that initialize_async has been called, if not raise RuntimeError
+    """
     if _LOOP is None or _THREADPOOL is None:
         raise RuntimeError(
             "intialize_async must be called first, either _LOOP or _THREADPOOL is None"
@@ -47,6 +61,14 @@ def check_initialized():
 
 
 async def execute_async(pipeline: Callable, *args, **kwargs):
+    """
+    Execute a pipeline or engine request using the given args and kwargs asynchronously.
+
+    :param pipeline: a callable pipeline or engine execution
+    :param args: the positional arguments to pass into the pipeline
+    :param kwargs: the keyword arguments to pass into the pipeline
+    :return: the result of pipeline(*args, **kwargs) after it has run asynchronously
+    """
     check_initialized()
     pipeline = partial(pipeline, *args, **kwargs)
     result = await _LOOP.run_in_executor(_THREADPOOL, pipeline)
