@@ -30,11 +30,11 @@ from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy
 import onnx
+import yaml
 
 import cv2
 import torch
 import torchvision
-import yaml
 from sparseml.onnx.utils import get_tensor_dim_shape, set_tensor_dim_shape
 from sparseml.utils import create_dirs
 from sparsezoo import Zoo

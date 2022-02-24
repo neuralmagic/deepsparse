@@ -18,17 +18,16 @@
 
 import logging
 from pathlib import Path
-from pydantic import BaseModel
-import os
-import time
-from typing import Any, List, Optional
-from functools import lru_cache
-import yaml
 
 import click
+
 from deepsparse.server.asynchronous import execute_async
-from deepsparse.transformers import Pipeline, pipeline
-from deepsparse.transformers.server.schemas import REQUEST_MODELS, RESPONSE_MODELS
+from deepsparse.server.config import (
+    ServerConfig,
+    server_config_from_env,
+    server_config_to_env,
+)
+from deepsparse.server.utils import serializable_response
 from deepsparse.version import version
 
 
@@ -48,122 +47,57 @@ ENV_DEEPSPARSE_SERVER_CONFIG = "DEEPSPARSE_SERVER_CONFIG"
 _LOGGER = logging.getLogger(__name__)
 
 
-def _setup_config(
-    config_file: str,
-    model_path: str,
-    model_task: str,
-    model_alias: str,
-):
-    """
-    config.yaml:
-        endpoints:
-            - model_path: ./model.onnx
-              model_task: question_answering
-              model_args: {}
-              model_alias: str
-    type: Dict[str, List[Dict[str, Any]]]
-    """
-    if config_file:
-        os.environ[ENV_DEEPSPARSE_SERVER_CONFIG] = config_file
-    elif model_path and model_task:
-        # config file does not exist, create config with single endpoint from
-        # model_path and model_task
-        endpoint = dict(model_path=model_path, model_task=model_task)
-        if model_alias:
-            endpoint["model_alias"] = model_alias
-        config = {
-            "endpoints": [endpoint]
-        }
+def _add_general_routes(app, config):
+    @app.get("/config", tags=["general"], response_model=ServerConfig)
+    def _info():
+        return config
 
-        # TODO: improve default filename
-        timestamp = time.strftime('%Y%m%d-%H%M%S')
-        default_file_name = f"{model_alias or model_task}-server-{timestamp}.yaml"
-        with open(default_file_name, "w") as config_file_obj:
-            config_file_obj.write(yaml.dump(config))
-        os.environ[ENV_DEEPSPARSE_SERVER_CONFIG] = default_file_name
+    @app.get("/ping", tags=["general"])
+    @app.get("/health", tags=["general"])
+    @app.get("/healthcheck", tags=["general"])
+    def _health():
+        return {"status": "healthy"}
+
+    @app.get("/", include_in_schema=False)
+    def _home():
+        return RedirectResponse("/docs")
+
+    _LOGGER.info("created general routes, visit `/docs` to view available")
+
+
+def _add_pipeline_route(app, pipeline_def, num_models: int, defined_tasks: set):
+    async def _predict_func(request: pipeline_def.request_model):
+        results = await execute_async(
+            pipeline_def.pipeline, **vars(request), **pipeline_def.kwargs
+        )
+        return serializable_response(results)
+
+    if num_models == 1:
+        # add only a single predict route since this is the only model we're serving
+        app.post(
+            f"/predict", response_model=pipeline_def.response_model, tags=["prediction"]
+        )(_predict_func)
+    elif pipeline_def.config.alias:
+        # add the prediction path under the given alias
+        app.post(
+            f"/predict/{pipeline_def.config.alias}",
+            response_model=pipeline_def.response_model,
+            tags=["prediction"],
+        )(_predict_func)
+    elif pipeline_def.config.task not in defined_tasks:
+        # fall back on adding the model to the task provided nothing is already assigned
+        app.post(
+            f"/predict/{pipeline_def.config.task}",
+            response_model=pipeline_def.response_model,
+            tags=["prediction"],
+        )(_predict_func)
+        defined_tasks.add(pipeline_def.config.task)
     else:
         raise ValueError(
-            "a config_file must be provided or model_path and model_task must "
-            "both be specified to launch this server"
+            f"Multiple tasks defined for {pipeline_def.config.task} and no alias "
+            f"given for {pipeline_def.config}. "
+            "Either define an alias or supply a single model for the task"
         )
-
-
-@lru_cache()
-def _load_config() -> Dict[str, Any]:
-    config_file_path = os.environ[ENV_DEEPSPARSE_SERVER_CONFIG]
-    
-    with open(config_file_path) as config_file:
-        config = yaml.safe_load(config_file)
-
-    if not isinstance(config, dict):
-        raise ValueError(
-            "server config must be a yaml object representing a dictionary "
-            f"loaded object of type {type(config)}"
-        )
-    
-    if "endpoints" not in config:
-        raise ValueError(
-            "server config must define endpoints as a top level key. endpoints "
-            "must be a list of model configurations"
-        )
-    endpoints = config["endpoints"]
-    if not isinstance(endpoints, list):
-        raise ValueError(
-            "config endpoints must be a list of endpoint configurations"
-        )
-    for endpoint in endpoints:
-        if not isinstance(endpoint, dict):
-            raise ValueError(
-                "each endpoint in config endpoints must be a dict containing "
-                f"'model_path' and 'model_task'. Found value of type {type(endpoint)}"
-            )
-        if "model_path" or "model_task" not in endpoint:
-            raise ValueError(
-                "Found endpoint with missing model_path or model_task defined. "
-                f"Found endpoint keys: {list(endpoint.keys())}"
-            )
-
-    return config
-
-
-@dataclass
-class PipelineDef:
-    pipeline: Pipeline
-    task: str
-    model_alias: Optional[str]
-    kwargs: dict
-    response_model: BaseModel
-    request_model: BaseModel
-
-
-def _load_pipelines_definitions(config) -> List[PipelineDef]:
-    """
-    define pipeline definitions as list:
-       - pipeline: Callable
-         task: question_answering
-         model_alias:
-         kwargs: dict
-         response_model:
-         request_model:
-    """
-    pipeline_defs = []
-    endpoints = config["endpoints"]
-    for endpoint in endpoints:
-        task = endpoint["model_task"].lower().replace("_", "-")
-        model_pipeline = pipeline(
-            model_path=endpoint["model_path"],
-            task=task,
-        )
-        pipeline_def = PipelineDef(
-            pipeline=model_pipeline,
-            task=endpoint["model_task"],
-            model_alias=endpoint.get("model_alias"),
-            kwargs={},  # TODO: propagate,
-            response_model=RESPONSE_MODELS[task],
-            request_model=REQUEST_MODELS[task],
-        )
-        pipeline_defs.append(pipeline_def)
-    return pipeline_defs
 
 
 def _server_app_factory():
@@ -173,58 +107,17 @@ def _server_app_factory():
         description="DeepSparse Inference Server",
     )
     _LOGGER.info("created FastAPI app for inference serving")
-    config = _load_config()
-    pipeline_defs = _load_pipelines_definitions(config)
 
-    def _create_predict_method(_app, _pipeline_def, _defined_tasks):
+    config = server_config_from_env()
+    _LOGGER.debug("loaded server config %s", config)
+    _add_general_routes(app, config)
 
-        async def _predict(request: _pipeline_def.request_model):
-            results = await execute_async(
-                _pipeline_def.pipeline, **vars(request), **_pipeline_def.kwargs
-            )
-            return results
-
-        if _pipeline_def.task not in _defined_tasks:
-            @_app.post(
-                f"/predict/{_pipeline_def.task}",
-                response_model=_pipeline_def.response_model,
-            )
-            async def _predict_task(request: _pipeline_def.request_model):
-                return _predict(request)
-
-        if _pipeline_def.model_alias:
-            @_app.post(
-                f"/predict/{_pipeline_def.model_alias}",
-                response_model=_pipeline_def.response_model,
-            )
-            async def _predict_alias(request: _pipeline_def.request_model):
-                return _predict(request)
-
-        _LOGGER.info(
-            f"created `/predict/{_pipeline_def.task_path}` and "
-            f"`/predict/{_pipeline_def.model_path}` routes accepting post requests "
-            "for inference, visit `/docs` to view more info"
-        )
-
+    pipeline_defs = load_pipelines_definitions(config)
+    _LOGGER.debug("loaded pipeline definitions from config %s", pipeline_defs)
+    num_tasks = len(config.models)
     defined_tasks = set()
     for pipeline_def in pipeline_defs:
-        _create_predict_method(app, pipeline_def, defined_tasks)
-        defined_tasks.add(pipeline_def.task)
-
-    @app.get("/info")
-    def _info():
-        _LOGGER.info(
-            "created info route, visit `/info` to view info about the inference server"
-        )
-        return None
-
-    @app.get("/", include_in_schema=False)
-    def _home():
-        return RedirectResponse("/docs")
-
-    _LOGGER.info(
-        "created home/docs route, visit `/` or `/docs` to view available routes"
-    )
+        _add_pipeline_route(app, pipeline_def, num_tasks, defined_tasks)
 
     return app
 
@@ -259,16 +152,16 @@ def _server_app_factory():
     help="Bind to a socket with this port. Defaults to 5543.",
 )
 @click.option(
-    "--model_path",
+    "--config_file",
     type=str,
     default=None,
     help=(
-        "The path to the ONNX model to serve or a folder containing the ONNX model and "
-        "supporting files to serve. Ignored if config_file is supplied.",
+        "Configuration file containing info on how to serve the desired models. "
+        "See deepsparse.server.fastapi file for an example",
     ),
 )
 @click.option(
-    "--model_task",
+    "--task",
     type=str,
     default=None,
     help=(
@@ -278,22 +171,22 @@ def _server_app_factory():
     ),
 )
 @click.option(
-    "--model_alias",
+    "--model_path",
     type=str,
     default=None,
     help=(
-        "Alias name for model pipeline to be served. A convenience route of "
-        "/predict/model_alias will be added to the server if present"
-        "Ignored if config file is supplied",
+        "The path to a model.onnx file, a model folder containing the model.onnx "
+        "and supporting files, or a SparseZoo model stub. "
+        "Ignored if config_file is supplied.",
     ),
 )
 @click.option(
-    "--config_file",
-    type=str,
-    default=None,
+    "--batch_size",
+    type=int,
+    default=1,
     help=(
-        "Configuration file containing info on how to serve the desired models. "
-        "See deepsparse.server.fastapi file for an example",
+        "The batch size to serve the model from model_path with."
+        "Ignored if config_file is supplied.",
     ),
 )
 def start_server(
@@ -301,13 +194,13 @@ def start_server(
     port: str,
     workers: int,
     log_level: str,
-    model_path: str,
-    model_task: str,
-    model_alias: str,
     config_file: str,
+    task: str,
+    model_path: str,
+    batch_size: int,
 ):
     _LOGGER.setLevel(log_level)
-    _setup_config(config_file, model_path, model_task, model_alias)
+    server_config_to_env(config_file, task, model_path, batch_size)
     filename = Path(__file__).stem
     package = "deepsparse.transformers.server"
     app_name = f"{package}.{filename}:app"

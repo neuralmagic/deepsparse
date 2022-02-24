@@ -20,8 +20,9 @@ import argparse
 from functools import lru_cache
 from typing import Optional, TypeVar
 
-from deepsparse.cpu import cpu_architecture
 from pydantic import BaseModel, BaseSettings, Field
+
+from deepsparse.cpu import cpu_architecture
 
 
 __all__ = ["parse_api_settings", "PipelineEngineConfig"]
