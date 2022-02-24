@@ -73,17 +73,17 @@ def _add_pipeline_route(app, pipeline_def, num_models: int, defined_tasks: set):
         )
         return serializable_response(results)
 
-    if num_models == 1:
-        # add only a single predict route since this is the only model we're serving
-        app.post(
-            f"/predict", response_model=pipeline_def.response_model, tags=["prediction"]
-        )(_predict_func)
-    elif pipeline_def.config.alias:
+    if pipeline_def.config.alias:
         # add the prediction path under the given alias
         app.post(
             f"/predict/{pipeline_def.config.alias}",
             response_model=pipeline_def.response_model,
             tags=["prediction"],
+        )(_predict_func)
+    elif num_models == 1:
+        # add only a single predict route since this is the only model we're serving
+        app.post(
+            "/predict", response_model=pipeline_def.response_model, tags=["prediction"]
         )(_predict_func)
     elif pipeline_def.config.task not in defined_tasks:
         # fall back on adding the model to the task provided nothing is already assigned

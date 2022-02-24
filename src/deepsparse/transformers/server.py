@@ -22,7 +22,7 @@ from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
-from deepsparse.server.config import ServeModelConfig, ServerConfig
+from deepsparse.server.config import ServeModelConfig
 from deepsparse.tasks import SupportedTasks
 from deepsparse.transformers import Pipeline, pipeline
 

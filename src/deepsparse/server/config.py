@@ -59,10 +59,10 @@ class ServeModelConfig(BaseModel):
         default=None,
         description=(
             "Alias name for model pipeline to be served. A convenience route of "
-            "/predict/model_alias will be added to the server if present. "
+            "/predict/alias will be added to the server if present. "
         ),
     )
-    args: Dict[str, Any] = Field(
+    kwargs: Dict[str, Any] = Field(
         default={},
         description=(
             "Additional arguments for inference with the model that will be passed "
@@ -75,13 +75,11 @@ class ServeModelConfig(BaseModel):
             "The engine to use for serving the models such as deepsparse or onnxruntime"
         ),
     )
-
-
-class ServerConfig(BaseModel):
-    models: List[ServeModelConfig] = Field(
-        default=[],
+    num_cores: int = Field(
+        default=None,
         description=(
-            "The models to serve in the server defined by the additional arguments"
+            "The number of physical cores to restrict the DeepSparse Engine to. "
+            "Defaults to all cores."
         ),
     )
     scheduler: str = Field(
@@ -89,6 +87,15 @@ class ServerConfig(BaseModel):
         description=(
             "The scheduler to use with the DeepSparse Engine such as sync or async. "
             "Defaults to async"
+        ),
+    )
+
+
+class ServerConfig(BaseModel):
+    models: List[ServeModelConfig] = Field(
+        default=[],
+        description=(
+            "The models to serve in the server defined by the additional arguments"
         ),
     )
     workers: str = Field(
