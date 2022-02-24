@@ -14,4 +14,4 @@
 
 # flake8: noqa
 
-from .fastapi import start_server
+from .main import start_server

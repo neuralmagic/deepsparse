@@ -28,9 +28,9 @@ __all__ = ["PipelineDefinition", "load_pipelines_definitions"]
 
 
 class PipelineDefinition(BaseModel):
-    pipeline: Callable = Field(description=(""))
-    request_model: Type = Field(description=(""))
-    response_model: Type = Field(description=(""))
+    pipeline: Any = Field(description=(""))
+    request_model: Any = Field(description=(""))
+    response_model: Any = Field(description=(""))
     kwargs: Dict[str, Any] = Field(description=(""))
     config: ServeModelConfig = Field(description=(""))
 

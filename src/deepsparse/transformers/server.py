@@ -64,7 +64,7 @@ def create_pipeline_definitions(model_config: ServeModelConfig):
         )
 
     pipeline_instance: Pipeline = pipeline(
-        task=model_config.task,
+        task=model_config.task.lower().replace("_", "-"),
         model_path=model_config.model_path,
         engine_type=model_config.engine,
         num_cores=model_config.num_cores,

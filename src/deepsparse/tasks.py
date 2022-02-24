@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from collections import namedtuple
-from enum import Enum
 from typing import List
 
 
@@ -37,7 +36,7 @@ class AliasedTask:
         return task == self.name or task in self.aliases
 
 
-class SupportedTasks(Enum):
+class SupportedTasks:
     nlp = namedtuple(
         "nlp", ["question_answering", "text_classification", "token_classification"]
     )(

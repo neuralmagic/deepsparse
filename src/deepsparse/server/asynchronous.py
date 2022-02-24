@@ -19,6 +19,9 @@ from functools import partial
 from typing import Callable, Optional
 
 
+__all__ = ["initialize_aysnc", "check_initialized", "execute_async"]
+
+
 _LOOP = None  # type: Optional[asyncio.AbstractEventLoop]
 _THREADPOOL = None  # type: Optional[ThreadPoolExecutor]
 
@@ -30,7 +33,7 @@ def initialize_aysnc(max_workers: int = 10):
         del _LOOP
         del _THREADPOOL
 
-    _LOOP = asyncio.get_running_loop()
+    _LOOP = asyncio.get_event_loop()
     _THREADPOOL = ThreadPoolExecutor(
         max_workers=max_workers, thread_name_prefix="deepsparse.server.async"
     )

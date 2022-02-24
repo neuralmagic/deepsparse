@@ -21,7 +21,7 @@ from pathlib import Path
 
 import click
 
-from deepsparse.server.asynchronous import execute_async
+from deepsparse.server.asynchronous import execute_async, initialize_aysnc
 from deepsparse.server.config import (
     ServerConfig,
     server_config_from_env,
@@ -101,7 +101,7 @@ def _add_pipeline_route(app, pipeline_def, num_models: int, defined_tasks: set):
         )
 
 
-def _server_app_factory():
+def server_app_factory():
     app = FastAPI(
         title="deepsparse.server",
         version=version,
@@ -110,6 +110,7 @@ def _server_app_factory():
     _LOGGER.info("created FastAPI app for inference serving")
 
     config = server_config_from_env()
+    initialize_aysnc(config.workers)
     _LOGGER.debug("loaded server config %s", config)
     _add_general_routes(app, config)
 
@@ -128,11 +129,9 @@ def _server_app_factory():
     "--host",
     type=str,
     default="0.0.0.0",
-    help=(
-        "Bind socket to this host. Use --host 0.0.0.0 to make the application "
-        "available on your local network. IPv6 addresses are supported, "
-        "for example: --host '::'. Defaults to 0.0.0.0",
-    ),
+    help="Bind socket to this host. Use --host 0.0.0.0 to make the application "
+    "available on your local network. "
+    "IPv6 addresses are supported, for example: --host '::'. Defaults to 0.0.0.0",
 )
 @click.option(
     "--port",
@@ -149,46 +148,38 @@ def _server_app_factory():
 @click.option(
     "--log_level",
     type=str,
-    default="5543",
+    default="info",
     help="Bind to a socket with this port. Defaults to 5543.",
 )
 @click.option(
     "--config_file",
     type=str,
     default=None,
-    help=(
-        "Configuration file containing info on how to serve the desired models. "
-        "See deepsparse.server.fastapi file for an example",
-    ),
+    help="Configuration file containing info on how to serve the desired models. "
+    "See deepsparse.server.fastapi file for an example",
 )
 @click.option(
     "--task",
     type=str,
     default=None,
-    help=(
-        "The task the model_path is serving. For example, one of: "
-        "question_answering, text_classification, token_classification. "
-        "Ignored if config file is supplied",
-    ),
+    help="The task the model_path is serving. For example, one of: question_answering, "
+    "text_classification, token_classification. "
+    "Ignored if config file is supplied",
 )
 @click.option(
     "--model_path",
     type=str,
     default=None,
-    help=(
-        "The path to a model.onnx file, a model folder containing the model.onnx "
-        "and supporting files, or a SparseZoo model stub. "
-        "Ignored if config_file is supplied.",
-    ),
+    help="The path to a model.onnx file, a model folder containing the model.onnx "
+    "and supporting files, or a SparseZoo model stub. "
+    "Ignored if config_file is supplied.",
 )
 @click.option(
     "--batch_size",
     type=int,
     default=1,
-    help=(
-        "The batch size to serve the model from model_path with."
-        "Ignored if config_file is supplied.",
-    ),
+    help="The batch size to serve the model from model_path with. "
+    "Ignored if config_file is supplied.",
 )
 def start_server(
     host: str,
@@ -200,11 +191,14 @@ def start_server(
     model_path: str,
     batch_size: int,
 ):
-    _LOGGER.setLevel(log_level)
+    """
+    Start the server
+    """
+    _LOGGER.setLevel(log_level.upper())
     server_config_to_env(config_file, task, model_path, batch_size)
     filename = Path(__file__).stem
-    package = "deepsparse.transformers.server"
-    app_name = f"{package}.{filename}:app"
+    package = "deepsparse.server"
+    app_name = f"{package}.{filename}:server_app_factory"
     uvicorn.run(
         app_name,
         host=host,
