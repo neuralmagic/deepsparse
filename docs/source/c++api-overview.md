@@ -16,11 +16,11 @@ limitations under the License.
 
 # C++ API Overview
 
-You can use a C++ API in `libdeepsparse.so` as the interface between your application and the [Neural Magic DeepSparse Engine](https://docs.neuralmagic.com/deepsparse/). You would start with a model that has been exported in ONNX format, client code on your server. Your application will write data to input tensors, execute the DeepSparse Engine for inference results, and read output tensors for result data.
+You can use a C++ API in `libdeepsparse.so` as the interface between your application and the [Neural Magic DeepSparse Engine.](https://docs.neuralmagic.com/deepsparse/) You would start with a model that has been exported in ONNX format, client code on your server. Your application will write data to input tensors, execute the DeepSparse Engine for inference results, and read output tensors for result data.
 
 A simple demo with code is provided to invoke the DeepSparse Engine using the C++ API. Once you have installed the DeepSparse Engine, you will be ready to use the C++ API and take advantage of the library `libdeepsparse`. With `libdeepsparse`, you can run the demo by building and running `demo.bin`.
 
-You can find more information about the engine at [https://docs.neuralmagic.com/deepsparse/](https://docs.neuralmagic.com/deepsparse/).
+You can find more information about the engine at [https://docs.neuralmagic.com/deepsparse/.](https://docs.neuralmagic.com/deepsparse/)
 
 
 ## Prerequisites
