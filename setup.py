@@ -70,7 +70,7 @@ _dev_deps = [
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
 ]
-_transformers_server_deps = [
+_server_deps = [
     "uvicorn>=0.15.0",
     "fastapi>=0.70.0",
     "starlette>=0.16.0",
@@ -171,7 +171,7 @@ def _setup_install_requires() -> List:
 def _setup_extras() -> Dict:
     return {
         "dev": _dev_deps,
-        "server": _transformers_server_deps,
+        "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
     }
 
@@ -185,7 +185,7 @@ def _setup_entry_points() -> Dict:
             f"deepsparse.transformers.eval_downstream={eval_downstream}",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
-            "deepsparse.transformers.serve=deepsparse.transformers.server.main:main",
+            "deepsparse.server=deepsparse.server.main:start_server",
         ]
     }
 

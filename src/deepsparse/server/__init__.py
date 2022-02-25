@@ -11,3 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# flake8: noqa
+
+"""
+DeepSparse server implementation to serve ONNX files and pipelines through
+the DeepSparse Engine.
+"""
+
+from .main import start_server
