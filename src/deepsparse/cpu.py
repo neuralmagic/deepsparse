@@ -31,6 +31,7 @@ __all__ = [
     "cpu_vnni_compatible",
     "cpu_avx2_compatible",
     "cpu_avx512_compatible",
+    "cpu_quantization_compatible",
     "print_hardware_capability",
 ]
 
@@ -213,6 +214,15 @@ def cpu_avx2_compatible() -> bool:
     return cpu_architecture().isa == "avx2" or cpu_avx512_compatible()
 
 
+def cpu_quantization_compatible() -> bool:
+    """
+    :return: True if the current cpu has the AVX2 or AVX512 instruction sets,
+        used for running quantized neural networks performantly.
+        (AVX2 < AVX512 < VNNI)
+    """
+    return cpu_avx2_compatible() or cpu_avx512_compatible()
+
+
 def cpu_details() -> Tuple[int, str, bool]:
     """
     Detect the CPU details on linux systems
@@ -240,6 +250,11 @@ def print_hardware_capability():
     model performance within the DeepSparse Engine.
     """
     arch = cpu_architecture()
+
+    quantized_flag = "TRUE (emulated)" if cpu_quantization_compatible() else "FALSE"
+    if cpu_vnni_compatible():
+        quantized_flag = "TRUE"
+
     message = (
         f"{arch.vendor} CPU detected with {arch.num_available_physical_cores} cores. "
         f"({arch.available_sockets} sockets with "
@@ -247,13 +262,21 @@ def print_hardware_capability():
         "DeepSparse FP32 model performance supported: "
         f"{cpu_avx2_compatible() or cpu_avx512_compatible()}.\n"
         "DeepSparse INT8 (quantized) model performance supported: "
-        f"{cpu_vnni_compatible()}.\n\n"
+        f"{quantized_flag}.\n\n"
     )
 
     if cpu_avx2_compatible() and not cpu_avx512_compatible():
         message += (
             "AVX2 instruction set detected. Performance speedups are available, "
             "but inference time will be slower compared with an AVX-512 system.\n\n"
+        )
+
+    if cpu_quantization_compatible() and not cpu_vnni_compatible():
+        message += (
+            "Non VNNI system detected. Performance speedups for INT8 (quantized) "
+            "models is available, but will be slower compared with a VNNI system. "
+            "Set NM_FAST_VNNI_EMULATION=True in the environment to enable faster "
+            "emulated inference which may have a minor effect on accuracy.\n\n"
         )
 
     message += f"Additional CPU info: {arch}"
