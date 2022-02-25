@@ -197,7 +197,7 @@ print(f"Speedup: {benchmarks_sparse.items_per_second / benchmarks_base.items_per
 We accept ONNX files for custom models, too. Simply plug in your model to compare performance with other solutions.
 
 ```bash
-> wget https://github.com/onnx/models/raw/master/vision/classification/mobilenet/model/mobilenetv2-7.onnx
+> wget https://github.com/onnx/models/raw/main/vision/classification/mobilenet/model/mobilenetv2-7.onnx
 Saving to: ‘mobilenetv2-7.onnx’
 ```
 
