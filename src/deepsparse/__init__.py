@@ -20,6 +20,10 @@ for Neural Networks on commodity CPUs.
 # flake8: noqa
 # isort: skip_file
 
+# be sure to import all logging first and at the root
+# this keeps other loggers in nested files creating from the root logger setups
+from .log import *
+
 from .cpu import (
     cpu_architecture,
     cpu_avx2_compatible,

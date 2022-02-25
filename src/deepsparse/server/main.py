@@ -27,15 +27,16 @@ Usage: deepsparse.server [OPTIONS]
   and batch_size
 
   Example config.yaml for serving:
-      models:
-          - task: question_answering
-            model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-            batch_size: 1
-            alias: question_answering/dense
-          - task: question_answering
-            model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
-            batch_size: 1
-            alias: question_answering/sparse_quantized
+
+  models:
+      - task: question_answering
+        model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+        batch_size: 1
+        alias: question_answering/dense
+      - task: question_answering
+        model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
+        batch_size: 1
+        alias: question_answering/sparse_quantized
 
 Options:
   --host TEXT           Bind socket to this host. Use --host 0.0.0.0 to make
@@ -77,6 +78,7 @@ from pathlib import Path
 
 import click
 
+from deepsparse.log import set_logging_level
 from deepsparse.server.asynchronous import execute_async, initialize_aysnc
 from deepsparse.server.config import (
     ServerConfig,
@@ -100,7 +102,6 @@ except Exception as err:
     )
 
 
-ENV_DEEPSPARSE_SERVER_CONFIG = "DEEPSPARSE_SERVER_CONFIG"
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -123,38 +124,30 @@ def _add_general_routes(app, config):
 
 
 def _add_pipeline_route(app, pipeline_def, num_models: int, defined_tasks: set):
+    path = "/predict"
+
+    if pipeline_def.config.alias:
+        path = f"/predict/{pipeline_def.config.alias}"
+    elif num_models > 1:
+        if pipeline_def.config.task in defined_tasks:
+            raise ValueError(
+                f"Multiple tasks defined for {pipeline_def.config.task} and no alias "
+                f"given for {pipeline_def.config}. "
+                "Either define an alias or supply a single model for the task"
+            )
+        path = f"/predict/{pipeline_def.config.task}"
+        defined_tasks.add(pipeline_def.config.task)
+
+    @app.post(
+        path,
+        response_model=pipeline_def.response_model,
+        tags=["prediction"],
+    )
     async def _predict_func(request: pipeline_def.request_model):
         results = await execute_async(
             pipeline_def.pipeline, **vars(request), **pipeline_def.kwargs
         )
         return serializable_response(results)
-
-    if pipeline_def.config.alias:
-        # add the prediction path under the given alias
-        app.post(
-            f"/predict/{pipeline_def.config.alias}",
-            response_model=pipeline_def.response_model,
-            tags=["prediction"],
-        )(_predict_func)
-    elif num_models == 1:
-        # add only a single predict route since this is the only model we're serving
-        app.post(
-            "/predict", response_model=pipeline_def.response_model, tags=["prediction"]
-        )(_predict_func)
-    elif pipeline_def.config.task not in defined_tasks:
-        # fall back on adding the model to the task provided nothing is already assigned
-        app.post(
-            f"/predict/{pipeline_def.config.task}",
-            response_model=pipeline_def.response_model,
-            tags=["prediction"],
-        )(_predict_func)
-        defined_tasks.add(pipeline_def.config.task)
-    else:
-        raise ValueError(
-            f"Multiple tasks defined for {pipeline_def.config.task} and no alias "
-            f"given for {pipeline_def.config}. "
-            "Either define an alias or supply a single model for the task"
-        )
 
 
 def server_app_factory():
@@ -207,7 +200,9 @@ def server_app_factory():
 )
 @click.option(
     "--log_level",
-    type=str,
+    type=click.Choice(
+        ["debug", "info", "warn", "critical", "fatal"], case_sensitive=False
+    ),
     default="info",
     help="Bind to a socket with this port. Defaults to info.",
 )
@@ -254,18 +249,20 @@ def start_server(
     Start a DeepSparse inference server for serving the models and pipelines given
     within the config_file or a single model defined by task, model_path, and batch_size
 
-    Example config.yaml for serving: \n
-        models: \n
-            - task: question_answering \n
-              model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none \n
-              batch_size: 1 \n
-              alias: question_answering/dense \n
-            - task: question_answering \n
-              model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95 \n
-              batch_size: 1 \n
-              alias: question_answering/sparse_quantized \n
+    Example config.yaml for serving:
+
+    \b
+    models:
+        - task: question_answering
+          model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+          batch_size: 1
+          alias: question_answering/dense
+        - task: question_answering
+          model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
+          batch_size: 1
+          alias: question_answering/sparse_quantized
     """
-    _LOGGER.setLevel(log_level.upper())
+    set_logging_level(getattr(logging, log_level.upper()))
     server_config_to_env(config_file, task, model_path, batch_size)
     filename = Path(__file__).stem
     package = "deepsparse.server"

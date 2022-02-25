@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import logging
 import re
 from typing import List
 
 import numpy
-
-from deepsparse.utils.log import log_init
 
 
 __all__ = [
@@ -28,7 +26,8 @@ __all__ = [
     "parse_input_shapes",
 ]
 
-log = log_init(os.path.basename(__file__))
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def arrays_to_bytes(arrays: List[numpy.array]) -> bytearray:
@@ -106,7 +105,9 @@ def verify_outputs(
 
         max_diff = numpy.max(numpy.abs(output - gt_output))
         max_diffs.append(max_diff)
-        log.info(f"Output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}")
+        _LOGGER.info(
+            f"Output {i}: {output.shape} {gt_output.shape} MAX DIFF: {max_diff}"
+        )
 
         if not numpy.allclose(output, gt_output, rtol=rtol, atol=atol):
             raise Exception(

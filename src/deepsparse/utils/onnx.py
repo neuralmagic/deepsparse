@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import contextlib
+import logging
 import os
 import tempfile
 from typing import List, Union
 
 import numpy
 import onnx
-
-from deepsparse.utils.log import log_init
 
 
 try:
@@ -47,7 +46,7 @@ __all__ = [
     "override_onnx_input_shapes",
 ]
 
-log = log_init(os.path.basename(__file__))
+_LOGGER = logging.getLogger(__name__)
 
 ONNX_TENSOR_TYPE_MAP = {
     1: numpy.float32,
@@ -171,7 +170,7 @@ def generate_random_inputs(
         if batch_size is not None:
             in_shape[0] = batch_size
 
-        log.info(
+        _LOGGER.info(
             "Generating input '{}', type = {}, shape = {}".format(
                 external_input.name, numpy.dtype(elem_type).name, in_shape
             )

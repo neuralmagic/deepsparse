@@ -99,16 +99,16 @@ import os
 from deepsparse import Scheduler, compile_model
 from deepsparse.benchmark_model.ort_engine import ORTEngine
 from deepsparse.benchmark_model.stream_benchmark import model_stream_benchmark
+from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,
     model_to_path,
     override_onnx_input_shapes,
     parse_input_shapes,
 )
-from deepsparse.utils.log import log_init
 
 
-log = log_init(os.path.basename(__file__))
+_LOGGER = logging.getLogger(__name__)
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
@@ -237,17 +237,17 @@ def decide_thread_pinning(pinning_mode: str):
 
     if pinning_mode in "core":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
-        log.info("Thread pinning to cores enabled")
+        _LOGGER.info("Thread pinning to cores enabled")
     elif pinning_mode in "numa":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
         os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "1"
-        log.info("Thread pinning to socket/numa nodes enabled")
+        _LOGGER.info("Thread pinning to socket/numa nodes enabled")
     elif pinning_mode in "none":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
         os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "0"
-        log.info("Thread pinning disabled, performance may be sub-optimal")
+        _LOGGER.info("Thread pinning disabled, performance may be sub-optimal")
     else:
-        log.info(
+        _LOGGER.info(
             "Recieved invalid option for thread_pinning '{}', skipping".format(
                 pinning_mode
             )
@@ -273,7 +273,7 @@ def parse_scenario(scenario):
     elif scenario == "elastic":
         return "elastic"
     else:
-        log.info(
+        _LOGGER.info(
             "Recieved invalid option for scenario'{}', defaulting to async".format(
                 scenario
             )
@@ -286,7 +286,7 @@ def main():
     args = parse_args()
 
     if args.quiet:
-        log.setLevel(logging.WARN)
+        set_logging_level(logging.WARN)
 
     decide_thread_pinning(args.thread_pinning)
 
@@ -313,7 +313,7 @@ def main():
             num_cores=args.num_cores,
             input_shapes=input_shapes,
         )
-    log.info(model)
+    _LOGGER.info(model)
 
     # Generate random inputs to feed the model
     # TODO(mgoin): should be able to query Engine class instead of loading ONNX
@@ -324,17 +324,17 @@ def main():
         input_list = generate_random_inputs(args.model_path, args.batch_size)
 
     if args.num_streams:
-        log.info("num_streams set to {}".format(args.num_streams))
+        _LOGGER.info("num_streams set to {}".format(args.num_streams))
     elif not args.num_streams and scenario not in "singlestream":
         # If num_streams isn't defined, find a default
         args.num_streams = max(1, int(model.num_cores / 2))
-        log.info(
+        _LOGGER.info(
             "num_streams default value chosen of {}. "
             "This requires tuning and may be sub-optimal".format(args.num_streams)
         )
 
     # Benchmark
-    log.info(
+    _LOGGER.info(
         "Starting '{}' performance measurements for {} seconds".format(
             args.scenario, args.time
         )
