@@ -117,7 +117,7 @@ def model_stream_benchmark(
 
     if len(batch_times) == 0:
         raise Exception(
-            f"Generated no batch timings, try extending benchmark time with '--time'"
+            "Generated no batch timings, try extending benchmark time with '--time'"
         )
 
     # Convert times to milliseconds
