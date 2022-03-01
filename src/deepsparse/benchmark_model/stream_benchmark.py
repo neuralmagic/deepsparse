@@ -115,6 +115,11 @@ def model_stream_benchmark(
     else:
         raise Exception(f"Unknown scenario '{scenario}'")
 
+    if len(batch_times) == 0:
+        raise Exception(
+            "Generated no batch timings, try extending benchmark time with '--time'"
+        )
+
     # Convert times to milliseconds
     batch_times_ms = [
         (batch_time[1] - batch_time[0]) * 1000 for batch_time in batch_times
