@@ -42,18 +42,14 @@ python examples/flask/client.py \
 """
 
 import argparse
+import logging
 import time
 from typing import Any, Callable, List
-import logging
 
 import numpy
 import requests
 
-from deepsparse.utils import (
-    arrays_to_bytes,
-    bytes_to_arrays,
-    generate_random_inputs,
-)
+from deepsparse.utils import arrays_to_bytes, bytes_to_arrays, generate_random_inputs
 
 
 _LOGGER = logging.getLogger(__name__)
