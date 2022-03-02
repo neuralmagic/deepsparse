@@ -48,16 +48,16 @@ python examples/flask/server.py \
 """
 
 import argparse
-import os
+import logging
 
 import flask
 from flask_cors import CORS
 
 from deepsparse import Scheduler, compile_model
-from deepsparse.utils import arrays_to_bytes, bytes_to_arrays, log_init
+from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
 
 
-_LOGGER = log_init(os.path.basename(__file__))
+_LOGGER = logging.getLogger(__name__)
 
 
 def engine_flask_server(

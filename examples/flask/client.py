@@ -42,9 +42,9 @@ python examples/flask/client.py \
 """
 
 import argparse
-import os
 import time
 from typing import Any, Callable, List
+import logging
 
 import numpy
 import requests
@@ -53,11 +53,10 @@ from deepsparse.utils import (
     arrays_to_bytes,
     bytes_to_arrays,
     generate_random_inputs,
-    log_init,
 )
 
 
-_LOGGER = log_init(os.path.basename(__file__))
+_LOGGER = logging.getLogger(__name__)
 
 
 class EngineFlaskClient:
