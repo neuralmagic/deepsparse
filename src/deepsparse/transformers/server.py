@@ -18,11 +18,26 @@ Specs, schemas, and pipelines for use when serving transformers models
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
-
-from deepsparse.server.config import ServeModelConfig
 from deepsparse.tasks import SupportedTasks
-from deepsparse.transformers import Pipeline, pipeline
+from deepsparse.transformers.pipelines import Pipeline, pipeline
+
+
+try:
+    from deepsparse.server.config import ServeModelConfig
+
+    deepsparse_server_err = None
+except Exception as _err:
+    deepsparse_server_err = _err
+    ServeModelConfig = object
+
+try:
+    from pydantic import BaseModel, Field
+
+    pydantic_import_err = None
+except Exception as _err:
+    pydantic_import_err = _err
+    BaseModel = object
+    Field = dict
 
 
 __all__ = [
@@ -43,11 +58,17 @@ def create_pipeline_definitions(
     Create a pipeline definition and the supporting files for a given model config
     to use for serving in the DeepSparse inference server
 
-    :param model_config: the config describing the model and params for serving
+    :param model_config: the server model config describing the model and params
     :return: a tuple containing (the pipeline to use for inference,
         the expected request body, the expected response body,
         any additional keyword args for use with the server)
     """
+    if deepsparse_server_err:
+        raise deepsparse_server_err
+
+    if pydantic_import_err:
+        raise pydantic_import_err
+
     if SupportedTasks.nlp.question_answering.matches(model_config.task):
         request_model = QuestionAnsweringRequest
         response_model = Union[
