@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field
 
 from deepsparse.tasks import SupportedTasks
-from deepsparse.transformers import Pipeline, pipeline
+from deepsparse.transformers.pipelines import Pipeline, pipeline
 
 
 __all__ = [
