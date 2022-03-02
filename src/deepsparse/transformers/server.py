@@ -20,7 +20,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse.server.config import ServeModelConfig
 from deepsparse.tasks import SupportedTasks
 from deepsparse.transformers import Pipeline, pipeline
 
@@ -36,14 +35,12 @@ __all__ = [
 ]
 
 
-def create_pipeline_definitions(
-    model_config: ServeModelConfig,
-) -> Tuple[Pipeline, Any, Any, Dict]:
+def create_pipeline_definitions(model_config) -> Tuple[Pipeline, Any, Any, Dict]:
     """
     Create a pipeline definition and the supporting files for a given model config
     to use for serving in the DeepSparse inference server
 
-    :param model_config: the config describing the model and params for serving
+    :param model_config: the server model config describing the model and params
     :return: a tuple containing (the pipeline to use for inference,
         the expected request body, the expected response body,
         any additional keyword args for use with the server)
