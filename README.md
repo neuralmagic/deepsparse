@@ -279,4 +279,21 @@ Find this project useful in your research or other communications? Please consid
     url = {http://proceedings.mlr.press/v119/kurtz20a.html}, 
     abstract = {Optimizing convolutional neural networks for fast inference has recently become an extremely active area of research. One of the go-to solutions in this context is weight pruning, which aims to reduce computational and memory footprint by removing large subsets of the connections in a neural network. Surprisingly, much less attention has been given to exploiting sparsity in the activation maps, which tend to be naturally sparse in many settings thanks to the structure of rectified linear (ReLU) activation functions. In this paper, we present an in-depth analysis of methods for maximizing the sparsity of the activations in a trained neural network, and show that, when coupled with an efficient sparse-input convolution algorithm, we can leverage this sparsity for significant performance gains. To induce highly sparse activation maps without accuracy loss, we introduce a new regularization technique, coupled with a new threshold-based sparsification method based on a parameterized activation function called Forced-Activation-Threshold Rectified Linear Unit (FATReLU). We examine the impact of our methods on popular image classification models, showing that most architectures can adapt to significantly sparser activation maps without any accuracy loss. Our second contribution is showing that these these compression gains can be translated into inference speedups: we provide a new algorithm to enable fast convolution operations over networks with sparse activations, and show that it can enable significant speedups for end-to-end inference on a range of popular models on the large-scale ImageNet image classification task on modern Intel CPUs, with little or no retraining cost.} 
 }
+
+@article{DBLP:journals/corr/abs-2111-13445,
+  author    = {Eugenia Iofinova and
+               Alexandra Peste and
+               Mark Kurtz and
+               Dan Alistarh},
+  title     = {How Well Do Sparse Imagenet Models Transfer?},
+  journal   = {CoRR},
+  volume    = {abs/2111.13445},
+  year      = {2021},
+  url       = {https://arxiv.org/abs/2111.13445},
+  eprinttype = {arXiv},
+  eprint    = {2111.13445},
+  timestamp = {Wed, 01 Dec 2021 15:16:43 +0100},
+  biburl    = {https://dblp.org/rec/journals/corr/abs-2111-13445.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
 ```
