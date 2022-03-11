@@ -62,9 +62,7 @@ __ __
 
 One of the greatest features of our inference engine is the ability to integrate into popular deep learning libraries (e.g. Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX runtime (ORT). ORT gives flexibility to serve your model in a framework agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
-To begin your inference adventure with DeepSparse is super simple. You can either run DeepSparse in CLI or  in Python. 
-
-Let's first check out the CLI features... 👇
+To begin your inference adventure with DeepSparse is super simple. You can either run DeepSparse in CLI or in Python. Let's first check out the CLI features... 👇
 
 ## DeepSparse Server & Benchmark in CLI
 
@@ -109,7 +107,7 @@ Finally, after your `config.yaml` file is built, you can run the server with the
 deepsparse.server --config_file config.yaml
 ```
 
-### 2. Deepsparse Benchmark
+### 2. DeepSparse Benchmark
 
 The benchmark tool is available on your CLI to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
 
