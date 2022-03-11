@@ -85,7 +85,8 @@ The DeepSparse inference server allows you to serve models and pipelines in depl
 Example CLI command for running inference with a single model:
 
 ```bash
-deepsparse.server --task question_answering \
+deepsparse.server \
+    --task question_answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none"
 ```
 
