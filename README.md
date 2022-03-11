@@ -75,13 +75,13 @@ After you've installed DeepSparse in your Python environment, you have two resou
 - `deepsparse.benchmark` :
     - If you are interested in experimenting with the throughput/latency performance of your models under different inference scenarios.
 
-#### 1. DeepSparse Server
+### 1. DeepSparse Server
 
 The DeepSparse inference server allows you to serve models and pipelines in deployment. The server runs on top of the popular FastAPI web framework and Uvicorn web server.
 
  - run `deepsparse.server -h` to lookup arguments.
 
-##### ⭐ Single Model
+##### ⭐ Single Model ⭐
 
 Example CLI command for running inference with a single model:
 
@@ -108,7 +108,7 @@ Finally, after your `config.yaml` file is built, you can run the server with the
 deepsparse.server --config_file config.yaml
 ```
 
-#### 2. Deepsparse Benchmark
+### 2. Deepsparse Benchmark
 
 The benchmark tool is available on your CLI to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
 
