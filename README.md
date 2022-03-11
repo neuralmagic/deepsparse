@@ -70,10 +70,10 @@ __ __
 ## Working in CLI with DeepSparse Server & Benchmark
 
 After you've installed DeepSparse in your Python environment, you have two resources via CLI at your disposal:
-- `deepsparse.server` :
-    - If you are interested in serving your models. 
-- `deepsparse.benchmark` :
-    - If you are interested in experimenting with the throughput/latency performance of your models under different inference scenarios.
+
+`deepsparse.server` : If you are interested in serving your models.
+
+`deepsparse.benchmark` : If you are interested in experimenting with the throughput/latency performance of your models under different inference scenarios.
 
 ### 1. DeepSparse Server
 
