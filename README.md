@@ -65,9 +65,8 @@ One of the greatest features of our inference engine is the ability to integrate
 To begin your inference adventure with DeepSparse is super simple. You can either run DeepSparse in CLI or  in Python. 
 
 Let's first check out the CLI features... 👇
-__ __
 
-## Working in CLI with DeepSparse Server & Benchmark
+## DeepSparse Server & Benchmark in CLI
 
 After you've installed DeepSparse in your Python environment, you have two resources via CLI at your disposal:
 
@@ -86,7 +85,8 @@ The DeepSparse inference server allows you to serve models and pipelines in depl
 Example CLI command for running inference with a single model:
 
 ```bash
-deepsparse.server --task question_answering --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none"
+deepsparse.server --task question_answering \
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none"
 ```
 
 ##### ⭐ Multiple Models ⭐
