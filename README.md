@@ -88,7 +88,7 @@ pip install deepsparse
 
 ### Hardware Support
 
-The DeepSparse Engine is validated to work on x86 Intel (Haswell generation and later) and AMD CPUs running Linux, with support for AVX2, AVX-512, and VNNI instruction sets. Mac and Windows require running Linux in a Docker or virtual machine.
+With support for AVX2, AVX-512, and VNNI instruction sets, the DeepSparse Engine is validated to work on x86 Intel (Haswell generation and later) and AMD CPUs running Linux. Mac and Windows require running Linux in a Docker or virtual machine.
 
 Here is a table detailing specific support for some algorithms over different microarchitectures:
 
