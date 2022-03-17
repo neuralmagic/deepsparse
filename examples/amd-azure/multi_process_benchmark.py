@@ -30,6 +30,7 @@ from deepsparse.utils import (
 )
 from sparsezoo.models import Zoo
 
+
 _LOGGER = logging.getLogger(__name__)
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -81,9 +82,7 @@ def parse_args():
         "-nstreams",
         "--num_streams",
         type=int,
-        help=(
-            "The number of processes that will run inferences in parallel. "
-        ),
+        help=("The number of processes that will run inferences in parallel. "),
     )
     parser.add_argument(
         "-pin",
@@ -276,6 +275,7 @@ def main():
     print("Latency Median (ms/batch): {:.4f}".format(benchmark_result["median"]))
     print("Latency Std (ms/batch): {:.4f}".format(benchmark_result["std"]))
     print("Iterations: {}".format(int(benchmark_result["iterations"])))
+
 
 if __name__ == "__main__":
     main()
