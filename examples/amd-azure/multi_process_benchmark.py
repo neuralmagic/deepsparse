@@ -1,13 +1,25 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import argparse
 import logging
+import multiprocessing as mp
 import os
 
 import numpy as np
 
-import multiprocessing as mp
 import numa
-
-from sparsezoo.models import Zoo
 from deepsparse import Scheduler, compile_model
 from deepsparse.benchmark_model.stream_benchmark import singlestream_benchmark
 from deepsparse.utils import (
@@ -16,22 +28,22 @@ from deepsparse.utils import (
     override_onnx_input_shapes,
     parse_input_shapes,
 )
+from sparsezoo.models import Zoo
 
 _LOGGER = logging.getLogger(__name__)
 
 DEEPSPARSE_ENGINE = "deepsparse"
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Benchmark ONNX models in the DeepSparse Engine"
     )
-
     parser.add_argument(
         "model_path",
         type=str,
         help="Path to an ONNX model file or SparseZoo model stub",
     )
-
     parser.add_argument(
         "-b",
         "--batch_size",
@@ -49,16 +61,6 @@ def parse_args():
         "input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]",
     )
     parser.add_argument(
-        "-ncores",
-        "--num_cores",
-        type=int,
-        default=None,
-        help=(
-            "The number of physical cores to run the analysis on, "
-            "defaults to all physical cores available on the system"
-        ),
-    )
-    parser.add_argument(
         "-t",
         "--time",
         type=int,
@@ -71,7 +73,7 @@ def parse_args():
         type=int,
         default=2,
         help=(
-            "The number of seconds the benchmark will warmup before running."
+            "The number of seconds the benchmark will warmup before running and cooldown after running."
             "Default is 2 seconds."
         ),
     )
@@ -80,9 +82,7 @@ def parse_args():
         "--num_streams",
         type=int,
         help=(
-            "The number of streams that will submit inferences in parallel using "
-            "async scenario. Default is automatically determined for given hardware "
-            "and may be sub-optimal."
+            "The number of processes that will run inferences in parallel. "
         ),
     )
     parser.add_argument(
@@ -95,20 +95,6 @@ def parse_args():
             "Enable binding threads to cores ('core' the default), "
             "threads to cores on sockets ('numa'), or disable ('none')"
         ),
-    )
-    parser.add_argument(
-        "-q",
-        "--quiet",
-        help="Lower logging verbosity",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
-        "-x",
-        "--export_path",
-        help="Store results into a JSON file",
-        type=str,
-        default=None,
     )
 
     return parser.parse_args()
@@ -137,7 +123,7 @@ def decide_thread_pinning(pinning_mode: str):
 
 
 def cpus_to_numas(cpu_set):
-    numas = set() 
+    numas = set()
     for i in range(numa.info.get_max_node()):
         cpus = numa.info.node_to_cpus(i)
         for j in cpus:
@@ -163,7 +149,7 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
     model = compile_model(
         model=args.model_path,
         batch_size=args.batch_size,
-        num_cores=args.num_cores,
+        num_cores=len(cpu_affinity_set),
         scheduler="single_stream",
         input_shapes=input_shapes,
     )
@@ -182,7 +168,7 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
     # Warmup the engine
     singlestream_benchmark(model, input_list, args.warmup_time)
 
-    # Run the benchmark scenario and collect batch times
+    # Run the singlestream benchmark scenario and collect batch times
     batch_times = singlestream_benchmark(model, input_list, args.time)
 
     # Cooldown the engine
@@ -223,25 +209,23 @@ def main():
         {120, 121, 122, 123, 124, 125, 126, 127},
     ]
 
-
     # Make sure we don't try to download the model in parallel
     Zoo.download_model_from_stub(stub=args.model_path)
     orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
-
 
     all_batch_times = []
     summed_throughput = 0
     with mp.Manager() as manager:
         results = manager.dict()
 
-        # Generate n-1 workers, and have this process do its own inference.
+        # Generate n-1 workers, and have the original process do its own inferences.
         workers = []
         for i in range(args.num_streams - 1):
             p = mp.Process(target=run, args=(i, args, b, affinity_sets[i], results))
             p.start()
             workers.append(p)
-        my_id = args.num_streams-1
+        my_id = args.num_streams - 1
         run(my_id, args, b, affinity_sets[my_id], results)
 
         for w in workers:
@@ -274,7 +258,6 @@ def main():
         "{:2.1f}%".format(key): value for key, value in zip(percentiles, buckets)
     }
     benchmark_dict = {
-        #        "scenario": scenario,
         "items_per_sec": summed_throughput,
         "iterations": len(batch_times_ms),
         "median": np.median(batch_times_ms),
@@ -288,13 +271,11 @@ def main():
     # Results summary
     print("Original Model Path: {}".format(orig_model_path))
     print("Batch Size: {}".format(args.batch_size))
-    #    print("Scenario: {}".format(scenario))
     print("Throughput (items/sec): {:.4f}".format(benchmark_result["items_per_sec"]))
     print("Latency Mean (ms/batch): {:.4f}".format(benchmark_result["mean"]))
     print("Latency Median (ms/batch): {:.4f}".format(benchmark_result["median"]))
     print("Latency Std (ms/batch): {:.4f}".format(benchmark_result["std"]))
     print("Iterations: {}".format(int(benchmark_result["iterations"])))
-
 
 if __name__ == "__main__":
     main()
