@@ -92,7 +92,7 @@ Want to find out how fast our sparse Hugging Face ONNX models perform inference?
 deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
 ```
 
-For a more in-depth discussion on benchmarking, check out the [Benchmarking tutorial]("https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model")!
+For a more in-depth discussion on benchmarking, check out the [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)!
 
 ### DeepSparse Server 🔌
 
@@ -127,4 +127,4 @@ After you finish building the `config.yaml` file, you can run the server with th
 deepsparse.server --config_file config.yaml
 ```
 
-For a more in-depth discussion on running the `deepsparse.server`, check out the [DeepSparse Server tutorial]("https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server")!
+For a more in-depth discussion on running the `deepsparse.server`, check out the [DeepSparse Server tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)!
