@@ -33,22 +33,11 @@ except Exception as _transformers_import_err:
 
 
 _LOGGER = _logging.getLogger(__name__)
-
-
-def _get_transformers_install_url(version):
-    if version == "nightly":
-        transformers_base_version = "4.18.0"
-        release = "nightly"
-    else:
-        transformers_base_version = "4.18.0" if version >= "0.12" else "4.7.0"
-        release = f"v{version}"
-    return (
-        "https://github.com/neuralmagic/transformers/releases/download/"
-        f"{release}/transformers-{transformers_base_version}.dev0-py3-none-any.whl"
-    )
-
-
-_NM_TRANSFORMERS_NIGHTLY = _get_transformers_install_url("nightly")
+_NM_TRANSFORMERS_TAR_TEMPLATE = (
+    "https://github.com/neuralmagic/transformers/releases/download/"
+    "{version}/transformers-4.18.0.dev0-py3-none-any.whl"
+)
+_NM_TRANSFORMERS_NIGHTLY = _NM_TRANSFORMERS_TAR_TEMPLATE.format(version="nightly")
 
 
 def _install_transformers_and_deps():
@@ -58,10 +47,13 @@ def _install_transformers_and_deps():
 
     import deepsparse as _deepsparse
 
-    transformers_requirement = _get_transformers_install_url(
+    nm_transformers_release = (
         "nightly"
         if not _deepsparse.is_release
-        else _deepsparse.version.version_major_minor
+        else f"v{_deepsparse.version.version_major_minor}"
+    )
+    transformers_requirement = _NM_TRANSFORMERS_TAR_TEMPLATE.format(
+        version=nm_transformers_release
     )
 
     try:
