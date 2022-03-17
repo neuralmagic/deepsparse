@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import argparse
+import json
 import logging
 import multiprocessing as mp
 import os
-import sys
-import json
 import pathlib
+import sys
 
 import numpy as np
+
 import numa
 from deepsparse import Scheduler, compile_model
 from deepsparse.benchmark_model.stream_benchmark import singlestream_benchmark
@@ -51,10 +52,12 @@ def parse_args():
     parser.add_argument(
         "topology_file",
         type=pathlib.Path,
-        help=("Path to a json file describing the topology of the system. "
+        help=(
+            "Path to a json file describing the topology of the system. "
             "This json file will contain a list of lists of cores. "
             "The ith such list will contain the cores that will be used by the ith process. "
-            "As such there must be at least nstreams lists of cores."),
+            "As such there must be at least nstreams lists of cores."
+        ),
     )
     parser.add_argument(
         "-b",
@@ -193,14 +196,15 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
 
     if len(batch_times) == 0:
         raise ValueError(
-            "Generated no batch timings, try extending benchmark time with '--time'")
+            "Generated no batch timings, try extending benchmark time with '--time'"
+        )
 
     results[worker_id] = batch_times
 
 
 def main():
     args = parse_args()
-    
+
     if args.quiet:
         set_logging_level(logging.WARN)
 
@@ -208,7 +212,7 @@ def main():
 
     # Read affinity sets from file
     affinity_sets = None
-    with open(args.topology_file, 'r') as f:
+    with open(args.topology_file, "r") as f:
         data = f.read()
         affinity_sets = json.loads(data)
 
@@ -231,7 +235,9 @@ def main():
         # Generate n-1 workers, and have the original process do its own inferences.
         workers = []
         for i in range(args.num_streams - 1):
-            p = mp.Process(target=run, args=(i, args, barrier, affinity_sets[i], results))
+            p = mp.Process(
+                target=run, args=(i, args, barrier, affinity_sets[i], results)
+            )
             p.start()
             workers.append(p)
         my_id = args.num_streams - 1
