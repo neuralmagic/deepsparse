@@ -14,137 +14,117 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Hugging Face Transformers - DeepSparse Inference Examples
-This directory contains examples for serving, benchmarking, and running NLP 
-models from the [Hugging Face Transformers](https://github.com/huggingface/transformers)
-repository using the DeepSparse Engine. These examples can load pre-trained,
-sparsified models from [SparseZoo](https://github.com/neuralmagic/sparsezoo) 
-or you can specify your own transformer [ONNX](https://onnx.ai/) file.
+# Transformers 🤗 Inference Pipelines
+This directory contains examples for serving, benchmarking, and running NLP models from the [Transformers](https://github.com/huggingface/transformers) repository using the DeepSparse Engine. These examples can load pre-trained, sparsified models from SparseZoo or you can specify your own transformer ONNX file. In addition, we also highlight how you can easily perform benchmarking and deploy transformers with the `deepsparse.server` via simple CLI commands.
 
-## Installation
-The dependencies for these examples can be installed using `pip` and the supplied `requirements.txt` file:
+### Installation
+
 ```bash
-pip3 install -r requirements.txt
+pip install deepsparse
 ```
 
-## DeepSparse Pipeline Example
+The DeepSparse-Hugging Face pipeline integration provides a simple API dedicated to several tasks:
+### Token Classification Pipeline
+```python
+from deepsparse.transformers import pipeline
 
-The DeepSparse-Hugging Face pipeline integration provides a simple API 
-dedicated to several tasks,
-following is an example using a pruned BERT model from the SparseZoo for 
-Question-Answering task. Other currently supported tasks include
-`text-classification`, `sentiment-analysis`, `ner`, and `token-classification`.
+model_path = "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/base-none"
+
+token_classification = pipeline(
+    task="token-classification",
+    model_path=model_path,
+    num_cores=None
+)
+
+inference = token_classification("I saw Snorlax in Texas!")
+```
+
+### Text Classification | Sentiment Analysis Pipeline
 
 ```python
 from deepsparse.transformers import pipeline
 
-# SparseZoo model stub or path to ONNX file
-onnx_filepath="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
+model_path = "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
 
-num_cores=None  # uses all available CPU cores by default
+text_classification = pipeline(
+    task="text-classification",
+    model_path=model_path,
+    num_cores=None
+)
 
-# Get DeepSparse question-answering pipeline
+inference = text_classification("Snorlax loves my Tesla!")
+```
+
+### Question Answering Pipeline
+
+```python
+from deepsparse.transformers import pipeline
+
+model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
 
 qa_pipeline = pipeline(
     task="question-answering",
-    model_path=onnx_filepath,
-    num_cores=num_cores,
+    model_path=model_path,
+    num_cores=None,
 )
 
-# inference
-
-my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
+inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
-The pipeline can also infer a default sparse model to run on the system.
+💡**PRO-TIP**💡: The pipeline can also infer a default sparse model to run automatically:
 
 ```python
 from deepsparse.transformers import pipeline
+
 qa_pipeline = pipeline("question-answering")
-my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
+
+inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
+**more tasks coming soon...😇**
+## Benchmarking & the DeepSparse Server
 
-## Benchmarking Example
-`benchmark.py` is a script for benchmarking sparsified Hugging Face Transformers
-performance with DeepSparse.  For a full list of options run `python 
-benchmark.py -h`.
+### Benchmarking 📜
 
-To run a benchmark using the DeepSparse Engine with a pruned BERT model that uses all available CPU cores and batch size 1, run:
+💾 [List of the the Hugging Face SparseZoo Models](https://sparsezoo.neuralmagic.com/?repo=huggingface&page=1)
+
+Want to find out how fast our sparse Hugging Face ONNX models perform inference? You can quickly do benchmarking tests with CLI commands; you only need to provide the model path of a SparseZoo ONNX model or your own local ONNX model to get started:
+
 ```bash
-python benchmark.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98 \
-    --batch-size 1
+deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
 ```
 
+For a more in-depth discussion on benchmarking, check out the [Benchmarking tutorial]("https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model")!
 
+### DeepSparse Server 🔌
 
-## Example Transformers DeepSparse Flask Deployment
+The DeepSparse inference server allows you to serve ONNX models and pipelines in HTTP. 
 
-To illustrate how the DeepSparse Engine can be used with Hugging Face 
-Transformers, this directory contains a sample model server and client. 
+##### Single Model Inference
 
-The server uses Flask to create an app with the DeepSparse Engine hosting a
-compiled Hugging Face Transformer model.
-The client can make requests into the server returning inference results for 
-given inputs.
+Example CLI command for serving a single model:
 
-### Server
-
-First, start up the host `server.py` with your model of choice, SparseZoo stubs are
-also supported.
-
-Example command:
 ```bash
-python server.py \
-    zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
+deepsparse.server \
+    --task question_answering \
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
 ```
 
-You can leave that running as a detached process or in a spare terminal.
+##### Multiple Model Inference
+To serve multiple models you can easily build a `config.yaml` file. 
+In the sample yaml below, we are defining 2 BERT models to be served by the `deepsparse.server` for the question answering task:
 
-This starts a Flask app with the DeepSparse Engine as the inference backend, accessible at `http://0.0.0.0:5543` by default.
+    models:
+        - task: question_answering
+            model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+            batch_size: 1
+            alias: question_answering/dense
+        - task: question_answering
+            model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
+            batch_size: 1
+            alias: question_answering/sparse_quantized
 
-The app exposes HTTP endpoints at:
-- `/info` to get information about the compiled model
-- `/predict` to send inputs to the model and receive a response.
-    The number of inputs should match the compiled model's batch size.
-
-For a full list of options, run `python server.py -h`.
-
-Currently, the server uses DeepSparse-HuggingFace pipeline integration 
-for end-to-end prediction.  
-
-### Client
-
-`client.py` provides a callable `PipelineClient` object to make requests to the 
-server easy.
-The file is self-documented.  See example usage below:
-
-```python
-from client import PipelineClient
-remote_model = PipelineClient(address='0.0.0.0', port='5543')
-model_outputs = remote_model(question="What's my name?", context="My name is Snorlax")
+After you finish building the `config.yaml` file, you can run the server with the config file path passed in the `--config_file` argument:
+```bash
+deepsparse.server --config_file config.yaml
 ```
 
-### SparseZoo Stubs
-[SparseZoo](http://sparsezoo.neuralmagic.com/) is a constantly-growing repository of sparsified (pruned and 
-pruned-quantized) models with matching sparsification recipes for neural networks. It simplifies and accelerates your time-to-value in building performant deep learning models with a collection of inference-optimized models and recipes to prototype from.
-
-Available via API and hosted in the cloud, the [SparseZoo](http://sparsezoo.neuralmagic.com/) contains both 
-baseline and models sparsified to different degrees of inference performance vs. baseline loss recovery. Recipe-driven approaches built around sparsification algorithms allow you to take the models as given, transfer-learn from the models onto private datasets, or transfer the recipes to your architectures.
-
-Each model in the SparseZoo has a specific stub that identifies it. The stubs are made up of the following structure:
-
-`DOMAIN/SUB_DOMAIN/ARCHITECTURE{-SUB_ARCHITECTURE}/FRAMEWORK/REPO/DATASET{-TRAINING_SCHEME}/SPARSE_NAME-SPARSE_CATEGORY-{SPARSE_TARGET}`
-
-Learn more at 
-- [SparseZoo Docs](https://docs.neuralmagic.com/sparsezoo/)
-- [SparseZoo Website](http://sparsezoo.neuralmagic.com/) 
-- [SparseZoo GitHub Repository](https://github.com/neuralmagic/sparsezoo)
-
-
-| Model Name     |      Stub      | Description |
-|----------|-------------|-------------|
-| bert-6layers-aggressive-pruned-96| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96 |This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 95% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
-| bert-pruned-conservative| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-conservative |This model is the result of pruning BERT base uncased on the SQuAD dataset. The sparsity level is 80% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
-| pruned-aggressive_94 | zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_94|This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 90% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
-| bert-3layers-pruned-aggressive-89| zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_89|This model is the result of pruning a modified BERT base uncased with 6 layers on the SQuAD dataset. The sparsity level is 89% uniformly applied to all encoder layers. Distillation was used with the teacher being the BERT model fine-tuned on the dataset for two epochs.|
-| bert-base|zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none |This model is the result of a BERT base uncased model fine-tuned on the SQuAD dataset for two epochs.|
+For a more in-depth discussion on running the `deepsparse.server`, check out the [DeepSparse Server tutorial]("https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server")!
