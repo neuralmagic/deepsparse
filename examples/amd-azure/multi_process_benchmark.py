@@ -16,12 +16,15 @@ import argparse
 import logging
 import multiprocessing as mp
 import os
+import sys
+import json
+import pathlib
 
 import numpy as np
-
 import numa
 from deepsparse import Scheduler, compile_model
 from deepsparse.benchmark_model.stream_benchmark import singlestream_benchmark
+from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,
     model_to_path,
@@ -46,11 +49,25 @@ def parse_args():
         help="Path to an ONNX model file or SparseZoo model stub",
     )
     parser.add_argument(
+        "topology_file",
+        type=pathlib.Path,
+        help=("Path to a json file describing the topology of the system. "
+            "This json file will contain a list of lists of cores. "
+            "The ith such list will contain the cores that will be used by the ith process. "
+            "As such there must be at least nstreams lists of cores."),
+    )
+    parser.add_argument(
         "-b",
         "--batch_size",
         type=int,
-        default=1,
+        default=16,
         help="The batch size to run the analysis for. Must be greater than 0",
+    )
+    parser.add_argument(
+        "-nstreams",
+        "--num_streams",
+        type=int,
+        help=("The number of processes that will run inferences in parallel. "),
     )
     parser.add_argument(
         "-shapes",
@@ -65,24 +82,18 @@ def parse_args():
         "-t",
         "--time",
         type=int,
-        default=10,
-        help="The number of seconds the benchmark will run. Default is 10 seconds.",
+        default=20,
+        help="The number of seconds the benchmark will run. Default is 20 seconds.",
     )
     parser.add_argument(
         "-w",
         "--warmup_time",
         type=int,
-        default=2,
+        default=5,
         help=(
             "The number of seconds the benchmark will warmup before running and cooldown after running."
-            "Default is 2 seconds."
+            "Default is 5 seconds."
         ),
-    )
-    parser.add_argument(
-        "-nstreams",
-        "--num_streams",
-        type=int,
-        help=("The number of processes that will run inferences in parallel. "),
     )
     parser.add_argument(
         "-pin",
@@ -94,6 +105,13 @@ def parse_args():
             "Enable binding threads to cores ('core' the default), "
             "threads to cores on sockets ('numa'), or disable ('none')"
         ),
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        help="Lower logging verbosity",
+        action="store_true",
+        default=False,
     )
 
     return parser.parse_args()
@@ -174,42 +192,33 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
     singlestream_benchmark(model, input_list, args.warmup_time)
 
     if len(batch_times) == 0:
-        raise Exception(
-            "Generated no batch timings, try extending benchmark time with '--time'"
-        )
+        raise ValueError(
+            "Generated no batch timings, try extending benchmark time with '--time'")
 
     results[worker_id] = batch_times
 
 
 def main():
     args = parse_args()
+    
+    if args.quiet:
+        set_logging_level(logging.WARN)
 
     decide_thread_pinning(args.thread_pinning)
 
-    b = mp.Barrier(args.num_streams)
+    # Read affinity sets from file
+    affinity_sets = None
+    with open(args.topology_file, 'r') as f:
+        data = f.read()
+        affinity_sets = json.loads(data)
 
-    # Hardcode affinity sets for elmo
-    affinity_sets = [
-        {0, 1, 2, 3, 4, 5, 6, 7},
-        {8, 9, 10, 11, 12, 13, 14, 15},
-        {16, 17, 18, 19, 20, 21, 22, 23},
-        {24, 25, 26, 27, 28, 29, 30, 31},
-        {32, 33, 34, 35, 36, 37, 38, 39},
-        {40, 41, 42, 43, 44, 45, 46, 47},
-        {48, 49, 50, 51, 52, 53, 54, 55},
-        {56, 57, 58, 59, 60, 61, 62, 63},
-        {64, 65, 66, 67, 68, 69, 70, 71},
-        {72, 73, 74, 75, 76, 77, 78, 79},
-        {80, 81, 82, 83, 84, 85, 86, 87},
-        {88, 89, 90, 91, 92, 93, 94, 95},
-        {96, 97, 98, 99, 100, 101, 102, 103},
-        {104, 105, 106, 107, 108, 109, 110, 111},
-        {112, 113, 114, 115, 116, 117, 118, 119},
-        {120, 121, 122, 123, 124, 125, 126, 127},
-    ]
+    # If num_streams is not specified, take all affinity sets
+    if args.num_streams is None:
+        args.num_streams = len(affinity_sets)
+    elif args.num_streams > len(affinity_sets):
+        raise ValueError("Number of streams larger than the number of affinity sets!")
 
     # Make sure we don't try to download the model in parallel
-    Zoo.download_model_from_stub(stub=args.model_path)
     orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
 
@@ -217,15 +226,16 @@ def main():
     summed_throughput = 0
     with mp.Manager() as manager:
         results = manager.dict()
+        barrier = manager.Barrier(args.num_streams)
 
         # Generate n-1 workers, and have the original process do its own inferences.
         workers = []
         for i in range(args.num_streams - 1):
-            p = mp.Process(target=run, args=(i, args, b, affinity_sets[i], results))
+            p = mp.Process(target=run, args=(i, args, barrier, affinity_sets[i], results))
             p.start()
             workers.append(p)
         my_id = args.num_streams - 1
-        run(my_id, args, b, affinity_sets[my_id], results)
+        run(my_id, args, barrier, affinity_sets[my_id], results)
 
         for w in workers:
             w.join()
