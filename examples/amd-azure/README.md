@@ -65,7 +65,7 @@ In most cases, good performance will be found in the default options so it can b
 python multi_process_benchmark.py <path/to/model> <path/to/topology/file>
 ```
 
-Executing `multi_process_benchmark.py -h` or `--help` provides the following usage options:
+Executing `multi_process_benchmark.py -h` or with `--help` provides the following usage options:
 
 ```
 usage: python multi_process_benchmark.py [-h] [-b BATCH_SIZE] [-nstreams NUM_STREAMS] [-shapes INPUT_SHAPES] [-t TIME] [-w WARMUP_TIME]
