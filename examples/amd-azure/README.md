@@ -72,7 +72,7 @@ usage: python multi_process_benchmark.py [-h] [-b BATCH_SIZE] [-nstreams NUM_STR
                                   [-pin {none,core,numa}] [-q]
                                   model_path topology_file
 
-Arguemens for benchmarking ONNX models in the DeepSparse Engine:
+Arguements for benchmarking ONNX models in the DeepSparse Engine:
 
 positional arguments:
   model_path            Path to an ONNX model file or SparseZoo model stub.
