@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Multi-Process Benchmarking for AMD Systems
+# Multi-Process Benchmarking and Throughput for AMD Systems
 
 The command-line (CLI) tool `multi-process-benchmark.py` allows users to measure the performance using multiple separate processes in parallel. This is ideal for measuring performance on systems that have multiple sockets or multiple L3 caches, like AMD's Milan processor.
 
