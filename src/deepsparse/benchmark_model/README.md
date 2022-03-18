@@ -16,7 +16,7 @@ limitations under the License.
 
 # Benchmarking 📜
 
-The `deepsparse.benchmark` is a command-line (CLI) tool for benchmarking our engine with ONNX models. The tool will parse the arguments, download/compile the network into the DeepSparse Engine, generate input tensors, and execute the model depending on the chosen scenario. By default, it will choose a multi-stream or asynchronous mode to optimize for throughput.
+`deepsparse.benchmark` is a command-line (CLI) tool for benchmarking our engine with ONNX models. The tool will parse the arguments, download/compile the network into the DeepSparse Engine, generate input tensors, and execute the model depending on the chosen scenario. By default, it will choose a multi-stream or asynchronous mode to optimize for throughput.
 
 ### Quickstart
 
@@ -103,7 +103,7 @@ Output JSON file:
 To run a sparse FP32 MobileNetV1 at batch size 16 for 10 seconds for throughput using 8 streams of requests:
 
 ```
-deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate --batch_size 8 --time 10 --scenario async --num_streams 8
+deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate --batch_size 16 --time 10 --scenario async --num_streams 8
 ```
 
 To run a sparse quantized INT8 6-layer BERT at batch size 1 for latency:
