@@ -45,16 +45,16 @@ def parse_args():
     parser.add_argument(
         "model_path",
         type=str,
-        help="Path to an ONNX model file or SparseZoo model stub",
+        help="Path to an ONNX model file or SparseZoo model stub. ",
     )
     parser.add_argument(
         "topology_file",
         type=pathlib.Path,
         help=(
-            "Path to a json file describing the topology of the system. "
-            "This json file will contain a list of lists of cores. "
+            "Path to a JSON file describing the topology of the system. "
+            "This JSON file will contain a list of lists of cores. "
             "The ith such list will contain the cores that will be used by process i. "
-            "As such there must be at least nstreams lists of cores."
+            "As such there must be at least nstreams lists of cores. "
         ),
     )
     parser.add_argument(
@@ -62,7 +62,7 @@ def parse_args():
         "--batch_size",
         type=int,
         default=16,
-        help="The batch size to run the analysis for. Must be greater than 0",
+        help="The batch size to run the analysis for. Must be greater than 0. ",
     )
     parser.add_argument(
         "-nstreams",
@@ -76,15 +76,15 @@ def parse_args():
         type=str,
         default="",
         help="Override the shapes of the inputs, "
-        'i.e. -shapes "[1,2,3],[4,5,6],[7,8,9]" results in '
-        "input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]",
+        'i.e., -shapes "[1,2,3],[4,5,6],[7,8,9]" results in '
+        "input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]. ",
     )
     parser.add_argument(
         "-t",
         "--time",
         type=int,
         default=20,
-        help="The number of seconds the benchmark will run. Default is 20 seconds.",
+        help="The number of seconds the benchmark will run; default is 20 seconds. ",
     )
     parser.add_argument(
         "-w",
@@ -92,8 +92,8 @@ def parse_args():
         type=int,
         default=5,
         help=(
-            "The number of seconds the benchmark will warmup and cooldown"
-            "before and after running. Default is 5 seconds."
+            "The number of seconds the benchmark will warm up and cool down"
+            "before and after running; default is 5 seconds. "
         ),
     )
     parser.add_argument(
@@ -104,13 +104,13 @@ def parse_args():
         choices=["none", "core", "numa"],
         help=(
             "Enable binding threads to cores ('core' the default), "
-            "threads to cores on sockets ('numa'), or disable ('none')"
+            "threads to cores on sockets ('numa'), or disable ('none'). "
         ),
     )
     parser.add_argument(
         "-q",
         "--quiet",
-        help="Lower logging verbosity and suppress output from worker processes",
+        help="Lower logging verbosity and suppress output from worker processes. ",
         action="store_true",
         default=False,
     )
@@ -135,7 +135,7 @@ def decide_thread_pinning(pinning_mode: str):
         _LOGGER.info("Thread pinning disabled, performance may be sub-optimal")
     else:
         _LOGGER.info(
-            "Recieved invalid option for thread_pinning '{}', skipping".format(
+            "Received invalid option for thread_pinning '{}', skipping".format(
                 pinning_mode
             )
         )
@@ -162,12 +162,12 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
     # and 0 means this present process
     numa.schedule.run_on_cpus(0, *cpu_affinity_set)
 
-    # Supress output from all but one worker process if quiet is set,
+    # Suppress output from all but one worker process if quiet is set,
     # so that the user doesn't see the splash message for each process.
     std_out_and_err = None
     null_file_descriptors = None
-    supress_output = args.quiet and worker_id != 0
-    if supress_output:
+    suppress_output = args.quiet and worker_id != 0
+    if suppress_output:
         null_file_descriptors = [os.open(os.devnull, os.O_WRONLY) for x in range(2)]
         std_out_and_err = os.dup(1), os.dup(2)
         os.dup2(null_file_descriptors[0], 1)
@@ -195,10 +195,10 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
     else:
         input_list = generate_random_inputs(args.model_path, args.batch_size)
 
-    # Warmup the engine
+    # Warm up the engine
     singlestream_benchmark(model, input_list, args.warmup_time)
 
-    # Run the singlestream benchmark scenario and collect batch times
+    # Run the single-stream benchmark scenario and collect batch times
     batch_times = singlestream_benchmark(model, input_list, args.time)
 
     # Cooldown the engine
@@ -211,8 +211,8 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
 
     results[worker_id] = batch_times
 
-    # Restore stderr and stdout if we supressed them.
-    if supress_output:
+    # Restore stderr and stdout if we suppressed them.
+    if suppress_output:
         os.dup2(std_out_and_err[0], 1)
         os.dup2(std_out_and_err[1], 2)
 
