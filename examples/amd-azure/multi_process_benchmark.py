@@ -18,12 +18,11 @@ import logging
 import multiprocessing as mp
 import os
 import pathlib
-import sys
 
 import numpy as np
 
 import numa
-from deepsparse import Scheduler, compile_model
+from deepsparse import compile_model
 from deepsparse.benchmark_model.stream_benchmark import singlestream_benchmark
 from deepsparse.log import set_logging_level
 from deepsparse.utils import (
@@ -32,7 +31,6 @@ from deepsparse.utils import (
     override_onnx_input_shapes,
     parse_input_shapes,
 )
-from sparsezoo.models import Zoo
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,7 +53,7 @@ def parse_args():
         help=(
             "Path to a json file describing the topology of the system. "
             "This json file will contain a list of lists of cores. "
-            "The ith such list will contain the cores that will be used by the ith process. "
+            "The ith such list will contain the cores that will be used by process i. "
             "As such there must be at least nstreams lists of cores."
         ),
     )
@@ -94,8 +92,8 @@ def parse_args():
         type=int,
         default=5,
         help=(
-            "The number of seconds the benchmark will warmup before running and cooldown after running."
-            "Default is 5 seconds."
+            "The number of seconds the benchmark will warmup and cooldown"
+            "before and after running. Default is 5 seconds."
         ),
     )
     parser.add_argument(
@@ -251,9 +249,9 @@ def main():
 
         # Calculate throughput for each stream
         # Note: We want to know all of the executions that could be performed within a
-        # given amount of wallclock time. This calculation as-is includes the test overhead
-        # such as saving timing results for each iteration so it isn't a best-case but is a
-        # realistic case.
+        # given amount of wallclock time. This calculation as-is includes the test
+        # overhead such as saving timing results for each iteration so it isn't a
+        # best-case but is arealistic case.
         for i in range(args.num_streams):
             first_start_time = min([b[0] for b in results[i]])
             last_end_time = max([b[1] for b in results[i]])
