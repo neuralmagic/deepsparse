@@ -20,12 +20,13 @@ The command-line (CLI) tool `multi-process-benchmark.py` is used to measure the 
 
 ## Quickstart
 
-After you have installed `deepsparse` in your Python environment, the benchmark tool is available on your CLI. It is simple to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
+Once users clone deepsparse and install requirements for `examples/amd-azure` the CLI script will be available.
+It is simple to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
 
-To run parallel inferences of a sparse FP32 MobileNetV1 on each CCX of a Microsoft Azure HB120rs\_v3 at batch size 16 for 30 seconds for throughput:
-
-```
-multi_process_benchmark.py zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate ./azure.json --batch_size 16 --time 30
+To run parallel inferences of a sparse FP32 MobileNetV1 on each CCX of a Microsoft Azure HB120\_v3 at batch size 16 for 30 seconds for throughput,
+the following command should be run from inside examples/amd-azure directory:
+```bash
+python multi_process_benchmark.py zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate ./azure_hb120_v3.json --batch_size 16 --time 30
 ```
 
 ## What does it do?
@@ -36,25 +37,34 @@ The number of executions is a result of setting the time duration to run executi
 
 The throughput value reported comes from measuring the number of finished inferences within the execution time and the batch size.
 
+## Topology JSON files
+
+For this benchmarking script, users must specify the topology of their system with a JSON file.
+This file includes a list of lists of cores. 
+One list of cores will contain the processor IDs that one of the worker processes will run on, and should reflect the topology of the system. 
+For performance, one list of cores in the JSON topology file should contain the list of cores that are on the same socket, are on the same NUMA node, or share the same L3 cache. 
+The `/examples/amd-azure` directory contains two example JSON files that can be used:
+    * `azure_hb120_v3.json`, which is suitable for use on a Microsoft Azure HB120\_V3 instance. You may notice that not every process will use the same number of cores when using this topology. This is because some of the CCXs on this instance type have some cores dedicated to running the hypervisor.
+    * `amd_epyc_7713.json`, which is suitable for a two socket system with AMD EPYC 7713 processors. This file will also work for a one socket system if the proper parameter for `nstreams` is passed into `multi_process_benchmark.py`.
 
 ## Usage
 
 First install the requirements using
-```
+```bash
 pip install -r requirements.txt
 ```
 `multi_process_benchmark.py` uses `py-libnuma` to control the CPU affinity and memory policy of each individual stream to optimize performance.
 
 In most cases, good performance will be found in the default options so it can be as simple as running the command with a SparseZoo model stub or your local ONNX model.
 
-```
-multi_process_benchmark.py <path/to/model> <path/to/topology/file>
+```bash
+python multi_process_benchmark.py <path/to/model> <path/to/topology/file>
 ```
 
 Running with `multi_process_benchmark.py -h` or `--help` provides usage options:
 
 ```
-usage: multi_process_benchmark.py [-h] [-b BATCH_SIZE] [-nstreams NUM_STREAMS] [-shapes INPUT_SHAPES] [-t TIME] [-w WARMUP_TIME]
+usage: python multi_process_benchmark.py [-h] [-b BATCH_SIZE] [-nstreams NUM_STREAMS] [-shapes INPUT_SHAPES] [-t TIME] [-w WARMUP_TIME]
                                   [-pin {none,core,numa}] [-q]
                                   model_path topology_file
 
@@ -80,7 +90,7 @@ optional arguments:
                         The number of seconds the benchmark will warmup before running and cooldown after running.Default is 5 seconds.
   -pin {none,core,numa}, --thread_pinning {none,core,numa}
                         Enable binding threads to cores ('core' the default), threads to cores on sockets ('numa'), or disable ('none')
-  -q, --quiet           Lower logging verbosity
+  -q, --quiet           Lower logging verbosity and suppress output from worker processes
 ```
 
 ## Example of benchmarking output
@@ -88,7 +98,7 @@ optional arguments:
 **BERT 12-layer FP32 Sparse Throughput:**
 
 ```
-python3 multi_process_benchmark.py "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98" ./elmo.json -b 16  -pin core --input_shapes='[1,128],[1,128],[1,128]' -q
+python3 multi_process_benchmark.py "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98" ./amd_epyc_7713.json -b 16  -pin core --input_shapes='[1,128],[1,128],[1,128]' -q
 DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. version: 0.12.0 (5ecb02cd) (optimized) (system=avx2, binary=avx2)
 Original Model Path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
 Batch Size: 16

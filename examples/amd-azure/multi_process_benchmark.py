@@ -18,6 +18,7 @@ import logging
 import multiprocessing as mp
 import os
 import pathlib
+import sys
 
 import numpy as np
 
@@ -110,7 +111,7 @@ def parse_args():
     parser.add_argument(
         "-q",
         "--quiet",
-        help="Lower logging verbosity",
+        help="Lower logging verbosity and suppress output from worker processes",
         action="store_true",
         default=False,
     )
@@ -123,6 +124,7 @@ def decide_thread_pinning(pinning_mode: str):
 
     if pinning_mode in "core":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
+        os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "0"
         _LOGGER.info("Thread pinning to cores enabled")
     elif pinning_mode in "numa":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
@@ -161,6 +163,19 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
     # and 0 means this present process
     numa.schedule.run_on_cpus(0, *cpu_affinity_set)
 
+
+    # Supress output from all but one worker process if quiet is set,
+    # so that the user doesn't see the splash message for each process.
+    std_out_and_err = None
+    null_file_descriptors = None
+    supress_output = args.quiet and worker_id != 0
+    if supress_output:
+        null_file_descriptors = [os.open(os.devnull, os.O_WRONLY) for x in range(2)]
+        orig_stdout_stderr = os.dup(1), os.dup(2)
+        os.dup2(null_file_descriptors[0], 1)
+        os.dup2(null_file_descriptors[1], 2)
+
+
     input_shapes = parse_input_shapes(args.input_shapes)
 
     # Compile the model
@@ -198,6 +213,14 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
         )
 
     results[worker_id] = batch_times
+
+    # Restore stderr and stdout if we supressed them.
+    if supress_output:
+        os.dup2(std_out_and_err[0], 1)
+        os.dup2(std_out_and_err[1], 2)
+
+        os.close(null_file_descriptors[0])
+        os.close(null_file_descriptors[1])
 
 
 def main():
