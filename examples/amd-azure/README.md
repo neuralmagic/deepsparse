@@ -21,7 +21,10 @@ The command-line (CLI) tool `multi-process-benchmark.py` allows users to measure
 ## Quickstart
 
 Once users clone the DeepSparse Engine and installation requirements for `examples/amd-azure` the CLI script will be available.
-It is simple to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
+```bash
+git clone https://github.com/neuralmagic/deepsparse.git
+cd deepsparse/examples/amd-azure
+```
 
 To run parallel inferences of a sparse FP32 MobileNetV1 on each CCX of a Microsoft Azure HB120\_v3 at batch size 16 for 30 seconds for throughput,
 the following command should be run from inside the `examples/amd-azure` directory:
