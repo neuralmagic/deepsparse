@@ -240,7 +240,6 @@ def main():
     elif args.num_streams > len(affinity_sets):
         raise ValueError("Number of streams larger than the number of affinity sets!")
 
-    # Make sure we don't try to download the model in parallel
     orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
 
