@@ -18,7 +18,6 @@ import logging
 import multiprocessing as mp
 import os
 import pathlib
-import sys
 
 import numpy as np
 
@@ -163,7 +162,6 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
     # and 0 means this present process
     numa.schedule.run_on_cpus(0, *cpu_affinity_set)
 
-
     # Supress output from all but one worker process if quiet is set,
     # so that the user doesn't see the splash message for each process.
     std_out_and_err = None
@@ -171,10 +169,9 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
     supress_output = args.quiet and worker_id != 0
     if supress_output:
         null_file_descriptors = [os.open(os.devnull, os.O_WRONLY) for x in range(2)]
-        orig_stdout_stderr = os.dup(1), os.dup(2)
+        std_out_and_err = os.dup(1), os.dup(2)
         os.dup2(null_file_descriptors[0], 1)
         os.dup2(null_file_descriptors[1], 2)
-
 
     input_shapes = parse_input_shapes(args.input_shapes)
 
