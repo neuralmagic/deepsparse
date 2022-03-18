@@ -1,1 +1,2 @@
 py-libnuma>=1.2
+deepsparse>=0.11.0
