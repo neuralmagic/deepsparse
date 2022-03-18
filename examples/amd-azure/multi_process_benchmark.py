@@ -270,7 +270,7 @@ def main():
         # Note: We want to know all of the executions that could be performed within a
         # given amount of wallclock time. This calculation as-is includes the test
         # overhead such as saving timing results for each iteration so it isn't a
-        # best-case but is arealistic case.
+        # best case but is a realistic case.
         for i in range(args.num_streams):
             first_start_time = min([b[0] for b in results[i]])
             last_end_time = max([b[1] for b in results[i]])
