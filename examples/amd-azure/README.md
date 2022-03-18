@@ -93,7 +93,7 @@ optional arguments:
   -w WARMUP_TIME, --warmup_time WARMUP_TIME
                         The number of seconds the benchmark will warm up before running and cool down after running; default is 5 seconds.
   -pin {none,core,numa}, --thread_pinning {none,core,numa}
-                        Enable binding threads to cores ('core' the default), threads to cores on sockets ('numa'), or disable ('none')
+                        Enable binding threads to cores ('core' the default), threads to cores on sockets ('numa'), or disable ('none').
   -q, --quiet           Lower logging verbosity and suppress output from worker processes.
 ```
 
