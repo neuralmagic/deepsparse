@@ -1,10 +1,14 @@
-### DeepSparse Server 🔌
+## DeepSparse Server 🔌
 
-The DeepSparse inference server allows you to serve models and pipelines in deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Currently, the server only supports NLP tasks, however support for computer vision will soon be released in upcoming versions!
+```bash
+pip install deepsparse[server]
+```
+
+The DeepSparse inference server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Currently, the server only supports NLP tasks, however support for computer vision will soon be released in upcoming versions!
 
  - run `deepsparse.server --help` to lookup the available CLI arguments.
 
-
+```
         --host TEXT                     Bind socket to this host. Use --host 0.0.0.0
                                         to make the application available on your
                                         local network. IPv6 addresses are supported,
@@ -39,82 +43,123 @@ The DeepSparse inference server allows you to serve models and pipelines in depl
                                         supplied.
 
         --help                          Show this message and exit.
+```
 
+### Single Model Inference
 
-##### Single Model Inference
-
-Example CLI command for serving a single model:
+Example CLI command for serving a single model for the **question answering** task:
 
 ```bash
 deepsparse.server \
     --task question_answering \
-    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none"
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95"
 ```
 
-##### Multiple Model Inference
-To serve multiple models you can easily build a `config.yaml` file. 
-In the sample yaml below, we are defining 2 BERT models to be served by the `deepsparse.server` for the question answering task:
+PipelineClient for making requests to your server:
+```python
+import json
+from typing import List
+import numpy
+import requests
 
-    models:
+class PipelineClient:
+    """
+    Client object for making requests to the example DeepSparse inference server
+
+    :param address: IP address of the server, default is 0.0.0.0
+    :param port: Port the server is hosted on, default is 5543
+    """
+
+    def __init__(self, address: str ='0.0.0.0', port: str ='5543'):
+
+        self._url = f'http://{address}:{port}/predict'
+        
+    def __call__(self, **kwargs) -> List[numpy.ndarray]:
+
+        """
+        :param kwargs: named inputs to the model server pipeline. e.g. for
+            question-answering - `question="...", context="..."
+
+        :return: json outputs from running the model server pipeline with the given
+            input(s)
+        """
+
+        response = requests.post(self._url, json=kwargs)
+        return json.loads(response.content)
+```
+
+To make a request, initialize the PipelineClient:
+
+```python
+model = PipelineClient()
+inference = model(question="Who is Mark?", context="Mark is Batman.")
+```
+__ __
+### Multiple Model Inference
+To serve multiple models you can easily build a `config.yaml` file. 
+In the sample yaml below, we are defining two BERT models to be served by the `deepsparse.server` for the question answering task:
+
+```
+models:
     - task: question_answering
         model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
         batch_size: 1
-        alias: question_answering/dense
+        alias: question_answering/base
     - task: question_answering
         model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
         batch_size: 1
-        alias: question_answering/sparse_quantized
+        alias: question_answering/quantagg95
+```
+You can now run the server with the config file path passed in the `--config_file` argument:
 
-After you finish building the `config.yaml` file, you can run the server with the config file path passed in the `--config_file` argument:
 ```bash
 deepsparse.server --config_file config.yaml
 ```
 
-💡 PRO-TIP 💡: When your server is running, you can always use the awesome swagger UI that's built in to FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
+💡 **PRO-TIP** 💡: When your server is running, you can always use the awesome swagger UI that's built in to FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
 
     localhost:5543/docs
 
-![alt text](./img/swagger_ui.png)
-__ __
-### Client 📲
+![alt text](./img/swagger_ui_1.png)
 
-When the DeepSparse HTTP server is up and running you can can send it requests via our PipelineClient object:
+When the DeepSparse server is up and running you can can send it requests via our PipelineClient object. In order to select which `/predict` route to call, we have updated the PipelineClient to include the model's `alias` from the `config.yaml` file.
 
+```python
+import json
+from typing import List
+import numpy
+import requests
 
-    import json
-    from typing import List
-    import numpy
-    import requests
+class PipelineClient:
+    """
+    Client object for making requests to the example DeepSparse BERT inference server
 
-    class PipelineClient:
+    :param alias: model alias of FastAPI route
+    :param address: IP address of the server, default is 0.0.0.0
+    :param port: Port the server is hosted on, default is 5543
+    """
+
+    def __init__(self, alias: str, address: str ='0.0.0.0', port: str ='5543'):
+
+        self.alias = alias
+        self._url = f'http://{address}:{port}/predict/{self.alias}'
+        
+    def __call__(self, **kwargs) -> List[numpy.ndarray]:
+
         """
-        Client object for making requests to the example DeepSparse BERT inference server
+        :param kwargs: named inputs to the model server pipeline. e.g. for
+            question-answering - `question="...", context="..."
 
-        :param alias: model alias of FastAPI route
-        :param address: IP address of the server, default is 0.0.0.0
-        :param port: Port the server is hosted on, default is 5543
+        :return: json outputs from running the model server pipeline with the given
+            input(s)
         """
 
-        def __init__(self, alias: str, address: str ='0.0.0.0', port: str ='5543'):
+        response = requests.post(self._url, json=kwargs)
+        return json.loads(response.content)
+```
+Here's how the PipelineClient object would be initialized to make a request to the second model in the `config.yaml` file:
 
-            self.alias = alias
-            self._url = f'http://{address}:{port}/predict/{self.alias}'
-            
-        def __call__(self, **kwargs) -> List[numpy.ndarray]:
-
-            """
-            :param kwargs: named inputs to the model server pipeline. e.g. for
-                question-answering - `question="...", context="..."
-
-            :return: json outputs from running the model server pipeline with the given
-                input(s)
-            """
-
-            response = requests.post(self._url, json=kwargs)
-            return json.loads(response.content)
-
-💡 PRO-TIP 💡: the `config.yaml` file uses the `alias` variable to label your `/predict` routes on the server! 
-
-For example, if you wanted to send a request to the second model in the `config.yaml` example shown above, here's how the PipelineClient object would be initialized to make a request:
-
-    PipelineClient(alias='question_answering/sparse_quantized')
+```python
+model = PipelineClient(alias='question_answering/quantagg95')
+inference = model(question="Who is Mark?", context="Mark is Batman.")
+```
