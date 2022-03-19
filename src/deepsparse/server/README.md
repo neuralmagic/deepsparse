@@ -6,7 +6,7 @@ pip install deepsparse[server]
 
 The DeepSparse inference server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Currently, the server only supports NLP tasks, however support for computer vision will soon be released in upcoming versions!
 
- - run `deepsparse.server --help` to lookup the available CLI arguments.
+ - Run `deepsparse.server --help` to lookup the available CLI arguments.
 
 ```
         --host TEXT                     Bind socket to this host. Use --host 0.0.0.0
@@ -157,7 +157,7 @@ class PipelineClient:
         response = requests.post(self._url, json=kwargs)
         return json.loads(response.content)
 ```
-Here's how the PipelineClient object would be initialized to make a request to the second model in the `config.yaml` file:
+We can now initialize the PipelineClient object to make a request to the second model in the `config.yaml` file:
 
 ```python
 model = PipelineClient(alias='question_answering/quantagg95')
