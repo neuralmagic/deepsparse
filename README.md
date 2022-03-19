@@ -47,24 +47,24 @@ limitations under the License.
     </a>
 </p>
 
-<h3> DeepSparse is a deep learning inference engine for running super-fast sparse models. 🚀🚀🚀</h3>
+<h3> DeepSparse is a deep learning inference engine for running super-fast sparse models. 🚀</h3>
 
 A CPU runtime engine delivering GPU-class performance by taking advantage of sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. Read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification).
 
 ## Install 💽
-Tested on Python 3.6+, and ONNX 1.5.0+. [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended!!
+Tested on Python 3.6+, and ONNX 1.5.0+. A [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
 
 ```bash
 pip install deepsparse
 ```
-__ __
+
 ## Quick Start 💻
 
-One of the greatest features of our inference engine is the ability to integrate into popular deep learning libraries (e.g. Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX runtime (ORT). ORT gives flexibility to serve your model in a framework agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
+One of the greatest features of our inference engine is the ability to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX runtime (ORT). ORT gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
-To begin your inference adventure with DeepSparse is super simple. You can either run DeepSparse in CLI or in Python. Let's first check out the CLI features... 👇
+To begin your inference adventure with DeepSparse is super simple. You can either run DeepSparse in CLI or Python. Let's first check out the CLI features... 👇
 
-## DeepSparse Server & Benchmark in CLI
+## DeepSparse Server and Benchmark in CLI
 
 After you've installed DeepSparse in your Python environment, you have two resources via CLI at your disposal:
 
@@ -90,7 +90,7 @@ deepsparse.server \
 
 ##### ⭐ Multiple Models ⭐
 To serve multiple models in your deployment you can easily build a `config.yaml`. 
-In the example below, we are defining 2 BERT models in our configuration:
+In the example below, we are defining two BERT models in our configuration:
 
     models:
     - task: question_answering
@@ -123,7 +123,7 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
 
 ```
 
-- [Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model) Includes examples of inference scenarios such as: 
+- [Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model) includes examples of inference scenarios such as: 
     - Synchronous (Single-stream) Scenario
     - Asynchronous (Multi-stream) Scenario
 
@@ -154,7 +154,7 @@ Tasks Supported:
 - Text Classification (Sentiment Analysis)
 - Question Answering
 - Masked Language Modeling (MLM)
-__ __
+
 ## CV Inference 👩‍💻 Object Detection (Placeholder)
 
 ```python
@@ -223,9 +223,9 @@ __ __
 
 ## Scheduling Single-Stream, Multi-Stream, and Elastic Inference ⚡
 
-The DeepSparse Engine offers up to 3 types of inferences based on your use-case. You can read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
+The DeepSparse Engine offers up to three types of inferences based on your use case. You can read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
 
-1 ⚡ Single stream scheduling: the latency/synchronous scenario, requests execute serially. [`default`]
+1 ⚡ Single-stream scheduling: the latency/synchronous scenario, requests execute serially. [`default`]
 
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/single-stream.png" alt="single stream diagram" />
 
@@ -237,16 +237,14 @@ PRO TIP: It's highly optimized for minimum per-request latency, using all of the
 
 PRO TIP: The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them.
 
-3 ⚡ Elastic scheduling: requests execute in parallel, but not multiplexed on individual NUMA Nodes.
+3 ⚡ Elastic scheduling: requests execute in parallel, but not multiplexed on individual NUMA nodes.
 
 PRO TIP: A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache.
 __ __
 
 ## Hardware Support 🧰
 
-The DeepSparse Engine is validated to work on x86 Intel and AMD CPUs running Linux operating systems. Mac and Windows require running Linux in a Docker or virtual machine.
-
-It is highly recommended to run on a CPU with AVX-512 instructions available for optimal algorithms to be enabled. 
+With support for AVX2, AVX-512, and VNNI instruction sets, the DeepSparse Engine is validated to work on x86 Intel (Haswell generation and later) and AMD CPUs running Linux. Mac and Windows require running Linux in a Docker or virtual machine.
 
 Here is a table detailing specific support for some algorithms over different microarchitectures:
 
@@ -295,13 +293,9 @@ Here is a table detailing specific support for some algorithms over different mi
 
 Contribute with code, examples, integrations, and documentation as well as bug reports and feature requests! [Learn how here.](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
 
-### Join
+For user help or questions about DeepSparse, sign up or log in to our [**Deep Sparse Community Slack**](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there. Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue.](https://github.com/neuralmagic/deepsparse/issues) You can get the latest news, webinar and event invites, research papers, and other ML Performance tidbits by [subscribing](https://neuralmagic.com/subscribe/) to the Neural Magic community.
 
-For user help or questions about DeepSparse, sign up or log in to our [Deep Sparse Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there. Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue.](https://github.com/neuralmagic/deepsparse/issues)
-
-You can get the latest news, webinar and event invites, research papers, and other ML Performance tidbits by [subscribing](https://neuralmagic.com/subscribe/) to the Neural Magic community.
-
-For more general questions about Neural Magic, please fill out this [form.](http://neuralmagic.com/contact/)
+For more general questions about Neural Magic, complete this [form.](http://neuralmagic.com/contact/)
 
 ### License
 
