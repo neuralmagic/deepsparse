@@ -62,7 +62,7 @@ import requests
 
 class PipelineClient:
     """
-    Client object for making requests to the example DeepSparse inference server
+    Client object for making requests to the example DeepSparse inference server with a single model
 
     :param address: IP address of the server, default is 0.0.0.0
     :param port: Port the server is hosted on, default is 5543
@@ -77,7 +77,6 @@ class PipelineClient:
         """
         :param kwargs: named inputs to the model server pipeline. e.g. for
             question-answering - `question="...", context="..."
-
         :return: json outputs from running the model server pipeline with the given
             input(s)
         """
@@ -89,13 +88,15 @@ class PipelineClient:
 To make a request, initialize the PipelineClient:
 
 ```python
+from client import PipelineClient
+
 model = PipelineClient()
 inference = model(question="Who is Mark?", context="Mark is Batman.")
 ```
 __ __
 ### Multiple Model Inference
-To serve multiple models you can easily build a `config.yaml` file. 
-In the sample YAML file below, we are defining two BERT models to be served by the `deepsparse.server` for the question answering task:
+To serve multiple models you can build a `config.yaml` file. 
+In the sample YAML file below, we are defining two BERT models to be served by the `deepsparse.server` for the **question answering** task:
 
 ```
 models:
@@ -114,13 +115,7 @@ You can now run the server with the config file path passed in the `--config_fil
 deepsparse.server --config_file config.yaml
 ```
 
-💡 **PRO TIP** 💡: When your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
-
-    localhost:5543/docs
-
-![alt text](./img/swagger_ui_1.png)
-
-When the DeepSparse server is up and running you can can send it requests via our PipelineClient object. In order to select which `/predict` route to call, we have updated the PipelineClient to include the model's `alias` from the `config.yaml` file.
+When the DeepSparse server is up and running, you can can send it requests via our MultiPipelineClient object:
 
 ```python
 import json
@@ -128,9 +123,9 @@ from typing import List
 import numpy
 import requests
 
-class PipelineClient:
+class MultiPipelineClient:
     """
-    Client object for making requests to the example DeepSparse BERT inference server
+    Client object for making requests to the example DeepSparse inference server with multiple models
 
     :param alias: model alias of FastAPI route
     :param address: IP address of the server, default is 0.0.0.0
@@ -147,7 +142,6 @@ class PipelineClient:
         """
         :param kwargs: named inputs to the model server pipeline. e.g. for
             question-answering - `question="...", context="..."
-
         :return: json outputs from running the model server pipeline with the given
             input(s)
         """
@@ -155,9 +149,17 @@ class PipelineClient:
         response = requests.post(self._url, json=kwargs)
         return json.loads(response.content)
 ```
-We can now initialize the PipelineClient object to make a request to the second model in the `config.yaml` file:
+In order to select which `/predict` route to call, you can pass the model's `alias` from the `config.yaml` file when initializing the MultiPipelineClient:
 
 ```python
-model = PipelineClient(alias='question_answering/quantagg95')
+from client import MultiPipelineClient
+
+model = MultiPipelineClient(alias='question_answering/quantagg95')
 inference = model(question="Who is Mark?", context="Mark is Batman.")
 ```
+
+💡 **PRO TIP** 💡:While your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
+
+    localhost:5543/docs
+
+![alt text](./img/swagger_ui_1.png)
