@@ -88,7 +88,7 @@ class PipelineClient:
 To make a request, initialize the PipelineClient:
 
 ```python
-from client import PipelineClient
+from deepsparse.server.client import PipelineClient
 
 model = PipelineClient()
 inference = model(question="Who is Mark?", context="Mark is Batman.")
@@ -152,7 +152,7 @@ class MultiPipelineClient:
 In order to select which `/predict` route to call, you can pass the model's `alias` from the `config.yaml` file when initializing the MultiPipelineClient:
 
 ```python
-from client import MultiPipelineClient
+from deepsparse.server.client import MultiPipelineClient
 
 model = MultiPipelineClient(alias='question_answering/pruned_quant')
 inference = model(question="Who is Mark?", context="Mark is Batman.")
