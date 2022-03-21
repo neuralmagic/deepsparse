@@ -154,7 +154,7 @@ def cpu_architecture() -> architecture:
         - detects the vector instruction set available (avx2, avx512)
         - if vnni is available
 
-    NM_ARCH environment variable can be used to override the avx instruction
+    NM_ARCH environment variable can be used to override the instruction
     set detection
 
     :return: an instance of the architecture class
@@ -165,28 +165,27 @@ def cpu_architecture() -> architecture:
         )
 
     arch = _parse_arch_bin()
-    avx_type_override = os.getenv("NM_ARCH", None)
+    isa_type_override = os.getenv("NM_ARCH", None)
 
-    if avx_type_override and avx_type_override != arch.isa:
+    if isa_type_override and isa_type_override != arch.isa:
         print(
-            "Neural Magic: Using env variable NM_ARCH={} for avx_type".format(
-                avx_type_override
+            "Neural Magic: Using env variable NM_ARCH={} for isa_type".format(
+                isa_type_override
             )
         )
-        if avx_type_override not in VALID_VECTOR_EXTENSIONS:
+        if isa_type_override not in VALID_VECTOR_EXTENSIONS:
             raise OSError(
                 (
-                    "Neural Magic: Invalid AVX instruction set '{}' must be "
-                    "one of {}."
-                ).format(avx_type_override, ",".join(VALID_VECTOR_EXTENSIONS))
+                    "Neural Magic: Invalid instruction set '{}' must be " "one of {}."
+                ).format(isa_type_override, ",".join(VALID_VECTOR_EXTENSIONS))
             )
-        arch.override_isa(avx_type_override)
+        arch.override_isa(isa_type_override)
 
     if arch.isa not in VALID_VECTOR_EXTENSIONS:
         raise OSError(
             (
-                "Neural Magic: The AVX instruction set '{}' is unknown."
-                "Set NM_ARCH to one of {} to continue."
+                "Neural Magic: Unable to determine instruction set '{}'. This system"
+                "may be unsupported but to try, set NM_ARCH to one of {} to continue."
             ).format(arch.isa, ",".join(VALID_VECTOR_EXTENSIONS))
         )
 
