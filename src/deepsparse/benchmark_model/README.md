@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Benchmarking 📜
+# Benchmarking ONNX Models 📜
 
 `deepsparse.benchmark` is a command-line (CLI) tool for benchmarking the DeepSparse Engine with ONNX models. The tool will parse the arguments, download/compile the network into the engine, generate input tensors, and execute the model depending on the chosen scenario. By default, it will choose a multi-stream or asynchronous mode to optimize for throughput.
 
