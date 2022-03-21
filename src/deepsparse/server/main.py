@@ -24,7 +24,7 @@ Usage: deepsparse.server [OPTIONS]
 
   Start a DeepSparse inference server for serving the models and pipelines
   given within the config_file or a single model defined by task, model_path,
-  and batch_size
+  and batch_size.
 
   Example config.yaml for serving:
 
@@ -42,7 +42,7 @@ Options:
   --host TEXT           Bind socket to this host. Use --host 0.0.0.0 to make
                         the application available on your local network. IPv6
                         addresses are supported, for example: --host '::'.
-                        Defaults to 0.0.0.0
+                        Defaults to 0.0.0.0.
   --port INTEGER        Bind to a socket with this port. Defaults to 5543.
   --workers INTEGER     Use multiple worker processes. Defaults to 1.
   --log_level TEXT      Sets the logging level. Defaults to info.
@@ -51,7 +51,7 @@ Options:
   --task TEXT           The task the model_path is serving. For example, one
                         of: question_answering, text_classification,
                         token_classification. Ignored if config file is
-                        supplied
+                        supplied.
   --model_path TEXT     The path to a model.onnx file, a model folder
                         containing the model.onnx and supporting files, or a
                         SparseZoo model stub. Ignored if config_file is
@@ -218,7 +218,7 @@ def server_app_factory():
     default=None,
     help="The task the model_path is serving. For example, one of: "
     "question_answering, text_classification, token_classification. "
-    "Ignored if config file is supplied",
+    "Ignored if config file is supplied.",
 )
 @click.option(
     "--model_path",

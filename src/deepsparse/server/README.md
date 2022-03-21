@@ -13,7 +13,7 @@ The DeepSparse inference server allows you to serve models and pipelines for dep
                                 to make the application available on your
                                 local network. IPv6 addresses are supported,
                                 for example: --host '::'. Defaults to
-                                0.0.0.0
+                                0.0.0.0.
 
 --port INTEGER                  Bind to a socket with this port. Defaults to
                                 5543.
@@ -115,7 +115,7 @@ You can now run the server with the config file path passed in the `--config_fil
 deepsparse.server --config_file config.yaml
 ```
 
-When the DeepSparse server is up and running, you can can send it requests via our MultiPipelineClient object:
+When the DeepSparse Server is up and running, you can can send it requests via our MultiPipelineClient object:
 
 ```python
 import json
