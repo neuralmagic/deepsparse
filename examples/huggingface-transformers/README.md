@@ -32,7 +32,7 @@ model_path = "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll20
 
 token_classification = pipeline(
     task="token-classification",
-    model_path=model_path
+    model_path=model_path,
 )
 
 inference = token_classification("I saw Snorlax in Texas!")
@@ -48,7 +48,6 @@ model_path = "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/bas
 text_classification = pipeline(
     task="text-classification",
     model_path=model_path,
-    num_cores=None
 )
 
 inference = text_classification("Snorlax loves my Tesla!")
@@ -64,7 +63,6 @@ model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/prune
 qa_pipeline = pipeline(
     task="question-answering",
     model_path=model_path,
-    num_cores=None,
 )
 
 inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
@@ -81,7 +79,7 @@ inference = qa_pipeline(question="What's my name?", context="My name is Snorlax"
 **more tasks coming soon...😇**
 ## Benchmarking & the DeepSparse Server
 
-### Benchmarking 📜
+### Benchmarking ONNX Models 📜
 
 💾 [List of the the Hugging Face SparseZoo Models](https://sparsezoo.neuralmagic.com/?repo=huggingface&page=1)
 
@@ -106,24 +104,3 @@ deepsparse.server \
     --task question_answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
 ```
-
-##### Multiple Model Inference
-To serve multiple models you can easily build a `config.yaml` file. 
-In the sample yaml below, we are defining 2 BERT models to be served by the `deepsparse.server` for the question answering task:
-
-    models:
-        - task: question_answering
-            model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-            batch_size: 1
-            alias: question_answering/dense
-        - task: question_answering
-            model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
-            batch_size: 1
-            alias: question_answering/sparse_quantized
-
-After you finish building the `config.yaml` file, you can run the server with the config file path passed in the `--config_file` argument:
-```bash
-deepsparse.server --config_file config.yaml
-```
-
-For a more in-depth discussion on running the `deepsparse.server`, check out the [DeepSparse Server tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)!
