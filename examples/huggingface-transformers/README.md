@@ -32,8 +32,7 @@ model_path = "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll20
 
 token_classification = pipeline(
     task="token-classification",
-    model_path=model_path,
-    num_cores=None
+    model_path=model_path
 )
 
 inference = token_classification("I saw Snorlax in Texas!")
