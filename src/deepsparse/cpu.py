@@ -77,7 +77,7 @@ class architecture(dict):
     def __setattr__(self, name: str, value: Any):
         if name != "__dict__":
             raise AttributeError(
-                "Neural Magic: Architecture: can't modify {}".format(name)
+                "Neural Magic: Architecture: can't modify {} to {}".format(name, value)
             )
         else:
             super(architecture, self).__setattr__(name, value)
@@ -160,7 +160,9 @@ def cpu_architecture() -> architecture:
     :return: an instance of the architecture class
     """
     if not sys.platform.startswith("linux"):
-        raise OSError("Neural Magic: Only Linux is supported.")
+        raise OSError(
+            "Neural Magic: Only Linux is supported, not '{}'.".format(sys.platform)
+        )
 
     arch = _parse_arch_bin()
     avx_type_override = os.getenv("NM_ARCH", None)
@@ -182,8 +184,8 @@ def cpu_architecture() -> architecture:
 
     if arch.isa not in VALID_VECTOR_EXTENSIONS:
         raise OSError(
-            "Neural Magic: The AVX instruction set is unknown. Set NM_ARCH to one of"
-            " {} to continue.".format(",".join(VALID_VECTOR_EXTENSIONS))
+            "Neural Magic: The AVX instruction set '{}' is unknown. Set NM_ARCH to one of"
+            " {} to continue.".format(arch.isa, ",".join(VALID_VECTOR_EXTENSIONS))
         )
 
     return arch
