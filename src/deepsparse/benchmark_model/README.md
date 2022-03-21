@@ -20,7 +20,7 @@ limitations under the License.
 
 ## Quickstart
 
-After `pip install deepsparse`, the benchmark tool is available on your CLI. For example, to benchmark a dense BERT ONNX model fine-tuned on the SST-2 dataset where the model path is the minimum input required to get started, run:
+After `pip install deepsparse`, the benchmark tool is available on your CLI. For example, to benchmark a dense BERT ONNX model fine-tuned on the SST2 dataset where the model path is the minimum input required to get started, run:
 
 ```
 deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none
@@ -28,19 +28,19 @@ deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/s
 __ __
 ## Usage
 
-In most cases, good performance will be found in the default options so it can be as simple as running the command with a SparseZoo model stub or your local ONNX model. However, if you prefer to customize benchmarking for your personal use-case, you can run `deepsparse.benchmark -h` or `--help` to view your usage options:
+In most cases, good performance will be found in the default options so it can be as simple as running the command with a SparseZoo model stub or your local ONNX model. However, if you prefer to customize benchmarking for your personal use case, you can run `deepsparse.benchmark -h` or with `--help` to view your usage options:
 
 CLI Arguments:
 ```
 positional arguments:
-  model_path                    Path to an ONNX model file or SparseZoo model stub
+  model_path                    Path to an ONNX model file or SparseZoo model stub.
 
 optional arguments:
-  -h, --help                    show this help message and exit
+  -h, --help                    show this help message and exit.
 
   -b BATCH_SIZE, --batch_size BATCH_SIZE
                                 The batch size to run the analysis for. Must be
-                                greater than 0
+                                greater than 0.
 
 -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
                                 Override the shapes of the inputs, i.e. -shapes
@@ -98,7 +98,7 @@ Output of the JSON file:
 
 ![alt text](./img/json_output.png)
 
-## Sample CLI argument configurations:
+## Sample CLI argument configurations
 
 To run a sparse FP32 MobileNetV1 at batch size 16 for 10 seconds for throughput using 8 streams of requests:
 
@@ -157,7 +157,7 @@ Latency Std (ms/batch): 12.4016
 Iterations: 840
 ```
 
-**BERT 3-layer FP32 Sparse Latency**:
+**BERT 3-layer FP32 Sparse Latency**
 
 Here we add the `-s sync` to select *synchronous inference scenario*:
 
