@@ -4,7 +4,7 @@
 pip install deepsparse[server]
 ```
 
-The DeepSparse inference server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Currently, the server only supports NLP tasks, however support for computer vision will soon be released in upcoming versions!
+The DeepSparse inference server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Currently, the server only supports NLP tasks; however, support for computer vision will soon be released in upcoming versions.
 
  - Run `deepsparse.server --help` to lookup the available CLI arguments.
 
@@ -21,8 +21,7 @@ The DeepSparse inference server allows you to serve models and pipelines for dep
         --workers INTEGER               Use multiple worker processes. Defaults to
                                         1.
 
-        --log_level                     [debug|info|warn|critical|fatal]
-                                        Bind to a socket with this port. Defaults to
+        --log_level                     Bind to a socket with this port. Defaults to
                                         info.
 
         --config_file TEXT              Configuration file containing info on how to
@@ -31,8 +30,8 @@ The DeepSparse inference server allows you to serve models and pipelines for dep
         --task TEXT                     The task the model_path is serving. For
                                         example, one of: question_answering,
                                         text_classification, token_classification.
+                                        Ignored if config file is supplied.
 
-                                        Ignored if config file is supplied
         --model_path TEXT               The path to a model.onnx file, a model
                                         folder containing the model.onnx and
                                         supporting files, or a SparseZoo model stub.
@@ -97,7 +96,7 @@ inference = model(question="Who is Mark?", context="Mark is Batman.")
 __ __
 ### Multiple Model Inference
 To serve multiple models you can easily build a `config.yaml` file. 
-In the sample yaml below, we are defining two BERT models to be served by the `deepsparse.server` for the question answering task:
+In the sample YAML file below, we are defining two BERT models to be served by the `deepsparse.server` for the question answering task:
 
 ```
 models:
@@ -116,7 +115,7 @@ You can now run the server with the config file path passed in the `--config_fil
 deepsparse.server --config_file config.yaml
 ```
 
-💡 **PRO-TIP** 💡: When your server is running, you can always use the awesome swagger UI that's built in to FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
+💡 **PRO TIP** 💡: When your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
 
     localhost:5543/docs
 
