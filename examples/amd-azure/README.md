@@ -26,10 +26,10 @@ git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/amd-azure
 ```
 
-To run parallel inferences of a sparse FP32 MobileNetV1 on each CCX of a Microsoft Azure HB120\_v3 at batch size 16 for 30 seconds for throughput,
+To run parallel inferences of a sparse FP32 MobileNetV1 on each CCX of a two socket AMD EPYC 7713 system at batch size 16 for 30 seconds for throughput,
 the following command should be run from inside the `examples/amd-azure` directory:
 ```bash
-python multi_process_benchmark.py zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate ./azure_hb120_v3.json --batch_size 16 --time 30
+python multi_process_benchmark.py zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate ./amd_epyc_7713.json --batch_size 16 --time 30
 ```
 
 ## What does it do?
@@ -46,10 +46,7 @@ For this benchmarking script, users must specify the topology of their system wi
 
 One list of cores will contain the processor IDs that one of the worker processes will run on, and should reflect the topology of the system. For performance, one list of cores in the JSON topology file should contain the list of cores that are on the same socket, are on the same NUMA node, or share the same L3 cache. 
 
-The `/examples/amd-azure` directory contains two example JSON files that can be used:
-
-- `azure_hb120_v3.json`, which is suitable for use on a Microsoft Azure HB120\_V3 instance. You may notice that not every process will use the same number of cores when using this topology. This is because some of the CCXs on this instance type have some cores dedicated to running the hypervisor.
-- `amd_epyc_7713.json`, which is suitable for a two-socket system with AMD EPYC 7713 processors. This file will also work for a one-socket system if the proper parameter for `nstreams` is passed into `multi_process_benchmark.py`.
+The `/examples/amd-azure` directory contains an example JSON file that can be used. `amd_epyc_7713.json` is suitable for a two-socket system with AMD EPYC 7713 processors. This file will also work for a one-socket system if the proper parameter for `nstreams` is passed into `multi_process_benchmark.py`.
 
 ## Usage
 
