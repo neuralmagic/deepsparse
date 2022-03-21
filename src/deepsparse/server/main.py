@@ -45,7 +45,7 @@ Options:
                         Defaults to 0.0.0.0
   --port INTEGER        Bind to a socket with this port. Defaults to 5543.
   --workers INTEGER     Use multiple worker processes. Defaults to 1.
-  --log_level TEXT      Bind to a socket with this port. Defaults to info.
+  --log_level TEXT      Sets the logging level. Defaults to info.
   --config_file TEXT    Configuration file containing info on how to serve the
                         desired models.
   --task TEXT           The task the model_path is serving. For example, one
@@ -204,7 +204,7 @@ def server_app_factory():
         ["debug", "info", "warn", "critical", "fatal"], case_sensitive=False
     ),
     default="info",
-    help="Bind to a socket with this port. Defaults to info.",
+    help="Sets the logging level. Defaults to info.",
 )
 @click.option(
     "--config_file",

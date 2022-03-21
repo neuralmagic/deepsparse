@@ -21,8 +21,7 @@ The DeepSparse inference server allows you to serve models and pipelines for dep
         --workers INTEGER               Use multiple worker processes. Defaults to
                                         1.
 
-        --log_level                     Bind to a socket with this port. Defaults to
-                                        info.
+        --log_level                     Sets the logging level. Defaults to info.
 
         --config_file TEXT              Configuration file containing info on how to
                                         serve the desired models.
