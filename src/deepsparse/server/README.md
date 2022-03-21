@@ -9,38 +9,38 @@ The DeepSparse inference server allows you to serve models and pipelines for dep
  - Run `deepsparse.server --help` to lookup the available CLI arguments.
 
 ```
-        --host TEXT                     Bind socket to this host. Use --host 0.0.0.0
-                                        to make the application available on your
-                                        local network. IPv6 addresses are supported,
-                                        for example: --host '::'. Defaults to
-                                        0.0.0.0
+--host TEXT                     Bind socket to this host. Use --host 0.0.0.0
+                                to make the application available on your
+                                local network. IPv6 addresses are supported,
+                                for example: --host '::'. Defaults to
+                                0.0.0.0
 
-        --port INTEGER                  Bind to a socket with this port. Defaults to
-                                        5543.
+--port INTEGER                  Bind to a socket with this port. Defaults to
+                                5543.
 
-        --workers INTEGER               Use multiple worker processes. Defaults to
-                                        1.
+--workers INTEGER               Use multiple worker processes. Defaults to
+                                1.
 
-        --log_level                     Sets the logging level. Defaults to info.
+--log_level TEXT                Sets the logging level. Defaults to info.
 
-        --config_file TEXT              Configuration file containing info on how to
-                                        serve the desired models.
+--config_file TEXT              Configuration file containing info on how to
+                                serve the desired models.
 
-        --task TEXT                     The task the model_path is serving. For
-                                        example, one of: question_answering,
-                                        text_classification, token_classification.
-                                        Ignored if config file is supplied.
+--task TEXT                     The task the model_path is serving. For
+                                example, one of: question_answering,
+                                text_classification, token_classification.
+                                Ignored if config file is supplied.
 
-        --model_path TEXT               The path to a model.onnx file, a model
-                                        folder containing the model.onnx and
-                                        supporting files, or a SparseZoo model stub.
-                                        Ignored if config_file is supplied.
+--model_path TEXT               The path to a model.onnx file, a model
+                                folder containing the model.onnx and
+                                supporting files, or a SparseZoo model stub.
+                                Ignored if config_file is supplied.
 
-        --batch_size INTEGER            The batch size to serve the model from
-                                        model_path with. Ignored if config_file is
-                                        supplied.
+--batch_size INTEGER            The batch size to serve the model from
+                                model_path with. Ignored if config_file is
+                                supplied.
 
-        --help                          Show this message and exit.
+--help                          Show this message and exit.
 ```
 
 ### Single Model Inference
