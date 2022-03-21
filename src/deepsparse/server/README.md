@@ -158,7 +158,7 @@ model = MultiPipelineClient(alias='question_answering/quantagg95')
 inference = model(question="Who is Mark?", context="Mark is Batman.")
 ```
 
-💡 **PRO TIP** 💡:While your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
+💡 **PRO TIP** 💡: While your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
 
     localhost:5543/docs
 

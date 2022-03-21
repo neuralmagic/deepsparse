@@ -16,7 +16,6 @@
 Client object for making requests to the example DeepSparse inference server
 """
 
-
 import json
 from typing import List
 import numpy
@@ -68,6 +67,6 @@ class MultiPipelineClient:
         :return: json outputs from running the model server pipeline with the given
             input(s)
         """
-
+        # Send data to server for inference
         response = requests.post(self._url, json=kwargs)
         return json.loads(response.content)
