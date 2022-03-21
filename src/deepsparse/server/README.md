@@ -107,7 +107,7 @@ models:
     - task: question_answering
         model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
         batch_size: 1
-        alias: question_answering/quantagg95
+        alias: question_answering/pruned_quant
 ```
 You can now run the server with the config file path passed in the `--config_file` argument:
 
@@ -154,7 +154,7 @@ In order to select which `/predict` route to call, you can pass the model's `ali
 ```python
 from client import MultiPipelineClient
 
-model = MultiPipelineClient(alias='question_answering/quantagg95')
+model = MultiPipelineClient(alias='question_answering/pruned_quant')
 inference = model(question="Who is Mark?", context="Mark is Batman.")
 ```
 
