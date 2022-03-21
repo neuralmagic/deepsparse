@@ -33,59 +33,61 @@ In most cases, good performance will be found in the default options so it can b
 CLI Arguments:
 ```
 positional arguments:
-  model_path                    Path to an ONNX model file or SparseZoo model stub.
+
+        model_path                    Path to an ONNX model file or SparseZoo model stub.
 
 optional arguments:
-  -h, --help                    show this help message and exit.
 
-  -b BATCH_SIZE, --batch_size BATCH_SIZE
-                                The batch size to run the analysis for. Must be
-                                greater than 0.
+        -h, --help                    show this help message and exit.
 
--shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
-                                Override the shapes of the inputs, i.e. -shapes
-                                "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
-                                input1=[4,5,6] input2=[7,8,9].
+        -b BATCH_SIZE, --batch_size BATCH_SIZE
+                                        The batch size to run the analysis for. Must be
+                                        greater than 0.
 
--ncores NUM_CORES, --num_cores NUM_CORES
-                                The number of physical cores to run the analysis on,
-                                defaults to all physical cores available on the system.
+        -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
+                                        Override the shapes of the inputs, i.e. -shapes
+                                        "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
+                                        input1=[4,5,6] input2=[7,8,9].
 
--s {async,sync,elastic}, --scenario {async,sync,elastic}
-                                Choose between using the async, sync and elastic
-                                scenarios. Sync and async are similar to the single-
-                                stream/multi-stream scenarios. Elastic is a newer
-                                scenario that behaves similarly to the async scenario
-                                but uses a different scheduling backend. Default value
-                                is async.
+        -ncores NUM_CORES, --num_cores NUM_CORES
+                                        The number of physical cores to run the analysis on,
+                                        defaults to all physical cores available on the system.
 
--t TIME, --time TIME            
-                                The number of seconds the benchmark will run. Default
-                                is 10 seconds.
+        -s {async,sync,elastic}, --scenario {async,sync,elastic}
+                                        Choose between using the async, sync and elastic
+                                        scenarios. Sync and async are similar to the single-
+                                        stream/multi-stream scenarios. Elastic is a newer
+                                        scenario that behaves similarly to the async scenario
+                                        but uses a different scheduling backend. Default value
+                                        is async.
 
--w WARMUP_TIME, --warmup_time WARMUP_TIME
-                                The number of seconds the benchmark will warmup before
-                                running.Default is 2 seconds.
+        -t TIME, --time TIME            
+                                        The number of seconds the benchmark will run. Default
+                                        is 10 seconds.
 
--nstreams NUM_STREAMS, --num_streams NUM_STREAMS
-                                The number of streams that will submit inferences in
-                                parallel using async scenario. Default is
-                                automatically determined for given hardware and may be
-                                sub-optimal.
+        -w WARMUP_TIME, --warmup_time WARMUP_TIME
+                                        The number of seconds the benchmark will warmup before
+                                        running.Default is 2 seconds.
 
--pin {none,core,numa}, --thread_pinning {none,core,numa}
-                                Enable binding threads to cores ('core' the default),
-                                threads to cores on sockets ('numa'), or disable
-                                ('none').
+        -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
+                                        The number of streams that will submit inferences in
+                                        parallel using async scenario. Default is
+                                        automatically determined for given hardware and may be
+                                        sub-optimal.
 
--e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
-                                Inference engine backend to run eval on. Choices are
-                                'deepsparse', 'onnxruntime'. Default is 'deepsparse'.
+        -pin {none,core,numa}, --thread_pinning {none,core,numa}
+                                        Enable binding threads to cores ('core' the default),
+                                        threads to cores on sockets ('numa'), or disable
+                                        ('none').
 
--q, --quiet                     Lower logging verbosity.
+        -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
+                                        Inference engine backend to run eval on. Choices are
+                                        'deepsparse', 'onnxruntime'. Default is 'deepsparse'.
 
--x EXPORT_PATH, --export_path EXPORT_PATH
-                                Store results into a JSON file.
+        -q, --quiet                     Lower logging verbosity.
+
+        -x EXPORT_PATH, --export_path EXPORT_PATH
+                                        Store results into a JSON file.
 ```
 💡**PRO TIP**💡: save your benchmark results in a convenient JSON file!
 
