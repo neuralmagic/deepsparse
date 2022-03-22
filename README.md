@@ -47,12 +47,12 @@ limitations under the License.
     </a>
 </p>
 
-<h3> DeepSparse is a deep learning inference engine for running super-fast sparse models. 🚀</h3>
+<h3> Neural Network Inference Engine that Delivers GPU-class Performance for Sparsified Models on CPUs </h3>
 
 A CPU runtime engine delivering GPU-class performance by taking advantage of sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. Read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification).
 
 ## Install 💽
-Tested on Python 3.6+, and ONNX 1.5.0+. A [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
+Tested on Python 3.6<=3.9, ONNX 1.5.0<=1.10.1 and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
 
 ```bash
 pip install deepsparse
@@ -60,17 +60,11 @@ pip install deepsparse
 
 ## Quick Start 💻
 
-One of the greatest features of our inference engine is the ability to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX runtime (ORT). ORT gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
+One of the greatest features of our inference engine is the ability to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. ONNX gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
 To begin your inference adventure with DeepSparse is super simple. You can either run DeepSparse in CLI or Python. Let's first check out the CLI features... 👇
 
 ## DeepSparse Server and Benchmark in CLI
-
-After you've installed DeepSparse in your Python environment, you have two resources via CLI at your disposal:
-
-`deepsparse.server` : If you are interested in serving your models.
-
-`deepsparse.benchmark` : If you are interested in experimenting with the throughput/latency performance of your models under different inference scenarios.
 
 ### 1. DeepSparse Server
 
@@ -155,31 +149,6 @@ Tasks Supported:
 - Question Answering
 - Masked Language Modeling (MLM)
 
-## CV Inference 👩‍💻 Object Detection (Placeholder)
-
-```python
-from deepsparse.transformers import pipeline
-
-# SparseZoo model stub or path to ONNX file
-onnx_filepath="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
-
-qa_pipeline = pipeline(
-    task="question-answering",
-    model_path=onnx_filepath,
-    num_cores=None, # uses all available CPU cores by default
-)
-
-my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
-```
-CV Tutorials:
-- [Getting Started with MobileNet v2](https://github.com/neuralmagic/deepsparse/tree/main/examples/classification)
-- [Getting Started with YOLOv3](https://github.com/neuralmagic/deepsparse/tree/main/examples/detection)
-- [Getting Started with YOLOv3 <LINK DOESN'T WORK>](https://github.com/neuralmagic/deepsparse/tree/main/examples/ultralytics-yolov3)
-
-Tasks Supported: 
-- Image Classification
-- Object Detection
-- Image Segmentation
 __ __
 
 ## SparseZoo ONNX vs. Custom ONNX Models
@@ -215,9 +184,7 @@ Compatibility/Support Notes
 - ONNX opset version 11+
 - ONNX IR version has not been tested at this time
 
-For a more in-depth read on available APIs and workflows, check out the [examples](https://github.com/neuralmagic/deepsparse/blob/main/examples/) and [DeepSparse Engine documentation.](https://docs.neuralmagic.com/deepsparse)
-
-
+The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes package APIs along with examples to quickly get started benchmarking and inferencing sparse models.
 
 __ __
 
@@ -229,7 +196,7 @@ The DeepSparse Engine offers up to three types of inferences based on your use c
 
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/single-stream.png" alt="single stream diagram" />
 
-PRO TIP: It's highly optimized for minimum per-request latency, using all of the system's resources provided to it on every request it gets.
+Use Case: It's highly optimized for minimum per-request latency, using all of the system's resources provided to it on every request it gets.
 
 2 ⚡ Multi-stream scheduling: the throughput/asynchronous scenario, requests execute in parallel.
 
@@ -239,7 +206,7 @@ PRO TIP: The most common use cases for the multi-stream scheduler are where para
 
 3 ⚡ Elastic scheduling: requests execute in parallel, but not multiplexed on individual NUMA nodes.
 
-PRO TIP: A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache.
+Use Case: A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache.
 __ __
 
 ## Hardware Support 🧰
@@ -250,8 +217,8 @@ Here is a table detailing specific support for some algorithms over different mi
 
 |   x86 Extension    |          Microarchitectures         | Activation Sparsity | Kernel Sparsity | Sparse Quantization |
 |:------------------:|:-----------------------------------:|:-------------------:|:---------------:|:-------------------:|
-|      [AMD AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)      |             [Zen 2,](https://en.wikipedia.org/wiki/Zen_2) [Zen 3](https://en.wikipedia.org/wiki/Zen_3)            |    not supported    |    optimized    |    not supported    |
-|     [Intel AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)     |          [Haswell,](<https://en.wikipedia.org/wiki/Haswell_(microarchitecture)>) [Broadwell,](<https://en.wikipedia.org/wiki/Broadwell_(microarchitecture)>) and newer         |    not supported    |    optimized    |    not supported    |
+|      [AMD AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)      |             [Zen 2,](https://en.wikipedia.org/wiki/Zen_2) [Zen 3](https://en.wikipedia.org/wiki/Zen_3)            |    not supported    |    optimized    |    emulated    |
+|     [Intel AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)     |          [Haswell,](<https://en.wikipedia.org/wiki/Haswell_(microarchitecture)>) [Broadwell,](<https://en.wikipedia.org/wiki/Broadwell_(microarchitecture)>) and newer         |    not supported    |    optimized    |    emulated    |
 |    [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512)   |         [Skylake,](<https://en.wikipedia.org/wiki/Skylake_(microarchitecture)>) [Cannon Lake,](<https://en.wikipedia.org/wiki/Cannon_Lake_(microarchitecture)>) and newer        |      optimized      |    optimized    |       emulated      |
 | [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512) VNNI (DL Boost) | [Cascade Lake,](<https://en.wikipedia.org/wiki/Cascade_Lake_(microarchitecture)>) [Ice Lake,](<https://en.wikipedia.org/wiki/Ice_Lake_(microprocessor)>) [Cooper Lake,](<https://en.wikipedia.org/wiki/Cooper_Lake_(microarchitecture)>) [Tiger Lake](<https://en.wikipedia.org/wiki/Tiger_Lake_(microprocessor)>) |      optimized      |    optimized    |      optimized      |
 
