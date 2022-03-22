@@ -18,6 +18,7 @@ Client object for making requests to the example DeepSparse inference server
 
 import json
 from typing import List
+
 import numpy
 import requests
 
