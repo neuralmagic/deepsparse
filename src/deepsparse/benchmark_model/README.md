@@ -100,7 +100,7 @@ Output of the JSON file:
 
 ![alt text](./img/json_output.png)
 
-## Sample CLI argument configurations
+## Sample CLI Argument Configurations
 
 To run a sparse FP32 MobileNetV1 at batch size 16 for 10 seconds for throughput using 8 streams of requests:
 
@@ -161,7 +161,7 @@ Iterations: 840
 
 **BERT 3-layer FP32 Sparse Latency**
 
-Here we add the `-s sync` to select *synchronous inference scenario*:
+To select a *synchronous inference scenario*, add `-s sync`:
 
 ```
 deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_83 -s sync
