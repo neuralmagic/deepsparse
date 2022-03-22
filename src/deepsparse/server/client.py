@@ -25,7 +25,8 @@ import requests
 
 class PipelineClient:
     """
-    Client object for making requests to the example DeepSparse inference server with a single model
+    Client object for making requests to the example DeepSparse inference
+    server with a single model
 
     :param address: IP address of the server, default is 0.0.0.0
     :param port: Port the server is hosted on, default is 5543
@@ -48,7 +49,8 @@ class PipelineClient:
 
 class MultiPipelineClient:
     """
-    Client object for making requests to the example DeepSparse inference server with multiple models
+    Client object for making requests to the example DeepSparse inference
+    server with multiple models
 
     :param alias: model alias of FastAPI route
     :param address: IP address of the server, default is 0.0.0.0
