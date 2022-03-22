@@ -93,6 +93,10 @@ from deepsparse.server.client import PipelineClient
 model = PipelineClient()
 inference = model(question="Who is Mark?", context="Mark is Batman.")
 ```
+
+
+
+You can see how to generate your own curl command via the swagger UI
 __ __
 ### Multiple Model Inference
 To serve multiple models you can build a `config.yaml` file. 
@@ -162,4 +166,21 @@ inference = model(question="Who is Mark?", context="Mark is Batman.")
 
     localhost:5543/docs
 
-![alt text](./img/swagger_ui_1.png)
+![alt text](./img/swagger_ui.png)
+
+To create your own REST API, you can make a request with a `curl` command. For more `curl` examples, please check the swagger UI after running inference:
+
+```bash
+curl -X 'POST' \
+  'http://localhost:5543/predict/question_answering/pruned_quant' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "question": [
+    "Who is Mark?"
+  ],
+  "context": [
+    "Mark is batman."
+  ]
+}'
+```
