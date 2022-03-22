@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Transformers 🤗 Inference Pipelines
+## Transformers 🤗 Inference Pipelines
 This directory contains examples for serving, benchmarking, and running NLP models from the [Transformers](https://github.com/huggingface/transformers) repository using the DeepSparse Engine. These examples can load pre-trained, sparsified models from SparseZoo or you can specify your own transformer ONNX file. In addition, we also highlight how you can easily perform benchmarking and deploy transformers with the `deepsparse.server` via simple CLI commands.
 
 ### Installation
@@ -99,7 +99,7 @@ pip install deepsparse[server]
 
 The DeepSparse inference server allows you to serve ONNX models and pipelines in HTTP. 
 
-##### Single Model Inference
+**Single Model Inference**
 
 Example CLI command:
 
