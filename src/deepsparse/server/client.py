@@ -54,11 +54,11 @@ class MultiPipelineClient:
     :param port: Port the server is hosted on, default is 5543
     """
 
-    def __init__(self, alias: str, address: str ='0.0.0.0', port: str ='5543'):
+    def __init__(self, alias: str, address: str = "0.0.0.0", port: str = "5543"):
 
         self.alias = alias
-        self._url = f'http://{address}:{port}/predict/{self.alias}'
-        
+        self._url = f"http://{address}:{port}/predict/{self.alias}"
+
     def __call__(self, **kwargs) -> List[numpy.ndarray]:
 
         """
