@@ -1,5 +1,13 @@
 name: Quality Checks
-on: [pull_request]
+on: 
+  push:
+    branches:
+      - main
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
 jobs:
   quality-check:
     runs-on: ubuntu-latest
