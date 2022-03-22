@@ -93,11 +93,15 @@ For a more in-depth discussion on benchmarking, check out the [Benchmarking tuto
 
 ### DeepSparse Server 🔌
 
+```bash
+pip install deepsparse[server]
+```
+
 The DeepSparse inference server allows you to serve ONNX models and pipelines in HTTP. 
 
 ##### Single Model Inference
 
-Example CLI command for serving a single model:
+Example CLI command:
 
 ```bash
 deepsparse.server \
