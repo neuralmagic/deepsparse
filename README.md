@@ -68,7 +68,7 @@ Our DeepSparse Engine is able to integrate into popular deep learning libraries 
 - 🧰 [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
 
 ## Install
-Tested on Python 3.6<=3.9, ONNX 1.5.0<=1.10.1 and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
+Tested on Python 3.6<=3.9, ONNX 1.5.0<=1.10.1, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
 
 ```bash
 pip install deepsparse
