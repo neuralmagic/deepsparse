@@ -30,8 +30,8 @@ limitations under the License.
     <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
         <img src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height=25>
     </a>
-    <a href="https://discuss.neuralmagic.com/">
-        <img src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=discourse" height=25>
+    <a href="https://github.com/neuralmagic/sparsezoo/issues/">
+        <img src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/actions/workflows/quality-check.yaml">
         <img alt="Main" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=build&style=for-the-badge" height=25>
