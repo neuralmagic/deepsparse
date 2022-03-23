@@ -15,7 +15,13 @@ limitations under the License.
 -->
 
 
-<h1><img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />&nbsp;&nbsp;DeepSparse</h1>
+<div align="center">
+    <h1><img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />&nbsp;&nbsp;DeepSparse</h1>
+	<p>
+		<b>
+        <h3> Sparsity-Aware Neural Network Inference Engine for GPU-class Performance on CPUs </h3>
+        </b>
+	</p>
 
 <p>
     <a href="https://docs.neuralmagic.com/deepsparse/">
@@ -47,32 +53,36 @@ limitations under the License.
     </a>
 </p>
 
-<h3> Neural Network Inference Engine that Delivers GPU-class Performance for Sparsified Models on CPUs </h3>
+<br>
+</div>
 
-A CPU runtime engine delivering GPU-class performance by taking advantage of sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. Read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification).
+A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification).
 
-## Install 💽
+Our DeepSparse Engine is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. ONNX gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
+
+## Features
+
+- 🔌 [DeepSparse Server](https://github.com/InquestGeronimo/deepsparse/tree/feature-deepsparse.server/src/deepsparse/server)
+- 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)
+- 👩‍💻 [NLP and Computer Vision Tasks Supported](https://github.com/InquestGeronimo/deepsparse/tree/main/examples)
+- 🧰 [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
+
+## Install
 Tested on Python 3.6<=3.9, ONNX 1.5.0<=1.10.1 and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
 
 ```bash
 pip install deepsparse
 ```
 
-## Quick Start 💻
+## 🔌 DeepSparse Server
 
-One of the greatest features of our inference engine is the ability to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. ONNX gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
+The DeepSparse inference server allows you to serve models and pipelines in deployment in CLI. The server runs on top of the popular FastAPI web framework and Uvicorn web server.
 
-To begin your inference adventure with DeepSparse is super simple. You can either run DeepSparse in CLI or Python. Let's first check out the CLI features... 👇
+```bash
+pip install deepsparse[server]
+```
 
-## DeepSparse Server and Benchmark in CLI
-
-### 1. DeepSparse Server
-
-The DeepSparse inference server allows you to serve models and pipelines in deployment. The server runs on top of the popular FastAPI web framework and Uvicorn web server.
-
- - run `deepsparse.server -h` to lookup arguments.
-
-##### ⭐ Single Model ⭐
+**⭐ Single Model ⭐**
 
 Example CLI command for running inference with a single model:
 
@@ -82,9 +92,11 @@ deepsparse.server \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none"
 ```
 
-##### ⭐ Multiple Models ⭐
+To look up arguments run: `deepsparse.server --help`.
+
+**⭐ Multiple Models ⭐**
 To serve multiple models in your deployment you can easily build a `config.yaml`. 
-In the example below, we are defining two BERT models in our configuration:
+In the example below, we are defining two BERT models in our configuration for the question answering task:
 
     models:
     - task: question_answering
@@ -100,13 +112,11 @@ Finally, after your `config.yaml` file is built, you can run the server with the
 ```bash
 deepsparse.server --config_file config.yaml
 ```
-
-### 2. DeepSparse Benchmark
+## 📜 DeepSparse Benchmark
 
 The benchmark tool is available on your CLI to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
 
 Run `deepsparse.benchmark -h` to look up arguments.
-
 
 ```shell
 deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
@@ -117,14 +127,12 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
 
 ```
 
-- [Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model) includes examples of inference scenarios such as: 
-    - Synchronous (Single-stream) Scenario
-    - Asynchronous (Multi-stream) Scenario
-
-Let's now try running DeepSparse via Python... 👇
+[Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model) includes examples of select inference scenarios: 
+- Synchronous (Single-stream) Scenario
+- Asynchronous (Multi-stream) Scenario
 __ __
 
-## NLP Inference 👩‍💻 Question Answering
+## 👩‍💻 NLP Inference | Question Answering
 
 ```python
 from deepsparse.transformers import pipeline
@@ -157,7 +165,7 @@ DeepSparse can accept ONNX models from two sources:
 
 1. `SparseZoo ONNX`: our open-source collection of sparse models available for download. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference-optimized models, trained on repeatable sparsification recipes using state-of-the-art techniques from [SparseML.](https://github.com/neuralmagic/sparseml)
 
-2. `Custom ONNX`: Your own onnx model, can be dense or sparse. Plug in your model to compare performance with other solutions. 👇
+2. `Custom ONNX`: Your own ONNX model, can be dense or sparse. Plug in your model to compare performance with other solutions.
 
 
 ```bash
@@ -188,7 +196,7 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
 
 __ __
 
-## Scheduling Single-Stream, Multi-Stream, and Elastic Inference ⚡
+## Scheduling Single-Stream, Multi-Stream, and Elastic Inference
 
 The DeepSparse Engine offers up to three types of inferences based on your use case. You can read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
 
@@ -209,7 +217,7 @@ PRO TIP: The most common use cases for the multi-stream scheduler are where para
 Use Case: A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache.
 __ __
 
-## Hardware Support 🧰
+## CPU Hardware Support
 
 With support for AVX2, AVX-512, and VNNI instruction sets, the DeepSparse Engine is validated to work on x86 Intel (Haswell generation and later) and AMD CPUs running Linux. Mac and Windows require running Linux in a Docker or virtual machine.
 
@@ -222,7 +230,7 @@ Here is a table detailing specific support for some algorithms over different mi
 |    [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512)   |         [Skylake,](<https://en.wikipedia.org/wiki/Skylake_(microarchitecture)>) [Cannon Lake,](<https://en.wikipedia.org/wiki/Cannon_Lake_(microarchitecture)>) and newer        |      optimized      |    optimized    |       emulated      |
 | [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512) VNNI (DL Boost) | [Cascade Lake,](<https://en.wikipedia.org/wiki/Cascade_Lake_(microarchitecture)>) [Ice Lake,](<https://en.wikipedia.org/wiki/Ice_Lake_(microprocessor)>) [Cooper Lake,](<https://en.wikipedia.org/wiki/Cooper_Lake_(microarchitecture)>) [Tiger Lake](<https://en.wikipedia.org/wiki/Tiger_Lake_(microprocessor)>) |      optimized      |    optimized    |      optimized      |
 
-## Resources 🔧
+## Resources
 
 <table>
 <tr><th> Documentation </th><th> &emsp;&emsp;&emsp;Versions </th><th> Info </th></tr>
@@ -253,7 +261,7 @@ Here is a table detailing specific support for some algorithms over different mi
 
 
 
-## Community 🧙
+## Community
 
 ### Be Part of the Future... And the Future is Sparse!
 
@@ -288,6 +296,23 @@ Find this project useful in your research or other communications? Please consid
     month = {13--18 Jul}, 
     publisher = {PMLR}, 
     pdf = {http://proceedings.mlr.press/v119/kurtz20a/kurtz20a.pdf},
-    url = {http://proceedings.mlr.press/v119/kurtz20a.html},
+    url = {http://proceedings.mlr.press/v119/kurtz20a.html} 
+}
+
+@article{DBLP:journals/corr/abs-2111-13445,
+  author    = {Eugenia Iofinova and
+               Alexandra Peste and
+               Mark Kurtz and
+               Dan Alistarh},
+  title     = {How Well Do Sparse Imagenet Models Transfer?},
+  journal   = {CoRR},
+  volume    = {abs/2111.13445},
+  year      = {2021},
+  url       = {https://arxiv.org/abs/2111.13445},
+  eprinttype = {arXiv},
+  eprint    = {2111.13445},
+  timestamp = {Wed, 01 Dec 2021 15:16:43 +0100},
+  biburl    = {https://dblp.org/rec/journals/corr/abs-2111-13445.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 ```
