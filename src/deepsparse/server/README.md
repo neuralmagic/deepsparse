@@ -68,11 +68,11 @@ obj = {
 response = requests.post(url, json=obj)
 ```
 
-In addition, you can make a request with a `curl` command from terminal:
+In addition, you can also make a request with a `curl` command from terminal:
 
 ```bash
 curl -X 'POST' \
-  'http://localhost:5543/predict/question_answering/pruned_quant' \
+  'http://localhost:5543/predict' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
