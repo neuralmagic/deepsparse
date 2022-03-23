@@ -53,50 +53,37 @@ deepsparse.server \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95"
 ```
 
-PipelineClient for making requests to your server:
+To make a request to your server, you can use the `requests` library and pass the request URL:
+
 ```python
-import json
-from typing import List
-import numpy
 import requests
 
-class PipelineClient:
-    """
-    Client object for making requests to the example DeepSparse inference server with a single model
+url = "http://localhost:5543/predict"
 
-    :param address: IP address of the server, default is 0.0.0.0
-    :param port: Port the server is hosted on, default is 5543
-    """
+obj = {
+    "question": "Who is Mark?", 
+    "context": "Mark is batman."
+}
 
-    def __init__(self, address: str ='0.0.0.0', port: str ='5543'):
-
-        self._url = f'http://{address}:{port}/predict'
-        
-    def __call__(self, **kwargs) -> List[numpy.ndarray]:
-
-        """
-        :param kwargs: named inputs to the model server pipeline. e.g. for
-            question-answering - `question="...", context="..."
-        :return: json outputs from running the model server pipeline with the given
-            input(s)
-        """
-
-        response = requests.post(self._url, json=kwargs)
-        return json.loads(response.content)
+response = requests.post(url, json=obj)
 ```
 
-To make a request, initialize the PipelineClient:
+In addition, you can make a request with a `curl` command from terminal:
 
-```python
-from deepsparse.server.client import PipelineClient
-
-model = PipelineClient()
-inference = model(question="Who is Mark?", context="Mark is Batman.")
+```bash
+curl -X 'POST' \
+  'http://localhost:5543/predict/question_answering/pruned_quant' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "question": [
+    "Who is Mark?"
+  ],
+  "context": [
+    "Mark is batman."
+  ]
+}'
 ```
-
-
-
-You can see how to generate your own curl command via the swagger UI
 __ __
 ### Multiple Model Inference
 To serve multiple models you can build a `config.yaml` file. 
@@ -119,47 +106,19 @@ You can now run the server with the config file path passed in the `--config_fil
 deepsparse.server --config_file config.yaml
 ```
 
-When the DeepSparse Server is up and running, you can can send it requests via our MultiPipelineClient object:
+You can can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, the alias would be `question_answering/pruned_quant`:
 
 ```python
-import json
-from typing import List
-import numpy
 import requests
 
-class MultiPipelineClient:
-    """
-    Client object for making requests to the example DeepSparse inference server with multiple models
+url = "http://localhost:5543/predict/question_answering/pruned_quant"
 
-    :param alias: model alias of FastAPI route
-    :param address: IP address of the server, default is 0.0.0.0
-    :param port: Port the server is hosted on, default is 5543
-    """
+obj = {
+    "question": "Who is Mark?", 
+    "context": "Mark is batman."
+}
 
-    def __init__(self, alias: str, address: str ='0.0.0.0', port: str ='5543'):
-
-        self.alias = alias
-        self._url = f'http://{address}:{port}/predict/{self.alias}'
-        
-    def __call__(self, **kwargs) -> List[numpy.ndarray]:
-
-        """
-        :param kwargs: named inputs to the model server pipeline. e.g. for
-            question-answering - `question="...", context="..."
-        :return: json outputs from running the model server pipeline with the given
-            input(s)
-        """
-
-        response = requests.post(self._url, json=kwargs)
-        return json.loads(response.content)
-```
-In order to select which `/predict` route to call, you can pass the model's `alias` from the `config.yaml` file when initializing the MultiPipelineClient:
-
-```python
-from deepsparse.server.client import MultiPipelineClient
-
-model = MultiPipelineClient(alias='question_answering/pruned_quant')
-inference = model(question="Who is Mark?", context="Mark is Batman.")
+response = requests.post(url, json=obj)
 ```
 
 💡 **PRO TIP** 💡: While your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
@@ -168,19 +127,3 @@ inference = model(question="Who is Mark?", context="Mark is Batman.")
 
 ![alt text](./img/swagger_ui.png)
 
-To create your own REST API, you can make a request with a `curl` command. For more `curl` examples, please check the swagger UI after running inference:
-
-```bash
-curl -X 'POST' \
-  'http://localhost:5543/predict/question_answering/pruned_quant' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "question": [
-    "Who is Mark?"
-  ],
-  "context": [
-    "Mark is batman."
-  ]
-}'
-```
