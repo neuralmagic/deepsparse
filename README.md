@@ -274,7 +274,7 @@ Find this project useful in your research or other communications? Please consid
     month = {13--18 Jul}, 
     publisher = {PMLR}, 
     pdf = {http://proceedings.mlr.press/v119/kurtz20a/kurtz20a.pdf},
-    url = {http://proceedings.mlr.press/v119/kurtz20a.html} 
+    url = {http://proceedings.mlr.press/v119/kurtz20a.html}
 }
 
 @article{DBLP:journals/corr/abs-2111-13445,
