@@ -19,7 +19,7 @@ limitations under the License.
     <h1><img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />&nbsp;&nbsp;DeepSparse</h1>
 	<p>
 		<b>
-        <h3> Sparsity-Aware Neural Network Inference Engine for GPU-class Performance on CPUs </h3>
+        <h3> Sparsity-aware neural network inference engine for GPU-class performance on CPUs </h3>
         </b>
 	</p>
 
