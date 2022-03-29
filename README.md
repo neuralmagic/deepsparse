@@ -78,7 +78,7 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
 
 ## Installation
 
-This repository is tested on Python 3.6+, and ONNX 1.5.0+. It is recommended to install in a [virtual environment](https://docs.python.org/3/library/venv.html) to keep your system in order.
+This repository is tested on Python 3.6-3.9, and ONNX 1.5.0+. It is recommended to install in a [virtual environment](https://docs.python.org/3/library/venv.html) to keep your system in order.
 
 Install with pip using:
 
