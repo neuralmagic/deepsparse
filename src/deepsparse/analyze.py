@@ -1,8 +1,63 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
+"""
+Analysis script for ONNX models with the DeepSparse engine.
+
+##########
+Command help:
+usage: deepsparse.analyze [-h] [-wi NUM_WARMUP_ITERATIONS]
+                          [-bi NUM_ITERATIONS] [-ncores NUM_CORES]
+                          [-b BATCH_SIZE] [-v] [-ks KERNEL_SPARSITY]
+                          [-ksf KERNEL_SPARSITY_FILE]
+                          [--optimization OPTIMIZATION] [-i INPUT_SHAPES]
+                          model_path
+
+Analyze ONNX models in the DeepSparse Engine
+
+positional arguments:
+  model_path            Path to an ONNX model file or SparseZoo model stub
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -wi NUM_WARMUP_ITERATIONS, --num_warmup_iterations NUM_WARMUP_ITERATIONS
+                        The number of warmup runs that will be executed before
+                        the actual benchmarking
+  -bi NUM_ITERATIONS, --num_iterations NUM_ITERATIONS
+                        The number of times the benchmark will be run
+  -ncores NUM_CORES, --num_cores NUM_CORES
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system
+  -b BATCH_SIZE, --batch_size BATCH_SIZE
+                        The number of inputs that will run through the model
+                        at a time
+  -v, --verbose         Print all of the benchmark info
+  -ks KERNEL_SPARSITY, --kernel_sparsity KERNEL_SPARSITY
+                        Impose kernel sparsity for all convolutions. [0.0-1.0]
+  -ksf KERNEL_SPARSITY_FILE, --kernel_sparsity_file KERNEL_SPARSITY_FILE
+                        Filepath to per-layer kernel sparsities JSON
+  --optimization OPTIMIZATION
+                        To enable or disable optimizations (Tensor Columns)
+  -i INPUT_SHAPES, --input_shapes INPUT_SHAPES
+                        Override the shapes of the inputs, i.e. -shapes
+                        "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
+                        input1=[4,5,6] input2=[7,8,9]
+"""
 
 import argparse
-import sys
 import pprint
+import sys
 
 from deepsparse import analyze_model
 from deepsparse.utils import (
@@ -11,6 +66,7 @@ from deepsparse.utils import (
     override_onnx_input_shapes,
     parse_input_shapes,
 )
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -90,6 +146,7 @@ def parse_args():
     )
 
     return parser.parse_args()
+
 
 def layer_info_to_string(li, format_str):
     if li["name"] == "sub_pyramid":
@@ -253,6 +310,7 @@ def main():
 
     print(construct_layer_table(result))
     print(construct_layer_statistics(result))
+
 
 if __name__ == "__main__":
     main()
