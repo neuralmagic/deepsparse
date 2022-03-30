@@ -25,7 +25,7 @@ limitations under the License.
     <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
         <img src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height=25>
     </a>
-    <a href="https://github.com/neuralmagic/sparsezoo/issues/">
+    <a href="https://github.com/neuralmagic/deepsparse/issues/">
         <img src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/actions/workflows/quality-check.yaml">
@@ -78,7 +78,7 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
 
 ## Installation
 
-This repository is tested on Python 3.6+, and ONNX 1.5.0+. It is recommended to install in a [virtual environment](https://docs.python.org/3/library/venv.html) to keep your system in order.
+This repository is tested on Python 3.6-3.9, and ONNX 1.5.0+. It is recommended to install in a [virtual environment](https://docs.python.org/3/library/venv.html) to keep your system in order.
 
 Install with pip using:
 
@@ -274,7 +274,7 @@ Find this project useful in your research or other communications? Please consid
     month = {13--18 Jul}, 
     publisher = {PMLR}, 
     pdf = {http://proceedings.mlr.press/v119/kurtz20a/kurtz20a.pdf},
-    url = {http://proceedings.mlr.press/v119/kurtz20a.html} 
+    url = {http://proceedings.mlr.press/v119/kurtz20a.html}
 }
 
 @article{DBLP:journals/corr/abs-2111-13445,
