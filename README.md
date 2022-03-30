@@ -30,7 +30,7 @@ limitations under the License.
     <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
         <img src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height=25>
     </a>
-    <a href="https://github.com/neuralmagic/sparsezoo/issues/">
+    <a href="https://github.com/neuralmagic/deepsparse/issues/">
         <img src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height=25>
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/actions/workflows/quality-check.yaml">
@@ -67,8 +67,9 @@ Our DeepSparse Engine is able to integrate into popular deep learning libraries 
 - 👩‍💻 [NLP and Computer Vision Tasks Supported](https://github.com/InquestGeronimo/deepsparse/tree/main/examples)
 - 🧰 [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
 
+
 ## Install
-Tested on Python 3.6<=3.9, ONNX 1.5.0<=1.10.1, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
+Tested on Python 3.6-3.9, ONNX 1.5.0-1.10.1, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
 
 ```bash
 pip install deepsparse
