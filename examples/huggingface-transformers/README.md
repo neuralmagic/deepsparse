@@ -67,7 +67,7 @@ qa_pipeline = pipeline(
 
 inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
-💡**PRO-TIP**💡: The pipeline can also infer a default sparse model to run automatically:
+💡**PRO TIP**💡: The pipeline can also infer a default sparse model to run automatically:
 
 ```python
 from deepsparse.transformers import pipeline
@@ -77,9 +77,9 @@ qa_pipeline = pipeline("question-answering")
 inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
 **more tasks coming soon...😇**
-## Benchmarking & the DeepSparse Server
+## Benchmarking and the DeepSparse Server
 
-### Benchmarking ONNX Models 📜
+### 📜 Benchmarking ONNX Models
 
 💾 [List of the the Hugging Face SparseZoo Models](https://sparsezoo.neuralmagic.com/?repo=huggingface&page=1)
 
@@ -91,7 +91,7 @@ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/sq
 
 For a more in-depth discussion on benchmarking, check out the [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)!
 
-### DeepSparse Server 🔌
+### 🔌 DeepSparse Server
 
 ```bash
 pip install deepsparse[server]
