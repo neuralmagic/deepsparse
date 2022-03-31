@@ -158,7 +158,7 @@ Tasks Supported:
 
 __ __
 
-## SparseZoo ONNX vs. Custom ONNX Models
+## 🦉 SparseZoo ONNX vs. Custom ONNX Models
 
 DeepSparse can accept ONNX models from two sources: 
 
@@ -216,7 +216,7 @@ PRO TIP: The most common use cases for the multi-stream scheduler are where para
 Use Case: A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache.
 __ __
 
-## CPU Hardware Support
+## 🧰 CPU Hardware Support
 
 With support for AVX2, AVX-512, and VNNI instruction sets, the DeepSparse Engine is validated to work on x86 Intel (Haswell generation and later) and AMD CPUs running Linux. Mac and Windows require running Linux in a Docker or virtual machine.
 
@@ -274,9 +274,7 @@ For more general questions about Neural Magic, complete this [form.](http://neur
 
 ### License
 
-The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
-
-Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
+The project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC) Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 ### Cite
 
 Find this project useful in your research or other communications? Please consider citing:
