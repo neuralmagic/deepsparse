@@ -57,7 +57,6 @@ optional arguments:
 
 import argparse
 import pprint
-import sys
 
 from deepsparse import analyze_model
 from deepsparse.utils import (
@@ -167,18 +166,23 @@ def layer_info_to_string(li, format_str):
 
 def construct_layer_table(result):
     table_str = (
-        "Name                        | OutDims                    | KerDims                    |"
-        + " Strides      | ActSpars | Time(ms) |  Util(%) | TFLOPS   | Canonical Name\n"
+        "Name                        | OutDims                    | "
+        "KerDims                    | Strides      | ActSpars | "
+        "Time(ms) |  Util(%) | TFLOPS   | Canonical Name\n"
+    )
+    info_format_base = (
+        "{:26} | {:26} | {:12} | {: >#08.4f} | "
+        "{: >#08.4f} | {: >#08.4f} | {: >#08.4f} | {:12}"
     )
     for li in result["layer_info"]:
         table_str += layer_info_to_string(
             li,
-            "{:28}| {:26} | {:26} | {:12} | {: >#08.4f} | {: >#08.4f} | {: >#08.4f} | {: >#08.4f} | {:12}\n",
+            "{:28}| " + info_format_base + "\n",
         )
         for sub_li in li["sub_layer_info"]:
             table_str += layer_info_to_string(
                 sub_li,
-                "  {:26}| {:26} | {:26} | {:12} | {: >#08.4f} | {: >#08.4f} | {: >#08.4f} | {: >#08.4f} | {:12}\n",
+                "  {:26}| " + info_format_base + "\n",
             )
 
     table_str += "Total Time(MS): {:05f}\n".format(result["average_total_time"])
@@ -265,7 +269,6 @@ def construct_layer_statistics(result):
 def main():
     args = parse_args()
 
-    random_input = args.random_input
     num_warmup_iterations = args.num_warmup_iterations
     num_iterations = args.num_iterations
     num_cores = args.num_cores
@@ -284,7 +287,7 @@ def main():
     orig_model_path = args.model_path
     model_path = model_to_path(args.model_path)
 
-    print("onnx_filename: " + str(model_path))
+    print("Analyzing model: {}".format(orig_model_path))
 
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as tmp_path:
