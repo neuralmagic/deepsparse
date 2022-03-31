@@ -16,7 +16,7 @@ limitations under the License.
 
 
 <div align="center">
-    <h1><img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />&nbsp;&nbsp;DeepSparse</h1>
+    <h1><img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />&nbsp;&nbsp;DeepSparse Engine</h1>
 	<p>
 		<b>
         <h3> Sparsity-aware neural network inference engine for GPU-class performance on CPUs </h3>
@@ -58,7 +58,7 @@ limitations under the License.
 
 A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification).
 
-Our DeepSparse Engine is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. ONNX gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
+Neural Magic's DeepSparse Engine is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. ONNX gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
 ## Features
 
@@ -67,8 +67,8 @@ Our DeepSparse Engine is able to integrate into popular deep learning libraries 
 - 👩‍💻 [NLP and Computer Vision Tasks Supported](https://github.com/InquestGeronimo/deepsparse/tree/main/examples)
 - 🧰 [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
 
-## Install
-Tested on Python 3.6<=3.9, ONNX 1.5.0<=1.10.1, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
+## Installation
+The DeepSparse Engine is tested on Python 3.6-3.9, ONNX 1.5.0-1.10.1, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended.
 
 ```bash
 pip install deepsparse
@@ -76,7 +76,7 @@ pip install deepsparse
 
 ## 🔌 DeepSparse Server
 
-The DeepSparse inference server allows you to serve models and pipelines in deployment in CLI. The server runs on top of the popular FastAPI web framework and Uvicorn web server.
+The DeepSparse Server allows you to serve models and pipelines in deployment in CLI. The server runs on top of the popular FastAPI web framework and Uvicorn web server.
 
 ```bash
 pip install deepsparse[server]
@@ -84,7 +84,7 @@ pip install deepsparse[server]
 
 **⭐ Single Model ⭐**
 
-Example CLI command for running inference with a single model:
+Once installed, the following example CLI command is available for running inference with a single BERT model:
 
 ```bash
 deepsparse.server \
@@ -95,8 +95,7 @@ deepsparse.server \
 To look up arguments run: `deepsparse.server --help`.
 
 **⭐ Multiple Models ⭐**
-To serve multiple models in your deployment you can easily build a `config.yaml`. 
-In the example below, we are defining two BERT models in our configuration for the question answering task:
+To serve multiple models in your deployment you can easily build a `config.yaml`. In the example below, we define two BERT models in our configuration for the question answering task:
 
     models:
     - task: question_answering
@@ -108,7 +107,7 @@ In the example below, we are defining two BERT models in our configuration for t
         batch_size: 1
         alias: question_answering/sparse_quantized
 
-Finally, after your `config.yaml` file is built, you can run the server with the config file path as an argument:
+Finally, after your `config.yaml` file is built, run the server with the config file path as an argument:
 ```bash
 deepsparse.server --config_file config.yaml
 ```
@@ -116,7 +115,7 @@ deepsparse.server --config_file config.yaml
 
 The benchmark tool is available on your CLI to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
 
-Run `deepsparse.benchmark -h` to look up arguments.
+Run `deepsparse.benchmark -h` to look up arguments:
 
 ```shell
 deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
@@ -198,7 +197,7 @@ __ __
 
 ## Scheduling Single-Stream, Multi-Stream, and Elastic Inference
 
-The DeepSparse Engine offers up to three types of inferences based on your use case. You can read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
+The DeepSparse Engine offers up to three types of inferences based on your use case. Read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
 
 1 ⚡ Single-stream scheduling: the latency/synchronous scenario, requests execute serially. [`default`]
 
@@ -255,6 +254,7 @@ Here is a table detailing specific support for some algorithms over different mi
 </td><td>
 
 [Blog](https://www.neuralmagic.com/blog/) 
+
 [Resources](https://www.neuralmagic.com/resources/)
 
 </td></tr> </table>
