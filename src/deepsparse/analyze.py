@@ -19,9 +19,10 @@ Analysis script for ONNX models with the DeepSparse engine.
 Command help:
 usage: deepsparse.analyze [-h] [-wi NUM_WARMUP_ITERATIONS]
                           [-bi NUM_ITERATIONS] [-ncores NUM_CORES]
-                          [-b BATCH_SIZE] [-v] [-ks KERNEL_SPARSITY]
+                          [-b BATCH_SIZE] [-ks KERNEL_SPARSITY]
                           [-ksf KERNEL_SPARSITY_FILE]
-                          [--optimization OPTIMIZATION] [-i INPUT_SHAPES]
+                          [--optimization OPTIMIZATION] [-i INPUT_SHAPES] [-q]
+                          [-x EXPORT_PATH]
                           model_path
 
 Analyze ONNX models in the DeepSparse Engine
@@ -42,7 +43,6 @@ optional arguments:
   -b BATCH_SIZE, --batch_size BATCH_SIZE
                         The number of inputs that will run through the model
                         at a time
-  -v, --verbose         Print all of the benchmark info
   -ks KERNEL_SPARSITY, --kernel_sparsity KERNEL_SPARSITY
                         Impose kernel sparsity for all convolutions. [0.0-1.0]
   -ksf KERNEL_SPARSITY_FILE, --kernel_sparsity_file KERNEL_SPARSITY_FILE
@@ -53,10 +53,14 @@ optional arguments:
                         Override the shapes of the inputs, i.e. -shapes
                         "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
                         input1=[4,5,6] input2=[7,8,9]
+  -q, --quiet           Lower logging verbosity
+  -x EXPORT_PATH, --export_path EXPORT_PATH
+                        Store results into a JSON file
 """
 
 import argparse
-import pprint
+import json
+import os
 
 from deepsparse import analyze_model
 from deepsparse.utils import (
@@ -83,14 +87,14 @@ def parse_args():
         help="The number of warmup runs that will be executed before the \
         actual benchmarking",
         type=int,
-        default=0,
+        default=5,
     )
     parser.add_argument(
         "-bi",
         "--num_iterations",
         help="The number of times the benchmark will be run",
         type=int,
-        default=1,
+        default=5,
     )
     parser.add_argument(
         "-ncores",
@@ -108,13 +112,6 @@ def parse_args():
         help="The number of inputs that will run through the model at a time",
         type=int,
         default=1,
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Print all of the benchmark info",
-        action="store_true",
-        default=False,
     )
     parser.add_argument(
         "-ks",
@@ -142,6 +139,20 @@ def parse_args():
         "input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]",
         type=str,
         default="",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        help="Lower logging verbosity",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "-x",
+        "--export_path",
+        help="Store results into a JSON file",
+        type=str,
+        default=None,
     )
 
     return parser.parse_args()
@@ -269,20 +280,15 @@ def construct_layer_statistics(result):
 def main():
     args = parse_args()
 
-    num_warmup_iterations = args.num_warmup_iterations
-    num_iterations = args.num_iterations
-    num_cores = args.num_cores
-    batch_size = args.batch_size
-    imposed_activation_sparsity = args.activation_sparsity
-    imposed_kernel_sparsity = args.kernel_sparsity
-    imposed_kernel_sparsity_file = args.kernel_sparsity_file
-    optimization_level = args.optimization
     input_shapes = parse_input_shapes(args.input_shapes)
-    verbose = args.verbose
+
+    if args.optimization:
+        os.environ["WAND_ENABLE_SP_BENCH"] = "1"
 
     # Imposed KS can take either a float or a file, so overwrite with file if we have it
-    if imposed_kernel_sparsity_file:
-        imposed_kernel_sparsity = imposed_kernel_sparsity_file
+    imposed_kernel_sparsity = args.kernel_sparsity
+    if args.kernel_sparsity_file:
+        imposed_kernel_sparsity = args.kernel_sparsity_file
 
     orig_model_path = args.model_path
     model_path = model_to_path(args.model_path)
@@ -291,28 +297,31 @@ def main():
 
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as tmp_path:
-            input_list = generate_random_inputs(tmp_path, batch_size)
+            input_list = generate_random_inputs(tmp_path, args.batch_size)
     else:
-        input_list = generate_random_inputs(model_path, batch_size)
+        input_list = generate_random_inputs(model_path, args.batch_size)
 
     result = analyze_model(
         model_path,
         input_list,
-        batch_size=batch_size,
-        num_cores=num_cores,
-        num_iterations=num_iterations,
-        num_warmup_iterations=num_warmup_iterations,
-        optimization_level=optimization_level,
-        imposed_as=imposed_activation_sparsity,
+        batch_size=args.batch_size,
+        num_cores=args.num_cores,
+        num_iterations=args.num_iterations,
+        num_warmup_iterations=args.num_warmup_iterations,
+        optimization_level=args.optimization,
         imposed_ks=imposed_kernel_sparsity,
         input_shapes=input_shapes,
     )
 
-    if verbose:
-        pprint.pprint(result)
-
-    print(construct_layer_table(result))
+    if args.quiet:
+        print(construct_layer_table(result))
     print(construct_layer_statistics(result))
+
+    if args.export_path:
+        # Export results
+        print("Saving analysis results to JSON file at {}".format(args.export_path))
+        with open(args.export_path, "w") as out:
+            json.dump(result, out, indent=2)
 
 
 if __name__ == "__main__":
