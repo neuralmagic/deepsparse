@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Benchmarking ONNX Models 📜
+## 📜 Benchmarking ONNX Models
 
 `deepsparse.benchmark` is a command-line (CLI) tool for benchmarking the DeepSparse Engine with ONNX models. The tool will parse the arguments, download/compile the network into the engine, generate input tensors, and execute the model depending on the chosen scenario. By default, it will choose a multi-stream or asynchronous mode to optimize for throughput.
 
-## Quickstart
+### Quickstart
 
 After `pip install deepsparse`, the benchmark tool is available on your CLI. For example, to benchmark a dense BERT ONNX model fine-tuned on the SST2 dataset where the model path is the minimum input required to get started, run:
 
@@ -26,7 +26,7 @@ After `pip install deepsparse`, the benchmark tool is available on your CLI. For
 deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none
 ```
 __ __
-## Usage
+### Usage
 
 In most cases, good performance will be found in the default options so it can be as simple as running the command with a SparseZoo model stub or your local ONNX model. However, if you prefer to customize benchmarking for your personal use case, you can run `deepsparse.benchmark -h` or with `--help` to view your usage options:
 
@@ -100,7 +100,7 @@ Output of the JSON file:
 
 ![alt text](./img/json_output.png)
 
-## Sample CLI Argument Configurations
+### Sample CLI Argument Configurations
 
 To run a sparse FP32 MobileNetV1 at batch size 16 for 10 seconds for throughput using 8 streams of requests:
 
