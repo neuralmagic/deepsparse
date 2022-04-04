@@ -133,6 +133,7 @@ def parse_args():
         help="The batch size to run the analysis for. Must be greater than 0",
     )
     parser.add_argument(
+        "-i",
         "-shapes",
         "--input_shapes",
         type=str,
