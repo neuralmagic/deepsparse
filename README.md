@@ -213,7 +213,6 @@ PRO TIP: The most common use cases for the multi-stream scheduler are where para
 3 ⚡ Elastic scheduling: requests execute in parallel, but not multiplexed on individual NUMA nodes.
 
 Use Case: A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache.
-__ __
 
 ## 🧰 CPU Hardware Support
 
