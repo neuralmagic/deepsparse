@@ -76,25 +76,25 @@ pip install deepsparse
 
 ## 🔌 DeepSparse Server
 
-The DeepSparse Server allows you to serve models and pipelines in deployment in CLI. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Install the server using the following command:
+The DeepSparse Server allows you to serve models and pipelines in CLI. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Install the server using the following command:
 
 ```bash
 pip install deepsparse[server]
 ```
 
-**⭐ Single Model ⭐**
+### Single Model
 
 Once installed, the following example CLI command is available for running inference with a single BERT model:
 
 ```bash
 deepsparse.server \
     --task question_answering \
-    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none"
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95"
 ```
 
 To look up arguments run: `deepsparse.server --help`.
 
-**⭐ Multiple Models ⭐**
+### Multiple Models
 To serve multiple models in your deployment you can easily build a `config.yaml`. In the example below, we define two BERT models in our configuration for the question answering task:
 
 ```yaml
@@ -113,6 +113,9 @@ Finally, after your `config.yaml` file is built, run the server with the config 
 ```bash
 deepsparse.server --config_file config.yaml
 ```
+
+[Getting Started with the DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) for more info.
+
 ## 📜 DeepSparse Benchmark
 
 The benchmark tool is available on your CLI to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
@@ -124,27 +127,26 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
                           [-ncores NUM_CORES] [-s {async,sync}] [-t TIME]
                           [-nstreams NUM_STREAMS] [-pin {none,core,numa}]
                           [-q] [-x EXPORT_PATH]
-                            model_path
+                          model_path
 
 ```
 
 [Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model) includes examples of select inference scenarios: 
 - Synchronous (Single-stream) Scenario
 - Asynchronous (Multi-stream) Scenario
-__ __
 
-## 👩‍💻 NLP Inference | Question Answering
+
+## 👩‍💻 NLP Inference Example
 
 ```python
 from deepsparse.transformers import pipeline
 
 # SparseZoo model stub or path to ONNX file
-onnx_filepath="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
+model_path = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
 
 qa_pipeline = pipeline(
     task="question-answering",
-    model_path=onnx_filepath,
-    num_cores=None, # uses all available CPU cores by default
+    model_path=model_path,
 )
 
 my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
@@ -158,16 +160,13 @@ Tasks Supported:
 - Question Answering
 - Masked Language Modeling (MLM)
 
-__ __
-
 ## 🦉 SparseZoo ONNX vs. Custom ONNX Models
 
 DeepSparse can accept ONNX models from two sources: 
 
-1. `SparseZoo ONNX`: our open-source collection of sparse models available for download. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference-optimized models, trained on repeatable sparsification recipes using state-of-the-art techniques from [SparseML.](https://github.com/neuralmagic/sparseml)
+- **SparseZoo ONNX**: our open-source collection of sparse models available for download. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference-optimized models, trained on repeatable sparsification recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
 
-2. `Custom ONNX`: Your own ONNX model, can be dense or sparse. Plug in your model to compare performance with other solutions.
-
+- **Custom ONNX**: your own ONNX model, can be dense or sparse. Plug in your model to compare performance with other solutions.
 
 ```bash
 > wget https://github.com/onnx/models/raw/main/vision/classification/mobilenet/model/mobilenetv2-7.onnx
@@ -188,14 +187,12 @@ inputs = generate_random_inputs(onnx_filepath, batch_size)
 engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
-Compatibility/Support Notes
+Compatibility/Support Notes:
 - ONNX version 1.5-1.7
 - ONNX opset version 11+
 - ONNX IR version has not been tested at this time
 
 The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes package APIs along with examples to quickly get started benchmarking and inferencing sparse models.
-
-__ __
 
 ## Scheduling Single-Stream, Multi-Stream, and Elastic Inference
 
@@ -233,34 +230,29 @@ Here is a table detailing specific support for some algorithms over different mi
 
 ## Resources
 
-<table>
-<tr><th> Documentation </th><th> &emsp;&emsp;&emsp;Versions </th><th> Info </th></tr>
-<tr><td>
 
-[DeepSparse](https://docs.neuralmagic.com/deepsparse/)
+### Libraries
+- [DeepSparse](https://docs.neuralmagic.com/deepsparse/)
 
-[SparseML](https://docs.neuralmagic.com/sparseml/)
+- [SparseML](https://docs.neuralmagic.com/sparseml/)
 
-[SparseZoo](https://docs.neuralmagic.com/sparsezoo/)
+- [SparseZoo](https://docs.neuralmagic.com/sparsezoo/)
 
-[Sparsify](https://docs.neuralmagic.com/sparsify/)
+- [Sparsify](https://docs.neuralmagic.com/sparsify/)
 
-</td><td>
 
-&emsp;stable : : [DeepSparse](https://pypi.org/project/deepsparse)
+### Versions
+- stable | [DeepSparse](https://pypi.org/project/deepsparse)
 
-&emsp;nightly (dev) : : [DeepSparse-Nightly](https://pypi.org/project/deepsparse-nightly/)
+- nightly (dev) | [DeepSparse-Nightly](https://pypi.org/project/deepsparse-nightly/)
 
-&emsp;releases : : [GitHub](https://github.com/neuralmagic/deepsparse/releases)
+- releases | [GitHub](https://github.com/neuralmagic/deepsparse/releases)
 
-</td><td>
+### Info
 
-[Blog](https://www.neuralmagic.com/blog/) 
+- [Blog](https://www.neuralmagic.com/blog/) 
 
-[Resources](https://www.neuralmagic.com/resources/)
-
-</td></tr> </table>
-
+- [Resources](https://www.neuralmagic.com/resources/)
 
 
 ## Community
