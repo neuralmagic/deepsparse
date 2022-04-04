@@ -230,7 +230,7 @@ Here is a table detailing specific support for some algorithms over different mi
 ## Resources
 
 
-### Libraries
+#### Libraries
 - [DeepSparse](https://docs.neuralmagic.com/deepsparse/)
 
 - [SparseML](https://docs.neuralmagic.com/sparseml/)
@@ -240,14 +240,14 @@ Here is a table detailing specific support for some algorithms over different mi
 - [Sparsify](https://docs.neuralmagic.com/sparsify/)
 
 
-### Versions
-- stable | [DeepSparse](https://pypi.org/project/deepsparse)
+#### Versions
+- [DeepSparse](https://pypi.org/project/deepsparse) | stable
 
-- nightly (dev) | [DeepSparse-Nightly](https://pypi.org/project/deepsparse-nightly/)
+- [DeepSparse-Nightly](https://pypi.org/project/deepsparse-nightly/) | nightly (dev)
 
-- releases | [GitHub](https://github.com/neuralmagic/deepsparse/releases)
+- [GitHub](https://github.com/neuralmagic/deepsparse/releases) | releases
 
-### Info
+#### Info
 
 - [Blog](https://www.neuralmagic.com/blog/) 
 
