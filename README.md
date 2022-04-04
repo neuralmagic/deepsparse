@@ -97,15 +97,17 @@ To look up arguments run: `deepsparse.server --help`.
 **⭐ Multiple Models ⭐**
 To serve multiple models in your deployment you can easily build a `config.yaml`. In the example below, we define two BERT models in our configuration for the question answering task:
 
-    models:
+```yaml
+models:
     - task: question_answering
         model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
         batch_size: 1
-        alias: question_answering/dense
+        alias: question_answering/base
     - task: question_answering
         model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
         batch_size: 1
-        alias: question_answering/sparse_quantized
+        alias: question_answering/pruned_quant
+```
 
 Finally, after your `config.yaml` file is built, run the server with the config file path as an argument:
 ```bash
