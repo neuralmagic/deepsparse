@@ -89,16 +89,16 @@ __ __
 To serve multiple models you can build a `config.yaml` file. 
 In the sample YAML file below, we are defining two BERT models to be served by the `deepsparse.server` for the **question answering** task:
 
-```
+```yaml
 models:
     - task: question_answering
-        model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-        batch_size: 1
-        alias: question_answering/base
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1
+      alias: question_answering/base
     - task: question_answering
-        model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
-        batch_size: 1
-        alias: question_answering/pruned_quant
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
+      batch_size: 1
+      alias: question_answering/pruned_quant
 ```
 You can now run the server with the config file path passed in the `--config_file` argument:
 
