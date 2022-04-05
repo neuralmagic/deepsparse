@@ -14,6 +14,7 @@
 
 from pipelineclient import MultiPipelineClient
 
+
 class FeatureHandler:
 
     """
@@ -27,8 +28,12 @@ class FeatureHandler:
 
     variants_desc = "Select model:"
     variants = {
-        "Pruned, Quant, Aggressive 95": MultiPipelineClient(model="question_answering/pruned_quant"),
-        "Pruned, Quant, Moderate": MultiPipelineClient(model="question_answering/quantmod"),
+        "Pruned, Quant, Aggressive 95": MultiPipelineClient(
+            model="question_answering/pruned_quant"
+        ),
+        "Pruned, Quant, Moderate": MultiPipelineClient(
+            model="question_answering/quantmod"
+        ),
     }
 
     title = "<h1 style='text-align: Center; color: white;'>✨ Neural Magic ✨</h1>"
@@ -37,12 +42,16 @@ class FeatureHandler:
     code_banner = "Get started with faster inference 👇"
     code_text = "pip install deepsparse[server]"
     language = "python"
-    repo_test = "Give the [DeepSparse](https://github.com/neuralmagic/deepsparse) repo a ⭐!"
+    repo_test = (
+        "Give the [DeepSparse](https://github.com/neuralmagic/deepsparse) repo a ⭐!"
+    )
 
     example_context_label = "Enter Context"
     example_question_label = "Enter Question"
     example_context = r"""The DeepSparse Engine is a CPU runtime that delivers GPU-class performance by taking advantage of sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend."""
-    example_question = "What does the DeepSparse Engine take advantage of within neural networks?"
+    example_question = (
+        "What does the DeepSparse Engine take advantage of within neural networks?"
+    )
     answer_label = "ANSWER: "
     time_label = "seconds"
 

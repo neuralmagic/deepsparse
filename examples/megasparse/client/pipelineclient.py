@@ -18,6 +18,7 @@ from typing import List
 import numpy
 import requests
 
+
 class MultiPipelineClient:
     """
     Client object for making requests to the example DeepSparse BERT inference server
@@ -27,11 +28,11 @@ class MultiPipelineClient:
     :param port: Port the server is hosted on, default is 5543
     """
 
-    def __init__(self, model: str, address: str ='0.0.0.0', port: str ='5543'):
+    def __init__(self, model: str, address: str = "0.0.0.0", port: str = "5543"):
 
         self.model = model
-        self._url = f'http://{address}:{port}/predict/{self.model}'
-        
+        self._url = f"http://{address}:{port}/predict/{self.model}"
+
     def __call__(self, **kwargs) -> List[numpy.ndarray]:
 
         """
