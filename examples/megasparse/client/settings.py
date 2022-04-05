@@ -37,7 +37,7 @@ class FeatureHandler:
     }
 
     title = "<h1 style='text-align: Center; color: white;'>✨ Neural Magic ✨</h1>"
-    subtitle = "<h2 style='text-align: Center; color: white;'>Inference with the DeepSparse Server</h2>"
+    subtitle = "<h2 style='text-align: Center; color: white; '> DeepSparse Server</h2>"
 
     code_banner = "Get started with faster inference 👇"
     code_text = "pip install deepsparse[server]"
@@ -48,7 +48,12 @@ class FeatureHandler:
 
     example_context_label = "Enter Context"
     example_question_label = "Enter Question"
-    example_context = r"""The DeepSparse Engine is a CPU runtime that delivers GPU-class performance by taking advantage of sparsity within neural networks to reduce compute required as well as accelerate memory bound workloads. It is focused on model deployment and scaling machine learning pipelines, fitting seamlessly into your existing deployments as an inference backend."""
+    example_context = "The DeepSparse Engine is a CPU runtime that delivers \
+    GPU-class performance by taking advantage of sparsity within neural \
+    networks to reduce compute required as well as accelerate memory bound \
+    workloads. It is focused on model deployment and scaling machine \
+    learning pipelines, fitting seamlessly into your existing \
+    deployments as an inference backend."
     example_question = (
         "What does the DeepSparse Engine take advantage of within neural networks?"
     )
@@ -70,6 +75,6 @@ class FeatureHandler:
         }
         </style>
         <div class="footer">
-        <p>Made with ☠️ and Streamlit  .<a style="display: block; text-align: center;"</p>
+        <p>Made with ☠️ & Streamlit  .<a style="display: block; text-align: center;"</p>
         </div>
     """

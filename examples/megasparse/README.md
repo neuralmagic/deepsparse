@@ -1,19 +1,3 @@
-<!--
-Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--->
-
 ![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+) <sup><samp>[**NEURAL MAGIC**](https://neuralmagic.com)</samp></sup> ![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)
 
     ███╗   ███╗ ███████╗  ██████╗   █████╗  ███████╗ ██████╗   █████╗  ██████╗  ███████╗ ███████╗
@@ -59,7 +43,7 @@ cd examples/megasparse
 pip install -r requirements.txt
 ```
 <br />
-The `config.yaml` file lists the models you want the DeepSparse Server to serve. Currently, it contains up to 18 BERT models, although 16 of these models are commented out so you can safely get started on two models, and later on, add more models at your own pace. If you wish to load all 18 models into memory make sure you have 16GB of RAM available, otherwise you will get out of memory errors. Also, as you add additional models to the `config.yaml` file, make sure to all also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
+The `config.yaml` file lists the models you want the DeepSparse Server to serve. Currently, it contains up to 18 BERT models, although 16 of these models are commented out so you can safely get started on two models, and later on, add more models at your own pace. If you wish to load all 18 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. Also, as you add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
 
 ## <div>`START SERVER`</div>
 
