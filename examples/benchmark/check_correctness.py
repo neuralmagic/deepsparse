@@ -44,15 +44,11 @@ python examples/benchmark/check_correctness.py \
 
 import argparse
 
-import onnxruntime
-
 from deepsparse import compile_model, cpu
+from deepsparse.benchmark_model.ort_engine import ORTEngine
 from deepsparse.utils import (
     generate_random_inputs,
-    get_input_names,
-    get_output_names,
     model_to_path,
-    override_onnx_batch_size,
     override_onnx_input_shapes,
     parse_input_shapes,
     verify_outputs,
@@ -110,25 +106,21 @@ def main():
     else:
         inputs = generate_random_inputs(onnx_filepath, args.batch_size)
 
-    input_names = get_input_names(onnx_filepath)
-    output_names = get_output_names(onnx_filepath)
-    inputs_dict = {name: value for name, value in zip(input_names, inputs)}
-
     # ONNXRuntime inference
     print("Executing model with ONNXRuntime...")
-    sess_options = onnxruntime.SessionOptions()
-    if input_shapes:
-        with override_onnx_input_shapes(onnx_filepath, input_shapes) as override_onnx_filepath:
-            ort_network = onnxruntime.InferenceSession(override_onnx_filepath, sess_options)
-            ort_outputs = ort_network.run(output_names, inputs_dict)
-    else:
-        with override_onnx_batch_size(onnx_filepath, batch_size) as override_onnx_filepath:
-            ort_network = onnxruntime.InferenceSession(override_onnx_filepath, sess_options)
-            ort_outputs = ort_network.run(output_names, inputs_dict)
+    ort_network = ORTEngine(
+        model=onnx_filepath,
+        batch_size=batch_size,
+        num_cores=None,
+        input_shapes=input_shapes,
+    )
+    ort_outputs = ort_network.run(inputs)
 
     # DeepSparse Engine inference
     print("Executing model with DeepSparse Engine...")
-    dse_network = compile_model(onnx_filepath, batch_size=batch_size, input_shapes=input_shapes)
+    dse_network = compile_model(
+        onnx_filepath, batch_size=batch_size, input_shapes=input_shapes
+    )
     dse_outputs = dse_network(inputs)
 
     verify_outputs(dse_outputs, ort_outputs)
