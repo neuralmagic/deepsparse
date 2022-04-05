@@ -1,0 +1,3 @@
+fastapi_websocket_pubsub
+tweepy
+deepsparse
