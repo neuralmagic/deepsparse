@@ -17,8 +17,7 @@ from pipelineclient import MultiPipelineClient
 class FeatureHandler:
 
     """
-    Client object with front-end streamlit content features 
-
+    Class with front-end streamlit content features.
     """
 
     tasks_desc = "Select task:"
