@@ -117,6 +117,14 @@ class ServerConfig(BaseModel):
             "Defaults to the number of physical cores on the device."
         ),
     )
+    integration: str = Field(
+        default=None,
+        description=(
+            "Name of deployment integration that this server will be deployed to "
+            "Currently supported options are None for default inference and "
+            "'sagemaker' for inference deployment with AWS Sagemaker"
+        ),
+    )
 
 
 @lru_cache()
@@ -170,6 +178,7 @@ def server_config_to_env(
     task: str,
     model_path: str,
     batch_size: int,
+    integration: str,
     env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG,
 ):
     """
@@ -186,6 +195,9 @@ def server_config_to_env(
         If config_file is supplied, this is ignored.
     :param batch_size: the batch size to serve the model from model_path with.
         If config_file is supplied, this is ignored.
+    :param integration: name of deployment integration that this server will be
+        deployed to. Supported options include None for default inference and
+        sagemaker for inference deployment on AWS Sagemaker
     :param env_key: the environment variable to set the configuration in.
         Defaults to ENV_DEEPSPARSE_SERVER_CONFIG
     """
@@ -199,7 +211,12 @@ def server_config_to_env(
             )
 
         single_str = json.dumps(
-            {"task": task, "model_path": model_path, "batch_size": batch_size}
+            {
+                "task": task,
+                "model_path": model_path,
+                "batch_size": batch_size,
+                "integration": integration,
+            }
         )
         config = f"{ENV_SINGLE_PREFIX}{single_str}"
 
