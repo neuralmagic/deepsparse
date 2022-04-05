@@ -48,17 +48,12 @@ MegaSparse allows you to serve a streamlit app running on top of the DeepSparse 
 
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
-```
-
-```bash
 cd examples/megasparse
-```
-
-```bash
 pip install -r requirements.txt
 ```
 <br />
-The `config.yaml` file lists the models you want the DeepSparse Server to serve. Currently, it contains up to 18 BERT models, although 16 of these models are commented out so you can safely get started on two models, and later on, add more models at your own pace. If you wish to load all 18 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. Also, as you add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
+
+The `config.yaml` file in the `server` directory lists the models you want the DeepSparse Server to serve. Currently, it contains up to 18 BERT models, although 16 of these models are commented out so you can safely get started on two models, and later on, add more models at your own pace. If you wish to load all 18 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. Also, as you add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
 
 ## <div>`START SERVER`</div>
 
