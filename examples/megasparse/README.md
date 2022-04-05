@@ -52,21 +52,21 @@ To download and initialize the two sample models in the `config.yaml` file, run:
 deepsparse.server --config_file server/config.yaml
 ```
 
-The DeepSparse Server should now be running on localhost `0.0.0.0` and port `5543`.
+The DeepSparse Server should now be running on host `0.0.0.0` and port `5543`.
 
 ## <div>`START CLIENT`</div>
 
-Open a new terminal and run the following command to start the Streamlit app:
+Open a new terminal (make sure you are in your environment) and run the following command to start the Streamlit app:
 
 ```bash
 streamlit run client/app.py \
     --theme.backgroundColor blue \
     --theme.secondaryBackgroundColor black \
     --theme.textColor white \
-    --browser.serverAddress="0.0.0.0"
+    --browser.serverAddress="localhost"
 ```
-This will start the Streamlit app in localhost `0.0.0.0` and port `8501`.
-Visit `http://0.0.0.0:8501` in your browser to view the demo.
+This will start the Streamlit app on host `localhost` and port `8501`.
+Visit `http://localhost:8501` in your browser to view the demo.
 
 ### Testing
 
