@@ -25,7 +25,7 @@ MegaSparse allows you to quickly serve a streamlit app running on top of the Dee
 
 <br />
 
-<img src="/examples/megasparse/img/demo_screenshot.png">
+![alt text](./img/demo_screenshot.png)
 
 <br />
 
