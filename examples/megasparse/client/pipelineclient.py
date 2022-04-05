@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Client object for making requests to the example DeepSparse BERT inference server
-"""
-
 import json
 from typing import List
 
