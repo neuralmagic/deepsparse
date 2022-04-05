@@ -34,22 +34,6 @@ class FeatureHandler:
     variants = {
         "Pruned, Quant, Aggressive 95": MultiPipelineClient(model="question_answering/pruned_quant"),
         "Pruned, Quant, Moderate": MultiPipelineClient(model="question_answering/quantmod"),
-        "Pruned, Agressive 98": MultiPipelineClient(model="question_answering/agg98"),
-        "Pruned, Agressive 94": MultiPipelineClient(model="question_answering/agg94"),
-        "Pruned, Conservative": MultiPipelineClient(model="question_answering/conserv"),
-        "Pruned, Quant 6layers, Aggressive 96": MultiPipelineClient(model="question_answering/quant6lagg96"),
-        "Pruned, Quant 6layers, Aggressive 91": MultiPipelineClient(model="question_answering/quant6lagg91"),
-        "Pruned, 6layers, Aggressive 98": MultiPipelineClient(model="question_answering/6lagg98"),
-        "Pruned, 6layers, Aggressive 97": MultiPipelineClient(model="question_answering/6lagg97"),
-        "Pruned, 6layers, Aggressive 96": MultiPipelineClient(model="question_answering/6lagg96"),
-        "Pruned, 6layers, Aggressive 94": MultiPipelineClient(model="question_answering/6lagg94"),
-        "Pruned, Quant 3layers, Aggressive 89": MultiPipelineClient(model="question_answering/quant3lagg89"),
-        "Pruned, Quant 3layers, Aggressive 84": MultiPipelineClient(model="question_answering/quant3lagg84"),
-        "Pruned, 3layers, Aggressive 90": MultiPipelineClient(model="question_answering/3lagg90"),
-        "Pruned, 3layers, Aggressive 89": MultiPipelineClient(model="question_answering/3lagg89"),
-        "Pruned, 3layers, Aggressive 86": MultiPipelineClient(model="question_answering/3lagg86"),
-        "Pruned, 3layers, Aggressive 83": MultiPipelineClient(model="question_answering/3lagg83"),
-        "Base Model, Not Sparsified 😥": MultiPipelineClient(model="question_answering/base")
     }
 
     title = "<h1 style='text-align: Center; color: white;'>✨ Neural Magic ✨</h1>"
