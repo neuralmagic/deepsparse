@@ -22,12 +22,7 @@ class FeatureHandler:
 
     tasks_desc = "Select task:"
     tasks = [
-        "Question Answering", 
-        "Name Entity Recognition", 
-        "Text Generation",
-        "Sentiment Analysis",
-        "Summarization",
-        "Translation"
+        "Question Answering",
     ]
 
     variants_desc = "Select model:"
