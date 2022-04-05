@@ -1,3 +1,19 @@
+<!--
+Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 ![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+) <sup><samp>[**NEURAL MAGIC**](https://neuralmagic.com)</samp></sup> ![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)
 
                 ____  ___   ____  ____  ____  ____  ____  ___  ____  ____  ____  _  _ 
@@ -14,9 +30,9 @@
 <samp>
 
 <div>
-<!-- SparseStream allows you to classify finance-related tweets in a real-time stream for topic and sentiment. Inference for this demo is produced from 2 sparse BERT ONNX models running on the DeepSparse Engine and the Transformers library.  -->
-The purpose of this app is for you to familiarize yourself with the high performance inference speeds of sparse models in a streaming environment.
+The purpose of this app is for you to familiarize yourself with the high performance inference speeds of sparse models in a streaming environment. You will be able to use this app to classify tweets in a real-time stream.
 </div>
+
 <br />
 
 [Getting Started with the DeepSparse Engine](https://github.com/neuralmagic/deepsparse)
@@ -24,8 +40,8 @@ The purpose of this app is for you to familiarize yourself with the high perform
 ## <div>`INSTALL`</div>
 
 ```bash
-git clone https://github.com/InquestGeronimo/sparsestream.git
-cd sparsestream
+git clone https://github.com/neuralmagic/deepsparse.git
+cd examples/sparsestream
 pip install -r requirements.txt
 ```
 ## <div>`START SERVER`</div>
@@ -37,7 +53,7 @@ python server/server.py
 
 This will download a Sparse ONNX model and initialize an NLP inference pipeline for the text classification task. A uvicorn server will start running on host `0.0.0.0` and port `8000`. A `GET` route called `/sparsestream` will serve as the http trigger for starting the Twitter stream, passing it into the text classification pipeline, and then pushing the tweet and inference to the client.
 
-## <div>`START CLIENT via WEBSOCKETS`</div>
+## <div>`START CLIENT`</div>
 
 In a seperate terminal, run:
 
@@ -60,7 +76,7 @@ Tweets should now be streaming on the server terminal with two variables, the tw
 
 And on the client terminal, you should see a dictionary printing with two keys:
 
-- `tweet`: The tweet just received from server.
+- `tweet`: The tweet received from server.
 - `inference`: The tweet's sentiment: `positive` or `negative`
 
 For example:
