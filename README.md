@@ -156,9 +156,11 @@ NLP Tutorials:
 - [Getting Started with Hugging Face Transformers 🤗](https://github.com/neuralmagic/deepsparse/tree/main/examples/huggingface-transformers)
 
 Tasks Supported: 
-- Text Classification (Sentiment Analysis)
-- Question Answering
-- Masked Language Modeling (MLM)
+- [Named Entity Recognition](https://neuralmagic.com/use-cases/sparse-named-entity-recognition/)
+- [Multi-Class Classification](https://neuralmagic.com/use-cases/sparse-multi-class-text-classification/)
+- [Binary Text Classification](https://neuralmagic.com/use-cases/sparse-binary-text-classification/)
+- [Text Classification (Sentiment Analysis)](https://neuralmagic.com/use-cases/sparse-sentiment-analysis/)
+- [Question Answering](https://neuralmagic.com/use-cases/sparse-question-answering/)
 
 ## 🦉 SparseZoo ONNX vs. Custom ONNX Models
 
