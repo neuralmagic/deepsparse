@@ -156,10 +156,10 @@ NLP Tutorials:
 - [Getting Started with Hugging Face Transformers 🤗](https://github.com/neuralmagic/deepsparse/tree/main/examples/huggingface-transformers)
 
 Tasks Supported: 
-- [Named Entity Recognition](https://neuralmagic.com/use-cases/sparse-named-entity-recognition/)
-- [Multi-Class Classification](https://neuralmagic.com/use-cases/sparse-multi-class-text-classification/)
-- [Binary Text Classification](https://neuralmagic.com/use-cases/sparse-binary-text-classification/)
-- [Text Classification (Sentiment Analysis)](https://neuralmagic.com/use-cases/sparse-sentiment-analysis/)
+- [Token Classification: Named Entity Recognition](https://neuralmagic.com/use-cases/sparse-named-entity-recognition/)
+- [Text Classification: Multi-Class](https://neuralmagic.com/use-cases/sparse-multi-class-text-classification/)
+- [Text Classification: Binary](https://neuralmagic.com/use-cases/sparse-binary-text-classification/)
+- [Text Classification: Sentiment Analysis](https://neuralmagic.com/use-cases/sparse-sentiment-analysis/)
 - [Question Answering](https://neuralmagic.com/use-cases/sparse-question-answering/)
 
 ## 🦉 SparseZoo ONNX vs. Custom ONNX Models
@@ -263,7 +263,7 @@ Here is a table detailing specific support for some algorithms over different mi
 
 Contribute with code, examples, integrations, and documentation as well as bug reports and feature requests! [Learn how here.](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
 
-For user help or questions about DeepSparse, sign up or log in to our [**Deep Sparse Community Slack**](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there. Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue.](https://github.com/neuralmagic/deepsparse/issues) You can get the latest news, webinar and event invites, research papers, and other ML Performance tidbits by [subscribing](https://neuralmagic.com/subscribe/) to the Neural Magic community.
+For user help or questions about DeepSparse, sign up or log in to our **[Deep Sparse Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ)**. We are growing the community member by member and happy to see you there. Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue.](https://github.com/neuralmagic/deepsparse/issues) You can get the latest news, webinar and event invites, research papers, and other ML Performance tidbits by [subscribing](https://neuralmagic.com/subscribe/) to the Neural Magic community.
 
 For more general questions about Neural Magic, complete this [form.](http://neuralmagic.com/contact/)
 
