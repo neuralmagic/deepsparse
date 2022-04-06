@@ -17,7 +17,7 @@ limitations under the License.
 # Twitter NLP Inference Examples
 
 This directory contains examples for scraping, processing, and classifying Twitter data
-using the DeepSparse engine for improved inference performance on commodity CPUs.
+using the DeepSparse engine for >=10x increase in inference performance on commodity CPUs.
 
 ## Installation
 
