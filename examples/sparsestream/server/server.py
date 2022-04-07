@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import yaml
 import asyncio
-
 import uvicorn
 from examples.sparsestream.server.usernames import user_id, user_name
 from deepsparse.transformers import pipeline
@@ -21,9 +21,8 @@ from fastapi import FastAPI
 from fastapi.routing import APIRouter
 from fastapi_websocket_pubsub import PubSubEndpoint
 from tweepy.asynchronous import AsyncStream
-from util import get_tokens
 
-
+token_path = "./server/config.yaml"
 model_path = "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
 text_classification = pipeline(task="text-classification", model_path=model_path)
 
@@ -32,18 +31,18 @@ router = APIRouter()
 endpoint = PubSubEndpoint()
 endpoint.register_route(router)
 app.include_router(router)
-token = get_tokens()
+
 
 
 class SparseStream(AsyncStream):
     async def on_status(self, status):
 
-        if (
-            (not status.retweeted)
-            and ("RT @" not in status.text)
-            and (status.in_reply_to_screen_name not in user_name)
-            and (status.in_reply_to_status_id is None)
-        ):
+        # if (
+        #     (not status.retweeted)
+        #     and ("RT @" not in status.text)
+        #     and (status.in_reply_to_screen_name not in user_name)
+        #     and (status.in_reply_to_status_id is None)
+        # ):
 
             inference = text_classification(status.text)[0]
             inference = "positive" if inference["label"] == "LABEL_1" else "negative"
@@ -52,6 +51,14 @@ class SparseStream(AsyncStream):
             )
             print(status.text)
 
+def get_tokens(path):
+
+    with open(path) as file:
+        config = yaml.safe_load(file.read())
+
+    return config["twitter_tokens"]
+
+token = get_tokens(token_path)
 
 async def tweet_stream():
 
