@@ -50,7 +50,7 @@ Example CLI command for serving a single model for the **question answering** ta
 ```bash
 deepsparse.server \
     --task question_answering \
-    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95"
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
 To make a request to your server, you can use the `requests` library and pass the request URL:
@@ -96,7 +96,7 @@ models:
       batch_size: 1
       alias: question_answering/base
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 1
       alias: question_answering/pruned_quant
 ```
