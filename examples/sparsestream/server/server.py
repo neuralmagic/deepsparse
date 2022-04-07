@@ -18,11 +18,11 @@ import yaml
 
 import uvicorn
 from deepsparse.transformers import pipeline
-from examples.sparsestream.server.usernames import user_id, user_name
 from fastapi import FastAPI
 from fastapi.routing import APIRouter
 from fastapi_websocket_pubsub import PubSubEndpoint
 from tweepy.asynchronous import AsyncStream
+from usernames import user_id
 
 
 token_path = "./server/config.yaml"
@@ -44,9 +44,6 @@ def get_tokens(path):
     return config["twitter_tokens"]
 
 
-token = get_tokens(token_path)
-
-
 class SparseStream(AsyncStream):
     async def on_status(self, status):
 
@@ -66,6 +63,8 @@ class SparseStream(AsyncStream):
 
 
 async def tweet_stream():
+
+    token = get_tokens(token_path)
 
     stream = SparseStream(
         token["consumer_key"],
