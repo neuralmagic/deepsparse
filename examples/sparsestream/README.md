@@ -39,6 +39,8 @@ The purpose of this app is for you to familiarize yourself with the high perform
 
 ## <div>`INSTALL`</div>
 
+Supports Python >= 3.7
+
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
 cd examples/sparsestream
