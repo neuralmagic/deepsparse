@@ -89,7 +89,7 @@ Once installed, the following example CLI command is available for running infer
 ```bash
 deepsparse.server \
     --task question_answering \
-    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95"
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
 To look up arguments run: `deepsparse.server --help`.
@@ -142,7 +142,7 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
 from deepsparse.transformers import pipeline
 
 # SparseZoo model stub or path to ONNX file
-model_path = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
+model_path = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 
 qa_pipeline = pipeline(
     task="question-answering",
