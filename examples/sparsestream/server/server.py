@@ -32,6 +32,14 @@ endpoint = PubSubEndpoint()
 endpoint.register_route(router)
 app.include_router(router)
 
+def get_tokens(path):
+
+    with open(path) as file:
+        config = yaml.safe_load(file.read())
+
+    return config["twitter_tokens"]
+
+token = get_tokens(token_path)
 
 
 class SparseStream(AsyncStream):
@@ -51,14 +59,6 @@ class SparseStream(AsyncStream):
             )
             print(status.text)
 
-def get_tokens(path):
-
-    with open(path) as file:
-        config = yaml.safe_load(file.read())
-
-    return config["twitter_tokens"]
-
-token = get_tokens(token_path)
 
 async def tweet_stream():
 
