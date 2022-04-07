@@ -313,7 +313,7 @@ def main():
         input_shapes=input_shapes,
     )
 
-    if args.quiet:
+    if not args.quiet:
         print(construct_layer_table(result))
     print(construct_layer_statistics(result))
 
