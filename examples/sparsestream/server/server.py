@@ -15,7 +15,7 @@
 import asyncio
 
 import uvicorn
-from data import user_id, user_name
+from examples.sparsestream.server.usernames import user_id, user_name
 from deepsparse.transformers import pipeline
 from fastapi import FastAPI
 from fastapi.routing import APIRouter
