@@ -76,7 +76,7 @@ pip install deepsparse
 
 ## 🔌 DeepSparse Server
 
-The DeepSparse Server allows you to serve models and pipelines from terminal. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Install the server using the following command:
+The DeepSparse Server allows you to serve models and pipelines from the terminal. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Install the server using the following command:
 
 ```bash
 pip install deepsparse[server]
