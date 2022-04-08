@@ -47,12 +47,12 @@ python analyze_sentiment.py
 
 import json
 from itertools import cycle, islice
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 import click
-from rich import print
 
 from deepsparse.transformers import pipeline
+from rich import print
 
 
 def _load_tweets(tweets_file: str):
@@ -102,7 +102,7 @@ def _display_results(batch, sentiments):
 @click.option(
     "--tweets_file",
     type=str,
-    help="The path to the tweets json txt file to analyze sentiment for."
+    help="The path to the tweets json txt file to analyze sentiment for.",
 )
 @click.option(
     "--batch_size",
@@ -110,14 +110,14 @@ def _display_results(batch, sentiments):
     default=16,
     help="The batch size to process the tweets with. "
     "A higher batch size may increase performance at the expense of memory resources "
-    "and individual latency."
+    "and individual latency.",
 )
 @click.option(
     "--total_tweets",
     type=int,
     default=None,
     help="The total number of tweets to analyze from the tweets_file."
-    "Defaults to None which will run through all tweets contained in the file."
+    "Defaults to None which will run through all tweets contained in the file.",
 )
 def analyze_tweets_sentiment(
     model_path: str, tweets_file: str, batch_size: int, total_tweets: int
