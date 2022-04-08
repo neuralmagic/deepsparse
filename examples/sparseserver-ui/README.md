@@ -45,7 +45,7 @@ SparseServer.UI allows you to serve a streamlit app running on top of the DeepSp
 
 <br />
 
-## <div>`INSTALL`</div>
+## <div>`INSTALLATION`</div>
 
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
@@ -54,20 +54,17 @@ pip install -r requirements.txt
 ```
 <br />
 
-The `starter-config.yaml` file in the `server` directory has a great started list of four models for DeepSparse Server to serve. 
+The `config.yaml` file in the `server` directory includes a list of four BERT QA models for the DeepSparse Server to get started quickly. If you prefer to add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
 
-Currently, it contains up to 18 BERT models, although 16 of these models are commented out so you can safely get started on two models, and later on, add more models at your own pace. 
+Currently, the SparseZoo contains 20 BERT models, and the `nuke-config.yaml` file contains the full list in case you want to load them all 🤯. If you wish to load all 20 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. 
 
-
-If you wish to load all 18 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. Also, as you add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
-
-To add more question answering models please refer to our [updated list](https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=question_answering&page=1).
+For more details on question answering models, please refer to our [updated list](https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=question_answering&page=1).
 
 ## <div>`START SERVER`</div>
 
-To download and initialize the two sample models in the `config.yaml` file, run:
+To download and initialize the models in the `config.yaml` file, run:
 ```bash
-deepsparse.server --config_file server/starter-config.yaml
+deepsparse.server --config_file server/config.yaml
 ```
 
 The DeepSparse Server should now be running on host `0.0.0.0` and port `5543`.
@@ -83,12 +80,13 @@ streamlit run client/app.py \
     --theme.textColor white \
     --browser.serverAddress="localhost"
 ```
+
 This will start the Streamlit app on host `localhost` and port `8501`.
 Visit `http://localhost:8501` in your browser to view the demo.
 
 ### Testing
 
-- 18 models were able to fit on 16GB RAM of a c2-standard-4 VM instance on GCP
+- 20 models were able to fit on 16GB RAM of a c2-standard-4 VM instance on GCP
 - Ubuntu 20.04.4 LTS
 - Python 3.8.10
 </samp>

@@ -28,11 +28,17 @@ class FeatureHandler:
 
     variants_desc = "Select model:"
     variants = {
-        "Pruned, Quant, Aggressive 95": MultiPipelineClient(
-            model="question_answering/pruned_quant"
+        "80% Pruned, Quantized for VNNI": MultiPipelineClient(
+            model="question_answering/12l_pruned80_quant"
         ),
-        "Pruned, Quant, Moderate": MultiPipelineClient(
-            model="question_answering/quantmod"
+        "Pruned, 6layers, Aggressive 96": MultiPipelineClient(
+            model="question_answering/6lagg96"
+        ),
+        "Pruned, 3layers, Aggressive 89": MultiPipelineClient(
+            model="question_answering/3lagg89"
+        ),
+        "Base Model, Not Sparsified 😢": MultiPipelineClient(
+            model="question_answering/base"
         ),
     }
 
