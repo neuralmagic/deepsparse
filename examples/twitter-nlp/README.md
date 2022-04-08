@@ -42,10 +42,10 @@ The script is given as an example only and users are expected to use Twitter's d
 python scrape.py --topic '#crypto' --total_tweets 1000
 ```
 
-Next, use the `analyze_sentiment.py` along with sparsified sentiment analysis models from the [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=text_classification&page=1)
+Next, use the `analyze_sentiment.py` along with sparsified sentiment analysis models from the [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=sentiment_analysis&page=1)
 to performantly analyze the general sentiment across the gathered tweets:
 ```bash
 python analyze_sentiment.py
-    --model_path "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
+    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
     --tweets_file "#crypto.txt"
 ```

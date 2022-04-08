@@ -39,9 +39,15 @@ Options:
   --help                  Show this message and exit.
 
 ##########
+Example running a sparse, quantized sentiment analysis model:
+python analyze_sentiment.py
+    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+    --tweets_file /PATH/TO/OUTPUT/FROM/scrape.py
+
+##########
 Example running a dense, unoptimized sentiment analysis model:
 python analyze_sentiment.py
-    --model_path "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
+    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/base-none"
     --tweets_file /PATH/TO/OUTPUT/FROM/scrape.py
 """
 
