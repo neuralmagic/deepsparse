@@ -14,17 +14,17 @@
 
 models:
     - task: question_answering
-      model_path: "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 1
       alias: question_answering/12l_pruned80_quant
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_96
       batch_size: 1
-      alias: question_answering/6lagg96
+      alias: question_answering/quant6lagg96
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_89
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_89
       batch_size: 1
-      alias: question_answering/3lagg89
+      alias: question_answering/quant3lagg89
     - task: question_answering
       model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1

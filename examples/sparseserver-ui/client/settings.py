@@ -31,11 +31,11 @@ class FeatureHandler:
         "80% Pruned, Quantized for VNNI": MultiPipelineClient(
             model="question_answering/12l_pruned80_quant"
         ),
-        "Pruned, 6layers, Aggressive 96": MultiPipelineClient(
-            model="question_answering/6lagg96"
+        "Pruned, Quant, 6layers, Aggressive 96": MultiPipelineClient(
+            model="question_answering/quant6lagg96"
         ),
-        "Pruned, 3layers, Aggressive 89": MultiPipelineClient(
-            model="question_answering/3lagg89"
+        "Pruned, Quant, 3layers, Aggressive 89": MultiPipelineClient(
+            model="question_answering/quant3lagg89"
         ),
         "Base Model, Not Sparsified 😢": MultiPipelineClient(
             model="question_answering/base"
