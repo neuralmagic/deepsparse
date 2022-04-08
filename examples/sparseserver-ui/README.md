@@ -15,12 +15,13 @@ limitations under the License.
 -->
 ![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+) <sup><samp>[**NEURAL MAGIC**](https://neuralmagic.com)</samp></sup> ![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)
 
-    ███╗   ███╗ ███████╗  ██████╗   █████╗  ███████╗ ██████╗   █████╗  ██████╗  ███████╗ ███████╗
-    ████╗ ████║ ██╔════╝ ██╔════╝  ██╔══██╗ ██╔════╝ ██╔══██╗ ██╔══██╗ ██╔══██╗ ██╔════╝ ██╔════╝
-    ██╔████╔██║ █████╗   ██║  ███╗ ███████║ ███████╗ ██████╔╝ ███████║ ██████╔╝ ███████╗ █████╗  
-    ██║╚██╔╝██║ ██╔══╝   ██║   ██║ ██╔══██║ ╚════██║ ██╔═══╝  ██╔══██║ ██╔══██╗ ╚════██║ ██╔══╝  
-    ██║ ╚═╝ ██║ ███████╗ ╚██████╔╝ ██║  ██║ ███████║ ██║      ██║  ██║ ██║  ██║ ███████║ ███████╗
-    ╚═╝     ╚═╝ ╚══════╝  ╚═════╝  ╚═╝  ╚═╝ ╚══════╝ ╚═╝      ╚═╝  ╚═╝ ╚═╝  ╚═╝ ╚══════╝ ╚══════╝
+        ███████╗██████╗  █████╗ ██████╗ ███████╗███████╗  ███████╗███████╗██████╗ ██╗   ██╗███████╗██████╗     ██╗   ██╗ ██╗
+        ██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔════╝  ██╔════╝██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗    ██║   ██║ ██║
+        ███████╗██████╔╝███████║██████╔╝███████╗█████╗    ███████╗█████╗  ██████╔╝██║   ██║█████╗  ██████╔╝    ██║   ██║ ██║
+        ╚════██║██╔═══╝ ██╔══██║██╔══██╗╚════██║██╔══╝    ╚════██║██╔══╝  ██╔══██╗╚██╗ ██╔╝██╔══╝  ██╔══██╗    ██║   ██║ ██║
+        ███████║██║     ██║  ██║██║  ██║███████║███████╗  ███████║███████╗██║  ██║ ╚████╔╝ ███████╗██║  ██║ ██╗ ╚██████╔ ██║
+        ╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝  ╚══════╝╚══════╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝ ╚═╝  ╚═════╝ ╚═╝
+                                                                                                                    
 
                 *** A Streamlit app for deploying the DeepSparse Server *** 
 ![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)
@@ -31,7 +32,7 @@ limitations under the License.
 <samp>
 
 <div>
-MegaSparse allows you to serve a streamlit app running on top of the DeepSparse Server for comparing the latency speeds of sparse transformer models. Currently, the demo can safely load up to 18 BERT models fine-tuned on the question answering task on only 16GB of RAM. The purpose of this app is for you to familiarize and compare the inference performance of transformers trained with various sparse approaches.
+SparseServer.UI allows you to serve a streamlit app running on top of the DeepSparse Server for comparing the latency speeds of sparse transformer models. Currently, the demo can safely load up to 18 BERT models fine-tuned on the question answering task on only 16GB of RAM. The purpose of this app is for you to familiarize and compare the inference performance of transformers trained with various sparse approaches.
 </div>
 
 <br />
@@ -48,18 +49,25 @@ MegaSparse allows you to serve a streamlit app running on top of the DeepSparse 
 
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
-cd examples/megasparse
+cd examples/sparseserver-ui
 pip install -r requirements.txt
 ```
 <br />
 
-The `config.yaml` file in the `server` directory lists the models you want the DeepSparse Server to serve. Currently, it contains up to 18 BERT models, although 16 of these models are commented out so you can safely get started on two models, and later on, add more models at your own pace. If you wish to load all 18 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. Also, as you add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
+The `starter-config.yaml` file in the `server` directory has a great started list of four models for DeepSparse Server to serve. 
+
+Currently, it contains up to 18 BERT models, although 16 of these models are commented out so you can safely get started on two models, and later on, add more models at your own pace. 
+
+
+If you wish to load all 18 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. Also, as you add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
+
+To add more question answering models please refer to our [updated list](https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=question_answering&page=1).
 
 ## <div>`START SERVER`</div>
 
 To download and initialize the two sample models in the `config.yaml` file, run:
 ```bash
-deepsparse.server --config_file server/config.yaml
+deepsparse.server --config_file server/starter-config.yaml
 ```
 
 The DeepSparse Server should now be running on host `0.0.0.0` and port `5543`.

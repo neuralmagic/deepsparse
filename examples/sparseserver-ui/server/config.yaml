@@ -14,74 +14,18 @@
 
 models:
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95
+      model_path: "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
       batch_size: 1
-      alias: question_answering/pruned_quant
+      alias: question_answering/12l_pruned80_quant
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-moderate
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96
       batch_size: 1
-      alias: question_answering/quantmod
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
-    #   batch_size: 1
-    #   alias: question_answering/agg98
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_94
-    #   batch_size: 1
-    #   alias: question_answering/agg94
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-conservative
-    #   batch_size: 1
-    #   alias: question_answering/conserv
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_96
-    #   batch_size: 1
-    #   alias: question_answering/quant6lagg96
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_91
-    #   batch_size: 1
-    #   alias: question_answering/quant6lagg91
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_98
-    #   batch_size: 1
-    #   alias: question_answering/6lagg98
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_97
-    #   batch_size: 1
-    #   alias: question_answering/6lagg97
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_96
-    #   batch_size: 1
-    #   alias: question_answering/6lagg96
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_94
-    #   batch_size: 1
-    #   alias: question_answering/6lagg94
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_89
-    #   batch_size: 1
-    #   alias: question_answering/quant3lagg89
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_84
-    #   batch_size: 1
-    #   alias: question_answering/quant3lagg84
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_90
-    #   batch_size: 1
-    #   alias: question_answering/3lagg90
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_89
-    #   batch_size: 1
-    #   alias: question_answering/3lagg89
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_86
-    #   batch_size: 1
-    #   alias: question_answering/3lagg86
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_83
-    #   batch_size: 1
-    #   alias: question_answering/3lagg83
-    # - task: question_answering
-    #   model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-    #   batch_size: 1
-    #   alias: question_answering/base
+      alias: question_answering/6lagg96
+    - task: question_answering
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_89
+      batch_size: 1
+      alias: question_answering/3lagg89
+    - task: question_answering
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1
+      alias: question_answering/base
