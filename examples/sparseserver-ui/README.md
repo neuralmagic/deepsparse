@@ -54,9 +54,9 @@ pip install -r requirements.txt
 ```
 <br />
 
-The `config.yaml` file in the `server` directory includes a list of four BERT QA models for the DeepSparse Server to get started quickly. If you prefer to add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
+The `config.yaml` file in the `server` directory includes a list of four BERT QA models for the DeepSparse Server to get started. If you prefer to add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
 
-Currently, the SparseZoo contains 20 BERT models, and the `nuke-config.yaml` file contains the full list in case you want to load them all 🤯. If you wish to load all 20 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. 
+Currently, the SparseZoo contains 20 BERT models, and the `big-config.yaml` file contains the full list in case you want to load them all 🤯. If you wish to load all 20 models at once into memory, make sure you have 16GB of RAM available, otherwise you will get out of memory errors. 
 
 For more details on question answering models, please refer to our [updated list](https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=question_answering&page=1).
 
