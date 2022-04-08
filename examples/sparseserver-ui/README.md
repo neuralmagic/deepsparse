@@ -31,7 +31,7 @@ limitations under the License.
 <samp>
 
 <div>
-MegaSparse allows you to serve a streamlit app running on top of the DeepSparse Server for comparing latency speeds of various sparse transformer models. Currently, the demo can safely load up to 18 BERT models fine-tuned on the question answering task on only 16GB of RAM. The purpose of this app is for you to familiarize and compare the inference performance of transformers trained on various sparse approaches.
+MegaSparse allows you to serve a streamlit app running on top of the DeepSparse Server for comparing the latency speeds of sparse transformer models. Currently, the demo can safely load up to 18 BERT models fine-tuned on the question answering task on only 16GB of RAM. The purpose of this app is for you to familiarize and compare the inference performance of transformers trained with various sparse approaches.
 </div>
 
 <br />
