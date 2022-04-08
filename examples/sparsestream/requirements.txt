@@ -1,3 +1,0 @@
-fastapi_websocket_pubsub==0.2.0
-tweepy==4.8.0
-deepsparse>=0.11
