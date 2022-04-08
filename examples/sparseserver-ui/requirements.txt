@@ -1,2 +1,2 @@
-deepsparse[server]
-streamlit
+deepsparse[server]==0.11.2
+streamlit==1.8.1
