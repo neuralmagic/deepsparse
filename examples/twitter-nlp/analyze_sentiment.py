@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# flake8: noqa
+
 """
 Script to analyze the sentiment of a given file of tweets from Twitter
 in batch processing mode.
