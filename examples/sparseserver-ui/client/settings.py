@@ -28,16 +28,16 @@ class FeatureHandler:
 
     variants_desc = "Select model:"
     variants = {
-        "80% Pruned, Quantized for VNNI": MultiPipelineClient(
+        "12-Layer BERT, Sparse Quantized, 99% of Base Accuracy": MultiPipelineClient(
             model="question_answering/12l_pruned80_quant"
         ),
-        "Pruned, Quant, 6layers, Aggressive 96": MultiPipelineClient(
+        "6-Layer BERT, Sparse Quantized, 96% of Base Accuracy": MultiPipelineClient(
             model="question_answering/quant6lagg96"
         ),
-        "Pruned, Quant, 3layers, Aggressive 89": MultiPipelineClient(
+        "3-Layer BERT, Sparse Quantized, 89% of Base Accuracy": MultiPipelineClient(
             model="question_answering/quant3lagg89"
         ),
-        "Base Model, Not Sparsified 😢": MultiPipelineClient(
+        "12-Layer BERT Base, Not Sparsified 😢": MultiPipelineClient(
             model="question_answering/base"
         ),
     }
