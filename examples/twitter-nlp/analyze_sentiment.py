@@ -47,15 +47,12 @@ python analyze_sentiment.py
 
 import json
 from itertools import cycle, islice
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 import click
-from colorama import Fore
+from rich import print
 
-try:
-    from deepsparse.transformers import pipeline
-except:
-    pass
+from deepsparse.transformers import pipeline
 
 
 def _load_tweets(tweets_file: str):
@@ -84,10 +81,14 @@ def _batched_model_input(tweets: List[str], batch_size: int) -> Optional[List[st
     return batched
 
 
+def _classified_positive(sentiment: Dict[str, Any]):
+    return sentiment["label"] == "LABEL_1"
+
+
 def _display_results(batch, sentiments):
     for text, sentiment in zip(batch, sentiments):
-        negative = sentiment["label"] == "LABEL_1"
-        print(f"{Fore.RED if negative else Fore.CYAN}{text}")
+        color = "green" if _classified_positive(sentiment) else "magenta"
+        print(f"[{color}]{text}[/{color}]")
 
 
 @click.command()
@@ -143,10 +144,10 @@ def analyze_tweets_sentiment(
         tot_sentiments.extend(sentiments)
 
     num_positive = sum(
-        [1 if sent["label"] == "LABEL_1" else 0 for sent in tot_sentiments]
+        [1 if _classified_positive(sent) else 0 for sent in tot_sentiments]
     )
     num_negative = sum(
-        [1 if sent["label"] == "LABEL_0" else 0 for sent in tot_sentiments]
+        [1 if not _classified_positive(sent) else 0 for sent in tot_sentiments]
     )
     print("\n\n\n")
     print("###########################################################################")
@@ -154,14 +155,14 @@ def analyze_tweets_sentiment(
 
     if num_positive >= num_negative:
         print(
-            f"{Fore.CYAN}General sentiment is positive with "
-            f"{100*num_positive/float(len(tot_sentiments)):.0f}% in favor."
+            f"[green]General sentiment is positive with "
+            f"{100*num_positive/float(len(tot_sentiments)):.0f}% in favor.[/green]"
         )
     else:
 
         print(
-            f"{Fore.RED}General sentiment is negative with "
-            f"{100*num_negative/float(len(tot_sentiments)):.0f}% against."
+            f"[magenta]General sentiment is negative with "
+            f"{100*num_negative/float(len(tot_sentiments)):.0f}% against.[/magenta]"
         )
     print("###########################################################################")
 

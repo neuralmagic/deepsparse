@@ -32,7 +32,12 @@ The `analyze_sentiment.py` script is used to analyze and classify tweets as eith
 depending on their contents. 
 For example, you can analyze the general sentiment of crypto or other common topics across Twitter.
 
-To use, first run the `scrape.py` script to gather the desired number of tweets for your topic(s):
+To use, first gather the desired number of tweets for your topic(s) and save them as a text file to use with `analyze_sentiment.py`.
+The script expects one tweet per row with each tweet formatted as a json object containing a `"tweet"` key that maps to the text content.
+
+An example script `scrape.py` is given to show this in action.
+Note, it uses the Twint library which does not abide by Twitter's terms of service. 
+The script is given as an example only and users are expected to use Twitter's developer pathways and APIs in place of this script.
 ```bash
 python scrape.py --topic '#crypto' --total_tweets 1000
 ```

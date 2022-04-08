@@ -84,6 +84,11 @@ def scrape_tweets(topic: List[str], total_tweets: int, output_file: Optional[str
     Writes the results as JSON lines as text to the given output_file.
     If None given, will write the results under a new file named after the given topic.
     """
+    print(
+        "WARNING: Twint does not abide by Twitter's terms of service. "
+        "The script listed here is given as only an example and for searching. "
+        "User's should use Twitter's accepted APIs and developer console for search. "
+    )
     config = twint.Config()
     topics_str = " ".join(
         [f"({top})" if top.startswith("#") else top for top in topic]
