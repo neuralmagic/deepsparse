@@ -29,3 +29,4 @@ models:
       model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
       alias: question_answering/base
+  

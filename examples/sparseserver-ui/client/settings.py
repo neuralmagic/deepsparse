@@ -28,6 +28,9 @@ class FeatureHandler:
 
     variants_desc = "Select model:"
     variants = {
+        "12-Layer BERT Base, Not Sparsified 😢": MultiPipelineClient(
+            model="question_answering/base"
+        ),
         "12-Layer BERT, Sparse Quantized, 99% of Base Accuracy": MultiPipelineClient(
             model="question_answering/12l_pruned80_quant"
         ),
@@ -37,35 +40,30 @@ class FeatureHandler:
         "3-Layer BERT, Sparse Quantized, 89% of Base Accuracy": MultiPipelineClient(
             model="question_answering/quant3lagg89"
         ),
-        "12-Layer BERT Base, Not Sparsified 😢": MultiPipelineClient(
-            model="question_answering/base"
-        ),
+
     }
 
     title = "<h1 style='text-align: Center; color: white;'>✨ Neural Magic ✨</h1>"
-    subtitle = "<h2 style='text-align: Center; color: white; '> DeepSparse Server</h2>"
+    subtitle = "<h2 style='text-align: Center; color: white; '> Inference with the DeepSparse Server</h2>"
 
     code_banner = "Get started with faster inference 👇"
     code_text = "pip install deepsparse[server]"
     language = "python"
     repo_test = (
-        "Give the [DeepSparse](https://github.com/neuralmagic/deepsparse) repo a ⭐!"
+        "For code: [DeepSparse repo](https://github.com/neuralmagic/deepsparse)."
     )
 
     example_context_label = "Enter Context"
     example_question_label = "Enter Question"
-    example_context = "The DeepSparse Engine is a CPU runtime that delivers \
-    GPU-class performance by taking advantage of sparsity within neural \
-    networks to reduce compute required as well as accelerate memory bound \
-    workloads. It is focused on model deployment and scaling machine \
-    learning pipelines, fitting seamlessly into your existing \
-    deployments as an inference backend."
-    example_question = (
-        "What does the DeepSparse Engine take advantage of within neural networks?"
-    )
-    answer_label = "ANSWER: "
-    time_label = "seconds"
-
+    example_index_label = "Choose an example"
+    example_index = ["example 1", "example 2", "example 3"]
+    markdown_style = """
+        <style>
+        .big-font {
+            font-size:40px !important;
+        }
+        </style>
+        """
     footer = """
         <style>
 
@@ -75,7 +73,7 @@ class FeatureHandler:
         bottom: 0;
         width: 100%;
         # background-color: #1816ff;
-        background-color: #000000;
+        background-color: blue;
         color: white;
         text-align: right;
         }

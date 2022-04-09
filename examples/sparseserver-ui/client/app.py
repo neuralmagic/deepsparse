@@ -16,7 +16,7 @@ from time import perf_counter
 
 import streamlit as st
 from settings import FeatureHandler as feat
-
+from squad_samples import samples
 
 # Titles
 st.markdown(feat.title, unsafe_allow_html=True)
@@ -34,16 +34,14 @@ st.markdown(feat.footer, unsafe_allow_html=True)
 
 # Inference
 model = feat.variants[model_choice]
-context = st.text_area(
-    label=feat.example_context_label, height=150, value=feat.example_context
-)
-question = st.text_area(
-    label=feat.example_question_label, value=feat.example_question
-)
+selection = st.selectbox(feat.example_index_label, feat.example_index)
+context = st.text_area(label=feat.example_context_label, value=samples[selection]["context"], height=300)
+question = st.text_area(label=feat.example_question_label, value=samples[selection]["question"])
 start = perf_counter()
 answer = model(question=question, context=context)
 end = perf_counter()
 infer_time = end - start
 infer_time = round(infer_time, 4)
-st.write(feat.answer_label, answer["answer"])
-st.write(infer_time, feat.time_label)
+st.markdown(feat.markdown_style, unsafe_allow_html=True)
+st.markdown(f'<p class="big-font">ANSWER: {answer["answer"]}</p>', unsafe_allow_html=True)
+st.markdown(f'<p class="big-font">{infer_time} secs.</p>', unsafe_allow_html=True)
