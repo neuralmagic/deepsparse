@@ -16,7 +16,7 @@ from time import perf_counter
 
 import streamlit as st
 from settings import FeatureHandler as feat
-from squad_samples import samples
+from samples import sample
 
 
 # Titles
@@ -37,10 +37,10 @@ st.markdown(feat.footer, unsafe_allow_html=True)
 model = feat.variants[model_choice]
 selection = st.selectbox(feat.example_index_label, feat.example_index)
 context = st.text_area(
-    label=feat.example_context_label, value=samples[selection]["context"], height=300
+    label=feat.example_context_label, value=sample[selection]["context"], height=300
 )
 question = st.text_area(
-    label=feat.example_question_label, value=samples[selection]["question"]
+    label=feat.example_question_label, value=sample[selection]["question"]
 )
 start = perf_counter()
 answer = model(question=question, context=context)
