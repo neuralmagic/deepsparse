@@ -40,7 +40,6 @@ class FeatureHandler:
         "3-Layer BERT, Sparse Quantized, 89% of Base Accuracy": MultiPipelineClient(
             model="question_answering/quant3lagg89"
         ),
-
     }
 
     title = "<h1 style='text-align: Center; color: white;'>✨ Neural Magic ✨</h1>"
