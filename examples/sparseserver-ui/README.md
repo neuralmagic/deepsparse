@@ -49,7 +49,7 @@ SparseServer.UI allows you to serve a streamlit app running on top of the DeepSp
 
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
-cd examples/sparseserver-ui
+cd deepsparse/examples/sparseserver-ui
 pip install -r requirements.txt
 ```
 <br />
