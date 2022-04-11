@@ -26,40 +26,72 @@ class FeatureHandler:
         "Question Answering",
     ]
 
-    variants_desc = "Select model:"
+    variants_desc = "Select your sparse model:"
     variants = {
         "12-Layer BERT Base, Not Sparsified 😢": MultiPipelineClient(
             model="question_answering/base"
         ),
-        "12-Layer BERT, Sparse Quantized, 99% of Base Accuracy": MultiPipelineClient(
+        "12-Layer BERT, Quantized, 99% of Base Accuracy": MultiPipelineClient(
             model="question_answering/12l_pruned80_quant"
         ),
-        "6-Layer BERT, Sparse Quantized, 96% of Base Accuracy": MultiPipelineClient(
+        "6-Layer BERT, Quantized, 96% of Base Accuracy": MultiPipelineClient(
             model="question_answering/quant6lagg96"
         ),
-        "3-Layer BERT, Sparse Quantized, 89% of Base Accuracy": MultiPipelineClient(
+        "3-Layer BERT, Quantized, 89% of Base Accuracy": MultiPipelineClient(
             model="question_answering/quant3lagg89"
         ),
-        "BERT, Sparse": MultiPipelineClient(model="question_answering/pruned_quant"),
-        "BERT, Sparse Quantized": MultiPipelineClient(model="question_answering/quantmod"),
-        "BERT, Sparse ": MultiPipelineClient(model="question_answering/agg98"),
-        "BERT, Sparse ": MultiPipelineClient(model="question_answering/agg94"),
-        "BERT, Sparse ": MultiPipelineClient(model="question_answering/conserv"),
-        "6-Layer BERT, Sparse Quantized": MultiPipelineClient(model="question_answering/quant6lagg91"),
-        "6-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/6lagg98"),
-        "6-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/6lagg97"),
-        "6-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/6lagg96"),
-        "6-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/6lagg94"),
-        "3-Layer BERT, Sparse Quantized": MultiPipelineClient(model="question_answering/quant3lagg84"),
-        "3-Layer BERT, Sparse ": MultiPipelineClient(model="question_answering/3lagg90"),
-        "3-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/3lagg89"),
-        "3-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/3lagg86"),
-        "3-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/3lagg83"),
-        "12-Layer BERT, Sparse Pruned": MultiPipelineClient(model="question_answering/12layer_pruned90"),
+        # "12-Layer BERT, Quantized, 95% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/pruned_quant"
+        # ),
+        # "12-Layer BERT, Quantized, 99% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/quantmod"
+        # ),
+        # "12-Layer BERT, 98% of Base Accuracy ": MultiPipelineClient(
+        #     model="question_answering/agg98"
+        # ),
+        # "12-Layer BERT, 94% of Base Accuracy ": MultiPipelineClient(
+        #     model="question_answering/agg94"
+        # ),
+        # "12-Layer BERT, 100% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/conserv"
+        # ),
+        # "6-Layer BERT, Quantized, 91% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/quant6lagg91"
+        # ),
+        # "6-Layer BERT, 98% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/6lagg98"
+        # ),
+        # "6-Layer BERT, 97% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/6lagg97"
+        # ),
+        # "6-Layer BERT, 96% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/6lagg96"
+        # ),
+        # "6-Layer BERT, 94% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/6lagg94"
+        # ),
+        # "3-Layer BERT, Quantized, 84% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/quant3lagg84"
+        # ),
+        # "3-Layer BERT, 90% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/3lagg90"
+        # ),
+        # "3-Layer BERT, 89% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/3lagg89"
+        # ),
+        # "3-Layer BERT, 86% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/3lagg86"
+        # ),
+        # "3-Layer BERT, 83% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/3lagg83"
+        # ),
+        # "12-Layer BERT, 90% of Base Accuracy": MultiPipelineClient(
+        #     model="question_answering/12layer_pruned90"
+        # ),
     }
 
     title = "<h1 style='text-align: Center; color: white;'>✨ Neural Magic ✨</h1>"
-    subtitle = "<h2 style='text-align: Center; color: white; '> Inference with the DeepSparse Server</h2>"
+    subtitle = "<h2 style='text-align: Center; color: white; '>DeepSparse Server</h2>"
 
     code_banner = "Get started with faster inference 👇"
     code_text = "pip install deepsparse[server]"
