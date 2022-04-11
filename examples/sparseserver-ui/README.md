@@ -56,18 +56,18 @@ pip install -r requirements.txt
 
 The `config.yaml` file in the `server` directory includes a list of four BERT QA models for the DeepSparse Server to get started. If you prefer to add additional models to the `config.yaml` file, make sure to also add a `MultiPipelineClient` object to the `variants` attribute in the `settings.py` module.
 
-Currently, the SparseZoo contains 20 BERT models, and the `big-config.yaml` file contains the full list in case you want to load them all 🤯. To load all 20 models at once, make sure you have at least 16GB of RAM available, otherwise you will get out of memory errors.
+Currently, the SparseZoo contains 20 BERT models, and the `big-config.yaml` file contains the full list in case you want to load them all 🤯. To load all 20 models at once, make sure you have at least 16GB of RAM available, otherwise you will get out of memory errors. In addition, uncomment the pipelines in the `settings.py` module.
 
 For more details on question answering models, please refer to our [updated list](https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=question_answering&page=1).
 
 ## <div>`START SERVER`</div>
 
-To download and initialize the models in the `config.yaml` file, run:
+To download and initialize the four models in the `config.yaml` file, run:
 ```bash
 deepsparse.server --config_file server/config.yaml
 ```
 
-The DeepSparse Server should now be running on host `0.0.0.0` and port `5543`.
+After downloading , the DeepSparse Server should now be running on host `0.0.0.0` and port `5543`.
 
 ## <div>`START CLIENT`</div>
 
@@ -75,9 +75,6 @@ Open a new terminal (make sure you are in your environment) and run the followin
 
 ```bash
 streamlit run client/app.py \
-    --theme.backgroundColor blue \
-    --theme.secondaryBackgroundColor black \
-    --theme.textColor white \
     --browser.serverAddress="localhost"
 ```
 
