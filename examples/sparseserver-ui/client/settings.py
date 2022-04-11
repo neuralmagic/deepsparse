@@ -85,9 +85,6 @@ class FeatureHandler:
         # "3-Layer BERT, 83% of Base Accuracy": MultiPipelineClient(
         #     model="question_answering/3lagg83"
         # ),
-        # "12-Layer BERT, 90% of Base Accuracy": MultiPipelineClient(
-        #     model="question_answering/12layer_pruned90"
-        # ),
     }
 
     title = "<h1 style='text-align: Center; color: white;'>✨ Neural Magic ✨</h1>"
