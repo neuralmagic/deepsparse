@@ -30,10 +30,10 @@ sample = {
         "context": (
             "Concerns were raised over whether Levi's Stadium's field was of a high "
             "enough quality to host a Super Bowl; during the inaugural season, the "
-            "field had to be re-sodded multiple times due to various issues, and during "
-            "a week 6 game earlier in the 2015 season, a portion of the turf collapsed "
-            "under Baltimore Ravens kicker Justin Tucker, causing him to slip and miss "
-            "a field goal. "
+            "field had to be re-sodded multiple times due to various issues, and "
+            "during a week 6 game earlier in the 2015 season, a portion of the turf "
+            "collapsed under Baltimore Ravens kicker Justin Tucker, causing him "
+            "to slip and miss a field goal. "
         ),
         "question": ("What collapsed on Justin Tucker?"),
     },
@@ -43,9 +43,9 @@ sample = {
             "Life Stadium and Levi's Stadium. The South Florida/Miami area has "
             "previously hosted the event 10 times (tied for most with New Orleans), "
             "with the most recent one being Super Bowl XLIV in 2010. The San Francisco "
-            "Bay Area last hosted in 1985 (Super Bowl XIX), held at Stanford Stadium in "
-            "Stanford, California, won by the home team 49ers. The Miami bid depended "
-            "on whether the stadium underwent renovations. "
+            "Bay Area last hosted in 1985 (Super Bowl XIX), held at Stanford Stadium "
+            "in Stanford, California, won by the home team 49ers. The Miami bid "
+            "depended on whether the stadium underwent renovations. "
         ),
         "question": (
             "What was the most recent Super Bowl that took place at Sun "
