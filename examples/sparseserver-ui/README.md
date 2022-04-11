@@ -74,8 +74,7 @@ After downloading , the DeepSparse Server should now be running on host `0.0.0.0
 Open a new terminal (make sure you are in your environment) and run the following command to start the Streamlit app:
 
 ```bash
-streamlit run client/app.py \
-    --browser.serverAddress="localhost"
+streamlit run client/app.py --browser.serverAddress="localhost"
 ```
 
 This will start the Streamlit app on host `localhost` and port `8501`.
