@@ -15,8 +15,8 @@
 from time import perf_counter
 
 import streamlit as st
-from settings import FeatureHandler as feat
 from samples import sample
+from settings import FeatureHandler as feat
 
 
 # Titles

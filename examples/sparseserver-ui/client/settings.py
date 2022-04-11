@@ -40,6 +40,22 @@ class FeatureHandler:
         "3-Layer BERT, Sparse Quantized, 89% of Base Accuracy": MultiPipelineClient(
             model="question_answering/quant3lagg89"
         ),
+        "BERT, Sparse": MultiPipelineClient(model="question_answering/pruned_quant"),
+        "BERT, Sparse Quantized": MultiPipelineClient(model="question_answering/quantmod"),
+        "BERT, Sparse ": MultiPipelineClient(model="question_answering/agg98"),
+        "BERT, Sparse ": MultiPipelineClient(model="question_answering/agg94"),
+        "BERT, Sparse ": MultiPipelineClient(model="question_answering/conserv"),
+        "6-Layer BERT, Sparse Quantized": MultiPipelineClient(model="question_answering/quant6lagg91"),
+        "6-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/6lagg98"),
+        "6-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/6lagg97"),
+        "6-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/6lagg96"),
+        "6-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/6lagg94"),
+        "3-Layer BERT, Sparse Quantized": MultiPipelineClient(model="question_answering/quant3lagg84"),
+        "3-Layer BERT, Sparse ": MultiPipelineClient(model="question_answering/3lagg90"),
+        "3-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/3lagg89"),
+        "3-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/3lagg86"),
+        "3-Layer BERT, Sparse": MultiPipelineClient(model="question_answering/3lagg83"),
+        "12-Layer BERT, Sparse Pruned": MultiPipelineClient(model="question_answering/12layer_pruned90"),
     }
 
     title = "<h1 style='text-align: Center; color: white;'>✨ Neural Magic ✨</h1>"
