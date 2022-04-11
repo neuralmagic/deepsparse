@@ -77,7 +77,7 @@ Open a new terminal (make sure you are in your environment) and run the followin
 streamlit run client/app.py --browser.serverAddress="localhost"
 ```
 
-This will start the Streamlit app on host `localhost` and port `8501`.
+This will start the Streamlit app on `localhost` and port `8501`.
 Visit `http://localhost:8501` in your browser to view the demo.
 
 ### Testing
