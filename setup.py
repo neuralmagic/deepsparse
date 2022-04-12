@@ -45,6 +45,7 @@ binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 _deps = [
     "numpy>=1.16.3",
     "onnx>=1.5.0,<=1.10.1",
+    "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
     "protobuf>=3.12.2",
@@ -74,7 +75,6 @@ _server_deps = [
     "uvicorn>=0.15.0",
     "fastapi>=0.70.0",
     "starlette>=0.16.0",
-    "pydantic>=1.8.2",
     "requests>=2.26.0",
 ]
 _onnxruntime_deps = [
