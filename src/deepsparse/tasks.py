@@ -79,6 +79,12 @@ class SupportedTasks:
     )
 
     @classmethod
+    def check_register_task(cls, task: str):
+        if cls.is_nlp(task):
+            # trigger transformers pipelines to register with Pipeline.register
+            import deepsparse.transformers.pipelines
+
+    @classmethod
     def is_nlp(cls, task: str) -> bool:
         """
         :param task: the name of the task to check whether it is an nlp task
