@@ -86,10 +86,6 @@ models:
       batch_size: 1
       alias: question_answering/12l_pruned80_quant
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned90-none
-      batch_size: 1
-      alias: question_answering/12layer_pruned90
-    - task: question_answering
       model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
       alias: question_answering/base
