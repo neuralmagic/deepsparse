@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional, Union
 import numpy
 from pydantic import BaseModel
 
-from deepsparse import Engine
+from deepsparse import Engine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
@@ -72,10 +72,32 @@ class Pipeline(ABC):
         self._engine = self.initialize_engine()
         pass
 
-    def __call__(self, inputs: BaseModel) -> BaseModel:
-        engine_inputs: List[numpy.ndarray] = self.process_inputs(inputs)
+    def __call__(self, pipeline_inputs: BaseModel = None, **kwargs) -> BaseModel:
+        if pipeline_inputs is None and kwargs:
+            # parse kwarg inputs into the expected input format
+            pipeline_inputs = self.input_model(**kwargs)
+
+        # validate inputs format
+        if not isinstance(pipeline_inputs, self.input_model):
+            raise ValueError(
+                f"Calling {self.__class__} requires passing inputs as an "
+                f"{self.input_model} object or a list of kwargs used to create "
+                f"a {self.input_model} object"
+            )
+
+        # run pipeline
+        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         engine_outputs: List[numpy.ndarray] = self.engine(engine_inputs)
-        return self.process_engine_outputs(engine_outputs)
+        pipeline_outputs = self.process_engine_outputs(engine_outputs)
+
+        # validate outputs format
+        if not isinstance(pipeline_outputs, self.output_model):
+            raise ValueError(
+                f"Outputs of {self.__class__} must be instances of {self.output_model}"
+                f" found output of type {type(pipeline_outputs)}"
+            )
+
+        return pipeline_outputs
 
     @staticmethod
     def create(
@@ -151,11 +173,11 @@ class Pipeline(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def process_inputs(self, *args, **kwargs) -> List[numpy.ndarray]:
+    def process_inputs(self, inputs: BaseModel) -> List[numpy.ndarray]:
         raise NotImplementedError()
 
     @abstractmethod
-    def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]):
+    def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
         raise NotImplementedError()
 
     @property

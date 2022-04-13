@@ -82,7 +82,7 @@ class SupportedTasks:
     def check_register_task(cls, task: str):
         if cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register
-            import deepsparse.transformers.pipelines
+            import deepsparse.transformers.pipelines  # noqa: F401
 
     @classmethod
     def is_nlp(cls, task: str) -> bool:
