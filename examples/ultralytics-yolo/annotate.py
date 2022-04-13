@@ -120,6 +120,7 @@ from deepsparse import compile_model
 from deepsparse_utils import (
     YoloPostprocessor,
     annotate_image,
+    download_pytorch_model_if_stub,
     get_yolo_loader_and_saver,
     modify_yolo_onnx_input_shape,
     postprocess_nms,
@@ -335,6 +336,7 @@ def _load_model(args) -> Any:
             onnx_model.SerializeToString(), sess_options=sess_options
         )
     elif args.engine == TORCH_ENGINE:
+        args.model_filepath = download_pytorch_model_if_stub(args.model_filepath)
         _LOGGER.info(f"Loading torch model for {args.model_filepath}")
         model = torch.load(args.model_filepath)
         if isinstance(model, dict):
