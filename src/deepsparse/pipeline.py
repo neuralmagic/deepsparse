@@ -102,6 +102,8 @@ class Pipeline(ABC):
         Pass None for the default
     :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
         to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
     """
 
     def __init__(
@@ -112,10 +114,12 @@ class Pipeline(ABC):
         num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        alias: Optional[str] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
         self._engine_type = engine_type
+        self._alias = alias
 
         self._engine_args = dict(
             batch_size=batch_size,
@@ -165,6 +169,7 @@ class Pipeline(ABC):
         num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        alias: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -182,6 +187,8 @@ class Pipeline(ABC):
             to use model as-is. Default is None
         :param kwargs: extra task specific kwargs to be passed to task Pipeline
             implementation
+        :param alias: optional name to give this pipeline instance, useful when
+            inferencing with multiple models. Default is None
         :return: pipeline object initialized for the given task
         """
         task = task.lower().replace("-", "_")
@@ -207,6 +214,7 @@ class Pipeline(ABC):
             num_cores=num_cores,
             scheduler=scheduler,
             input_shapes=input_shapes,
+            alias=alias,
             **kwargs,
         )
 
@@ -300,6 +308,14 @@ class Pipeline(ABC):
         :return: pydantic model class that outputs of this pipeline must comply to
         """
         raise NotImplementedError()
+
+    @property
+    def alias(self) -> str:
+        """
+        :return: optional name to give this pipeline instance, useful when
+            inferencing with multiple models
+        """
+        return self._alias
 
     @property
     def model_path_orig(self) -> str:
