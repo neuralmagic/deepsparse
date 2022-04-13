@@ -394,6 +394,37 @@ class Pipeline(ABC):
         """
         return self._onnx_file_path
 
+    def to_config(self) -> "PipelineConfig":
+        """
+        :return: PipelineConfig that can be used to reload this object
+        """
+
+        if not hasattr(self, "task"):
+            raise RuntimeError(
+                f"{self.__class__} instance has no attribute task. Pipeline objects "
+                "must have a task to be serialized to a config. Pipeline objects "
+                "must be declared with the Pipeline.register object to be assigned a "
+                "task"
+            )
+
+        # parse any additional properties as kwargs
+        kwargs = {}
+        for attr_name, attr in self.__class__.__dict__.items():
+            if isinstance(attr, property) and attr_name not in dir(PipelineConfig):
+                kwargs[attr_name] = getattr(self, attr_name)
+
+        return PipelineConfig(
+            task=self.task,
+            model_path=self.model_path_orig,
+            engine_type=self.engine_type,
+            batch_size=self.batch_size,
+            num_cores=self.num_cores,
+            scheduler=self.scheduler,
+            input_shapes=self.input_shapes,
+            alias=self.alias,
+            kwargs=kwargs,
+        )
+
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
 
