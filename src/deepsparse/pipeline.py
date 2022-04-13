@@ -50,9 +50,9 @@ class Pipeline(ABC):
     def __init__(
         self,
         model_path: str,
-        engine_type: str,
-        batch_size: int,
-        num_cores: int,
+        engine_type: str = DEEPSPARSE_ENGINE,
+        batch_size: int = 1,
+        num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
     ):
@@ -81,9 +81,9 @@ class Pipeline(ABC):
     def create(
         task: str,
         model_path: str,
-        engine_type: str,
-        batch_size: int,
-        num_cores: int,
+        engine_type: str = DEEPSPARSE_ENGINE,
+        batch_size: int = 1,
+        num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         **kwargs,
