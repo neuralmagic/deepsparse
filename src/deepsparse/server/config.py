@@ -19,18 +19,18 @@ Configurations for serving models in the DeepSparse inference server
 import json
 import os
 from functools import lru_cache
-from typing import Any, Dict, List
+from typing import List
 
 import yaml
 from pydantic import BaseModel, Field
 
+from deepsparse import PipelineConfig
 from deepsparse.cpu import cpu_architecture
 
 
 __all__ = [
     "ENV_DEEPSPARSE_SERVER_CONFIG",
     "ENV_SINGLE_PREFIX",
-    "ServeModelConfig",
     "ServerConfig",
 ]
 
@@ -39,75 +39,15 @@ ENV_DEEPSPARSE_SERVER_CONFIG = "DEEPSPARSE_SERVER_CONFIG"
 ENV_SINGLE_PREFIX = "DEEPSPARSE_SINGLE_MODEL:"
 
 
-class ServeModelConfig(BaseModel):
-    """
-    Configuration for serving a model for a given task in the DeepSparse server
-    """
-
-    task: str = Field(
-        description=(
-            "The task the model_path is serving. For example, one of: "
-            "question_answering, text_classification, token_classification."
-        ),
-    )
-    model_path: str = Field(
-        description=(
-            "The path to a model.onnx file, "
-            "a model folder containing the model.onnx and supporting files, "
-            "or a SparseZoo model stub."
-        ),
-    )
-    batch_size: int = Field(
-        default=1,
-        description=(
-            "The batch size to instantiate the model with and use for serving"
-        ),
-    )
-    alias: str = Field(
-        default=None,
-        description=(
-            "Alias name for model pipeline to be served. A convenience route of "
-            "/predict/alias will be added to the server if present. "
-        ),
-    )
-    kwargs: Dict[str, Any] = Field(
-        default={},
-        description=(
-            "Additional arguments for inference with the model that will be passed "
-            "into the pipeline as kwargs"
-        ),
-    )
-    engine: str = Field(
-        default="deepsparse",
-        description=(
-            "The engine to use for serving the models such as deepsparse or onnxruntime"
-        ),
-    )
-    num_cores: int = Field(
-        default=None,
-        description=(
-            "The number of physical cores to restrict the DeepSparse Engine to. "
-            "Defaults to all cores."
-        ),
-    )
-    scheduler: str = Field(
-        default="async",
-        description=(
-            "The scheduler to use with the DeepSparse Engine such as sync or async. "
-            "Defaults to async"
-        ),
-    )
-
-
 class ServerConfig(BaseModel):
     """
     A configuration for serving models in the DeepSparse inference server
     """
 
-    models: List[ServeModelConfig] = Field(
+    models: List[PipelineConfig] = Field(
         default=[],
         description=(
-            "The models to serve in the server defined by the additional arguments"
+            "The models to serve in the server defined by ServerConfig objects"
         ),
     )
     workers: str = Field(
@@ -140,7 +80,7 @@ def server_config_from_env(env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG):
         config_dict = json.loads(config_file.replace(ENV_SINGLE_PREFIX, ""))
         config = ServerConfig()
         config.models.append(
-            ServeModelConfig(
+            PipelineConfig(
                 task=config_dict["task"],
                 model_path=config_dict["model_path"],
                 batch_size=config_dict["batch_size"],
@@ -150,7 +90,7 @@ def server_config_from_env(env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG):
         with open(config_file) as file:
             config_dict = yaml.safe_load(file.read())
         config_dict["models"] = (
-            [ServeModelConfig(**model) for model in config_dict["models"]]
+            [PipelineConfig(**model) for model in config_dict["models"]]
             if "models" in config_dict
             else []
         )
