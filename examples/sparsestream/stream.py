@@ -18,38 +18,43 @@ import yaml
 
 from deepsparse.transformers import pipeline
 from tweepy.asynchronous import AsyncStream
-from usernames import user_id
+from usernames import user_id, user_name
 
-token_path = "./config.yaml"
-model_path = "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
-text_classification = pipeline(task="text-classification", model_path=model_path)
 
-def get_tokens(path):
+def get_config(path):
 
     with open(path) as file:
         config = yaml.safe_load(file.read())
 
-    return config["twitter_tokens"]
+    return config
+
+
+token_path = "./config.yaml"
+model_path = get_config(token_path)
+text_classification = pipeline(
+    task="text-classification", model_path=model_path["model"]
+)
 
 
 class SparseStream(AsyncStream):
     async def on_status(self, status):
 
-        # if (
-        #     (not status.retweeted)
-        #     and ("RT @" not in status.text)
-        #     and (status.in_reply_to_screen_name not in user_name)
-        #     and (status.in_reply_to_status_id is None)
-        # ):
+        if (
+            (not status.retweeted)
+            and ("RT @" not in status.text)
+            and (status.in_reply_to_screen_name not in user_name)
+            and (status.in_reply_to_status_id is None)
+        ):
 
-        inference = text_classification(status.text)[0]
-        inference = "positive" if inference["label"] == "LABEL_1" else "negative"
-        print({'tweet': status.text, 'sentiment': inference})
-        return inference
+            inference = text_classification(status.text)[0]
+            inference = "positive" if inference["label"] == "LABEL_1" else "negative"
+            output = {"tweet": status.text, "sentiment": inference}
+            print(output)
 
 
 async def main(token):
 
+    token = token["twitter_tokens"]
     stream = SparseStream(
         token["consumer_key"],
         token["consumer_secret"],
@@ -59,6 +64,8 @@ async def main(token):
 
     await stream.filter(follow=user_id, stall_warnings=True)
 
-if __name__ == '__main__':
-    token = get_tokens(token_path)
+
+if __name__ == "__main__":
+
+    token = get_config(token_path)
     asyncio.run(main(token))
