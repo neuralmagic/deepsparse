@@ -16,25 +16,13 @@ import asyncio
 
 import yaml
 
-import uvicorn
 from deepsparse.transformers import pipeline
-from fastapi import FastAPI
-from fastapi.routing import APIRouter
-from fastapi_websocket_pubsub import PubSubEndpoint
 from tweepy.asynchronous import AsyncStream
 from usernames import user_id
 
-
-token_path = "./server/config.yaml"
+token_path = "./config.yaml"
 model_path = "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
 text_classification = pipeline(task="text-classification", model_path=model_path)
-
-app = FastAPI()
-router = APIRouter()
-endpoint = PubSubEndpoint()
-endpoint.register_route(router)
-app.include_router(router)
-
 
 def get_tokens(path):
 
@@ -56,15 +44,11 @@ class SparseStream(AsyncStream):
 
         inference = text_classification(status.text)[0]
         inference = "positive" if inference["label"] == "LABEL_1" else "negative"
-        await endpoint.publish(
-            topics=["tweets"], data={"tweet": status.text, "inference": inference}
-        )
-        print(status.text)
+        print({'tweet': status.text, 'sentiment': inference})
+        return inference
 
 
-async def tweet_stream():
-
-    token = get_tokens(token_path)
+async def main(token):
 
     stream = SparseStream(
         token["consumer_key"],
@@ -75,10 +59,6 @@ async def tweet_stream():
 
     await stream.filter(follow=user_id, stall_warnings=True)
 
-
-@app.get("/sparsestream")
-async def http_trigger():
-    asyncio.create_task(tweet_stream())
-
-
-uvicorn.run(app, host="0.0.0.0", port=8000)
+if __name__ == '__main__':
+    token = get_tokens(token_path)
+    asyncio.run(main(token))
