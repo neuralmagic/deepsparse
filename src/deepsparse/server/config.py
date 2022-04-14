@@ -47,7 +47,7 @@ class ServerConfig(BaseModel):
     models: List[PipelineConfig] = Field(
         default=[],
         description=(
-            "The models to serve in the server defined by ServerConfig objects"
+            "The models to serve in the server defined by PipelineConfig objects"
         ),
     )
     workers: str = Field(
