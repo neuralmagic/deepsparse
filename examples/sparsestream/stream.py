@@ -30,10 +30,8 @@ def get_config(path):
 
 
 token_path = "./config.yaml"
-model_path = get_config(token_path)
-text_classification = pipeline(
-    task="text-classification", model_path=model_path["model"]
-)
+config = get_config(token_path)
+text_classification = pipeline(task=config["task"], model_path=config["model"])
 
 
 class SparseStream(AsyncStream):
@@ -49,17 +47,17 @@ class SparseStream(AsyncStream):
             inference = text_classification(status.text)[0]
             inference = "positive" if inference["label"] == "LABEL_1" else "negative"
             output = {"tweet": status.text, "sentiment": inference}
+
             print(output)
 
 
-async def main(token):
+async def main():
 
-    token = token["twitter_tokens"]
     stream = SparseStream(
-        token["consumer_key"],
-        token["consumer_secret"],
-        token["access_token"],
-        token["access_token_secret"],
+        config["consumer_key"],
+        config["consumer_secret"],
+        config["access_token"],
+        config["access_token_secret"],
     )
 
     await stream.filter(follow=user_id, stall_warnings=True)
@@ -67,5 +65,4 @@ async def main(token):
 
 if __name__ == "__main__":
 
-    token = get_config(token_path)
-    asyncio.run(main(token))
+    asyncio.run(main())

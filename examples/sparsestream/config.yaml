@@ -1,7 +1,7 @@
-twitter_tokens:
-    consumer_key: "<placeholder>"
-    consumer_secret: "<placeholder>"
-    access_token: "<placeholder>"
-    access_token_secret: "<placeholder>"
+consumer_key: "<placeholder>"
+consumer_secret: "<placeholder>"
+access_token: "<placeholder>"
+access_token_secret: "<placeholder>"
 
+task: "text-classification"
 model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
