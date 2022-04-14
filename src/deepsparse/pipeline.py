@@ -247,7 +247,7 @@ class Pipeline(ABC):
                 )
             _REGISTERED_PIPELINES[task_name] = pipeline_class
 
-        def decorator(pipeline_class: Pipeline):
+        def _register_pipeline_tasks_decorator(pipeline_class: Pipeline):
             if not issubclass(pipeline_class, cls):
                 raise RuntimeError(
                     f"Attempting to register pipeline pipeline_class. "
@@ -260,12 +260,14 @@ class Pipeline(ABC):
             pipeline_class.task = task
             pipeline_class.task_aliases = task_aliases
 
-        return decorator
+            return pipeline_class
+
+        return _register_pipeline_tasks_decorator
 
     @abstractmethod
     def setup_onnx_file_path(self) -> str:
         """
-        Performs any setup to unwrap and process the given model_path and other
+        Performs any setup to unwrap and process the given `model_path` and other
         class properties into an inference ready onnx file to be compiled by the
         engine of the pipeline
 
@@ -320,8 +322,8 @@ class Pipeline(ABC):
     @property
     def model_path_orig(self) -> str:
         """
-        :return: value originally passed to the model_path argument to initialize this
-            Pipeline
+        :return: value originally passed to the `model_path` argument to initialize
+            this Pipeline
         """
         return self._model_path_orig
 
