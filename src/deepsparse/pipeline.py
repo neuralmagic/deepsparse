@@ -19,7 +19,7 @@ inference engine and include pre/postprocessing
 
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import numpy
 from pydantic import BaseModel
@@ -69,7 +69,8 @@ class Pipeline(ABC):
          * `engine` <- `_initialize_engine`
 
      - on __call__:
-         * `pre_processed_inputs` <- `process_inputs(inputs: input_model)`
+         * `parsed_inputs: input_model` <- `parse_inputs(*args, **kwargs)`
+         * `pre_processed_inputs` <- `process_inputs(parsed_inputs)`
          * `engine_outputs` <- `engine(pre_processed_inputs)`
          * `outputs: output_model` <- `process_engine_outputs(engine_outputs)`
 
@@ -133,17 +134,13 @@ class Pipeline(ABC):
         self._engine = self._initialize_engine()
         pass
 
-    def __call__(self, pipeline_inputs: BaseModel = None, **kwargs) -> BaseModel:
-        if pipeline_inputs is None and kwargs:
-            # parse kwarg inputs into the expected input format
-            pipeline_inputs = self.input_model(**kwargs)
-
-        # validate inputs format
+    def __call__(self, *args, **kwargs) -> BaseModel:
+        # parse inputs into input_model schema if necessary
+        pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_model):
-            raise ValueError(
-                f"Calling {self.__class__} requires passing inputs as an "
-                f"{self.input_model} object or a list of kwargs used to create "
-                f"a {self.input_model} object"
+            raise RuntimeError(
+                f"Unable to parse {self.__class__} inputs into a "
+                f"{self.input_model} object. Inputs parsed to {type(pipeline_inputs)}"
             )
 
         # run pipeline
@@ -297,7 +294,7 @@ class Pipeline(ABC):
 
     @property
     @abstractmethod
-    def input_model(self) -> BaseModel:
+    def input_model(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
@@ -305,7 +302,7 @@ class Pipeline(ABC):
 
     @property
     @abstractmethod
-    def output_model(self) -> BaseModel:
+    def output_model(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
@@ -362,6 +359,28 @@ class Pipeline(ABC):
         :return: onnx file path used to instantiate engine
         """
         return self._onnx_file_path
+
+    def parse_inputs(self, *args, **kwargs) -> BaseModel:
+        """
+        :param args: ordered arguments to pipeline, only an input_model object
+            is supported as an arg for this function
+        :param kwargs: keyword arguments to pipeline
+        :return: pipeline arguments parsed into the given `input_model`
+            schema if necessary. If an instance of the `input_model` is provided
+            it will be returned
+        """
+        # passed input_model schema directly
+        if len(args) == 1 and isinstance(args[0], self.input_model) and not kwargs:
+            return args[0]
+
+        if args:
+            raise ValueError(
+                f"pipeline {self.__class__} only supports either only a "
+                f"{self.input_model} object. or keyword arguments to be construct one. "
+                f"Found {len(args)} args and {len(kwargs)} kwargs"
+            )
+
+        return self.input_model(**kwargs)
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
