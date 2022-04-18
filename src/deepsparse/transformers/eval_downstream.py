@@ -123,10 +123,12 @@ def mnli_eval(args):
     )
     print(f"Engine info: {text_classify.model}")
 
+    label_map = {"entailment": 0, "neutral": 1, "contradiction": 2}
+
     for idx, sample in enumerate(tqdm(mnli_matched)):
-        pred = text_classify(sample["premise"], sample["hypothesis"])
+        pred = text_classify([[sample["premise"], sample["hypothesis"]]])
         mnli_metrics.add_batch(
-            predictions=[int(pred[0]["label"].split("_")[-1])],
+            predictions=[label_map.get(pred[0]["label"])],
             references=[sample["label"]],
         )
 
@@ -134,9 +136,9 @@ def mnli_eval(args):
             break
 
     for idx, sample in enumerate(tqdm(mnli_mismatched)):
-        pred = text_classify(sample["premise"], sample["hypothesis"])
+        pred = text_classify([[sample["premise"], sample["hypothesis"]]])
         mnli_metrics.add_batch(
-            predictions=[int(pred[0]["label"].split("_")[-1])],
+            predictions=[label_map.get(pred[0]["label"])],
             references=[sample["label"]],
         )
 
@@ -167,7 +169,7 @@ def qqp_eval(args):
         pred = text_classify([[sample["question1"], sample["question2"]]])
 
         qqp_metrics.add_batch(
-            predictions=[label_map[pred[0]["label"]]],
+            predictions=[label_map.get(pred[0]["label"])],
             references=[sample["label"]],
         )
 
@@ -200,7 +202,7 @@ def sst2_eval(args):
         )
 
         sst2_metrics.add_batch(
-            predictions=[label_map[pred[0]["label"]]],
+            predictions=[label_map.get(pred[0]["label"])],
             references=[sample["label"]],
         )
 
