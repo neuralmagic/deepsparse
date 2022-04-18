@@ -161,11 +161,13 @@ def qqp_eval(args):
     )
     print(f"Engine info: {text_classify.model}")
 
+    label_map = {"not_duplicate": 0, "duplicate": 1}
+
     for idx, sample in enumerate(tqdm(qqp)):
         pred = text_classify([[sample["question1"], sample["question2"]]])
 
         qqp_metrics.add_batch(
-            predictions=[int(pred[0]["label"].split("_")[-1])],
+            predictions=[label_map[pred[0]["label"]]],
             references=[sample["label"]],
         )
 
@@ -190,13 +192,15 @@ def sst2_eval(args):
     )
     print(f"Engine info: {text_classify.model}")
 
+    label_map = {"negative": 0, "positive": 1}
+
     for idx, sample in enumerate(tqdm(sst2)):
         pred = text_classify(
             sample["sentence"],
         )
 
         sst2_metrics.add_batch(
-            predictions=[int(pred[0]["label"].split("_")[-1])],
+            predictions=[label_map[pred[0]["label"]]],
             references=[sample["label"]],
         )
 
@@ -229,6 +233,7 @@ def parse_args():
         "--dataset",
         type=str,
         choices=list(SUPPORTED_DATASETS.keys()),
+        required=True,
     )
 
     parser.add_argument(
