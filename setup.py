@@ -81,6 +81,9 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 
+_ic_integration_deps = [
+ "torch>=1.1.0,<=1.9.1",
+]
 
 class OverrideInstall(install):
     """
@@ -173,6 +176,7 @@ def _setup_extras() -> Dict:
         "dev": _dev_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
+        "image_classification": _ic_integration_deps,
     }
 
 
@@ -187,6 +191,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
+            "deepsparse.image_classification=deepsparse.image_classification.pipelines:main",
         ]
     }
 
