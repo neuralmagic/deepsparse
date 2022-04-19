@@ -25,7 +25,7 @@ import numpy
 from pydantic import BaseModel
 
 from deepsparse import Engine, Scheduler
-from deepsparse.benchmark import ORTEngine
+from deepsparse.benchmark_model.ort_engine import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
 

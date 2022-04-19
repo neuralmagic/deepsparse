@@ -82,8 +82,9 @@ _onnxruntime_deps = [
 ]
 
 _ic_integration_deps = [
- "torch>=1.1.0,<=1.9.1",
+    "opencv-python",
 ]
+
 
 class OverrideInstall(install):
     """
