@@ -17,12 +17,12 @@ Base Pipeline class for transformers inference pipeline
 """
 
 
-from typing import Any, List, Mapping, Optional
+from typing import Any, List, Mapping
 
 import numpy
 from transformers.models.auto import AutoConfig, AutoTokenizer
 
-from deepsparse import DEEPSPARSE_ENGINE, Pipeline, Scheduler
+from deepsparse import Pipeline
 from deepsparse.transformers.helpers import (
     get_onnx_path_and_configs,
     overwrite_transformer_onnx_model_inputs,
@@ -68,15 +68,10 @@ class TransformersPipeline(Pipeline):
 
     def __init__(
         self,
-        model_path: str,
-        engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: int = 1,
-        num_cores: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        alias: Optional[str] = None,
+        *,
         sequence_length: int = 128,
         default_model_name: str = "bert-base-uncased",
+        **kwargs
     ):
 
         self._sequence_length = sequence_length
@@ -86,15 +81,7 @@ class TransformersPipeline(Pipeline):
         self.tokenizer = None
         self._onnx_input_names = None
 
-        super().__init__(
-            model_path=model_path,
-            engine_type=engine_type,
-            batch_size=batch_size,
-            num_cores=num_cores,
-            scheduler=scheduler,
-            input_shapes=input_shapes,
-            alias=alias,
-        )
+        super().__init__(**kwargs)
 
     @property
     def sequence_length(self) -> int:
