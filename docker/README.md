@@ -1,0 +1,1 @@
+`docker build -t deepsparse_docker . && docker run -it deepsparse_docker`
