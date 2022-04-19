@@ -17,9 +17,8 @@ RUN : \
 
 # Activate venv
 RUN python3.8 -m venv /venv
+ENV PATH="venv/bin:$PATH"
 
 # Setup DeepSparse
 RUN pip3 install deepsparse[server]
-
-CMD ["deepsparse.benchmark", "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"]
 
