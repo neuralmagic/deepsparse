@@ -163,7 +163,7 @@ class TextClassificationPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        tokens = self._tokenizer(
+        tokens = self.tokenizer(
             inputs.sequences,
             add_special_tokens=True,
             return_tensors="np",
@@ -185,7 +185,7 @@ class TextClassificationPipeline(TransformersPipeline):
 
         scores = (
             1.0 / (1.0 + numpy.exp(-outputs))
-            if self._config.num_labels == 1
+            if self.config.num_labels == 1
             else numpy.exp(outputs) / numpy.exp(outputs).sum(-1, keepdims=True)
         )
 
@@ -193,7 +193,7 @@ class TextClassificationPipeline(TransformersPipeline):
         label_scores = []
 
         for score in scores:
-            labels.append(self._config.id2label[score.argmax()])
+            labels.append(self.config.id2label[score.argmax()])
             label_scores.append(score.max().item())
 
         return self.output_model(

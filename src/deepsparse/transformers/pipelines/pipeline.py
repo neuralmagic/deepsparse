@@ -82,8 +82,8 @@ class TransformersPipeline(Pipeline):
         self._sequence_length = sequence_length
         self._default_model_name = default_model_name
 
-        self._config = None
-        self._tokenizer = None
+        self.config = None
+        self.tokenizer = None
         self._onnx_input_names = None
 
         super().__init__(
@@ -128,10 +128,10 @@ class TransformersPipeline(Pipeline):
         config_path = config_path or self.default_model_name
         tokenizer_path = tokenizer_path or self.default_model_name
 
-        self._config = AutoConfig.from_pretrained(
+        self.config = AutoConfig.from_pretrained(
             config_path, finetuning_task=self.task if hasattr(self, "task") else None
         )
-        self._tokenizer = AutoTokenizer.from_pretrained(
+        self.tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path, model_max_length=self.sequence_length
         )
 
