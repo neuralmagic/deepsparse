@@ -57,12 +57,10 @@ class TextClassificationOutput(BaseModel):
     )
 
 
-Pipeline.register(
+@Pipeline.register(
     task="text_classification",
     task_aliases=["glue", "sentiment_analysis"],
 )
-
-
 class TextClassificationPipeline(TransformersPipeline):
     """
     transformers text classification pipeline
