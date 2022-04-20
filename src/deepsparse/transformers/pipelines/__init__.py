@@ -16,3 +16,4 @@
 
 from .pipeline import *
 from .text_classification import *
+from .token_classification import *

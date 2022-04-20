@@ -145,8 +145,16 @@ class Pipeline(ABC):
 
         # run pipeline
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
+
+        if isinstance(engine_inputs, tuple):
+            engine_inputs, postprocess_kwargs = engine_inputs
+        else:
+            postprocess_kwargs = {}
+
         engine_outputs: List[numpy.ndarray] = self.engine(engine_inputs)
-        pipeline_outputs = self.process_engine_outputs(engine_outputs)
+        pipeline_outputs = self.process_engine_outputs(
+            engine_outputs, **postprocess_kwargs
+        )
 
         # validate outputs format
         if not isinstance(pipeline_outputs, self.output_model):
@@ -273,17 +281,27 @@ class Pipeline(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def process_inputs(self, inputs: BaseModel) -> List[numpy.ndarray]:
+    def process_inputs(
+        self,
+        inputs: BaseModel,
+    ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the `input_model`
             of this pipeline
         :return: inputs of this model processed into a list of numpy arrays that
-            can be directly passed into the forward pass of the pipeline engine
+            can be directly passed into the forward pass of the pipeline engine. Can
+            also include a tuple with engine inputs and special key word arguments
+            to pass to process_engine_outputs to facilitate information from the raw
+            inputs to postprocessing that may not be included in the engine inputs
         """
         raise NotImplementedError()
 
     @abstractmethod
-    def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
+    def process_engine_outputs(
+        self,
+        engine_outputs: List[numpy.ndarray],
+        **kwargs,
+    ) -> BaseModel:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
