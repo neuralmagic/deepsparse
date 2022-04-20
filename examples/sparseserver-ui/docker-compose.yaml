@@ -1,0 +1,44 @@
+version: "3"
+
+services:
+  client:
+    # build the docker image from the clientDockerfile
+    build:
+      context: .
+      dockerfile: clientDockerfile
+    # name the streamlit server image 
+    image: client 
+    # name of docker container image
+    container_name: streamlitclient
+    # name of internal docker network 
+    networks:
+      - deepsparse-network
+    # port exposed from the container to the host and accessible via localhost
+    ports:
+      - "8501:8501"
+    # streamlit depends on the server but the user needs to wait because streamlit is up and ready before the server downloads the models
+    depends_on:
+      - deepsparseserver
+
+  deepsparseserver:
+    # build the docker image from the serverDockerfile
+    build:
+      context: .
+      dockerfile: serverDockerfile
+    # name the deepserver server image 
+    image: deepsparseserver
+    # name of docker container image
+    container_name: deepsparseserver
+    # name of internal docker network 
+    networks:
+      - deepsparse-network
+    # the port is exposed internally to be assessed by the streamlit client via http://deepsparseserver:5543
+    expose: 
+      - 5543
+    # port exposed from the container to the host and accessible via localhost
+    ports:
+      - "5543:5543"
+
+networks:
+  deepsparse-network:
+    driver: bridge

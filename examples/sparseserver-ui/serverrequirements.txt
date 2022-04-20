@@ -1,0 +1,1 @@
+deepsparse[server]>=0.11

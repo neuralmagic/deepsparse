@@ -1,0 +1,15 @@
+# base docker image
+FROM python:3.8
+
+WORKDIR /app
+
+# copy only the requirements needed by the client
+COPY ./clientrequirements.txt /app/clientrequirements.txt
+
+RUN pip install --no-cache-dir --upgrade -r /app/clientrequirements.txt
+
+# copy client directory. Could be replaced with a volume mapping 
+COPY ./client /app/client
+
+# command run at the entry point
+CMD ["streamlit", "run", "client/app.py"]

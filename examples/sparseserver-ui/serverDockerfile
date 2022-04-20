@@ -1,0 +1,15 @@
+# base docker image
+FROM python:3.8
+
+WORKDIR /app
+
+# copy only the requirements needed by the server 
+COPY ./serverrequirements.txt /app/serverrequirements.txt
+
+RUN pip install --no-cache-dir --upgrade -r /app/serverrequirements.txt
+
+# copy server files. Could be replaced with a volume mapping 
+COPY ./server /app/server
+
+# command run at the entry point
+CMD ["deepsparse.server", "--config_file", "server/config.yaml"]

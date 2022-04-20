@@ -86,3 +86,19 @@ Visit `http://localhost:8501` in your browser to view the demo.
 - Ubuntu 20.04.4 LTS
 - Python 3.8.10
 </samp>
+
+## <div>`DOCKER COMPOSE`</div>
+The SparseServer.UI demo is also available in a containerised docker format.
+
+
+```bash
+git clone https://github.com/neuralmagic/deepsparse.git
+cd deepsparse/examples/sparseserver-ui
+docker-compose up --build
+```
+<br />
+This will automate the setup process and provide the streamlit app at 
+`http://localhost:8501` and the deepserver at `http://localhost:5543` as described above.
+
+<br />
+Please note that the *build* flag is optional after the first build. 
