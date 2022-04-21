@@ -16,45 +16,84 @@
 Image classification pipeline
 """
 import json
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
-import numpy as np
-from pydantic import BaseModel
+import onnx
 
-from constants import IMAGENET_RGB_MEANS, IMAGENET_RGB_STDS
-from deepsparse.pipeline import Pipeline
+from deepsparse import Scheduler
+from deepsparse.image_classification.constants import (
+    IMAGENET_RGB_MEANS,
+    IMAGENET_RGB_STDS,
+)
+from deepsparse.pipeline import DEEPSPARSE_ENGINE, Pipeline
+from image_classification.schemas import (
+    ImageClassificationInput,
+    ImageClassificationOutput,
+)
 
 
 try:
     import cv2
-except ModuleNotFoundError as e:
+
+    cv2_error = None
+except ModuleNotFoundError as cv2_import_error:
     cv2 = None
-    cv2_error = e
-
-
-class ImageClassificationInput(BaseModel):
-    """
-    Input model for image classification
-    """
-
-    images: Union[str, numpy.ndarray, List[str]]
-
-
-class ImageClassificationOutput(BaseModel):
-    """
-    Input model for image classification
-    """
-
-    labels: List[int]
-    scores: List[float]
+    cv2_error = cv2_import_error
 
 
 @Pipeline.register(task="image_classification")
 class ImageClassificationPipeline(Pipeline):
     """
     Image classification pipeline for DeepSparse
+
+    :param model_path: path on local system or SparseZoo stub to load the model from
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param class_names: Optional dict, or json file of class names to use for
+        mapping class ids to class labels. Default is None
     """
+
+    def __init__(
+        self,
+        model_path: str,
+        engine_type: str = DEEPSPARSE_ENGINE,
+        batch_size: int = 1,
+        num_cores: int = None,
+        scheduler: Scheduler = None,
+        input_shapes: List[List[int]] = None,
+        alias: Optional[str] = None,
+        class_names: Optional[Union[str, Dict[str, str]]] = None,
+    ):
+        super().__init__(
+            model_path,
+            engine_type,
+            batch_size,
+            num_cores,
+            scheduler,
+            input_shapes,
+            alias,
+        )
+        self._input_shape = None
+
+        if isinstance(class_names, str) and class_names.endswith(".json"):
+            self.class_names = json.load(open(class_names))
+        elif isinstance(class_names, dict):
+            self.class_names = class_names
+        else:
+            raise ValueError(
+                "class_names must be a dict or a json file path"
+                f" (got {type(class_names)} instead)"
+            )
 
     def setup_onnx_file_path(self) -> str:
         """
@@ -71,65 +110,86 @@ class ImageClassificationPipeline(Pipeline):
         Pre-Process the Inputs for DeepSparse Engine
 
         :param inputs: input model
-        :return: list of numpy arrays
+        :return: list of preprocessed numpy arrays
         """
 
-        # TODO: Check logic for 3-dim and 2-dim images
-        images = []
-        non_rand_resize_scale = 256.0 / 224.0  # standard used
-        image_size = 224
+        image_batch = []
 
-        scaled_image_size = non_rand_resize_scale * image_size
+        if isinstance(inputs.images, str):
+            inputs.images = [inputs.images]
 
-        for image_file in inputs.images:
-            img = cv2.imread(image_file)
-            if img is not None:
-                img = cv2.resize(img, (scaled_image_size, scaled_image_size))
-                center = img.shape / 2
-                x = center[1] - image_size / 2
-                y = center[0] - image_size / 2
+        for image in inputs.images:
+            img = cv2.imread(image) if isinstance(image, str) else image
 
-                crop_img = img[
-                    int(y) : int(y + image_size), int(x) : int(x + image_size)
-                ]
+            img = cv2.resize(img, dsize=self.input_shape)
+            img = img[:, :, ::-1].transpose(2, 0, 1)
 
-                crop_img -= np.asarray(IMAGENET_RGB_MEANS)
-                crop_img /= np.asarray(IMAGENET_RGB_STDS)
-                images.append(crop_img)
+            image_batch.append(img)
 
-        return images
+        image_batch = numpy.stack(image_batch, axis=0)
+        image_batch = numpy.ascontiguousarray(image_batch, dtype=numpy.float32)
+        image_batch /= 255.0
+
+        # normalize entire batch
+        image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
+        image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
+
+        return [image_batch]
 
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
     ) -> ImageClassificationOutput:
+        """
+        :param engine_outputs: list of numpy arrays that are the output of the engine
+            forward pass
+        :return: outputs of engine post-processed into an object in the `output_model`
+            format of this pipeline
+        """
+        labels = numpy.argmax(engine_outputs[0], axis=1).tolist()
+
+        if self.class_names is not None:
+            labels = [self.class_names[str(class_id)] for class_id in labels]
+
         return ImageClassificationOutput(
             scores=numpy.max(engine_outputs[0], axis=1).tolist(),
-            labels=numpy.argmax(engine_outputs[0], axis=1).tolist(),
+            labels=labels,
         )
 
     @property
-    def input_model(self) -> BaseModel:
+    def input_model(self) -> Type[ImageClassificationInput]:
+        """
+        :return: pydantic model class that inputs to this pipeline must comply to
+        """
         return ImageClassificationInput
 
     @property
-    def output_model(self) -> BaseModel:
+    def output_model(self) -> Type[ImageClassificationOutput]:
+        """
+        :return: pydantic model class that outputs of this pipeline must comply to
+        """
         return ImageClassificationOutput
 
-    def map_labels_to_classes(
-        self,
-        labels: List[int],
-        class_names: Union[str, Dict[int, str]],
-    ) -> List[str]:
+    @property
+    def input_shape(self) -> Tuple[int, ...]:
         """
-        :param labels: predicted class ids
-        :param class_names: A json file containing the mapping of class ids to
-            class names, or a dictionary mapping class ids to class names.
-        :return: Predicted class names from labels
+        Returns the expected shape of the input tensor
+
+        :return: The expected shape of the input tensor from onnx graph
         """
+        if self._input_shape is None:
+            self._input_shape = self._infer_input_shape()
+        return self._input_shape
 
-        if isinstance(class_names, str) and class_names.endswith(".json"):
-            class_names = json.loads(class_names)
+    def _infer_input_shape(self) -> Tuple[int, ...]:
+        """
+        Infer and return the expected shape of the input tensor
 
-        predicted_class_names = [class_names[label] for label in labels]
-        return predicted_class_names
+        :return: The expected shape of the input tensor from onnx graph
+        """
+        onnx_model = onnx.load(self.engine.model_path)
+        input_tensor = onnx_model.graph.input[0]
+        return (
+            input_tensor.type.tensor_type.shape.dim[2].dim_value,
+            input_tensor.type.tensor_type.shape.dim[3].dim_value,
+        )
