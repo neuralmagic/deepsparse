@@ -184,7 +184,6 @@ def _setup_extras() -> Dict:
 def _setup_entry_points() -> Dict:
     data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     eval_downstream = "deepsparse.transformers.eval_downstream:main"
-    ic_pipeline_entrypoint = "deepsparse.image_classification.pipelines:main"
 
     return {
         "console_scripts": [
@@ -194,7 +193,6 @@ def _setup_entry_points() -> Dict:
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
-            f"deepsparse.image_classification={ic_pipeline_entrypoint}",
         ]
     }
 
