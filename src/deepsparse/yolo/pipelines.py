@@ -50,8 +50,9 @@ class YOLOPipeline(Pipeline):
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
-    :param class_names: Optional dict, or json file of class names to use for
-        mapping class ids to class labels. Default is None
+    :param class_names: Optional string identifier, dict, or json file of
+        class names to use for mapping class ids to class labels. Default is
+        `coco`
     """
 
     def __init__(
