@@ -25,8 +25,8 @@ Options:
                                   Classification model to be evaluated.
                                   Defaults to resnet50 trained on
                                   Imagenette  [default: zoo:cv/classification/
-                                  resnet_v1-50/pytorch/sparseml/imagenette/pru
-                                  ned-conservative]
+                                  resnet_v1-50/pytorch/sparseml/imagenette/
+                                  base-none]
   --batch-size, --batch_size INTEGER
                                   Test batch size, must divide the dataset
                                   evenly  [default: 1]
