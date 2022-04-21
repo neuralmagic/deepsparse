@@ -78,11 +78,23 @@ class SupportedTasks:
         token_classification=AliasedTask("token_classification", ["ner"]),
     )
 
+    image_classification = namedtuple("image_classification", ["image_classification"])(
+        image_classification=AliasedTask(
+            "image_classification",
+            ["image_classification"],
+        ),
+    )
+
     @classmethod
     def check_register_task(cls, task: str):
         if cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register
             import deepsparse.transformers.pipelines  # noqa: F401
+
+        elif cls.is_image_classification(task):
+            # trigger image classification pipelines to
+            # register with Pipeline.register
+            import deepsparse.image_classification.pipelines  # noqa: F401
 
     @classmethod
     def is_nlp(cls, task: str) -> bool:
@@ -96,3 +108,12 @@ class SupportedTasks:
             or cls.nlp.text_classification.matches(task)
             or cls.nlp.token_classification.matches(task)
         )
+
+    @classmethod
+    def is_image_classification(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is an image
+            classification task
+        :return: True if it is an image classification task, False otherwise
+        """
+        return cls.image_classification.image_classification.matches(task)

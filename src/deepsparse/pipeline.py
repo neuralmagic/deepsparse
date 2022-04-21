@@ -131,7 +131,6 @@ class Pipeline(ABC):
 
         self._onnx_file_path = self.setup_onnx_file_path()
         self._engine = self._initialize_engine()
-        pass
 
     def __call__(self, pipeline_inputs: BaseModel = None, **kwargs) -> BaseModel:
         if pipeline_inputs is None and kwargs:
@@ -219,7 +218,7 @@ class Pipeline(ABC):
         )
 
     @classmethod
-    def register(cls, task: str, task_aliases: Optional[List[str]]):
+    def register(cls, task: str, task_aliases: Optional[List[str]] = None):
         """
         Pipeline implementer class decorator that registers the pipeline
         task name and its aliases as valid tasks that can be used to load
@@ -230,7 +229,7 @@ class Pipeline(ABC):
 
         :param task: main task name of this pipeline
         :param task_aliases: list of extra task names that may be used to reference
-            this pipeline
+            this pipeline. Default is None
         """
         task_names = [task]
         if task_aliases:
