@@ -90,10 +90,7 @@ class ImageClassificationPipeline(Pipeline):
         elif isinstance(class_names, dict):
             self.class_names = class_names
         else:
-            raise ValueError(
-                "class_names must be a dict or a json file path"
-                f" (got {type(class_names)} instead)"
-            )
+            self.class_names = None
 
     def setup_onnx_file_path(self) -> str:
         """
@@ -113,22 +110,30 @@ class ImageClassificationPipeline(Pipeline):
         :return: list of preprocessed numpy arrays
         """
 
-        image_batch = []
+        if isinstance(inputs.images, numpy.ndarray):
+            image_batch = inputs.images
+        else:
 
-        if isinstance(inputs.images, str):
-            inputs.images = [inputs.images]
+            image_batch = []
 
-        for image in inputs.images:
-            img = cv2.imread(image) if isinstance(image, str) else image
+            if isinstance(inputs.images, str):
+                inputs.images = [inputs.images]
 
-            img = cv2.resize(img, dsize=self.input_shape)
-            img = img[:, :, ::-1].transpose(2, 0, 1)
+            for image in inputs.images:
+                img = cv2.imread(image) if isinstance(image, str) else image
 
-            image_batch.append(img)
+                img = cv2.resize(img, dsize=self.input_shape)
+                img = img[:, :, ::-1].transpose(2, 0, 1)
+                image_batch.append(img)
 
-        image_batch = numpy.stack(image_batch, axis=0)
+            image_batch = numpy.stack(image_batch, axis=0)
+
+        original_dtype = image_batch.dtype
         image_batch = numpy.ascontiguousarray(image_batch, dtype=numpy.float32)
-        image_batch /= 255.0
+
+        if original_dtype == numpy.uint8:
+
+            image_batch /= 255
 
         # normalize entire batch
         image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
