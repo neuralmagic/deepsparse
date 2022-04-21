@@ -178,10 +178,10 @@ class ImageClassificationPipeline(Pipeline):
         :return: The expected shape of the input tensor from onnx graph
         """
         if self._input_shape is None:
-            self._input_shape = self._infer_input_shape()
+            self._input_shape = self._infer_image_shape()
         return self._input_shape
 
-    def _infer_input_shape(self) -> Tuple[int, ...]:
+    def _infer_image_shape(self) -> Tuple[int, ...]:
         """
         Infer and return the expected shape of the input tensor
 
