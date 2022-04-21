@@ -23,7 +23,7 @@ Options:
   --model-path, --model_path TEXT
                                   Path/SparseZoo stub for the Image
                                   Classification model to be evaluated.
-                                  Defaults to pruned resnet50 trained on
+                                  Defaults to resnet50 trained on
                                   Imagenette  [default: zoo:cv/classification/
                                   resnet_v1-50/pytorch/sparseml/imagenette/pru
                                   ned-conservative]
@@ -63,8 +63,7 @@ import click
 
 
 resnet50_imagenet_pruned = (
-    "zoo:cv/classification/resnet_v1-50/pytorch/"
-    "sparseml/imagenette/pruned-conservative"
+    "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenette/base-none"
 )
 
 
@@ -82,7 +81,7 @@ resnet50_imagenet_pruned = (
     type=str,
     default=resnet50_imagenet_pruned,
     help="Path/SparseZoo stub for the Image Classification model to be "
-    "evaluated. Defaults to pruned resnet50 trained on Imagenette",
+    "evaluated. Defaults to resnet50 trained on Imagenette",
     show_default=True,
 )
 @click.option(
@@ -93,13 +92,13 @@ resnet50_imagenet_pruned = (
     show_default=True,
     help="Test batch size, must divide the dataset evenly",
 )
-def main(dataset_root: str, model_path: str, batch_size: int):
+def main(dataset_path: str, model_path: str, batch_size: int):
     """
     Validation Script for Image Classification Models
     """
 
     dataset = torchvision.datasets.ImageFolder(
-        root=dataset_root,
+        root=dataset_path,
         transform=transforms.Compose(
             [
                 transforms.ToTensor(),
@@ -129,7 +128,8 @@ def main(dataset_root: str, model_path: str, batch_size: int):
 
         for actual, predicted in zip(actual_labels, predicted_labels):
             total += 1
-
+            if isinstance(predicted, str):
+                predicted = int(predicted)
             if actual.item() == predicted:
                 correct += 1
 
