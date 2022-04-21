@@ -35,7 +35,7 @@ class ImageClassificationInput(BaseModel):
 
 class ImageClassificationOutput(BaseModel):
     """
-    Input model for image classification
+    Output model for image classification
     """
 
     labels: List[Union[int, str]]
