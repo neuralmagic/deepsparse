@@ -1,4 +1,4 @@
-FROM python:3.8-bullseye
+FROM python:3.8
 
 ARG config_path=./config.yaml
 
@@ -19,6 +19,15 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN python3 -m venv $VIRTUAL_ENV && \
     pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir "deepsparse[server]"
+    pip3 install --no-cache-dir "deepsparse-nightly[server]"  # TODO: switch to deepsparse[server] >= 0.12
 
-ENTRYPOINT ["deepsparse.server", "--port", "8080", "--config_file", "/root/server-config.yaml"]
+# create 'serve' command for sagemaker entrypoint
+RUN mkdir /opt/server/
+RUN echo "#! /bin/bash" > /opt/server/serve
+RUN echo "deepsparse.server --port 8080 --config_file /root/server-config.yaml" >> /opt/server/serve
+RUN chmod 777 /opt/server/serve
+
+ENV PATH="/opt/server:${PATH}"
+WORKDIR /opt/server
+
+ENTRYPOINT ["bash", "/opt/server/serve"]
