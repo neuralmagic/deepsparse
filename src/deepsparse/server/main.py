@@ -123,10 +123,20 @@ def _add_general_routes(app, config):
     _LOGGER.info("created general routes, visit `/docs` to view available")
 
 
-def _add_pipeline_route(app, pipeline_def, num_models: int, defined_tasks: set):
+def _add_pipeline_route(
+    app, pipeline_def, num_models: int, defined_tasks: set, integration: str
+):
     path = "/predict"
 
-    if pipeline_def.config.alias:
+    if integration.lower() == "sagemaker":
+        if num_models > 1:
+            raise ValueError(
+                "Sagemaker inference with deepsparse.server currently supports "
+                f"serving one model, received config for {num_models} models"
+            )
+        # required path name for Sagemaker
+        path = "/invocations"
+    elif pipeline_def.config.alias:
         path = f"/predict/{pipeline_def.config.alias}"
     elif num_models > 1:
         if pipeline_def.config.task in defined_tasks:
@@ -171,8 +181,11 @@ def server_app_factory():
     _LOGGER.debug("loaded pipeline definitions from config %s", pipeline_defs)
     num_tasks = len(config.models)
     defined_tasks = set()
+
     for pipeline_def in pipeline_defs:
-        _add_pipeline_route(app, pipeline_def, num_tasks, defined_tasks)
+        _add_pipeline_route(
+            app, pipeline_def, num_tasks, defined_tasks, config.integration
+        )
 
     return app
 
@@ -235,6 +248,14 @@ def server_app_factory():
     help="The batch size to serve the model from model_path with. "
     "Ignored if config_file is supplied.",
 )
+@click.option(
+    "--integration",
+    type=str,
+    default=None,
+    help="Name of deployment integration that this server will be deployed to "
+    "Currently supported options are None for default inference and 'sagemaker' for "
+    "inference deployment with AWS Sagemaker",
+)
 def start_server(
     host: str,
     port: int,
@@ -244,6 +265,7 @@ def start_server(
     task: str,
     model_path: str,
     batch_size: int,
+    integration: str,
 ):
     """
     Start a DeepSparse inference server for serving the models and pipelines given
@@ -263,7 +285,7 @@ def start_server(
           alias: question_answering/sparse_quantized
     """
     set_logging_level(getattr(logging, log_level.upper()))
-    server_config_to_env(config_file, task, model_path, batch_size)
+    server_config_to_env(config_file, task, model_path, batch_size, integration)
     filename = Path(__file__).stem
     package = "deepsparse.server"
     app_name = f"{package}.{filename}:server_app_factory"
