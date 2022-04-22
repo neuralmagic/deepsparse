@@ -90,7 +90,7 @@ The `region_name` can be swapped to a preferred region. The repository will be n
 import boto3
 
 ecr = boto3.client("ecr", region_name='us-east-1')
-cr_res = ecr.create_repository(repositoryName="sagemaker-1")
+cr_res = ecr.create_repository(repositoryName="deepsparse-sagemaker")
 ```
 
 ### Push local image to ECR Repository
