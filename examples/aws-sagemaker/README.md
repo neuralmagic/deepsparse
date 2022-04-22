@@ -90,7 +90,7 @@ The `region_name` can be swapped to a preferred region. The repository will be n
 import boto3
 
 ecr = boto3.client("ecr", region_name='us-east-1')
-cr_res = ecr.create_repository(repositoryName="deepsparse-sagemaker")
+create_repository_res = ecr.create_repository(repositoryName="deepsparse-sagemaker")
 ```
 
 ### Push local image to ECR Repository
@@ -103,7 +103,7 @@ region=$(aws configure get region)
 ecr_account=${account}.dkr.ecr.${region}.amazonaws.com
 
 aws ecr get-login-password --region $region | docker login --username AWS --password-stdin $ecr_account
-fullname=$ecr_account/deepsparse-example:latest
+fullname=$ecr_account/deepsparse-sagemaker:latest
 
 docker tag deepsparse-sagemaker-example:latest $fullname
 docker push $fullname
@@ -141,9 +141,9 @@ sm_boto3 = boto3.client("sagemaker", region_name="us-east-1")
 region = boto3.Session().region_name
 account_id = boto3.client("sts").get_caller_identity()["Account"]
 
-image_uri = "{}.dkr.ecr.{}.amazonaws.com/deepsparse-example:latest".format(account_id, region)
+image_uri = "{}.dkr.ecr.{}.amazonaws.com/deepsparse-sagemaker:latest".format(account_id, region)
 
-cm_res = sm_boto3.create_model(
+create_model_res = sm_boto3.create_model(
     ModelName="question-answering-example",
     Containers=[
         {
@@ -210,7 +210,8 @@ successfully launched, it will be `InService`. If there are any errors, it will
 become `Failed`.
 
 ```python
-print(sm_boto3.describe_endpoint(EndpointName=endpoint_name))
+from pprint import pprint
+pprint(sm_boto3.describe_endpoint(EndpointName=endpoint_name))
 ```
 
 
@@ -240,7 +241,7 @@ res = sm_runtime.invoke_endpoint(
     Accept=accept,
 )
 
-print(res["body"].readlines())
+print(res["Body"].readlines())
 ```
 
 
