@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Deploy DeepSparse with Amazon SageMaker
+# Deploying DeepSparse with Amazon SageMaker
 
 [Amazon SageMaker](https://docs.aws.amazon.com/sagemaker/index.html)
 offers easy-to-use infrastructure for deploying deep learning models at scale.
@@ -73,7 +73,7 @@ credentials, tools, and libraries are also required:
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/)
 * The `boto3` python AWS sdk (`pip install boto3`)
 
-### Build the DeepSparse-SageMaker image locally
+### Building the DeepSparse-SageMaker Image Locally
 The `Dockerfile` can be build from this directory from a bash shell using the following command.
 The image will be tagged locally as `deepsparse-sagemaker-example`.
 
@@ -81,7 +81,7 @@ The image will be tagged locally as `deepsparse-sagemaker-example`.
 docker build -t deepsparse-sagemaker-example .
 ```
 
-### Create an ECR Repository
+### Creating an ECR Repository
 The following code snippet can be used in Python to create an ECR repository.
 The `region_name` can be swapped to a preferred region. The repository will be named
 `deepsparse-sagemaker`.  If the repository is already created, this step may be skipped.
@@ -93,7 +93,7 @@ ecr = boto3.client("ecr", region_name='us-east-1')
 create_repository_res = ecr.create_repository(repositoryName="deepsparse-sagemaker")
 ```
 
-### Push local image to ECR Repository
+### Pushing the Local Image to the ECR Repository
 Once the image is built and the ECR repository is created, the image can be pushed using the following
 bash commands.
 
@@ -129,7 +129,7 @@ c18b71656bcf: Waiting
 latest: digest: sha256:XXX size: 3884
 ```
 
-### Create SageMaker Model
+### Creating a SageMaker Model
 A SageMaker `Model` can now be created referencing the pushed image.
 The example model will be named `question-answering-example`.
 As mentioned in the requirements, `ROLE_ARN` should be a string arn of an AWS
@@ -159,7 +159,7 @@ More information about options for configuring SageMaker `Model` instances can
 be found [here](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html).
 
 
-### Build SageMaker EndpointConfig
+### Building a SageMaker EndpointConfig
 The `EndpointConfig` is used to set the instance type to provision, how many, scaling
 rules, and other deployment settings.  The following code snippet defines an endpoint
 with a single machine using an `ml.c5.large` CPU.
@@ -193,7 +193,7 @@ endpoint_config = {
 endpoint_config_res = sm_boto3.create_endpoint_config(**endpoint_config)
 ```
 
-### Launch SageMaker Endpoint
+### Launching a SageMaker Endpoint
 Once the `EndpointConfig` is defined, the endpoint can be easily launched using
 the `create_endpoint` command:
 
@@ -215,7 +215,7 @@ pprint(sm_boto3.describe_endpoint(EndpointName=endpoint_name))
 ```
 
 
-## Making a request to the Endpoint
+## Making a Request to the Endpoint
 After the endpoint is in service, requests can be made to it through the
 `invoke_endpoint` api. Inputs will be passed as a JSON payload.
 
