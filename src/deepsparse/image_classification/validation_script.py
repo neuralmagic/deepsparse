@@ -81,7 +81,7 @@ resnet50_imagenet_pruned = (
     type=str,
     default=resnet50_imagenet_pruned,
     help="Path/SparseZoo stub for the Image Classification model to be "
-    "evaluated. Defaults to resnet50 trained on Imagenette",
+    "evaluated. Defaults to dense (vanilla) resnet50 trained on Imagenette",
     show_default=True,
 )
 @click.option(
