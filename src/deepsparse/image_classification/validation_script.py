@@ -29,7 +29,8 @@ Options:
                                   base-none]
   --batch-size, --batch_size INTEGER
                                   Test batch size, must divide the dataset
-                                  evenly  [default: 1]
+                                  evenly, else the last batch will be dropped
+                                  [default: 1]
   --help                          Show this message and exit.
 
 #########
@@ -90,7 +91,8 @@ resnet50_imagenet_pruned = (
     type=int,
     default=1,
     show_default=True,
-    help="Test batch size, must divide the dataset evenly",
+    help="Test batch size, must divide the dataset evenly, else last "
+         "batch will be dropped",
 )
 def main(dataset_path: str, model_path: str, batch_size: int):
     """
@@ -110,6 +112,7 @@ def main(dataset_path: str, model_path: str, batch_size: int):
     data_loader = DataLoader(
         dataset=dataset,
         batch_size=batch_size,
+        drop_last=True,
     )
 
     pipeline = Pipeline.create(
