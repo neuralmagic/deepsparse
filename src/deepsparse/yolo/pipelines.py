@@ -20,9 +20,8 @@ import onnx
 
 from deepsparse import Scheduler
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, Pipeline
-from deepsparse.yolo.coco_classes import COCO_CLASSES
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
-from deepsparse.yolo.utils import YoloPostprocessor, postprocess_nms
+from deepsparse.yolo.utils import COCO_CLASSES, YoloPostprocessor, postprocess_nms
 
 
 try:

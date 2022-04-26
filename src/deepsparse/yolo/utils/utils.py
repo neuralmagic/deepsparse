@@ -16,7 +16,10 @@
 Helpers and Utilities for YOLO
 """
 import itertools
+import os
+import random
 import time
+from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 import numpy
@@ -301,3 +304,130 @@ def yolo_onnx_has_postprocessing(model_path: str) -> bool:
         return True
 
     return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
+
+
+def annotate(pipeline, images, save_dir="yolo-annotated-output", batch_tag=None):
+    """
+    Annotated and save images with bounding boxes and labels
+
+    :param pipeline: A YOLOPipeline object
+    :param images: A list of image files, or batch of numpy images
+    :param save_dir: A directory to save the annotated images
+    :param batch_tag: A string to add to the filename of each image
+    """
+
+    original_images = images
+
+    if images and isinstance(images[0], str):
+        original_images = [cv2.imread(image) for image in images]
+
+    pipeline_outputs = pipeline(images=images)
+
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
+
+    for index, image_output in enumerate(pipeline_outputs):
+        image = original_images[index]
+        result = _annotate_image(
+            img=image,
+            boxes=image_output.boxes,
+            labels=image_output.labels,
+            scores=image_output.scores,
+        )
+        image_name = f"{batch_tag}_{index}.jpg" if batch_tag else f"{index}.jpg"
+        cv2.imwrite(os.path.join(save_dir, image_name), result)
+
+    print(f"Annotated images saved to {save_dir}")
+
+
+def _annotate_image(
+    img: numpy.ndarray,
+    boxes: List[List[float]],
+    scores: List[float],
+    labels: List[str],
+    score_threshold: float = 0.35,
+    model_input_size: Tuple[int, int] = None,
+    images_per_sec: Optional[float] = None,
+) -> numpy.ndarray:
+    """
+    Draws bounding boxes on predictions of a detection model
+
+    :param img: Original image to annotate (no pre-processing needed)
+    :param boxes: List of bounding boxes (x1, y1, x2, y2)
+    :param scores: List of scores for each bounding box
+    :param labels: List of labels for each bounding box
+    :param score_threshold: minimum score a detection should have to be annotated
+        on the image. Default is 0.35
+    :param model_input_size: 2-tuple of expected input size for the given model to
+        be used for bounding box scaling with original image. Scaling will not
+        be applied if model_input_size is None. Default is None
+    :param images_per_sec: optional images per second to annotate the left corner
+        of the image with
+    :return: the original image annotated with the given bounding boxes
+    """
+    img_res = numpy.copy(img)
+
+    scale_y = img.shape[0] / (1.0 * model_input_size[0]) if model_input_size else 1.0
+    scale_x = img.shape[1] / (1.0 * model_input_size[1]) if model_input_size else 1.0
+
+    for idx in range(len(boxes)):
+        label = labels[idx]
+        if scores[idx] > score_threshold:
+            annotation_text = f"{label}: {scores[idx]:.0%}"
+
+            # bounding box points
+            left = boxes[idx][0] * scale_x
+            top = boxes[idx][1] * scale_y
+            right = boxes[idx][2] * scale_x
+            bottom = boxes[idx][3] * scale_y
+
+            # calculate text size
+            (text_width, text_height), text_baseline = cv2.getTextSize(
+                annotation_text,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.9,  # font scale
+                2,  # thickness
+            )
+            text_height += text_baseline
+
+            # make solid background for annotation text
+            cv2.rectangle(
+                img_res,
+                (int(left), int(top) - 33),
+                (int(left) + text_width, int(top) - 28 + text_height),
+                random.choice(_YOLO_CLASS_COLORS),
+                thickness=-1,  # filled solid
+            )
+
+            # add white annotation text
+            cv2.putText(
+                img_res,
+                annotation_text,
+                (int(left), int(top) - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.9,  # font scale
+                (255, 255, 255),  # white text
+                2,  # thickness
+                cv2.LINE_AA,
+            )
+
+            # draw bounding box
+            cv2.rectangle(
+                img_res,
+                (int(left), int(top)),
+                (int(right), int(bottom)),
+                random.choice(_YOLO_CLASS_COLORS),
+                thickness=2,
+            )
+
+    if images_per_sec is not None:
+        cv2.putText(
+            img_res,
+            f"images_per_sec: {int(images_per_sec)}",
+            (50, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            2.0,  # font scale
+            (245, 46, 6),  # color
+            2,  # thickness
+            cv2.LINE_AA,
+        )
+    return img_res
