@@ -128,7 +128,7 @@ def _add_pipeline_route(
 ):
     path = "/predict"
 
-    if integration.lower() == "sagemaker":
+    if integration is not None and integration.lower() == "sagemaker":
         if num_models > 1:
             raise ValueError(
                 "Sagemaker inference with deepsparse.server currently supports "
