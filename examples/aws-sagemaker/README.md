@@ -17,7 +17,7 @@ limitations under the License.
 # Deploying DeepSparse with Amazon SageMaker
 
 [Amazon SageMaker](https://docs.aws.amazon.com/sagemaker/index.html)
-offers easy-to-use infrastructure for deploying deep learning models at scale.
+offers an easy-to-use infrastructure for deploying deep learning models at scale.
 This directory provides a guided example for deploying a 
 [DeepSparse](https://github.com/neuralmagic/deepsparse) inference server on SageMaker.
 Using both of these tools, deployments benefit from sparse-CPU acceleration from
