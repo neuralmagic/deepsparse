@@ -14,34 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Deploy DeepSparse with Amazon SageMaker
+# Deploying DeepSparse with Amazon SageMaker
 
 [Amazon SageMaker](https://docs.aws.amazon.com/sagemaker/index.html)
-offers easy to use infrastructure for deploying deep learning models at scale.
+offers an easy-to-use infrastructure for deploying deep learning models at scale.
 This directory provides a guided example for deploying a 
 [DeepSparse](https://github.com/neuralmagic/deepsparse) inference server on SageMaker.
-Using both of these tools, deployments benefit from sparse-CPU acceleration from
+Deployments benefit from both sparse-CPU acceleration with
 DeepSparse and automatic scaling from SageMaker.
 
 
 ## Contents
-In addition to the step-by-step instructions in this guide, this directory contains
-additional files to aide in the deployment.
+In addition to the step-by-step instructions in this guide, the directory contains
+additional files to aid in the deployment.
 
 ### Dockerfile
 The included `Dockerfile` builds an image on top of the standard `python:3.8` image
 with `deepsparse` installed and creates an executable command `serve` that runs
-`deepsparse.server` on port 8080.  SageMaker will execute this image by running
+`deepsparse.server` on port 8080. SageMaker will execute this image by running
 `docker run serve` and expects the image to serve inference requests at the
 `invocations/` endpoint.
 
 For general customization of the server, changes should not need to be made
-to the dockerfile, but to the `config.yaml` file that the dockerfile reads from
+to the Dockerfile, but to the `config.yaml` file that the Dockerfile reads from
 instead.
 
 ### config.yaml
-`config.yaml` used to configure the DeepSparse serve running in the Dockerfile.
-It is important that the config contains the line `integration: sagemaker` so
+`config.yaml` is used to configure the DeepSparse server running in the Dockerfile.
+The config must contain the line `integration: sagemaker` so
 endpoints may be provisioned correctly to match SageMaker specifications.
 
 Notice that the `model_path` and `task` are set to run a sparse-quantized
@@ -56,7 +56,7 @@ More information on the DeepSparse server and its configuration can be found
 
 
 ## Deploying to SageMaker
-The following steps are required to provision and deploy DeepSparse to sagemaker
+The following steps are required to provision and deploy DeepSparse to SageMaker
 for inference:
 * Build the DeepSparse-SageMaker `Dockerfile` into a local docker image
 * Create an [Amazon ECR](https://aws.amazon.com/ecr/) repository to host the image
@@ -73,7 +73,7 @@ credentials, tools, and libraries are also required:
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/)
 * The `boto3` python AWS sdk (`pip install boto3`)
 
-### Build the DeepSparse-SageMaker image locally
+### Building the DeepSparse-SageMaker Image Locally
 The `Dockerfile` can be build from this directory from a bash shell using the following command.
 The image will be tagged locally as `deepsparse-sagemaker-example`.
 
@@ -81,8 +81,8 @@ The image will be tagged locally as `deepsparse-sagemaker-example`.
 docker build -t deepsparse-sagemaker-example .
 ```
 
-### Create an ECR Repository
-The following code snippet can be used in python to create an ECR repository.
+### Creating an ECR Repository
+The following code snippet can be used in Python to create an ECR repository.
 The `region_name` can be swapped to a preferred region. The repository will be named
 `deepsparse-sagemaker`.  If the repository is already created, this step may be skipped.
 
@@ -93,7 +93,7 @@ ecr = boto3.client("ecr", region_name='us-east-1')
 create_repository_res = ecr.create_repository(repositoryName="deepsparse-sagemaker")
 ```
 
-### Push local image to ECR Repository
+### Pushing the Local Image to the ECR Repository
 Once the image is built and the ECR repository is created, the image can be pushed using the following
 bash commands.
 
@@ -129,7 +129,7 @@ c18b71656bcf: Waiting
 latest: digest: sha256:XXX size: 3884
 ```
 
-### Create SageMaker Model
+### Creating a SageMaker Model
 A SageMaker `Model` can now be created referencing the pushed image.
 The example model will be named `question-answering-example`.
 As mentioned in the requirements, `ROLE_ARN` should be a string arn of an AWS
@@ -159,7 +159,7 @@ More information about options for configuring SageMaker `Model` instances can
 be found [here](https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateModel.html).
 
 
-### Build SageMaker EndpointConfig
+### Building a SageMaker EndpointConfig
 The `EndpointConfig` is used to set the instance type to provision, how many, scaling
 rules, and other deployment settings.  The following code snippet defines an endpoint
 with a single machine using an `ml.c5.large` CPU.
@@ -193,7 +193,7 @@ endpoint_config = {
 endpoint_config_res = sm_boto3.create_endpoint_config(**endpoint_config)
 ```
 
-### Launch SageMaker Endpoint
+### Launching a SageMaker Endpoint
 Once the `EndpointConfig` is defined, the endpoint can be easily launched using
 the `create_endpoint` command:
 
@@ -204,7 +204,7 @@ endpoint_res = sm_boto3.create_endpoint(
 )
 ```
 
-After creating the endpoint, it's status can be checked by running the following.
+After creating the endpoint, its status can be checked by running the following.
 Initially, the `EndpointStatus` will be `Creating`. Checking after the image is
 successfully launched, it will be `InService`. If there are any errors, it will 
 become `Failed`.
@@ -215,9 +215,9 @@ pprint(sm_boto3.describe_endpoint(EndpointName=endpoint_name))
 ```
 
 
-## Making a reqest to the Endpoint
+## Making a Request to the Endpoint
 After the endpoint is in service, requests can be made to it through the
-`invoke_endpoint` api. Inputs will be passed as a json payload.
+`invoke_endpoint` api. Inputs will be passed as a JSON payload.
 
 ```python
 import json
@@ -254,8 +254,8 @@ sm_boto3.delete_model(ModelName=model_name)
 ```
 
 ## Next Steps
-These steps create an invokable SageMaker inference endpoint powered with the DeepSparse
-engine.  The `EndpointConfig` settings may be adjusted to set instance scaling rules based
+These steps create an invokable SageMaker inference endpoint powered by the DeepSparse
+Engine.  The `EndpointConfig` settings may be adjusted to set instance scaling rules based
 on deployment needs.
 
 More information on deploying custom models with SageMaker can be found
