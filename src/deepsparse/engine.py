@@ -23,7 +23,7 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 import numpy
 from tqdm.auto import tqdm
 
-from deepsparse.benchmark import BenchmarkResults
+from deepsparse.benchmark.results import BenchmarkResults
 from deepsparse.utils import model_to_path, override_onnx_input_shapes
 
 
