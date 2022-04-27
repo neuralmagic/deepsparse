@@ -254,7 +254,7 @@ sm_boto3.delete_model(ModelName=model_name)
 ```
 
 ## Next Steps
-These steps create an invokable SageMaker inference endpoint powered with the DeepSparse
+These steps create an invokable SageMaker inference endpoint powered by the DeepSparse
 Engine.  The `EndpointConfig` settings may be adjusted to set instance scaling rules based
 on deployment needs.
 
