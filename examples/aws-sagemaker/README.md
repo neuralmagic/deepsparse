@@ -41,7 +41,7 @@ instead.
 
 ### config.yaml
 `config.yaml` is used to configure the DeepSparse server running in the Dockerfile.
-It is important that the config contains the line `integration: sagemaker` so
+The config must contain the line `integration: sagemaker` so
 endpoints may be provisioned correctly to match SageMaker specifications.
 
 Notice that the `model_path` and `task` are set to run a sparse-quantized
