@@ -31,7 +31,7 @@ additional files to aid in the deployment.
 ### Dockerfile
 The included `Dockerfile` builds an image on top of the standard `python:3.8` image
 with `deepsparse` installed and creates an executable command `serve` that runs
-`deepsparse.server` on port 8080.  SageMaker will execute this image by running
+`deepsparse.server` on port 8080. SageMaker will execute this image by running
 `docker run serve` and expects the image to serve inference requests at the
 `invocations/` endpoint.
 
