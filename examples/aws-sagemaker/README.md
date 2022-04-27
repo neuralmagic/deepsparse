@@ -20,7 +20,7 @@ limitations under the License.
 offers an easy-to-use infrastructure for deploying deep learning models at scale.
 This directory provides a guided example for deploying a 
 [DeepSparse](https://github.com/neuralmagic/deepsparse) inference server on SageMaker.
-Using both of these tools, deployments benefit from sparse-CPU acceleration from
+Deployments benefit from both sparse-CPU acceleration with
 DeepSparse and automatic scaling from SageMaker.
 
 
