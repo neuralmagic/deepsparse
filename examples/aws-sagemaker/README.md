@@ -36,7 +36,7 @@ with `deepsparse` installed and creates an executable command `serve` that runs
 `invocations/` endpoint.
 
 For general customization of the server, changes should not need to be made
-to the dockerfile, but to the `config.yaml` file that the Dockerfile reads from
+to the Dockerfile, but to the `config.yaml` file that the Dockerfile reads from
 instead.
 
 ### config.yaml
