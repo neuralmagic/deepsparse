@@ -19,7 +19,7 @@ inference engine and include pre/postprocessing
 
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel

@@ -18,7 +18,7 @@ tasks
 """
 
 
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -165,7 +165,7 @@ class TokenClassificationPipeline(TransformersPipeline):
         :return: how to aggregate tokens in postprocessing. Options
             include 'none', 'simple', 'first', 'average', and 'max'
         """
-        return aggregation_strategy.value
+        return self._aggregation_strategy.value
 
     @property
     def input_model(self) -> Type[BaseModel]:
@@ -231,7 +231,7 @@ class TokenClassificationPipeline(TransformersPipeline):
         offset_mapping = (
             tokens.pop("offset_mapping")
             if self.tokenizer.is_fast
-            else [None] * len(_inputs)
+            else [None] * len(inputs.inputs)
         )
         special_tokens_mask = tokens.pop("special_tokens_mask")
         postprocessing_kwargs = dict(
@@ -355,7 +355,7 @@ class TokenClassificationPipeline(TransformersPipeline):
         else:
             entities = self._aggregate_words(pre_entities)
 
-        if aggregation_strategy == AggregationStrategy.NONE:
+        if self._aggregation_strategy == AggregationStrategy.NONE:
             return entities
         return self._group_entities(entities)
 
@@ -411,12 +411,12 @@ class TokenClassificationPipeline(TransformersPipeline):
     def _group_sub_entities(self, entities: List[dict]) -> dict:
         # Get the first entity in the entity group
         entity = entities[0]["entity"].split("-")[-1]
-        scores = np.nanmean([entity["score"] for entity in entities])
+        scores = numpy.nanmean([entity["score"] for entity in entities])
         tokens = [entity["word"] for entity in entities]
 
         entity_group = {
             "entity_group": entity,
-            "score": np.mean(scores),
+            "score": numpy.mean(scores),
             "word": self.tokenizer.convert_tokens_to_string(tokens),
             "start": entities[0]["start"],
             "end": entities[-1]["end"],
