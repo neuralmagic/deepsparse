@@ -89,7 +89,7 @@ Want to find out how fast our sparse Hugging Face ONNX models perform inference?
 deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
 ```
 
-For a more in-depth discussion on benchmarking, check out the [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)!
+For a more in-depth discussion on benchmarking, check out the [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
 
 ### 🔌 DeepSparse Server
 
