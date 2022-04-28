@@ -79,7 +79,7 @@ class TransformersPipeline(Pipeline):
 
         self.config = None
         self.tokenizer = None
-        self._onnx_input_names = None
+        self.onnx_input_names = None
 
         super().__init__(**kwargs)
 
@@ -123,7 +123,7 @@ class TransformersPipeline(Pipeline):
         )
 
         # overwrite onnx graph to given required input shape
-        onnx_path, self._onnx_input_names, _ = overwrite_transformer_onnx_model_inputs(
+        onnx_path, self.onnx_input_names, _ = overwrite_transformer_onnx_model_inputs(
             onnx_path, max_length=self.sequence_length
         )
 
@@ -136,10 +136,10 @@ class TransformersPipeline(Pipeline):
         :param tokens: outputs of the pipeline tokenizer
         :return: list of numpy arrays in expected order for model input
         """
-        if not all(name in tokens for name in self._onnx_input_names):
+        if not all(name in tokens for name in self.onnx_input_names):
             raise ValueError(
-                f"pipeline expected arrays with names {self._onnx_input_names}, "
+                f"pipeline expected arrays with names {self.onnx_input_names}, "
                 f"received inputs: {list(tokens.keys())}"
             )
 
-        return [tokens[name] for name in self._onnx_input_names]
+        return [tokens[name] for name in self.onnx_input_names]

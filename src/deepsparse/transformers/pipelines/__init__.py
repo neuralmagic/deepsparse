@@ -15,5 +15,6 @@
 # flake8: noqa
 
 from .pipeline import *
+from .question_answering import *
 from .text_classification import *
 from .token_classification import *
