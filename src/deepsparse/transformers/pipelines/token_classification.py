@@ -68,13 +68,9 @@ class TokenClassificationResult(BaseModel):
     Schema for a classification of a single token
     """
 
-    entity: str = Field(
-        description="entity predicted for that token/word"
-    )
+    entity: str = Field(description="entity predicted for that token/word")
     score: float = Field(description="The corresponding probability for `entity`")
-    index: int = Field(
-        description="index of the corresponding token in the sentence"
-    )
+    index: int = Field(description="index of the corresponding token in the sentence")
     word: str = Field(description="token/word classified")
     start: Optional[int] = Field(
         description=(
@@ -87,6 +83,10 @@ class TokenClassificationResult(BaseModel):
             "index of the end of the corresponding entity in the sentence. "
             "Only exists if the offsets are available within the tokenizer"
         )
+    )
+    is_grouped: bool = Field(
+        default=False,
+        description="True if this result is part of an entity group",
     )
 
 
@@ -150,7 +150,7 @@ class TokenClassificationPipeline(TransformersPipeline):
         self,
         *,
         aggregation_strategy: AggregationStrategy = AggregationStrategy.NONE,
-        **kwargs
+        **kwargs,
     ):
 
         if isinstance(aggregation_strategy, str):
@@ -259,6 +259,8 @@ class TokenClassificationPipeline(TransformersPipeline):
         offset_mapping = kwargs["offset_mapping"]
         special_tokens_mask = kwargs["special_tokens_mask"]
 
+        predictions = []  # type: List[List[TokenClassificationResult]]
+
         for entities_index, current_entities in enumerate(engine_outputs[0]):
             input_ids = tokens["input_ids"][entities_index]
 
@@ -274,17 +276,20 @@ class TokenClassificationPipeline(TransformersPipeline):
             )
             grouped_entities = self._aggregate(pre_entities)
             # Filter anything that is in self.ignore_labels
-            current_entities = [
-                entity
-                for entity in grouped_entities
-                if entity.get("entity", None) not in self.ignore_labels
-                and entity.get("entity_group", None) not in self.ignore_labels
-            ]
-            answers.append(current_entities)
+            current_results = []  # type: List[TokenClassificationResult]
+            for entity in grouped_entities:
+                if entity.get("entity") not in self.ignore_labels or (
+                    entity.get("entity_group") not in self.ignore_labels
+                ):
+                    continue
+                if entity.get("entity_group"):
+                    entity["entity"] = entity["entity_group"]
+                    entity["is_grouped"] = True
+                    del entity["entity_group"]
+                current_results.append(TokenClassificationResult(**entity))
+            predictions.append(current_results)
 
-        if len(answers) == 1:
-            return answers[0]
-        return answers
+        return self.output_model(predictions=predictions)
 
     # utilities below adapted from transformers
 
@@ -397,9 +402,7 @@ class TokenClassificationPipeline(TransformersPipeline):
             elif entity["is_subword"]:
                 word_group.append(entity)
             else:
-                word_entities.append(
-                    self._aggregate_word(word_group)
-                )
+                word_entities.append(self._aggregate_word(word_group))
                 word_group = [entity]
         # Last item
         word_entities.append(self._aggregate_word(word_group))

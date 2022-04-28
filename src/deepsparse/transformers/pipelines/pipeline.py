@@ -71,7 +71,7 @@ class TransformersPipeline(Pipeline):
         *,
         sequence_length: int = 128,
         default_model_name: str = "bert-base-uncased",
-        **kwargs
+        **kwargs,
     ):
 
         self._sequence_length = sequence_length
