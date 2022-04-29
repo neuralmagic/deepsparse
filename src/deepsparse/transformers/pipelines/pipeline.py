@@ -17,7 +17,8 @@ Base Pipeline class for transformers inference pipeline
 """
 
 
-from typing import Any, List, Mapping
+from typing import Any, List, Mapping, Optional
+import warnings
 
 import numpy
 from transformers.models.auto import AutoConfig, AutoTokenizer
@@ -29,7 +30,10 @@ from deepsparse.transformers.helpers import (
 )
 
 
-__all__ = ["TransformersPipeline"]
+__all__ = [
+    "TransformersPipeline",
+    "pipeline,"
+]
 
 
 class TransformersPipeline(Pipeline):
@@ -149,3 +153,67 @@ class TransformersPipeline(Pipeline):
             )
 
         return [tokens[name] for name in self.onnx_input_names]
+
+
+def pipeline(
+    task: str,
+    model_name: Optional[str] = None,
+    model_path: Optional[str] = None,
+    engine_type: str = "deepsparse",
+    config: Optional[str] = None,
+    tokenizer: Optional[str] = None,
+    max_length: int = 128,
+    num_cores: Optional[int] = None,
+    scheduler: Optional[str] = None,
+    batch_size: Optional[int] = 1,
+    **kwargs,
+) -> Pipeline:
+    """
+    [DEPRECATED] - deepsparse.transformers.pipeline is deprecated to craete DeepSparse
+    pipelines for tranformers tasks use deepsparse.Pipeline.create(task, ...)
+
+    Utility factory method to build a Pipeline
+
+    :param task: name of the task to define which pipeline to create. Currently
+        supported task - "question-answering"
+    :param model_name: canonical name of the hugging face model this model is based on
+    :param model_path: path to model directory containing `model.onnx`, `config.json`,
+        and `tokenizer.json` files, ONNX model file, or SparseZoo stub
+    :param engine_type: inference engine name to use. Options are 'deepsparse'
+        and 'onnxruntime'. Default is 'deepsparse'
+    :param config: huggingface model config, if none provided, default will be used
+        which will be from the model name or sparsezoo stub if given for model path
+    :param tokenizer: huggingface tokenizer, if none provided, default will be used
+    :param max_length: maximum sequence length of model inputs. default is 128
+    :param num_cores: number of CPU cores to run engine with. Default is the maximum
+        available
+    :param scheduler: The scheduler to use for the engine. Can be None, single or multi
+    :param batch_size: The batch_size to use for the pipeline. Defaults to 1
+        Note: `question-answering` pipeline only supports a batch_size of 1.
+    :param kwargs: additional key word arguments for task specific pipeline constructor
+    :return: Pipeline object for the given taks and model
+    """
+    warnings.warn(
+        "[DEPRECATED] - deepsparse.transformers.pipeline is deprecated to craete "
+        "DeepSparse pipelines for tranformers tasks use deepsparse.Pipeline.create()"
+    )
+
+    if config is not None or tokenizer is not None:
+        raise ValueError(
+            "Directly passing in a config or tokenizer to DeepSparse transformers "
+            "pipelines is no longer supported. config and tokenizer objects should "
+            "be specified by including config.json and tokenizer.json files in the "
+            "model directory respectively"
+        )
+
+    return Pipeline.create(
+        task=task,
+        model_path=model_path,
+        engine_type=engine_type,
+        batch_size=batch_size,
+        num_cores=num_cores,
+        scheduler=scheduler,
+        sequence_length=max_length,
+        default_model_name=model_name,
+        **kwargs,
+    )
