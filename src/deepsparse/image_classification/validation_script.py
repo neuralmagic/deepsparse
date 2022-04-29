@@ -92,9 +92,18 @@ resnet50_imagenet_pruned = (
     default=1,
     show_default=True,
     help="Test batch size, must divide the dataset evenly, else last "
-         "batch will be dropped",
+    "batch will be dropped",
 )
-def main(dataset_path: str, model_path: str, batch_size: int):
+@click.option(
+    "--image-size",
+    "--image_size",
+    type=int,
+    default=224,
+    show_default=True,
+    help="Test batch size, must divide the dataset evenly, else last "
+    "batch will be dropped",
+)
+def main(dataset_path: str, model_path: str, batch_size: int, image_size: int):
     """
     Validation Script for Image Classification Models
     """
@@ -104,7 +113,7 @@ def main(dataset_path: str, model_path: str, batch_size: int):
         transform=transforms.Compose(
             [
                 transforms.ToTensor(),
-                transforms.Resize(size=(224, 224)),
+                transforms.Resize(size=(image_size, image_size)),
             ]
         ),
     )

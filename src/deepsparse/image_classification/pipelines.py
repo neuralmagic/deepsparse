@@ -21,16 +21,15 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 import numpy
 import onnx
 
-from deepsparse import Scheduler
 from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
 )
-from deepsparse.pipeline import DEEPSPARSE_ENGINE, Pipeline
-from image_classification.schemas import (
+from deepsparse.image_classification.schemas import (
     ImageClassificationInput,
     ImageClassificationOutput,
 )
+from deepsparse.pipeline import Pipeline
 
 
 try:
@@ -65,32 +64,42 @@ class ImageClassificationPipeline(Pipeline):
 
     def __init__(
         self,
-        model_path: str,
-        engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: int = 1,
-        num_cores: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        alias: Optional[str] = None,
-        class_names: Optional[Union[str, Dict[str, str]]] = None,
+        *,
+        class_names: Union[None, str, Dict[str, str]] = None,
+        **kwargs,
     ):
-        super().__init__(
-            model_path,
-            engine_type,
-            batch_size,
-            num_cores,
-            scheduler,
-            input_shapes,
-            alias,
-        )
-        self._input_shape = None
+        super().__init__(**kwargs)
 
         if isinstance(class_names, str) and class_names.endswith(".json"):
-            self.class_names = json.load(open(class_names))
+            self._class_names = json.load(open(class_names))
         elif isinstance(class_names, dict):
-            self.class_names = class_names
+            self._class_names = class_names
         else:
-            self.class_names = None
+            self._class_names = None
+
+        self._image_size = self._infer_image_size()
+
+    @property
+    def class_names(self) -> Optional[Dict[str, str]]:
+        """
+        :return: Optional dict, or json file of class names to use for
+            mapping class ids to class labels
+        """
+        return self._class_names
+
+    @property
+    def input_model(self) -> Type[ImageClassificationInput]:
+        """
+        :return: pydantic model class that inputs to this pipeline must comply to
+        """
+        return ImageClassificationInput
+
+    @property
+    def output_model(self) -> Type[ImageClassificationOutput]:
+        """
+        :return: pydantic model class that outputs of this pipeline must comply to
+        """
+        return ImageClassificationOutput
 
     def setup_onnx_file_path(self) -> str:
         """
@@ -120,9 +129,14 @@ class ImageClassificationPipeline(Pipeline):
                 inputs.images = [inputs.images]
 
             for image in inputs.images:
+                if cv2 is None:
+                    raise RuntimeError(
+                        "cv2 is required to load image inputs from file "
+                        f"Unable to import: {cv2_error}"
+                    )
                 img = cv2.imread(image) if isinstance(image, str) else image
 
-                img = cv2.resize(img, dsize=self.input_shape)
+                img = cv2.resize(img, dsize=self._image_size)
                 img = img[:, :, ::-1].transpose(2, 0, 1)
                 image_batch.append(img)
 
@@ -161,38 +175,13 @@ class ImageClassificationPipeline(Pipeline):
             labels=labels,
         )
 
-    @property
-    def input_model(self) -> Type[ImageClassificationInput]:
-        """
-        :return: pydantic model class that inputs to this pipeline must comply to
-        """
-        return ImageClassificationInput
-
-    @property
-    def output_model(self) -> Type[ImageClassificationOutput]:
-        """
-        :return: pydantic model class that outputs of this pipeline must comply to
-        """
-        return ImageClassificationOutput
-
-    @property
-    def input_shape(self) -> Tuple[int, ...]:
-        """
-        Returns the expected shape of the input tensor
-
-        :return: The expected shape of the input tensor from onnx graph
-        """
-        if self._input_shape is None:
-            self._input_shape = self._infer_image_shape()
-        return self._input_shape
-
-    def _infer_image_shape(self) -> Tuple[int, ...]:
+    def _infer_image_size(self) -> Tuple[int, ...]:
         """
         Infer and return the expected shape of the input tensor
 
         :return: The expected shape of the input tensor from onnx graph
         """
-        onnx_model = onnx.load(self.engine.model_path)
+        onnx_model = onnx.load(self.model_path)
         input_tensor = onnx_model.graph.input[0]
         return (
             input_tensor.type.tensor_type.shape.dim[2].dim_value,
