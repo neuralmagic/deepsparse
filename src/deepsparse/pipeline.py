@@ -132,7 +132,7 @@ class Pipeline(ABC):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
 
-        self._onnx_file_path = self.setup_onnx_file_path()
+        self.onnx_file_path = self.setup_onnx_file_path()
         self._engine = self._initialize_engine()
 
     def __call__(self, pipeline_inputs: BaseModel = None, **kwargs) -> BaseModel:
@@ -385,13 +385,6 @@ class Pipeline(ABC):
         :return: type of inference engine used for model forward pass
         """
         return self._engine_type
-
-    @property
-    def onnx_file_path(self) -> str:
-        """
-        :return: onnx file path used to instantiate engine
-        """
-        return self._onnx_file_path
 
     def to_config(self) -> "PipelineConfig":
         """
