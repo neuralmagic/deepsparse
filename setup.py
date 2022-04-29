@@ -192,7 +192,7 @@ def _setup_entry_points() -> Dict:
             f"deepsparse.transformers.eval_downstream={eval_downstream}",
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
-            "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
+            "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
         ]
     }

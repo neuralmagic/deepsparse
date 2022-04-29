@@ -81,7 +81,7 @@ class Pipeline(ABC):
      ```python
      @Pipeline.register(
      task="example_task",
-     task_aliases=["example_alias_1", "example_asias_2"],
+     task_aliases=["example_alias_1", "example_alias_2"],
      )
      class PipelineImplementation(Pipeline):
      # implementation of Pipeline abstract methods here
