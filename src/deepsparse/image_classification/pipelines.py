@@ -42,7 +42,12 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 
-@Pipeline.register(task="image_classification")
+@Pipeline.register(
+    task="image_classification",
+    default_model_path=(
+        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none"
+    ),
+)
 class ImageClassificationPipeline(Pipeline):
     """
     Image classification pipeline for DeepSparse
