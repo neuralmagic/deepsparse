@@ -118,7 +118,7 @@ class ServerConfig(BaseModel):
         ),
     )
     integration: str = Field(
-        default=None,
+        default="default",
         description=(
             "Name of deployment integration that this server will be deployed to "
             "Currently supported options are None for default inference and "
