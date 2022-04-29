@@ -45,6 +45,7 @@ binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 _deps = [
     "numpy>=1.16.3",
     "onnx>=1.5.0,<=1.10.1",
+    "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
     "protobuf>=3.12.2",
@@ -74,11 +75,20 @@ _server_deps = [
     "uvicorn>=0.15.0",
     "fastapi>=0.70.0",
     "starlette>=0.16.0",
-    "pydantic>=1.8.2",
     "requests>=2.26.0",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
+]
+
+_ic_integration_deps = [
+    "click<8.1",
+    "opencv-python",
+]
+
+_yolo_integration_deps = [
+    "torchvision>=0.3.0,<=0.10.1",
+    "opencv-python",
 ]
 
 
@@ -173,12 +183,15 @@ def _setup_extras() -> Dict:
         "dev": _dev_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
+        "image_classification": _ic_integration_deps,
+        "yolo": _yolo_integration_deps,
     }
 
 
 def _setup_entry_points() -> Dict:
     data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     eval_downstream = "deepsparse.transformers.eval_downstream:main"
+
     return {
         "console_scripts": [
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",
@@ -187,6 +200,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
+            "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
         ]
     }
 
