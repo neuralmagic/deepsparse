@@ -85,7 +85,7 @@ class YOLOPipeline(Pipeline):
                 f"list of class names got {type(class_names)}"
             )
 
-        onnx_model = onnx.load(self.engine.model_path)
+        onnx_model = onnx.load(self.onnx_file_path)
         self.has_postprocessing = self.model_has_postprocessing(
             loaded_onnx_model=onnx_model,
         )

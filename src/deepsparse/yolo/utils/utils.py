@@ -34,6 +34,7 @@ import torch
 import torchvision
 from sparsezoo.utils import create_dirs
 
+
 try:
     import cv2
 
@@ -72,13 +73,11 @@ class YoloPostprocessor:
     """
 
     def __init__(
-            self, image_size: Tuple[int, int] = (640, 640),
-            cfg: Optional[str] = None
+        self, image_size: Tuple[int, int] = (640, 640), cfg: Optional[str] = None
     ):
         self._image_size = image_size
         self._anchor_grids = (
-            self._load_cfg_anchor_grid(
-                cfg) if cfg else _YOLO_DEFAULT_ANCHOR_GRIDS
+            self._load_cfg_anchor_grid(cfg) if cfg else _YOLO_DEFAULT_ANCHOR_GRIDS
         )
         self._grids = {}  # Dict[Tuple[int], torch.Tensor]
 
@@ -133,8 +132,7 @@ class YoloPostprocessor:
         return [t.clone().view(1, -1, 1, 1, 2) for t in anchors]
 
 
-def postprocess_nms(outputs: Union[torch.Tensor, numpy.ndarray]) -> List[
-    numpy.ndarray]:
+def postprocess_nms(outputs: Union[torch.Tensor, numpy.ndarray]) -> List[numpy.ndarray]:
     """
     :param outputs: Tensor of post-processed model outputs
     :return: List of numpy arrays of NMS predictions for each image in the batch
@@ -147,13 +145,13 @@ def postprocess_nms(outputs: Union[torch.Tensor, numpy.ndarray]) -> List[
 
 
 def _non_max_suppression(
-        prediction,
-        conf_thres=0.25,
-        iou_thres=0.45,
-        classes=None,
-        agnostic=False,
-        multi_label=False,
-        labels=(),
+    prediction,
+    conf_thres=0.25,
+    iou_thres=0.45,
+    classes=None,
+    agnostic=False,
+    multi_label=False,
+    labels=(),
 ):
     # Ported from ultralytics/yolov5
 
@@ -166,7 +164,7 @@ def _non_max_suppression(
         "valid values are between 0.0 and 1.0"
     )
     assert (
-            0 <= iou_thres <= 1
+        0 <= iou_thres <= 1
     ), f"Invalid IoU {iou_thres}, valid values are between 0.0 and 1.0"
 
     # Settings
@@ -179,8 +177,7 @@ def _non_max_suppression(
     merge = False  # use merge-NMS
 
     t = time.time()
-    output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[
-        0]
+    output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
         # Apply constraints
         # x[((x[..., 2:4] < min_wh) | (x[..., 2:4] > max_wh)).any(1), 4] = 0
@@ -226,8 +223,7 @@ def _non_max_suppression(
         if not n:  # no boxes
             continue
         elif n > max_nms:  # excess boxes
-            x = x[x[:, 4].argsort(descending=True)[
-                  :max_nms]]  # sort by confidence
+            x = x[x[:, 4].argsort(descending=True)[:max_nms]]  # sort by confidence
 
         # Batched NMS
         c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
@@ -235,8 +231,7 @@ def _non_max_suppression(
         i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
         if i.shape[0] > max_det:  # limit detections
             i = i[:max_det]
-        if merge and (
-                1 < n < 3e3):  # Merge NMS (boxes merged using weighted mean)
+        if merge and (1 < n < 3e3):  # Merge NMS (boxes merged using weighted mean)
             # update boxes as boxes(i,4) = weights(i,n) * boxes(n,4)
             iou = _box_iou(boxes[i], boxes) > iou_thres  # iou matrix
             weights = iou * scores[None]  # box weights
@@ -255,7 +250,7 @@ def _non_max_suppression(
 
 
 def _xywh2xyxy(
-        x: Union[torch.Tensor, numpy.ndarray]
+    x: Union[torch.Tensor, numpy.ndarray]
 ) -> Union[torch.Tensor, numpy.ndarray]:
     # ported from ultralytics/yolov5
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2]
@@ -291,14 +286,14 @@ def _box_iou(box1: torch.Tensor, box2: torch.Tensor) -> torch.Tensor:
     # inter(N,M) = (rb(N,M,2) - lt(N,M,2)).clamp(0).prod(2)
     inter = (
         (
-                torch.min(box1[:, None, 2:], box2[:, 2:])
-                - torch.max(box1[:, None, :2], box2[:, :2])
+            torch.min(box1[:, None, 2:], box2[:, 2:])
+            - torch.max(box1[:, None, :2], box2[:, :2])
         )
-            .clamp(0)
-            .prod(2)
+        .clamp(0)
+        .prod(2)
     )
     return inter / (
-            area1[:, None] + area2 - inter
+        area1[:, None] + area2 - inter
     )  # iou = inter / (area1 + area2 - inter)
 
 
@@ -320,16 +315,15 @@ def yolo_onnx_has_postprocessing(model_path: str) -> bool:
     if len(outputs_num_dims) == 1:
         return True
 
-    return all(
-        num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
+    return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
 
 
 def annotate(
-        pipeline: "YOLOPipeline", # noqa: F821
-        image_batch: Union[List[numpy.ndarray], List[str]],
-        target_fps: float = None,
-        calc_fps: bool = False,
-        original_images: Optional[Union[List[numpy.ndarray], numpy.ndarray]] = None,
+    pipeline: "YOLOPipeline",  # noqa: F821
+    image_batch: Union[List[numpy.ndarray], List[str]],
+    target_fps: float = None,
+    calc_fps: bool = False,
+    original_images: Optional[Union[List[numpy.ndarray], numpy.ndarray]] = None,
 ) -> List[numpy.ndarray]:
     """
     Annotated and return image_batch with bounding boxes and labels
@@ -339,6 +333,7 @@ def annotate(
     :param target_fps: If not None, then the pipeline will be run at this target
     :param calc_fps: If True, and target_fps is None then the pipeline will
         calculate the FPS
+    :param original_images: images from input_batch before any processing
     :return: A list of annotated images
 
     """
@@ -378,13 +373,13 @@ def annotate(
 
 
 def _annotate_image(
-        img: numpy.ndarray,
-        boxes: List[List[float]],
-        scores: List[float],
-        labels: List[str],
-        score_threshold: float = 0.35,
-        model_input_size: Tuple[int, int] = None,
-        images_per_sec: Optional[float] = None,
+    img: numpy.ndarray,
+    boxes: List[List[float]],
+    scores: List[float],
+    labels: List[str],
+    score_threshold: float = 0.35,
+    model_input_size: Tuple[int, int] = None,
+    images_per_sec: Optional[float] = None,
 ) -> numpy.ndarray:
     """
     Draws bounding boxes on predictions of a detection model
@@ -404,10 +399,8 @@ def _annotate_image(
     """
     img_res = numpy.copy(img)
 
-    scale_y = img.shape[0] / (
-            1.0 * model_input_size[0]) if model_input_size else 1.0
-    scale_x = img.shape[1] / (
-            1.0 * model_input_size[1]) if model_input_size else 1.0
+    scale_y = img.shape[0] / (1.0 * model_input_size[0]) if model_input_size else 1.0
+    scale_x = img.shape[1] / (1.0 * model_input_size[1]) if model_input_size else 1.0
 
     for idx in range(len(boxes)):
         label = labels[idx]
@@ -474,11 +467,11 @@ def _annotate_image(
 
 
 def get_yolo_loader_and_saver(
-        path: str,
-        save_dir: str,
-        image_shape: Tuple[int, int] = (640, 640),
-        target_fps: Optional[float] = None,
-        no_save: bool = False,
+    path: str,
+    save_dir: str,
+    image_shape: Tuple[int, int] = (640, 640),
+    target_fps: Optional[float] = None,
+    no_save: bool = False,
 ) -> Union[Iterable, Any, bool]:
     """
 
@@ -486,7 +479,8 @@ def get_yolo_loader_and_saver(
         or an integer (i.e. 0) for web-cam
     :param save_dir: path of directory to save to
     :param image_shape: size of input image_batch to model
-    :param args: optional arguments from annotate script ArgParser
+    :param target_fps: fps to save potential video at
+    :param no_save: set true if not saving results of processing
     :return: image loader iterable, result saver objects
         image_batch, video, or web-cam based on path given, and a boolean value
         that is True is the returned objects load videos
@@ -678,11 +672,11 @@ class VideoSaver(ImagesSaver):
     """
 
     def __init__(
-            self,
-            save_dir: str,
-            original_fps: float,
-            output_frame_size: Tuple[int, int],
-            target_fps: Optional[float] = None,
+        self,
+        save_dir: str,
+        original_fps: float,
+        output_frame_size: Tuple[int, int],
+        target_fps: Optional[float] = None,
     ):
         super().__init__(save_dir)
 
@@ -726,14 +720,13 @@ class VideoSaver(ImagesSaver):
             self._n_frames * (self._target_fps / self._original_fps)
         )
         # adjust target fps so we can keep the same video duration
-        adjusted_target_fps = num_frames_to_keep * (
-                self._original_fps / self._n_frames)
+        adjusted_target_fps = num_frames_to_keep * (self._original_fps / self._n_frames)
 
         # select num_frames_to_keep evenly spaced frame idxs
         frame_idxs_to_keep = set(
             numpy.round(numpy.linspace(0, self._n_frames, num_frames_to_keep))
-                .astype(int)
-                .tolist()
+            .astype(int)
+            .tolist()
         )
 
         # create new video writer for adjusted video
@@ -760,7 +753,7 @@ class VideoSaver(ImagesSaver):
 
 
 def load_image(
-        img: Union[str, numpy.ndarray], image_size: Tuple[int, int] = (640, 640)
+    img: Union[str, numpy.ndarray], image_size: Tuple[int, int] = (640, 640)
 ) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
     """
     :param img: file path to image or raw image array
@@ -776,9 +769,9 @@ def load_image(
 
 
 def get_annotations_save_dir(
-        initial_save_dir: str,
-        tag: Optional[str] = None,
-        engine: Optional[str] = None,
+    initial_save_dir: str,
+    tag: Optional[str] = None,
+    engine: Optional[str] = None,
 ) -> str:
     """
     Returns the directory to save annotations to. If directory exists and is
