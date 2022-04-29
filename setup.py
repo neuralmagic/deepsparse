@@ -82,6 +82,7 @@ _onnxruntime_deps = [
 ]
 
 _ic_integration_deps = [
+    "click<8.1",
     "opencv-python",
 ]
 

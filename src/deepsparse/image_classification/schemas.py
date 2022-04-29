@@ -27,7 +27,7 @@ class ImageClassificationInput(BaseModel):
     Input model for image classification
     """
 
-    images: Union[str, List[numpy.ndarray], List[str]]
+    images: Union[str, numpy.ndarray, List[str]]
 
     class Config:
         arbitrary_types_allowed = True
