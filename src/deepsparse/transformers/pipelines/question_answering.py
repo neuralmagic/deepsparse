@@ -340,7 +340,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             # keep the cls_token unmasked
             if self.tokenizer.cls_token_id is not None:
                 cls_index = numpy.nonzero(
-                    encoded_inputs["input_ids"] == self.tokenizer.cls_token_id
+                    encoded_inputs["input_ids"][0] == self.tokenizer.cls_token_id
                 )
                 p_mask[cls_index] = 0
 

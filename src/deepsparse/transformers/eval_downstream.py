@@ -58,7 +58,7 @@ import argparse
 
 from tqdm.auto import tqdm
 
-from deepsparse.transformers import pipeline
+from deepsparse import Pipeline
 
 
 from datasets import load_dataset, load_metric  # isort: skip
@@ -79,14 +79,14 @@ def squad_eval(args):
     squad_metrics = load_metric("squad")
 
     # load QA pipeline
-    question_answer = pipeline(
+    question_answer = Pipeline.create(
         task="question-answering",
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
-        max_length=args.max_sequence_length,
+        sequence_length=args.max_sequence_length,
     )
-    print(f"Engine info: {question_answer.model}")
+    print(f"Engine info: {question_answer.engine}")
 
     for idx, sample in enumerate(tqdm(squad)):
         pred = question_answer(
@@ -96,7 +96,7 @@ def squad_eval(args):
         )
 
         squad_metrics.add_batch(
-            predictions=[{"prediction_text": pred["answer"], "id": sample["id"]}],
+            predictions=[{"prediction_text": pred.answer, "id": sample["id"]}],
             references=[{"answers": sample["answers"], "id": sample["id"]}],
         )
 
@@ -114,19 +114,19 @@ def mnli_eval(args):
     mnli_metrics = load_metric("glue", "mnli")
 
     # load pipeline
-    text_classify = pipeline(
+    text_classify = Pipeline.create(
         task="text-classification",
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
-        max_length=args.max_sequence_length,
+        sequence_length=args.max_sequence_length,
     )
-    print(f"Engine info: {text_classify.model}")
+    print(f"Engine info: {text_classify.engine}")
 
     for idx, sample in enumerate(tqdm(mnli_matched)):
         pred = text_classify(sample["premise"], sample["hypothesis"])
         mnli_metrics.add_batch(
-            predictions=[int(pred[0]["label"].split("_")[-1])],
+            predictions=[int(pred.labels[0].split("_")[-1])],
             references=[sample["label"]],
         )
 
@@ -152,20 +152,20 @@ def qqp_eval(args):
     qqp_metrics = load_metric("glue", "qqp")
 
     # load pipeline
-    text_classify = pipeline(
+    text_classify = Pipeline.create(
         task="text-classification",
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
-        max_length=args.max_sequence_length,
+        sequence_length=args.max_sequence_length,
     )
-    print(f"Engine info: {text_classify.model}")
+    print(f"Engine info: {text_classify.engine}")
 
     for idx, sample in enumerate(tqdm(qqp)):
         pred = text_classify([[sample["question1"], sample["question2"]]])
 
         qqp_metrics.add_batch(
-            predictions=[int(pred[0]["label"].split("_")[-1])],
+            predictions=[int(pred.labels[0].split("_")[-1])],
             references=[sample["label"]],
         )
 
@@ -181,14 +181,14 @@ def sst2_eval(args):
     sst2_metrics = load_metric("glue", "sst2")
 
     # load pipeline
-    text_classify = pipeline(
+    text_classify = Pipeline.create(
         task="text-classification",
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
-        max_length=args.max_sequence_length,
+        sequence_length=args.max_sequence_length,
     )
-    print(f"Engine info: {text_classify.model}")
+    print(f"Engine info: {text_classify.engine}")
 
     for idx, sample in enumerate(tqdm(sst2)):
         pred = text_classify(
@@ -196,7 +196,7 @@ def sst2_eval(args):
         )
 
         sst2_metrics.add_batch(
-            predictions=[int(pred[0]["label"].split("_")[-1])],
+            predictions=[int(pred.labels[0].split("_")[-1])],
             references=[sample["label"]],
         )
 
