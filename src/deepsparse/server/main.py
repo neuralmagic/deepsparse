@@ -78,6 +78,7 @@ from pathlib import Path
 
 import click
 
+from deepsparse import Pipeline
 from deepsparse.log import set_logging_level
 from deepsparse.server.asynchronous import execute_async, initialize_aysnc
 from deepsparse.server.config import (
@@ -85,7 +86,6 @@ from deepsparse.server.config import (
     server_config_from_env,
     server_config_to_env,
 )
-from deepsparse.server.pipelines import load_pipelines_definitions
 from deepsparse.server.utils import serializable_response
 from deepsparse.version import version
 
@@ -123,29 +123,30 @@ def _add_general_routes(app, config):
     _LOGGER.info("created general routes, visit `/docs` to view available")
 
 
-def _add_pipeline_route(app, pipeline_def, num_models: int, defined_tasks: set):
+def _add_pipeline_route(app, pipeline: Pipeline, num_models: int, defined_tasks: set):
     path = "/predict"
 
-    if pipeline_def.config.alias:
-        path = f"/predict/{pipeline_def.config.alias}"
+    if pipeline.alias:
+        path = f"/predict/{pipeline.alias}"
     elif num_models > 1:
-        if pipeline_def.config.task in defined_tasks:
+        if pipeline.task in defined_tasks:
             raise ValueError(
-                f"Multiple tasks defined for {pipeline_def.config.task} and no alias "
-                f"given for {pipeline_def.config}. "
+                f"Multiple tasks defined for {pipeline.task} and no alias "
+                f"given for pipeline with model {pipeline.model_path_orig}. "
                 "Either define an alias or supply a single model for the task"
             )
-        path = f"/predict/{pipeline_def.config.task}"
-        defined_tasks.add(pipeline_def.config.task)
+        path = f"/predict/{pipeline.task}"
+        defined_tasks.add(pipeline.task)
 
     @app.post(
         path,
-        response_model=pipeline_def.response_model,
+        response_model=pipeline.output_model,
         tags=["prediction"],
     )
-    async def _predict_func(request: pipeline_def.request_model):
+    async def _predict_func(request: pipeline.input_model):
         results = await execute_async(
-            pipeline_def.pipeline, **vars(request), **pipeline_def.kwargs
+            pipeline,
+            **vars(request),
         )
         return serializable_response(results)
 
@@ -167,12 +168,12 @@ def server_app_factory():
     _LOGGER.debug("loaded server config %s", config)
     _add_general_routes(app, config)
 
-    pipeline_defs = load_pipelines_definitions(config)
-    _LOGGER.debug("loaded pipeline definitions from config %s", pipeline_defs)
+    pipelines = [Pipeline.from_config(model_config) for model_config in config.models]
+    _LOGGER.debug("loaded pipeline definitions from config %s", pipelines)
     num_tasks = len(config.models)
     defined_tasks = set()
-    for pipeline_def in pipeline_defs:
-        _add_pipeline_route(app, pipeline_def, num_tasks, defined_tasks)
+    for pipeline in pipelines:
+        _add_pipeline_route(app, pipeline, num_tasks, defined_tasks)
 
     return app
 
