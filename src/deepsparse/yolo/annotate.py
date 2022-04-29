@@ -81,13 +81,6 @@ _LOGGER = logging.getLogger(__name__)
     show_default=True,
 )
 @click.option(
-    "--quantized_inputs",
-    "--quantized-inputs",
-    is_flag=True,
-    help="Set flag to execute with int8 inputs instead of float32",
-    show_default=True,
-)
-@click.option(
     "--save_dir",
     "--save-dir",
     type=click.Path(dir_okay=True, file_okay=False),
@@ -137,15 +130,15 @@ def main(
     Annotation Script for YOLO with DeepSparse
     """
     save_dir = utils.get_annotations_save_dir(
-        save_dir=save_dir,
-        name=name,
+        initial_save_dir=save_dir,
+        tag=name,
         engine=engine,
     )
 
-    loader, saver, is_video = utils.get_loader_and_saver(
+    loader, saver, is_video = utils.get_yolo_loader_and_saver(
         path=source,
         save_dir=save_dir,
-        image_size=image_shape,
+        image_shape=image_shape,
         target_fps=target_fps,
         no_save=no_save,
     )
@@ -162,25 +155,22 @@ def main(
     for iteration, (input_image, source_image) in enumerate(loader):
 
         # annotate
-        annotated_image = utils.annotate(
+        annotated_images = utils.annotate(
             pipeline=yolo_pipeline,
             image_batch=input_image,
             target_fps=target_fps,
             calc_fps=is_video,
         )
 
-        # display
-        if is_webcam:
-            cv2.imshow("annotated", annotated_image)
-            cv2.waitKey(1)
+        for annotated_image in annotated_images:
+            # display
+            if is_webcam:
+                cv2.imshow("annotated", annotated_image)
+                cv2.waitKey(1)
 
-        # save
-        if saver is not None:
-            saver.save(annotated_image, source_image)
-
-        # save
-        if saver:
-            saver.save_frame(annotated_image, source_image)
+            # save
+            if saver:
+                saver.save_frame(annotated_image)
 
     if saver:
         saver.close()

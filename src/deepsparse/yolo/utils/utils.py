@@ -321,7 +321,10 @@ def annotate(pipeline, image_batch, target_fps=None, calc_fps=False):
     """
 
     original_images = image_batch
-    batch_size = image_batch.shape[0]
+    if not isinstance(image_batch, list):
+        image_batch = [image_batch]
+
+    batch_size = len(image_batch)
 
     if image_batch and isinstance(image_batch[0], str):
         original_images = [cv2.imread(image) for image in image_batch]
@@ -342,7 +345,7 @@ def annotate(pipeline, image_batch, target_fps=None, calc_fps=False):
             boxes=image_output.boxes,
             labels=image_output.labels,
             scores=image_output.scores,
-            target_fps=target_fps,
+            images_per_sec=target_fps,
         )
         annotated_images.append(result)
 
@@ -730,7 +733,7 @@ class VideoSaver(ImagesSaver):
 
 def load_image(
     img: Union[str, numpy.ndarray], image_size: Tuple[int, int] = (640, 640)
-) -> Tuple[numpy.ndarray, numpy.ndarray]:
+) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
     """
     :param img: file path to image or raw image array
     :param image_size: target shape for image
@@ -745,26 +748,29 @@ def load_image(
 
 
 def get_annotations_save_dir(
-    save_dir: str,
+    initial_save_dir: str,
     tag: Optional[str] = None,
     engine: Optional[str] = None,
 ) -> str:
     """
-    Returns the directory to save annotations to. If directory exists, it will
-    append a number to the end of the directory name.
+    Returns the directory to save annotations to. If directory exists and is
+    non-empty, a number is appended to the end of the directory name.
 
-    :param save_dir: Initial directory to save annotations to
+    :param initial_save_dir: Initial directory to save annotations to
     :param tag: A tag under which to save the annotations inside `save_dir`
     :param engine: Used to generate a unique tag if it is not provided.
     :return: A new unique dir path to save annotations to
     """
     name = tag or f"{engine}-annotations"
-    save_dir = os.path.join(save_dir, name)
+    initial_save_dir = os.path.join(initial_save_dir, name)
     counter = 0
-    while os.path.exists(save_dir):
+    new_save_dir = initial_save_dir
+    while Path(new_save_dir).exists() and any(Path(new_save_dir).iterdir()):
         counter += 1
-        save_dir = os.path.join(save_dir, f"{name}-{counter:03d}")
+        new_save_dir = os.path.join(initial_save_dir, f"{name}-{counter:03d}")
 
-    _LOGGER.info(f"Results will be saved to {save_dir}")
-    Path(save_dir).mkdir(parents=True, exist_ok=False)
-    return save_dir
+    _LOGGER.info(f"Results will be saved to {new_save_dir}")
+    Path(new_save_dir).mkdir(parents=True, exist_ok=True)
+    return new_save_dir
+
+

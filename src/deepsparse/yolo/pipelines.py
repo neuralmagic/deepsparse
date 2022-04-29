@@ -58,7 +58,7 @@ class YOLOPipeline(Pipeline):
         self,
         *,
         class_names: Optional[Union[str, Dict[str, str]]] = "coco",
-        model_config: str,
+        model_config: Optional[str]=None,
         **kwargs,
     ):
         super().__init__(
@@ -124,17 +124,17 @@ class YOLOPipeline(Pipeline):
             inputs.images = [inputs.images]
 
         for image in inputs.images:
-            img = cv2.imread(image) if isinstance(image, str) else image
+            if isinstance(image, str):
+                image = cv2.imread(image)
+                image = cv2.resize(image, dsize=self.input_shape)
+                image = image[:, :, ::-1].transpose(2, 0, 1)
 
-            img = cv2.resize(img, dsize=self.input_shape())
-            img = img[:, :, ::-1].transpose(2, 0, 1)
-
-            image_batch.append(img)
+            image_batch.append(image)
 
         image_batch = numpy.stack(image_batch, axis=0)
         image_batch = numpy.ascontiguousarray(
             image_batch,
-            dtype=numpy.int8 if self.model_is_quantized() else numpy.float32,
+            dtype=numpy.int8 if self.is_quantized else numpy.float32,
         )
         image_batch /= 255
 
