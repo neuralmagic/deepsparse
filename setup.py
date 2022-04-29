@@ -86,6 +86,11 @@ _ic_integration_deps = [
     "opencv-python",
 ]
 
+_yolo_integration_deps = [
+    "torchvision>=0.3.0,<=0.10.1",
+    "opencv-python",
+]
+
 
 class OverrideInstall(install):
     """
@@ -179,6 +184,7 @@ def _setup_extras() -> Dict:
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
         "image_classification": _ic_integration_deps,
+        "yolo": _yolo_integration_deps,
     }
 
 
@@ -194,6 +200,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
+            "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
         ]
     }
 
