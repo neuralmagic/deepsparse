@@ -183,7 +183,11 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         features = self._tokenize(squad_example)
         tokens = features.__dict__
 
-        self.self.tokens_to_engine_input(tokens), dict(
+        engine_inputs = self.tokens_to_engine_input(tokens)
+        # add batch dimension, assuming batch size 1
+        engine_inputs = [numpy.expand_dims(inp, axis=0) for inp in engine_inputs]
+
+        return engine_inputs, dict(
             features=features,
             example=squad_example,
         )
@@ -202,13 +206,12 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         start_vals, end_vals = engine_outputs[:2]
 
         # assuming batch size 0
-        feature = features[0]
         start = start_vals[0]
         end = end_vals[0]
 
         # Ensure padded tokens & question tokens cannot belong
         undesired_tokens = (
-            numpy.abs(numpy.array(feature.p_mask) - 1) & feature.attention_mask
+            numpy.abs(numpy.array(features.p_mask) - 1) & features.attention_mask
         )
 
         # Generate mask
@@ -241,17 +244,17 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             char_to_word = numpy.array(example.char_to_word_offset)
             return self.output_model(
                 score=score.item(),
-                start=numpy.where(char_to_word == feature.token_to_orig_map[ans_start])[
-                    0
-                ][0].item(),
-                end=numpy.where(char_to_word == feature.token_to_orig_map[ans_end])[0][
+                start=numpy.where(
+                    char_to_word == features.token_to_orig_map[ans_start]
+                )[0][0].item(),
+                end=numpy.where(char_to_word == features.token_to_orig_map[ans_end])[0][
                     -1
                 ].item(),
                 answer=" ".join(
                     example.doc_tokens[
-                        feature.token_to_orig_map[
+                        features.token_to_orig_map[
                             ans_start
-                        ] : feature.token_to_orig_map[ans_end]
+                        ] : features.token_to_orig_map[ans_end]
                         + 1
                     ]
                 ),
@@ -264,20 +267,20 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             # `token_to_word` then we convert this word in a character span
             return self.output_model(
                 score=score.item(),
-                start=feature.encoding.word_to_chars(
-                    feature.encoding.token_to_word(ans_start),
+                start=features.encoding.word_to_chars(
+                    features.encoding.token_to_word(ans_start),
                     sequence_index=1 if question_first else 0,
                 )[0],
-                end=feature.encoding.word_to_chars(
-                    feature.encoding.token_to_word(ans_end),
+                end=features.encoding.word_to_chars(
+                    features.encoding.token_to_word(ans_end),
                     sequence_index=1 if question_first else 0,
                 )[1],
                 answer=example.context_text[
-                    feature.encoding.word_to_chars(
-                        feature.encoding.token_to_word(ans_start),
+                    features.encoding.word_to_chars(
+                        features.encoding.token_to_word(ans_start),
                         sequence_index=1 if question_first else 0,
-                    )[0] : feature.encoding.word_to_chars(
-                        feature.encoding.token_to_word(ans_end),
+                    )[0] : features.encoding.word_to_chars(
+                        features.encoding.token_to_word(ans_end),
                         sequence_index=1 if question_first else 0,
                     )[
                         1
@@ -302,7 +305,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             # not included for now due to static batch requirements in production
             features = features[0]
         else:
-            question_first = bool(self.tokenizer.padding_size == "right")
+            question_first = bool(self.tokenizer.padding_side == "right")
             encoded_inputs = self.tokenizer(
                 text=example.question_text if question_first else example.context_text,
                 text_pair=(

@@ -16,8 +16,6 @@
 Pipeline implementation and pydantic models for token classification transformers
 tasks
 """
-
-
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
@@ -144,18 +142,22 @@ class TokenClassificationPipeline(TransformersPipeline):
         Default is 'bert-base-uncased'
     :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
         include 'none', 'simple', 'first', 'average', and 'max'. Default is None
+    :param ignore_labels: list of label names to ignore in output. Default is
+        ['0'] which ignores the default known class label
     """
 
     def __init__(
         self,
         *,
         aggregation_strategy: AggregationStrategy = AggregationStrategy.NONE,
+        ignore_labels: List[str] = None,
         **kwargs,
     ):
 
         if isinstance(aggregation_strategy, str):
             aggregation_strategy = aggregation_strategy.strip().lower()
         self._aggregation_strategy = AggregationStrategy(aggregation_strategy)
+        self._ignore_labels = ["0"] if ignore_labels is None else ignore_labels
 
         super().__init__(**kwargs)
 
@@ -166,6 +168,14 @@ class TokenClassificationPipeline(TransformersPipeline):
             include 'none', 'simple', 'first', 'average', and 'max'
         """
         return self._aggregation_strategy.value
+
+    @property
+    def ignore_labels(self) -> List[str]:
+        """
+        :return: list of label names to ignore in output. Default is
+            ['0'] which ignores the default known class label
+        """
+        return self._ignore_labels
 
     @property
     def input_model(self) -> Type[BaseModel]:
@@ -241,7 +251,7 @@ class TokenClassificationPipeline(TransformersPipeline):
             special_tokens_mask=special_tokens_mask,
         )
 
-        return self.self.tokens_to_engine_input(tokens), postprocessing_kwargs
+        return self.tokens_to_engine_input(tokens), postprocessing_kwargs
 
     def process_engine_outputs(
         self,
@@ -268,7 +278,7 @@ class TokenClassificationPipeline(TransformersPipeline):
                 -1, keepdims=True
             )
             pre_entities = self._gather_pre_entities(
-                inputs[entities_index],
+                inputs.inputs[entities_index],
                 input_ids,
                 scores,
                 offset_mapping[entities_index],
@@ -278,8 +288,8 @@ class TokenClassificationPipeline(TransformersPipeline):
             # Filter anything that is in self.ignore_labels
             current_results = []  # type: List[TokenClassificationResult]
             for entity in grouped_entities:
-                if entity.get("entity") not in self.ignore_labels or (
-                    entity.get("entity_group") not in self.ignore_labels
+                if entity.get("entity") in self.ignore_labels or (
+                    entity.get("entity_group") in self.ignore_labels
                 ):
                     continue
                 if entity.get("entity_group"):

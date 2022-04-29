@@ -81,6 +81,8 @@ class TransformersPipeline(Pipeline):
         self.tokenizer = None
         self.onnx_input_names = None
 
+        self._temp_model_directory = None
+
         super().__init__(**kwargs)
 
     @property
@@ -123,7 +125,11 @@ class TransformersPipeline(Pipeline):
         )
 
         # overwrite onnx graph to given required input shape
-        onnx_path, self.onnx_input_names, _ = overwrite_transformer_onnx_model_inputs(
+        (
+            onnx_path,
+            self.onnx_input_names,
+            self._temp_model_directory,
+        ) = overwrite_transformer_onnx_model_inputs(
             onnx_path, max_length=self.sequence_length
         )
 

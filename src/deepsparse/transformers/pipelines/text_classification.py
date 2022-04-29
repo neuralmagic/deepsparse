@@ -168,7 +168,7 @@ class TextClassificationPipeline(TransformersPipeline):
             padding=PaddingStrategy.MAX_LENGTH.value,
             truncation=TruncationStrategy.LONGEST_FIRST.value,
         )
-        return self.self.tokens_to_engine_input(tokens)
+        return self.tokens_to_engine_input(tokens)
 
     def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
         """
