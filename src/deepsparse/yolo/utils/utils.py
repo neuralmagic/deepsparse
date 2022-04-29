@@ -15,12 +15,15 @@
 """
 Helpers and Utilities for YOLO
 """
+import glob
 import itertools
+import logging
 import os
 import random
+import shutil
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -28,6 +31,7 @@ import yaml
 
 import torch
 import torchvision
+from sparsezoo.utils import create_dirs
 
 
 try:
@@ -40,6 +44,7 @@ except ModuleNotFoundError as cv2_import_error:
 
 _YOLO_CLASS_COLORS = list(itertools.product([0, 255, 128, 64, 192], repeat=3))
 _YOLO_CLASS_COLORS.remove((255, 255, 255))  # remove white from possible colors
+_LOGGER = logging.getLogger(__name__)
 
 # Default YOLO anchor grids
 _YOLO_DEFAULT_ANCHORS = [
@@ -306,25 +311,30 @@ def yolo_onnx_has_postprocessing(model_path: str) -> bool:
     return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
 
 
-def annotate(pipeline, images, save_dir="yolo-annotated-output", batch_tag=None):
+def annotate(pipeline, image_batch, target_fps=None, calc_fps=False):
     """
-    Annotated and save images with bounding boxes and labels
+    Annotated and save image_batch with bounding boxes and labels
 
     :param pipeline: A YOLOPipeline object
-    :param images: A list of image files, or batch of numpy images
-    :param save_dir: A directory to save the annotated images
-    :param batch_tag: A string to add to the filename of each image
+    :param image_batch: A list of image files, or batch of numpy image_batch
+
     """
 
-    original_images = images
+    original_images = image_batch
+    batch_size = image_batch.shape[0]
 
-    if images and isinstance(images[0], str):
-        original_images = [cv2.imread(image) for image in images]
+    if image_batch and isinstance(image_batch[0], str):
+        original_images = [cv2.imread(image) for image in image_batch]
 
-    pipeline_outputs = pipeline(images=images)
+    if target_fps is None and calc_fps:
+        start = time.time()
 
-    Path(save_dir).mkdir(parents=True, exist_ok=True)
+    pipeline_outputs = pipeline(images=image_batch)
 
+    if target_fps is None and calc_fps:
+        target_fps = float(batch_size) / (time.time() - start)
+
+    annotated_images = []
     for index, image_output in enumerate(pipeline_outputs):
         image = original_images[index]
         result = _annotate_image(
@@ -332,11 +342,11 @@ def annotate(pipeline, images, save_dir="yolo-annotated-output", batch_tag=None)
             boxes=image_output.boxes,
             labels=image_output.labels,
             scores=image_output.scores,
+            target_fps=target_fps,
         )
-        image_name = f"{batch_tag}_{index}.jpg" if batch_tag else f"{index}.jpg"
-        cv2.imwrite(os.path.join(save_dir, image_name), result)
+        annotated_images.append(result)
 
-    print(f"Annotated images saved to {save_dir}")
+    return annotated_images
 
 
 def _annotate_image(
@@ -360,7 +370,7 @@ def _annotate_image(
     :param model_input_size: 2-tuple of expected input size for the given model to
         be used for bounding box scaling with original image. Scaling will not
         be applied if model_input_size is None. Default is None
-    :param images_per_sec: optional images per second to annotate the left corner
+    :param images_per_sec: optional image_batch per second to annotate the left corner
         of the image with
     :return: the original image annotated with the given bounding boxes
     """
@@ -431,3 +441,330 @@ def _annotate_image(
             cv2.LINE_AA,
         )
     return img_res
+
+
+def get_yolo_loader_and_saver(
+    path: str,
+    save_dir: str,
+    image_shape: Tuple[int, int] = (640, 640),
+    target_fps: Optional[float] = None,
+    no_save: bool = False,
+) -> Union[Iterable, Any, bool]:
+    """
+
+    :param path: file path to image or directory of .jpg files, a .mp4 video,
+        or an integer (i.e. 0) for web-cam
+    :param save_dir: path of directory to save to
+    :param image_shape: size of input image_batch to model
+    :param args: optional arguments from annotate script ArgParser
+    :return: image loader iterable, result saver objects
+        image_batch, video, or web-cam based on path given, and a boolean value
+        that is True is the returned objects load videos
+    """
+    # video
+    if path.endswith(".mp4"):
+        loader = YoloVideoLoader(path, image_shape)
+        saver = VideoSaver(
+            save_dir,
+            loader.original_fps,
+            loader.original_frame_size,
+            target_fps,
+        )
+        return loader, saver, True
+    # webcam
+    if path.isnumeric():
+        loader = YoloWebcamLoader(int(path), image_shape)
+        saver = (
+            VideoSaver(save_dir, 30, loader.original_frame_size, None)
+            if not no_save
+            else None
+        )
+        return loader, saver, True
+    # image file(s)
+    return YoloImageLoader(path, image_shape), ImagesSaver(save_dir), False
+
+
+class YoloImageLoader:
+    """
+    Class for pre-processing and iterating over image_batch to be used as input for YOLO
+    models
+
+    :param path: Filepath to single image file or directory of image files to load,
+        glob paths also valid
+    :param image_size: size of input image_batch to model
+    """
+
+    def __init__(self, path: str, image_size: Tuple[int, int] = (640, 640)):
+        self._path = path
+        self._image_size = image_size
+
+        if os.path.isdir(path):
+            self._image_file_paths = [
+                os.path.join(path, file_name) for file_name in os.listdir(path)
+            ]
+        elif "*" in path:
+            self._image_file_paths = glob.glob(path)
+        elif os.path.isfile(path):
+            # single file
+            self._image_file_paths = [path]
+        else:
+            raise ValueError(f"{path} is not a file, glob, or directory")
+
+    def __iter__(self) -> Iterator[Tuple[numpy.ndarray, numpy.ndarray]]:
+        for image_path in self._image_file_paths:
+            yield load_image(image_path, image_size=self._image_size)
+
+
+class YoloVideoLoader:
+    """
+    Class for pre-processing and iterating over video frames to be used as input for
+    YOLO models
+
+    :param path: Filepath to single video file
+    :param image_size: size of input image_batch to model
+    """
+
+    def __init__(self, path: str, image_size: Tuple[int, int] = (640, 640)):
+        self._path = path
+        self._image_size = image_size
+        self._vid = cv2.VideoCapture(self._path)
+        self._total_frames = int(self._vid.get(cv2.CAP_PROP_FRAME_COUNT))
+        self._fps = self._vid.get(cv2.CAP_PROP_FPS)
+
+    def __iter__(self) -> Iterator[Tuple[numpy.ndarray, numpy.ndarray]]:
+        for _ in range(self._total_frames):
+            loaded, frame = self._vid.read()
+            if not loaded:
+                break
+            yield load_image(frame, image_size=self._image_size)
+        self._vid.release()
+
+    @property
+    def original_fps(self) -> float:
+        """
+        :return: the frames per second of the video this object reads
+        """
+        return self._fps
+
+    @property
+    def original_frame_size(self) -> Tuple[int, int]:
+        """
+        :return: the original size of frames in the video this object reads
+        """
+        return (
+            int(self._vid.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            int(self._vid.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+        )
+
+    @property
+    def total_frames(self) -> int:
+        """
+        :return: the total number of frames this object may laod from the video
+        """
+        return self._total_frames
+
+
+class YoloWebcamLoader:
+    """
+    Class for pre-processing and iterating over webcam frames to be used as input for
+    YOLO models.
+
+    Adapted from: https://github.com/ultralytics/yolov5/blob/master/utils/datasets.py
+
+    :param camera: Webcam index
+    :param image_size: size of input image_batch to model
+    """
+
+    def __init__(self, camera: int, image_size: Tuple[int, int] = (640, 640)):
+
+        self._camera = camera
+        self._image_size = image_size
+        self._stream = cv2.VideoCapture(self._camera)
+        self._stream.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+
+    def __iter__(self) -> Iterator[Tuple[numpy.ndarray, numpy.ndarray]]:
+        while True:
+            if cv2.waitKey(1) == ord("q"):  # q to quit
+                self._stream.release()
+                cv2.destroyAllWindows()
+                break
+            loaded, frame = self._stream.read()
+
+            assert loaded, f"Could not load image from webcam {self._camera}"
+
+            frame = cv2.flip(frame, 1)  # flip left-right
+            yield load_image(frame, image_size=self._image_size)
+
+    @property
+    def original_frame_size(self) -> Tuple[int, int]:
+        """
+        :return: the original size of frames in the stream this object reads
+        """
+        return (
+            int(self._stream.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            int(self._stream.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+        )
+
+
+class ImagesSaver:
+    """
+    Base class for saving YOLO model outputs. Saves each image as an individual file in
+    the given directory
+
+    :param save_dir: path to directory to write to
+    """
+
+    def __init__(self, save_dir: str):
+        self._save_dir = save_dir
+        self._idx = 0
+
+        create_dirs(save_dir)
+
+    def save_frame(self, image: numpy.ndarray):
+        """
+        :param image: numpy array of image to save
+        """
+        output_path = os.path.join(self._save_dir, f"result-{self._idx}.jpg")
+        cv2.imwrite(output_path, image)
+        self._idx += 1
+
+    def close(self):
+        """
+        perform any clean-up tasks
+        """
+        pass
+
+
+class VideoSaver(ImagesSaver):
+    """
+    Class for saving YOLO model outputs as a VideoFile
+
+    :param save_dir: path to directory to write to
+    :param original_fps: frames per second to save video with
+    :param output_frame_size: size of frames to write
+    :param target_fps: fps target for output video. if present, video
+        will be written with a certain number of the original frames
+        evenly dropped to match the target FPS.
+    """
+
+    def __init__(
+        self,
+        save_dir: str,
+        original_fps: float,
+        output_frame_size: Tuple[int, int],
+        target_fps: Optional[float] = None,
+    ):
+        super().__init__(save_dir)
+
+        self._output_frame_size = output_frame_size
+        self._original_fps = original_fps
+
+        if target_fps is not None and target_fps >= original_fps:
+            print(
+                f"target_fps {target_fps} is greater than source_fps "
+                f"{original_fps}. target fps file will not be invoked"
+            )
+        self._target_fps = target_fps
+
+        self._file_path = os.path.join(self._save_dir, "results.mp4")
+        self._writer = cv2.VideoWriter(
+            self._file_path,
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            original_fps,
+            self._output_frame_size,
+        )
+        self._n_frames = 0
+
+    def save_frame(self, image: numpy.ndarray):
+        """
+        :param image: numpy array of image to save
+        """
+        self._writer.write(image)
+        self._n_frames += 1
+
+    def close(self):
+        """
+        perform any clean-up tasks
+        """
+        self._writer.release()
+        if self._target_fps is not None and self._target_fps < self._original_fps:
+            self._write_target_fps_video()
+
+    def _write_target_fps_video(self):
+        assert self._target_fps is not None
+        num_frames_to_keep = int(
+            self._n_frames * (self._target_fps / self._original_fps)
+        )
+        # adjust target fps so we can keep the same video duration
+        adjusted_target_fps = num_frames_to_keep * (self._original_fps / self._n_frames)
+
+        # select num_frames_to_keep evenly spaced frame idxs
+        frame_idxs_to_keep = set(
+            numpy.round(numpy.linspace(0, self._n_frames, num_frames_to_keep))
+            .astype(int)
+            .tolist()
+        )
+
+        # create new video writer for adjusted video
+        vid_path = os.path.join(
+            self._save_dir, f"_results-{adjusted_target_fps:.2f}fps.mp4"
+        )
+        fps_writer = cv2.VideoWriter(
+            vid_path,
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            adjusted_target_fps,
+            self._output_frame_size,
+        )
+
+        # read from original video and write to FPS adjusted video
+        saved_vid = cv2.VideoCapture(self._file_path)
+        for idx in range(self._n_frames):
+            _, frame = saved_vid.read()
+            if idx in frame_idxs_to_keep:
+                fps_writer.write(frame)
+
+        saved_vid.release()
+        fps_writer.release()
+        shutil.move(vid_path, self._file_path)  # overwrite original file
+
+
+def load_image(
+    img: Union[str, numpy.ndarray], image_size: Tuple[int, int] = (640, 640)
+) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    """
+    :param img: file path to image or raw image array
+    :param image_size: target shape for image
+    :return: Image loaded into numpy and reshaped to the given shape and the original
+        image
+    """
+    img = cv2.imread(img) if isinstance(img, str) else img
+    img_resized = cv2.resize(img, image_size)
+    img_transposed = img_resized[:, :, ::-1].transpose(2, 0, 1)
+
+    return img_transposed, img
+
+
+def get_annotations_save_dir(
+    save_dir: str,
+    tag: Optional[str] = None,
+    engine: Optional[str] = None,
+) -> str:
+    """
+    Returns the directory to save annotations to. If directory exists, it will
+    append a number to the end of the directory name.
+
+    :param save_dir: Initial directory to save annotations to
+    :param tag: A tag under which to save the annotations inside `save_dir`
+    :param engine: Used to generate a unique tag if it is not provided.
+    :return: A new unique dir path to save annotations to
+    """
+    name = tag or f"{engine}-annotations"
+    save_dir = os.path.join(save_dir, name)
+    counter = 0
+    while os.path.exists(save_dir):
+        counter += 1
+        save_dir = os.path.join(save_dir, f"{name}-{counter:03d}")
+
+    _LOGGER.info(f"Results will be saved to {save_dir}")
+    Path(save_dir).mkdir(parents=True, exist_ok=False)
+    return save_dir
