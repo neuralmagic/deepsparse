@@ -13,7 +13,56 @@
 # limitations under the License.
 
 """
-Annotation Script for YOLO with DeepSparse
+Usage: deepsparse.object_detection.annotate [OPTIONS]
+
+  Annotation Script for YOLO with DeepSparse
+
+Options:
+  --model_filepath, --model-filepath TEXT
+                                  Path/SparseZoo stub to the model file to be
+                                  used for annotation  [default: zoo:cv/detect
+                                  ion/yolov5-s/pytorch/ultralytics/coco/pruned
+                                  -aggressive_96]
+  --source TEXT                   File path to image or directory of .jpg
+                                  files, a .mp4 video, or an integer (i.e. 0)
+                                  for webcam  [required]
+  --engine [deepsparse|onnxruntime|torch]
+                                  Inference engine backend to run on. Choices
+                                  are 'deepsparse', 'onnxruntime', and
+                                  'torch'. Default is 'deepsparse'
+  --image_shape, --image_shape INTEGER...
+                                  Image shape to use for inference, must be
+                                  two integers  [default: 640, 640]
+  --num_cores, --num-cores INTEGER
+                                  The number of physical cores to run the
+                                  annotations with, defaults to using all
+                                  physical cores available on the system. For
+                                  DeepSparse benchmarks, this value is the
+                                  number of cores per socket
+  --save_dir, --save-dir DIRECTORY
+                                  The path to the directory for saving results
+                                  [default: annotation-results]
+  --name TEXT                     Name of directory in save-dir to write
+                                  results to. defaults to
+                                  {engine}-annotations-{run_number}
+  --target_fps, --target-fps FLOAT
+                                  Target FPS when writing video files. Frames
+                                  will be dropped to closely match target FPS.
+                                  --source must be a video file and if target-
+                                  fps is greater than the source video fps
+                                  then it will be ignored
+  --no_save, --no-save            Set flag when source is from webcam to not
+                                  save results.Not supported for non-webcam
+                                  sources  [default: False]
+  --help                          Show this message and exit.
+
+#######
+Examples:
+
+1) deepsparse.object_detection.annotate --source PATH/TO/IMAGE.jpg
+2) deepsparse.object_detection.annotate --source PATH/TO/VIDEO.mp4
+3) deepsparse.object_detection.annotate --source 0
+4) deepsparse.object_detection.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
 from typing import Optional
