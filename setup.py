@@ -81,6 +81,11 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 
+_ic_integration_deps = [
+    "click<8.1",
+    "opencv-python",
+]
+
 
 class OverrideInstall(install):
     """
@@ -173,12 +178,14 @@ def _setup_extras() -> Dict:
         "dev": _dev_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
+        "image_classification": _ic_integration_deps,
     }
 
 
 def _setup_entry_points() -> Dict:
     data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     eval_downstream = "deepsparse.transformers.eval_downstream:main"
+
     return {
         "console_scripts": [
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",

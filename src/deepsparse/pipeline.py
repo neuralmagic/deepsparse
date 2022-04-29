@@ -27,7 +27,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Engine, Scheduler
-from deepsparse.benchmark import ORTEngine
+from deepsparse.benchmark_model.ort_engine import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
 
@@ -132,9 +132,8 @@ class Pipeline(ABC):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
 
-        self._onnx_file_path = self.setup_onnx_file_path()
+        self.onnx_file_path = self.setup_onnx_file_path()
         self._engine = self._initialize_engine()
-        pass
 
     def __call__(self, pipeline_inputs: BaseModel = None, **kwargs) -> BaseModel:
         if pipeline_inputs is None and kwargs:
@@ -222,7 +221,7 @@ class Pipeline(ABC):
         )
 
     @classmethod
-    def register(cls, task: str, task_aliases: Optional[List[str]]):
+    def register(cls, task: str, task_aliases: Optional[List[str]] = None):
         """
         Pipeline implementer class decorator that registers the pipeline
         task name and its aliases as valid tasks that can be used to load
@@ -233,7 +232,7 @@ class Pipeline(ABC):
 
         :param task: main task name of this pipeline
         :param task_aliases: list of extra task names that may be used to reference
-            this pipeline
+            this pipeline. Default is None
         """
         task_names = [task]
         if task_aliases:
@@ -386,13 +385,6 @@ class Pipeline(ABC):
         :return: type of inference engine used for model forward pass
         """
         return self._engine_type
-
-    @property
-    def onnx_file_path(self) -> str:
-        """
-        :return: onnx file path used to instantiate engine
-        """
-        return self._onnx_file_path
 
     def to_config(self) -> "PipelineConfig":
         """
