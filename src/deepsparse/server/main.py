@@ -193,9 +193,7 @@ def server_app_factory():
     num_tasks = len(config.models)
     defined_tasks = set()
     for pipeline in pipelines:
-        _add_pipeline_route(
-            app, pipeline, num_tasks, defined_tasks, config.integration
-        )
+        _add_pipeline_route(app, pipeline, num_tasks, defined_tasks, config.integration)
 
     return app
 
