@@ -16,11 +16,21 @@
 """
 Input/Output Schemas for Image Segmentation with YOLO
 """
-
+from collections import namedtuple
 from typing import List, Union
 
 import numpy
 from pydantic import BaseModel
+
+
+__all__ = [
+    "YOLOOutput",
+    "YOLOInput",
+]
+
+_YOLOImageOutput = namedtuple(
+    "_YOLOImageOutput", ["predictions", "boxes", "scores", "labels"]
+)
 
 
 class YOLOInput(BaseModel):
@@ -43,3 +53,18 @@ class YOLOOutput(BaseModel):
     boxes: List[List[List[float]]]
     scores: List[List[float]]
     labels: List[List[str]]
+
+    def __getitem__(self, index):
+        if index >= len(self.predictions):
+            raise IndexError("Index out of range")
+
+        return _YOLOImageOutput(
+            self.predictions[index],
+            self.boxes[index],
+            self.scores[index],
+            self.labels[index],
+        )
+
+    def __iter__(self):
+        for index in range(len(self.predictions)):
+            yield self[index]

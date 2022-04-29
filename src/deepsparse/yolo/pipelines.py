@@ -18,11 +18,9 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 import numpy
 import onnx
 
-from deepsparse import Scheduler
-from deepsparse.pipeline import DEEPSPARSE_ENGINE, Pipeline
-from deepsparse.yolo.coco_classes import COCO_CLASSES
+from deepsparse.pipeline import Pipeline
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
-from deepsparse.yolo.utils import YoloPostprocessor, postprocess_nms
+from deepsparse.yolo.utils import COCO_CLASSES, YoloPostprocessor, postprocess_nms
 
 
 try:
@@ -58,25 +56,14 @@ class YOLOPipeline(Pipeline):
 
     def __init__(
         self,
-        model_path: str,
-        engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: int = 1,
-        num_cores: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        alias: Optional[str] = None,
+        *,
         class_names: Optional[Union[str, Dict[str, str]]] = "coco",
+        model_config: Optional[str] = None,
+        **kwargs,
     ):
         super().__init__(
-            model_path,
-            engine_type,
-            batch_size,
-            num_cores,
-            scheduler,
-            input_shapes,
-            alias,
+            **kwargs,
         )
-        self._input_shape = None
 
         if isinstance(class_names, str):
             if class_names.endswith(".json"):
@@ -87,9 +74,9 @@ class YOLOPipeline(Pipeline):
                 raise ValueError(f"Unknown class_names: {class_names}")
 
         if isinstance(class_names, dict):
-            self.class_names = class_names
+            self._class_names = class_names
         elif isinstance(class_names, list):
-            self.class_names = {
+            self._class_names = {
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
         else:
@@ -98,13 +85,21 @@ class YOLOPipeline(Pipeline):
                 f"list of class names got {type(class_names)}"
             )
 
-        self.onnx_model = onnx.load(self.engine.model_path)
-
+        onnx_model = onnx.load(self.onnx_file_path)
+        self.has_postprocessing = self.model_has_postprocessing(
+            loaded_onnx_model=onnx_model,
+        )
+        self.input_shape = self._infer_image_shape(onnx_model=onnx_model)
+        self.is_quantized = self.model_is_quantized(onnx_model=onnx_model)
         self.postprocessor = (
             None
             if self.has_postprocessing
-            else YoloPostprocessor(image_size=self.input_shape)
+            else YoloPostprocessor(
+                image_size=self.input_shape,
+                cfg=model_config,
+            )
         )
+        self._model_config = model_config
 
     def setup_onnx_file_path(self) -> str:
         """
@@ -129,16 +124,17 @@ class YOLOPipeline(Pipeline):
             inputs.images = [inputs.images]
 
         for image in inputs.images:
-            img = cv2.imread(image) if isinstance(image, str) else image
+            if isinstance(image, str):
+                image = cv2.imread(image)
+                image = cv2.resize(image, dsize=self.input_shape)
+                image = image[:, :, ::-1].transpose(2, 0, 1)
 
-            img = cv2.resize(img, dsize=self.input_shape)
-            img = img[:, :, ::-1].transpose(2, 0, 1)
-
-            image_batch.append(img)
+            image_batch.append(image)
 
         image_batch = numpy.stack(image_batch, axis=0)
         image_batch = numpy.ascontiguousarray(
-            image_batch, dtype=numpy.int8 if self.is_quantized else numpy.float32
+            image_batch,
+            dtype=numpy.int8 if self.is_quantized else numpy.float32,
         )
         image_batch /= 255
 
@@ -201,37 +197,33 @@ class YOLOPipeline(Pipeline):
         return YOLOOutput
 
     @property
-    def input_shape(self) -> Tuple[int, ...]:
-        """
-        Returns the expected shape of the input tensor
+    def model_config(self) -> str:
+        return self._model_config
 
-        :return: The expected shape of the input tensor from onnx graph
-        """
-        if self._input_shape is None:
-            self._input_shape = self._infer_image_shape()
-        return self._input_shape
+    @property
+    def class_names(self):
+        return self._class_names
 
-    def _infer_image_shape(self) -> Tuple[int, ...]:
+    def _infer_image_shape(self, onnx_model) -> Tuple[int, ...]:
         """
         Infer and return the expected shape of the input tensor
 
         :return: The expected shape of the input tensor from onnx graph
         """
-        input_tensor = self.onnx_model.graph.input[0]
+        input_tensor = onnx_model.graph.input[0]
         return (
             input_tensor.type.tensor_type.shape.dim[2].dim_value,
             input_tensor.type.tensor_type.shape.dim[3].dim_value,
         )
 
-    @property
-    def has_postprocessing(self) -> bool:
+    def model_has_postprocessing(self, loaded_onnx_model) -> bool:
         """
-        :return: True if onnx_model has postprocessing, False otherwise
+        :return: True if loaded_onnx_model has postprocessing, False otherwise
         """
         # get number of dimensions in each output
         outputs_num_dims = [
             len(output.type.tensor_type.shape.dim)
-            for output in self.onnx_model.graph.output
+            for output in loaded_onnx_model.graph.output
         ]
 
         # assume if only one output, then it is post-processed
@@ -240,12 +232,11 @@ class YOLOPipeline(Pipeline):
 
         return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
 
-    @property
-    def is_quantized(self) -> bool:
+    def model_is_quantized(self, onnx_model) -> bool:
         """
-        :return: True if onnx_model is quantized, False otherwise
+        :return: True if loaded_onnx_model is quantized, False otherwise
         """
         return (
-            self.onnx_model.graph.input[0].type.tensor_type.elem_type
-            == onnx.TensorProto.INT8
+            onnx_model.graph.input[0].type.tensor_type.elem_type
+            == onnx.TensorProto.UINT8
         )
