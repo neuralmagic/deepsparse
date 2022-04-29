@@ -131,7 +131,7 @@ class Pipeline(ABC):
             self._engine_args["scheduler"] = scheduler
 
         self._onnx_file_path = self.setup_onnx_file_path()
-        self._engine = self._initialize_engine()
+        self.engine = self._initialize_engine()
         pass
 
     def __call__(self, *args, **kwargs) -> BaseModel:
@@ -349,13 +349,6 @@ class Pipeline(ABC):
             containing a model.onnx file along with supporting files
         """
         return self._model_path
-
-    @property
-    def engine(self) -> Union[Engine, ORTEngine]:
-        """
-        :return: engine instance used for model forward pass in pipeline
-        """
-        return self._engine
 
     @property
     def engine_args(self) -> Dict[str, Any]:

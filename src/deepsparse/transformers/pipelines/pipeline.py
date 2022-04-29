@@ -17,8 +17,8 @@ Base Pipeline class for transformers inference pipeline
 """
 
 
-from typing import Any, List, Mapping, Optional
 import warnings
+from typing import Any, List, Mapping, Optional
 
 import numpy
 from transformers.models.auto import AutoConfig, AutoTokenizer
@@ -32,7 +32,7 @@ from deepsparse.transformers.helpers import (
 
 __all__ = [
     "TransformersPipeline",
-    "pipeline,"
+    "pipeline",
 ]
 
 
