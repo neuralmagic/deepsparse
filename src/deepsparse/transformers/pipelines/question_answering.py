@@ -79,6 +79,10 @@ class QuestionAnsweringOutput(BaseModel):
 @Pipeline.register(
     task="question_answering",
     task_aliases=["qa"],
+    default_model_path=(
+        "zoo:nlp/question_answering/bert-base/pytorch/huggingface/"
+        "squad/12layer_pruned80_quant-none-vnni"
+    ),
 )
 class QuestionAnsweringPipeline(TransformersPipeline):
     """
