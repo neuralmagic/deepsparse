@@ -19,6 +19,7 @@ import numpy
 import onnx
 
 from deepsparse.pipeline import Pipeline
+from deepsparse.utils import model_to_path
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
 from deepsparse.yolo.utils import COCO_CLASSES, YoloPostprocessor, postprocess_nms
 
@@ -136,7 +137,7 @@ class YOLOPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        return self.model_path
+        return model_to_path(self.model_path)
 
     def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
         """
