@@ -139,12 +139,12 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
 ## 👩‍💻 NLP Inference Example
 
 ```python
-from deepsparse.transformers import pipeline
+from deepsparse import Pipeline
 
 # SparseZoo model stub or path to ONNX file
 model_path = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 
-qa_pipeline = pipeline(
+qa_pipeline = Pipeline.create(
     task="question-answering",
     model_path=model_path,
 )
