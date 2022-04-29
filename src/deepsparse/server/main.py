@@ -160,10 +160,10 @@ def _add_pipeline_route(
 
     @app.post(
         path,
-        response_model=pipeline.output_model,
+        response_model=pipeline.output_schema,
         tags=["prediction"],
     )
-    async def _predict_func(request: pipeline.input_model):
+    async def _predict_func(request: pipeline.input_schema):
         results = await execute_async(
             pipeline,
             request,
