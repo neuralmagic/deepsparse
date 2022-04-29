@@ -58,7 +58,7 @@ class YOLOPipeline(Pipeline):
         self,
         *,
         class_names: Optional[Union[str, Dict[str, str]]] = "coco",
-        model_config: Optional[str]=None,
+        model_config: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(

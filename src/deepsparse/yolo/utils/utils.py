@@ -311,7 +311,9 @@ def yolo_onnx_has_postprocessing(model_path: str) -> bool:
     return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
 
 
-def annotate(pipeline, image_batch, target_fps=None, calc_fps=False):
+def annotate(
+    pipeline, image_batch, target_fps=None, calc_fps=False, original_images=None
+):
     """
     Annotated and save image_batch with bounding boxes and labels
 
@@ -320,12 +322,13 @@ def annotate(pipeline, image_batch, target_fps=None, calc_fps=False):
 
     """
 
-    original_images = image_batch
     if not isinstance(image_batch, list):
         image_batch = [image_batch]
 
-    batch_size = len(image_batch)
+    if not original_images:
+        original_images = image_batch
 
+    batch_size = len(image_batch)
     if image_batch and isinstance(image_batch[0], str):
         original_images = [cv2.imread(image) for image in image_batch]
 
@@ -772,5 +775,3 @@ def get_annotations_save_dir(
     _LOGGER.info(f"Results will be saved to {new_save_dir}")
     Path(new_save_dir).mkdir(parents=True, exist_ok=True)
     return new_save_dir
-
-

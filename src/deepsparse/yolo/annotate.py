@@ -160,6 +160,7 @@ def main(
             image_batch=input_image,
             target_fps=target_fps,
             calc_fps=is_video,
+            original_images=[source_image],
         )
 
         for annotated_image in annotated_images:
