@@ -32,7 +32,12 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 
-@Pipeline.register(task="yolo")
+@Pipeline.register(
+    task="yolo",
+    default_model_path=(
+        "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant-aggressive_95"
+    ),
+)
 class YOLOPipeline(Pipeline):
     """
     Image Segmentation YOLO pipeline for DeepSparse

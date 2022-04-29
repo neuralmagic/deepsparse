@@ -27,7 +27,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Engine, Scheduler
-from deepsparse.benchmark_model.ort_engine import ORTEngine
+from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
 
@@ -170,7 +170,7 @@ class Pipeline(ABC):
     @staticmethod
     def create(
         task: str,
-        model_path: str,
+        model_path: str = None,
         engine_type: str = DEEPSPARSE_ENGINE,
         batch_size: int = 1,
         num_cores: int = None,
@@ -182,7 +182,7 @@ class Pipeline(ABC):
         """
         :param task: name of task to create a pipeline for
         :param model_path: path on local system or SparseZoo stub to load the model
-            from
+            from. Some tasks may have a default model path
         :param engine_type: inference engine to use. Currently supported values
             include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
         :param batch_size: static batch size to use for inference. Default is 1
@@ -214,7 +214,22 @@ class Pipeline(ABC):
                 f"registered pipelines: {list(_REGISTERED_PIPELINES.keys())}"
             )
 
-        return _REGISTERED_PIPELINES[task](
+        pipeline_constructor = _REGISTERED_PIPELINES[task]
+
+        if (
+            model_path is None
+            and hasattr(pipeline_constructor, "default_model_path")
+            and pipeline_constructor.default_model_path
+        ):
+            model_path = pipeline_constructor.default_model_path
+
+        if model_path is None:
+            raise ValueError(
+                f"No model_path provided for pipeline {pipeline_constructor}. Must "
+                "provide a model path for pipelines that do not have a default defined"
+            )
+
+        return pipeline_constructor(
             model_path=model_path,
             engine_type=engine_type,
             batch_size=batch_size,
@@ -226,7 +241,12 @@ class Pipeline(ABC):
         )
 
     @classmethod
-    def register(cls, task: str, task_aliases: Optional[List[str]] = None):
+    def register(
+        cls,
+        task: str,
+        task_aliases: Optional[List[str]] = None,
+        default_model_path: Optional[str] = None,
+    ):
         """
         Pipeline implementer class decorator that registers the pipeline
         task name and its aliases as valid tasks that can be used to load
@@ -238,6 +258,8 @@ class Pipeline(ABC):
         :param task: main task name of this pipeline
         :param task_aliases: list of extra task names that may be used to reference
             this pipeline. Default is None
+        :param default_model_path: path (ie zoo stub) to use as default for this
+            task if None is provided
         """
         task_names = [task]
         if task_aliases:
@@ -266,6 +288,7 @@ class Pipeline(ABC):
             # set task and task_aliases as class level property
             pipeline_class.task = task
             pipeline_class.task_aliases = task_aliases
+            pipeline_class.default_model_path = default_model_path
 
             return pipeline_class
 

@@ -77,6 +77,10 @@ class TextClassificationOutput(BaseModel):
 @Pipeline.register(
     task="text_classification",
     task_aliases=["glue", "sentiment_analysis"],
+    default_model_path=(
+        "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/"
+        "sst2/12layer_pruned80_quant-none-vnni"
+    ),
 )
 class TextClassificationPipeline(TransformersPipeline):
     """
