@@ -132,14 +132,14 @@ class TextClassificationPipeline(TransformersPipeline):
     """
 
     @property
-    def input_model(self) -> Type[BaseModel]:
+    def input_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
         return TextClassificationInput
 
     @property
-    def output_model(self) -> Type[BaseModel]:
+    def output_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
@@ -147,11 +147,11 @@ class TextClassificationPipeline(TransformersPipeline):
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """
-        :param args: ordered arguments to pipeline, only an input_model object
+        :param args: ordered arguments to pipeline, only an input_schema object
             is supported as an arg for this function
         :param kwargs: keyword arguments to pipeline
-        :return: pipeline arguments parsed into the given `input_model`
-            schema if necessary. If an instance of the `input_model` is provided
+        :return: pipeline arguments parsed into the given `input_schema`
+            schema if necessary. If an instance of the `input_schema` is provided
             it will be returned
         """
         if args and kwargs:
@@ -162,14 +162,14 @@ class TextClassificationPipeline(TransformersPipeline):
 
         if args:
             if len(args) == 1:
-                # passed input_model schema directly
-                if isinstance(args[0], self.input_model):
+                # passed input_schema schema directly
+                if isinstance(args[0], self.input_schema):
                     return args[0]
-                return self.input_model(sequences=args[0])
+                return self.input_schema(sequences=args[0])
             else:
-                return self.input_model(sequences=args)
+                return self.input_schema(sequences=args)
 
-        return self.input_model(**kwargs)
+        return self.input_schema(**kwargs)
 
     def process_inputs(self, inputs: TextClassificationInput) -> List[numpy.ndarray]:
         """
@@ -191,7 +191,7 @@ class TextClassificationPipeline(TransformersPipeline):
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        :return: outputs of engine post-processed into an object in the `output_model`
+        :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
         outputs = engine_outputs
@@ -211,7 +211,7 @@ class TextClassificationPipeline(TransformersPipeline):
             labels.append(self.config.id2label[score.argmax()])
             label_scores.append(score.max().item())
 
-        return self.output_model(
+        return self.output_schema(
             labels=labels,
             scores=label_scores,
         )

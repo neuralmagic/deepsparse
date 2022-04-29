@@ -169,14 +169,14 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         return self._max_question_length
 
     @property
-    def input_model(self) -> Type[BaseModel]:
+    def input_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
         return QuestionAnsweringInput
 
     @property
-    def output_model(self) -> Type[BaseModel]:
+    def output_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
@@ -214,7 +214,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        :return: outputs of engine post-processed into an object in the `output_model`
+        :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
         features = kwargs["features"]
@@ -258,7 +258,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         # decode start, end idx into text
         if not self.tokenizer.is_fast:
             char_to_word = numpy.array(example.char_to_word_offset)
-            return self.output_model(
+            return self.output_schema(
                 score=score.item(),
                 start=numpy.where(
                     char_to_word == features.token_to_orig_map[ans_start]
@@ -281,7 +281,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             # Sometimes the max probability token is in the middle of a word so:
             # we start by finding the right word containing the token with
             # `token_to_word` then we convert this word in a character span
-            return self.output_model(
+            return self.output_schema(
                 score=score.item(),
                 start=features.encoding.word_to_chars(
                     features.encoding.token_to_word(ans_start),

@@ -101,6 +101,28 @@ class YOLOPipeline(Pipeline):
         )
         self._model_config = model_config
 
+    @property
+    def model_config(self) -> str:
+        return self._model_config
+
+    @property
+    def class_names(self) -> Optional[Dict[str, str]]:
+        return self._class_names
+
+    @property
+    def input_schema(self) -> Type[YOLOInput]:
+        """
+        :return: pydantic model class that inputs to this pipeline must comply to
+        """
+        return YOLOInput
+
+    @property
+    def output_schema(self) -> Type[YOLOOutput]:
+        """
+        :return: pydantic model class that outputs of this pipeline must comply to
+        """
+        return YOLOOutput
+
     def setup_onnx_file_path(self) -> str:
         """
         Performs any setup to unwrap and process the given `model_path` and other
@@ -113,7 +135,7 @@ class YOLOPipeline(Pipeline):
 
     def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
         """
-        :param inputs: inputs to the pipeline. Must be the type of the `input_model`
+        :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
             of this pipeline
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
@@ -147,7 +169,7 @@ class YOLOPipeline(Pipeline):
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        :return: outputs of engine post-processed into an object in the `output_model`
+        :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
 
@@ -181,28 +203,6 @@ class YOLOPipeline(Pipeline):
             scores=batch_scores,
             labels=batch_labels,
         )
-
-    @property
-    def input_model(self) -> Type[YOLOInput]:
-        """
-        :return: pydantic model class that inputs to this pipeline must comply to
-        """
-        return YOLOInput
-
-    @property
-    def output_model(self) -> Type[YOLOOutput]:
-        """
-        :return: pydantic model class that outputs of this pipeline must comply to
-        """
-        return YOLOOutput
-
-    @property
-    def model_config(self) -> str:
-        return self._model_config
-
-    @property
-    def class_names(self):
-        return self._class_names
 
     def _infer_image_shape(self, onnx_model) -> Tuple[int, ...]:
         """

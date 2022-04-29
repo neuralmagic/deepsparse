@@ -59,7 +59,7 @@ class Pipeline(ABC):
     `Pipeline.create()` method. The task name given to `create` will be used to
     load the appropriate pipeline. When creating a Pipeline, the pipeline should
     inherit from `Pipeline` and implement the `setup_onnx_file_path`, `process_inputs`,
-    `process_engine_outputs`, `input_model`, and `output_model` abstract methods.
+    `process_engine_outputs`, `input_schema`, and `output_schema` abstract methods.
 
     Finally, the class definition should be decorated by the `Pipeline.register`
     function. This defines the task name and task aliases for the pipeline and
@@ -72,10 +72,10 @@ class Pipeline(ABC):
          * `engine` <- `_initialize_engine`
 
      - on __call__:
-         * `parsed_inputs: input_model` <- `parse_inputs(*args, **kwargs)`
+         * `parsed_inputs: input_schema` <- `parse_inputs(*args, **kwargs)`
          * `pre_processed_inputs` <- `process_inputs(parsed_inputs)`
          * `engine_outputs` <- `engine(pre_processed_inputs)`
-         * `outputs: output_model` <- `process_engine_outputs(engine_outputs)`
+         * `outputs: output_schema` <- `process_engine_outputs(engine_outputs)`
 
     Example use of register:
      ```python
@@ -137,12 +137,12 @@ class Pipeline(ABC):
         self.engine = self._initialize_engine()
 
     def __call__(self, *args, **kwargs) -> BaseModel:
-        # parse inputs into input_model schema if necessary
+        # parse inputs into input_schema schema if necessary
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
-        if not isinstance(pipeline_inputs, self.input_model):
+        if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
-                f"{self.input_model} object. Inputs parsed to {type(pipeline_inputs)}"
+                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
 
         # run pipeline
@@ -159,10 +159,10 @@ class Pipeline(ABC):
         )
 
         # validate outputs format
-        if not isinstance(pipeline_outputs, self.output_model):
+        if not isinstance(pipeline_outputs, self.output_schema):
             raise ValueError(
-                f"Outputs of {self.__class__} must be instances of {self.output_model}"
-                f" found output of type {type(pipeline_outputs)}"
+                f"Outputs of {self.__class__} must be instances of "
+                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
 
         return pipeline_outputs
@@ -316,7 +316,7 @@ class Pipeline(ABC):
         inputs: BaseModel,
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
         """
-        :param inputs: inputs to the pipeline. Must be the type of the `input_model`
+        :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
             of this pipeline
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine. Can
@@ -335,14 +335,14 @@ class Pipeline(ABC):
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        :return: outputs of engine post-processed into an object in the `output_model`
+        :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
         raise NotImplementedError()
 
     @property
     @abstractmethod
-    def input_model(self) -> Type[BaseModel]:
+    def input_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
@@ -350,7 +350,7 @@ class Pipeline(ABC):
 
     @property
     @abstractmethod
-    def output_model(self) -> Type[BaseModel]:
+    def output_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
@@ -427,25 +427,25 @@ class Pipeline(ABC):
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """
-        :param args: ordered arguments to pipeline, only an input_model object
+        :param args: ordered arguments to pipeline, only an input_schema object
             is supported as an arg for this function
         :param kwargs: keyword arguments to pipeline
-        :return: pipeline arguments parsed into the given `input_model`
-            schema if necessary. If an instance of the `input_model` is provided
+        :return: pipeline arguments parsed into the given `input_schema`
+            schema if necessary. If an instance of the `input_schema` is provided
             it will be returned
         """
-        # passed input_model schema directly
-        if len(args) == 1 and isinstance(args[0], self.input_model) and not kwargs:
+        # passed input_schema schema directly
+        if len(args) == 1 and isinstance(args[0], self.input_schema) and not kwargs:
             return args[0]
 
         if args:
             raise ValueError(
                 f"pipeline {self.__class__} only supports either only a "
-                f"{self.input_model} object. or keyword arguments to be construct one. "
-                f"Found {len(args)} args and {len(kwargs)} kwargs"
+                f"{self.input_schema} object. or keyword arguments to be construct "
+                f"one. Found {len(args)} args and {len(kwargs)} kwargs"
             )
 
-        return self.input_model(**kwargs)
+        return self.input_schema(**kwargs)
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
