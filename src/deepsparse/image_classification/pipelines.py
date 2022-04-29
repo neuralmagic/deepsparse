@@ -89,14 +89,14 @@ class ImageClassificationPipeline(Pipeline):
         return self._class_names
 
     @property
-    def input_model(self) -> Type[ImageClassificationInput]:
+    def input_schema(self) -> Type[ImageClassificationInput]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
         return ImageClassificationInput
 
     @property
-    def output_model(self) -> Type[ImageClassificationOutput]:
+    def output_schema(self) -> Type[ImageClassificationOutput]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
@@ -164,7 +164,7 @@ class ImageClassificationPipeline(Pipeline):
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        :return: outputs of engine post-processed into an object in the `output_model`
+        :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
         labels = numpy.argmax(engine_outputs[0], axis=1).tolist()
@@ -172,7 +172,7 @@ class ImageClassificationPipeline(Pipeline):
         if self.class_names is not None:
             labels = [self.class_names[str(class_id)] for class_id in labels]
 
-        return ImageClassificationOutput(
+        return self.output_schema(
             scores=numpy.max(engine_outputs[0], axis=1).tolist(),
             labels=labels,
         )
