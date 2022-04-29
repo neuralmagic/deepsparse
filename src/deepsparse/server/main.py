@@ -58,6 +58,12 @@ Options:
                         supplied.
   --batch_size INTEGER  The batch size to serve the model from model_path
                         with. Ignored if config_file is supplied.
+  --integration [default|sagemaker]
+                                  Name of deployment integration that this
+                                  server will be deployed to Currently
+                                  supported options are 'default' and
+                                  'sagemaker' for inference deployment with
+                                  Amazon Sagemaker
   --help                Show this message and exit.
 
 
@@ -250,11 +256,11 @@ def server_app_factory():
 )
 @click.option(
     "--integration",
-    type=str,
-    default=None,
+    type=click.Choice(["default", "sagemaker"], case_sensitive=False),
+    default="default",
     help="Name of deployment integration that this server will be deployed to "
-    "Currently supported options are None for default inference and 'sagemaker' for "
-    "inference deployment with AWS Sagemaker",
+    "Currently supported options are 'default' and 'sagemaker' for "
+    "inference deployment with Amazon Sagemaker",
 )
 def start_server(
     host: str,
