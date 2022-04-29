@@ -30,6 +30,7 @@ from deepsparse.image_classification.schemas import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
+from deepsparse.utils import model_to_path
 
 
 try:
@@ -109,7 +110,8 @@ class ImageClassificationPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        return self.model_path
+
+        return model_to_path(self.model_path)
 
     def process_inputs(self, inputs: ImageClassificationInput) -> List[numpy.ndarray]:
         """
@@ -181,7 +183,7 @@ class ImageClassificationPipeline(Pipeline):
 
         :return: The expected shape of the input tensor from onnx graph
         """
-        onnx_model = onnx.load(self.model_path)
+        onnx_model = onnx.load(self.onnx_file_path)
         input_tensor = onnx_model.graph.input[0]
         return (
             input_tensor.type.tensor_type.shape.dim[2].dim_value,
