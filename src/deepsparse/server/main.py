@@ -146,7 +146,7 @@ def _add_pipeline_route(app, pipeline: Pipeline, num_models: int, defined_tasks:
     async def _predict_func(request: pipeline.input_model):
         results = await execute_async(
             pipeline,
-            **vars(request),
+            request,
         )
         return serializable_response(results)
 
