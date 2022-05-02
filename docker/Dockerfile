@@ -8,3 +8,6 @@ ENV PATH="venv/bin:$PATH"
 # Setup DeepSparse
 RUN pip3 install deepsparse[server]
 
+# Bash as default entrypoint
+CMD ["bin/bash"]
+
