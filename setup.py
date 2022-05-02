@@ -74,7 +74,7 @@ _dev_deps = [
 _server_deps = [
     "uvicorn>=0.15.0",
     "fastapi>=0.70.0",
-    "starlette>=0.16.0",
+    "pydantic>=1.8.2",
     "requests>=2.26.0",
 ]
 _onnxruntime_deps = [
