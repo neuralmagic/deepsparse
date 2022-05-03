@@ -86,8 +86,6 @@ import argparse
 import json
 from typing import Any, Callable, Optional
 
-from pydantic import BaseModel
-
 from deepsparse.pipeline import SUPPORTED_PIPELINE_ENGINES
 from deepsparse.transformers import fix_numpy_types
 from deepsparse.transformers.loaders import SUPPORTED_EXTENSIONS, get_batch_loader
