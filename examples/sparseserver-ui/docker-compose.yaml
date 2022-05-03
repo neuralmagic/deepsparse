@@ -4,15 +4,13 @@ services:
   client:
     # build the docker image from the clientDockerfile
     build:
-      context: .
-      dockerfile: clientDockerfile
+      context: ./client
     # name the streamlit server image 
     image: client 
     # name of docker container image
     container_name: streamlitclient
-    # name of internal docker network 
-    networks:
-      - deepsparse-network
+    # this ensures that the container shares the same network namespace as the host in order to keep the client/server connectivity via localhost instead of internally within the container
+    network_mode: "host"
     # port exposed from the container to the host and accessible via localhost
     ports:
       - "8501:8501"
@@ -23,15 +21,13 @@ services:
   deepsparseserver:
     # build the docker image from the serverDockerfile
     build:
-      context: .
-      dockerfile: serverDockerfile
+      context: ./server
     # name the deepserver server image 
     image: deepsparseserver
     # name of docker container image
     container_name: deepsparseserver
-    # name of internal docker network 
-    networks:
-      - deepsparse-network
+    # this ensures that the container shares the same network namespace as the host in order to keep the client/server connectivity via localhost instead of internally within the container
+    network_mode: "host"
     # the port is exposed internally to be assessed by the streamlit client via http://deepsparseserver:5543
     expose: 
       - 5543
@@ -39,6 +35,3 @@ services:
     ports:
       - "5543:5543"
 
-networks:
-  deepsparse-network:
-    driver: bridge

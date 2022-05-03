@@ -31,29 +31,17 @@ class FeatureHandler:
     variants_desc = "Select your sparse model:"
     variants = {
         "12-Layer BERT Base, Not Sparsified 😢": MultiPipelineClient(
-            model="question_answering/base", address = "deepsparseserver"
+            model="question_answering/base"
         ),
         "12-Layer BERT, Quantized, 99% of Base Accuracy": MultiPipelineClient(
-            model="question_answering/12l_pruned80_quant", address = "deepsparseserver"
+            model="question_answering/12l_pruned80_quant"
         ),
         "6-Layer BERT, Quantized, 96% of Base Accuracy": MultiPipelineClient(
-            model="question_answering/quant6lagg96", address = "deepsparseserver"
+            model="question_answering/quant6lagg96"
         ),
         "3-Layer BERT, Quantized, 89% of Base Accuracy": MultiPipelineClient(
-            model="question_answering/quant3lagg89", address = "deepsparseserver"
-				)
-        #"12-Layer BERT Base, Not Sparsified 😢": MultiPipelineClient(
-        #    model="question_answering/base"
-        #),
-        #"12-Layer BERT, Quantized, 99% of Base Accuracy": MultiPipelineClient(
-        #    model="question_answering/12l_pruned80_quant"
-        #),
-        #"6-Layer BERT, Quantized, 96% of Base Accuracy": MultiPipelineClient(
-        #    model="question_answering/quant6lagg96"
-        #),
-        #"3-Layer BERT, Quantized, 89% of Base Accuracy": MultiPipelineClient(
-        #    model="question_answering/quant3lagg89"
-        #),
+            model="question_answering/quant3lagg89"
+        ),
         # "12-Layer BERT, Quantized, 95% of Base Accuracy": MultiPipelineClient(
         #     model="question_answering/pruned_quant"
         # ),

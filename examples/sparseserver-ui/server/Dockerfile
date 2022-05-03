@@ -3,13 +3,11 @@ FROM python:3.8
 
 WORKDIR /app
 
-# copy only the requirements needed by the server 
-COPY ./serverrequirements.txt /app/serverrequirements.txt
-
-RUN pip install --no-cache-dir --upgrade -r /app/serverrequirements.txt
+# install  deepsparse server
+RUN pip install deepsparse[server]>=0.11
 
 # copy server files. Could be replaced with a volume mapping 
-COPY ./server /app/server
+COPY . /app/server
 
 # command run at the entry point
 CMD ["deepsparse.server", "--config_file", "server/config.yaml"]

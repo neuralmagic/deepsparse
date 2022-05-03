@@ -85,9 +85,15 @@ Visit `http://localhost:8501` in your browser to view the demo.
 - 19 models should fit on 16GB RAM of a c2-standard-4 VM instance on GCP
 - Ubuntu 20.04.4 LTS
 - Python 3.8.10
-</samp>
+
 
 ## <div>`DOCKER COMPOSE`</div>
+
+### Pre-requisite
+
+- Docker
+- Docker Compose
+
 The SparseServer.UI demo is also available in a containerised docker format.
 
 
@@ -101,4 +107,5 @@ This will automate the setup process and provide the streamlit app at
 `http://localhost:8501` and the deepserver at `http://localhost:5543` as described above.
 
 <br />
-Please note that the *build* flag is optional after the first build. 
+Please note that the **build** flag is optional after the first build. 
+</samp>
