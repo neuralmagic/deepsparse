@@ -20,7 +20,7 @@ class FeatureHandler:
     """
     Class with front-end streamlit content features.
 
-    Please note that the default MultiPipelineClient class in the variants is "0.0.0.0"; hence, the address "deepsparseserver" only needs to be specified in a dockerised environment
+    Please note that the default MultiPipelineClient class in the variants is "0.0.0.0"
     """
 
     tasks_desc = "Select task:"
