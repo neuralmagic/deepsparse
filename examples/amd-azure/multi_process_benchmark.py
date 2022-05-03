@@ -23,7 +23,7 @@ import numpy as np
 
 import numa
 from deepsparse import compile_model
-from deepsparse.benchmark.stream_benchmark import singlestream_benchmark
+from deepsparse.benchmark_model.stream_benchmark import singlestream_benchmark
 from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,

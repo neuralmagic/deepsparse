@@ -145,12 +145,12 @@ def main():
         inputs, num_iterations, num_warmup_iterations, include_outputs=True
     )
 
+    for dse_output, ort_output in zip(dse_results.outputs, ort_results.outputs):
+        verify_outputs(dse_output, ort_output)
+
     print("ONNXRuntime", ort_results)
     print()
     print("DeepSparse Engine", dse_results)
-
-    for dse_output, ort_output in zip(dse_results.outputs, ort_results.outputs):
-        verify_outputs(dse_output, ort_output)
 
 
 if __name__ == "__main__":

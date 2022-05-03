@@ -46,11 +46,7 @@ For this benchmarking script, users must specify the topology of their system wi
 
 One list of cores will contain the processor IDs that one of the worker processes will run on, and should reflect the topology of the system. For performance, one list of cores in the JSON topology file should contain the list of cores that are on the same socket, are on the same NUMA node, or share the same L3 cache. 
 
-The `/examples/amd-azure` directory contains two example JSON files that can be used. 
-
-`amd_epyc_7713.json` is suitable for a two-socket system with AMD EPYC 7713 processors. This file will also work for a one-socket system if the proper parameter for `nstreams` is passed into `multi_process_benchmark.py`. 
-
-`HB120rs_v3.json` is suitable for an Azure HB120rs_v3 virtual machine, a two-socket machine with AMD Milan-X processors and 120 cores in total. You may notice that not every process will use the same number of cores when using this topology. This is because some of the CCXs on this instance type have some cores dedicated to running the hypervisor.
+The `/examples/amd-azure` directory contains an example JSON file that can be used. `amd_epyc_7713.json` is suitable for a two-socket system with AMD EPYC 7713 processors. This file will also work for a one-socket system if the proper parameter for `nstreams` is passed into `multi_process_benchmark.py`.
 
 ## Usage
 
