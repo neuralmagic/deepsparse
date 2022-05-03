@@ -242,8 +242,7 @@ def response_to_json(response: Any):
     elif isinstance(response, dict):
         return {key: response_to_json(val) for key, val in response.items()}
     elif hasattr(response, "json") and callable(response.json):
-        fixed = response.json()
-        return fixed
+        return response.json()
     return json.dumps(response)
 
 
