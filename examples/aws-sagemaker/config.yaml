@@ -1,0 +1,5 @@
+models:
+    - task: question_answering
+      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-moderate
+      batch_size: 1
+integration: sagemaker
