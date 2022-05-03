@@ -169,12 +169,12 @@ def pipeline(
     **kwargs,
 ) -> Pipeline:
     """
-    [DEPRECATED] - deepsparse.transformers.pipeline is deprecated to craete DeepSparse
-    pipelines for tranformers tasks use deepsparse.Pipeline.create(task, ...)
+    [DEPRECATED] - deepsparse.transformers.pipeline is deprecated to create DeepSparse
+    pipelines for transformers tasks use deepsparse.Pipeline.create(task, ...)
 
     Utility factory method to build a Pipeline
 
-    :param task: name of the task to define which pipeline to create. Currently
+    :param task: name of the task to define which pipeline to create. Currently,
         supported task - "question-answering"
     :param model_name: canonical name of the hugging face model this model is based on
     :param model_path: path to model directory containing `model.onnx`, `config.json`,
@@ -194,8 +194,8 @@ def pipeline(
     :return: Pipeline object for the given taks and model
     """
     warnings.warn(
-        "[DEPRECATED] - deepsparse.transformers.pipeline is deprecated to craete "
-        "DeepSparse pipelines for tranformers tasks use deepsparse.Pipeline.create()"
+        "[DEPRECATED] - deepsparse.transformers.pipeline is deprecated to create "
+        "DeepSparse pipelines for transformers tasks use deepsparse.Pipeline.create()"
     )
 
     if config is not None or tokenizer is not None:
