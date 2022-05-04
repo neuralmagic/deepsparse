@@ -187,7 +187,7 @@ class ORTEngine(object):
         return self._num_cores if self._num_cores else NUM_CORES
 
     @property
-    def scheduler(self) -> None:
+    def scheduler(self):
         """
         :return: The kind of scheduler to execute with
         """
