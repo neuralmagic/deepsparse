@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
@@ -36,15 +36,18 @@ except ModuleNotFoundError as cv2_import_error:
 @Pipeline.register(
     task="yolo",
     default_model_path=(
-        "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant-aggressive_95"
+        "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant"
+        "-aggressive_95"
     ),
 )
 class YOLOPipeline(Pipeline):
     """
     Image Segmentation YOLO pipeline for DeepSparse
 
-    :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values include
+    :param model_path: path on local system or SparseZoo stub to load the
+    model from
+    :param engine_type: inference engine to use. Currently supported values
+    include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
@@ -118,20 +121,23 @@ class YOLOPipeline(Pipeline):
     @property
     def input_schema(self) -> Type[YOLOInput]:
         """
-        :return: pydantic model class that inputs to this pipeline must comply to
+        :return: pydantic model class that inputs to this pipeline must
+        comply to
         """
         return YOLOInput
 
     @property
     def output_schema(self) -> Type[YOLOOutput]:
         """
-        :return: pydantic model class that outputs of this pipeline must comply to
+        :return: pydantic model class that outputs of this pipeline must
+        comply to
         """
         return YOLOOutput
 
     def setup_onnx_file_path(self) -> str:
         """
-        Performs any setup to unwrap and process the given `model_path` and other
+        Performs any setup to unwrap and process the given `model_path` and
+        other
         class properties into an inference ready onnx file to be compiled by the
         engine of the pipeline
 
@@ -141,41 +147,106 @@ class YOLOPipeline(Pipeline):
 
     def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
         """
-        :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
+        :param inputs: inputs to the pipeline. Must be the type of the
+        `input_schema`
             of this pipeline
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
+        # Noting that if numpy arrays are passed in, we assume they are
+        # already the correct shape
+
         image_batch = []
 
-        if isinstance(inputs.images, str):
-            inputs.images = [inputs.images]
-
         for image in inputs.images:
+            if isinstance(image, list):
+                # image consists of floats or ints
+                image = numpy.asarray(image)
+
             if isinstance(image, str):
                 image = cv2.imread(image)
                 image = cv2.resize(image, dsize=self.input_shape)
-                image = image[:, :, ::-1].transpose(2, 0, 1)
 
+            image = self._make_channels_first(image)
             image_batch.append(image)
 
-        image_batch = numpy.stack(image_batch, axis=0)
+        image_batch = self._make_batch(image_batch)
         image_batch = numpy.ascontiguousarray(
             image_batch,
             dtype=numpy.int8 if self.is_quantized else numpy.float32,
         )
-        image_batch /= 255
+
+        if not self.is_quantized:
+            image_batch /= 255
 
         return [image_batch]
+
+    def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
+        # return a numpy batch of images
+        if len(image_batch) == 1:
+            current_batch = image_batch[0]
+            if current_batch.ndim == 4:
+                return image_batch
+
+        return numpy.stack(image_batch, axis=0)
+
+    def _make_channels_first(self, image: numpy.ndarray) -> numpy.ndarray:
+        # return a numpy array with channels first
+        is_single_image = image.ndim == 3
+        is_batch = image.ndim == 4
+
+        if image.shape[-1] != 3:
+            return image
+
+        if is_single_image:
+            return numpy.moveaxis(image, -1, 0)
+
+        if is_batch:
+            return numpy.moveaxis(image, -1, 1)
+
+        return image
+
+    def _bytes_to_array(
+        self,
+        images: Union[bytes, Any],
+    ) -> Union[List[numpy.ndarray], Any]:
+        """
+        :param serialized_arr: bytearray representation of list of numpy
+            arrays
+        :return: List of numpy arrays decoded from input
+        """
+
+        if not isinstance(images, bytearray):
+            return images
+
+        sep = "|".encode("utf-8")
+        arrays = []
+        i_start = 0
+        while i_start < len(images) - 1:
+            i_0 = images.find(sep, i_start)
+            i_1 = images.find(sep, i_0 + 1)
+            arr_dtype = numpy.dtype(images[i_start:i_0].decode("utf-8"))
+            arr_shape = tuple(
+                [int(a) for a in images[i_0 + 1 : i_1].decode("utf-8").split(",")]
+            )
+            arr_num_bytes = numpy.prod(arr_shape) * arr_dtype.itemsize
+            arr_str = images[i_1 + 1 : arr_num_bytes + (i_1 + 1)]
+            arr = numpy.frombuffer(arr_str, dtype=arr_dtype).reshape(arr_shape)
+            arrays.append(arr.copy())
+
+            i_start = i_1 + arr_num_bytes + 1
+        return arrays
 
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
     ) -> YOLOOutput:
         """
-        :param engine_outputs: list of numpy arrays that are the output of the engine
+        :param engine_outputs: list of numpy arrays that are the output of
+        the engine
             forward pass
-        :return: outputs of engine post-processed into an object in the `output_schema`
+        :return: outputs of engine post-processed into an object in the
+        `output_schema`
             format of this pipeline
         """
 
