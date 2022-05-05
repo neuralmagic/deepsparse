@@ -28,7 +28,7 @@ The DeepSparse-Hugging Face pipeline integration provides a simple API dedicated
 ```python
 from deepsparse.transformers import pipeline
 
-model_path = "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/base-none"
+model_path = "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
 
 token_classification = pipeline(
     task="token-classification",
@@ -43,7 +43,7 @@ inference = token_classification("I saw Snorlax in Texas!")
 ```python
 from deepsparse.transformers import pipeline
 
-model_path = "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
+model_path = "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
 
 text_classification = pipeline(
     task="text-classification",
@@ -58,7 +58,7 @@ inference = text_classification("Snorlax loves my Tesla!")
 ```python
 from deepsparse.transformers import pipeline
 
-model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
+model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 
 qa_pipeline = pipeline(
     task="question-answering",
@@ -86,10 +86,10 @@ inference = qa_pipeline(question="What's my name?", context="My name is Snorlax"
 Want to find out how fast our sparse Hugging Face ONNX models perform inference? You can quickly do benchmarking tests with CLI commands; you only need to provide the model path of a SparseZoo ONNX model or your own local ONNX model to get started:
 
 ```bash
-deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98
+deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
 ```
 
-For a more in-depth discussion on benchmarking, check out the [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)!
+For a more in-depth discussion on benchmarking, check out the [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
 
 ### 🔌 DeepSparse Server
 
@@ -106,5 +106,5 @@ Example CLI command:
 ```bash
 deepsparse.server \
     --task question_answering \
-    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98"
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
