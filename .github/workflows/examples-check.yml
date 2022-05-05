@@ -1,0 +1,36 @@
+name: Example Checks
+on: 
+  push:
+    branches:
+      - main
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
+      
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  
+jobs:
+  sparseserver-tests:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: "neuralmagic/sparsezoo"
+          path: "sparsezoo"
+          ref: ${{needs.test-setup.outputs.branch}}
+      - name: "⚙️ Install sparsezoo dependencies"
+        run: pip3 install -U pip && pip3 install setuptools sparsezoo/
+      - name: "Clean sparsezoo directory"
+        run: rm -r sparsezoo/
+      - name: "Upgrade protobuf version"
+        run: pip3 install --upgrade protobuf
+      - name: "⚙️ Install deepsparse nightly"
+        run: pip3 install deepsparse-nightly
+      - name: "⚙️ Install docker"
+        run: apt install docker docker-compose
+      - name: "🔬 Running deepsparse tests"
+        run: systemctl start docker && cd examples/sparseserver-ui && docker-compose up --build
