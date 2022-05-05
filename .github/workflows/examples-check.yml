@@ -16,6 +16,7 @@ jobs:
   sparseserver-tests:
     runs-on: ubuntu-20.04
     steps:
+      - uses: actions/checkout@v2
       - name: "⚙️ Install deepsparse nightly"
         run: pip3 install deepsparse-nightly
       - name: "cat /proc/cpuinfo"
