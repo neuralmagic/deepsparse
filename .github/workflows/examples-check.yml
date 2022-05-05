@@ -20,7 +20,9 @@ jobs:
         run: pip3 install -U pip && pip3 install -U protobuf
       - name: "⚙️ Install deepsparse nightly"
         run: pip3 install deepsparse-nightly
+      - name: "cat /proc/cpuinfo"
+        run: cat /proc/cpuinfo
       - name: "⚙️ Install docker"
         run: sudo apt-get install -y docker docker-compose
       - name: "🔬 Running deepsparse tests"
-        run: sudo systemctl start docker && cd examples/sparseserver-ui && sudo docker-compose up --build
+        run: sudo systemctl unmask docker && sudo systemctl start docker && cd examples/sparseserver-ui && sudo docker-compose up --build
