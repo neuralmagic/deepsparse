@@ -86,6 +86,8 @@ import argparse
 import json
 from typing import Any, Callable, Optional
 
+from pydantic import BaseModel
+
 from deepsparse.pipeline import SUPPORTED_PIPELINE_ENGINES
 from deepsparse.transformers import fix_numpy_types
 from deepsparse.transformers.loaders import SUPPORTED_EXTENSIONS, get_batch_loader
@@ -241,8 +243,8 @@ def response_to_json(response: Any):
         return [response_to_json(val) for val in response]
     elif isinstance(response, dict):
         return {key: response_to_json(val) for key, val in response.items()}
-    elif hasattr(response, "json") and callable(response.json):
-        return response.json()
+    elif isinstance(response, BaseModel):
+        return dict(response)
     return json.dumps(response)
 
 
@@ -274,7 +276,6 @@ def process_dataset(
                 batch = {key: value[0] for key, value in batch.items()}
             batch_output = pipeline_object(**batch)
             json_output = response_to_json(batch_output)
-
             json.dump(json_output, output_file)
             output_file.write("\n")
 
