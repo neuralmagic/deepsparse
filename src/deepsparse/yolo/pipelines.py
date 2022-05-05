@@ -186,7 +186,7 @@ class YOLOPipeline(Pipeline):
         if len(image_batch) == 1:
             current_batch = image_batch[0]
             if current_batch.ndim == 4:
-                return image_batch
+                return current_batch
 
         return numpy.stack(image_batch, axis=0)
 
