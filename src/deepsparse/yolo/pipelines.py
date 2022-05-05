@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
@@ -205,37 +205,6 @@ class YOLOPipeline(Pipeline):
             return numpy.moveaxis(image, -1, 1)
 
         return image
-
-    def _bytes_to_array(
-        self,
-        images: Union[bytes, Any],
-    ) -> Union[List[numpy.ndarray], Any]:
-        """
-        :param serialized_arr: bytearray representation of list of numpy
-            arrays
-        :return: List of numpy arrays decoded from input
-        """
-
-        if not isinstance(images, bytearray):
-            return images
-
-        sep = "|".encode("utf-8")
-        arrays = []
-        i_start = 0
-        while i_start < len(images) - 1:
-            i_0 = images.find(sep, i_start)
-            i_1 = images.find(sep, i_0 + 1)
-            arr_dtype = numpy.dtype(images[i_start:i_0].decode("utf-8"))
-            arr_shape = tuple(
-                [int(a) for a in images[i_0 + 1 : i_1].decode("utf-8").split(",")]
-            )
-            arr_num_bytes = numpy.prod(arr_shape) * arr_dtype.itemsize
-            arr_str = images[i_1 + 1 : arr_num_bytes + (i_1 + 1)]
-            arr = numpy.frombuffer(arr_str, dtype=arr_dtype).reshape(arr_shape)
-            arrays.append(arr.copy())
-
-            i_start = i_1 + arr_num_bytes + 1
-        return arrays
 
     def process_engine_outputs(
         self,
