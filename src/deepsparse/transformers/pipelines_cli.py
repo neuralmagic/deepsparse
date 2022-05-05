@@ -269,6 +269,9 @@ def process_dataset(
     pipeline_object = fix_numpy_types(pipeline_object)
     with open(output_path, "a") as output_file:
         for batch in batch_loader:
+            if task == "question_answering":
+                # Un-Wrap list cause only batch_size 1 is supported
+                batch = {key: value[0] for key, value in batch.items()}
             batch_output = pipeline_object(**batch)
             json_output = response_to_json(batch_output)
 
