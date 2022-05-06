@@ -55,7 +55,7 @@ python analyze_sentiment.py
 
 import json
 from itertools import cycle, islice
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import click
 
@@ -89,8 +89,8 @@ def _batched_model_input(tweets: List[str], batch_size: int) -> Optional[List[st
     return batched
 
 
-def _classified_positive(sentiment: Dict[str, Any]):
-    return sentiment["label"] == "LABEL_1"
+def _classified_positive(sentiment: str):
+    return sentiment == "LABEL_1"
 
 
 def _display_results(batch, sentiments):
@@ -148,6 +148,13 @@ def analyze_tweets_sentiment(
         if batch is None:
             break
         sentiments = text_pipeline(batch)
+
+        if sentiments.__class__.__name__ == "TextClassificationOutput":
+            sentiments: List[str] = sentiments.labels
+        else:
+            # backwards compatibility with old pipelines
+            sentiments: List[str] = [sentiment["label"] for sentiment in sentiments]
+
         _display_results(batch, sentiments)
         tot_sentiments.extend(sentiments)
 
