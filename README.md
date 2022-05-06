@@ -131,7 +131,7 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
 
 ```
 
-[Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model) includes examples of select inference scenarios: 
+[Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark) includes examples of select inference scenarios: 
 - Synchronous (Single-stream) Scenario
 - Asynchronous (Multi-stream) Scenario
 
