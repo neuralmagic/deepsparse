@@ -6,6 +6,6 @@ RUN python3.8 -m venv /venv
 ENV PATH="venv/bin:$PATH"
 
 # Setup DeepSparse
-RUN pip3 install deepsparse[server]
+RUN pip3 install --no-cache-dir --upgrade deepsparse[server]
 
 
