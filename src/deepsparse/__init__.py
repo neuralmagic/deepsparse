@@ -31,6 +31,7 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
+from .pipeline import *
 from .version import __version__, is_release
 
 
