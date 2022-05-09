@@ -1,6 +1,5 @@
-# [DeepSparse Pipeline Template Example] Hugging Face Transformer Inference Pipelines
+# Hugging Face Transformer Inference Pipelines
 
-*This section serves as a short overview of the functionality of the pipeline. Should contain a brief intro plus a compact description of the use cases.*
 
 Hugging Face Transformer integration allows serving and benchmarking sparsified [Hugging Face transformer](https://github.com/huggingface/transformers) models.  
 This integration allows for leveraging the DeepSparse Engine to run the transformer inference with GPU-class performance directly on the CPU.
@@ -14,8 +13,6 @@ We are actively working on adding more use cases, stay tuned!
 
 ## Getting Started
 
-*Description of the requirements to run the pipeline. This should include installation, prior requirements, and anything
-else needed before the start using the product*
 
 Before you start your adventure with the DeepSparse Engine, make sure that your machine is 
 compatible with our [hardware requirements](https://docs.neuralmagic.com/deepsparse/source/hardware.html).
@@ -33,8 +30,6 @@ Alternatively, instead of the ONNX model, you can also supply:
 - a path to a directory that contains Hugging Face library files (i.e. tokenizer config, model config, etc.).
 
 ## Deployment
-*Description of the user journey on how to run the pipeline. A set of step-by-step, hands-on tutorials 
-in the form of short code snippets.*
 
 ### Python API
 Python API is the default interface for running the inference with the DeepSparse Engine.. 
@@ -170,7 +165,7 @@ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/sq
 >> Iterations: 768
 ```
 
-To learn more about benchmarking, refer to the appropriate documentation. # TODO: Add a link here, the current one seems to be broken (posted a message on Slack)
+To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
 
 ## Tutorials:
