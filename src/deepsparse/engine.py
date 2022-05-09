@@ -56,6 +56,7 @@ __all__ = [
     "benchmark_model",
     "analyze_model",
     "Scheduler",
+    "Context",
 ]
 
 
@@ -131,6 +132,21 @@ def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
     return scheduler
 
 
+class Context(object):
+    def __init__(
+        self,
+        num_cores: int,
+        num_streams: int = 1,
+        scheduler: Scheduler = None,
+    ):
+        self._deepsparse_context = LIB.deepsparse_context(
+            num_cores, num_streams, _validate_scheduler(scheduler).value
+        )
+
+    def value(self):
+        return self._deepsparse_context
+
+
 class Engine(object):
     """
     Create a new DeepSparse Engine that compiles the given onnx file
@@ -161,6 +177,7 @@ class Engine(object):
         num_cores: int,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        context: Context = None,
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
@@ -178,6 +195,7 @@ class Engine(object):
                     model_path,
                     self._batch_size,
                     self._num_cores,
+                    context.value(),
                     self._scheduler.value,
                 )
         else:
@@ -185,6 +203,7 @@ class Engine(object):
                 self._model_path,
                 self._batch_size,
                 self._num_cores,
+                context.value(),
                 self._scheduler.value,
             )
 
