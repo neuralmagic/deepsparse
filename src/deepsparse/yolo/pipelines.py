@@ -139,7 +139,13 @@ class YOLOPipeline(Pipeline):
         """
         return model_to_path(self.model_path)
 
-    def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
+    def process_inputs(
+        self,
+        inputs: YOLOInput,
+        iou_thres: float = 0.25,
+        conf_thres: float = 0.5,
+        **kwargs,
+    ) -> List[numpy.ndarray]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
             of this pipeline
@@ -171,8 +177,11 @@ class YOLOPipeline(Pipeline):
 
         if not self.is_quantized:
             image_batch /= 255
-
-        return [image_batch]
+        postprocessing_kwargs = dict(
+            iou_thres=iou_thres,
+            conf_thres=conf_thres,
+        )
+        return [image_batch], postprocessing_kwargs
 
     def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
         # return a numpy batch of images
@@ -202,6 +211,7 @@ class YOLOPipeline(Pipeline):
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
+        **kwargs,
     ) -> YOLOOutput:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
@@ -212,14 +222,17 @@ class YOLOPipeline(Pipeline):
 
         # post-processing
         if self.postprocessor:
-            batch_output = self.postprocessor.pre_nms_postprocess(engine_outputs)
+            batch_output = self.postprocessor.pre_nms_postprocess(
+                engine_outputs,
+                **kwargs,
+            )
         else:
             batch_output = engine_outputs[
                 0
             ]  # post-processed values stored in first output
 
         # NMS
-        batch_output = postprocess_nms(batch_output)
+        batch_output = postprocess_nms(batch_output, **kwargs)
 
         batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []
 
