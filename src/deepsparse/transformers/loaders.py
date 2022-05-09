@@ -113,6 +113,7 @@ class _TextBatchLoader(_BatchLoader):
 
     def __init__(self, data_file: str, batch_size: int = 1, task: str = None):
         super().__init__(data_file=data_file, batch_size=batch_size)
+        task = task.lower().replace("_", "-") if task else ""
         if task in ["ner", "token-classification"]:
             self.header = ["inputs"]
         elif task in ["sentiment-analysis", "text-classification"]:
