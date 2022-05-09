@@ -116,6 +116,19 @@ def _validate_num_cores(num_cores: Union[None, int]) -> int:
     return num_cores
 
 
+def _validate_num_streams(num_streams: Union[None, int], num_cores: int) -> int:
+    if not num_streams:
+        num_streams = 0
+
+    if num_streams < 0:
+        raise ValueError("num_streams must be non-negative")
+
+    if num_streams > num_cores:
+        raise ValueError("num_streams must not exceed num_cores")
+
+    return num_streams
+
+
 def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
     if not scheduler:
         scheduler = Scheduler.default
@@ -159,12 +172,14 @@ class Engine(object):
         model: Union[str, Model, File],
         batch_size: int,
         num_cores: int,
+        num_streams: int,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
+        self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = _validate_scheduler(scheduler)
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
@@ -178,6 +193,7 @@ class Engine(object):
                     model_path,
                     self._batch_size,
                     self._num_cores,
+                    self._num_streams,
                     self._scheduler.value,
                 )
         else:
@@ -185,6 +201,7 @@ class Engine(object):
                 self._model_path,
                 self._batch_size,
                 self._num_cores,
+                self._num_streams,
                 self._scheduler.value,
             )
 
@@ -250,6 +267,13 @@ class Engine(object):
         :return: The number of physical cores the current instance is running on
         """
         return self._num_cores
+
+    @property
+    def num_streams(self) -> int:
+        """
+        :return: The max number of concurrent streams supported by this instance.
+        """
+        return self._num_streams
 
     @property
     def scheduler(self) -> Scheduler:
@@ -525,6 +549,7 @@ def compile_model(
     model: Union[str, Model, File],
     batch_size: int = 1,
     num_cores: int = None,
+    num_streams: int = None,
     scheduler: Scheduler = None,
     input_shapes: List[List[int]] = None,
 ) -> Engine:
@@ -541,6 +566,10 @@ def compile_model(
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores for the current
         machine; default None
+    :param num_streams: The number of concurrent streams the compiled model
+        should support. Additional streams beyond num_streams will cause some
+        requests to wait. The default count of supported concurrent streams
+        (None or 0) depends on the scheduler.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     :return: The created Engine after compiling the model
@@ -549,6 +578,7 @@ def compile_model(
         model=model,
         batch_size=batch_size,
         num_cores=num_cores,
+        num_streams=num_streams,
         scheduler=scheduler,
         input_shapes=input_shapes,
     )
@@ -559,6 +589,7 @@ def benchmark_model(
     inp: List[numpy.ndarray],
     batch_size: int = 1,
     num_cores: int = None,
+    num_streams: int = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     include_inputs: bool = False,
@@ -582,6 +613,10 @@ def benchmark_model(
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         for the current machine; default None
+    :param num_streams: The number of concurrent streams the compiled model
+        should support. Additional streams beyond num_streams will cause some
+        requests to wait. The default count of supported concurrent streams
+        (None or 0) depends on the scheduler.
     :param inp: The list of inputs to pass to the engine for benchmarking.
         The expected order is the inputs order as defined in the ONNX graph.
     :param num_iterations: The number of iterations to run benchmarking for.
@@ -602,6 +637,7 @@ def benchmark_model(
         model=model,
         batch_size=batch_size,
         num_cores=num_cores,
+        num_streams=num_streams,
         scheduler=scheduler,
         input_shapes=input_shapes,
     )
@@ -621,6 +657,7 @@ def analyze_model(
     inp: List[numpy.ndarray],
     batch_size: int = 1,
     num_cores: int = None,
+    num_treams: int = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     optimization_level: int = 1,
@@ -646,6 +683,10 @@ def analyze_model(
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         for the current machine; default None
+    :param num_streams: The number of concurrent streams the compiled model
+        should support. Additional streams beyond num_streams will cause some
+        requests to wait. The default count of supported concurrent streams
+        (None or 0) depends on the scheduler.
     :param num_iterations: The number of times to repeat execution of the model
         while analyzing, default is 20
     :param num_warmup_iterations: The number of times to repeat execution of the model
@@ -667,6 +708,7 @@ def analyze_model(
         model=model,
         batch_size=batch_size,
         num_cores=num_cores,
+        num_streams=num_streams,
         scheduler=scheduler,
         input_shapes=input_shapes,
     )

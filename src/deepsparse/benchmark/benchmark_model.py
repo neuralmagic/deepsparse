@@ -304,6 +304,7 @@ def main():
             model=args.model_path,
             batch_size=args.batch_size,
             num_cores=args.num_cores,
+            num_streams=args.num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
         )

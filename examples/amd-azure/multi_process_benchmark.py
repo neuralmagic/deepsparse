@@ -152,7 +152,7 @@ def cpus_to_numas(cpu_set):
     return numas
 
 
-def run(worker_id, args, barrier, cpu_affinity_set, results):
+def run(worker_id, args, barrier, cpu_affinity_set, num_streams, results):
     # Set the CPU affinity of this process
     numas = cpus_to_numas(cpu_affinity_set)
     numa.memory.set_interleave_nodes(*numas)
@@ -180,6 +180,7 @@ def run(worker_id, args, barrier, cpu_affinity_set, results):
         model=args.model_path,
         batch_size=args.batch_size,
         num_cores=len(cpu_affinity_set),
+        num_streams=num_streams,
         scheduler="single_stream",
         input_shapes=input_shapes,
     )
@@ -258,7 +259,7 @@ def main():
             p.start()
             workers.append(p)
         my_id = args.num_streams - 1
-        run(my_id, args, barrier, affinity_sets[my_id], results)
+        run(my_id, args, barrier, affinity_sets[my_id], args.num_streams, results)
 
         for w in workers:
             w.join()
