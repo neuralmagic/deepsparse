@@ -78,15 +78,15 @@ from deepsparse.transformers import pipeline
 
 model_path = "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
 
-text_classification = pipeline(
+tc_pipeline = pipeline(
     task="text-classification",
     model_path=model_path)
 
-inference = text_classification("Snorlax loves my Tesla!")
+inference = tc_pipeline("Snorlax loves my Tesla!")
 
 >> [{'label': 'LABEL_1', 'score': 0.9884248375892639}]
 
-inference = text_classification("Snorlax hates pineapple pizza!")
+inference = tc_pipeline("Snorlax hates pineapple pizza!")
 
 >> [{'label': 'LABEL_0', 'score': 0.9981569051742554}]
 ```
@@ -101,14 +101,19 @@ from deepsparse.transformers import pipeline
 
 model_path = "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
 
-token_classification = pipeline(
+tc_pipeline = pipeline(
     task="token-classification",
     model_path=model_path,
 )
 
-inference = token_classification("I saw Snorlax in Texas!")
+inference = tc_pipeline("Drive from California to Texas!")
 
->> [{'entity': 'LABEL_0', 'score': 0.99982464, 'index': 1, 'word': 'i', 'start': 0, 'end': 1}, {'entity': 'LABEL_0', 'score': 0.9998014, 'index': 2, 'word': 'saw', 'start': 2, 'end': 5}, ... ]
+>> [{'entity': 'LABEL_0','word': 'drive', ...}, 
+    {'entity': 'LABEL_0','word': 'from', ...}, 
+    {'entity': 'LABEL_5','word': 'california', ...}, 
+    {'entity': 'LABEL_0','word': 'to', ...}, 
+    {'entity': 'LABEL_5','word': 'texas', ...}, 
+    {'entity': 'LABEL_0','word': '!', ...}]
 ```
 
 ### DeepSparse Server
