@@ -133,18 +133,29 @@ def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
 
 
 class Context(object):
+    """
+    Contexts can be used to run multiple Engines with the same scheduler. This is useful for
+    running multiple models concurrently in a server-like environment.
+
+    :param num_cores: The number of physical cores to run the model on. If more
+        cores are requested than are available on a single socket, the engine
+        will try to distribute them evenly across as few sockets as possible.
+    """
+
     def __init__(
         self,
         num_cores: int,
-        num_streams: int = 1,
-        scheduler: Scheduler = None,
     ):
+        self._num_cores = _validate_num_cores(num_cores)
         self._deepsparse_context = LIB.deepsparse_context(
-            num_cores, num_streams, _validate_scheduler(scheduler).value
+            self._num_cores, Scheduler.from_str("elastic").value
         )
 
     def value(self):
         return self._deepsparse_context
+
+    def num_cores(self):
+        return self._num_cores
 
 
 class Engine(object):
@@ -168,6 +179,8 @@ class Engine(object):
         will try to distribute them evenly across as few sockets as possible.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param Context: An optional argument that can be used to share a single scheduler with
+        multiple Engines. Note: This will override the num_cores and scheduler arguments
     """
 
     def __init__(
@@ -187,24 +200,39 @@ class Engine(object):
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
-        if self._input_shapes:
-            with override_onnx_input_shapes(
-                self._model_path, self._input_shapes
-            ) as model_path:
-                self._eng_net = LIB.deepsparse_engine(
-                    model_path,
-                    self._batch_size,
-                    self._num_cores,
-                    context.value(),
-                    self._scheduler.value,
+        if context is not None and (scheduler is not None and scheduler != "elastic"):
+            raise ValueError(
+                "Contexts are currently only supported when running the elastic scheduler"
+            )
+        if context is not None and context.num_cores() != num_cores:
+            raise ValueError(
+                "The Context was initialized with {} cores and the Engine was initialized"
+                " with {}. These two values should be equal.".format(
+                    str(context.num_cores()), str(num_cores)
                 )
-        else:
+            )
+
+        model_path = self._model_path
+        if self._input_shapes:
+            model_path = override_onnx_input_shapes(
+                self._model_path, self._input_shapes
+            )
+
+        if context:
             self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
+                model_path,
                 self._batch_size,
                 self._num_cores,
-                context.value(),
                 self._scheduler.value,
+                context.value(),
+            )
+        else:
+            self._eng_net = LIB.deepsparse_engine(
+                model_path,
+                self._batch_size,
+                self._num_cores,
+                self._scheduler.value,
+                None,
             )
 
     def __call__(
