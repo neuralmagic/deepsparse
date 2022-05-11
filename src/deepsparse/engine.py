@@ -154,8 +154,6 @@ class Engine(object):
         will try to distribute them evenly across as few sockets as possible.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
-    :param Context: An optional argument that can be used to share a single scheduler with
-        multiple Engines. Note: This will override the num_cores and scheduler arguments
     """
 
     def __init__(
@@ -529,8 +527,9 @@ class Engine(object):
 
 class Context(object):
     """
-    Contexts can be used to run multiple Engines with the same scheduler. This is useful for
-    running multiple models concurrently in a server-like environment.
+    Contexts can be used to run multiple instances of the MultiModelEngine with the same
+    scheduler. This is useful for running multiple models concurrently in a server-like
+    environment.
 
     :param num_cores: The number of physical cores to run the model on. If more
         cores are requested than are available on a single socket, the engine
@@ -558,6 +557,24 @@ class Context(object):
 
 
 class MultiModelEngine(Engine):
+    """
+    The MultiModelEngine, together with the Context class, can be used to run multiple models
+    on the same computer at once. The interface and behavior are both very similar to the Engine
+    class. The main difference is instead of taking in a scheduler and a number of cores as
+    arguments to the constructor, the MultiModelEngine takes in a Context. The Context contains
+    a shared scheduler along with other runtime information that will be used across instances
+    of the MultiModelEngine to provide optimal performance when running multiple models
+    concurrently.
+
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
+    :param batch_size: The batch size of the inputs to be used with the engine
+    :param context: See above. This object should be constructed with the desired number of
+        cores and passed into each instance of the MultiModelEngine.
+    :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    """
+
     def __init__(
         self,
         model: Union[str, Model, File],
