@@ -200,11 +200,11 @@ class Engine(object):
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
-        if context is not None and (scheduler is not None and scheduler != "elastic"):
+        if context and (scheduler is not None and scheduler != "elastic"):
             raise ValueError(
                 "Contexts are currently only supported when running the elastic scheduler"
             )
-        if context is not None and context.num_cores() != num_cores:
+        if context and context.num_cores() != num_cores:
             raise ValueError(
                 "The Context was initialized with {} cores and the Engine was initialized"
                 " with {}. These two values should be equal.".format(
@@ -212,27 +212,24 @@ class Engine(object):
                 )
             )
 
-        model_path = self._model_path
         if self._input_shapes:
-            model_path = override_onnx_input_shapes(
+            with override_onnx_input_shapes(
                 self._model_path, self._input_shapes
-            )
-
-        if context:
-            self._eng_net = LIB.deepsparse_engine(
-                model_path,
-                self._batch_size,
-                self._num_cores,
-                self._scheduler.value,
-                context.value(),
-            )
+            ) as model_path:
+                self._eng_net = LIB.deepsparse_engine(
+                    model_path,
+                    self._batch_size,
+                    self._num_cores,
+                    self._scheduler.value,
+                    context.value() if context else None,
+                )
         else:
             self._eng_net = LIB.deepsparse_engine(
-                model_path,
+                self._model_path,
                 self._batch_size,
                 self._num_cores,
                 self._scheduler.value,
-                None,
+                context.value() if context else None,
             )
 
     def __call__(
