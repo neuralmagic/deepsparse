@@ -57,6 +57,7 @@ __all__ = [
     "analyze_model",
     "Scheduler",
     "Context",
+    "MultiModelEngine",
 ]
 
 
@@ -132,32 +133,6 @@ def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
     return scheduler
 
 
-class Context(object):
-    """
-    Contexts can be used to run multiple Engines with the same scheduler. This is useful for
-    running multiple models concurrently in a server-like environment.
-
-    :param num_cores: The number of physical cores to run the model on. If more
-        cores are requested than are available on a single socket, the engine
-        will try to distribute them evenly across as few sockets as possible.
-    """
-
-    def __init__(
-        self,
-        num_cores: int,
-    ):
-        self._num_cores = _validate_num_cores(num_cores)
-        self._deepsparse_context = LIB.deepsparse_context(
-            self._num_cores, Scheduler.from_str("elastic").value
-        )
-
-    def value(self):
-        return self._deepsparse_context
-
-    def num_cores(self):
-        return self._num_cores
-
-
 class Engine(object):
     """
     Create a new DeepSparse Engine that compiles the given onnx file
@@ -190,7 +165,6 @@ class Engine(object):
         num_cores: int,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
-        context: Context = None,
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
@@ -199,18 +173,6 @@ class Engine(object):
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
-
-        if context and (scheduler is not None and scheduler != "elastic"):
-            raise ValueError(
-                "Contexts are currently only supported when running the elastic scheduler"
-            )
-        if context and context.num_cores() != num_cores:
-            raise ValueError(
-                "The Context was initialized with {} cores and the Engine was initialized"
-                " with {}. These two values should be equal.".format(
-                    str(context.num_cores()), str(num_cores)
-                )
-            )
 
         if self._input_shapes:
             with override_onnx_input_shapes(
@@ -221,7 +183,7 @@ class Engine(object):
                     self._batch_size,
                     self._num_cores,
                     self._scheduler.value,
-                    context.value() if context else None,
+                    None,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -229,7 +191,7 @@ class Engine(object):
                 self._batch_size,
                 self._num_cores,
                 self._scheduler.value,
-                context.value() if context else None,
+                None,
             )
 
     def __call__(
@@ -563,6 +525,73 @@ class Engine(object):
             "cpu_avx_type": self.cpu_avx_type,
             "cpu_vnni": self.cpu_vnni,
         }
+
+
+class Context(object):
+    """
+    Contexts can be used to run multiple Engines with the same scheduler. This is useful for
+    running multiple models concurrently in a server-like environment.
+
+    :param num_cores: The number of physical cores to run the model on. If more
+        cores are requested than are available on a single socket, the engine
+        will try to distribute them evenly across as few sockets as possible.
+    """
+
+    def __init__(
+        self,
+        num_cores: int,
+    ):
+        self._num_cores = _validate_num_cores(num_cores)
+        self._scheduler = Scheduler.from_str("elastic")
+        self._deepsparse_context = LIB.deepsparse_context(
+            self._num_cores, self._scheduler.value
+        )
+
+    def value(self):
+        return self._deepsparse_context
+
+    def num_cores(self):
+        return self._num_cores
+
+    def scheduler(self):
+        return self._scheduler
+
+
+class MultiModelEngine(Engine):
+    def __init__(
+        self,
+        model: Union[str, Model, File],
+        batch_size: int,
+        context: Context,
+        input_shapes: List[List[int]] = None,
+    ):
+        self._model_path = model_to_path(model)
+        self._batch_size = _validate_batch_size(batch_size)
+        self._num_cores = context.num_cores()
+        self._scheduler = _validate_scheduler(context.scheduler())
+        self._input_shapes = input_shapes
+        self._cpu_avx_type = AVX_TYPE
+        self._cpu_vnni = VNNI
+
+        if self._input_shapes:
+            with override_onnx_input_shapes(
+                self._model_path, self._input_shapes
+            ) as model_path:
+                self._eng_net = LIB.deepsparse_engine(
+                    model_path,
+                    self._batch_size,
+                    self._num_cores,
+                    self._scheduler.value,
+                    context.value(),
+                )
+        else:
+            self._eng_net = LIB.deepsparse_engine(
+                self._model_path,
+                self._batch_size,
+                self._num_cores,
+                self._scheduler.value,
+                context.value(),
+            )
 
 
 def compile_model(
