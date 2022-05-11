@@ -528,8 +528,9 @@ class Engine(object):
 class Context(object):
     """
     Contexts can be used to run multiple instances of the MultiModelEngine with the same
-    scheduler. This is useful for running multiple models concurrently in a server-like
-    environment.
+    scheduler. This allows one scheduler to manage the resources of the system
+    effectively, keeping engines that are running different models from fighting over system
+    resources.
 
     :param num_cores: The number of physical cores to run the model on. If more
         cores are requested than are available on a single socket, the engine
