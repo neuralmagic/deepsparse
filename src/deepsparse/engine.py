@@ -56,6 +56,8 @@ __all__ = [
     "benchmark_model",
     "analyze_model",
     "Scheduler",
+    "Context",
+    "MultiModelEngine",
 ]
 
 
@@ -179,6 +181,7 @@ class Engine(object):
                     self._batch_size,
                     self._num_cores,
                     self._scheduler.value,
+                    None,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -186,6 +189,7 @@ class Engine(object):
                 self._batch_size,
                 self._num_cores,
                 self._scheduler.value,
+                None,
             )
 
     def __call__(
@@ -519,6 +523,93 @@ class Engine(object):
             "cpu_avx_type": self.cpu_avx_type,
             "cpu_vnni": self.cpu_vnni,
         }
+
+
+class Context(object):
+    """
+    Contexts can be used to run multiple instances of the MultiModelEngine with the same
+    scheduler. This allows one scheduler to manage the resources of the system
+    effectively, keeping engines that are running different models from fighting over system
+    resources.
+
+    :param num_cores: The number of physical cores to run the model on. If more
+        cores are requested than are available on a single socket, the engine
+        will try to distribute them evenly across as few sockets as possible.
+    """
+
+    def __init__(
+        self,
+        num_cores: int,
+    ):
+        self._num_cores = _validate_num_cores(num_cores)
+        self._scheduler = Scheduler.from_str("elastic")
+        self._deepsparse_context = LIB.deepsparse_context(
+            self._num_cores, self._scheduler.value
+        )
+
+    def value(self):
+        return self._deepsparse_context
+
+    def num_cores(self):
+        return self._num_cores
+
+    def scheduler(self):
+        return self._scheduler
+
+
+class MultiModelEngine(Engine):
+    """
+    The MultiModelEngine, together with the Context class, can be used to run multiple models
+    on the same computer at once. The interface and behavior are both very similar to the Engine
+    class. The main difference is instead of taking in a scheduler and a number of cores as
+    arguments to the constructor, the MultiModelEngine takes in a Context. The Context contains
+    a shared scheduler along with other runtime information that will be used across instances
+    of the MultiModelEngine to provide optimal performance when running multiple models
+    concurrently.
+
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
+    :param batch_size: The batch size of the inputs to be used with the engine
+    :param context: See above. This object should be constructed with the desired number of
+        cores and passed into each instance of the MultiModelEngine.
+    :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    """
+
+    def __init__(
+        self,
+        model: Union[str, Model, File],
+        batch_size: int,
+        context: Context,
+        input_shapes: List[List[int]] = None,
+    ):
+        self._model_path = model_to_path(model)
+        self._batch_size = _validate_batch_size(batch_size)
+        self._num_cores = context.num_cores()
+        self._scheduler = _validate_scheduler(context.scheduler())
+        self._input_shapes = input_shapes
+        self._cpu_avx_type = AVX_TYPE
+        self._cpu_vnni = VNNI
+
+        if self._input_shapes:
+            with override_onnx_input_shapes(
+                self._model_path, self._input_shapes
+            ) as model_path:
+                self._eng_net = LIB.deepsparse_engine(
+                    model_path,
+                    self._batch_size,
+                    self._num_cores,
+                    self._scheduler.value,
+                    context.value(),
+                )
+        else:
+            self._eng_net = LIB.deepsparse_engine(
+                self._model_path,
+                self._batch_size,
+                self._num_cores,
+                self._scheduler.value,
+                context.value(),
+            )
 
 
 def compile_model(
