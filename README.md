@@ -63,7 +63,7 @@ Neural Magic's DeepSparse Engine is able to integrate into popular deep learning
 ## Features
 
 - 🔌 [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)
-- 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model)
+- 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)
 - 👩‍💻 [NLP and Computer Vision Tasks Supported](https://github.com/neuralmagic/deepsparse/tree/main/examples)
 - 🧰 [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
 
@@ -131,7 +131,7 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
 
 ```
 
-[Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark_model) includes examples of select inference scenarios: 
+[Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark) includes examples of select inference scenarios: 
 - Synchronous (Single-stream) Scenario
 - Asynchronous (Multi-stream) Scenario
 
@@ -139,12 +139,12 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
 ## 👩‍💻 NLP Inference Example
 
 ```python
-from deepsparse.transformers import pipeline
+from deepsparse import Pipeline
 
 # SparseZoo model stub or path to ONNX file
 model_path = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 
-qa_pipeline = pipeline(
+qa_pipeline = Pipeline.create(
     task="question-answering",
     model_path=model_path,
 )
