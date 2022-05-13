@@ -122,7 +122,7 @@ def test_server_qa_config_file(cleanup: Dict[str, List]):
     cmd = [
         "deepsparse.server",
         "--config_file",
-        "test_data/deepsparse-server-config.yaml",
+        "tests/test_data/deepsparse-server-config.yaml",
     ]
     print(f"\n==== test_server_qa_config_file command ====\n{' '.join(cmd)}\n==== ====")
     proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
