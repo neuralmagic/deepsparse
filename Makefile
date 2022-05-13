@@ -41,6 +41,11 @@ test-examples:
 	@echo "Running python example tests";
 	@SPARSEZOO_TEST_MODE="true" pytest ./tests/ -m examples $(PYTEST_ARGS);
 
+# run CLI tests for the repo
+test-cli:
+	@echo "Running python CLI tests";
+	@SPARSEZOO_TEST_MODE="true" pytest ./tests/ -m cli $(PYTEST_ARGS);
+
 # create docs
 docs:
 	@echo "Running docs creation";
