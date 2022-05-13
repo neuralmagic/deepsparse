@@ -51,7 +51,7 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     with open("output.json") as f:
         data = json.load(f)
     assert len(data) == 1
-    assert data[0]["word"] == expected
+    assert data["predictions"][0][0]["word"] == expected
 
 
 @pytest.mark.cli
