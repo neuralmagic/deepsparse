@@ -298,12 +298,23 @@ def main():
     orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
 
+    if args.num_streams:
+        _LOGGER.info("num_streams set to {}".format(args.num_streams))
+    elif not args.num_streams and scenario not in "singlestream":
+        # If num_streams isn't defined, find a default
+        args.num_streams = None
+        _LOGGER.info(
+            "num_streams default value based on the scheduler. "
+            "This requires tuning and may be sub-optimal"
+        )
+
     # Compile the ONNX into a runnable model
     if args.engine == DEEPSPARSE_ENGINE:
         model = compile_model(
             model=args.model_path,
             batch_size=args.batch_size,
             num_cores=args.num_cores,
+            num_streams=args.num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
         )
@@ -323,16 +334,6 @@ def main():
             input_list = generate_random_inputs(model_path, args.batch_size)
     else:
         input_list = generate_random_inputs(args.model_path, args.batch_size)
-
-    if args.num_streams:
-        _LOGGER.info("num_streams set to {}".format(args.num_streams))
-    elif not args.num_streams and scenario not in "singlestream":
-        # If num_streams isn't defined, find a default
-        args.num_streams = max(1, int(model.num_cores / 2))
-        _LOGGER.info(
-            "num_streams default value chosen of {}. "
-            "This requires tuning and may be sub-optimal".format(args.num_streams)
-        )
 
     # Benchmark
     _LOGGER.info(

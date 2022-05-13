@@ -47,19 +47,19 @@ _Elastic scheduling; requests execute in parallel, but not multiplexed on indivi
 Depending on your engine execution strategy, enable one of these options by running:
 
 ```python
-engine = compile_model(model_path, batch_size, num_cores, "single_stream")
+engine = compile_model(model_path, batch_size, num_cores, 1, "single_stream")
 ```
 
 or
 
 ```python
-engine = compile_model(model_path, batch_size, num_cores, "multi_stream")
+engine = compile_model(model_path, batch_size, num_cores, num_streams, "multi_stream")
 ```
 
 or
 
 ```python
-engine = compile_model(model_path, batch_size, num_cores, "elastic")
+engine = compile_model(model_path, batch_size, num_cores, num_streams, "elastic")
 ```
 
 or pass in the enum value directly, since` "multi_stream" == Scheduler.multi_stream`
