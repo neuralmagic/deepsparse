@@ -41,7 +41,8 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
         "--task",
         "ner",
         "--model-path",
-        "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni",
+        "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/"
+        "12layer_pruned80_quant-none-vnni",
         "--data",
         "tests/test_data/bert-ner-test-input.json",
         "--output-file",
@@ -73,12 +74,14 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     [
         (
             "csv",
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_98",
+            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
+            "pruned_6layers-aggressive_98",
             True,
         ),
         (
             "json",
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_98",
+            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
+            "pruned_6layers-aggressive_98",
             False,
         ),
     ],

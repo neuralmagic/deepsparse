@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from subprocess import PIPE, STDOUT, Popen
 from typing import Dict, List
 
@@ -47,7 +46,8 @@ def test_server_ner(cleanup: Dict[str, List]):
         "--task",
         "ner",
         "--model_path",
-        "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni",
+        "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/"
+        "12layer_pruned80_quant-none-vnni",
     ]
     print(f"\n==== test_server_ner command ====\n{' '.join(cmd)}\n==== ====")
     proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
@@ -57,7 +57,8 @@ def test_server_ner(cleanup: Dict[str, List]):
     if not is_up:
         proc.terminate()
         print(
-            f"\n==== test_server_ner output ====\n{proc.stdout.read().decode('utf-8')}\n==== ===="
+            "\n==== test_server_ner output ====\n"
+            f"{proc.stdout.read().decode('utf-8')}\n==== ===="
         )
         assert is_up is True, "failed to start server"
 
@@ -72,7 +73,7 @@ def test_server_ner(cleanup: Dict[str, List]):
         predictions = rsp.json()["predictions"]
         assert "word" in predictions[0][0]
         assert predictions[0][0]["word"] == "red"
-    except:
+    except:  # noqa
         # end server proc if we encounter failures during request/response validation
         proc.terminate()
         raise
@@ -93,7 +94,8 @@ def test_server_qa(cleanup: Dict[str, List]):
         "--task",
         "question_answering",
         "--model_path",
-        "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_6layers-aggressive_98",
+        "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
+        "pruned_6layers-aggressive_98",
     ]
     print(f"\n==== test_server_qa command ====\n{' '.join(cmd)}\n==== ====")
     proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
@@ -103,7 +105,8 @@ def test_server_qa(cleanup: Dict[str, List]):
     if not is_up:
         proc.terminate()
         print(
-            f"\n==== test_server_qa output ====\n{proc.stdout.read().decode('utf-8')}\n==== ===="
+            "\n==== test_server_qa output ====\n"
+            f"{proc.stdout.read().decode('utf-8')}\n==== ===="
         )
         assert is_up is True, "failed to start server"
 
@@ -116,7 +119,7 @@ def test_server_qa(cleanup: Dict[str, List]):
         assert rsp.headers["content-type"] == "application/json"
         assert "answer" in rsp.json()
         assert rsp.json()["answer"] == "Snorlax"
-    except:
+    except:  # noqa
         # end server proc if we encounter failures during request/response validation
         proc.terminate()
         raise
@@ -146,7 +149,8 @@ def test_server_qa_config_file(cleanup: Dict[str, List]):
     if not is_up:
         proc.terminate()
         print(
-            f"\n==== test_server_qa_config_file output ====\n{proc.stdout.read().decode('utf-8')}\n==== ===="
+            "\n==== test_server_qa_config_file output ====\n"
+            f"{proc.stdout.read().decode('utf-8')}\n==== ===="
         )
         assert is_up is True, "failed to start server"
 
@@ -162,7 +166,7 @@ def test_server_qa_config_file(cleanup: Dict[str, List]):
         assert rsp.headers["content-type"] == "application/json"
         assert "answer" in rsp.json()
         assert rsp.json()["answer"] == "Snorlax"
-    except:
+    except:  # noqa
         # end server proc if we encounter failures during request/response validation
         proc.terminate()
         raise
@@ -178,7 +182,7 @@ def test_server_qa_config_file(cleanup: Dict[str, List]):
         assert rsp.headers["content-type"] == "application/json"
         assert "answer" in rsp.json()
         assert rsp.json()["answer"] == "Snorlax"
-    except:
+    except:  # noqa
         # end server proc if we encounter failures during request/response validation
         proc.terminate()
         raise
@@ -211,7 +215,8 @@ def test_server_sst(cleanup: Dict[str, List]):
     if not is_up:
         proc.terminate()
         print(
-            f"\n==== test_server_sst output ====\n{proc.stdout.read().decode('utf-8')}\n==== ===="
+            "\n==== test_server_sst output ====\n"
+            f"{proc.stdout.read().decode('utf-8')}\n==== ===="
         )
         assert is_up is True, "failed to start server"
 
@@ -226,7 +231,7 @@ def test_server_sst(cleanup: Dict[str, List]):
         rsp_body = rsp.json()
         assert "labels" in rsp_body
         assert rsp_body["labels"][0] == "LABEL_1"
-    except:
+    except:  # noqa
         # end server proc if we encounter failures during request/response validation
         proc.terminate()
         output = proc.stdout.read().decode("utf-8")

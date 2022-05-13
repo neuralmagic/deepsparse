@@ -45,7 +45,8 @@ def cleanup():
     # terminate processes (test itself should do this, this is a backstop/catch-all)
     if processes:
         print(
-            f"fixture:cleanup - sending SIGTERM to PIDs {', '.join(str(p.pid) for p in processes)}"
+            "fixture:cleanup - sending SIGTERM to PIDs "
+            f"{', '.join(str(p.pid) for p in processes)}"
         )
         for proc in processes:
             proc.terminate()

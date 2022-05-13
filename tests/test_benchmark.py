@@ -40,19 +40,23 @@ def test_benchmark_help():
             ["-shapes", "[1,128],[1,128],[1,128]"],
         ),
         (
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned-aggressive_98",
+            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
+            "pruned-aggressive_98",
             ["-s", "sync"],
         ),
         (
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-aggressive_95",
+            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
+            "pruned_quant-aggressive_95",
             ["-s", "async", "-nstreams", "10"],
         ),
         (
-            "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/base-none",
+            "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
+            "bookcorpus_wikitext/base-none",
             ["-t", "20"],
         ),
         (
-            "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/12layer_pruned90-none",
+            "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
+            "bookcorpus_wikitext/12layer_pruned90-none",
             [],
         ),
         (
@@ -60,11 +64,13 @@ def test_benchmark_help():
             ["-x", "results.json"],
         ),
         (
-            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate",
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+            "pruned-moderate",
             ["-ncores", "4"],
         ),
         (
-            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned_quant-moderate",
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+            "pruned_quant-moderate",
             ["-pin", "none"],
         ),
         (
@@ -76,7 +82,8 @@ def test_benchmark_help():
             ["-q"],
         ),
         (
-            "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94",
+            "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/"
+            "pruned_quant-aggressive_94",
             ["-b", "64"],
         ),
     ],
@@ -108,7 +115,8 @@ def test_benchmark(
     ("model_stub"),
     [
         (
-            "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/12layer_pruned90-none"
+            "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
+            "bookcorpus_wikitext/12layer_pruned90-none"
         ),
     ],
 )
