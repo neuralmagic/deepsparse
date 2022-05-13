@@ -18,7 +18,6 @@ import pytest
 from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
 
 
-@pytest.mark.unit
 @pytest.mark.parametrize(
     "arrays",
     (

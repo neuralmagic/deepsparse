@@ -18,7 +18,6 @@ import pytest
 from helpers import predownload_stub, run_command
 
 
-@pytest.mark.cli
 def test_benchmark_help():
     cmd = ["deepsparse.benchmark", "--help"]
     print(f"\n==== test_benchmark_help command ====\n{' '.join(cmd)}")
@@ -31,7 +30,6 @@ def test_benchmark_help():
     assert "fail" not in res.stdout.lower()
 
 
-@pytest.mark.cli
 @pytest.mark.parametrize(
     ("model_stub", "additional_opts"),
     [
@@ -110,7 +108,6 @@ def test_benchmark(
         cleanup["files"].append(fn)
 
 
-@pytest.mark.cli
 @pytest.mark.parametrize(
     ("model_stub"),
     [

@@ -21,7 +21,6 @@ import pytest
 from helpers import predownload_stub, run_command
 
 
-@pytest.mark.cli
 def test_run_inference_help():
     cmd = ["deepsparse.transformers.run_inference", "--help"]
     print(f"\n==== test_run_inference_help command ====\n{' '.join(cmd)}")
@@ -34,7 +33,6 @@ def test_run_inference_help():
     assert "fail" not in res.stdout.lower()
 
 
-@pytest.mark.cli
 def test_run_inference_ner(cleanup: Dict[str, List]):
     cmd = [
         "deepsparse.transformers.run_inference",
@@ -68,7 +66,6 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     assert data["predictions"][0][0]["word"] == expected
 
 
-@pytest.mark.cli
 @pytest.mark.parametrize(
     ("input_format", "model_path", "local_model"),
     [
@@ -126,7 +123,6 @@ def test_run_inference_qa(
         assert actual["answer"] == expected_answer
 
 
-@pytest.mark.cli
 @pytest.mark.parametrize(
     ("input_format", "model_path", "local_model", "additional_opts"),
     [

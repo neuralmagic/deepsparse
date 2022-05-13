@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 from helpers import run_command
 
 
-@pytest.mark.cli
 def test_check_hardware():
     cmd = ["deepsparse.check_hardware"]
     print(f"\n==== deepsparse.check_hardware command ====\n{' '.join(cmd)}")
