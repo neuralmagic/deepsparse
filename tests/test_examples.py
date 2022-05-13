@@ -42,6 +42,7 @@ if SRC_DIRS is not None:
     import run_benchmark
 
 
+@pytest.mark.examples
 @pytest.mark.parametrize(
     "model, batch_size",
     (
@@ -66,6 +67,7 @@ def test_check_correctness(model: Model, batch_size: int):
         check_correctness.main()
 
 
+@pytest.mark.examples
 @pytest.mark.parametrize(
     "model, batch_size",
     (
@@ -90,6 +92,7 @@ def test_run_benchmark(model: Model, batch_size: int):
         run_benchmark.main()
 
 
+@pytest.mark.examples
 @pytest.mark.parametrize(
     "model_name, batch_size",
     (
@@ -113,6 +116,7 @@ def test_classification(model_name: str, batch_size: int):
         classification.main()
 
 
+@pytest.mark.examples
 @pytest.mark.parametrize(
     "model_name, batch_size",
     (

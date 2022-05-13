@@ -27,6 +27,7 @@ model_test_registry = {
 }
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     "model, batch_size",
     (
