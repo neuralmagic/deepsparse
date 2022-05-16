@@ -18,6 +18,7 @@ Input/Output Schemas for Image Classification.
 
 from typing import Any, List, Union
 
+import numpy
 from pydantic import BaseModel, Field
 
 
@@ -26,7 +27,7 @@ class ImageClassificationInput(BaseModel):
     Input model for image classification
     """
 
-    images: Union[str, List[str], List[Any]] = Field(
+    images: Union[str, List[str], List[Any], numpy.ndarray] = Field(
         description="List of Images to process"
     )
 
