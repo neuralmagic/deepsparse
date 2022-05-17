@@ -147,6 +147,37 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
         super().__init__(**kwargs)
 
+    def __call__(self, *args, **kwargs) -> BaseModel:
+        # parse inputs into input_schema schema if necessary
+        pipeline_inputs = self.parse_inputs(*args, **kwargs)
+        if not isinstance(pipeline_inputs, self.input_schema):
+            raise RuntimeError(
+                f"Unable to parse {self.__class__} inputs into a "
+                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
+            )
+
+        # run pipeline
+        engine_inputs: List[List[numpy.ndarray]] = self.process_inputs(pipeline_inputs)
+
+        if isinstance(engine_inputs, tuple):
+            engine_inputs, postprocess_kwargs = engine_inputs
+        else:
+            postprocess_kwargs = {}
+
+        engine_outputs: List[List[numpy.ndarray]] = [self.engine(inps) for inps in engine_inputs]
+        pipeline_outputs = self.process_engine_outputs(
+            engine_outputs, **postprocess_kwargs
+        )
+
+        # validate outputs format
+        if not isinstance(pipeline_outputs, self.output_schema):
+            raise ValueError(
+                f"Outputs of {self.__class__} must be instances of "
+                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
+            )
+
+        return pipeline_outputs
+
     @property
     def doc_stride(self) -> int:
         """
@@ -201,11 +232,13 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             None, inputs.question, inputs.context, None, None, None
         )
         features = self._tokenize(squad_example)
-        tokens = features.__dict__
+        tokens = [f.__dict__ for f in features]
 
-        engine_inputs = self.tokens_to_engine_input(tokens)
+        engine_inputs_ = [self.tokens_to_engine_input(t) for t in tokens]
         # add batch dimension, assuming batch size 1
-        engine_inputs = [numpy.expand_dims(inp, axis=0) for inp in engine_inputs]
+        engine_inputs = []
+        for inps in engine_inputs_:
+            engine_inputs.append([numpy.expand_dims(inp, axis=0) for inp in inps])
 
         return engine_inputs, dict(
             features=features,
@@ -213,7 +246,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         )
 
     def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], **kwargs
+        self, engine_outputs: List[numpy.ndarray], **kwargs,
     ) -> BaseModel:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
@@ -221,8 +254,91 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
+
         features = kwargs["features"]
         example = kwargs["example"]
+
+        # Loop through all features
+        # Selects the feature with highest score
+        score = -float("Inf")
+        ans_start = None
+        ans_end = None
+        feature = None
+        for feature_, outputs in zip(features, engine_outputs):
+            ans_start_, ans_end_, score_ = self._process_single_feature(feature_, outputs)
+            if score_ > score:
+                score = score_
+                ans_start = ans_start_
+                ans_end = ans_end_
+                feature = feature_
+
+
+        # decode start, end idx into text
+        if not self.tokenizer.is_fast:
+            char_to_word = numpy.array(example.char_to_word_offset)
+            return self.output_schema(
+                score=score.item(),
+                start=numpy.where(
+                    char_to_word == feature.token_to_orig_map[ans_start]
+                )[0][0].item(),
+                end=numpy.where(char_to_word == feature.token_to_orig_map[ans_end])[0][
+                    -1
+                ].item(),
+                answer=" ".join(
+                    example.doc_tokens[
+                        feature.token_to_orig_map[
+                            ans_start
+                        ] : feature.token_to_orig_map[ans_end]
+                        + 1
+                    ]
+                ),
+            )
+        else:
+            question_first = bool(self.tokenizer.padding_side == "right")
+
+            word_start = feature.encoding.token_to_word(ans_start)
+            while word_start is None:
+                ans_start += 1
+                word_start = feature.encoding.token_to_word(ans_start)
+
+            word_end = feature.encoding.token_to_word(ans_end)
+            while word_end is None:
+                ans_end += 1
+                word_end = feature.encoding.token_to_word(ans_end)
+
+            # Sometimes the max probability token is in the middle of a word so:
+            # we start by finding the right word containing the token with
+            # `token_to_word` then we convert this word in a character span
+            return self.output_schema(
+                score=score.item(),
+                start=feature.encoding.word_to_chars(
+                    word_start,
+                    sequence_index=1 if question_first else 0,
+                )[0],
+                end=feature.encoding.word_to_chars(
+                    word_end,
+                    sequence_index=1 if question_first else 0,
+                )[1],
+                answer=example.context_text[
+                    feature.encoding.word_to_chars(
+                        word_start,
+                        sequence_index=1 if question_first else 0,
+                    )[0] : feature.encoding.word_to_chars(
+                        word_end,
+                        sequence_index=1 if question_first else 0,
+                    )[
+                        1
+                    ]
+                ],
+            )
+
+
+    def _process_single_feature(self, feature, engine_outputs):
+        """
+        :param feature: a SQuAD feature object
+        :param engine_outputs: logits for start and end tokens
+        :return: answer start token (int), answer end token (int), score (float)
+        """
         start_vals, end_vals = engine_outputs[:2]
 
         # assuming batch size 0
@@ -231,7 +347,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
         # Ensure padded tokens & question tokens cannot belong
         undesired_tokens = (
-            numpy.abs(numpy.array(features.p_mask) - 1) & features.attention_mask
+            numpy.abs(numpy.array(feature.p_mask) - 1) & feature.attention_mask
         )
 
         # Generate mask
@@ -259,54 +375,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         ans_end = ans_end[0]
         score = scores[0]
 
-        # decode start, end idx into text
-        if not self.tokenizer.is_fast:
-            char_to_word = numpy.array(example.char_to_word_offset)
-            return self.output_schema(
-                score=score.item(),
-                start=numpy.where(
-                    char_to_word == features.token_to_orig_map[ans_start]
-                )[0][0].item(),
-                end=numpy.where(char_to_word == features.token_to_orig_map[ans_end])[0][
-                    -1
-                ].item(),
-                answer=" ".join(
-                    example.doc_tokens[
-                        features.token_to_orig_map[
-                            ans_start
-                        ] : features.token_to_orig_map[ans_end]
-                        + 1
-                    ]
-                ),
-            )
-        else:
-            question_first = bool(self.tokenizer.padding_side == "right")
-
-            # Sometimes the max probability token is in the middle of a word so:
-            # we start by finding the right word containing the token with
-            # `token_to_word` then we convert this word in a character span
-            return self.output_schema(
-                score=score.item(),
-                start=features.encoding.word_to_chars(
-                    features.encoding.token_to_word(ans_start),
-                    sequence_index=1 if question_first else 0,
-                )[0],
-                end=features.encoding.word_to_chars(
-                    features.encoding.token_to_word(ans_end),
-                    sequence_index=1 if question_first else 0,
-                )[1],
-                answer=example.context_text[
-                    features.encoding.word_to_chars(
-                        features.encoding.token_to_word(ans_start),
-                        sequence_index=1 if question_first else 0,
-                    )[0] : features.encoding.word_to_chars(
-                        features.encoding.token_to_word(ans_end),
-                        sequence_index=1 if question_first else 0,
-                    )[
-                        1
-                    ]
-                ],
-            )
+        return ans_start, ans_end, score
 
     def _tokenize(self, example: SquadExample):
         if not self.tokenizer.is_fast:
@@ -320,10 +389,6 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 is_training=False,
                 tqdm_enabled=False,
             )
-            # only 1 span supported so taking only the first element of features
-            # to add support for num_spans switch to features = features[:num_spans]
-            # not included for now due to static batch requirements in production
-            features = features[0]
         else:
             question_first = bool(self.tokenizer.padding_side == "right")
             encoded_inputs = self.tokenizer(
@@ -341,10 +406,6 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 return_offsets_mapping=True,
                 return_special_tokens_mask=True,
             )
-
-            # only 1 span supported so taking only the first element of features
-            # to add support for num_spans switch hardcoded 0 idx lookups to loop
-            # over values in num_spans
 
             # p_mask: mask with 1 for token than cannot be in the answer
             # We put 0 on the tokens from the context and 1 everywhere else
@@ -364,25 +425,27 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 )
                 p_mask[cls_index] = 0
 
-            features = SquadFeatures(
-                input_ids=encoded_inputs["input_ids"][0],
-                attention_mask=encoded_inputs["attention_mask"][0],
-                token_type_ids=encoded_inputs["token_type_ids"][0],
-                p_mask=p_mask[0].tolist(),
-                encoding=encoded_inputs[0],
-                # the following values are unused for fast tokenizers
-                cls_index=None,
-                token_to_orig_map={},
-                example_index=0,
-                unique_id=0,
-                paragraph_len=0,
-                token_is_max_context=0,
-                tokens=[],
-                start_position=0,
-                end_position=0,
-                is_impossible=False,
-                qas_id=None,
-            )
+            features = []
+            for i in range(len(encoded_inputs["input_ids"])):
+                features.append(SquadFeatures(
+                    input_ids=encoded_inputs["input_ids"][i],
+                    attention_mask=encoded_inputs["attention_mask"][i],
+                    token_type_ids=encoded_inputs["token_type_ids"][i],
+                    p_mask=p_mask[0].tolist(),
+                    encoding=encoded_inputs[i],
+                    # the following values are unused for fast tokenizers
+                    cls_index=None,
+                    token_to_orig_map={},
+                    example_index=0,
+                    unique_id=0,
+                    paragraph_len=0,
+                    token_is_max_context=0,
+                    tokens=[],
+                    start_position=0,
+                    end_position=0,
+                    is_impossible=False,
+                    qas_id=None,
+                ))
 
         return features
 
