@@ -112,8 +112,9 @@ def main(dataset_path: str, model_path: str, batch_size: int, image_size: int):
         root=dataset_path,
         transform=transforms.Compose(
             [
+                transforms.Resize(round(non_rand_resize_scale * image_size)),
+                transforms.CenterCrop(image_size),
                 transforms.ToTensor(),
-                transforms.Resize(size=(image_size, image_size)),
             ]
         ),
     )
