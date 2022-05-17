@@ -43,18 +43,17 @@ python validation_script.py \
   --dataset-path /path/to/imagenette/
 
 """
+import click
+import torchvision
+from torchvision import transforms
 from tqdm import tqdm
 
-import click
-from deepsparse.pipeline import Pipeline
 from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
 )
-
+from deepsparse.pipeline import Pipeline
 from torch.utils.data import DataLoader
-import torchvision
-from torchvision import transforms
 
 
 resnet50_imagenet_pruned = (

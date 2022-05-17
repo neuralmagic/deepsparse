@@ -84,8 +84,12 @@ class ImageClassificationPipeline(Pipeline):
         self._pre_normalization_transforms = transforms.Compose(
             [
                 transforms.Resize(
-                    round(non_rand_resize_scale * self._image_size[0]),
-                    round(non_rand_resize_scale * self._image_size[1]),
+                    tuple(
+                        [
+                            round(non_rand_resize_scale * size)
+                            for size in self._image_size
+                        ]
+                    )
                 ),
                 transforms.CenterCrop(self._image_size),
             ]
@@ -174,7 +178,7 @@ class ImageClassificationPipeline(Pipeline):
                 image.close()
 
                 # make channel first dimension
-                image_numpy = image_numpy[:, :, ::-1].transpose(2, 0, 1)
+                image_numpy = image_numpy.transpose(2, 0, 1)
 
                 # append to batch
                 image_batch.append(image_numpy)
