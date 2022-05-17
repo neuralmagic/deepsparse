@@ -302,10 +302,10 @@ def main():
         _LOGGER.info("num_streams set to {}".format(args.num_streams))
     elif not args.num_streams and scenario not in "singlestream":
         # If num_streams isn't defined, find a default
-        args.num_streams = None
+        args.num_streams = max(1, int(model.num_cores / 2))
         _LOGGER.info(
-            "num_streams default value based on the scheduler. "
-            "This requires tuning and may be sub-optimal"
+            "num_streams default value chosen of {}. "
+            "This requires tuning and may be sub-optimal".format(args.num_streams)
         )
 
     # Compile the ONNX into a runnable model
