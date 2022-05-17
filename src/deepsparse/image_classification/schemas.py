@@ -22,6 +22,12 @@ import numpy
 from pydantic import BaseModel, Field
 
 
+__all__ = [
+    "ImageClassificationInput",
+    "ImageClassificationOutput",
+]
+
+
 class ImageClassificationInput(BaseModel):
     """
     Input model for image classification

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# flake8: noqa
+
 from .constants import *
 from .pipelines import *
 from .schemas import *

@@ -35,6 +35,11 @@ from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 
 
+__all__ = [
+    "ImageClassificationPipeline",
+]
+
+
 @Pipeline.register(
     task="image_classification",
     default_model_path=(
