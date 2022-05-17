@@ -296,6 +296,8 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         else:
             question_first = bool(self.tokenizer.padding_side == "right")
 
+            # If the start or end token point to the separator token
+            # move the token by one
             word_start = feature.encoding.token_to_word(ans_start)
             while word_start is None:
                 ans_start += 1
