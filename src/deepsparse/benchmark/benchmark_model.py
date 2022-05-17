@@ -285,18 +285,18 @@ def parse_scenario(scenario):
 def parse_num_streams(num_streams, scenario, num_cores):
     default_num_streams = max(1, int(num_cores / 2))
 
-    if num_streams and num_streams > 0 and num_streams <= model.num_cores:
-        if num_streams <= 0 or num_streams > model.num_cores:
+    if num_streams:
+        if num_streams <= 0 or num_streams > num_cores:
             _LOGGER.info(
                 "Invalid value for num_streams: {}. num_streams can not be less "
                 "than 1 or greater than the number of cores. Defaulting to {}.".format(
-                    args.num_streams, default_num_streams
+                    num_streams, default_num_streams
                 )
             )
             return default_num_streams
-        _LOGGER.info("num_streams set to {}".format(args.num_streams))
+        _LOGGER.info("num_streams set to {}".format(num_streams))
         return num_streams
-    elif not args.num_streams and scenario not in "singlestream":
+    elif not num_streams and scenario not in "singlestream":
         # If num_streams isn't defined, find a default
         _LOGGER.info(
             "num_streams default value chosen of {}. "
@@ -322,7 +322,7 @@ def main():
     orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
 
-    num_streams = parse_num_streams(args.num_streams, scenario, model.num_cores)
+    num_streams = parse_num_streams(args.num_streams, scenario, args.num_cores)
 
     # Compile the ONNX into a runnable model
     if args.engine == DEEPSPARSE_ENGINE:
@@ -330,7 +330,7 @@ def main():
             model=args.model_path,
             batch_size=args.batch_size,
             num_cores=args.num_cores,
-            num_streams=args.num_streams,
+            num_streams=num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
         )
