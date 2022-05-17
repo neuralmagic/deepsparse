@@ -157,12 +157,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             )
 
         # run pipeline
-        engine_inputs: List[List[numpy.ndarray]] = self.process_inputs(pipeline_inputs)
-
-        if isinstance(engine_inputs, tuple):
-            engine_inputs, postprocess_kwargs = engine_inputs
-        else:
-            postprocess_kwargs = {}
+        engine_inputs, postprocess_kwargs = self.process_inputs(pipeline_inputs)
 
         engine_outputs: List[List[numpy.ndarray]] = [self.engine(inps) for inps in engine_inputs]
         pipeline_outputs = self.process_engine_outputs(
@@ -240,13 +235,10 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         for inps in engine_inputs_:
             engine_inputs.append([numpy.expand_dims(inp, axis=0) for inp in inps])
 
-        return engine_inputs, dict(
-            features=features,
-            example=squad_example,
-        )
+        return engine_inputs, dict(features=features, example=squad_example)
 
     def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], **kwargs,
+        self, engine_outputs: List[List[numpy.ndarray]], **kwargs,
     ) -> BaseModel:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
@@ -272,7 +264,6 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 ans_end = ans_end_
                 feature = feature_
 
-
         # decode start, end idx into text
         if not self.tokenizer.is_fast:
             char_to_word = numpy.array(example.char_to_word_offset)
@@ -288,7 +279,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                     example.doc_tokens[
                         feature.token_to_orig_map[
                             ans_start
-                        ] : feature.token_to_orig_map[ans_end]
+                        ]: feature.token_to_orig_map[ans_end]
                         + 1
                     ]
                 ),
@@ -325,7 +316,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                     feature.encoding.word_to_chars(
                         word_start,
                         sequence_index=1 if question_first else 0,
-                    )[0] : feature.encoding.word_to_chars(
+                    )[0]: feature.encoding.word_to_chars(
                         word_end,
                         sequence_index=1 if question_first else 0,
                     )[
@@ -333,7 +324,6 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                     ]
                 ],
             )
-
 
     def _process_single_feature(self, feature, engine_outputs):
         """
