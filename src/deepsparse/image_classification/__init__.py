@@ -14,6 +14,60 @@
 
 # flake8: noqa
 
+import logging as _logging
+
+
+_LOGGER = _logging.getLogger(__name__)
+
+
+def _check_torchvision_install(raise_on_fail=False):
+    try:
+        import torchvision as _torchvision
+
+        return None
+    except Exception as torchvision_import_exception:
+        if raise_on_fail:
+            raise torchvision_import_exception
+        return torchvision_import_exception
+
+
+def _check_install_deps():
+    torchvision_import_exception = _check_torchvision_install
+    if not torchvision_import_exception:
+        return
+
+    # attempt to install torchvision
+    import subprocess as _subprocess
+    import sys as _sys
+
+    try:
+        _subprocess.check_call(
+            [
+                _sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "torchvision>=0.3.0,<=0.10.1",
+            ]
+        )
+
+        _check_torchvision_install(raise_on_fail=True)
+
+        _LOGGER.info(
+            "torchvision dependency of deepsparse.image_classification "
+            "sucessfully installed"
+        )
+    except Exception as torchvision_exception:
+        raise ValueError(
+            "Unable to import or install torchvision, a requirement of "
+            f"deepsparse.image_classification. Failed with exception: "
+            f"{torchvision_exception}"
+        )
+
+
+_check_install_deps()
+
+
 from .constants import *
 from .pipelines import *
 from .schemas import *
