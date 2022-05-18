@@ -18,6 +18,8 @@ from distutils import log
 from fnmatch import fnmatch
 from typing import Dict, List, Tuple
 
+from utils.artifacts import check_wand_binaries_exist, download_wand_binaries
+
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
@@ -142,56 +144,18 @@ def _check_supported_python_version():
         )
 
 
-def _check_wand_artifacts():
-    package_path = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "src", "deepsparse"
-    )
-    arch_path = os.path.join(package_path, "arch.bin")
-    # TODO: Check for instruction set i.e.
-    # avx2_path = os.path.join(package_path, "avx2", "deepsparse_engine.so")
-
-    print("Looking at", arch_path, os.path.exists(arch_path))
-    # If the artifacts needed don't exist, pull them down from the artifact store
-    # based on known version information and extract them to the right location
-    if not os.path.exists(arch_path):
-        release_string = "release" if is_release else "nightly"
-        full_version = f"{version_major}.{version_minor}.{version_bug}"
-
-        print(
-            f"Unable to find wand binaries locally in {package_path}.\n"
-            f"Pulling down from artifact store for wand {release_string} {full_version}"
-        )
-        artifact_url = (
-            "https://artifacts.neuralmagic.com/"
-            f"{release_string}/"
-            f"wand_nightly-{full_version}"
-            f"-cp{sys.version_info[0]}{sys.version_info[1]}"
-            f"-cp{sys.version_info[0]}{sys.version_info[1]}"
-            f"{'' if sys.version_info[1] > 7 else 'm'}"  # 3.6 and 3.7 have a 'm'
-            "-manylinux_x86_64.tar.gz"
-        )
-
-        import tarfile
-        from io import BytesIO
-        from urllib.request import Request, urlopen
-
-        print("Requesting", artifact_url)
-        req = urlopen(Request(artifact_url, headers={"User-Agent": "Mozilla/5.0"}))
-        tar = tarfile.open(name=None, fileobj=BytesIO(req.read()))
-        # TODO: Base directory is included in the tarfile, so need to strip it to
-        # extract files in the right place
-        base_tar_dir = tar.getnames()[0]
-        for member in tar.getmembers():
-            if member.name is base_tar_dir:
-                continue
-            # Remove base folder from each member
-            member.name = member.name.replace(base_tar_dir + "/", "")
-            tar.extract(member, package_path)
-
-
+# Ensure system and python environment is compatible
 _check_supported_system()
 _check_supported_python_version()
-_check_wand_artifacts()
+
+# Download WAND binaries if needed
+package_path = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "src", "deepsparse"
+)
+if not check_wand_binaries_exist(package_path):
+    download_wand_binaries(
+        package_path, f"{version_major}.{version_minor}.{version_bug}", is_release
+    )
 
 
 class OverrideInstall(install):
