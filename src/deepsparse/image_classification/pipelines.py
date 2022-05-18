@@ -137,16 +137,20 @@ class ImageClassificationPipeline(Pipeline):
                 inputs.images = [inputs.images]
 
             for image in inputs.images:
+                if isinstance(image, list):
+                    image = numpy.asarray(image)
+
                 if cv2 is None:
                     raise RuntimeError(
                         "cv2 is required to load image inputs from file "
                         f"Unable to import: {cv2_error}"
                     )
-                img = cv2.imread(image) if isinstance(image, str) else image
+                if isinstance(image, str):
+                    image = cv2.imread(image)
+                    image = cv2.resize(image, dsize=self._image_size)
 
-                img = cv2.resize(img, dsize=self._image_size)
-                img = img[:, :, ::-1].transpose(2, 0, 1)
-                image_batch.append(img)
+                image = image[:, :, ::-1].transpose(2, 0, 1)
+                image_batch.append(image)
 
             image_batch = numpy.stack(image_batch, axis=0)
 

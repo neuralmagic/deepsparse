@@ -146,27 +146,58 @@ class YOLOPipeline(Pipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
+        # Noting that if numpy arrays are passed in, we assume they are
+        # already the correct shape
+
         image_batch = []
 
-        if isinstance(inputs.images, str):
-            inputs.images = [inputs.images]
-
         for image in inputs.images:
+            if isinstance(image, list):
+                # image consists of floats or ints
+                image = numpy.asarray(image)
+
             if isinstance(image, str):
                 image = cv2.imread(image)
                 image = cv2.resize(image, dsize=self.input_shape)
-                image = image[:, :, ::-1].transpose(2, 0, 1)
 
+            image = self._make_channels_first(image)
             image_batch.append(image)
 
-        image_batch = numpy.stack(image_batch, axis=0)
+        image_batch = self._make_batch(image_batch)
         image_batch = numpy.ascontiguousarray(
             image_batch,
             dtype=numpy.int8 if self.is_quantized else numpy.float32,
         )
-        image_batch /= 255
+
+        if not self.is_quantized:
+            image_batch /= 255
 
         return [image_batch]
+
+    def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
+        # return a numpy batch of images
+        if len(image_batch) == 1:
+            current_batch = image_batch[0]
+            if current_batch.ndim == 4:
+                return current_batch
+
+        return numpy.stack(image_batch, axis=0)
+
+    def _make_channels_first(self, image: numpy.ndarray) -> numpy.ndarray:
+        # return a numpy array with channels first
+        is_single_image = image.ndim == 3
+        is_batch = image.ndim == 4
+
+        if image.shape[-1] != 3:
+            return image
+
+        if is_single_image:
+            return numpy.moveaxis(image, -1, 0)
+
+        if is_batch:
+            return numpy.moveaxis(image, -1, 1)
+
+        return image
 
     def process_engine_outputs(
         self,
