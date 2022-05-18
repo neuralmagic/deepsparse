@@ -18,10 +18,10 @@ from distutils import log
 from fnmatch import fnmatch
 from typing import Dict, List, Tuple
 
-from utils.artifacts import check_wand_binaries_exist, download_wand_binaries
-
 from setuptools import find_packages, setup
 from setuptools.command.install import install
+
+from utils.artifacts import check_wand_binaries_exist, download_wand_binaries
 
 
 # default variables to be overwritten by the version.py file

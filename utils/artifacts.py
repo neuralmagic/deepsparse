@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import os
 import sys
-import argparse
 import tarfile
 from io import BytesIO
 from urllib.request import Request, urlopen
+
 
 __all__ = ["check_wand_binaries_exist", "download_wand_binaries"]
 
@@ -98,23 +99,20 @@ def main():
 
     if args.force_update or not check_wand_binaries_exist(args.package_path):
 
-        # default variables to be overwritten by the version.py file
-        is_release = None
-        version = "unknown"
-        version_major = version
-        version_minor = version
-        version_bug = version
-        # load and overwrite version and release info from deepsparse package
+        # load version and release info from deepsparse package
         version_path = os.path.join(args.package_path, "generated_version.py")
         if not os.path.exists(version_path):
             version_path = os.path.join(args.package_path, "version.py")
+
+        # exec() cannot set local variables so need to manually
         locals_dict = {}
         exec(open(version_path).read(), globals(), locals_dict)
-        is_release = locals_dict["is_release"]
-        version = locals_dict["version"]
-        version_major = locals_dict["version_major"]
-        version_minor = locals_dict["version_minor"]
-        version_bug = locals_dict["version_bug"]
+        is_release = locals_dict.get("is_release")
+        version = locals_dict.get("version", "unknown")
+        version_major = locals_dict.get("version_major", "unknown")
+        version_minor = locals_dict.get("version_minor", "unknown")
+        version_bug = locals_dict.get("version_bug", "unknown")
+
         print(f"Loaded version {version} from {version_path}")
         full_version = f"{version_major}.{version_minor}.{version_bug}"
 
