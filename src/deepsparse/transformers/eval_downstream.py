@@ -138,7 +138,7 @@ def mnli_eval(args):
     for idx, sample in enumerate(tqdm(mnli_mismatched)):
         pred = text_classify([[sample["premise"], sample["hypothesis"]]])
         mnli_metrics.add_batch(
-            predictions=[label_map.get(pred[0]["label"])],
+            predictions=[label_map.get(pred.labels[0])],
             references=[sample["label"]],
         )
 
