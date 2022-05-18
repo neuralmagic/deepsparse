@@ -17,8 +17,8 @@ import os
 import sys
 import tarfile
 from io import BytesIO
-from urllib.request import Request, urlopen
 from typing import Tuple
+from urllib.request import Request, urlopen
 
 
 __all__ = [
