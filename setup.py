@@ -21,22 +21,21 @@ from typing import Dict, List, Tuple
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
-from utils.artifacts import check_wand_binaries_exist, download_wand_binaries
+from utils.artifacts import (
+    check_wand_binaries_exist,
+    download_wand_binaries,
+    get_release_and_version,
+)
 
 
-# default variables to be overwritten by the version.py file
-is_release = None
-version = "unknown"
-version_major = version
-version_minor = version
-version_bug = version
-
-# load and overwrite version and release info from deepsparse package
-version_path = os.path.join("src", "deepsparse", "generated_version.py")
-if not os.path.exists(version_path):
-    version_path = os.path.join("src", "deepsparse", "version.py")
-exec(open(version_path).read())
-print(f"loaded version {version} from {version_path}")
+# Load version and release info from deepsparse package
+(
+    is_release,
+    version,
+    version_major,
+    version_minor,
+    version_bug,
+) = get_release_and_version(os.path.join("src", "deepsparse"))
 version_base = f"{version_major}.{version_minor}.0"
 
 _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"

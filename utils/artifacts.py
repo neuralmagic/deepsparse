@@ -20,7 +20,11 @@ from io import BytesIO
 from urllib.request import Request, urlopen
 
 
-__all__ = ["check_wand_binaries_exist", "download_wand_binaries"]
+__all__ = [
+    "get_release_and_version",
+    "check_wand_binaries_exist",
+    "download_wand_binaries",
+]
 
 
 def parse_args():
@@ -44,7 +48,31 @@ def parse_args():
     return parser.parse_args()
 
 
-def check_wand_binaries_exist(package_path: str):
+def get_release_and_version(package_path: str) -> tuple[bool, str, str, str, str]:
+    """
+    Load version and release info from deepsparse package
+    """
+
+    version_path = os.path.join(package_path, "generated_version.py")
+    if not os.path.exists(version_path):
+        version_path = os.path.join(package_path, "version.py")
+
+    # exec() cannot set local variables so need to manually
+    locals_dict = {}
+    exec(open(version_path).read(), globals(), locals_dict)
+    is_release = locals_dict.get("is_release", False)
+    version = locals_dict.get("version", "unknown")
+    version_major = locals_dict.get("version_major", "unknown")
+    version_minor = locals_dict.get("version_minor", "unknown")
+    version_bug = locals_dict.get("version_bug", "unknown")
+
+    print(f"Loaded version {version} from {version_path}")
+    full_version = f"{version_major}.{version_minor}.{version_bug}"
+
+    return is_release, version, version_major, version_minor, version_bug
+
+
+def check_wand_binaries_exist(package_path: str) -> bool:
     """
     Check if the binaries neccessary to run the DeepSparse Engine are present
     """
@@ -56,9 +84,7 @@ def check_wand_binaries_exist(package_path: str):
     return os.path.exists(arch_path)
 
 
-def download_wand_binaries(
-    package_path: str, full_version: str, is_release: bool = False
-):
+def download_wand_binaries(package_path: str, full_version: str, is_release: bool):
     """
     Pull down the binaries from the artifact store based on known version information
     and extract them to the right location
@@ -98,22 +124,13 @@ def main():
     args = parse_args()
 
     if args.force_update or not check_wand_binaries_exist(args.package_path):
-
-        # load version and release info from deepsparse package
-        version_path = os.path.join(args.package_path, "generated_version.py")
-        if not os.path.exists(version_path):
-            version_path = os.path.join(args.package_path, "version.py")
-
-        # exec() cannot set local variables so need to manually
-        locals_dict = {}
-        exec(open(version_path).read(), globals(), locals_dict)
-        is_release = locals_dict.get("is_release")
-        version = locals_dict.get("version", "unknown")
-        version_major = locals_dict.get("version_major", "unknown")
-        version_minor = locals_dict.get("version_minor", "unknown")
-        version_bug = locals_dict.get("version_bug", "unknown")
-
-        print(f"Loaded version {version} from {version_path}")
+        (
+            is_release,
+            version,
+            version_major,
+            version_minor,
+            version_bug,
+        ) = get_release_and_version(args.package_path)
         full_version = f"{version_major}.{version_minor}.{version_bug}"
 
         download_wand_binaries(args.package_path, full_version, is_release)
