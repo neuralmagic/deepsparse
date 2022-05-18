@@ -137,7 +137,7 @@ if __name__ == "__main__":
         model_name="question-answering-example",
         config_name="QuestionAnsweringExampleConfig",
         endpoint_name="question-answering-example-endpoint",
-        role_arn="arn:aws:iam::831168642639:role/ricky",
+        role_arn="<placeholder>",
     )
 
     Sage.create_image()
