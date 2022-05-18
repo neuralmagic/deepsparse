@@ -68,7 +68,6 @@ def get_release_and_version(package_path: str) -> Tuple[bool, str, str, str, str
     version_bug = locals_dict.get("version_bug", "unknown")
 
     print(f"Loaded version {version} from {version_path}")
-    full_version = f"{version_major}.{version_minor}.{version_bug}"
 
     return is_release, version, version_major, version_minor, version_bug
 
@@ -127,7 +126,7 @@ def main():
     if args.force_update or not check_wand_binaries_exist(args.package_path):
         (
             is_release,
-            version,
+            _,
             version_major,
             version_minor,
             version_bug,
