@@ -18,6 +18,7 @@ import sys
 import tarfile
 from io import BytesIO
 from urllib.request import Request, urlopen
+from typing import Tuple
 
 
 __all__ = [
@@ -48,7 +49,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_release_and_version(package_path: str) -> tuple[bool, str, str, str, str]:
+def get_release_and_version(package_path: str) -> Tuple[bool, str, str, str, str]:
     """
     Load version and release info from deepsparse package
     """
