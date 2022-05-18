@@ -32,7 +32,7 @@ style:
 
 
 # pull the latest engine binaries from the artifact store
-artifact:
+artifacts:
 	@echo "Running update binaries from artifact store";
 	$(PYTHON) utils/artifacts.py src/deepsparse --force
 
