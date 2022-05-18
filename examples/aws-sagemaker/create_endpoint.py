@@ -1,11 +1,9 @@
 import boto3
 import subprocess
 from rich.pretty import pprint
-\
+
 
 class SparseMaker:
-
-
 
 
     def __init__(
