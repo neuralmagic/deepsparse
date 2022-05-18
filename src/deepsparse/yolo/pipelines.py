@@ -183,7 +183,6 @@ class YOLOPipeline(Pipeline):
         )
         return [image_batch], postprocessing_kwargs
 
-
     def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
         # return a numpy batch of images
         if len(image_batch) == 1:
