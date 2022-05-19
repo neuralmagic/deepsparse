@@ -33,7 +33,7 @@ class SparseMaker:
     :param variant_name: The name of the production variant
     :param model_name: The name of the model that you want to host.
                        This is the name that you specified when creating the model
-    :param config_name: The name of the endpoint configuration 
+    :param config_name: The name of the endpoint configuration
                         associated with the endpoint
     :param endpoint_name: name given to endpoint on SageMaker
     :param role_arn: ARN id that gives SageMaker and ECR permissions
