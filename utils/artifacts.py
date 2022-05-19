@@ -77,9 +77,6 @@ def check_wand_binaries_exist(package_path: str) -> bool:
     Check if the binaries neccessary to run the DeepSparse Engine are present
     """
     arch_path = os.path.join(package_path, "arch.bin")
-    # TODO: Check for instruction set i.e.
-    # avx2_path = os.path.join(package_path, "avx2", "deepsparse_engine.so")
-
     print("Checking to see if", arch_path, "exists..", os.path.exists(arch_path))
     return os.path.exists(arch_path)
 
@@ -108,8 +105,8 @@ def download_wand_binaries(package_path: str, full_version: str, is_release: boo
     print("Requesting", artifact_url)
     req = urlopen(Request(artifact_url, headers={"User-Agent": "Mozilla/5.0"}))
     tar = tarfile.open(name=None, fileobj=BytesIO(req.read()))
-    # TODO: Base directory is included in the tarfile, so need to strip it to
-    # extract files in the right place
+    # NOTE: Base directory is included in the tarfile, so need to strip it to
+    # extract files into the package_path
     base_tar_dir = tar.getnames()[0]
     for member in tar.getmembers():
         # Skip root dir

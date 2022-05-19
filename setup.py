@@ -29,13 +29,16 @@ from utils.artifacts import (
 
 
 # Load version and release info from deepsparse package
+package_path = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "src", "deepsparse"
+)
 (
     is_release,
     version,
     version_major,
     version_minor,
     version_bug,
-) = get_release_and_version(os.path.join("src", "deepsparse"))
+) = get_release_and_version(package_path)
 version_base = f"{version_major}.{version_minor}.0"
 
 _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
@@ -148,9 +151,6 @@ _check_supported_system()
 _check_supported_python_version()
 
 # Download WAND binaries if needed
-package_path = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), "src", "deepsparse"
-)
 if not check_wand_binaries_exist(package_path):
     download_wand_binaries(
         package_path, f"{version_major}.{version_minor}.{version_bug}", is_release
