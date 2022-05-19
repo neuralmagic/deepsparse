@@ -8,7 +8,18 @@ DOCDIR := docs
 MDCHECKGLOBS := 'docs/**/*.md' 'docs/**/*.rst' 'examples/**/*.md' 'scripts/**/*.md'
 MDCHECKFILES := CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPING.md README.md
 SPARSEZOO_TEST_MODE := "true"
+
+TARGETS := ""  # targets for running pytests: cli,examples
 PYTEST_ARGS ?= ""
+ifneq ($(findstring cli,$(TARGETS)),cli)
+	PYTEST_ARGS := $(PYTEST_ARGS) --ignore tests/test_benchmark.py \
+	--ignore tests/test_check_hardware.py \
+	--ignore tests/test_run_inference.py \
+	--ignore tests/test_server.py
+endif
+ifneq ($(findstring examples,$(TARGETS)),examples)
+	PYTEST_ARGS := $(PYTEST_ARGS) --ignore tests/test_examples.py
+endif
 
 PYTHON := python3
 
@@ -35,11 +46,6 @@ style:
 test:
 	@echo "Running python tests";
 	@SPARSEZOO_TEST_MODE="true" pytest ./tests/ $(PYTEST_ARGS);
-
-# run example tests for the repo
-test-examples:
-	@echo "Running python example tests";
-	@SPARSEZOO_TEST_MODE="true" pytest ./examples/ $(PYTEST_ARGS);
 
 # create docs
 docs:
