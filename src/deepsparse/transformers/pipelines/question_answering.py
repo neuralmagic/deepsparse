@@ -147,32 +147,6 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
         super().__init__(**kwargs)
 
-    def __call__(self, *args, **kwargs) -> BaseModel:
-        # parse inputs into input_schema schema if necessary
-        pipeline_inputs = self.parse_inputs(*args, **kwargs)
-        if not isinstance(pipeline_inputs, self.input_schema):
-            raise RuntimeError(
-                f"Unable to parse {self.__class__} inputs into a "
-                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
-            )
-
-        # run pipeline
-        engine_inputs, postprocess_kwargs = self.process_inputs(pipeline_inputs)
-
-        engine_outputs: List[List[numpy.ndarray]] = [self.engine(inps) for inps in engine_inputs]
-        pipeline_outputs = self.process_engine_outputs(
-            engine_outputs, **postprocess_kwargs
-        )
-
-        # validate outputs format
-        if not isinstance(pipeline_outputs, self.output_schema):
-            raise ValueError(
-                f"Outputs of {self.__class__} must be instances of "
-                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
-            )
-
-        return pipeline_outputs
-
     @property
     def doc_stride(self) -> int:
         """
@@ -211,6 +185,14 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         :return: pydantic model class that outputs of this pipeline must comply to
         """
         return QuestionAnsweringOutput
+
+    # Override engine_forward to account for multiple sets of inputs (multiple spans)
+    def engine_forward(self, inputs: List[List[numpy.ndarray]], **kwargs):
+        engine_outputs = []
+        for inps in inputs:
+            engine_outputs.append(self.engine(inps))
+
+        return engine_outputs
 
     def process_inputs(
         self,
@@ -287,42 +269,34 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         else:
             question_first = bool(self.tokenizer.padding_side == "right")
 
-            # If the start or end token point to the separator token
-            # move the token by one
-            word_start = feature.encoding.token_to_word(ans_start)
-            while word_start is None:
-                ans_start += 1
-                word_start = feature.encoding.token_to_word(ans_start)
-
-            word_end = feature.encoding.token_to_word(ans_end)
-            while word_end is None:
-                ans_end += 1
-                word_end = feature.encoding.token_to_word(ans_end)
-
             # Sometimes the max probability token is in the middle of a word so:
             # we start by finding the right word containing the token with
             # `token_to_word` then we convert this word in a character span
+
+            # If the start or end token point to the separator token
+            # move the token by one
+            def _token_to_char(token):
+                w = feature.encoding.token_to_word(token)
+                if w is None:
+                    return None
+                else:
+                    return feature.encoding.word_to_chars(w, sequence_index=1 if question_first else 0)
+
+            char_start = _token_to_char(ans_start)
+            while char_start is None:
+                ans_start += 1
+                char_start = _token_to_char(ans_start)
+
+            char_end = _token_to_char(ans_end)
+            while char_end is None:
+                ans_end += 1
+                char_end = _token_to_char(ans_end)
+
             return self.output_schema(
                 score=score.item(),
-                start=feature.encoding.word_to_chars(
-                    word_start,
-                    sequence_index=1 if question_first else 0,
-                )[0],
-                end=feature.encoding.word_to_chars(
-                    word_end,
-                    sequence_index=1 if question_first else 0,
-                )[1],
-                answer=example.context_text[
-                    feature.encoding.word_to_chars(
-                        word_start,
-                        sequence_index=1 if question_first else 0,
-                    )[0]: feature.encoding.word_to_chars(
-                        word_end,
-                        sequence_index=1 if question_first else 0,
-                    )[
-                        1
-                    ]
-                ],
+                start=char_start[0],
+                end=char_end[1],
+                answer=example.context_text[char_start[0]: char_end[1]],
             )
 
     def _process_single_feature(self, feature, engine_outputs):
