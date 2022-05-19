@@ -18,7 +18,14 @@ import boto3
 
 
 class Endpoint:
-    def __init__(self, region_name, endpoint_name):
+    """
+    Client object for making requests to the SageMaker inference endpoint
+
+    :param region_name: AWS region
+    :param endpoint_name: Name given to endpoint on SageMaker
+    """
+
+    def __init__(self, region_name: str, endpoint_name: str):
 
         self.region_name = region_name
         self.endpoint_name = endpoint_name

@@ -19,25 +19,46 @@ from rich.pretty import pprint
 
 
 class SparseMaker:
+
+    """
+    Object for auto creating a docker image with the deepsparse server,
+    pushing the image to AWS and generating a SageMaker inference endpoint
+
+    :param instance_count: Number of instances to launch initially
+    :param region_name: AWS region
+    :param instance_type: Type of instance to spin up on sagemaker
+    :param image_name: Image name given to Docker when building dockerfile
+    :param repo_name: ECR repo name on AWS
+    :param image_push_script: path to script for pushing Docker Image to ECR
+    :param variant_name: The name of the production variant
+    :param model_name: The name of the model that you want to host.
+                       This is the name that you specified when creating the model
+    :param config_name: The name of the endpoint configuration 
+                        associated with the endpoint
+    :param endpoint_name: name given to endpoint on SageMaker
+    :param role_arn: ARN id that gives SageMaker and ECR permissions
+
+    """
+
     def __init__(
         self,
-        instance_count,
-        region_name,
-        instance_type,
-        image_name,
-        repository_name,
-        image_push_script,
-        variant_name,
-        model_name,
-        config_name,
-        endpoint_name,
-        role_arn,
+        instance_count: int,
+        region_name: str,
+        instance_type: str,
+        image_name: str,
+        repo_name: str,
+        image_push_script: str,
+        variant_name: str,
+        model_name: str,
+        config_name: str,
+        endpoint_name: str,
+        role_arn: str,
     ):
 
         # Docker Image and Repository
         self.image_name = image_name
         self.build_cmd = [f"docker build -t {self.image_name} ."]
-        self.repo_name = repository_name
+        self.repo_name = repo_name
         self.push_script = image_push_script
 
         # Sagemaker Client
@@ -47,7 +68,8 @@ class SparseMaker:
         # Model
         self.region = boto3.Session().region_name
         self.acc = boto3.client("sts").get_caller_identity()["Account"]
-        self.image_uri = f"{self.acc}.dkr.ecr.{self.region}.amazonaws.com/deepsparse-sagemaker:latest"
+        self.repo_path = f"amazonaws.com/{self.repo_name}:latest"
+        self.image_uri = f"{self.acc}.dkr.ecr.{self.region}.{self.repo_path}"
         self.image = [{"Image": self.image_uri}]
         self.ROLE_ARN = role_arn
 
@@ -131,7 +153,7 @@ if __name__ == "__main__":
         region_name="us-east-1",
         instance_type="ml.c5.large",
         image_name="deepsparse-sagemaker-example",
-        repository_name="deepsparse-sagemaker",
+        repo_name="deepsparse-sagemaker",
         image_push_script="./push_image.sh",
         variant_name="QuestionAnsweringDeepSparseDemo",
         model_name="question-answering-example",
@@ -146,4 +168,4 @@ if __name__ == "__main__":
     Sage.create_model()
     Sage.create_endpoint_config()
     Sage.create_endpoint()
-    Sage.nuke_endpoint()
+    # Sage.nuke_endpoint()
