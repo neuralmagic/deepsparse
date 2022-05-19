@@ -59,6 +59,7 @@ _dev_deps = [
     "m2r2~=0.2.7",
     "mistune==0.8.4",
     "myst-parser~=0.14.0",
+    "ndjson>=0.3.1",
     "rinohtype>=0.4.2",
     "sphinx>=3.4.0",
     "sphinx-copybutton>=0.3.0",
