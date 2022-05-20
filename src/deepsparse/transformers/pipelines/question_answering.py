@@ -186,11 +186,19 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         """
         return QuestionAnsweringOutput
 
-    # Override engine_forward to account for multiple sets of inputs (multiple spans)
-    def engine_forward(self, inputs: List[List[numpy.ndarray]], **kwargs):
+    def engine_forward(
+        self,
+        engine_inputs: List[List[numpy.ndarray]],
+    ) -> List[List[numpy.ndarray]]:
+        """
+        runs one forward pass for each span of the preprocessed input
+
+        :param engine_inputs: list of multiple inputs to engine forward pass
+        :return: result of each forward pass
+        """
         engine_outputs = []
-        for inps in inputs:
-            engine_outputs.append(self.engine(inps))
+        for inputs in engine_inputs:
+            engine_outputs.append(self.engine(inputs))
 
         return engine_outputs
 
