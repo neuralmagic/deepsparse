@@ -155,7 +155,9 @@ class Pipeline(ABC):
         else:
             postprocess_kwargs = {}
 
-        engine_outputs: List[numpy.ndarray] = self.engine(engine_inputs)
+        engine_outputs: List[numpy.ndarray] = self.engine_forward(
+            engine_inputs, **kwargs
+        )
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -484,6 +486,9 @@ class Pipeline(ABC):
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
                 f"{SUPPORTED_PIPELINE_ENGINES}"
             )
+
+    def engine_forward(self, inputs, **kwargs):
+        return self.engine(inputs)
 
 
 class PipelineConfig(BaseModel):
