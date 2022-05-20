@@ -14,7 +14,6 @@
 
 
 import numpy
-from torchvision import transforms
 
 import pytest
 from deepsparse import Pipeline
@@ -27,6 +26,7 @@ from sparsezoo.utils import load_numpy_list
 
 
 from PIL import Image  # isort:skip
+from torchvision import transforms  # isort:skip
 
 
 @pytest.mark.parametrize(
