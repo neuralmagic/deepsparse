@@ -42,6 +42,11 @@ style:
 	isort $(CHECKDIRS);
 
 
+# pull the latest engine binaries from the artifact store
+artifacts:
+	@echo "Running update binaries from artifact store";
+	$(PYTHON) utils/artifacts.py src/deepsparse --force
+
 # run tests for the repo
 test:
 	@echo "Running python tests";
