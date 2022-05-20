@@ -14,6 +14,7 @@
 
 
 import numpy
+from torchvision import transforms
 
 import pytest
 from deepsparse import Pipeline
@@ -21,10 +22,11 @@ from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
 )
-from PIL import Image
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy_list
-from torchvision import transforms
+
+
+from PIL import Image  # isort:skip
 
 
 @pytest.mark.parametrize(
