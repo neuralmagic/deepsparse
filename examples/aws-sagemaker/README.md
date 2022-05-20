@@ -19,10 +19,47 @@ limitations under the License.
 [Amazon SageMaker](https://docs.aws.amazon.com/sagemaker/index.html)
 offers an easy-to-use infrastructure for deploying deep learning models at scale.
 This directory provides a guided example for deploying a 
-[DeepSparse](https://github.com/neuralmagic/deepsparse) inference server on SageMaker.
+[DeepSparse](https://github.com/neuralmagic/deepsparse) inference server on SageMaker for the question answering NLP task.
 Deployments benefit from both sparse-CPU acceleration with
 DeepSparse and automatic scaling from SageMaker.
 
+## Usage
+You have two options to tinker with this question answering demo: 
+1. You can either copy and paste the code snippets in the upcoming sections to build out your SageMaker endpoint.
+**OR**
+2. You can automate the deployment of the Sagemaker endpoint with the `create_endpoint.py` script. This script automatically: 
+    - Builds a local Docker image.
+    - Creates an AWS Elastic Container Registry (ECR) repository.
+    - Pushes the Docker image to ECR.
+    - Builds a Sagemaker endpoint configuration.
+    - Launches Sagemaker endpoint.
+
+To get started with Option 2:
+
+```bash
+
+git clone https://github.com/neuralmagic/deepsparse.git
+cd deepsparse/examples/aws-sagemaker
+pip install -r requirements.txt
+```
+Run the following command to build your SageMaker endpoint.
+```bash
+python create_endpoint.py
+```
+
+After the endpoint has been staged, you can run inference with the following snippet:
+
+
+```python
+from qa_endpoint import Endpoint
+
+
+qa = Endpoint("us-east-1", "question-answering-example-endpoint")
+
+qa.predict(question="who is batman?", context="Mark is batman.")
+```
+
+Continue reading to learn more about the files in this directory, the build requirements, and a descriptive step-by-step guide for launching a SageMaker endpoint as described in Option 1 above.
 
 ## Contents
 In addition to the step-by-step instructions in this guide, the directory contains
@@ -51,9 +88,22 @@ the config and add `ModelDataUrl=<MODEL-S3-PATH>` to the `CreateModel` arguments
 SageMaker will automatically copy the files from the s3 path into `/opt/ml/model`
 which the server can then read from.
 
+### push_image.sh
+
+Bash script for pushing your local Docker image to the AWS ECR repository.
+
+### create_endpoint.py
+
+Contains the SparseMaker object for automating the build of a SageMaker endpoint from a Docker Image. You have the option to customize the parameters of the class in order to match the prefered state of your deployment.
+
+**Don't forget to add your AWS [ARN](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html) id to the `role_arn` parameter at the bottom of the module.**
+
+### qa_endpoint.py
+
+Contains a client object for making requests to the SageMaker inference endpoint for the question answering task.
+____
 More information on the DeepSparse server and its configuration can be found
 [here](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server#readme).
-
 
 ## Deploying to SageMaker
 The following steps are required to provision and deploy DeepSparse to SageMaker
