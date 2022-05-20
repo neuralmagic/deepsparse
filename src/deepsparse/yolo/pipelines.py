@@ -201,7 +201,7 @@ class YOLOPipeline(Pipeline):
         batch_output = postprocess_nms(
             batch_output,
             iou_thres=kwargs.get("iou_thres", 0.25),
-            conf_thres=kwargs.get("conf_thres", 0.45)
+            conf_thres=kwargs.get("conf_thres", 0.45),
         )
 
         batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []

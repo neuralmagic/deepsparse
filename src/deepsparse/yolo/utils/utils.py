@@ -135,7 +135,7 @@ class YoloPostprocessor:
 def postprocess_nms(
     outputs: Union[torch.Tensor, numpy.ndarray],
     iou_thres: float = 0.25,
-    conf_thres: flaot = 0.45,
+    conf_thres: float = 0.45,
 ) -> List[numpy.ndarray]:
     """
     :param outputs: Tensor of post-processed model outputs

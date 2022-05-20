@@ -42,11 +42,11 @@ class YOLOInput(BaseModel):
     )
     iou_thres: float = Field(
         default=0.25,
-        description="minimum IoU overlap threshold for a prediction to be valid"
+        description="minimum IoU overlap threshold for a prediction to be valid",
     )
     conf_thres: float = Field(
         default=0.45,
-        description="minimum confidence score for a prediction to be valid"
+        description="minimum confidence score for a prediction to be valid",
     )
 
     class Config:
