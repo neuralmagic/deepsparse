@@ -20,6 +20,8 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
+from PIL import Image
+from torchvision import transforms
 
 from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
@@ -33,13 +35,9 @@ from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 
 
-try:
-    import cv2
-
-    cv2_error = None
-except ModuleNotFoundError as cv2_import_error:
-    cv2 = None
-    cv2_error = cv2_import_error
+__all__ = [
+    "ImageClassificationPipeline",
+]
 
 
 @Pipeline.register(
@@ -85,6 +83,22 @@ class ImageClassificationPipeline(Pipeline):
             self._class_names = None
 
         self._image_size = self._infer_image_size()
+
+        # torchvision transforms for raw inputs
+        non_rand_resize_scale = 256.0 / 224.0  # standard used
+        self._pre_normalization_transforms = transforms.Compose(
+            [
+                transforms.Resize(
+                    tuple(
+                        [
+                            round(non_rand_resize_scale * size)
+                            for size in self._image_size
+                        ]
+                    )
+                ),
+                transforms.CenterCrop(self._image_size),
+            ]
+        )
 
     @property
     def class_names(self) -> Optional[Dict[str, str]]:
@@ -137,21 +151,44 @@ class ImageClassificationPipeline(Pipeline):
                 inputs.images = [inputs.images]
 
             for image in inputs.images:
-                if isinstance(image, list):
+                if isinstance(image, List):
+                    # image given as raw list
                     image = numpy.asarray(image)
+                    if image.dtype == numpy.float32:
+                        # image is already processed, append and continue
+                        image_batch.append(image)
+                        continue
+                    # assume raw image input
+                    # put image in PIL format for torchvision processing
+                    image = image.astype(numpy.uint8)
+                    if image.shape[0] < image.shape[-1]:
+                        # put channel last
+                        image = image.transpose(*range(1, len(image.shape), 0))
+                    image = Image.fromarray(image)
+                elif isinstance(image, str):
+                    # load image from string filepath
+                    image = Image.open(image)
 
-                if cv2 is None:
-                    raise RuntimeError(
-                        "cv2 is required to load image inputs from file "
-                        f"Unable to import: {cv2_error}"
+                if not isinstance(image, Image.Image):
+                    raise ValueError(
+                        f"inputs to {self.__class__.__name__} must be a string image "
+                        "file path(s), a list representing a raw image, "
+                        "PIL.Image.Image object(s), or a numpy array representing"
+                        f"the entire pre-processed batch. Found {type(image)}"
                     )
-                if isinstance(image, str):
-                    image = cv2.imread(image)
-                    image = cv2.resize(image, dsize=self._image_size)
 
-                image = image[:, :, ::-1].transpose(2, 0, 1)
-                image_batch.append(image)
+                # apply resize and center crop
+                image = self._pre_normalization_transforms(image)
+                image_numpy = numpy.array(image)
+                image.close()
 
+                # make channel first dimension
+                image_numpy = image_numpy.transpose(2, 0, 1)
+
+                # append to batch
+                image_batch.append(image_numpy)
+
+            # build batch
             image_batch = numpy.stack(image_batch, axis=0)
 
         original_dtype = image_batch.dtype
@@ -161,9 +198,9 @@ class ImageClassificationPipeline(Pipeline):
 
             image_batch /= 255
 
-        # normalize entire batch
-        image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
-        image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
+            # normalize entire batch
+            image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
+            image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
 
         return [image_batch]
 

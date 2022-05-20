@@ -28,10 +28,10 @@ from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy
 import onnx
+import torchvision
 import yaml
 
 import torch
-import torchvision
 from sparsezoo.utils import create_dirs
 
 
