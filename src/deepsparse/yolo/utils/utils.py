@@ -132,15 +132,23 @@ class YoloPostprocessor:
         return [t.clone().view(1, -1, 1, 1, 2) for t in anchors]
 
 
-def postprocess_nms(outputs: Union[torch.Tensor, numpy.ndarray]) -> List[numpy.ndarray]:
+def postprocess_nms(
+    outputs: Union[torch.Tensor, numpy.ndarray],
+    iou_thres: float = 0.25,
+    conf_thres: flaot = 0.45,
+) -> List[numpy.ndarray]:
     """
     :param outputs: Tensor of post-processed model outputs
+    :param iou_thres: minimum IoU for a detection to be valid
+    :param conf_thres: minimum confidence score for a detection to be valid
     :return: List of numpy arrays of NMS predictions for each image in the batch
     """
     # run nms in PyTorch, only post-process first output
     if isinstance(outputs, numpy.ndarray):
         outputs = torch.from_numpy(outputs)
-    nms_outputs = _non_max_suppression(outputs)
+    nms_outputs = _non_max_suppression(
+        outputs, conf_thres=conf_thres, iou_thres=iou_thres
+    )
     return [output.cpu().numpy() for output in nms_outputs]
 
 
