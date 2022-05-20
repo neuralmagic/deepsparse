@@ -1,0 +1,31 @@
+name: Local Install Checks
+on: 
+  push:
+    branches:
+      - main
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  local-install-test:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: "⚙️ Install local deepsparse"
+        run: pip3 install .
+      - name: "deepsparse.benchmark"
+        run: deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned_quant-moderate -w 1 -t 1
+  local-develop-test:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: "⚙️ Install local develop deepsparse"
+        run: pip3 install -e .
+      - name: "deepsparse.benchmark"
+        run: deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned_quant-moderate -w 1 -t 1

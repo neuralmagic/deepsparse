@@ -146,14 +146,18 @@ class Pipeline(ABC):
             )
 
         # run pipeline
-        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
+        engine_inputs: List[numpy.ndarray] = self.process_inputs(
+            pipeline_inputs, **kwargs
+        )
 
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
 
-        engine_outputs: List[numpy.ndarray] = self.engine(engine_inputs)
+        engine_outputs: List[numpy.ndarray] = self.engine_forward(
+            engine_inputs, **kwargs
+        )
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -482,6 +486,9 @@ class Pipeline(ABC):
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
                 f"{SUPPORTED_PIPELINE_ENGINES}"
             )
+
+    def engine_forward(self, inputs, **kwargs):
+        return self.engine(inputs)
 
 
 class PipelineConfig(BaseModel):
