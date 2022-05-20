@@ -153,7 +153,9 @@ class Pipeline(ABC):
         else:
             postprocess_kwargs = {}
 
-        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs, **kwargs)
+        engine_outputs: List[numpy.ndarray] = self.engine_forward(
+            engine_inputs, **kwargs
+        )
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )

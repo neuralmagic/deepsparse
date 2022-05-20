@@ -220,7 +220,9 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         return engine_inputs, dict(features=features, example=squad_example)
 
     def process_engine_outputs(
-        self, engine_outputs: List[List[numpy.ndarray]], **kwargs,
+        self,
+        engine_outputs: List[List[numpy.ndarray]],
+        **kwargs,
     ) -> BaseModel:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
@@ -239,7 +241,9 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         ans_end = None
         feature = None
         for feature_, outputs in zip(features, engine_outputs):
-            ans_start_, ans_end_, score_ = self._process_single_feature(feature_, outputs)
+            ans_start_, ans_end_, score_ = self._process_single_feature(
+                feature_, outputs
+            )
             if score_ > score:
                 score = score_
                 ans_start = ans_start_
@@ -251,9 +255,9 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             char_to_word = numpy.array(example.char_to_word_offset)
             return self.output_schema(
                 score=score.item(),
-                start=numpy.where(
-                    char_to_word == feature.token_to_orig_map[ans_start]
-                )[0][0].item(),
+                start=numpy.where(char_to_word == feature.token_to_orig_map[ans_start])[
+                    0
+                ][0].item(),
                 end=numpy.where(char_to_word == feature.token_to_orig_map[ans_end])[0][
                     -1
                 ].item(),
@@ -261,7 +265,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                     example.doc_tokens[
                         feature.token_to_orig_map[
                             ans_start
-                        ]: feature.token_to_orig_map[ans_end]
+                        ] : feature.token_to_orig_map[ans_end]
                         + 1
                     ]
                 ),
@@ -280,7 +284,9 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 if w is None:
                     return None
                 else:
-                    return feature.encoding.word_to_chars(w, sequence_index=1 if question_first else 0)
+                    return feature.encoding.word_to_chars(
+                        w, sequence_index=1 if question_first else 0
+                    )
 
             char_start = _token_to_char(ans_start)
             while char_start is None:
@@ -296,7 +302,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 score=score.item(),
                 start=char_start[0],
                 end=char_end[1],
-                answer=example.context_text[char_start[0]: char_end[1]],
+                answer=example.context_text[char_start[0] : char_end[1]],
             )
 
     def _process_single_feature(self, feature, engine_outputs):
@@ -393,25 +399,27 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
             features = []
             for i in range(len(encoded_inputs["input_ids"])):
-                features.append(SquadFeatures(
-                    input_ids=encoded_inputs["input_ids"][i],
-                    attention_mask=encoded_inputs["attention_mask"][i],
-                    token_type_ids=encoded_inputs["token_type_ids"][i],
-                    p_mask=p_mask[0].tolist(),
-                    encoding=encoded_inputs[i],
-                    # the following values are unused for fast tokenizers
-                    cls_index=None,
-                    token_to_orig_map={},
-                    example_index=0,
-                    unique_id=0,
-                    paragraph_len=0,
-                    token_is_max_context=0,
-                    tokens=[],
-                    start_position=0,
-                    end_position=0,
-                    is_impossible=False,
-                    qas_id=None,
-                ))
+                features.append(
+                    SquadFeatures(
+                        input_ids=encoded_inputs["input_ids"][i],
+                        attention_mask=encoded_inputs["attention_mask"][i],
+                        token_type_ids=encoded_inputs["token_type_ids"][i],
+                        p_mask=p_mask[0].tolist(),
+                        encoding=encoded_inputs[i],
+                        # the following values are unused for fast tokenizers
+                        cls_index=None,
+                        token_to_orig_map={},
+                        example_index=0,
+                        unique_id=0,
+                        paragraph_len=0,
+                        token_is_max_context=0,
+                        tokens=[],
+                        start_position=0,
+                        end_position=0,
+                        is_impossible=False,
+                        qas_id=None,
+                    )
+                )
 
         return features
 
