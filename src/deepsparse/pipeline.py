@@ -146,9 +146,7 @@ class Pipeline(ABC):
             )
 
         # run pipeline
-        engine_inputs: List[numpy.ndarray] = self.process_inputs(
-            pipeline_inputs, **kwargs
-        )
+        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
 
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
