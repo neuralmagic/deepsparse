@@ -17,6 +17,7 @@ from typing import Dict, List
 
 import requests
 
+import pytest
 from helpers import predownload_stub, run_command, wait_for_server
 
 
@@ -25,6 +26,7 @@ from helpers import predownload_stub, run_command, wait_for_server
 # TODO: Include additional opts/etc. in tests
 
 
+@pytest.mark.smoke
 def test_server_help():
     cmd = ["deepsparse.server", "--help"]
     print(f"\n==== test_server_help command ====\n{' '.join(cmd)}\n==== ====")
@@ -84,6 +86,7 @@ def test_server_ner(cleanup: Dict[str, List]):
     assert "fail" not in output.lower()
 
 
+@pytest.mark.smoke
 def test_server_qa(cleanup: Dict[str, List]):
     cmd = [
         "deepsparse.server",
