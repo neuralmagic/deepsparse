@@ -282,28 +282,25 @@ def parse_scenario(scenario):
         return "multistream"
 
 
-def parse_num_streams(num_streams, scenario, num_cores):
-    default_num_streams = max(1, int(num_cores / 2))
+def parse_num_streams(model, scenario):
 
-    if num_streams:
-        if num_streams <= 0 or num_streams > num_cores:
+    # If model.num_streams is set, and the scenario is either "multi_stream" or
+    # "elastic", use the value of num_streams given to us by the model, otherwise
+    # use a semi-sane default value.
+    if scenario is "single_stream":
+        return 1
+    else:
+        if model.num_streams:
+            return model.num_streams
+        else:
+            default_num_streams = max(1, int(model.num_cores / 2))
             _LOGGER.info(
-                "Invalid value for num_streams: {}. num_streams can not be less "
-                "than 1 or greater than the number of cores. Defaulting to {}.".format(
-                    num_streams, default_num_streams
+                "num_streams default value chosen of {}. "
+                "This requires tuning and may be sub-optimal".format(
+                    default_num_streams
                 )
             )
             return default_num_streams
-        _LOGGER.info("num_streams set to {}".format(num_streams))
-        return num_streams
-    elif not num_streams and scenario not in "singlestream":
-        # If num_streams isn't defined, find a default
-        _LOGGER.info(
-            "num_streams default value chosen of {}. "
-            "This requires tuning and may be sub-optimal".format(default_num_streams)
-        )
-        return default_num_streams
-    return None
 
 
 def main():
@@ -322,15 +319,13 @@ def main():
     orig_model_path = args.model_path
     args.model_path = model_to_path(args.model_path)
 
-    num_streams = parse_num_streams(args.num_streams, scenario, args.num_cores)
-
     # Compile the ONNX into a runnable model
     if args.engine == DEEPSPARSE_ENGINE:
         model = compile_model(
             model=args.model_path,
             batch_size=args.batch_size,
             num_cores=args.num_cores,
-            num_streams=num_streams,
+            num_streams=args.num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
         )
@@ -342,6 +337,7 @@ def main():
             input_shapes=input_shapes,
         )
     _LOGGER.info(model)
+    num_streams = parse_num_streams(model, scenario)
 
     # Generate random inputs to feed the model
     # TODO(mgoin): should be able to query Engine class instead of loading ONNX
@@ -363,7 +359,7 @@ def main():
         scenario=scenario,
         seconds_to_run=args.time,
         seconds_to_warmup=args.warmup_time,
-        num_streams=args.num_streams,
+        num_streams=num_streams,
     )
 
     # Results summary
