@@ -287,7 +287,7 @@ def parse_num_streams(model, scenario):
     # If model.num_streams is set, and the scenario is either "multi_stream" or
     # "elastic", use the value of num_streams given to us by the model, otherwise
     # use a semi-sane default value.
-    if scenario is "single_stream":
+    if scenario == "single_stream":
         return 1
     else:
         if model.num_streams:
