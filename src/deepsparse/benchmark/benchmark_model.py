@@ -258,7 +258,7 @@ def decide_thread_pinning(pinning_mode: str) -> None:
         )
 
 
-def parse_scheduler(scenario) -> Scheduler:
+def parse_scheduler(scenario: str) -> Scheduler:
     scenario = scenario.lower()
     if scenario == "multistream":
         return Scheduler.multi_stream
@@ -270,7 +270,7 @@ def parse_scheduler(scenario) -> Scheduler:
         return Scheduler.multi_stream
 
 
-def parse_scenario(scenario) -> str:
+def parse_scenario(scenario: str) -> str:
     scenario = scenario.lower()
     if scenario == "async":
         return "multistream"
@@ -287,8 +287,7 @@ def parse_scenario(scenario) -> str:
         return "multistream"
 
 
-def parse_num_streams(num_streams, num_cores, scenario):
-
+def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
     # If model.num_streams is set, and the scenario is either "multi_stream" or
     # "elastic", use the value of num_streams given to us by the model, otherwise
     # use a semi-sane default value.
