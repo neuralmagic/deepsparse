@@ -761,7 +761,6 @@ def analyze_model(
     inp: List[numpy.ndarray],
     batch_size: int = 1,
     num_cores: int = None,
-    num_streams: int = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     optimization_level: int = 1,
@@ -787,9 +786,6 @@ def analyze_model(
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         for the current machine; default None
-    :param num_streams: The max number of requests the model can handle
-        concurrently. None or 0 implies a scheduler-defined default value;
-        default None
     :param num_iterations: The number of times to repeat execution of the model
         while analyzing, default is 20
     :param num_warmup_iterations: The number of times to repeat execution of the model
@@ -811,7 +807,6 @@ def analyze_model(
         model=model,
         batch_size=batch_size,
         num_cores=num_cores,
-        num_streams=num_streams,
         scheduler=scheduler,
         input_shapes=input_shapes,
     )
