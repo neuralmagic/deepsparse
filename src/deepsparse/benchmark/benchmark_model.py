@@ -96,7 +96,7 @@ import json
 import logging
 import os
 
-from deepsparse import Scheduler, compile_model
+from deepsparse import Scheduler, __version__, compile_model
 from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.log import set_logging_level
@@ -106,7 +106,6 @@ from deepsparse.utils import (
     override_onnx_input_shapes,
     parse_input_shapes,
 )
-from deepsparse.version import __version__
 
 
 _LOGGER = logging.getLogger(__name__)
