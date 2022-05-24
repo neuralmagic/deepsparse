@@ -282,6 +282,27 @@ def parse_scenario(scenario):
         return "multistream"
 
 
+def parse_num_streams(num_streams, num_cores, scenario):
+
+    # If model.num_streams is set, and the scenario is either "multi_stream" or
+    # "elastic", use the value of num_streams given to us by the model, otherwise
+    # use a semi-sane default value.
+    if scenario == "single_stream":
+        return 1
+    else:
+        if num_streams:
+            return num_streams
+        else:
+            default_num_streams = max(1, int(num_cores / 2))
+            _LOGGER.info(
+                "num_streams default value chosen of {}. "
+                "This requires tuning and may be sub-optimal".format(
+                    default_num_streams
+                )
+            )
+            return default_num_streams
+
+
 def main():
 
     args = parse_args()
@@ -304,9 +325,11 @@ def main():
             model=args.model_path,
             batch_size=args.batch_size,
             num_cores=args.num_cores,
+            num_streams=args.num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
         )
+        num_streams = parse_num_streams(model.num_streams, model.num_cores, scenario)
     elif args.engine == ORT_ENGINE:
         model = ORTEngine(
             model=args.model_path,
@@ -314,6 +337,7 @@ def main():
             num_cores=args.num_cores,
             input_shapes=input_shapes,
         )
+        num_streams = parse_num_streams(args.num_streams, model.num_cores, scenario)
     _LOGGER.info(model)
 
     # Generate random inputs to feed the model
@@ -323,16 +347,6 @@ def main():
             input_list = generate_random_inputs(model_path, args.batch_size)
     else:
         input_list = generate_random_inputs(args.model_path, args.batch_size)
-
-    if args.num_streams:
-        _LOGGER.info("num_streams set to {}".format(args.num_streams))
-    elif not args.num_streams and scenario not in "singlestream":
-        # If num_streams isn't defined, find a default
-        args.num_streams = max(1, int(model.num_cores / 2))
-        _LOGGER.info(
-            "num_streams default value chosen of {}. "
-            "This requires tuning and may be sub-optimal".format(args.num_streams)
-        )
 
     # Benchmark
     _LOGGER.info(
@@ -346,7 +360,7 @@ def main():
         scenario=scenario,
         seconds_to_run=args.time,
         seconds_to_warmup=args.warmup_time,
-        num_streams=args.num_streams,
+        num_streams=num_streams,
     )
 
     # Results summary
