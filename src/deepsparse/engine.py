@@ -570,7 +570,7 @@ class Context(object):
 
     def __init__(
         self,
-        num_cores: int,
+        num_cores: int = None,
         num_streams: int = None,
     ):
         self._num_cores = _validate_num_cores(num_cores)
@@ -580,15 +580,19 @@ class Context(object):
             self._num_cores, self._num_streams, self._scheduler.value
         )
 
+    @property
     def value(self):
         return self._deepsparse_context
 
+    @property
     def num_cores(self):
         return self._num_cores
 
+    @property
     def num_streams(self):
         return self._num_streams
 
+    @property
     def scheduler(self):
         return self._scheduler
 

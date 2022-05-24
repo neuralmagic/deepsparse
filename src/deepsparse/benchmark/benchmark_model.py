@@ -282,7 +282,7 @@ def parse_scenario(scenario):
         return "multistream"
 
 
-def parse_num_streams(model, scenario):
+def parse_num_streams(num_streams, num_cores, scenario):
 
     # If model.num_streams is set, and the scenario is either "multi_stream" or
     # "elastic", use the value of num_streams given to us by the model, otherwise
@@ -290,10 +290,10 @@ def parse_num_streams(model, scenario):
     if scenario == "single_stream":
         return 1
     else:
-        if model.num_streams:
-            return model.num_streams
+        if num_streams:
+            return num_streams
         else:
-            default_num_streams = max(1, int(model.num_cores / 2))
+            default_num_streams = max(1, int(num_cores / 2))
             _LOGGER.info(
                 "num_streams default value chosen of {}. "
                 "This requires tuning and may be sub-optimal".format(
@@ -329,6 +329,7 @@ def main():
             scheduler=scheduler,
             input_shapes=input_shapes,
         )
+        num_streams = parse_num_streams(model.num_streams, model.num_cores, scenario)
     elif args.engine == ORT_ENGINE:
         model = ORTEngine(
             model=args.model_path,
@@ -336,8 +337,8 @@ def main():
             num_cores=args.num_cores,
             input_shapes=input_shapes,
         )
+        num_streams = parse_num_streams(args.num_streams, model.num_cores, scenario)
     _LOGGER.info(model)
-    num_streams = parse_num_streams(model, scenario)
 
     # Generate random inputs to feed the model
     # TODO(mgoin): should be able to query Engine class instead of loading ONNX
