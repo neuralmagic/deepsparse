@@ -387,8 +387,8 @@ def _run_model(
 
 
 class AverageFPS:
-    def __init__(self, num_times_to_average=50):
-        self.frame_times = deque(maxlen=num_times_to_average)
+    def __init__(self, num_samples=50):
+        self.frame_times = deque(maxlen=num_samples)
 
     def measure(self, duration):
         self.frame_times.append(duration)
