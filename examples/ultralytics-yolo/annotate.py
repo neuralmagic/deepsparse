@@ -105,6 +105,7 @@ python annotate.py \
 
 
 import argparse
+from collections import deque
 import logging
 import os
 import time
@@ -385,6 +386,20 @@ def _run_model(
     return outputs
 
 
+class FPS:
+    def __init__(self, num_times_to_average=100):
+        self.frame_times = deque(maxlen=num_times_to_average)
+
+    def measure(self, duration):
+        self.frame_times.append(duration)
+
+    def calculate(self):
+        if len(self.frame_times) > 1:
+            return numpy.average(self.frame_times)
+        else:
+            return 0.0
+
+
 def annotate(args):
     save_dir = _get_save_dir(args)
     model, has_postprocessing = _load_model(args)
@@ -398,6 +413,9 @@ def annotate(args):
         if not has_postprocessing
         else None
     )
+
+    # Keep a running average of frame times
+    fps = FPS()
 
     for iteration, (inp, source_img) in enumerate(loader):
         if args.device not in ["cpu", None]:
@@ -426,6 +444,8 @@ def annotate(args):
         measured_fps = (
             args.target_fps or (1.0 / (time.time() - iter_start)) if is_video else None
         )
+        fps.measure(measured_fps)
+        average_fps = fps.calculate()
         annotated_img = annotate_image(
             source_img,
             outputs,
@@ -451,7 +471,7 @@ def annotate(args):
 
     if saver:
         saver.close()
-    _LOGGER.info(f"Results saved to {save_dir}")
+        _LOGGER.info(f"Results saved to {save_dir}")
 
 
 def main():
