@@ -106,6 +106,7 @@ from deepsparse.utils import (
     override_onnx_input_shapes,
     parse_input_shapes,
 )
+from deepsparse.version import __version__
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -364,6 +365,7 @@ def main():
         print("Saving benchmark results to JSON file at {}".format(args.export_path))
         export_dict = {
             "engine": str(model),
+            "version": __version__,
             "orig_model_path": orig_model_path,
             "model_path": args.model_path,
             "batch_size": args.batch_size,
