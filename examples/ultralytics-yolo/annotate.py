@@ -448,7 +448,6 @@ def annotate(args):
         iter_end = time.time()
         elapsed_time = 1000 * (iter_end - iter_start)
         _LOGGER.info(f"Inference {iteration} processed in {elapsed_time} ms")
-        _LOGGER.info(f"Inference FPS: {measured_fps} FPS")
 
     if saver:
         saver.close()
