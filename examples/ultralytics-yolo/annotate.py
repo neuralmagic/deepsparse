@@ -386,8 +386,8 @@ def _run_model(
     return outputs
 
 
-class FPS:
-    def __init__(self, num_times_to_average=100):
+class AverageFPS:
+    def __init__(self, num_times_to_average=50):
         self.frame_times = deque(maxlen=num_times_to_average)
 
     def measure(self, duration):
@@ -415,7 +415,7 @@ def annotate(args):
     )
 
     # Keep a running average of frame times
-    fps = FPS()
+    fps = AverageFPS()
 
     for iteration, (inp, source_img) in enumerate(loader):
         if args.device not in ["cpu", None]:
@@ -450,7 +450,7 @@ def annotate(args):
             source_img,
             outputs,
             model_input_size=args.image_shape,
-            images_per_sec=measured_fps,
+            images_per_sec=average_fps,
         )
 
         # display
