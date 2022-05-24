@@ -435,8 +435,11 @@ def annotate(args):
 
         # display
         if is_webcam:
+            cv2.namedWindow("annotations", cv2.WINDOW_NORMAL)
             cv2.imshow("annotations", annotated_img)
-            cv2.waitKey(1)
+            ch = cv2.waitKey(1)
+            if ch == 27 or ch == ord("q") or ch == ord("Q"):
+                break
 
         # save
         if saver:
@@ -445,6 +448,7 @@ def annotate(args):
         iter_end = time.time()
         elapsed_time = 1000 * (iter_end - iter_start)
         _LOGGER.info(f"Inference {iteration} processed in {elapsed_time} ms")
+        _LOGGER.info(f"Inference FPS: {measured_fps} FPS")
 
     if saver:
         saver.close()
