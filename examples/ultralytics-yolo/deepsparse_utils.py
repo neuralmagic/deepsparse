@@ -661,6 +661,38 @@ _YOLO_CLASS_COLORS = list(itertools.product([0, 255, 128, 64, 192], repeat=3))
 _YOLO_CLASS_COLORS.remove((255, 255, 255))  # remove white from possible colors
 
 
+def draw_text(
+    img,
+    text,
+    font=cv2.FONT_HERSHEY_SIMPLEX,
+    pos=(0, 0),
+    font_scale=1,
+    font_thickness=2,
+    text_color=(0, 255, 0),
+    text_color_bg=(0, 0, 0),
+):
+
+    offset = (5, 5)
+    x, y = pos
+    text_size, _ = cv2.getTextSize(text, font, font_scale, font_thickness)
+    text_w, text_h = text_size
+    rec_start = tuple(x - y for x, y in zip(pos, offset))
+    rec_end = tuple(x + y for x, y in zip((x + text_w, y + text_h), offset))
+    cv2.rectangle(img, rec_start, rec_end, text_color_bg, -1)
+    cv2.putText(
+        img,
+        text,
+        (x, int(y + text_h + font_scale - 1)),
+        font,
+        font_scale,
+        text_color,
+        font_thickness,
+        cv2.LINE_AA,
+    )
+
+    return text_size
+
+
 def annotate_image(
     img: numpy.ndarray,
     outputs: numpy.ndarray,
@@ -746,15 +778,14 @@ def annotate_image(
             )
 
     if images_per_sec is not None:
-        cv2.putText(
+        draw_text(
             img_res,
             f"FPS: {images_per_sec:0.1f}",
-            (10, 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.0,  # font scale
-            (245, 46, 6),  # color
-            2,  # thickness
-            cv2.LINE_AA,
+            pos=(20, 20),
+            font_scale=1.0,
+            text_color=(204, 85, 17),
+            text_color_bg=(255, 255, 255),
+            font_thickness=2,
         )
     return img_res
 
