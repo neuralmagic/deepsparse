@@ -105,10 +105,10 @@ python annotate.py \
 
 
 import argparse
-from collections import deque
 import logging
 import os
 import time
+from collections import deque
 from typing import Any, List, Union
 
 import numpy
