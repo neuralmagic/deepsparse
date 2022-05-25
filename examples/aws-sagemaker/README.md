@@ -31,13 +31,15 @@ cd deepsparse/examples/aws-sagemaker
 pip install -r requirements.txt
 ```
 
+**Replace the `role_arn` PLACEHOLDER string with your AWS [ARN](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html) at the bottom of SparseMaker class on the `endpoint.py` file. It should look like this:** `"arn:aws:iam::XXX:role/service-role/XXX"`
+
 Run the following command to build your SageMaker endpoint.
 
 ```bash
 python endpoint.py create
 ```
 
-After the endpoint has been staged, you can run inference with the following snippet:
+After the endpoint has been staged, you can start making requests by passing your endpoint `region name` and your `endpoint name`. Afterwards you can run inference passing in your question and context:
 
 
 ```python
@@ -47,6 +49,12 @@ from qa_client import Endpoint
 qa = Endpoint("us-east-1", "question-answering-example-endpoint")
 
 qa.predict(question="who is batman?", context="Mark is batman.")
+```
+
+If you want to delete your endpoint, please use:
+
+```bash
+python endpoint.py destroy
 ```
 
 Continue reading to learn more about the files in this directory, the build requirements, and a descriptive step-by-step guide for launching a SageMaker endpoint.
@@ -85,8 +93,6 @@ Bash script for pushing your local Docker image to the AWS ECR repository.
 ### endpoint.py
 
 Contains the SparseMaker object for automating the build of a SageMaker endpoint from a Docker Image. You have the option to customize the parameters of the class in order to match the prefered state of your deployment.
-
-**Don't forget to add your AWS [ARN](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html) id to the `role_arn` parameter at the bottom of the module.**
 
 ### qa_client.py
 

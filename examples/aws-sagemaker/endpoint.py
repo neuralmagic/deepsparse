@@ -136,7 +136,7 @@ class SparseMaker:
 
         pprint(self.sm_boto3.describe_endpoint(EndpointName=self.endpoint_name))
 
-    def nuke_endpoint(self):
+    def destroy_endpoint(self):
 
         self.sm_boto3.delete_endpoint(EndpointName=self.endpoint_name)
         self.sm_boto3.delete_endpoint_config(
@@ -190,7 +190,10 @@ def main():
         SM.create_endpoint()
 
     elif args.action == "destroy":
-        SM.nuke_endpoint()
+        SM.destroy_endpoint()
+
+    else:
+        raise ValueError(f"Invalid action given {args.action}")
 
 
 if __name__ == "__main__":
