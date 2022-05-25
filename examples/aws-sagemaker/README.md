@@ -31,7 +31,7 @@ cd deepsparse/examples/aws-sagemaker
 pip install -r requirements.txt
 ```
 
-**Replace the `role_arn` PLACEHOLDER string with your AWS [ARN](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html) at the bottom of SparseMaker class on the `endpoint.py` file. It should look like this:** `"arn:aws:iam::XXX:role/service-role/XXX"`
+**Before starting, replace the `role_arn` PLACEHOLDER string with your AWS [ARN](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html) at the bottom of SparseMaker class on the `endpoint.py` file. Your ARN should look something like this:** `"arn:aws:iam::XXX:role/service-role/XXX"`
 
 Run the following command to build your SageMaker endpoint.
 
