@@ -166,6 +166,7 @@ class SparseMaker:
 
         print("endpoint nuked!")
 
+
 def parse_args():
 
     parser = argparse.ArgumentParser()
@@ -178,6 +179,7 @@ def parse_args():
     )
 
     return parser.parse_args()
+
 
 def main():
 
@@ -209,11 +211,8 @@ def main():
         SM.create_endpoint_config()
         SM.create_endpoint()
 
-    elif args.action == "destroy":
-        SM.destroy_endpoint()
-
     else:
-        raise ValueError(f"Invalid action given {args.action}")
+        SM.destroy_endpoint()
 
 if __name__ == "__main__":
     main()
