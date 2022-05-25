@@ -352,6 +352,8 @@ def benchmark_model(
             input_shapes=input_shapes,
         )
         num_streams = parse_num_streams(num_streams, model.num_cores, scenario)
+    else:
+        raise ValueError(f"Invalid engine choice '{engine}'")
     _LOGGER.info(model)
 
     # Generate random inputs to feed the model
