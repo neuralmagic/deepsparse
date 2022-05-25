@@ -140,7 +140,7 @@ class Pipeline(ABC):
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
-                f"by {self.__class__.__name__}.parse_inputs"
+                f"by {self.__class__.__qualname__}.parse_inputs"
             )
 
         # parse inputs into input_schema schema if necessary
