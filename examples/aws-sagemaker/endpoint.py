@@ -12,6 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Example script for auto-generating a SageMaker endpoint from
+a local Docker image
+
+##########
+Command help:
+usage: endpoint.py [-h] [action]
+
+positional arguments:
+  action         choice between creating or destroying an endpoint
+
+##########
+Example command for creating an endpoint:
+
+python endpoint.py create
+
+Example command for destroying an endpoint:
+
+python endpoint.py destroy
+"""
 import argparse
 import subprocess
 
@@ -162,7 +182,7 @@ def parse_args():
 def main():
 
     """
-    process arguments and instantiate SparseMaker object
+    process arguments and initialize SparseMaker object
     """
 
     args = parse_args()
@@ -192,8 +212,8 @@ def main():
     elif args.action == "destroy":
         SM.destroy_endpoint()
 
-    else:
-        raise ValueError(f"Invalid action given {args.action}")
+    # else:
+    #     raise ValueError(f"Invalid action given {args.action}")
 
 
 if __name__ == "__main__":

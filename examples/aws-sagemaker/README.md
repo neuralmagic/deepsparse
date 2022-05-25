@@ -39,7 +39,7 @@ Run the following command to build your SageMaker endpoint.
 python endpoint.py create
 ```
 
-After the endpoint has been staged, you can start making requests by passing your endpoint `region name` and your `endpoint name`. Afterwards you can run inference passing in your question and context:
+After the endpoint has been staged, you can start making requests by passing your endpoint `region name` and your `endpoint name`. Afterwards you can run inference by passing in your question and context:
 
 
 ```python
