@@ -19,15 +19,7 @@ import boto3
 from rich.pretty import pprint
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    dest="action",
-    type=str,
-    choices=["create", "delete"],
-    help="Args to 'create' or 'delete' a SageMaker endpoint.",
-)
 
-args = parser.parse_args()
 
 
 class SparseMaker:
@@ -157,8 +149,26 @@ class SparseMaker:
 
         print("endpoint nuked!")
 
+def parse_args():
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        dest="action",
+        type=str,
+        choices=["create", "delete"],
+        help="Args to 'create' or 'delete' a SageMaker endpoint.",
+    )
+
+    return parser.parse_args()
 
 def main():
+
+    """
+    process arguments and instantiate SparseMaker object
+    """
+
+    _config = parse_args()
 
     SM = SparseMaker(
         instance_count=1,
@@ -174,7 +184,7 @@ def main():
         role_arn="<PLACEHOLDER>",
     )
 
-    if args.action == "create":
+    if _config.action == "create":
         SM.create_image()
         SM.create_ecr_repo()
         SM.push_image()
