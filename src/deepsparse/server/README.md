@@ -4,7 +4,10 @@
 pip install deepsparse[server]
 ```
 
-The DeepSparse inference server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Currently, the server only supports NLP tasks; however, support for computer vision will soon be released in upcoming versions.
+The DeepSparse inference server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server.
+The server supports any task from deepsparse.Pipeline including NLP, classification, and detection tasks.
+An updated list of available tasks can be found
+[here](https://github.com/neuralmagic/deepsparse/blob/main/PIPELINES.md)
 
  - Run `deepsparse.server --help` to lookup the available CLI arguments.
 
@@ -121,7 +124,9 @@ obj = {
 response = requests.post(url, json=obj)
 ```
 
-💡 **PRO TIP** 💡: While your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
+💡 **PRO TIP** 💡: While your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes.
+The UI also enables you to easily make sample requests to your server.
+All you need is to add `/docs` at the end of your host URL:
 
     localhost:5543/docs
 
