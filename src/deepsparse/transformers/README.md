@@ -4,6 +4,11 @@
 Hugging Face Transformer integration allows serving and benchmarking sparsified [Hugging Face transformer](https://github.com/huggingface/transformers) models.  
 This integration allows for leveraging the DeepSparse Engine to run the transformer inference with GPU-class performance directly on the CPU.
 
+The DeepSparse Engine is taking advantage of sparsity within neural networks to 
+reduce compute required as well as accelerate memory-bound workloads. The Engine is particularly effective when leveraging sparsification
+methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061). 
+These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
+
 This integration currently supports several fundamental NLP tasks:
 - **Question Answering** - posing questions about a document.
 - **Text Classification** - assigning a label or class to a piece of text (e.g Sentiment Analysis task). 
@@ -21,33 +26,77 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 
 ```pip install deepsparse```
 
-### ONNX Model Support
+### Model Format
 By default, to deploy the transformer using DeepSparse Engine it is required to supply the model in the ONNX format. 
 This grants the Engine the flexibility to serve any model in a framework-agnostic environment. 
 
-Alternatively, instead of the ONNX model, you can also supply:
-- a stub to a transformer model from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
-- a path to a directory that contains Hugging Face library files (i.e. tokenizer config, model config, etc.).
+Below we describe two possibilities to obtain the required ONNX model.
+
+#### Exporting the onnx file from the contents of a local directory
+This pathway is relevant if you intend to deploy a model created using [SparseML] (https://github.com/neuralmagic/sparseml) library. 
+For more information refer to the appropriate transformers integration documentation in SparseML.
+1. The output of the `SparseMl` training is saved to output directory `/{output_dir}` (e.g. `/trained_model`)
+2. Depending on the chosen framework, the model files are saved to `model_path`=`/{output_dir}/{framework_name}` (e.g `/trained_model/pytorch`)
+3. It is expected that the valid `model_path` contains following, transformer-specific files:
+   - `config.json`  
+   - `pytorch_model.bin` 
+   - `special_tokens_map.json`  
+   - `tokenizer_config.json`  
+   - `tokenizer.json`  
+   - `trainer_state.json`  
+   - `training_args.bin`
+   - `vocab.txt`
+
+4. To generate an onnx model, refer to the [script for transformer ONNX export](https://github.com/neuralmagic/sparseml/blob/23bea1713f57363caca92b76cb08f0ea2731b1e6/src/sparseml/transformers/export.py).
+Example:
+```bash
+sparseml.transformers.export_onnx --task question-answering --model_path model_path
+```
+This creates `model.onnx` file, in the parent directory of your `model_path`(e.g. `/trained_model/model.onnx`)
+
+####  Directly using the SparseZoo stub
+Alternatively, you can skip the process of onnx model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
+Example:
+```bash
+from sparsezoo import Zoo
+
+# you can lookup an appropriate model stub here: https://sparsezoo.neuralmagic.com/
+model_stub = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_96"
+# directly download the model data to your local directory
+model = Zoo.download_model_from_stub(model_stub)
+
+# the onnx model file is there, ready for deployment
+import os 
+os.path.isfile(os.path.join(model.dir_path, "model.onnx"))
+>>True
+```
+
 
 ## Deployment
 
 ### Python API
-Python API is the default interface for running the inference with the DeepSparse Engine.. 
-#### Spinning Up with DeepSparse Engine Python API
+Python API is the default interface for running the inference with the DeepSparse Engine.
 
-This is the fastest way to kick off your experiments with the DeepSparse Engine. You only need to specify the NLP task!
-```python
-from deepsparse.transformers import pipeline
-
-qa_pipeline = pipeline("question-answering")
-inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
-
->> {'score': 0.9945447444915771, 'start': 11, 'end': 18, 'answer': 'Snorlax'}
+The SparseML installation provides a CLI for sparsifying your models for a specific task; appending the `--help` argument displays a full list of options for training in SparseML:
+```bash
+sparseml.transformers.token_classification --help
 ```
+Output:
+```bash
+  --model_name_or_path MODEL_NAME_OR_PATH
+                        Path to pretrained model, sparsezoo stub. or model identifier from huggingface.co/models (default: None)
+  --distill_teacher DISTILL_TEACHER
+                        Teacher model which needs to be a trained NER model (default: None)
+  --cache_dir CACHE_DIR
+                        Where to store the pretrained data from huggingface.co (default: None)
+  --recipe RECIPE       
+                        Path to a SparseML sparsification recipe, see https://github.com/neuralmagic/sparseml for more information (default: None)
+  --dataset_name DATASET_NAME
+                        The name of the dataset to use (via the datasets library) (default: None)
+  ...
+```
+As indicated above, `model_path` may be a path to a local model directory, however, in the examples below, we set the `model_path` argument to the model stub of our SparseZoo models. 
 
-While the example above is great for initial baby steps with the Engine, we highly recommend leveraging the sparsity of the SparseZoo models to enable inference on your CPU with GPU-class performance.
-
-In the examples below, we set the `model_path` argument to the model stub of our SparseZoo models. 
 
 #### Question Answering Pipeline
 
@@ -126,6 +175,40 @@ Install the server:
 pip install deepsparse[server]
 ```
 
+Run `deepsparse.server --help` to look up the CLI arguments:
+```bash
+  Start a DeepSparse inference server for serving the models and pipelines
+  given within the config_file or a single model defined by task, model_path,
+  and batch_size
+
+  Example config.yaml for serving:
+
+  models:
+      - task: question_answering
+        model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+        batch_size: 1
+        alias: question_answering/dense
+      - task: question_answering
+        ...
+
+Options:
+  --host TEXT                     Bind socket to this host. Use --host 0.0.0.0
+                                  to make the application available on your
+                                  local network. IPv6 addresses are supported,
+                                  for example: --host '::'. Defaults to
+                                  0.0.0.0
+  --port INTEGER                  Bind to a socket with this port. Defaults to
+                                  5543.
+  --workers INTEGER               Use multiple worker processes. Defaults to
+                                  1.
+  --log_level [debug|info|warn|critical|fatal]
+                                  Sets the logging level. Defaults to info.
+  --config_file TEXT              Configuration file containing info on how to
+                                  serve the desired models.
+  ...
+```
+
+
 Example CLI Command to spin up the server:
 
 ```bash
@@ -151,7 +234,7 @@ response.text
 
 >> '{"score":0.9534820914268494,"start":8,"end":14,"answer":"batman"}'
 ```
-
+### Benchmarking
 The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse Hugging Face ONNX models perform inference? 
 You can quickly do benchmarking tests on your own with a single CLI command!
 
