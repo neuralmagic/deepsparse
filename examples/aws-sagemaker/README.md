@@ -49,10 +49,10 @@ qa = Endpoint("us-east-1", "question-answering-example-endpoint")
 qa.predict(question="who is batman?", context="Mark is batman.")
 ```
 
-Continue reading to learn more about the files in this directory, the build requirements, and a descriptive step-by-step guide for launching a SageMaker endpoint as described in Option 1 above.
+Continue reading to learn more about the files in this directory, the build requirements, and a descriptive step-by-step guide for launching a SageMaker endpoint.
 
 ## Contents
-In addition to the step-by-step instructions in this guide, the directory contains
+In addition to the step-by-step instructions below, the directory contains
 additional files to aid in the deployment.
 
 ### Dockerfile
