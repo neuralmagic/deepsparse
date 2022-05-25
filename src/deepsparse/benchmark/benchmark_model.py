@@ -309,7 +309,7 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
 
 def benchmark_model(
     model_path: str,
-    batch_size: str = 1,
+    batch_size: int = 1,
     input_shapes: str = "",
     num_cores: int = None,
     scenario: str = "sync",
