@@ -196,11 +196,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         :param engine_inputs: list of multiple inputs to engine forward pass
         :return: result of each forward pass
         """
-        engine_outputs = []
-        for inputs in engine_inputs:
-            engine_outputs.append(self.engine(inputs))
-
-        return engine_outputs
+        return [self.engine(inputs) for inputs in engine_inputs]
 
     def process_inputs(
         self,
