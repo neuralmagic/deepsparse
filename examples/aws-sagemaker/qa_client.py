@@ -22,7 +22,7 @@ class Endpoint:
     Client object for making requests to the SageMaker inference endpoint
 
     :param region_name: AWS region
-    :param endpoint_name: Name given to endpoint on SageMaker
+    :param endpoint_name: Name given to the SageMaker endpoint
     """
 
     def __init__(self, region_name: str, endpoint_name: str):

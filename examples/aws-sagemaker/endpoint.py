@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import subprocess
 
 import boto3
 from rich.pretty import pprint
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    dest="action",
+    type=str,
+    choices=["create", "delete"],
+    help="Args to 'create' or 'delete' a SageMaker endpoint.",
+)
+
+args = parser.parse_args()
+
+
 class SparseMaker:
 
     """
-    Object for auto creating a docker image with the deepsparse server,
+    Object for auto generating a docker image with the deepsparse server,
     pushing the image to AWS and generating a SageMaker inference endpoint
 
     :param instance_count: Number of instances to launch initially
@@ -146,12 +158,12 @@ class SparseMaker:
         print("endpoint nuked!")
 
 
-if __name__ == "__main__":
+def main():
 
-    Sage = SparseMaker(
+    SM = SparseMaker(
         instance_count=1,
         region_name="us-east-1",
-        instance_type="ml.c5.large",
+        instance_type="ml.c5.2xlarge",
         image_name="deepsparse-sagemaker-example",
         repo_name="deepsparse-sagemaker",
         image_push_script="./push_image.sh",
@@ -162,10 +174,16 @@ if __name__ == "__main__":
         role_arn="<PLACEHOLDER>",
     )
 
-    Sage.create_image()
-    Sage.create_ecr_repo()
-    Sage.push_image()
-    Sage.create_model()
-    Sage.create_endpoint_config()
-    Sage.create_endpoint()
-    # Sage.nuke_endpoint()
+    if args.action == "create":
+        SM.create_image()
+        SM.create_ecr_repo()
+        SM.push_image()
+        SM.create_model()
+        SM.create_endpoint_config()
+        SM.create_endpoint()
+    else:
+        SM.nuke_endpoint()
+
+
+if __name__ == "__main__":
+    main()

@@ -23,26 +23,16 @@ This directory provides a guided example for deploying a
 Deployments benefit from both sparse-CPU acceleration with
 DeepSparse and automatic scaling from SageMaker.
 
-## Usage
-You have two options to tinker with this question answering demo: 
-1. You can either copy and paste the code snippets in the upcoming sections to build out your SageMaker endpoint.
-**OR**
-2. You can automate the deployment of the Sagemaker endpoint with the `create_endpoint.py` script. This script automatically: 
-    - Builds a local Docker image.
-    - Creates an AWS Elastic Container Registry (ECR) repository.
-    - Pushes the Docker image to ECR.
-    - Builds a Sagemaker endpoint configuration.
-    - Launches Sagemaker endpoint.
-
-To get started with Option 2:
+### Quick Start
 
 ```bash
-
 git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/aws-sagemaker
 pip install -r requirements.txt
 ```
+
 Run the following command to build your SageMaker endpoint.
+
 ```bash
 python create_endpoint.py
 ```
@@ -220,7 +210,7 @@ with a single machine using an `ml.c5.large` CPU.
 ```python
 model_name = "question-answering-example"  # model defined above
 initial_instance_count = 1
-instance_type = "ml.c5.large"
+instance_type = "ml.c5.2xlarge" # 8 vcpus
 
 variant_name = "QuestionAnsweringDeepSparseDemo"  # ^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,62}
 
