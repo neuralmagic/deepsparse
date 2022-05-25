@@ -44,8 +44,8 @@ class YOLOPipeline(Pipeline):
     Image Segmentation YOLO pipeline for DeepSparse
 
     :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param engine_type: inference engine to use. Currently supported values
+        include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
@@ -171,8 +171,58 @@ class YOLOPipeline(Pipeline):
 
         if not self.is_quantized:
             image_batch /= 255
+        postprocessing_kwargs = dict(
+            iou_thres=inputs.iou_thres,
+            conf_thres=inputs.conf_thres,
+        )
+        return [image_batch], postprocessing_kwargs
 
-        return [image_batch]
+    def process_engine_outputs(
+        self,
+        engine_outputs: List[numpy.ndarray],
+        **kwargs,
+    ) -> YOLOOutput:
+        """
+        :param engine_outputs: list of numpy arrays that are the output of the engine
+            forward pass
+        :return: outputs of engine post-processed into an object in the `output_schema`
+            format of this pipeline
+        """
+
+        # post-processing
+        if self.postprocessor:
+            batch_output = self.postprocessor.pre_nms_postprocess(engine_outputs)
+        else:
+            batch_output = engine_outputs[
+                0
+            ]  # post-processed values stored in first output
+
+        # NMS
+        batch_output = postprocess_nms(
+            batch_output,
+            iou_thres=kwargs.get("iou_thres", 0.25),
+            conf_thres=kwargs.get("conf_thres", 0.45),
+        )
+
+        batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []
+
+        for image_output in batch_output:
+            batch_predictions.append(image_output.tolist())
+            batch_boxes.append(image_output[:, 0:4].tolist())
+            batch_scores.append(image_output[:, 4].tolist())
+            batch_labels.append(
+                [
+                    self.class_names[str(class_ids)]
+                    for class_ids in image_output[:, 5].astype(int)
+                ]
+            )
+
+        return YOLOOutput(
+            predictions=batch_predictions,
+            boxes=batch_boxes,
+            scores=batch_scores,
+            labels=batch_labels,
+        )
 
     def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
         # return a numpy batch of images
@@ -198,48 +248,6 @@ class YOLOPipeline(Pipeline):
             return numpy.moveaxis(image, -1, 1)
 
         return image
-
-    def process_engine_outputs(
-        self,
-        engine_outputs: List[numpy.ndarray],
-    ) -> YOLOOutput:
-        """
-        :param engine_outputs: list of numpy arrays that are the output of the engine
-            forward pass
-        :return: outputs of engine post-processed into an object in the `output_schema`
-            format of this pipeline
-        """
-
-        # post-processing
-        if self.postprocessor:
-            batch_output = self.postprocessor.pre_nms_postprocess(engine_outputs)
-        else:
-            batch_output = engine_outputs[
-                0
-            ]  # post-processed values stored in first output
-
-        # NMS
-        batch_output = postprocess_nms(batch_output)
-
-        batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []
-
-        for image_output in batch_output:
-            batch_predictions.append(image_output.tolist())
-            batch_boxes.append(image_output[:, 0:4].tolist())
-            batch_scores.append(image_output[:, 4].tolist())
-            batch_labels.append(
-                [
-                    self.class_names[str(class_ids)]
-                    for class_ids in image_output[:, 5].astype(int)
-                ]
-            )
-
-        return YOLOOutput(
-            predictions=batch_predictions,
-            boxes=batch_boxes,
-            scores=batch_scores,
-            labels=batch_labels,
-        )
 
     def _infer_image_shape(self, onnx_model) -> Tuple[int, ...]:
         """
