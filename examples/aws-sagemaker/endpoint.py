@@ -212,9 +212,8 @@ def main():
     elif args.action == "destroy":
         SM.destroy_endpoint()
 
-    # else:
-    #     raise ValueError(f"Invalid action given {args.action}")
-
+    else:
+        raise ValueError(f"Invalid action given {args.action}")
 
 if __name__ == "__main__":
     main()
