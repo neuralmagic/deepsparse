@@ -34,14 +34,14 @@ pip install -r requirements.txt
 Run the following command to build your SageMaker endpoint.
 
 ```bash
-python create_endpoint.py
+python endpoint.py create
 ```
 
 After the endpoint has been staged, you can run inference with the following snippet:
 
 
 ```python
-from qa_endpoint import Endpoint
+from qa_client import Endpoint
 
 
 qa = Endpoint("us-east-1", "question-answering-example-endpoint")
@@ -82,13 +82,13 @@ which the server can then read from.
 
 Bash script for pushing your local Docker image to the AWS ECR repository.
 
-### create_endpoint.py
+### endpoint.py
 
 Contains the SparseMaker object for automating the build of a SageMaker endpoint from a Docker Image. You have the option to customize the parameters of the class in order to match the prefered state of your deployment.
 
 **Don't forget to add your AWS [ARN](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html) id to the `role_arn` parameter at the bottom of the module.**
 
-### qa_endpoint.py
+### qa_client.py
 
 Contains a client object for making requests to the SageMaker inference endpoint for the question answering task.
 ____
