@@ -92,7 +92,6 @@ def squad_eval(args):
         pred = question_answer(
             question=sample["question"],
             context=sample["context"],
-            num_spans=1,  # only look at first part of long contexts
         )
 
         squad_metrics.add_batch(

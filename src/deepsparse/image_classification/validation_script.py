@@ -43,24 +43,17 @@ python validation_script.py \
   --dataset-path /path/to/imagenette/
 
 """
+import click
+import torchvision
+from torchvision import transforms
 from tqdm import tqdm
 
+from deepsparse.image_classification.constants import (
+    IMAGENET_RGB_MEANS,
+    IMAGENET_RGB_STDS,
+)
 from deepsparse.pipeline import Pipeline
 from torch.utils.data import DataLoader
-from torchvision import transforms
-
-
-try:
-    import torchvision
-
-except ModuleNotFoundError as torchvision_error:  # noqa: F841
-    print(
-        "Torchvision not installed. Please install it using the command:"
-        "pip install torchvision>=0.3.0,<=0.10.1"
-    )
-    exit(1)
-
-import click
 
 
 resnet50_imagenet_pruned = (
@@ -107,13 +100,15 @@ def main(dataset_path: str, model_path: str, batch_size: int, image_size: int):
     """
     Validation Script for Image Classification Models
     """
-
+    non_rand_resize_scale = 256.0 / 224.0  # standard used
     dataset = torchvision.datasets.ImageFolder(
         root=dataset_path,
         transform=transforms.Compose(
             [
+                transforms.Resize(round(non_rand_resize_scale * image_size)),
+                transforms.CenterCrop(image_size),
                 transforms.ToTensor(),
-                transforms.Resize(size=(image_size, image_size)),
+                transforms.Normalize(mean=IMAGENET_RGB_MEANS, std=IMAGENET_RGB_STDS),
             ]
         ),
     )

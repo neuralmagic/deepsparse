@@ -68,8 +68,10 @@ class TextClassificationOutput(BaseModel):
     Schema for text_classification pipeline output. Values are in batch order
     """
 
-    labels: List[str] = Field(description="The predicted labels in batch order")
-    scores: List[float] = Field(
+    labels: List[Union[str, List[str]]] = Field(
+        description="The predicted labels in batch order"
+    )
+    scores: List[Union[float, List[float]]] = Field(
         description="The corresponding probability for each label in the batch"
     )
 
@@ -133,7 +135,29 @@ class TextClassificationPipeline(TransformersPipeline):
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is 'bert-base-uncased'
+    :param return_all_scores: if True, instead of returning the prediction as the
+        argmax of model class predictions, will return all scores and labels as
+        a list for each result in the batch. Default is False
     """
+
+    def __init__(
+        self,
+        *,
+        return_all_scores: bool = False,
+        **kwargs,
+    ):
+        self._return_all_scores = return_all_scores
+
+        super().__init__(**kwargs)
+
+    @property
+    def return_all_scores(self) -> str:
+        """
+        :return: if True, instead of returning the prediction as the
+            argmax of model class predictions, will return all scores and labels as
+            a list for each result in the batch
+        """
+        return self._return_all_scores
 
     @property
     def input_schema(self) -> Type[BaseModel]:
@@ -208,12 +232,19 @@ class TextClassificationPipeline(TransformersPipeline):
             else numpy.exp(outputs) / numpy.exp(outputs).sum(-1, keepdims=True)
         )
 
-        labels = []
-        label_scores = []
-
-        for score in scores:
-            labels.append(self.config.id2label[score.argmax()])
-            label_scores.append(score.max().item())
+        if not self._return_all_scores:
+            # return only argmax of scores for each item in batch
+            labels = []
+            label_scores = []
+            for score in scores:
+                labels.append(self.config.id2label[score.argmax()])
+                label_scores.append(score.max().item())
+        else:
+            # return all scores and labels for each item in batch
+            labels = [
+                [self.config.id2label[idx] for idx in range(scores.shape[1])]
+            ] * len(scores)
+            label_scores = [score.reshape(-1).tolist() for score in scores]
 
         return self.output_schema(
             labels=labels,
