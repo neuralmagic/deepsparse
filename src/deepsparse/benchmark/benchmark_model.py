@@ -95,6 +95,7 @@ import argparse
 import json
 import logging
 import os
+from typing import Dict
 
 from deepsparse import Scheduler, compile_model
 from deepsparse.benchmark.ort_engine import ORTEngine
@@ -106,6 +107,9 @@ from deepsparse.utils import (
     override_onnx_input_shapes,
     parse_input_shapes,
 )
+
+
+__all__ = ["benchmark_model"]
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -233,9 +237,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def decide_thread_pinning(pinning_mode: str):
+def decide_thread_pinning(pinning_mode: str) -> None:
     pinning_mode = pinning_mode.lower()
-
     if pinning_mode in "core":
         os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
         _LOGGER.info("Thread pinning to cores enabled")
@@ -255,7 +258,8 @@ def decide_thread_pinning(pinning_mode: str):
         )
 
 
-def parse_scheduler(scenario):
+def parse_scheduler(scenario: str) -> Scheduler:
+    scenario = scenario.lower()
     if scenario == "multistream":
         return Scheduler.multi_stream
     elif scenario == "singlestream":
@@ -266,7 +270,8 @@ def parse_scheduler(scenario):
         return Scheduler.multi_stream
 
 
-def parse_scenario(scenario):
+def parse_scenario(scenario: str) -> str:
+    scenario = scenario.lower()
     if scenario == "async":
         return "multistream"
     elif scenario == "sync":
@@ -282,8 +287,7 @@ def parse_scenario(scenario):
         return "multistream"
 
 
-def parse_num_streams(num_streams, num_cores, scenario):
-
+def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
     # If model.num_streams is set, and the scenario is either "multi_stream" or
     # "elastic", use the value of num_streams given to us by the model, otherwise
     # use a semi-sane default value.
@@ -303,94 +307,133 @@ def parse_num_streams(num_streams, num_cores, scenario):
             return default_num_streams
 
 
-def main():
-
-    args = parse_args()
-
-    if args.quiet:
+def benchmark_model(
+    model_path: str,
+    batch_size: int = 1,
+    input_shapes: str = "",
+    num_cores: int = None,
+    scenario: str = "sync",
+    time: int = 10,
+    warmup_time: int = 2,
+    num_streams: int = None,
+    thread_pinning: str = "core",
+    engine: str = DEEPSPARSE_ENGINE,
+    quiet: bool = False,
+    export_path: str = None,
+) -> Dict:
+    if quiet:
         set_logging_level(logging.WARN)
 
-    decide_thread_pinning(args.thread_pinning)
+    decide_thread_pinning(thread_pinning)
 
-    scenario = parse_scenario(args.scenario.lower())
+    scenario = parse_scenario(scenario.lower())
     scheduler = parse_scheduler(scenario)
-    input_shapes = parse_input_shapes(args.input_shapes)
+    input_shapes = parse_input_shapes(input_shapes)
 
-    orig_model_path = args.model_path
-    args.model_path = model_to_path(args.model_path)
+    orig_model_path = model_path
+    model_path = model_to_path(model_path)
 
     # Compile the ONNX into a runnable model
-    if args.engine == DEEPSPARSE_ENGINE:
+    if engine == DEEPSPARSE_ENGINE:
         model = compile_model(
-            model=args.model_path,
-            batch_size=args.batch_size,
-            num_cores=args.num_cores,
-            num_streams=args.num_streams,
+            model=model_path,
+            batch_size=batch_size,
+            num_cores=num_cores,
+            num_streams=num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
         )
         num_streams = parse_num_streams(model.num_streams, model.num_cores, scenario)
-    elif args.engine == ORT_ENGINE:
+    elif engine == ORT_ENGINE:
         model = ORTEngine(
-            model=args.model_path,
-            batch_size=args.batch_size,
-            num_cores=args.num_cores,
+            model=model_path,
+            batch_size=batch_size,
+            num_cores=num_cores,
             input_shapes=input_shapes,
         )
-        num_streams = parse_num_streams(args.num_streams, model.num_cores, scenario)
+        num_streams = parse_num_streams(num_streams, model.num_cores, scenario)
+    else:
+        raise ValueError(f"Invalid engine choice '{engine}'")
     _LOGGER.info(model)
 
     # Generate random inputs to feed the model
     # TODO(mgoin): should be able to query Engine class instead of loading ONNX
     if input_shapes:
-        with override_onnx_input_shapes(args.model_path, input_shapes) as model_path:
-            input_list = generate_random_inputs(model_path, args.batch_size)
+        with override_onnx_input_shapes(model_path, input_shapes) as model_path:
+            input_list = generate_random_inputs(model_path, batch_size)
     else:
-        input_list = generate_random_inputs(args.model_path, args.batch_size)
+        input_list = generate_random_inputs(model_path, batch_size)
 
     # Benchmark
     _LOGGER.info(
-        "Starting '{}' performance measurements for {} seconds".format(
-            args.scenario, args.time
-        )
+        "Starting '{}' performance measurements for {} seconds".format(scenario, time)
     )
     benchmark_result = model_stream_benchmark(
         model,
         input_list,
         scenario=scenario,
-        seconds_to_run=args.time,
-        seconds_to_warmup=args.warmup_time,
+        seconds_to_run=time,
+        seconds_to_warmup=warmup_time,
         num_streams=num_streams,
     )
 
-    # Results summary
-    print("Original Model Path: {}".format(orig_model_path))
-    print("Batch Size: {}".format(args.batch_size))
-    print("Scenario: {}".format(scenario))
-    print("Throughput (items/sec): {:.4f}".format(benchmark_result["items_per_sec"]))
-    print("Latency Mean (ms/batch): {:.4f}".format(benchmark_result["mean"]))
-    print("Latency Median (ms/batch): {:.4f}".format(benchmark_result["median"]))
-    print("Latency Std (ms/batch): {:.4f}".format(benchmark_result["std"]))
-    print("Iterations: {}".format(int(benchmark_result["iterations"])))
+    export_dict = {
+        "engine": str(model),
+        "orig_model_path": orig_model_path,
+        "model_path": model_path,
+        "batch_size": batch_size,
+        "input_shapes": input_shapes,
+        "num_cores": num_cores,
+        "scenario": scenario,
+        "scheduler": str(model.scheduler),
+        "seconds_to_run": time,
+        "num_streams": num_streams,
+        "benchmark_result": benchmark_result,
+    }
 
-    if args.export_path:
-        # Export results
-        print("Saving benchmark results to JSON file at {}".format(args.export_path))
-        export_dict = {
-            "engine": str(model),
-            "orig_model_path": orig_model_path,
-            "model_path": args.model_path,
-            "batch_size": args.batch_size,
-            "input_shapes": args.input_shapes,
-            "num_cores": args.num_cores,
-            "scenario": args.scenario,
-            "scheduler": str(model.scheduler),
-            "seconds_to_run": args.time,
-            "num_streams": args.num_streams,
-            "benchmark_result": benchmark_result,
-        }
-        with open(args.export_path, "w") as out:
+    # Export results
+    if export_path:
+        _LOGGER.info("Saving benchmark results to JSON file at {}".format(export_path))
+        with open(export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
+
+    return export_dict
+
+
+def main():
+
+    args = parse_args()
+
+    result = benchmark_model(
+        model_path=args.model_path,
+        batch_size=args.batch_size,
+        input_shapes=args.input_shapes,
+        num_cores=args.num_cores,
+        scenario=args.scenario,
+        time=args.time,
+        warmup_time=args.warmup_time,
+        num_streams=args.num_streams,
+        thread_pinning=args.thread_pinning,
+        engine=args.engine,
+        quiet=args.quiet,
+        export_path=args.export_path,
+    )
+
+    # Results summary
+    print("Original Model Path: {}".format(args.model_path))
+    print("Batch Size: {}".format(args.batch_size))
+    print("Scenario: {}".format(args.scenario))
+    print(
+        "Throughput (items/sec): {:.4f}".format(
+            result["benchmark_result"]["items_per_sec"]
+        )
+    )
+    print("Latency Mean (ms/batch): {:.4f}".format(result["benchmark_result"]["mean"]))
+    print(
+        "Latency Median (ms/batch): {:.4f}".format(result["benchmark_result"]["median"])
+    )
+    print("Latency Std (ms/batch): {:.4f}".format(result["benchmark_result"]["std"]))
+    print("Iterations: {}".format(int(result["benchmark_result"]["iterations"])))
 
 
 if __name__ == "__main__":
