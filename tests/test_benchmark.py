@@ -18,6 +18,7 @@ import pytest
 from helpers import predownload_stub, run_command
 
 
+@pytest.mark.smoke
 def test_benchmark_help():
     cmd = ["deepsparse.benchmark", "--help"]
     print(f"\n==== test_benchmark_help command ====\n{' '.join(cmd)}")
@@ -52,10 +53,11 @@ def test_benchmark_help():
             "bookcorpus_wikitext/base-none",
             ["-t", "20"],
         ),
-        (
+        pytest.param(
             "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
             "bookcorpus_wikitext/12layer_pruned90-none",
             [],
+            marks=pytest.mark.smoke,
         ),
         (
             "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/base-none",

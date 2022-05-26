@@ -14,8 +14,6 @@
 
 
 import numpy
-from PIL import Image
-from torchvision import transforms
 
 import pytest
 from deepsparse import Pipeline
@@ -25,6 +23,10 @@ from deepsparse.image_classification.constants import (
 )
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy_list
+
+
+from PIL import Image  # isort:skip
+from torchvision import transforms  # isort:skip
 
 
 @pytest.mark.parametrize(
@@ -38,6 +40,7 @@ from sparsezoo.utils import load_numpy_list
         )
     ],
 )
+@pytest.mark.smoke
 def test_image_classification_pipeline_preprocessing(zoo_stub, image_size, num_samples):
     non_rand_resize_scale = 256.0 / 224.0  # standard used
     standard_imagenet_transforms = transforms.Compose(

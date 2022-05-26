@@ -21,6 +21,7 @@ import pytest
 from helpers import predownload_stub, run_command
 
 
+@pytest.mark.smoke
 def test_run_inference_help():
     cmd = ["deepsparse.transformers.run_inference", "--help"]
     print(f"\n==== test_run_inference_help command ====\n{' '.join(cmd)}")
@@ -33,6 +34,7 @@ def test_run_inference_help():
     assert "fail" not in res.stdout.lower()
 
 
+@pytest.mark.smoke
 def test_run_inference_ner(cleanup: Dict[str, List]):
     cmd = [
         "deepsparse.transformers.run_inference",
@@ -69,11 +71,12 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
 @pytest.mark.parametrize(
     ("input_format", "model_path", "local_model"),
     [
-        (
+        pytest.param(
             "csv",
             "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
             "pruned_6layers-aggressive_98",
             True,
+            marks=pytest.mark.smoke,
         ),
         (
             "json",
@@ -138,11 +141,12 @@ def test_run_inference_qa(
             True,
             ["--num-cores", "4", "--engine-type", "onnxruntime"],
         ),
-        (
+        pytest.param(
             "csv",
             "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
             True,
             [],
+            marks=pytest.mark.smoke,
         ),
         (
             "json",
