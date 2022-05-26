@@ -176,7 +176,7 @@ class Engine(object):
         self,
         model: Union[str, Model, File],
         batch_size: int,
-        num_cores: int,
+        num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,

@@ -46,11 +46,9 @@ if SRC_DIRS is not None:
     "model, batch_size",
     (
         [
-            pytest.param(
-                mobilenet_v1,
-                b,
-            )
-            for b in [1, 8, 64]
+            pytest.param(mobilenet_v1, 1, marks=pytest.mark.smoke),
+            pytest.param(mobilenet_v1, 8, marks=pytest.mark.smoke),
+            pytest.param(mobilenet_v1, 64),
         ]
     ),
 )
@@ -70,11 +68,9 @@ def test_check_correctness(model: Model, batch_size: int):
     "model, batch_size",
     (
         [
-            pytest.param(
-                mobilenet_v1,
-                b,
-            )
-            for b in [1, 8, 64]
+            pytest.param(mobilenet_v1, 1, marks=pytest.mark.smoke),
+            pytest.param(mobilenet_v1, 8, marks=pytest.mark.smoke),
+            pytest.param(mobilenet_v1, 64),
         ]
     ),
 )
@@ -94,11 +90,9 @@ def test_run_benchmark(model: Model, batch_size: int):
     "model_name, batch_size",
     (
         [
-            pytest.param(
-                "mobilenet_v1",
-                b,
-            )
-            for b in [1, 8, 64]
+            pytest.param("mobilenet_v1", 1, marks=pytest.mark.smoke),
+            pytest.param("mobilenet_v1", 8, marks=pytest.mark.smoke),
+            pytest.param("mobilenet_v1", 64),
         ]
     ),
 )
@@ -117,11 +111,9 @@ def test_classification(model_name: str, batch_size: int):
     "model_name, batch_size",
     (
         [
-            pytest.param(
-                "yolo_v3",
-                b,
-            )
-            for b in [1, 8, 64]
+            pytest.param("yolo_v3", 1, marks=pytest.mark.smoke),
+            pytest.param("yolo_v3", 8, marks=pytest.mark.smoke),
+            pytest.param("yolo_v3", 64),
         ]
     ),
 )
