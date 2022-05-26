@@ -164,7 +164,7 @@ class SparseMaker:
         )
         self.sm_boto3.delete_model(ModelName=self.model_name)
 
-        print("endpoint nuked!")
+        print("endpoint and SageMaker model deleted")
 
 
 def parse_args():
