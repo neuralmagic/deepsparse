@@ -81,6 +81,7 @@ deepsparse.server \
 
 import logging
 from pathlib import Path
+from typing import List
 
 import click
 
@@ -98,7 +99,7 @@ from deepsparse.version import version
 
 try:
     import uvicorn
-    from fastapi import FastAPI
+    from fastapi import FastAPI, UploadFile
     from starlette.responses import RedirectResponse
 except Exception as err:
     raise ImportError(
@@ -136,6 +137,43 @@ def _add_pipeline_route(
     defined_tasks: set,
     integration: str,
 ):
+    def _create_endpoint(path: str, from_files: bool = False):
+        # if `from_files` is True, the endpoint expects request to be `List[UploadFile]`
+        # otherwise, the endpoint expect request to be `pipeline.input_schema`
+
+        if from_files:
+
+            @app.post(
+                path,
+                response_model=pipeline.output_schema,
+                tags=["prediction"],
+            )
+            async def _predict_func(files: List[UploadFile]):
+                request = pipeline.input_schema.from_files(
+                    [file.filename for file in files]
+                )
+                results = await execute_async(
+                    pipeline,
+                    request,
+                )
+                return serializable_response(results)
+
+        else:
+
+            @app.post(
+                path,
+                response_model=pipeline.output_schema,
+                tags=["prediction"],
+            )
+            async def _predict_func(request: pipeline.input_schema):
+                results = await execute_async(
+                    pipeline,
+                    request,
+                )
+                return serializable_response(results)
+
+        return _predict_func
+
     path = "/predict"
 
     if integration.lower() == "sagemaker":
@@ -158,31 +196,14 @@ def _add_pipeline_route(
         path = f"/predict/{pipeline.task}"
         defined_tasks.add(pipeline.task)
 
-    if path == "/invocations":
-        @app.post(
-            path,
-            response_model=pipeline.output_schema,
-            tags=["prediction"],
-        )
-        async def _predict_func(files: List[UploadFile]):
-            request = pipeline.input_schema.from_files(files)
-            results = await execute_async(
-                pipeline,
-                request,
-            )
-            return serializable_response(results)
+    if hasattr(pipeline.input_schema, "from_files"):
+        if integration.lower() == "sagemaker":
+            _create_endpoint(path, from_files=True)
+        else:
+            _create_endpoint(path)
+            _create_endpoint(path + "/from_files", from_files=True)
     else:
-        @app.post(
-            path,
-            response_model=pipeline.output_schema,
-            tags=["prediction"],
-        )
-        async def _predict_func(request: pipeline.input_schema):
-            results = await execute_async(
-                pipeline,
-                request,
-            )
-            return serializable_response(results)
+        _create_endpoint(path)
 
 
 def server_app_factory():

@@ -34,8 +34,8 @@ class ImageClassificationInput(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    def from_files(cls, files):
-        return cls(images=[file.filename for file in filenames])
+    def from_files(cls, files: List[str]):
+        return cls(images=files)
 
 
 class ImageClassificationOutput(BaseModel):

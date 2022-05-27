@@ -41,6 +41,10 @@ class YOLOInput(BaseModel):
         description="List of Images to process"
     )
 
+    @classmethod
+    def from_files(cls, files: List[str]):
+        return cls(images=files)
+
     class Config:
         arbitrary_types_allowed = True
 
