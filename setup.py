@@ -205,6 +205,7 @@ def _setup_extras() -> Dict:
 def _setup_entry_points() -> Dict:
     data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     eval_downstream = "deepsparse.transformers.eval_downstream:main"
+    ic_eval = "deepsparse.image_classification.validation_script:main"
 
     return {
         "console_scripts": [
@@ -215,6 +216,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
+            f"deepsparse.image_classification.eval={ic_eval}",
         ]
     }
 
