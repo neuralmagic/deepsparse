@@ -47,7 +47,6 @@ from qa_client import Endpoint
 
 
 qa = Endpoint("us-east-1", "question-answering-example-endpoint")
-
 answer = qa.predict(question="who is batman?", context="Mark is batman.")
 
 print(answer)
