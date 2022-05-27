@@ -1,5 +1,6 @@
 deepsparse/avx2/
 deepsparse/avx512/
+deepsparse/neon/
 arch.bin
 cpu.py
 generated-version.py

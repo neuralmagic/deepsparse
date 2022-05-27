@@ -19,10 +19,16 @@ Input/Output Schemas for Image Classification.
 import io
 from typing import Any, List, Union
 
-import numpy as np
+import numpy
 from pydantic import BaseModel, Field
 
 from PIL import Image
+
+
+__all__ = [
+    "ImageClassificationInput",
+    "ImageClassificationOutput",
+]
 
 
 class ImageClassificationInput(BaseModel):
@@ -30,7 +36,7 @@ class ImageClassificationInput(BaseModel):
     Input model for image classification
     """
 
-    images: Union[str, List[str], List[Any]] = Field(
+    images: Union[str, List[str], List[Any], numpy.ndarray] = Field(
         description="List of Images to process"
     )
 
@@ -39,7 +45,7 @@ class ImageClassificationInput(BaseModel):
 
     @classmethod
     def from_bytes(cls, bytes: List[bytes]):
-        images = [np.array(Image.open(io.BytesIO(byte_img))) for byte_img in bytes]
+        images = [numpy.array(Image.open(io.BytesIO(byte_img))) for byte_img in bytes]
         return cls(images=images)
 
 
