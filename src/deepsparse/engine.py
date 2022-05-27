@@ -19,6 +19,7 @@ Code related to interfacing with a Neural Network in the DeepSparse Engine using
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
+import logging
 
 import numpy
 from tqdm.auto import tqdm
@@ -60,6 +61,7 @@ __all__ = [
     "MultiModelEngine",
 ]
 
+_LOGGER = logging.getLogger(__name__)
 
 ARCH = cpu_architecture()
 NUM_CORES = ARCH.num_available_physical_cores
@@ -127,7 +129,10 @@ def _validate_num_streams(num_streams: Union[None, int], num_cores: int) -> int:
         raise ValueError("num_streams must be greater than 0")
 
     if num_streams > num_cores:
-        raise ValueError("num_streams cannot exceed num_cores.")
+        num_streams = num_cores
+        _LOGGER.warn(
+            "num_streams exceeds num_cores - capping to {}".format(num_streams)
+        )
 
     return num_streams
 
