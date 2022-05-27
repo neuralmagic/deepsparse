@@ -17,10 +17,9 @@
 Input/Output Schemas for Image Segmentation with YOLO
 """
 from collections import namedtuple
-from typing import List, Union
+from typing import Any, List, Union
 
-import numpy
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 __all__ = [
@@ -38,7 +37,17 @@ class YOLOInput(BaseModel):
     Input model for image classification
     """
 
-    images: Union[str, List[numpy.ndarray], List[str]]
+    images: Union[str, List[str], List[Any]] = Field(
+        description="List of Images to process"
+    )
+    iou_thres: float = Field(
+        default=0.25,
+        description="minimum IoU overlap threshold for a prediction to be valid",
+    )
+    conf_thres: float = Field(
+        default=0.45,
+        description="minimum confidence score for a prediction to be valid",
+    )
 
     class Config:
         arbitrary_types_allowed = True
@@ -49,10 +58,16 @@ class YOLOOutput(BaseModel):
     Output model for image classification
     """
 
-    predictions: List[List[List[float]]]
-    boxes: List[List[List[float]]]
-    scores: List[List[float]]
-    labels: List[List[str]]
+    predictions: List[List[List[float]]] = Field(description="List of predictions")
+    boxes: List[List[List[float]]] = Field(
+        description="List of bounding boxes, one for each prediction"
+    )
+    scores: List[List[float]] = Field(
+        description="List of scores, one for each prediction"
+    )
+    labels: List[List[str]] = Field(
+        description="List of labels, one for each prediction"
+    )
 
     def __getitem__(self, index):
         if index >= len(self.predictions):

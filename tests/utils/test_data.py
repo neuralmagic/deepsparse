@@ -30,6 +30,7 @@ from deepsparse.utils import arrays_to_bytes, bytes_to_arrays
         [numpy.random.randint(255, size=(3, 244, 244), dtype=numpy.uint8)],
     ),
 )
+@pytest.mark.smoke
 def test_arrays_bytes_conversion(arrays):
     serialized_arrays = arrays_to_bytes(arrays)
     assert isinstance(serialized_arrays, bytearray)
