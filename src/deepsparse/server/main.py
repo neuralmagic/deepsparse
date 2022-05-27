@@ -140,7 +140,7 @@ def _add_pipeline_route(
     def _create_endpoint(path: str, from_files: bool = False):
         # if `from_files` is True, the endpoint expects request to be `List[UploadFile]`
         # otherwise, the endpoint expect request to be `pipeline.input_schema`
-        input_schema = List[UploadFile] if from_files else pipeline.output_schema
+        input_schema = List[UploadFile] if from_files else pipeline.input_schema
 
         @app.post(
             path,
