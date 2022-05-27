@@ -16,6 +16,7 @@
 """
 Input/Output Schemas for Image Segmentation with YOLO
 """
+
 from collections import namedtuple
 from typing import Any, List, Union
 
@@ -48,6 +49,20 @@ class YOLOInput(BaseModel):
         default=0.45,
         description="minimum confidence score for a prediction to be valid",
     )
+
+    @classmethod
+    def from_files(cls, files: List[str], **kwargs) -> "YOLOInput":
+        """
+        :param files: list of file paths to create YOLOInput from
+        :param kwargs: extra keyword args to pass to YOLOInput constructor
+        :return: YOLOInput constructed from files
+        """
+        if "images" in kwargs:
+            raise ValueError(
+                f"argument 'images' cannot be specified in {cls.__name__} when "
+                "constructing from file(s)"
+            )
+        return cls(images=files, **kwargs)
 
     class Config:
         arbitrary_types_allowed = True
