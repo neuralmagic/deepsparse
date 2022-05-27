@@ -16,13 +16,10 @@
 Input/Output Schemas for Image Classification.
 """
 
-import io
 from typing import Any, List, Union
 
 import numpy
 from pydantic import BaseModel, Field
-
-from PIL import Image
 
 
 __all__ = [
@@ -44,9 +41,17 @@ class ImageClassificationInput(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    def from_bytes(cls, bytes: List[bytes]):
-        images = [numpy.array(Image.open(io.BytesIO(byte_img))) for byte_img in bytes]
-        return cls(images=images)
+    def from_files(cls, files: List[str], **kwargs) -> "ImageClassificationInput":
+        """
+        :param files: list of file paths to create ImageClassificationInput from
+        :return: ImageClassificationInput constructed from files
+        """
+        if kwargs:
+            raise ValueError(
+                f"{cls.__name__} does not support additional arguments "
+                f"{list(kwargs.keys())}"
+            )
+        return cls(images=files)
 
 
 class ImageClassificationOutput(BaseModel):
