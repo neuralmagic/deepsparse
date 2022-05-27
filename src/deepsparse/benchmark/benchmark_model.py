@@ -97,7 +97,7 @@ import logging
 import os
 from typing import Dict
 
-from deepsparse import Scheduler, compile_model, __version__
+from deepsparse import Scheduler, __version__, compile_model
 from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.log import set_logging_level
