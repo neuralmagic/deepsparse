@@ -1,0 +1,43 @@
+name: Test Checks
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  SPARSEZOO_TEST_MODE: true
+
+jobs:
+  base-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: ⚙️ Install dependencies
+        run: pip3 install .[dev]
+      - name: Run base tests
+        run: make test
+  cli-smoke-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: ⚙️ Install dependencies
+        run: pip3 install .[dev,server]
+      - name: Run CLI smoke tests
+        run: PYTEST_ARGS="-m smoke" make test TARGETS=cli,nobase
+  examples-smoke-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: pip3 install .[dev]
+      - name: Run examples smoke tests
+        run: PYTEST_ARGS="-m smoke" make test TARGETS=examples,nobase
