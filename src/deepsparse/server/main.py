@@ -140,37 +140,22 @@ def _add_pipeline_route(
     def _create_endpoint(path: str, from_files: bool = False):
         # if `from_files` is True, the endpoint expects request to be `List[UploadFile]`
         # otherwise, the endpoint expect request to be `pipeline.input_schema`
+        input_schema = List[UploadFile] if from_files else pipeline.output_schema
 
-        if from_files:
-
-            @app.post(
-                path,
-                response_model=pipeline.output_schema,
-                tags=["prediction"],
+        @app.post(
+            path,
+            response_model=pipeline.output_schema,
+            tags=["prediction"],
+        )
+        async def _predict_func(request: input_schema):
+            if from_files:
+                bytes = [await file.read() for file in request]
+                request = pipeline.input_schema.from_bytes(bytes)
+            results = await execute_async(
+                pipeline,
+                request,
             )
-            async def _predict_func(files: List[UploadFile]):
-                request = pipeline.input_schema.from_files(
-                    [file.filename for file in files]
-                )
-                results = await execute_async(
-                    pipeline,
-                    request,
-                )
-                return serializable_response(results)
-
-        else:
-
-            @app.post(
-                path,
-                response_model=pipeline.output_schema,
-                tags=["prediction"],
-            )
-            async def _predict_func(request: pipeline.input_schema):
-                results = await execute_async(
-                    pipeline,
-                    request,
-                )
-                return serializable_response(results)
+            return serializable_response(results)
 
         return _predict_func
 
@@ -196,12 +181,12 @@ def _add_pipeline_route(
         path = f"/predict/{pipeline.task}"
         defined_tasks.add(pipeline.task)
 
-    if hasattr(pipeline.input_schema, "from_files"):
+    if hasattr(pipeline.input_schema, "from_bytes"):
         if integration.lower() == "sagemaker":
             _create_endpoint(path, from_files=True)
         else:
             _create_endpoint(path)
-            _create_endpoint(path + "/from_files", from_files=True)
+            _create_endpoint(path + "/from_bytes", from_files=True)
     else:
         _create_endpoint(path)
 

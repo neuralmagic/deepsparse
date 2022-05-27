@@ -16,10 +16,14 @@
 """
 Input/Output Schemas for Image Segmentation with YOLO
 """
+import io
 from collections import namedtuple
 from typing import Any, List, Union
 
+import numpy as np
 from pydantic import BaseModel, Field
+
+from PIL import Image
 
 
 __all__ = [
@@ -42,8 +46,9 @@ class YOLOInput(BaseModel):
     )
 
     @classmethod
-    def from_files(cls, files: List[str]):
-        return cls(images=files)
+    def from_bytes(cls, bytes: List[bytes]):
+        images = [np.array(Image.open(io.BytesIO(byte_img))) for byte_img in bytes]
+        return cls(images=images)
 
     class Config:
         arbitrary_types_allowed = True

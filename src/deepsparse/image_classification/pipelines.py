@@ -147,8 +147,8 @@ class ImageClassificationPipeline(Pipeline):
                     )
                 if isinstance(image, str):
                     image = cv2.imread(image)
-                    image = cv2.resize(image, dsize=self._image_size)
 
+                image = cv2.resize(image, dsize=self._image_size)
                 image = image[:, :, ::-1].transpose(2, 0, 1)
                 image_batch.append(image)
 
