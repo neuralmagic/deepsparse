@@ -33,6 +33,10 @@ class ImageClassificationInput(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    @classmethod
+    def from_files(cls, files):
+        return cls([file.filename for file in filenames])
+
 
 class ImageClassificationOutput(BaseModel):
     """

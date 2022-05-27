@@ -158,17 +158,31 @@ def _add_pipeline_route(
         path = f"/predict/{pipeline.task}"
         defined_tasks.add(pipeline.task)
 
-    @app.post(
-        path,
-        response_model=pipeline.output_schema,
-        tags=["prediction"],
-    )
-    async def _predict_func(request: pipeline.input_schema):
-        results = await execute_async(
-            pipeline,
-            request,
+    if path == "/invocations":
+        @app.post(
+            path,
+            response_model=pipeline.output_schema,
+            tags=["prediction"],
         )
-        return serializable_response(results)
+        async def _predict_func(files: List[UploadFile]):
+            request = pipeline.output_schema.from_files(files)
+            results = await execute_async(
+                pipeline,
+                request,
+            )
+            return serializable_response(results)
+    else:
+        @app.post(
+            path,
+            response_model=pipeline.output_schema,
+            tags=["prediction"],
+        )
+        async def _predict_func(request: pipeline.input_schema):
+            results = await execute_async(
+                pipeline,
+                request,
+            )
+            return serializable_response(results)
 
 
 def server_app_factory():
