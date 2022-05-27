@@ -267,7 +267,9 @@ def print_hardware_capability():
     if cpu_vnni_compatible() or cpu_neon_compatible():
         quantized_flag = "TRUE"
 
-    fp32_flag = cpu_avx2_compatible() or cpu_avx512_compatible() or cpu_neon_compatible()
+    fp32_flag = (
+        cpu_avx2_compatible() or cpu_avx512_compatible() or cpu_neon_compatible()
+    )
 
     message = (
         f"{arch.vendor} CPU detected with {arch.num_available_physical_cores} cores. "
