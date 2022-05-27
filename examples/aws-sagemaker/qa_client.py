@@ -33,7 +33,7 @@ class Endpoint:
         self.accept = "text/plain"
         self.client = boto3.client("sagemaker-runtime", region_name=self.region_name)
 
-    def predict(self, question, context):
+    def predict(self, question: str, context: str):
 
         body = json.dumps(
             dict(
