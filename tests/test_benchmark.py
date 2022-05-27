@@ -46,7 +46,7 @@ def test_benchmark_help():
         (
             "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
             "pruned_quant-aggressive_95",
-            ["-s", "async", "-nstreams", "10"],
+            ["-s", "async", "-nstreams", "4"],
         ),
         (
             "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
