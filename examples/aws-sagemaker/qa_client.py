@@ -33,7 +33,7 @@ class Endpoint:
         self.accept = "text/plain"
         self.client = boto3.client("sagemaker-runtime", region_name=self.region_name)
 
-    def predict(self, question: str, context: str):
+    def predict(self, question: str, context: str) -> bytes:
 
         body = json.dumps(
             dict(
@@ -48,4 +48,4 @@ class Endpoint:
             Accept=self.accept,
         )
 
-        print(res["Body"].readlines())
+        return res["Body"].read()

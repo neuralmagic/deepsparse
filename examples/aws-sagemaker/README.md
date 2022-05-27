@@ -48,8 +48,12 @@ from qa_client import Endpoint
 
 qa = Endpoint("us-east-1", "question-answering-example-endpoint")
 
-qa.predict(question="who is batman?", context="Mark is batman.")
+answer = qa.predict(question="who is batman?", context="Mark is batman.")
+
+print(answer)
 ```
+
+answer: `b'{"score":0.6484262943267822,"answer":"Mark","start":0,"end":4}'`
 
 If you want to delete your endpoint, please use:
 
