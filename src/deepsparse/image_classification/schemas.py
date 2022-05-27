@@ -35,7 +35,7 @@ class ImageClassificationInput(BaseModel):
 
     @classmethod
     def from_files(cls, files):
-        return cls([file.filename for file in filenames])
+        return cls(images=[file.filename for file in filenames])
 
 
 class ImageClassificationOutput(BaseModel):
