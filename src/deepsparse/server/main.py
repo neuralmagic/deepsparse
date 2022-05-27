@@ -165,7 +165,7 @@ def _add_pipeline_route(
             tags=["prediction"],
         )
         async def _predict_func(files: List[UploadFile]):
-            request = pipeline.output_schema.from_files(files)
+            request = pipeline.input_schema.from_files(files)
             results = await execute_async(
                 pipeline,
                 request,
