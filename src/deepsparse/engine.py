@@ -16,10 +16,10 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
+import logging
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
-import logging
 
 import numpy
 from tqdm.auto import tqdm
