@@ -34,7 +34,7 @@ tasks
 """
 
 
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type, Optional
 
 import numpy
 from pydantic import BaseModel, Field
@@ -119,9 +119,12 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     :param doc_stride: if the context is too long to fit with the question for the
         model, it will be split in several chunks with some overlap. This argument
         controls the size of that overlap. Default is 128
-    :param max_question_len: maximum length of the question after tokenization.
+    :param max_question_length: maximum length of the question after tokenization.
         It will be truncated if needed. Default is 64
-    :param max_answer_len: maximum length of answer after decoding. Default is 15
+    :param max_answer_length: maximum length of answer after decoding. Default is 15
+    :param max_num_spans: if the context is too long to fit with the question for the
+        model, it will be split in several chunks. This argument controls the maximum
+        number of spans to feed into the model.
     """
 
     def __init__(
@@ -130,6 +133,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         doc_stride: int = 128,
         max_question_length: int = 64,
         max_answer_length: int = 15,
+        max_num_spans: Optional[int] = None,
         **kwargs,
     ):
 
@@ -142,6 +146,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         self._doc_stride = doc_stride
         self._max_question_length = max_question_length
         self._max_answer_length = max_answer_length
+        self._max_num_spans = max_num_spans
 
         super().__init__(**kwargs)
 
@@ -421,6 +426,9 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                         qas_id=None,
                     )
                 )
+
+        if self._max_num_spans is not None:
+            features = features[:self._max_num_spans]
 
         return features
 
