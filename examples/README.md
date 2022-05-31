@@ -18,7 +18,7 @@ limitations under the License.
 
 This directory contains self-documented examples to illustrate how to make use of the DeepSparse Engine. 
 
-For instructions on how to run each example, either check the script header or run them with `-h`.
+For instructions on how to run each example, either check the script README or run them with `-h`.
 
 Open a Pull Request to [contribute](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md) your own examples.
 
@@ -26,9 +26,15 @@ Open a Pull Request to [contribute](https://github.com/neuralmagic/deepsparse/bl
 
 | Notebook     |      Description      |
 |----------|-------------|
-| [Benchmark and ONNX Model Correctness](https://github.com/neuralmagic/deepsparse/blob/main/examples/benchmark/)  | Comparing predictions and benchmark performance between DeepSparse Engine and ONNXRuntime  |
-| [Classification](https://github.com/neuralmagic/deepsparse/blob/main/examples/classification/)  | How to use classification models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine  |
-| [Detection](https://github.com/neuralmagic/deepsparse/blob/main/examples/detection/)  | How to use object detection models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine  |
-| [Model Server](https://github.com/neuralmagic/deepsparse/blob/main/examples/flask/)  | Simple model server and client example, showing how to use the DeepSparse Engine as an inference backend for a real-time inference server |
-| [YOLOv3](https://github.com/neuralmagic/deepsparse/blob/main/examples/ultralytics-yolov3/) | Serving, benchmarking, and running annotation inferences with YOLOv3 models |
-| [Hugging Face Transformers](https://github.com/neuralmagic/deepsparse/blob/main/examples/huggingface-transformers/) | Serving, benchmarking, and running NLP models from Hugging Face |
+| [Benchmark and ONNX Model Correctness](https://github.com/neuralmagic/deepsparse/tree/main/examples/benchmark/)  | Comparing predictions and benchmark performance between DeepSparse Engine and ONNXRuntime  |
+| [Hugging Face Transformers](https://github.com/neuralmagic/deepsparse/tree/main/examples/huggingface-transformers/) | Serving, benchmarking, and running NLP models from Hugging Face |
+| [YOLOv3 and YOLOv5](https://github.com/neuralmagic/deepsparse/tree/main/examples/ultralytics-yolo/) | Serving, benchmarking, and running annotation inferences with YOLOv3 and YOLOv5 models |
+| [Image Classification](https://github.com/neuralmagic/deepsparse/tree/main/examples/classification/)  | How to use image classification models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine  |
+| [Object Detection](https://github.com/neuralmagic/deepsparse/tree/main/examples/detection/)  | How to use object detection models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine  |
+| [Instance Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/examples/dbolya-yolact/)  | How to use an optimized YOLACT model and the DeepSparse Engine to perform real-time instance segmentation. |
+| [AWS Sagemaker Integration](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-sagemaker/)  | How to deploy a DeepSparse inference server on SageMaker |
+| [SparseServer.UI](https://github.com/neuralmagic/deepsparse/tree/main/examples/sparseserver-ui/)  | A Streamlit app for deploying the DeepSparse Server to compare the latency and accuracy of sparse BERT models |
+| [Twitter Sentiment Analysis](https://github.com/neuralmagic/deepsparse/tree/main/examples/twitter-nlp/)  | Example of scraping, processing, and classifying Twitter data using the DeepSparse Engine for 10x faster performance on CPUs |
+| [Flask Model Server](https://github.com/neuralmagic/deepsparse/tree/main/examples/flask/)  | Simple model server and client example, showing how to use the DeepSparse Engine as an inference backend for a real-time inference server |
+
+

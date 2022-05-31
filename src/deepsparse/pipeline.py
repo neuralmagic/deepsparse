@@ -137,6 +137,12 @@ class Pipeline(ABC):
         self.engine = self._initialize_engine()
 
     def __call__(self, *args, **kwargs) -> BaseModel:
+        if "engine_inputs" in kwargs:
+            raise ValueError(
+                "invalid kwarg engine_inputs. engine inputs determined "
+                f"by {self.__class__.__qualname__}.parse_inputs"
+            )
+
         # parse inputs into input_schema schema if necessary
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_schema):
@@ -153,7 +159,7 @@ class Pipeline(ABC):
         else:
             postprocess_kwargs = {}
 
-        engine_outputs: List[numpy.ndarray] = self.engine(engine_inputs)
+        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -469,6 +475,14 @@ class Pipeline(ABC):
             )
 
         return self.input_schema(**kwargs)
+
+    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        """
+        :param engine_inputs: list of numpy inputs to Pipeline engine forward
+            pass
+        :return: result of forward pass to Pipeline engine
+        """
+        return self.engine(engine_inputs)
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()

@@ -44,8 +44,8 @@ class YOLOPipeline(Pipeline):
     Image Segmentation YOLO pipeline for DeepSparse
 
     :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param engine_type: inference engine to use. Currently supported values
+        include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
@@ -146,31 +146,41 @@ class YOLOPipeline(Pipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
+        # Noting that if numpy arrays are passed in, we assume they are
+        # already the correct shape
+
         image_batch = []
 
-        if isinstance(inputs.images, str):
-            inputs.images = [inputs.images]
-
         for image in inputs.images:
+            if isinstance(image, list):
+                # image consists of floats or ints
+                image = numpy.asarray(image)
+
             if isinstance(image, str):
                 image = cv2.imread(image)
                 image = cv2.resize(image, dsize=self.input_shape)
-                image = image[:, :, ::-1].transpose(2, 0, 1)
 
+            image = self._make_channels_first(image)
             image_batch.append(image)
 
-        image_batch = numpy.stack(image_batch, axis=0)
+        image_batch = self._make_batch(image_batch)
         image_batch = numpy.ascontiguousarray(
             image_batch,
             dtype=numpy.int8 if self.is_quantized else numpy.float32,
         )
-        image_batch /= 255
 
-        return [image_batch]
+        if not self.is_quantized:
+            image_batch /= 255
+        postprocessing_kwargs = dict(
+            iou_thres=inputs.iou_thres,
+            conf_thres=inputs.conf_thres,
+        )
+        return [image_batch], postprocessing_kwargs
 
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
+        **kwargs,
     ) -> YOLOOutput:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
@@ -188,7 +198,11 @@ class YOLOPipeline(Pipeline):
             ]  # post-processed values stored in first output
 
         # NMS
-        batch_output = postprocess_nms(batch_output)
+        batch_output = postprocess_nms(
+            batch_output,
+            iou_thres=kwargs.get("iou_thres", 0.25),
+            conf_thres=kwargs.get("conf_thres", 0.45),
+        )
 
         batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []
 
@@ -209,6 +223,31 @@ class YOLOPipeline(Pipeline):
             scores=batch_scores,
             labels=batch_labels,
         )
+
+    def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
+        # return a numpy batch of images
+        if len(image_batch) == 1:
+            current_batch = image_batch[0]
+            if current_batch.ndim == 4:
+                return current_batch
+
+        return numpy.stack(image_batch, axis=0)
+
+    def _make_channels_first(self, image: numpy.ndarray) -> numpy.ndarray:
+        # return a numpy array with channels first
+        is_single_image = image.ndim == 3
+        is_batch = image.ndim == 4
+
+        if image.shape[-1] != 3:
+            return image
+
+        if is_single_image:
+            return numpy.moveaxis(image, -1, 0)
+
+        if is_batch:
+            return numpy.moveaxis(image, -1, 1)
+
+        return image
 
     def _infer_image_shape(self, onnx_model) -> Tuple[int, ...]:
         """

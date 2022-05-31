@@ -16,10 +16,16 @@
 Input/Output Schemas for Image Classification.
 """
 
-from typing import List, Union
+from typing import Any, List, Union
 
 import numpy
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+__all__ = [
+    "ImageClassificationInput",
+    "ImageClassificationOutput",
+]
 
 
 class ImageClassificationInput(BaseModel):
@@ -27,10 +33,25 @@ class ImageClassificationInput(BaseModel):
     Input model for image classification
     """
 
-    images: Union[str, numpy.ndarray, List[str]]
+    images: Union[str, List[str], List[Any], numpy.ndarray] = Field(
+        description="List of Images to process"
+    )
 
     class Config:
         arbitrary_types_allowed = True
+
+    @classmethod
+    def from_files(cls, files: List[str], **kwargs) -> "ImageClassificationInput":
+        """
+        :param files: list of file paths to create ImageClassificationInput from
+        :return: ImageClassificationInput constructed from files
+        """
+        if kwargs:
+            raise ValueError(
+                f"{cls.__name__} does not support additional arguments "
+                f"{list(kwargs.keys())}"
+            )
+        return cls(images=files)
 
 
 class ImageClassificationOutput(BaseModel):
@@ -38,5 +59,7 @@ class ImageClassificationOutput(BaseModel):
     Output model for image classification
     """
 
-    labels: List[Union[int, str]]
-    scores: List[float]
+    labels: List[Union[int, str]] = Field(
+        description="List of labels, one for each prediction"
+    )
+    scores: List[float] = Field(description="List of scores, one for each prediction")
