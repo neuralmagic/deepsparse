@@ -68,6 +68,11 @@ class ZeroShotClassificationInput(BaseModel):
         "sequence into. Can be a single label, a string of comma-separated "
         "labels, or a list of labels."
     )
+    hypothesis_template: str = Field(
+        description="A formattable string that serves as the hypothesis being "
+        "fed into the pretrained nli model",
+        default="This text is about {}."
+    )
 
 
 class ZeroShotClassificationOutput(BaseModel):
@@ -190,6 +195,7 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
         """
         sequences = inputs.sequences
         labels = inputs.labels
+        hypothesis_template = inputs.hypothesis_template
 
         if len(labels) == 0 or len(sequences) == 0:
             raise ValueError(
@@ -201,7 +207,6 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
         labels = self._parse_labels(labels)
 
         # TODO: should be a default-valued parameter on call
-        hypothesis_template = "This example is {}."
         if hypothesis_template.format(labels[0]) == hypothesis_template:
             raise ValueError(
                 (
@@ -257,13 +262,10 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
             -1, keepdims=True
         )
 
-        labels = []
-        label_scores = []
-
         for iseq in range(num_sequences):
             top_inds = list(reversed(scores[iseq].argsort()))
-            labels.append([candidate_labels[i] for i in top_inds])
-            label_scores.append(scores[iseq][top_inds].tolist())
+            labels = [candidate_labels[i] for i in top_inds]
+            label_scores = scores[iseq][top_inds].tolist()
 
         return self.output_schema(
             sequences=sequences,
