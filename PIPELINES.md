@@ -4,7 +4,7 @@
 
 DeepSparse Pipelines provide a simple interface for end-to-end ML inference that wraps
 the [DeepSparse Engine](https://github.com/neuralmagic/deepsparse) with task specific
-processing.  Pipelines are created for a given task and include support for transforming
+processing. Pipelines are created for a given task and include support for transforming
 raw inputs into fully processed predictions with sparse acceleration.
 
 Inputs and outputs can be given as [pydantic](https://pydantic-docs.helpmanual.io/)
@@ -49,7 +49,7 @@ Development of new Pipelines for tasks is always ongoing. Currently supported ta
 ## Deployment
 
 DeepSparse Pipelines are tightly integrated with the DeepSparse model server and which
-can also be deployed to Amazon SageMaker at scale.  Any task supported by `Pipeline.create`
+can also be deployed to Amazon SageMaker at scale. Any task supported by `Pipeline.create`
 can easily be added to the config of these deployments.
 
 * [deepsparse.server](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/server/README.md)
@@ -63,10 +63,10 @@ and implementing the `abstractmethod` stubs.  This includes defining input and o
 pydantic schemas and defining pre and post processing flows.
 
 Tasks may also be registered to `Pipeline.create` by decorating the implemented class
-with `Pipeline.register`. This enables easy instantiation of the new pipeline in existing
-scripts and flows by refering to the new task name.
+with `@Pipeline.register`. This enables easy instantiation of the new pipeline in existing
+scripts and flows by referring to the new task name.
 
-#### `Pipeline.register` Example
+#### `@Pipeline.register` Example
 ```python
 from deepsparse import Pipeline
 

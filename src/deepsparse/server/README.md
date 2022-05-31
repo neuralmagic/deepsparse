@@ -5,7 +5,7 @@ pip install deepsparse[server]
 ```
 
 The DeepSparse inference server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server.
-The server supports any task from deepsparse.Pipeline including NLP, classification, and detection tasks.
+The server supports any task from deepsparse. Pipeline including NLP, image classification, and object detection tasks.
 An updated list of available tasks can be found
 [here](https://github.com/neuralmagic/deepsparse/blob/main/PIPELINES.md)
 
