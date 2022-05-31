@@ -34,7 +34,7 @@ tasks
 """
 
 
-from typing import Any, Dict, List, Tuple, Type, Optional
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy
 from pydantic import BaseModel, Field
@@ -428,7 +428,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 )
 
         if self._max_num_spans is not None:
-            features = features[:self._max_num_spans]
+            features = features[: self._max_num_spans]
 
         return features
 
