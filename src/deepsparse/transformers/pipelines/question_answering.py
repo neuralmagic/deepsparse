@@ -118,9 +118,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         Default is 'bert-base-uncased'
     :param doc_stride: if the context is too long to fit with the question for the
         model, it will be split in several chunks with some overlap. This argument
-        controls the size of that overlap. Currently, only reading the first span
-        is supported (everything after doc_stride will be truncated). Default
-        is 128
+        controls the size of that overlap. Default is 128
     :param max_question_len: maximum length of the question after tokenization.
         It will be truncated if needed. Default is 64
     :param max_answer_len: maximum length of answer after decoding. Default is 15
@@ -152,8 +150,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         """
         :return: if the context is too long to fit with the question for the
             model, it will be split in several chunks with some overlap. This argument
-            controls the size of that overlap. Currently, only reading the first span
-            is supported (everything after doc_stride will be truncated)
+            controls the size of that overlap.
         """
         return self._doc_stride
 
