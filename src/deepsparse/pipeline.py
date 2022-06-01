@@ -37,6 +37,11 @@ __all__ = [
     "SUPPORTED_PIPELINE_ENGINES",
     "Pipeline",
     "PipelineConfig",
+    "question_answering_pipeline",
+    "text_classification_pipeline",
+    "token_classification_pipeline",
+    "image_classification_pipeline",
+    "yolo_pipeline",
 ]
 
 
@@ -47,6 +52,51 @@ SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
 
 _REGISTERED_PIPELINES = {}
+
+
+def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    :param args: the positional arguments to pass into Pipeline.create
+    :param kwargs: the keyword arguments to pass into Pipeline.create
+    :return: question_answering pipeline created with args and kwargs
+    """
+    return Pipeline.create(*(("question_answering",) + args), **kwargs)
+
+
+def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    :param args: the positional arguments to pass into Pipeline.create
+    :param kwargs: the keyword arguments to pass into Pipeline.create
+    :return: text_classification pipeline created with args and kwargs
+    """
+    return Pipeline.create(*(("text_classification",) + args), **kwargs)
+
+
+def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    :param args: the positional arguments to pass into Pipeline.create
+    :param kwargs: the keyword arguments to pass into Pipeline.create
+    :return: token_classification pipeline created with args and kwargs
+    """
+    return Pipeline.create(*(("token_classification",) + args), **kwargs)
+
+
+def image_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    :param args: the positional arguments to pass into Pipeline.create
+    :param kwargs: the keyword arguments to pass into Pipeline.create
+    :return: image_classification pipeline created with args and kwargs
+    """
+    return Pipeline.create(*(("image_classification",) + args), **kwargs)
+
+
+def yolo_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    :param args: the positional arguments to pass into Pipeline.create
+    :param kwargs: the keyword arguments to pass into Pipeline.create
+    :return: yolo pipeline created with args and kwargs
+    """
+    return Pipeline.create(*(("yolo",) + args), **kwargs)
 
 
 class Pipeline(ABC):
