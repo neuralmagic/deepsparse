@@ -18,22 +18,23 @@ a local Docker image
 
 ##########
 Command help:
-usage: endpoint.py [-h] [action]
+usage: python endpoint.py [-h] [action]
 
-positional arguments:
-  action         choice between creating or destroying an endpoint
+Options:
+  --action [create, destroy]  choose between creating or destroying an endpoint
 
 ##########
 Example command for creating an endpoint:
 
-python endpoint.py create
+python endpoint.py --action create
 
 Example command for destroying an endpoint:
 
-python endpoint.py destroy
+python endpoint.py --action destroy
 """
-import argparse
 import subprocess
+
+import click
 
 import boto3
 from rich.pretty import pprint
@@ -134,7 +135,7 @@ class SparseMaker:
 
         subprocess.call(["sh", self.push_script])
 
-    def create_model(self):
+    def create_model(self, action):
 
         self.sm_boto3.create_model(
             ModelName=self.model_name,
@@ -167,27 +168,18 @@ class SparseMaker:
         print("endpoint and SageMaker model deleted")
 
 
-def parse_args():
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(
-        dest="action",
-        type=str,
-        choices=["create", "destroy"],
-        help="Args to 'create' or 'destroy' a SageMaker endpoint.",
-    )
-
-    return parser.parse_args()
-
-
-def main():
+@click.command()
+@click.option(
+    "--action",
+    default=False,
+    type=click.Choice(["create", "destroy"], case_sensitive=False),
+    help="helps to create or destroy endpoint.",
+)
+def main(action):
 
     """
     process arguments and initialize SparseMaker object
     """
-
-    args = parse_args()
 
     SM = SparseMaker(
         instance_count=1,
@@ -203,7 +195,7 @@ def main():
         role_arn="<PLACEHOLDER>",
     )
 
-    if args.action == "create":
+    if action == "create":
         SM.create_image()
         SM.create_ecr_repo()
         SM.push_image()
@@ -211,8 +203,11 @@ def main():
         SM.create_endpoint_config()
         SM.create_endpoint()
 
-    else:
+    elif action == "destroy":
         SM.destroy_endpoint()
+
+    else:
+        raise ValueError("Not valid action '{}'".format(action))
 
 
 if __name__ == "__main__":

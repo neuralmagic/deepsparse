@@ -36,7 +36,7 @@ pip install -r requirements.txt
 Run the following command to build your SageMaker endpoint.
 
 ```bash
-python endpoint.py create
+python endpoint.py --action create
 ```
 
 After the endpoint has been staged, you can start making requests by passing your endpoint `region name` and your `endpoint name`. Afterwards you can run inference by passing in your question and context:
@@ -57,7 +57,7 @@ answer: `b'{"score":0.6484262943267822,"answer":"Mark","start":0,"end":4}'`
 If you want to delete your endpoint, please use:
 
 ```bash
-python endpoint.py destroy
+python endpoint.py --action destroy
 ```
 
 Continue reading to learn more about the files in this directory, the build requirements, and a descriptive step-by-step guide for launching a SageMaker endpoint.
