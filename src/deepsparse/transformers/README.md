@@ -146,11 +146,11 @@ inference = tc_pipeline("Snorlax hates pineapple pizza!")
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=token_classification)
 
 ```python
-from deepsparse.transformers import pipeline
+from deepsparse.pipeline import Pipeline
 
 model_path = "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
 
-tc_pipeline = pipeline(
+tc_pipeline = Pipeline.create(
     task="token-classification",
     model_path=model_path,
 )
