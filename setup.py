@@ -47,7 +47,7 @@ _deps = [
     "onnx>=1.5.0,<=1.10.1",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
-    "protobuf>=3.12.2",
+    "protobuf>=3.12.2,<4",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
