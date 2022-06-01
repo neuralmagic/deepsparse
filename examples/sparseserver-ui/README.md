@@ -24,8 +24,6 @@ limitations under the License.
 
                         *** A Streamlit app for deploying the DeepSparse Server *** 
 
-
-
 ## <div>`INTRO`</div>
 
 <samp>
