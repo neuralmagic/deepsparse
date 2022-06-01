@@ -26,11 +26,11 @@ Args:
 ##########
 Example command for creating an endpoint:
 
-python endpoint.py --action create
+python endpoint.py create
 
 Example command for destroying an endpoint:
 
-python endpoint.py --action destroy
+python endpoint.py destroy
 """
 import subprocess
 
