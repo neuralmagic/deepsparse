@@ -1,5 +1,7 @@
 models:
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant-moderate
+      model_path: zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni
       batch_size: 1
+      kwargs:
+        sequence_length: 384
 integration: sagemaker
