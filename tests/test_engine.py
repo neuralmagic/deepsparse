@@ -40,6 +40,7 @@ model_test_registry = {
         ]
     ),
 )
+@pytest.mark.smoke
 class TestEngineParametrized:
     def test_engine(self, model: Model, batch_size: int):
         """

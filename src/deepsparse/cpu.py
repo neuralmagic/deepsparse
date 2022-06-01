@@ -184,7 +184,7 @@ def cpu_architecture() -> architecture:
     if arch.isa not in VALID_VECTOR_EXTENSIONS:
         raise OSError(
             (
-                "Neural Magic: Unable to determine instruction set '{}'. This system"
+                "Neural Magic: Unable to determine instruction set '{}'. This system "
                 "may be unsupported but to try, set NM_ARCH to one of {} to continue."
             ).format(arch.isa, ",".join(VALID_VECTOR_EXTENSIONS))
         )
