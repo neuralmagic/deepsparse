@@ -1,8 +1,8 @@
 # Hugging Face Transformer Inference Pipelines
 
 
-Hugging Face Transformer integration allows serving and benchmarking sparsified [Hugging Face transformer](https://github.com/huggingface/transformers) models.  
-This integration allows for leveraging the DeepSparse Engine to run the transformer inference with GPU-class performance directly on the CPU.
+DeepSparse allows accelerated inference, serving, and benchmarking of sparsified [HuggingFace transformer](https://github.com/huggingface/transformers) models.  
+This integration allows for leveraging the DeepSparse Engine to run the sparsified transformer inference with GPU-class performance directly on the CPU.
 
 The DeepSparse Engine is taking advantage of sparsity within neural networks to 
 reduce compute required as well as accelerate memory-bound workloads. The Engine is particularly effective when leveraging sparsification
@@ -33,22 +33,16 @@ This grants the Engine the flexibility to serve any model in a framework-agnosti
 Below we describe two possibilities to obtain the required ONNX model.
 
 #### Exporting the onnx file from the contents of a local directory
-This pathway is relevant if you intend to deploy a model created using [SparseML] (https://github.com/neuralmagic/sparseml) library. 
-For more information refer to the appropriate transformers integration documentation in SparseML.
-1. The output of the `SparseMl` training is saved to output directory `/{output_dir}` (e.g. `/trained_model`)
-2. Depending on the chosen framework, the model files are saved to `model_path`=`/{output_dir}/{framework_name}` (e.g `/trained_model/pytorch`)
-3. It is expected that the valid `model_path` contains following, transformer-specific files:
-   - `config.json`  
-   - `pytorch_model.bin` 
-   - `special_tokens_map.json`  
-   - `tokenizer_config.json`  
-   - `tokenizer.json`  
-   - `trainer_state.json`  
-   - `training_args.bin`
-   - `vocab.txt`
+This pathway is relevant if you intend to deploy a model created using [SparseML](https://github.com/neuralmagic/sparseml) library. 
+For more information, refer to the appropriate transformers integration documentation in SparseML.
 
-4. To generate an onnx model, refer to the [script for transformer ONNX export](https://github.com/neuralmagic/sparseml/blob/23bea1713f57363caca92b76cb08f0ea2731b1e6/src/sparseml/transformers/export.py).
-Example:
+The expected `model_path` in a transformers `Pipeline` should be a directory that includes the following files:
+ - `model.onnx`
+ - `tokenizer.json`
+ - `config.json`
+
+Onnx models can be exported using the `sparseml.transformers.export_onnx` tool:
+
 ```bash
 sparseml.transformers.export_onnx --task question-answering --model_path model_path
 ```
@@ -56,105 +50,96 @@ This creates `model.onnx` file, in the parent directory of your `model_path`(e.g
 
 ####  Directly using the SparseZoo stub
 Alternatively, you can skip the process of onnx model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
-Example:
-```bash
-from sparsezoo import Zoo
-
-# you can lookup an appropriate model stub here: https://sparsezoo.neuralmagic.com/
-model_stub = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_96"
-# directly download the model data to your local directory
-model = Zoo.download_model_from_stub(model_stub)
-
-# the onnx model file is there, ready for deployment
-import os 
-os.path.isfile(os.path.join(model.dir_path, "model.onnx"))
->>True
-```
+SparseZoo stubs which can be copied from each model page can be passed directly to a `Pipeline` to download and run
+the sparsified ONNX model with its corresponding configs.
 
 
 ## Deployment
 
 ### Python API
-Python API is the default interface for running the inference with the DeepSparse Engine.
+Python API is the default interface for running inference with the DeepSparse Engine.
 
-The SparseML installation provides a CLI for sparsifying your models for a specific task; appending the `--help` argument displays a full list of options for training in SparseML:
-```bash
-sparseml.transformers.token_classification --help
-```
-Output:
-```bash
-  --model_name_or_path MODEL_NAME_OR_PATH
-                        Path to pretrained model, sparsezoo stub. or model identifier from huggingface.co/models (default: None)
-  --distill_teacher DISTILL_TEACHER
-                        Teacher model which needs to be a trained NER model (default: None)
-  --cache_dir CACHE_DIR
-                        Where to store the pretrained data from huggingface.co (default: None)
-  --recipe RECIPE       
-                        Path to a SparseML sparsification recipe, see https://github.com/neuralmagic/sparseml for more information (default: None)
-  --dataset_name DATASET_NAME
-                        The name of the dataset to use (via the datasets library) (default: None)
-  ...
-```
-As indicated above, `model_path` may be a path to a local model directory, however, in the examples below, we set the `model_path` argument to the model stub of our SparseZoo models. 
+Once a model is obtained, either through `SparseML` training or directly from `SparseZoo`,
+`deepsparse.Pipeline` can be used to easily facilitate end to end inference and deployment
+of the sparsified transformers model.
+
+If no model is specified to the `Pipeline` for a given task, the `Pipeline` will automatically
+select a pruend and quantized model for the task from the `SparseZoo` that can be used for accelerated
+inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size,
+and accuracy.
 
 
 #### Question Answering Pipeline
 
-[List of the Hugging Face SparseZoo Question Answering Models](
+[List of available SparseZoo Question Answering Models](
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=question_answering)
 
 ```python
-from deepsparse.transformers import pipeline
+from deepsparse import Pipeline
 
-model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
-
-qa_pipeline = pipeline(
-    task="question-answering",
-    model_path=model_path)
-
+qa_pipeline = Pipeline.create(task="question-answering")
 inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 
 >> {'score': 0.9947717785835266, 'start': 11, 'end': 18, 'answer': 'Snorlax'}
 ```
 
-#### Text Classification Pipeline
+#### Sentiment Analysis Pipeline
 
-[List of the Hugging Face SparseZoo Text Classification Models](
-https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=text_classification)
+[List of available SparseZoo Sentiment Analysis Models](
+https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=sentiment_analysis)
 
 ```python
-from deepsparse.transformers import pipeline
+from deepsparse import Pipeline
 
-model_path = "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+# default model is a pruned + quantized text sentiment analysis model trained on sst2
+sa_pipeline = Pipeline.create(task="sentiment-analysis")
 
-tc_pipeline = pipeline(
-    task="text-classification",
-    model_path=model_path)
+inference = sa_pipeline("Snorlax loves my Tesla!")
 
-inference = tc_pipeline("Snorlax loves my Tesla!")
-
->> [{'label': 'LABEL_1', 'score': 0.9884248375892639}]
+>> [{'label': 'LABEL_1', 'score': 0.9884248375892639}]  # positive sentiment
 
 inference = tc_pipeline("Snorlax hates pineapple pizza!")
 
->> [{'label': 'LABEL_0', 'score': 0.9981569051742554}]
+>> [{'label': 'LABEL_0', 'score': 0.9981569051742554}]  # negative sentiment
+```
+
+#### Text Classification Pipeline
+
+[List of available SparseZoo Text Classification Models](
+https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=text_classification)
+
+```python
+from deepsparse import Pipeline
+
+# using a pruned + quantized DistilBERT model from SparseZoo trained on QQP
+tc_pipeline = Pipeline.create(
+   task="text-classification",
+   model_path="",
+)
+
+# inference of duplicate question pair
+inference = tc_pipeline(
+   sequences=[
+      [
+         "Which is the best gaming laptop under 40k?",
+         "Which is the best gaming laptop under 40,000 rs?",
+      ]
+   ]
+)
+
+>> TextClassificationOutput(labels=['duplicate'], scores=[0.9947025775909424])
 ```
 
 #### Token Classification Pipeline
 
-[List of the Hugging Face SparseZoo Token Classification Models](
+[List of available SparseZoo Token Classification Models](
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=token_classification)
 
 ```python
-from deepsparse.pipeline import Pipeline
+from deepsparse import Pipeline
 
-model_path = "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
-
-tc_pipeline = Pipeline.create(
-    task="token-classification",
-    model_path=model_path,
-)
-
+# default model is a pruned + quantized NER model trained on the CoNLL dataset
+tc_pipeline = Pipeline.create(task="token-classification")
 inference = tc_pipeline("Drive from California to Texas!")
 
 >> [{'entity': 'LABEL_0','word': 'drive', ...}, 
@@ -167,73 +152,12 @@ inference = tc_pipeline("Drive from California to Texas!")
 
 ### DeepSparse Server
 As an alternative to Python API, the DeepSparse inference server allows you to serve ONNX models and pipelines in HTTP.
-To learn more about the DeeepSparse server, refer to the [appropriate documentation](https://github.com/neuralmagic/deepsparse/tree/main/examples/huggingface-transformers).
+Configs for the server support the same arguments as the above pipelines and setting the task and models to any of the
+above transformers tasks and models will enable easy deployment.
 
-#### Spinning Up with DeepSparse Server
-Install the server:
-```bash
-pip install deepsparse[server]
-```
+For a full example of deploying sparse transformer models with the DeepSparse server, see the
+[documentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server).
 
-Run `deepsparse.server --help` to look up the CLI arguments:
-```bash
-  Start a DeepSparse inference server for serving the models and pipelines
-  given within the config_file or a single model defined by task, model_path,
-  and batch_size
-
-  Example config.yaml for serving:
-
-  models:
-      - task: question_answering
-        model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-        batch_size: 1
-        alias: question_answering/dense
-      - task: question_answering
-        ...
-
-Options:
-  --host TEXT                     Bind socket to this host. Use --host 0.0.0.0
-                                  to make the application available on your
-                                  local network. IPv6 addresses are supported,
-                                  for example: --host '::'. Defaults to
-                                  0.0.0.0
-  --port INTEGER                  Bind to a socket with this port. Defaults to
-                                  5543.
-  --workers INTEGER               Use multiple worker processes. Defaults to
-                                  1.
-  --log_level [debug|info|warn|critical|fatal]
-                                  Sets the logging level. Defaults to info.
-  --config_file TEXT              Configuration file containing info on how to
-                                  serve the desired models.
-  ...
-```
-
-
-Example CLI Command to spin up the server:
-
-```bash
-deepsparse.server \
-    --task question_answering \
-    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
-```
-
-Sample request to the server:
-
-```python
-import requests
-
-url = "http://localhost:5543/predict" # Server's port default to 5543
-
-obj = {
-    "question": "Who is Mark?", 
-    "context": "Mark is batman."
-}
-
-response = requests.post(url, json=obj)
-response.text
-
->> '{"score":0.9534820914268494,"start":8,"end":14,"answer":"batman"}'
-```
 ### Benchmarking
 The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse Hugging Face ONNX models perform inference? 
 You can quickly do benchmarking tests on your own with a single CLI command!
