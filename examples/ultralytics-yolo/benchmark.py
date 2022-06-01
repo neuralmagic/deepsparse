@@ -64,7 +64,7 @@ optional arguments:
                         The number of warmup iterations that will be executed
                         before the actual benchmarking
   -q, --quantized-inputs
-                        Set flag to execute benchmark with int8 inputs instead
+                        Set flag to execute benchmark with uint8 inputs instead
                         of float32
   --fp16                Set flag to execute torch benchmark in half precision
                         (fp16)
@@ -241,7 +241,7 @@ def parse_args(arguments=None):
     parser.add_argument(
         "-q",
         "--quantized-inputs",
-        help=("Set flag to execute benchmark with int8 inputs instead of float32"),
+        help=("Set flag to execute benchmark with uint8 inputs instead of float32"),
         action="store_true",
     )
     parser.add_argument(
