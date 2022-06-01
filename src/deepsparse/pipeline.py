@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse import Engine, Scheduler
+from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
@@ -108,6 +108,7 @@ class Pipeline(ABC):
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
+    :param context: Optional Context to use while creating the engine
     """
 
     def __init__(
@@ -119,6 +120,7 @@ class Pipeline(ABC):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
+        context: Optional["Context"] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -133,6 +135,7 @@ class Pipeline(ABC):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
 
+        self.context = context
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
 
@@ -301,10 +304,15 @@ class Pipeline(ABC):
         return _register_pipeline_tasks_decorator
 
     @classmethod
-    def from_config(cls, config: Union["PipelineConfig", str, Path]) -> "Pipeline":
+    def from_config(
+        cls,
+        config: Union["PipelineConfig", str, Path],
+        context: Optional[Context] = None,
+    ) -> "Pipeline":
         """
         :param config: PipelineConfig object, filepath to a json serialized
             PipelineConfig, or raw string of a json serialized PipelineConfig
+        :param context: Optional Context object for MultiModelEngine
         :return: loaded Pipeline object from the config
         """
         if isinstance(config, Path) or (
@@ -325,6 +333,7 @@ class Pipeline(ABC):
             scheduler=config.scheduler,
             input_shapes=config.input_shapes,
             alias=config.alias,
+            context=context,
             **config.kwargs,
         )
 
@@ -488,6 +497,13 @@ class Pipeline(ABC):
         engine_type = self.engine_type.lower()
 
         if engine_type == DEEPSPARSE_ENGINE:
+            if self.context is not None and isinstance(self.context, Context):
+                self._engine_args.pop("num_cores", None)
+                self._engine_args["context"] = self.context
+                return MultiModelEngine(
+                    model=self.onnx_file_path,
+                    **self._engine_args,
+                )
             return Engine(self.onnx_file_path, **self._engine_args)
         elif engine_type == ORT_ENGINE:
             return ORTEngine(self.onnx_file_path, **self._engine_args)
