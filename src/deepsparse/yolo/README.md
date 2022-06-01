@@ -28,7 +28,7 @@ This grants the Engine the flexibility to serve any model in a framework-agnosti
 Below we describe two possibilities to obtain the required ONNX model.
 
 ### Exporting the onnx file from the contents of a local directory
-This pathway is relevant if you intend to deploy a model created using [SparseML] (https://github.com/neuralmagic/sparseml) library. 
+This pathway is relevant if you intend to deploy a model created using [SparseML](https://github.com/neuralmagic/sparseml) library. 
 For more information refer to the appropriate YOLOv5 integration documentation in SparseML.
 1. After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export
 2. Run the `SparseML` integrated YOLOv5 onnx export script the CLI command as below
@@ -39,7 +39,7 @@ This will create an `.onnx` file in the same directory and with the same root na
 model weights file. 
 
 ###  Directly using the SparseZoo stub
-Alternatively, you can skip the process of onnx model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
+Alternatively, you can skip the onnx model export process by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
 Example:
 ```python
 from sparsezoo import Zoo
@@ -61,8 +61,8 @@ os.path.isfile(os.path.join(model.dir_path, "model.onnx"))
 ### Python API
 Python API is the default interface for running the inference with the DeepSparse Engine. We can use it to run inference on local images. If you don't have an image ready, pull a sample image down with
 
-```bash
-wget -O times_square.jpeg  https://en.wikipedia.org/wiki/Times_Square#/media/File:New_york_times_square-terabass.jpg
+```
+wget -O abbey_road.jpg  https://upload.wikimedia.org/wikipedia/en/4/42/Beatles_-_Abbey_Road.jpg
 ```
 
 [List of the YOLOv5 SparseZoo Models](
@@ -72,21 +72,25 @@ https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=question_answeri
 from deepsparse.pipeline import Pipeline
 
 model_stub = "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
-images = ["times_square.jpeg"]
+images = ["abbey_road.jpg"]
 
 od_pipeline = Pipeline.create(
     task="yolo",
     model_path=model_stub,
-    class_names="coco",
 )
 
 pipeline_outputs = od_pipeline(images=images, iou_thres=0.6, conf_thres=0.001)
 print(pipeline_outputs)
 ```
 
+### Annotate CLI
+You can also annotate an image source directly with the following CLI command
+```bash
+deepsparse.object_detection.annotate --source abbey_road.jpg #Try --source 0 to annotate your live webcam feed
+```
+
 ### DeepSparse Server
 As an alternative to Python API, the DeepSparse inference server allows you to serve ONNX models and pipelines in HTTP.
-To learn more about the DeeepSparse server, refer to the [appropriate documentation](https://github.com/neuralmagic/deepsparse/tree/main/examples/ultralytics-yolo).
 
 #### Spinning Up with DeepSparse Server
 Install the server:
@@ -136,6 +140,16 @@ deepsparse.server \
     --model_path zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
 ```
 
+Sample request to the server:
+
+```python
+import requests
+url = "http://localhost:5543/predict" # Server's port default to 5543
+obj = {}
+response = requests.post(url, json=obj)
+response.text
+```
+
 ### Benchmarking
 The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse YOLOv5 ONNX models perform inference? 
 You can quickly do benchmarking tests on your own with a single CLI command!
@@ -145,11 +159,21 @@ You only need to provide the model path of a SparseZoo ONNX model or your own lo
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
 
-TODO: fill output here once pipeline runs through
+>> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+>> Batch Size: 1
+>> Scenario: async
+>> Throughput (items/sec): 120.5551
+>> Latency Mean (ms/batch): 99.3043
+>> Latency Median (ms/batch): 99.1637
+>> Latency Std (ms/batch): 2.7053
+>> Iterations: 1210
 ```
 
 To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
+
+## Tutorials:
+For a deeper dive into using transformers within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/use-cases/#computervision).
 
 ## Support
 For Neural Magic Support, sign up or log in to our [Deep Sparse Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues).
