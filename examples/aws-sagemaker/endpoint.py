@@ -20,8 +20,8 @@ a local Docker image
 Command help:
 usage: python endpoint.py [-h] [action]
 
-Options:
-  --action [create, destroy]  choose between creating or destroying an endpoint
+Args:
+  action [create, destroy]  choose between creating or destroying an endpoint
 
 ##########
 Example command for creating an endpoint:
@@ -135,7 +135,7 @@ class SparseMaker:
 
         subprocess.call(["sh", self.push_script])
 
-    def create_model(self, action):
+    def create_model(self):
 
         self.sm_boto3.create_model(
             ModelName=self.model_name,
@@ -168,20 +168,8 @@ class SparseMaker:
         print("endpoint and SageMaker model deleted")
 
 
-@click.command()
-@click.option(
-    "--action",
-    default=False,
-    type=click.Choice(["create", "destroy"], case_sensitive=False),
-    help="helps to create or destroy endpoint.",
-)
-def main(action):
-
-    """
-    process arguments and initialize SparseMaker object
-    """
-
-    SM = SparseMaker(
+def construct_sparsemaker():
+    return SparseMaker(
         instance_count=1,
         region_name="us-east-1",
         instance_type="ml.c5.2xlarge",
@@ -195,19 +183,27 @@ def main(action):
         role_arn="<PLACEHOLDER>",
     )
 
-    if action == "create":
-        SM.create_image()
-        SM.create_ecr_repo()
-        SM.push_image()
-        SM.create_model()
-        SM.create_endpoint_config()
-        SM.create_endpoint()
 
-    elif action == "destroy":
-        SM.destroy_endpoint()
+@click.group(chain=True)
+def main():
+    pass
 
-    else:
-        raise ValueError("Not valid action '{}'".format(action))
+
+@main.command("create")
+def create():
+    SM = construct_sparsemaker()
+    SM.create_image()
+    SM.create_ecr_repo()
+    SM.push_image()
+    SM.create_model()
+    SM.create_endpoint_config()
+    SM.create_endpoint()
+
+
+@main.command("destroy")
+def destroy():
+    SM = construct_sparsemaker()
+    SM.destroy_endpoint()
 
 
 if __name__ == "__main__":
