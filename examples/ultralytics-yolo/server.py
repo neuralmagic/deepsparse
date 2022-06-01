@@ -39,7 +39,7 @@ optional arguments:
                         The IP address of the hosted model
   -p PORT, --port PORT  The port that the model is hosted on
   -q, --quantized-inputs
-                        Set flag to execute inferences with uint8 inputs
+                        Set flag to execute inferences with int8 inputs
                         instead of float32
   --model-config MODEL_CONFIG
                         YOLO config YAML file to override default anchor
@@ -121,7 +121,7 @@ def parse_args():
     parser.add_argument(
         "-q",
         "--quantized-inputs",
-        help="Set flag to execute inferences with uint8 inputs instead of float32",
+        help="Set flag to execute inferences with int8 inputs instead of float32",
         action="store_true",
     )
     parser.add_argument(
