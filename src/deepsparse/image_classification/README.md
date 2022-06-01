@@ -2,7 +2,7 @@
 
 
 [DeepSparse] Image Classification integration allows serving and benchmarking 
-sparsified image classification models. This integration allows for leveraging 
+sparsified image classification models. This integration enables leveraging 
 the [DeepSparse] Engine to run inference with GPU-class performance directly on 
 the CPU.
 
@@ -44,7 +44,8 @@ For more information refer to the appropriate integration documentation in [Spar
 Example:
 ```bash
 sparseml.image_classification.export_onnx \
-    --arch-key resnet50 --dataset imagenet \
+    --arch-key resnet50 \
+    --dataset imagenet \
     --dataset-path ~/datasets/ILSVRC2012 \
     --checkpoint-path ~/checkpoints/resnet50_checkpoint.pth
 ```
