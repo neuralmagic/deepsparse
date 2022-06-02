@@ -74,6 +74,9 @@ and accuracy.
 [List of available SparseZoo Question Answering Models](
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=question_answering)
 
+The following example uses a pruned and quantized question answering BERT model
+trained on the `SQuAD` dataset downloaded by default from the SparseZoo.
+
 ```python
 from deepsparse import Pipeline
 
@@ -88,10 +91,12 @@ inference = qa_pipeline(question="What's my name?", context="My name is Snorlax"
 [List of available SparseZoo Sentiment Analysis Models](
 https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=sentiment_analysis)
 
+The following example uses a pruned and quantized text sentiment analysis BERT model
+trained on the `sst2` dataset downloaded by default from the SparseZoo.
+
 ```python
 from deepsparse import Pipeline
 
-# default model is a pruned + quantized text sentiment analysis model trained on sst2
 sa_pipeline = Pipeline.create(task="sentiment-analysis")
 
 inference = sa_pipeline("Snorlax loves my Tesla!")
@@ -108,13 +113,15 @@ inference = tc_pipeline("Snorlax hates pineapple pizza!")
 [List of available SparseZoo Text Classification Models](
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=text_classification)
 
+The following example uses a pruned and quantized text classification DistilBERT model
+trained on the `qqp` dataset downloaded from a SparseZoo stub.
+
 ```python
 from deepsparse import Pipeline
 
-# using a pruned + quantized DistilBERT model from SparseZoo trained on QQP
 tc_pipeline = Pipeline.create(
    task="text-classification",
-   model_path="",
+   model_path="zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni",
 )
 
 # inference of duplicate question pair
@@ -134,6 +141,9 @@ inference = tc_pipeline(
 
 [List of available SparseZoo Token Classification Models](
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=token_classification)
+
+The following example uses a pruned and quantized token classification NER BERT model
+trained on the `CoNLL` dataset downloaded by default from the SparseZoo.
 
 ```python
 from deepsparse import Pipeline
@@ -155,8 +165,50 @@ As an alternative to Python API, the DeepSparse Server allows you to serve ONNX 
 Configs for the server support the same arguments as the above pipelines and setting the task and models to any of the
 above transformers tasks and models will enable easy deployment.
 
+An example of starting and requesting a DeepSparse Server for NLP tasks is given below. Note that
+all tasks and requests schemas in the above examples may be swapped in place for the given question answering example.
+
 For a full example of deploying sparse transformer models with the DeepSparse Server, see the
 [documentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server).
+
+#### Installation
+The deepsparse server requirements can be installed by specifying the `server` extra dependency when installing
+DeepSparse.
+
+```bash
+pip install deepsparse[server]
+```
+
+#### Spinning Up
+The DeepSparse server supports the same tasks and model paths as the pipeline examples above.  The following
+uses the `deepsparse.server` script to launch a question answering model server.
+
+```bash
+deepsparse.server \
+    --task question-answering \
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
+```
+
+#### Making Requests
+Requests can be made to a DeepSparse Server serving a transformers model using the same schemas as provided
+in the Pipelines examples above as json arguments in the payload.  The following makes a request to the
+question answering server with the required `question` and `context` provided.
+
+```python
+import requests
+
+url = "http://localhost:5543/predict" # Server's port default to 5543
+
+obj = {
+    "question": "Who is Mark?", 
+    "context": "Mark is batman."
+}
+
+response = requests.post(url, json=obj)
+response.text
+
+>> '{"score":0.9534820914268494,"start":8,"end":14,"answer":"batman"}'
+```
 
 ### Benchmarking
 The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse Hugging Face ONNX models perform inference? 
