@@ -32,12 +32,13 @@ __all__ = [
     "cpu_avx2_compatible",
     "cpu_avx512_compatible",
     "cpu_neon_compatible",
+    "cpu_sve_compatible",
     "cpu_quantization_compatible",
     "print_hardware_capability",
 ]
 
 
-VALID_VECTOR_EXTENSIONS = {"avx2", "avx512", "neon"}
+VALID_VECTOR_EXTENSIONS = {"avx2", "avx512", "neon", "sve"}
 
 
 class _Memoize:
@@ -226,13 +227,26 @@ def cpu_neon_compatible() -> bool:
     return cpu_architecture().isa == "neon"
 
 
+def cpu_sve_compatible() -> bool:
+    """
+    :return: True if the current cpu has the SVE instruction set,
+        used for running neural networks performantly
+    """
+    return cpu_architecture().isa == "sve"
+
+
 def cpu_quantization_compatible() -> bool:
     """
-    :return: True if the current cpu has the AVX2, AVX512 or NEON instruction sets,
+    :return: True if the current cpu has the AVX2, AVX512, NEON or SVE instruction sets,
         used for running quantized neural networks performantly.
         (AVX2 < AVX512 < VNNI)
     """
-    return cpu_avx2_compatible() or cpu_avx512_compatible() or cpu_neon_compatible()
+    return (
+        cpu_avx2_compatible()
+        or cpu_avx512_compatible()
+        or cpu_neon_compatible()
+        or cpu_sve_compatible()
+    )
 
 
 def cpu_details() -> Tuple[int, str, bool]:
@@ -264,11 +278,14 @@ def print_hardware_capability():
     arch = cpu_architecture()
 
     quantized_flag = "TRUE (emulated)" if cpu_quantization_compatible() else "FALSE"
-    if cpu_vnni_compatible() or cpu_neon_compatible():
+    if cpu_vnni_compatible() or cpu_neon_compatible() or cpu_sve_compatible():
         quantized_flag = "TRUE"
 
     fp32_flag = (
-        cpu_avx2_compatible() or cpu_avx512_compatible() or cpu_neon_compatible()
+        cpu_avx2_compatible()
+        or cpu_avx512_compatible()
+        or cpu_neon_compatible()
+        or cpu_sve_compatible()
     )
 
     message = (
@@ -280,7 +297,7 @@ def print_hardware_capability():
         f"{quantized_flag}.\n\n"
     )
 
-    if not cpu_neon_compatible():
+    if not (cpu_neon_compatible() or cpu_sve_compatible()):
         if cpu_avx2_compatible() and not cpu_avx512_compatible():
             message += (
                 "AVX2 instruction set detected. Performance speedups are available, "
