@@ -38,6 +38,7 @@ transformers tasks
 from typing import List, Type, Union
 
 import numpy
+import torch
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
@@ -68,11 +69,6 @@ class ZeroShotClassificationInput(BaseModel):
         "sequence into. Can be a single label, a string of comma-separated "
         "labels, or a list of labels."
     )
-    hypothesis_template: str = Field(
-        description="A formattable string that serves as the hypothesis being "
-        "fed into the pretrained nli model",
-        default="This text is about {}."
-    )
 
 
 class ZeroShotClassificationOutput(BaseModel):
@@ -84,8 +80,8 @@ class ZeroShotClassificationOutput(BaseModel):
         description="A string or List of strings representing input to "
         "zero_shot_classification task"
     )
-    labels: List[str] = Field(description="The predicted labels in batch order")
-    scores: List[float] = Field(
+    labels: Union[List[List[str]], List[str]] = Field(description="The predicted labels in batch order")
+    scores: Union[List[List[float]], List[float]] = Field(
         description="The corresponding probability for each label in the batch"
     )
 
@@ -140,7 +136,26 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is 'bert-base-uncased'
+    :param hypothesis_template: formattable string that wraps the given labels
+    :param entailment_index: index of model output that represents entailment
+    :param contradiction_index: index of model output that represents contradiction
+    :param multi_class: true if class probablities are independent
     """
+    def __init__(
+        self,
+        *,
+        hypothesis_template: str = "This text is about {}",
+        entailment_index: int = 0,
+        contradiction_index: int = 2,
+        multi_class: bool = False,
+        **kwargs,
+    ):
+        self._hypothesis_template = hypothesis_template
+        self._entailment_index = entailment_index
+        self._contradiction_index = contradiction_index
+        self._multi_class = multi_class
+
+        super().__init__(**kwargs)
 
     @property
     def input_schema(self) -> Type[BaseModel]:
@@ -195,7 +210,6 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
         """
         sequences = inputs.sequences
         labels = inputs.labels
-        hypothesis_template = inputs.hypothesis_template
 
         if len(labels) == 0 or len(sequences) == 0:
             raise ValueError(
@@ -206,20 +220,19 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
             sequences = [sequences]
         labels = self._parse_labels(labels)
 
-        # TODO: should be a default-valued parameter on call
-        if hypothesis_template.format(labels[0]) == hypothesis_template:
+        if self._hypothesis_template.format(labels[0]) == self._hypothesis_template:
             raise ValueError(
                 (
                     'The provided hypothesis_template "{}" was not able to be '
                     "formatted with the target labels. Make sure the passed template "
                     "includes formatting syntax such as {{}} where the label should go."
-                ).format(hypothesis_template)
+                ).format(self._hypothesis_template)
             )
 
         sequence_pairs = []
         for sequence in sequences:
             sequence_pairs.extend(
-                [[sequence, hypothesis_template.format(label)] for label in labels]
+                [[sequence, self._hypothesis_template.format(label)] for label in labels]
             )
 
         tokens = self.tokenizer(
@@ -247,25 +260,31 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
+        sequences = kwargs["sequences"]
+        candidate_labels = kwargs["labels"]
+
         outputs = engine_outputs
         if isinstance(outputs, list):
             outputs = outputs[0]
 
-        sequences = kwargs["sequences"]
-        candidate_labels = kwargs["labels"]
+        # Reshape sequences first
         num_sequences = 1 if isinstance(sequences, str) else len(sequences)
         reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
 
-        # softmax the "entailment" logits over all candidate labels
-        entail_logits = reshaped_outputs[..., -1]
-        scores = numpy.exp(entail_logits) / numpy.exp(entail_logits).sum(
-            -1, keepdims=True
-        )
+        # Calculate scores
+        entailment_contradiction_logits = reshaped_outputs[:, :, [self._entailment_index, self._contradiction_index]]
+        prob = torch.softmax(torch.tensor(entailment_contradiction_logits), dim=2)
+        entailment_prob = prob[:, :, 0]
+        if not self._multi_class:
+            scores = torch.softmax(entailment_prob, dim=1)
+        else:
+            scores = entailment_prob
+        scores = scores.numpy()
 
-        for iseq in range(num_sequences):
-            top_inds = list(reversed(scores[iseq].argsort()))
-            labels = [candidate_labels[i] for i in top_inds]
-            label_scores = scores[iseq][top_inds].tolist()
+        # Hack: negate scores to perform reversed sort
+        sorted_indexes = numpy.argsort(-1 * scores, axis=1)
+        labels = [numpy.array(candidate_labels)[sorted_indexes[i]].tolist() for i in range(num_sequences)]
+        label_scores = numpy.take_along_axis(scores, sorted_indexes, axis=1).tolist()
 
         return self.output_schema(
             sequences=sequences,
