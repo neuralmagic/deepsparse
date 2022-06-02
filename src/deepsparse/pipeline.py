@@ -112,7 +112,7 @@ class Pipeline(ABC):
         MultiModelEngine. The Context contains a shared scheduler along with
         other runtime information that will be used across instances of the
         MultiModelEngine to provide optimal performance when running multiple
-        models concurrently.
+        models concurrently
     """
 
     def __init__(
@@ -131,6 +131,15 @@ class Pipeline(ABC):
         self._engine_type = engine_type
         self._alias = alias
 
+        self.context = context
+        if self.context is not None:
+            num_cores = num_cores or self.context.num_cores
+            if self.context.num_cores != num_cores:
+                raise ValueError(
+                    f"num_cores mismatch. Expected {self.context.num_cores}, "
+                    f"but got {num_cores}."
+                )
+
         self._engine_args = dict(
             batch_size=batch_size,
             num_cores=num_cores,
@@ -139,12 +148,6 @@ class Pipeline(ABC):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
 
-        self.context = context
-        if self.context and self.context.num_cores != num_cores:
-            raise ValueError(
-                f"num_cores mismatch. Expected {self.context.num_cores}, "
-                f"but got {num_cores}."
-            )
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
 
@@ -217,7 +220,7 @@ class Pipeline(ABC):
             MultiModelEngine. The Context contains a shared scheduler along with
             other runtime information that will be used across instances of the
             MultiModelEngine to provide optimal performance when running
-            multiple models concurrently.
+            multiple models concurrently
         :param kwargs: extra task specific kwargs to be passed to task Pipeline
             implementation
         :return: pipeline object initialized for the given task
@@ -332,7 +335,7 @@ class Pipeline(ABC):
             MultiModelEngine. The Context contains a shared scheduler along with
             other runtime information that will be used across instances of the
             MultiModelEngine to provide optimal performance when running
-            multiple models concurrently.
+            multiple models concurrently
         :return: loaded Pipeline object from the config
         """
         if isinstance(config, Path) or (
