@@ -97,7 +97,7 @@ import logging
 import os
 from typing import Dict
 
-from deepsparse import Scheduler, compile_model
+from deepsparse import Scheduler, __version__, compile_model
 from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.log import set_logging_level
@@ -379,6 +379,7 @@ def benchmark_model(
 
     export_dict = {
         "engine": str(model),
+        "version": __version__,
         "orig_model_path": orig_model_path,
         "model_path": model_path,
         "batch_size": batch_size,
