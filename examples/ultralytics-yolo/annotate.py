@@ -256,7 +256,9 @@ def parse_args(arguments=None):
         ),
     )
 
-    parser.add_argument('--conf-thres', type=float, default=0.35, help='confidence threshold')
+    parser.add_argument(
+        "--conf-thres", type=float, default=0.35, help="confidence threshold"
+    )
 
     args = parser.parse_args(args=arguments)
     if args.engine == TORCH_ENGINE and args.device is None:
