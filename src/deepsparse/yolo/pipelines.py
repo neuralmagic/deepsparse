@@ -166,7 +166,7 @@ class YOLOPipeline(Pipeline):
         image_batch = self._make_batch(image_batch)
         image_batch = numpy.ascontiguousarray(
             image_batch,
-            dtype=numpy.int8 if self.is_quantized else numpy.float32,
+            dtype=numpy.uint8 if self.is_quantized else numpy.float32,
         )
 
         if not self.is_quantized:
