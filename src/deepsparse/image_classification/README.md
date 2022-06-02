@@ -55,7 +55,7 @@ This creates `model.onnx` file, in the parent directory of your `model_path`
 
 Alternatively, you can skip the process of onnx model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
 Example:
-```python
+```pycon
 from sparsezoo import Zoo
 
 # you can lookup an appropriate model stub here: https://sparsezoo.neuralmagic.com/
@@ -75,46 +75,10 @@ os.path.isfile(os.path.join(model.dir_path, "model.onnx"))
 
 ### Python API
 Python API is the default interface for running the inference with the DeepSparse Engine.
+The [SparseML] installation provides a CLI for sparsifying models for a specific task;
+To find out more on how to sparsify Image Classification models refer to 
+[SparseML Image Classification Documentation]
 
-The [SparseML] installation provides a CLI for sparsifying your models for a specific task; appending the `--help` argument displays a full list of options for training in SparseML:
-
-```bash
-sparseml.image_classification.train --help
-```
-Output:
-```bash
-Usage: sparseml.image_classification.train [OPTIONS]
-  PyTorch training integration with SparseML for image classification models
-Options:
-  --train-batch-size, --train_batch_size INTEGER
-                                  Train batch size  [required]
-  --test-batch-size, --test_batch_size INTEGER
-                                  Test/Validation batch size  [required]
-  --dataset TEXT                  The dataset to use for training, ex:
-                                  `imagenet`, `imagenette`, `cifar10`, etc.
-                                  Set to `imagefolder` for a generic dataset
-                                  setup with imagefolder type structure like
-                                  imagenet or loadable by a dataset in
-                                  `sparseml.pytorch.datasets`  [required]
-  --dataset-path, --dataset_path DIRECTORY
-                                  The root dir path where the dataset is
-                                  stored or should be downloaded to if
-                                  available  [required]
-  --arch_key, --arch-key TEXT     The architecture key for image
-                                  classification model; example: `resnet50`,
-                                  `mobilenet`. Note: Will be read from the
-                                  checkpoint if not specified
-  --checkpoint-path, --checkpoint_path TEXT
-                                  A path to a previous checkpoint to load the
-                                  state from and resume the state for. If
-                                  provided, pretrained will be ignored . If
-                                  using a SparseZoo recipe, can also provide
-                                  'zoo' to load the base weights associated
-                                  with that recipe. Additionally, can also
-                                  provide a SparseZoo model stub to load model
-                                  weights from SparseZoo
-  ...
-```
 To learn about sparsification in more detail, refer to [SparseML docs](https://docs.neuralmagic.com/sparseml/)
 
 #### Image Classification Pipeline
@@ -172,11 +136,12 @@ Options:
   ...
 ```
 
-Example CLI Command to spin up the server:
+Example CLI Command to spin up the server with a 95% pruned `resnet50`:
 ```bash
 deepsparse.server \
     --task image_classification \
-    --model_path "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none"
+    --model_path "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none" \
+    --port 5543
 ```
 
 Sample client for sending requests to the server:
@@ -273,3 +238,4 @@ For Neural Magic Support, sign up or log in to our [Deep Sparse Community Slack]
 [hardware requirements]: https://docs.neuralmagic.com/deepsparse/source/hardware.html
 [ONNX]: https://onnx.ai/
 [SparseML]: https://github.com/neuralmagic/sparseml
+[SparseML Image Classification Documentation]: https://github.com/neuralmagic/sparseml/tree/main/src/sparseml/pytorch/image_classification/README_image_classification.md
