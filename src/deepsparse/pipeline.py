@@ -136,8 +136,9 @@ class Pipeline(ABC):
             num_cores = num_cores or self.context.num_cores
             if self.context.num_cores != num_cores:
                 raise ValueError(
-                    f"num_cores mismatch. Expected {self.context.num_cores}, "
-                    f"but got {num_cores}."
+                    f"num_cores mismatch. Expected {self.context.num_cores} "
+                    f"from passed context, but got {num_cores} while "
+                    f"instantiating Pipeline"
                 )
 
         self._engine_args = dict(
