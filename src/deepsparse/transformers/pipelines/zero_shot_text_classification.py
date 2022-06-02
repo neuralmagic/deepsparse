@@ -193,11 +193,20 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
 
         if args:
             if len(args) == 1 and isinstance(args[0], self.input_schema):
-                return args[0]
+                input = args[0]
             else:
-                return self.input_schema(*args)
+                input = self.input_schema(*args)
+        else:
+            input = self.input_schema(**kwargs)
 
-        return self.input_schema(**kwargs)
+        num_sequences = 1 if isinstance(input.sequences, str) else len(input.sequences)
+        num_labels = len(input.labels)
+        if num_sequences * num_labels != self._batch_size:
+            raise ValueError(
+                f"Batch size ({self._batch_size}) must be equal to the number of "
+                f"sequences times the number of labels ({num_sequences * num_labels})")
+
+        return input
 
     def process_inputs(
         self, inputs: ZeroShotClassificationInput
@@ -267,7 +276,7 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
         if isinstance(outputs, list):
             outputs = outputs[0]
 
-        # Reshape sequences first
+        # Reshape sequences
         num_sequences = 1 if isinstance(sequences, str) else len(sequences)
         reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
 
