@@ -136,6 +136,10 @@ class Pipeline(ABC):
             self._engine_args["scheduler"] = scheduler
 
         self.context = context
+        if self.context and self.context.num_cores != num_cores:
+            raise ValueError(
+                f"num_cores mismatch. Expected {self.context.num_cores}, but got {num_cores}."
+            )
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
 
