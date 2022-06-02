@@ -1,11 +1,11 @@
 # Hugging Face Transformer Inference Pipelines
 
 
-DeepSparse allows accelerated inference, serving, and benchmarking of sparsified [HuggingFace transformer](https://github.com/huggingface/transformers) models.  
+DeepSparse allows accelerated inference, serving, and benchmarking of sparsified [Hugging Face Transformer](https://github.com/huggingface/transformers) models.  
 This integration allows for leveraging the DeepSparse Engine to run the sparsified transformer inference with GPU-class performance directly on the CPU.
 
 The DeepSparse Engine is taking advantage of sparsity within neural networks to 
-reduce compute required as well as accelerate memory-bound workloads. The Engine is particularly effective when leveraging sparsification
+reduce compute required as well as accelerate memory-bound workloads. The engine is particularly effective when leveraging sparsification
 methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061). 
 These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
 
@@ -28,11 +28,11 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 
 ### Model Format
 By default, to deploy the transformer using DeepSparse Engine it is required to supply the model in the ONNX format. 
-This grants the Engine the flexibility to serve any model in a framework-agnostic environment. 
+This grants the engine the flexibility to serve any model in a framework-agnostic environment. 
 
 Below we describe two possibilities to obtain the required ONNX model.
 
-#### Exporting the onnx file from the contents of a local directory
+#### Exporting the ONNX file from the contents of a local directory
 This pathway is relevant if you intend to deploy a model created using [SparseML](https://github.com/neuralmagic/sparseml) library. 
 For more information, refer to the appropriate transformers integration documentation in SparseML.
 
@@ -41,7 +41,7 @@ The expected `model_path` in a transformers `Pipeline` should be a directory tha
  - `tokenizer.json`
  - `config.json`
 
-Onnx models can be exported using the `sparseml.transformers.export_onnx` tool:
+ONNX models can be exported using the `sparseml.transformers.export_onnx` tool:
 
 ```bash
 sparseml.transformers.export_onnx --task question-answering --model_path model_path
@@ -49,7 +49,7 @@ sparseml.transformers.export_onnx --task question-answering --model_path model_p
 This creates `model.onnx` file, in the parent directory of your `model_path`(e.g. `/trained_model/model.onnx`)
 
 ####  Directly using the SparseZoo stub
-Alternatively, you can skip the process of onnx model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
+Alternatively, you can skip the process of the ONNX model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
 SparseZoo stubs which can be copied from each model page can be passed directly to a `Pipeline` to download and run
 the sparsified ONNX model with its corresponding configs.
 
@@ -151,11 +151,11 @@ inference = tc_pipeline("Drive from California to Texas!")
 ```
 
 ### DeepSparse Server
-As an alternative to Python API, the DeepSparse inference server allows you to serve ONNX models and pipelines in HTTP.
+As an alternative to Python API, the DeepSparse Server allows you to serve ONNX models and pipelines in HTTP.
 Configs for the server support the same arguments as the above pipelines and setting the task and models to any of the
 above transformers tasks and models will enable easy deployment.
 
-For a full example of deploying sparse transformer models with the DeepSparse server, see the
+For a full example of deploying sparse transformer models with the DeepSparse Server, see the
 [documentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server).
 
 ### Benchmarking
