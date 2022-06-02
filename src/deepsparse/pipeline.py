@@ -108,7 +108,11 @@ class Pipeline(ABC):
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
-    :param context: Optional Context to use while creating the engine
+    :param context: Optional Context object to use for creating instances of
+        MultiModelEngine. The Context contains a shared scheduler along with
+        other runtime information that will be used across instances of the
+        MultiModelEngine to provide optimal performance when running multiple
+        models concurrently.
     """
 
     def __init__(
@@ -120,7 +124,7 @@ class Pipeline(ABC):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
-        context: Optional["Context"] = None,
+        context: Optional[Context] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -138,7 +142,8 @@ class Pipeline(ABC):
         self.context = context
         if self.context and self.context.num_cores != num_cores:
             raise ValueError(
-                f"num_cores mismatch. Expected {self.context.num_cores}, but got {num_cores}."
+                f"num_cores mismatch. Expected {self.context.num_cores}, "
+                f"but got {num_cores}."
             )
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
@@ -190,6 +195,7 @@ class Pipeline(ABC):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
+        context: Optional[Context] = None,
         **kwargs,
     ) -> "Pipeline":
         """
@@ -207,6 +213,11 @@ class Pipeline(ABC):
             to use model as-is. Default is None
         :param alias: optional name to give this pipeline instance, useful when
             inferencing with multiple models. Default is None
+        :param context: Optional Context object to use for creating instances of
+            MultiModelEngine. The Context contains a shared scheduler along with
+            other runtime information that will be used across instances of the
+            MultiModelEngine to provide optimal performance when running
+            multiple models concurrently.
         :param kwargs: extra task specific kwargs to be passed to task Pipeline
             implementation
         :return: pipeline object initialized for the given task
@@ -250,6 +261,7 @@ class Pipeline(ABC):
             scheduler=scheduler,
             input_shapes=input_shapes,
             alias=alias,
+            context=context,
             **kwargs,
         )
 
@@ -316,7 +328,11 @@ class Pipeline(ABC):
         """
         :param config: PipelineConfig object, filepath to a json serialized
             PipelineConfig, or raw string of a json serialized PipelineConfig
-        :param context: Optional Context object for MultiModelEngine
+        :param context: Optional Context object to use for creating instances of
+            MultiModelEngine. The Context contains a shared scheduler along with
+            other runtime information that will be used across instances of the
+            MultiModelEngine to provide optimal performance when running
+            multiple models concurrently.
         :return: loaded Pipeline object from the config
         """
         if isinstance(config, Path) or (
