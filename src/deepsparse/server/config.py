@@ -19,7 +19,7 @@ Configurations for serving models in the DeepSparse inference server
 import json
 import os
 from functools import lru_cache
-from typing import List
+from typing import List, Optional
 
 import yaml
 from pydantic import BaseModel, Field
@@ -92,6 +92,7 @@ def server_config_from_env(env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG):
                 task=config_dict["task"],
                 model_path=config_dict["model_path"],
                 batch_size=config_dict["batch_size"],
+                num_cores=config_dict.get("num_cores"),
             )
         )
     else:
@@ -119,6 +120,7 @@ def server_config_to_env(
     model_path: str,
     batch_size: int,
     integration: str,
+    num_cores: Optional[int] = None,
     env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG,
 ):
     """
@@ -138,6 +140,8 @@ def server_config_to_env(
     :param integration: name of deployment integration that this server will be
         deployed to. Supported options include None for default inference and
         sagemaker for inference deployment on AWS Sagemaker
+    :param num_cores: the num of cores to use for DeepSparse engine. Defaults to
+        None(uses all available cores).
     :param env_key: the environment variable to set the configuration in.
         Defaults to ENV_DEEPSPARSE_SERVER_CONFIG
     """
@@ -156,6 +160,7 @@ def server_config_to_env(
                 "model_path": model_path,
                 "batch_size": batch_size,
                 "integration": integration,
+                "num_cores": num_cores,
             }
         )
         config = f"{ENV_SINGLE_PREFIX}{single_str}"

@@ -213,7 +213,12 @@ def server_app_factory():
     initialize_aysnc(config.workers)
     _LOGGER.debug("loaded server config %s", config)
     _add_general_routes(app, config)
-    context = Context()
+
+    num_cores = None
+    for model_config in config.models:
+        num_cores = num_cores or model_config.num_cores
+
+    context = Context(num_cores=num_cores)
     pipelines = [
         Pipeline.from_config(model_config, context=context)
         for model_config in config.models
