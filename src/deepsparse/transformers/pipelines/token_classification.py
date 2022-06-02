@@ -171,7 +171,7 @@ class TokenClassificationPipeline(TransformersPipeline):
         self,
         *,
         aggregation_strategy: AggregationStrategy = AggregationStrategy.NONE,
-        ignore_labels: List[str] = None,
+        ignore_labels: Optional[List[str]] = None,
         **kwargs,
     ):
 
