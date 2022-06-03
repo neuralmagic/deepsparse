@@ -27,13 +27,15 @@ This grants the Engine the flexibility to serve any model in a framework-agnosti
 
 Below we describe two possibilities to obtain the required ONNX model.
 
-### Exporting the onnx file from the contents of a local directory
-This pathway is relevant if you intend to deploy a model created using [SparseML](https://github.com/neuralmagic/sparseml) library. 
+### Exporting the ONNX file from the contents of a local directory
+This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
 For more information refer to the appropriate YOLOv5 integration documentation in SparseML.
-1. After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export
-2. Run the `SparseML` integrated YOLOv5 onnx export script the CLI command as below
+1. After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export.
+2. Run the `SparseML` integrated YOLOv5 ONNX export script the CLI command as below.
 ```bash
-sparseml.yolov5.export_onnx --weights path/to/your/model --dynamic
+sparseml.yolov5.export_onnx \
+    --weights path/to/your/model \
+    --dynamic \ #Allows for dynamic input shape
 ```
 This will create an `.onnx` file in the same directory and with the same root name as the 
 model weights file (e.g. `runs/train/weights/model.onnx`)
@@ -78,11 +80,10 @@ od_pipeline = Pipeline.create(
 )
 
 pipeline_outputs = od_pipeline(images=images, iou_thres=0.6, conf_thres=0.001)
-print(pipeline_outputs)
 ```
 
 ### Annotate CLI
-You can also annotate an image source directly with the following CLI command
+You can also annotate an image source directly with the following CLI command:
 ```bash
 deepsparse.object_detection.annotate --source abbey_road.jpg #Try --source 0 to annotate your live webcam feed
 ```
@@ -103,7 +104,7 @@ pip install deepsparse[server]
 
 #### Spinning Up
 The DeepSparse server supports the same tasks and model paths as the pipeline examples above.  The following
-uses the `deepsparse.server` script to launch a YOLOv5 model server.
+uses the `deepsparse.server` script to launch a YOLOv5s model server.
 
 ```bash
 deepsparse.server \
