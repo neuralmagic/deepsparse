@@ -122,14 +122,6 @@ for inference:
 * Build a SageMaker `EndpointConfig` that defines how to provision the model deployment
 * Launch the SageMaker `Endpoint` defined by the `Model` and `EndpointConfig`
 
-### Requirements
-The listed steps can be easily completed using a `python` and `bash`. The following
-credentials, tools, and libraries are also required:
-* The [`aws` cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) that is [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
-* The [ARN of an AWS role](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html) your user has access to that has full SageMaker and ECR permissions. In the following steps, we will refer to this as `ROLE_ARN`. It should take the form `"arn:aws:iam::XXX:role/service-role/XXX"`
-* [Docker and the `docker` cli](https://docs.docker.com/get-docker/)
-* The `boto3` python AWS sdk (`pip install boto3`)
-
 ### Building the DeepSparse-SageMaker Image Locally
 The `Dockerfile` can be build from this directory from a bash shell using the following command.
 The image will be tagged locally as `deepsparse-sagemaker-example`.
