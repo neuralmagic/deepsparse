@@ -23,6 +23,14 @@ This directory provides a guided example for deploying a
 Deployments benefit from both sparse-CPU acceleration with
 DeepSparse and automatic scaling from SageMaker.
 
+### Requirements
+The listed steps can be easily completed using a `python` and `bash`. The following
+credentials, tools, and libraries are also required:
+* The [`aws` cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) that is [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html). Double check if the `region` that is configured in your AWS CLI matches the region in the SparseMaker class found in the `endpoint.py` file. Currently, the default region being used is `us-east-1`.
+* The [ARN of an AWS role](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html) your AWS role has access to full SageMaker permissions. In the following steps, we will refer to this as `ROLE_ARN`. It should take the form `"arn:aws:iam::XXX:role/service-role/XXX"`.
+* [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
+* The `boto3` python AWS sdk (`pip install boto3`).
+
 ### Quick Start
 
 ```bash
