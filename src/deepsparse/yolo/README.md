@@ -1,11 +1,11 @@
 # YOLOv5 Inference Pipelines
 
 
-YOLOv5 integration allows serving and benchmarking sparsified [Ultralytics yolo](https://github.com/ultralytics/yolo) models.  
-This integration allows for leveraging the DeepSparse Engine to run YOLOv5 inference with GPU-class performance directly on the CPU.
+DeepSparse allows accelerated inference, serving, and benchmarking of sparsified [Ultralytics YOLOv5](https://github.com/ultralytics/yolo) models.  
+This integration allows for leveraging the DeepSparse Engine to run the sparsified YOLOv5 inference with GPU-class performance directly on the CPU.
 
 The DeepSparse Engine is taking advantage of sparsity within neural networks to 
-reduce compute required as well as accelerate memory-bound workloads. The Engine is particularly effective when leveraging sparsification
+reduce compute required as well as accelerate memory-bound workloads. The engine is particularly effective when leveraging sparsification
 methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061). 
 These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
 
@@ -36,37 +36,35 @@ For more information refer to the appropriate YOLOv5 integration documentation i
 sparseml.yolov5.export_onnx --weights path/to/your/model --dynamic
 ```
 This will create an `.onnx` file in the same directory and with the same root name as the 
-model weights file. 
+model weights file (e.g. `runs/train/weights/model.onnx`)
 
 ###  Directly using the SparseZoo stub
-Alternatively, you can skip the onnx model export process by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
-Example:
-```python
-from sparsezoo import Zoo
-
-# you can lookup an appropriate model stub here: https://sparsezoo.neuralmagic.com/
-model_stub = "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
-# directly download the model data to your local directory
-model = Zoo.download_model_from_stub(model_stub)
-
-# the onnx model file is there, ready for deployment
-import os 
-os.path.isfile(os.path.join(model.dir_path, "model.onnx"))
->>True
-```
-
-
+Alternatively, you can skip the process of the ONNX model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
+SparseZoo stubs which can be copied from each model page can be passed directly to a `Pipeline` to download and run
+the sparsified ONNX model with its corresponding configs.
 ## Deployment
 
 ### Python API
-Python API is the default interface for running the inference with the DeepSparse Engine. We can use it to run inference on local images. If you don't have an image ready, pull a sample image down with
+Python API is the default interface for running inference with the DeepSparse Engine.
+
+Once a model is obtained, either through `SparseML` training or directly from `SparseZoo`,
+`deepsparse.Pipeline` can be used to easily facilitate end to end inference and deployment
+of the sparsified YOLOv5 model.
+
+If no model is specified to the `Pipeline` for a given task, the `Pipeline` will automatically
+select a pruend and quantized model for the task from the `SparseZoo` that can be used for accelerated
+inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size,
+and accuracy.
+Python API is the default interface for running the inference with the DeepSparse Engine. 
+
+With the example Python code below, we can run inference on local data. If you don't have an image ready, pull a sample image down with
 
 ```
 wget -O abbey_road.jpg  https://upload.wikimedia.org/wikipedia/en/4/42/Beatles_-_Abbey_Road.jpg
 ```
 
 [List of the YOLOv5 SparseZoo Models](
-https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=question_answering)
+https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1)
 
 ```python
 from deepsparse.pipeline import Pipeline
@@ -90,49 +88,22 @@ deepsparse.object_detection.annotate --source abbey_road.jpg #Try --source 0 to 
 ```
 
 ### DeepSparse Server
-As an alternative to Python API, the DeepSparse inference server allows you to serve ONNX models and pipelines in HTTP.
+As an alternative to Python API, the DeepSparse Server allows you to serve ONNX models and pipelines in HTTP.
+Configs for the server support the same arguments as the above pipelines.
 
-#### Spinning Up with DeepSparse Server
-Install the server:
+An example of starting and requesting a DeepSparse Server for YOLOv5 is given below.
+
+#### Installation
+The deepsparse server requirements can be installed by specifying the `server` extra dependency when installing
+DeepSparse.
+
 ```bash
 pip install deepsparse[server]
 ```
 
-Run `deepsparse.server --help` to look up the CLI arguments:
-```bash
-  Start a DeepSparse inference server for serving the models and pipelines
-  given within the config_file or a single model defined by task, model_path,
-  and batch_size
-
-  Example config.yaml for serving:
-
-  models:
-      - task: question_answering
-        model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-        batch_size: 1
-        alias: question_answering/dense
-      - task: question_answering
-        ...
-
-Options:
-  --host TEXT                     Bind socket to this host. Use --host 0.0.0.0
-                                  to make the application available on your
-                                  local network. IPv6 addresses are supported,
-                                  for example: --host '::'. Defaults to
-                                  0.0.0.0
-  --port INTEGER                  Bind to a socket with this port. Defaults to
-                                  5543.
-  --workers INTEGER               Use multiple worker processes. Defaults to
-                                  1.
-  --log_level [debug|info|warn|critical|fatal]
-                                  Sets the logging level. Defaults to info.
-  --config_file TEXT              Configuration file containing info on how to
-                                  serve the desired models.
-  ...
-```
-
-
-Example CLI Command to spin up the server:
+#### Spinning Up
+The DeepSparse server supports the same tasks and model paths as the pipeline examples above.  The following
+uses the `deepsparse.server` script to launch a YOLOv5 model server.
 
 ```bash
 deepsparse.server \
@@ -140,14 +111,18 @@ deepsparse.server \
     --model_path zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
 ```
 
-Sample request to the server:
+Once the server is running, it will print a local address to the terminal which you can use
+in your browser to access the server GUI. You can use the interface to upload images
+for inference. 
 
-```python
-import requests
-url = "http://localhost:5543/predict" # Server's port default to 5543
-obj = {}
-response = requests.post(url, json=obj)
-response.text
+Alternatively, you can use the following bash command to upload the images, with an additional `-F 'request=@...` line for each image
+
+```bash
+curl -X 'POST' \
+  'http://localhost:5543/predict/from_files' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'request=@Beatles_-_Abbey_Road.jpg;type=image/jpeg'
 ```
 
 ### Benchmarking
@@ -173,7 +148,7 @@ To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
 
 ## Tutorials:
-For a deeper dive into using transformers within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/use-cases/#computervision).
+For a deeper dive into using YOLOv5 within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/use-cases/#computervision).
 
 ## Support
 For Neural Magic Support, sign up or log in to our [Deep Sparse Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues).
