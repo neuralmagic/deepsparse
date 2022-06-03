@@ -17,7 +17,6 @@ Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
 
-
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -42,14 +41,14 @@ __all__ = [
     "token_classification_pipeline",
     "image_classification_pipeline",
     "yolo_pipeline",
+    "Bucketable",
+    "BucketingPipeline",
 ]
-
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
-
 
 _REGISTERED_PIPELINES = {}
 
@@ -508,6 +507,23 @@ class Pipeline(ABC):
                 "provide a model path for pipelines that do not have a default defined"
             )
 
+        if issubclass(
+            pipeline_constructor, Bucketable
+        ) and pipeline_constructor.should_bucket(**kwargs):
+            buckets = pipeline_constructor.create_pipeline_buckets(
+                task=task,
+                model_path=model_path,
+                engine_type=engine_type,
+                batch_size=batch_size,
+                num_cores=num_cores,
+                scheduler=scheduler,
+                input_shapes=input_shapes,
+                alias=alias,
+                context=context,
+                **kwargs,
+            )
+            return BucketingPipeline(pipelines=buckets)
+
         return pipeline_constructor(
             model_path=model_path,
             engine_type=engine_type,
@@ -850,3 +866,73 @@ class PipelineConfig(BaseModel):
             "into the pipeline as kwargs"
         ),
     )
+
+
+class BucketingPipeline(Pipeline):
+    """
+    A Pipeline that adds Bucketing functionality
+    """
+
+    def __init__(self, pipelines: List[Pipeline]):
+        self._pipelines = pipelines
+        self._pipeline_class = pipelines[0]
+        self._update_props()
+
+    def __call__(self, inputs):
+        pipeline = self._pipeline_class.route_input_to_bucket(
+            input_schema=self._pipeline_class.parse_inputs(**inputs),
+            pipelines=self._pipelines,
+        )
+        return pipeline(**inputs)
+
+    def setup_onnx_file_path(self) -> str:
+        raise NotImplementedError
+
+    def process_inputs(
+        self,
+        inputs: BaseModel,
+    ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
+        raise NotImplementedError
+
+    def process_engine_outputs(
+        self, engine_outputs: List[numpy.ndarray], **kwargs
+    ) -> BaseModel:
+        raise NotImplementedError
+
+    @property
+    def input_schema(self) -> Type[BaseModel]:
+        return self._pipeline_class.input_schema
+
+    @property
+    def output_schema(self) -> Type[BaseModel]:
+        return self._pipeline_class.output_schema
+
+    def _update_props(self):
+        # TODO: Current implementation might have unintended side effects, should only
+        # TODO: copy over props
+        self.__dict__.update(self._pipeline_class.__dict__)
+
+
+class Bucketable(ABC):
+    """
+    A contract, that ensures implementing Pipeline class can create multiple Pipeline
+    instances and route each input sample to correct instance based off of specific
+    implementations of abstract methods defined in this contract
+    """
+
+    @staticmethod
+    @abstractmethod
+    def should_bucket(*args, **kwargs) -> bool:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def route_input_to_bucket(
+        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+    ) -> Pipeline:
+        pass

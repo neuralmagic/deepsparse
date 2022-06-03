@@ -16,14 +16,13 @@
 Base Pipeline class for transformers inference pipeline
 """
 
-
 import warnings
-from typing import Any, List, Mapping, Optional
+from typing import Any, List, Mapping, Optional, Union
 
 import numpy
 from transformers.models.auto import AutoConfig, AutoTokenizer
 
-from deepsparse import Pipeline
+from deepsparse import Bucketable, Pipeline
 from deepsparse.transformers.helpers import (
     get_onnx_path_and_configs,
     overwrite_transformer_onnx_model_inputs,
@@ -36,7 +35,7 @@ __all__ = [
 ]
 
 
-class TransformersPipeline(Pipeline):
+class TransformersPipeline(Pipeline, Bucketable):
     """
     Base deepsparse.Pipeline class for transformers model loading. This class handles
     the parsing of deepsparse-transformers files and model inputs, supporting loading
@@ -153,6 +152,21 @@ class TransformersPipeline(Pipeline):
             )
 
         return [tokens[name] for name in self.onnx_input_names]
+
+    @staticmethod
+    def should_bucket(*args, sequence_length: Union[int, List[int]], **kwargs) -> bool:
+        return isinstance(sequence_length, list)
+
+    @staticmethod
+    def create_pipeline_buckets(
+        *args, sequence_length: List[int], **kwargs
+    ) -> List[Pipeline]:
+        pipelines = []
+        for seq_len in sorted(sequence_length):
+            curr_pipeline = Pipeline.create(*args, sequence_length=seq_len, **kwargs)
+            pipelines.append(curr_pipeline)
+
+        return pipelines
 
 
 def pipeline(
