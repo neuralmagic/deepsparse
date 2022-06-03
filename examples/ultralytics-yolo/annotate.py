@@ -256,6 +256,10 @@ def parse_args(arguments=None):
         ),
     )
 
+    parser.add_argument(
+        "--conf-thres", type=float, default=0.35, help="confidence threshold"
+    )
+
     args = parser.parse_args(args=arguments)
     if args.engine == TORCH_ENGINE and args.device is None:
         args.device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -449,6 +453,7 @@ def annotate(args):
         annotated_img = annotate_image(
             source_img,
             outputs,
+            score_threshold=args.conf_thres,
             model_input_size=args.image_shape,
             images_per_sec=average_fps,
         )
