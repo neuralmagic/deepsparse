@@ -216,7 +216,11 @@ def server_app_factory():
 
     num_cores = None
     for model_config in config.models:
-        num_cores = num_cores or model_config.num_cores
+        num_cores = (
+            max(num_cores, model_config.num_cores)
+            if num_cores is not None and model_config.num_cores is not None
+            else num_cores or model_config.num_cores
+        )
 
     context = Context(num_cores=num_cores)
     pipelines = [
