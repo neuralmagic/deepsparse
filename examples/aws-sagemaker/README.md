@@ -193,6 +193,8 @@ As mentioned in the requirements, `ROLE_ARN` should be a string arn of an AWS
 role with full access to SageMaker.
 
 ```python
+import boto3
+
 sm_boto3 = boto3.client("sagemaker", region_name="us-east-1")
 
 region = boto3.Session().region_name
