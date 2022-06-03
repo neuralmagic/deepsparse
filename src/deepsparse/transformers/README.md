@@ -11,13 +11,13 @@ These techniques result in significantly more performant and smaller models with
 
 This integration currently supports several fundamental NLP tasks:
 - **Question Answering** - posing questions about a document.
-- **Text Classification** - assigning a label or class to a piece of text (e.g Sentiment Analysis task). 
+- **Sentiment Analysis** - assigning a sentiment to a piece of text
+- **Text Classification** - assigning a label or class to a piece of text (e.g duplicate question pairing). 
 - **Token Classification** - attributing a label to each token in a sentence (e.g. Named Entity Recognition task).
 
 We are actively working on adding more use cases, stay tuned!
 
 ## Getting Started
-
 
 Before you start your adventure with the DeepSparse Engine, make sure that your machine is 
 compatible with our [hardware requirements](https://docs.neuralmagic.com/deepsparse/source/hardware.html).
@@ -54,10 +54,15 @@ SparseZoo stubs which can be copied from each model page can be passed directly 
 the sparsified ONNX model with its corresponding configs.
 
 
-## Deployment
+## Deployment APIs
 
-### Python API
-Python API is the default interface for running inference with the DeepSparse Engine.
+DeepSparse provides both a python Pipeline API and an out-of-the-box model server
+that can be used for end-to-end inference in either existing python workflows or as an HTTP endpoint.
+Both options provide similar specifications for configurations and support a variety of NLP transformers
+tasks including question answering, text classification, sentiment analysis, and token classification.
+
+### Python Pipelines
+Pipelines are the default interface for running inference with the DeepSparse Engine.
 
 Once a model is obtained, either through `SparseML` training or directly from `SparseZoo`,
 `deepsparse.Pipeline` can be used to easily facilitate end to end inference and deployment
@@ -68,14 +73,36 @@ select a pruend and quantized model for the task from the `SparseZoo` that can b
 inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size,
 and accuracy.
 
+### HTTP Server
+As an alternative to Python API, the DeepSparse Server allows you to serve ONNX models and pipelines in HTTP.
+Both configuring and making requests to the server follow the same parameters and schemas as the
+Pipelines enabling simple deployment.  Once launched, a `/docs` endpoint is created with full
+endpoint descriptions and support for making sample requests.
 
-#### Question Answering Pipeline
+Example deployments using NLP transformer models are provided below.
+For full documentation on deploying sparse transformer models with the DeepSparse Server, see the
+[documentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server).
+
+##### Installation
+The deepsparse server requirements can be installed by specifying the `server` extra dependency when installing
+DeepSparse.
+
+```bash
+pip install deepsparse[server]
+```
+
+## Deployment Use Cases
+The following section includes example usage of the Pipeline and server APIs for various NLP transformers tasks.
+
+### Question Answering
+The question answering tasks accepts a `question` and a `context`. The pipeline will predict an answer
+for the `question` as a substring of the `context`.  The following examples use a pruned and quantized
+question answering BERT model trained on the `SQuAD` dataset downloaded by default from the SparseZoo.
 
 [List of available SparseZoo Question Answering Models](
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=question_answering)
 
-The following example uses a pruned and quantized question answering BERT model
-trained on the `SQuAD` dataset downloaded by default from the SparseZoo.
+#### Python Pipeline
 
 ```python
 from deepsparse import Pipeline
@@ -86,14 +113,40 @@ inference = qa_pipeline(question="What's my name?", context="My name is Snorlax"
 >> {'score': 0.9947717785835266, 'start': 11, 'end': 18, 'answer': 'Snorlax'}
 ```
 
-#### Sentiment Analysis Pipeline
+#### HTTP Server
+Spinning up:
+```bash
+deepsparse.server \
+    --task question-answering \
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
+```
+
+Making a request:
+```python
+import requests
+
+url = "http://localhost:5543/predict" # Server's port default to 5543
+
+obj = {
+    "question": "Who is Mark?", 
+    "context": "Mark is batman."
+}
+
+response = requests.post(url, json=obj)
+response.text
+
+>> '{"score":0.9534820914268494,"start":8,"end":14,"answer":"batman"}'
+```
+
+### Sentiment Analysis
+The sentiment analysis task takes in a sentence and classifies its sentiment. The following example
+uses a pruned and quantized text sentiment analysis BERT model trained on the `sst2` dataset downloaded
+from the SparseZoo. This `sst2` model classifies sentences as positive or negative.
 
 [List of available SparseZoo Sentiment Analysis Models](
 https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=sentiment_analysis)
 
-The following example uses a pruned and quantized text sentiment analysis BERT model
-trained on the `sst2` dataset downloaded by default from the SparseZoo.
-
+#### Python Pipeline
 ```python
 from deepsparse import Pipeline
 
@@ -108,14 +161,38 @@ inference = tc_pipeline("Snorlax hates pineapple pizza!")
 >> [{'label': 'LABEL_0', 'score': 0.9981569051742554}]  # negative sentiment
 ```
 
-#### Text Classification Pipeline
+#### HTTP Server
+Spinning up:
+```bash
+deepsparse.server \
+    --task sentiment-analysis \
+    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+```
+
+Making a request:
+```python
+import requests
+
+url = "http://localhost:5543/predict" # Server's port default to 5543
+
+obj = {"sequences": "Snorlax loves my Tesla!"}
+
+response = requests.post(url, json=obj)
+response.text
+
+>> '[{"label": "LABEL_1", "score": 0.9884248375892639}]'
+```
+
+### Text Classification
+The text classification task supports binary, multi class, and regression predictions over
+sentence inputs. The following example uses a pruned and quantized text classification
+DistilBERT model trained on the `qqp` dataset downloaded from a SparseZoo stub.
+The `qqp` dataset takes pairs of questions and predicts if they are a duplicate or not.
 
 [List of available SparseZoo Text Classification Models](
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=text_classification)
 
-The following example uses a pruned and quantized text classification DistilBERT model
-trained on the `qqp` dataset downloaded from a SparseZoo stub.
-
+#### Python Pipeline
 ```python
 from deepsparse import Pipeline
 
@@ -137,14 +214,44 @@ inference = tc_pipeline(
 >> TextClassificationOutput(labels=['duplicate'], scores=[0.9947025775909424])
 ```
 
+#### HTTP Server
+Spinning up:
+```bash
+deepsparse.server \
+    --task text-classification \
+    --model_path "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"
+```
+
+Making a request:
+```python
+import requests
+
+url = "http://localhost:5543/predict" # Server's port default to 5543
+
+obj = {
+    "sequences": [
+        [
+            "Which is the best gaming laptop under 40k?",
+            "Which is the best gaming laptop under 40,000 rs?",
+        ]
+    ]
+}
+
+response = requests.post(url, json=obj)
+response.text
+
+>> '{"labels": ["duplicate"], "scores": [0.9947025775909424]}'
+```
+
 #### Token Classification Pipeline
+The token classification task takes in sequences as inputs and assigns a class to each token.
+The following example uses a pruned and quantized token classification NER BERT model
+trained on the `CoNLL` dataset downloaded from the SparseZoo.
 
 [List of available SparseZoo Token Classification Models](
 https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=token_classification)
 
-The following example uses a pruned and quantized token classification NER BERT model
-trained on the `CoNLL` dataset downloaded by default from the SparseZoo.
-
+#### Python Pipeline
 ```python
 from deepsparse import Pipeline
 
@@ -160,57 +267,30 @@ inference = tc_pipeline("Drive from California to Texas!")
     {'entity': 'LABEL_0','word': '!', ...}]
 ```
 
-### DeepSparse Server
-As an alternative to Python API, the DeepSparse Server allows you to serve ONNX models and pipelines in HTTP.
-Configs for the server support the same arguments as the above pipelines and setting the task and models to any of the
-above transformers tasks and models will enable easy deployment.
-
-An example of starting and requesting a DeepSparse Server for NLP tasks is given below. Note that
-all tasks and requests schemas in the above examples may be swapped in place for the given question answering example.
-
-For a full example of deploying sparse transformer models with the DeepSparse Server, see the
-[documentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server).
-
-#### Installation
-The deepsparse server requirements can be installed by specifying the `server` extra dependency when installing
-DeepSparse.
-
-```bash
-pip install deepsparse[server]
-```
-
-#### Spinning Up
-The DeepSparse server supports the same tasks and model paths as the pipeline examples above.  The following
-uses the `deepsparse.server` script to launch a question answering model server.
-
+#### HTTP Server
+Spinning up:
 ```bash
 deepsparse.server \
-    --task question-answering \
-    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
+    --task text-classification \
+    --model_path "zoo:nlp/text_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
 ```
 
-#### Making Requests
-Requests can be made to a DeepSparse Server serving a transformers model using the same schemas as provided
-in the Pipelines examples above as json arguments in the payload.  The following makes a request to the
-question answering server with the required `question` and `context` provided.
-
+Making a request:
 ```python
 import requests
 
 url = "http://localhost:5543/predict" # Server's port default to 5543
 
-obj = {
-    "question": "Who is Mark?", 
-    "context": "Mark is batman."
-}
+obj = {"inputs": "Drive from California to Texas!"}
+
 
 response = requests.post(url, json=obj)
 response.text
 
->> '{"score":0.9534820914268494,"start":8,"end":14,"answer":"batman"}'
+>> "[{'entity': 'LABEL_0','word': 'drive', ...}, {'entity': 'LABEL_0','word': 'from', ...}, {'entity': 'LABEL_5','word': 'california', ...}, {'entity': 'LABEL_0','word': 'to', ...}, {'entity': 'LABEL_5','word': 'texas', ...}, {'entity': 'LABEL_0','word': '!', ...}]"
 ```
 
-### Benchmarking
+## Benchmarking
 The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse Hugging Face ONNX models perform inference? 
 You can quickly do benchmarking tests on your own with a single CLI command!
 
