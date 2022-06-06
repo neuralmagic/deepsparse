@@ -127,8 +127,8 @@ various image classification models.
 #### Python Pipeline
 
 ```python
-from deepsparse import pipeline
-cv_pipeline = pipeline(
+from deepsparse import Pipeline
+cv_pipeline = Pipeline.create(
   task='image_classification', 
   model_path='zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none',  # Path to checkpoint or SparseZoo stub
 )
