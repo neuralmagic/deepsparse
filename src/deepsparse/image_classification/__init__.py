@@ -31,6 +31,17 @@ def _check_torchvision_install(raise_on_fail=False):
         return torchvision_import_exception
 
 
+def _check_click_install(raise_on_fail=False):
+    try:
+        import click as _click
+
+        return None
+    except Exception as click_import_exception:
+        if raise_on_fail:
+            raise click_import_exception
+        return click_import_exception
+
+
 def _check_install_deps():
     torchvision_import_exception = _check_torchvision_install
     if not torchvision_import_exception:
@@ -62,6 +73,30 @@ def _check_install_deps():
             "Unable to import or install torchvision, a requirement of "
             f"deepsparse.image_classification. Failed with exception: "
             f"{torchvision_exception}"
+        )
+
+    try:
+        _subprocess.check_call(
+            [
+                _sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "click<8.1",
+            ]
+        )
+
+        _check_click_install(raise_on_fail=True)
+
+        _LOGGER.info(
+            "click dependency of deepsparse.image_classification "
+            "sucessfully installed"
+        )
+    except Exception as click_exception:
+        raise ValueError(
+            "Unable to import or install click, a requirement of "
+            f"deepsparse.image_classification. Failed with exception: "
+            f"{click_exception}"
         )
 
 
