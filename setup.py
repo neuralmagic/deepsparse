@@ -87,6 +87,7 @@ _onnxruntime_deps = [
 ]
 
 _ic_integration_deps = [
+    "torchvision>=0.3.0,<=0.10.1",
     "click<8.1",
 ]
 

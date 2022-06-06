@@ -43,9 +43,16 @@ python validation_script.py \
   --dataset-path /path/to/imagenette/
 
 """
-import click
-import torchvision
-from torchvision import transforms
+try:
+    import click
+    import torchvision
+    from torchvision import transforms
+except Exception as e:
+    raise ModuleNotFoundError(
+        "Some dependencies might be missing, install them using"
+        f" `pip install deepsparse[image_classification]`"
+        f"\nOriginal Exception: {e}"
+    )
 from tqdm import tqdm
 
 from deepsparse.image_classification.constants import (
