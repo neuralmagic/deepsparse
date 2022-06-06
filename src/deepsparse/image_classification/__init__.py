@@ -13,32 +13,40 @@
 # limitations under the License.
 
 # flake8: noqa
-
+import importlib
 import logging as _logging
+import warnings
+from collections import namedtuple
 
 
 _LOGGER = _logging.getLogger(__name__)
+_Dependency = namedtuple("_Dependency", ["name", "version", "necessary"])
 
 
-def _check_torchvision_install(raise_on_fail=False):
+def _check_if_dependency_installed(dependency: _Dependency, raise_on_fail=False):
     try:
-        import torchvision as _torchvision
-
+        _dep = importlib.import_module(dependency.name)
         return None
-    except Exception as torchvision_import_exception:
+    except Exception as dependency_import_error:
         if raise_on_fail:
-            raise torchvision_import_exception
-        return torchvision_import_exception
+            raise dependency_import_error
+        return dependency_import_error
 
 
-def _check_install_deps():
-    torchvision_import_exception = _check_torchvision_install
-    if not torchvision_import_exception:
+def _check_and_install_dependency(dependency: _Dependency):
+    dependency_import_exception = _check_if_dependency_installed(
+        dependency=dependency,
+        raise_on_fail=False,
+    )
+
+    if not dependency_import_exception:
         return
 
-    # attempt to install torchvision
+    # attempt to install dependency
     import subprocess as _subprocess
     import sys as _sys
+
+    install_name = f"{dependency.name}{dependency.version}"
 
     try:
         _subprocess.check_call(
@@ -47,26 +55,44 @@ def _check_install_deps():
                 "-m",
                 "pip",
                 "install",
-                "torchvision>=0.3.0,<=0.10.1",
+                install_name,
             ]
         )
 
-        _check_torchvision_install(raise_on_fail=True)
+        _check_if_dependency_installed(
+            dependency=dependency,
+            raise_on_fail=True,
+        )
 
         _LOGGER.info(
-            "torchvision dependency of deepsparse.image_classification "
+            f"{dependency.name} dependency of deepsparse.image_classification "
             "sucessfully installed"
         )
-    except Exception as torchvision_exception:
-        raise ValueError(
-            "Unable to import or install torchvision, a requirement of "
-            f"deepsparse.image_classification. Failed with exception: "
-            f"{torchvision_exception}"
-        )
+    except Exception as dependency_exception:
+        if dependency.necessary:
+            raise ValueError(
+                f"Unable to import or install {install_name}, a requirement of "
+                f"deepsparse.image_classification. Failed with exception: "
+                f"{dependency_exception}"
+            )
+        else:
+            warnings.warn(
+                message=f"Unable to import or install {install_name}",
+                category=UserWarning,
+            )
 
 
-_check_install_deps()
+def _auto_install_dependencies():
+    dependencies = [
+        _Dependency(name="torchvision", version=">=0.3.0,<=0.10.1", necessary=True),
+        _Dependency(name="click", version="<8.1", necessary=False),
+    ]
 
+    for dependency in dependencies:
+        _check_and_install_dependency(dependency=dependency)
+
+
+_auto_install_dependencies()
 
 from .constants import *
 from .pipelines import *

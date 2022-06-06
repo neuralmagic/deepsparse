@@ -86,10 +86,6 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 
-_ic_integration_deps = [
-    "click<8.1",
-]
-
 _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.10.1",
     "opencv-python",
@@ -197,7 +193,6 @@ def _setup_extras() -> Dict:
         "dev": _dev_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
-        "image_classification": _ic_integration_deps,
         "yolo": _yolo_integration_deps,
     }
 
