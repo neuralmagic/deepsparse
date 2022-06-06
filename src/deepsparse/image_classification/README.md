@@ -1,10 +1,11 @@
 # Image Classification Inference Pipelines
 
 
-[DeepSparse] Image Classification integration allows serving and benchmarking 
-sparsified image classification models. This integration enables leveraging 
-the [DeepSparse] Engine to run inference with GPU-class performance directly on 
-the CPU.
+[DeepSparse] Image Classification integration allows accelerated inference, 
+serving, and benchmarking of sparsified image classification models.
+This integration allows for leveraging the [DeepSparse] Engine to run 
+sparsified image classification inference with GPU-class performance directly 
+on the CPU.
 
 The [DeepSparse] Engine takes advantage of sparsity within neural networks to 
 reduce compute as well as accelerate memory-bound workloads. 
@@ -37,7 +38,7 @@ Below we describe two possibilities to obtain the required ONNX model.
 This pathway is relevant if you intend to deploy a model created using [SparseML] library. 
 For more information refer to the appropriate integration documentation in [SparseML].
 
-1. The output of the `[SparseML]` training is saved to output directory `/{save_dir}` (e.g. `/trained_model`)
+1. The output of the [SparseML] training is saved to output directory `/{save_dir}` (e.g. `/trained_model`)
 2. Depending on the chosen framework, the model files are saved to `model_path`=`/{save_dir}/{framework_name}/{model_tag}` (e.g `/trained_model/pytorch/resnet50/`)
 3. To generate an onnx model, refer to the [script for image classification ONNX export](https://github.com/neuralmagic/sparseml/blob/main/src/sparseml/pytorch/image_classification/export.py).
 
@@ -71,19 +72,59 @@ os.path.isfile(os.path.join(model.dir_path, "model.onnx"))
 ```
 
 
-## Deployment
+## Deployment APIs
+
+[DeepSparse] provides both a python Pipeline API and an out-of-the-box model 
+server that can be used for end-to-end inference in either existing python 
+workflows or as an HTTP endpoint. Both options provide similar specifications 
+for configurations and support a variety of Image Classification models.
 
 ### Python API
-Python API is the default interface for running the inference with the DeepSparse Engine.
-The [SparseML] installation provides a CLI for sparsifying models for a specific task;
-To find out more on how to sparsify Image Classification models refer to 
-[SparseML Image Classification Documentation]
+
+Pipelines are the default interface for running the inference with the 
+[DeepSparse] Engine.
+
+Once a model is obtained, either through [SparseML] training or directly from [SparseZoo],
+`deepsparse.Pipeline` can be used to easily facilitate end to end inference and deployment
+of the sparsified image classification model.
+
+If no model is specified to the `Pipeline` for a given task, the `Pipeline` will automatically
+select a pruned and quantized model for the task from the `SparseZoo` that can be used for accelerated
+inference. Note that other models in the [SparseZoo] will have different tradeoffs between speed, size,
+and accuracy.
 
 To learn about sparsification in more detail, refer to [SparseML docs](https://docs.neuralmagic.com/sparseml/)
 
-#### Image Classification Pipeline
+### HTTP Server
+
+As an alternative to Python API, the DeepSparse inference server allows you to 
+serve ONNX models and pipelines in HTTP. Both configuring and making requests 
+to the server follow the same parameters and schemas as the Pipelines enabling 
+simple deployment. Once launched, a `/docs` endpoint is created with full 
+endpoint descriptions and support for making sample requests.
+
+Example deployment using a 95% pruned resnet50 is given below
+For full documentation on deploying sparse image classification models with the
+DeepSparse Server, see the [documentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server).
+
+##### Installation
+
+The deepsparse server requirements can be installed by specifying the `server` 
+extra dependency when installing DeepSparse.
+
+```bash
+pip install deepsparse[server]
+```
+
+## Deployment Use Cases
+
+The following section includes example usage of the Pipeline and server APIs for
+various image classification models. 
 
 [List of Image Classification SparseZoo Models](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=classification&page=1)
+
+
+#### Python Pipeline
 
 ```python
 from deepsparse import pipeline
@@ -95,48 +136,9 @@ input_image = ... # Read input images
 inference = cv_pipeline(images=input_image)
 ```
 
-### DeepSparse Server
-As an alternative to Python API, the DeepSparse inference server allows you to serve ONNX models and pipelines in HTTP.
-To learn more about the DeeepSparse server, refer to the [appropriate documentation](https://github.com/neuralmagic/deepsparse/tree/main/examples/classification).
+#### HTTP Server
 
-#### Spinning Up with DeepSparse Server
-Install the server:
-```bash
-pip install deepsparse[server]
-```
-
-Run `deepsparse.server --help` to look up the CLI arguments:
-```bash
-  Start a DeepSparse inference server for serving the models and pipelines
-  given within the config_file or a single model defined by task, model_path,
-  and batch_size
-
-  Example config.yaml for serving:
-
-  models:
-      - task: image_classification
-        model_path: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none
-        batch_size: 1
-        ...
-
-Options:
-  --host TEXT                     Bind socket to this host. Use --host 0.0.0.0
-                                  to make the application available on your
-                                  local network. IPv6 addresses are supported,
-                                  for example: --host '::'. Defaults to
-                                  0.0.0.0
-  --port INTEGER                  Bind to a socket with this port. Defaults to
-                                  5543.
-  --workers INTEGER               Use multiple worker processes. Defaults to
-                                  1.
-  --log_level [debug|info|warn|critical|fatal]
-                                  Sets the logging level. Defaults to info.
-  --config_file TEXT              Configuration file containing info on how to
-                                  serve the desired models.
-  ...
-```
-
-Example CLI Command to spin up the server with a 95% pruned `resnet50`:
+Spinning up:
 ```bash
 deepsparse.server \
     --task image_classification \
@@ -144,7 +146,7 @@ deepsparse.server \
     --port 5543
 ```
 
-Sample client for sending requests to the server:
+Making a request:
 `imagenet_client.py`
 ```python
 from glob import glob
@@ -239,3 +241,4 @@ For Neural Magic Support, sign up or log in to our [Deep Sparse Community Slack]
 [ONNX]: https://onnx.ai/
 [SparseML]: https://github.com/neuralmagic/sparseml
 [SparseML Image Classification Documentation]: https://github.com/neuralmagic/sparseml/tree/main/src/sparseml/pytorch/image_classification/README_image_classification.md
+[SparseZoo]: https://sparsezoo.neuralmagic.com/
