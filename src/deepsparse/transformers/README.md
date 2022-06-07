@@ -69,7 +69,7 @@ Once a model is obtained, either through `SparseML` training or directly from `S
 of the sparsified transformers model.
 
 If no model is specified to the `Pipeline` for a given task, the `Pipeline` will automatically
-select a pruend and quantized model for the task from the `SparseZoo` that can be used for accelerated
+select a pruned and quantized model for the task from the `SparseZoo` that can be used for accelerated
 inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size,
 and accuracy.
 
