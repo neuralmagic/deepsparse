@@ -24,6 +24,7 @@ import random
 import shutil
 import time
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy
@@ -305,14 +306,17 @@ def _box_iou(box1: torch.Tensor, box2: torch.Tensor) -> torch.Tensor:
     )  # iou = inter / (area1 + area2 - inter)
 
 
-def yolo_onnx_has_postprocessing(model_path: str) -> bool:
+def yolo_onnx_has_postprocessing(model_path: Union[str, onnx.ModelProto]) -> bool:
     """
-    :param model_path: file path to YOLO ONNX model
+    :param model_path: file path to YOLO ONNX model or loaded model
     :return: True if YOLO postprocessing (pre-nms) is included in the ONNX graph,
         this is assumed to be when the first output of the model has fewer dimensions
         than the other outputs as the grid dimensions have been flattened
     """
-    model = onnx.load(model_path)
+    if isinstance(model_path, str):
+        model = onnx.load(model_path)
+    else:
+        model = model_path
 
     # get number of dimensions in each output
     outputs_num_dims = [
@@ -324,6 +328,100 @@ def yolo_onnx_has_postprocessing(model_path: str) -> bool:
         return True
 
     return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
+
+
+def get_onnx_expected_image_shape(onnx_model: onnx.ModelProto) -> Tuple[int, ...]:
+    """
+    :param onnx_model: onnx model to get expected image shape of
+    :return: expected shape of the input tensor from onnx graph as a 2-tuple
+    """
+    input_tensor = onnx_model.graph.input[0]
+    return (
+        input_tensor.type.tensor_type.shape.dim[2].dim_value,
+        input_tensor.type.tensor_type.shape.dim[3].dim_value,
+    )
+
+
+def modify_yolo_onnx_input_shape(
+    model_path: str, image_shape: Tuple[int, int]
+) -> Tuple[str, Optional[NamedTemporaryFile]]:
+    """
+    Creates a new YOLO ONNX model from the given path that accepts the given input
+    shape. If the given model already has the given input shape no modifications are
+    made. Uses a tempfile to store the modified model file.
+
+    :param model_path: file path to YOLO ONNX model
+    :param image_shape: 2-tuple of the image shape to resize this yolo model to
+    :return: filepath to an onnx model reshaped to the given input shape will be the
+        original path if the shape is the same.  Additionally returns the
+        NamedTemporaryFile for managing the scope of the object for file deletion
+    """
+    has_postprocessing = yolo_onnx_has_postprocessing(model_path)
+
+    model = onnx.load(model_path)
+    model_input = model.graph.input[0]
+
+    initial_x, initial_y = get_onnx_expected_image_shape(model)
+
+    if not (isinstance(initial_x, int) and isinstance(initial_y, int)):
+        return model_path, None  # model graph does not have static integer input shape
+
+    if (initial_x, initial_y) == tuple(image_shape):
+        return model_path, None  # no shape modification needed
+
+    # override input shape
+    model_input.type.tensor_type.shape.dim[2].dim_value = image_shape[0]
+    model_input.type.tensor_type.shape.dim[3].dim_value = image_shape[1]
+
+    # override output shape to account for stride
+    scale_x = initial_x / image_shape[0]
+    scale_y = initial_y / image_shape[1]
+
+    for idx, model_output in enumerate(model.graph.output):
+        if idx == 0 and has_postprocessing:
+            continue
+        output_x = get_tensor_dim_shape(model_output, 2)
+        output_y = get_tensor_dim_shape(model_output, 3)
+        set_tensor_dim_shape(model_output, 2, int(output_x / scale_x))
+        set_tensor_dim_shape(model_output, 3, int(output_y / scale_y))
+
+    # fix number of predictions in post-processed output for new strides
+    if has_postprocessing:
+        # sum number of predictions across the other outputs
+        num_predictions = sum(
+            numpy.prod(
+                [
+                    get_tensor_dim_shape(output_tensor, dim_idx)
+                    for dim_idx in range(1, 4)
+                ]
+            )
+            for output_tensor in model.graph.output[1:]
+        )
+        set_tensor_dim_shape(model.graph.output[0], 1, num_predictions)
+
+    tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
+    onnx.save(model, tmp_file.name)
+
+    return tmp_file.name, tmp_file
+
+
+def get_tensor_dim_shape(tensor: onnx.TensorProto, dim: int) -> int:
+    """
+    :param tensor: ONNX tensor to get the shape of a dimension of
+    :param dim: dimension index of the tensor to get the shape of
+    :return: shape of the tensor at the given dimension
+    """
+    return tensor.type.tensor_type.shape.dim[dim].dim_value
+
+
+def set_tensor_dim_shape(tensor: onnx.TensorProto, dim: int, value: int):
+    """
+    Sets the shape of the tensor at the given dimension to the given value
+    :param tensor: ONNX tensor to modify the shape of
+    :param dim: dimension index of the tensor to modify the shape of
+    :param value: new shape for the given dimension
+    """
+    tensor.type.tensor_type.shape.dim[dim].dim_value = value
 
 
 def annotate(
