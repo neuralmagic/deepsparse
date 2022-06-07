@@ -23,14 +23,14 @@ _LOGGER = _logging.getLogger(__name__)
 _Dependency = namedtuple("_Dependency", ["name", "version", "necessary"])
 
 
-def _check_if_dependency_installed(dependency: _Dependency, raise_on_fail=False):
-    try:
-        _dep = importlib.import_module(dependency.name)
-        return None
-    except Exception as dependency_import_error:
-        if raise_on_fail:
-            raise dependency_import_error
-        return dependency_import_error
+def _auto_install_dependencies():
+    dependencies = [
+        _Dependency(name="torchvision", version=">=0.3.0,<=0.10.1", necessary=True),
+        _Dependency(name="click", version="<8.1", necessary=False),
+    ]
+
+    for dependency in dependencies:
+        _check_and_install_dependency(dependency=dependency)
 
 
 def _check_and_install_dependency(dependency: _Dependency):
@@ -82,14 +82,14 @@ def _check_and_install_dependency(dependency: _Dependency):
             )
 
 
-def _auto_install_dependencies():
-    dependencies = [
-        _Dependency(name="torchvision", version=">=0.3.0,<=0.10.1", necessary=True),
-        _Dependency(name="click", version="<8.1", necessary=False),
-    ]
-
-    for dependency in dependencies:
-        _check_and_install_dependency(dependency=dependency)
+def _check_if_dependency_installed(dependency: _Dependency, raise_on_fail=False):
+    try:
+        _dep = importlib.import_module(dependency.name)
+        return None
+    except Exception as dependency_import_error:
+        if raise_on_fail:
+            raise dependency_import_error
+        return dependency_import_error
 
 
 _auto_install_dependencies()
