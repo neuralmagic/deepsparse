@@ -131,7 +131,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [6, 7, 8, 9]
+    supported_minor = [6, 7, 8, 9, 10]
 
     if (
         sys.version_info[0] != supported_major
