@@ -32,8 +32,8 @@ This grants the engine the flexibility to serve any model in a framework-agnosti
 
 The DeepSparse pipelines require the following files within a folder on the local server to properly load a Transformers model:
 - `model.onnx`: The exported Transformers model in the [ONNX format](https://github.com/onnx/onnx).
-- `tokenizer.json`: The [HuggingFace compatible tokenizer configuration](https://huggingface.co/docs/transformers/fast_tokenizers) for the tokenizer used with the model.
-- `config.json`: The [HuggingFace compatible configuration file](https://huggingface.co/docs/transformers/main_classes/configuration) for the pre and post processing pipelines used with the model.
+- `tokenizer.json`: The [HuggingFace compatible tokenizer configuration](https://huggingface.co/docs/transformers/fast_tokenizers) used with the model.
+- `config.json`: The [HuggingFace compatible configuration file](https://huggingface.co/docs/transformers/main_classes/configuration) used with the model.
 
 Below we describe two possibilities to obtain the required structure.
 
