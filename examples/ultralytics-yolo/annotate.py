@@ -53,7 +53,7 @@ optional arguments:
                         benchmarks, this value is the number of cores per
                         socket
   -q, --quantized-inputs
-                        Set flag to execute with int8 inputs instead of
+                        Set flag to execute with uint8 inputs instead of
                         float32
   --fp16                Set flag to execute with torch in half precision
                         (fp16)
@@ -193,7 +193,7 @@ def parse_args(arguments=None):
     parser.add_argument(
         "-q",
         "--quantized-inputs",
-        help=("Set flag to execute with int8 inputs instead of float32"),
+        help=("Set flag to execute with uint8 inputs instead of float32"),
         action="store_true",
     )
     parser.add_argument(
@@ -254,6 +254,10 @@ def parse_args(arguments=None):
             "YOLO config YAML file to override default anchor points when "
             "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
         ),
+    )
+
+    parser.add_argument(
+        "--conf-thres", type=float, default=0.35, help="confidence threshold"
     )
 
     args = parser.parse_args(args=arguments)
@@ -449,6 +453,7 @@ def annotate(args):
         annotated_img = annotate_image(
             source_img,
             outputs,
+            score_threshold=args.conf_thres,
             model_input_size=args.image_shape,
             images_per_sec=average_fps,
         )
