@@ -18,7 +18,7 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 
 ### Installation
 
-```pip install deepsparse```
+```pip install deepsparse[yolo]```
 
 ### Model Format
 By default, to deploy YOLOv5 using DeepSparse Engine it is required to supply the model in the ONNX format. 
@@ -71,7 +71,7 @@ The deepsparse server requirements can be installed by specifying the `server` e
 DeepSparse.
 
 ```bash
-pip install deepsparse[server]
+pip install deepsparse[yolo,server]
 ```
 
 ## Deployment Example
@@ -134,16 +134,18 @@ You can quickly do benchmarking tests on your own with a single CLI command!
 You only need to provide the model path of a SparseZoo ONNX model or your own local ONNX model to get started:
 
 ```bash
-deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+deepsparse.benchmark \
+    zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
+    scenario --sync 
 
 >> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
 >> Batch Size: 1
->> Scenario: async
->> Throughput (items/sec): 120.5551
->> Latency Mean (ms/batch): 99.3043
->> Latency Median (ms/batch): 99.1637
->> Latency Std (ms/batch): 2.7053
->> Iterations: 1210
+>> Scenario: sync
+>> Throughput (items/sec): 74.0355
+>> Latency Mean (ms/batch): 13.4924
+>> Latency Median (ms/batch): 13.4177
+>> Latency Std (ms/batch): 0.2166
+>> Iterations: 741
 ```
 
 To learn more about benchmarking, refer to the appropriate documentation.
