@@ -9,7 +9,7 @@ reduce compute required as well as accelerate memory-bound workloads. The engine
 methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061). 
 These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
 
-This integration currently supports the original YOLOv5 the updated V6.1 architectures
+This integration currently supports the original YOLOv5 and updated V6.1 architectures
 
 ## Getting Started
 
@@ -42,7 +42,7 @@ model weights file (e.g. `runs/train/weights/model.onnx`)
 
 ###  Directly using the SparseZoo stub
 Alternatively, you can skip the process of the ONNX model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
-SparseZoo stubs which can be copied from each model page can be passed directly to a `Pipeline` to download and run
+SparseZoo stubs, which can be copied from each model page, can be passed directly to a `Pipeline` to download and run
 the sparsified ONNX model with its corresponding configs.
 ## Deployment APIs
 
@@ -124,7 +124,7 @@ curl -X 'POST' \
   'http://localhost:5543/predict/from_files' \
   -H 'accept: application/json' \
   -H 'Content-Type: multipart/form-data' \
-  -F 'request=@Beatles_-_Abbey_Road.jpg;type=image/jpeg'
+  -F 'request=@abbey_road.jpg;type=image/jpeg'
 ```
 
 ### Benchmarking
