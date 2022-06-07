@@ -27,32 +27,32 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 ```pip install deepsparse```
 
 ### Model Format
-By default, to deploy the transformer using DeepSparse Engine it is required to supply the model in the ONNX format. 
+By default, to deploy the transformer using DeepSparse Engine it is required to supply the model in the ONNX format along with the HuggingFace supporting files. 
 This grants the engine the flexibility to serve any model in a framework-agnostic environment. 
 
-Below we describe two possibilities to obtain the required ONNX model.
+The DeepSparse pipelines require the following files within a folder on the local server to properly load a Transformers model:
+- `model.onnx`: The exported Transformers model in the [ONNX format](https://github.com/onnx/onnx).
+- `tokenizer.json`: The [HuggingFace compatible tokenizer configuration](https://huggingface.co/docs/transformers/fast_tokenizers) for the tokenizer used with the model.
+- `config.json`: The [HuggingFace compatible configuration file](https://huggingface.co/docs/transformers/main_classes/configuration) for the pre and post processing pipelines used with the model.
 
-#### Exporting the ONNX file from the contents of a local directory
+Below we describe two possibilities to obtain the required structure.
+
+#### SparseML Export 
 This pathway is relevant if you intend to deploy a model created using [SparseML](https://github.com/neuralmagic/sparseml) library. 
-For more information, refer to the appropriate transformers integration documentation in SparseML.
-
-The expected `model_path` in a transformers `Pipeline` should be a directory that includes the following files:
- - `model.onnx`
- - `tokenizer.json`
- - `config.json`
+For more information, refer to the appropriate [transformers integration documentation in SparseML](https://github.com/neuralmagic/sparseml/tree/main/src/sparseml/transformers).
 
 ONNX models can be exported using the `sparseml.transformers.export_onnx` tool:
 
 ```bash
 sparseml.transformers.export_onnx --task question-answering --model_path model_path
 ```
-This creates `model.onnx` file, in the parent directory of your `model_path`(e.g. `/trained_model/model.onnx`)
 
-####  Directly using the SparseZoo stub
-Alternatively, you can skip the process of the ONNX model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
-SparseZoo stubs which can be copied from each model page can be passed directly to a `Pipeline` to download and run
-the sparsified ONNX model with its corresponding configs.
+This creates `model.onnx` file, in the directory of your `model_path`(e.g. `/trained_model/model.onnx`). 
+The `tokenizer.json` and `config.json` are stored under the `model_path` folder as well, so a DeepSparse pipeline ca be directly instantiated by using that folder after export (e.g. `/trained_model/`).
 
+####  SparseZoo stub
+Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
+All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
 
 ## Deployment APIs
 
