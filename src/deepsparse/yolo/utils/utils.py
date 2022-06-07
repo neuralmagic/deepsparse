@@ -417,6 +417,7 @@ def get_tensor_dim_shape(tensor: onnx.TensorProto, dim: int) -> int:
 def set_tensor_dim_shape(tensor: onnx.TensorProto, dim: int, value: int):
     """
     Sets the shape of the tensor at the given dimension to the given value
+
     :param tensor: ONNX tensor to modify the shape of
     :param dim: dimension index of the tensor to modify the shape of
     :param value: new shape for the given dimension
