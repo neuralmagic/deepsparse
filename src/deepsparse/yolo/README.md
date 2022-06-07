@@ -13,7 +13,6 @@ This integration currently supports the original YOLOv5 the updated V6.1 archite
 
 ## Getting Started
 
-
 Before you start your adventure with the DeepSparse Engine, make sure that your machine is 
 compatible with our [hardware requirements](https://docs.neuralmagic.com/deepsparse/source/hardware.html).
 
@@ -30,8 +29,9 @@ Below we describe two possibilities to obtain the required ONNX model.
 ### Exporting the ONNX file from the contents of a local directory
 This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
 For more information refer to the appropriate YOLOv5 integration documentation in SparseML.
-1. After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export.
-2. Run the `SparseML` integrated YOLOv5 ONNX export script the CLI command as below.
+
+After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export and run the `SparseML` integrated YOLOv5 ONNX export script below.
+
 ```bash
 sparseml.yolov5.export_onnx \
     --weights path/to/your/model \
@@ -44,53 +44,25 @@ model weights file (e.g. `runs/train/weights/model.onnx`)
 Alternatively, you can skip the process of the ONNX model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
 SparseZoo stubs which can be copied from each model page can be passed directly to a `Pipeline` to download and run
 the sparsified ONNX model with its corresponding configs.
-## Deployment
+## Deployment APIs
 
-### Python API
-Python API is the default interface for running inference with the DeepSparse Engine.
+DeepSparse provides both a python Pipeline API and an out-of-the-box model server
+that can be used for end-to-end inference in either existing python workflows or as an HTTP endpoint.
+Both options provide similar specifications for configurations and support annotation serving for all 
+YOLOv5 models.
 
-Once a model is obtained, either through `SparseML` training or directly from `SparseZoo`,
-`deepsparse.Pipeline` can be used to easily facilitate end to end inference and deployment
-of the sparsified YOLOv5 model.
+### Python Pipelines
+Pipelines are the default interface for running inference with the DeepSparse Engine.
 
-If no model is specified to the `Pipeline` for a given task, the `Pipeline` will automatically
-select a pruend and quantized model for the task from the `SparseZoo` that can be used for accelerated
-inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size,
-and accuracy.
-Python API is the default interface for running the inference with the DeepSparse Engine. 
+Once a model is obtained, either through SparseML training or directly from SparseZoo, deepsparse.Pipeline can be used to easily facilitate end to end inference and deployment of the sparsified transformers model.
 
-With the example Python code below, we can run inference on local data. If you don't have an image ready, pull a sample image down with
-
-```
-wget -O abbey_road.jpg  https://upload.wikimedia.org/wikipedia/en/4/42/Beatles_-_Abbey_Road.jpg
-```
-
-[List of the YOLOv5 SparseZoo Models](
-https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1)
-
-```python
-from deepsparse.pipeline import Pipeline
-
-model_stub = "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
-images = ["abbey_road.jpg"]
-
-od_pipeline = Pipeline.create(
-    task="yolo",
-    model_path=model_stub,
-)
-
-pipeline_outputs = od_pipeline(images=images, iou_thres=0.6, conf_thres=0.001)
-```
-
-### Annotate CLI
-You can also annotate an image source directly with the following CLI command:
-```bash
-deepsparse.object_detection.annotate --source abbey_road.jpg #Try --source 0 to annotate your live webcam feed
-```
+If no model is specified to the Pipeline for a given task, the Pipeline will automatically select a pruned and quantized model for the task from the SparseZoo that can be used for accelerated inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size, and accuracy.
 
 ### DeepSparse Server
 As an alternative to Python API, the DeepSparse Server allows you to serve ONNX models and pipelines in HTTP.
-Configs for the server support the same arguments as the above pipelines.
+Both configuring and making requests to the server follow the same parameters and schemas as the
+Pipelines enabling simple deployment.  Once launched, a `/docs` endpoint is created with full
+endpoint descriptions and support for making sample requests.
 
 An example of starting and requesting a DeepSparse Server for YOLOv5 is given below.
 
@@ -102,14 +74,43 @@ DeepSparse.
 pip install deepsparse[server]
 ```
 
-#### Spinning Up
-The DeepSparse server supports the same tasks and model paths as the pipeline examples above.  The following
-uses the `deepsparse.server` script to launch a YOLOv5s model server.
+## Deployment Example
+The follow example uses pipelines to run a pruned and quantized YOLOv5l model for inference, downloaded by default from the SparseZoo. As input the pipeline ingests a list of images and returns for each image the detection boxes in numeric form. 
 
+[List of the YOLOv5 SparseZoo Models](
+https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1)
+
+If you don't have an image ready, pull a sample image down with
+
+```
+wget -O abbey_road.jpg  https://upload.wikimedia.org/wikipedia/en/4/42/Beatles_-_Abbey_Road.jpg
+```
+
+```python
+from deepsparse.pipeline import Pipeline
+
+model_stub = "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
+images = ["abbey_road.jpg"]
+
+yolo_pipeline = Pipeline.create(
+    task="yolo",
+    model_path=model_stub,
+)
+
+pipeline_outputs = yolo_pipeline(images=images, iou_thres=0.6, conf_thres=0.001)
+```
+
+#### Annotate CLI
+You can also use the annotate command to have the engine save an annotated photo on disk.
+```bash
+deepsparse.object_detection.annotate --source abbey_road.jpg #Try --source 0 to annotate your live webcam feed
+```
+#### HTTP Server
+Spinning up:
 ```bash
 deepsparse.server \
     --task yolo \
-    --model_path zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+    --model_path "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94"
 ```
 
 Once the server is running, it will print a local address to the terminal which you can use
