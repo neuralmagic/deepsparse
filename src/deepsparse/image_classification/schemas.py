@@ -40,6 +40,19 @@ class ImageClassificationInput(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    @classmethod
+    def from_files(cls, files: List[str], **kwargs) -> "ImageClassificationInput":
+        """
+        :param files: list of file paths to create ImageClassificationInput from
+        :return: ImageClassificationInput constructed from files
+        """
+        if kwargs:
+            raise ValueError(
+                f"{cls.__name__} does not support additional arguments "
+                f"{list(kwargs.keys())}"
+            )
+        return cls(images=files)
+
 
 class ImageClassificationOutput(BaseModel):
     """

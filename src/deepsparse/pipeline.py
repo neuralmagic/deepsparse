@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse import Engine, Scheduler
+from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
@@ -108,6 +108,11 @@ class Pipeline(ABC):
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
+    :param context: Optional Context object to use for creating instances of
+        MultiModelEngine. The Context contains a shared scheduler along with
+        other runtime information that will be used across instances of the
+        MultiModelEngine to provide optimal performance when running multiple
+        models concurrently
     """
 
     def __init__(
@@ -119,12 +124,23 @@ class Pipeline(ABC):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
+        context: Optional[Context] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
         self._engine_type = engine_type
         self._batch_size = batch_size
         self._alias = alias
+
+        self.context = context
+        if self.context is not None:
+            num_cores = num_cores or self.context.num_cores
+            if self.context.num_cores != num_cores:
+                raise ValueError(
+                    f"num_cores mismatch. Expected {self.context.num_cores} "
+                    f"from passed context, but got {num_cores} while "
+                    f"instantiating Pipeline"
+                )
 
         self._engine_args = dict(
             batch_size=batch_size,
@@ -184,6 +200,7 @@ class Pipeline(ABC):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
+        context: Optional[Context] = None,
         **kwargs,
     ) -> "Pipeline":
         """
@@ -201,6 +218,11 @@ class Pipeline(ABC):
             to use model as-is. Default is None
         :param alias: optional name to give this pipeline instance, useful when
             inferencing with multiple models. Default is None
+        :param context: Optional Context object to use for creating instances of
+            MultiModelEngine. The Context contains a shared scheduler along with
+            other runtime information that will be used across instances of the
+            MultiModelEngine to provide optimal performance when running
+            multiple models concurrently
         :param kwargs: extra task specific kwargs to be passed to task Pipeline
             implementation
         :return: pipeline object initialized for the given task
@@ -244,6 +266,7 @@ class Pipeline(ABC):
             scheduler=scheduler,
             input_shapes=input_shapes,
             alias=alias,
+            context=context,
             **kwargs,
         )
 
@@ -302,10 +325,19 @@ class Pipeline(ABC):
         return _register_pipeline_tasks_decorator
 
     @classmethod
-    def from_config(cls, config: Union["PipelineConfig", str, Path]) -> "Pipeline":
+    def from_config(
+        cls,
+        config: Union["PipelineConfig", str, Path],
+        context: Optional[Context] = None,
+    ) -> "Pipeline":
         """
         :param config: PipelineConfig object, filepath to a json serialized
             PipelineConfig, or raw string of a json serialized PipelineConfig
+        :param context: Optional Context object to use for creating instances of
+            MultiModelEngine. The Context contains a shared scheduler along with
+            other runtime information that will be used across instances of the
+            MultiModelEngine to provide optimal performance when running
+            multiple models concurrently
         :return: loaded Pipeline object from the config
         """
         if isinstance(config, Path) or (
@@ -326,6 +358,7 @@ class Pipeline(ABC):
             scheduler=config.scheduler,
             input_shapes=config.input_shapes,
             alias=config.alias,
+            context=context,
             **config.kwargs,
         )
 
@@ -489,6 +522,13 @@ class Pipeline(ABC):
         engine_type = self.engine_type.lower()
 
         if engine_type == DEEPSPARSE_ENGINE:
+            if self.context is not None and isinstance(self.context, Context):
+                self._engine_args.pop("num_cores", None)
+                self._engine_args["context"] = self.context
+                return MultiModelEngine(
+                    model=self.onnx_file_path,
+                    **self._engine_args,
+                )
             return Engine(self.onnx_file_path, **self._engine_args)
         elif engine_type == ORT_ENGINE:
             return ORTEngine(self.onnx_file_path, **self._engine_args)
