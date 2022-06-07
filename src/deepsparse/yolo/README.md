@@ -28,7 +28,7 @@ Below we describe two possibilities to obtain the required ONNX model.
 
 ### Exporting the ONNX file from the contents of a local directory
 This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
-For more information refer to the appropriate YOLOv5 integration documentation in SparseML.
+For more information refer to the [appropriate YOLOv5 integration documentation in SparseML](https://github.com/neuralmagic/sparseml/tree/main/src/sparseml/yolov5).
 
 After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export and run the `SparseML` integrated YOLOv5 ONNX export script below.
 
@@ -37,13 +37,11 @@ sparseml.yolov5.export_onnx \
     --weights path/to/your/model \
     --dynamic \ #Allows for dynamic input shape
 ```
-This will create an `.onnx` file in the same directory and with the same root name as the 
-model weights file (e.g. `runs/train/weights/model.onnx`)
+TThis creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
 
-###  Directly using the SparseZoo stub
-Alternatively, you can skip the process of the ONNX model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
-SparseZoo stubs, which can be copied from each model page, can be passed directly to a `Pipeline` to download and run
-the sparsified ONNX model with its corresponding configs.
+####  SparseZoo stub
+Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
+All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
 ## Deployment APIs
 
 DeepSparse provides both a python Pipeline API and an out-of-the-box model server
