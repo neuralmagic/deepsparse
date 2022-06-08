@@ -471,7 +471,7 @@ def annotate(
             boxes=image_output.boxes,
             labels=image_output.labels,
             scores=image_output.scores,
-            model_input_size=pipeline.input_shape,
+            model_input_size=pipeline.image_size,
             images_per_sec=target_fps,
         )
         annotated_images.append(result)
