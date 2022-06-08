@@ -106,8 +106,7 @@ deepsparse.object_detection.annotate --source basilica.jpg #Try --source 0 to an
 
 Running the above command will create a `annotation-results` and place the annotated image inside.
 
-<img src="sample_images/basilica.jpg" alt="original" width="400"/>
-<img src="sample_images/bascilica-annotated.jpg" alt="annotated" width="400"/>
+<img src="sample_images/basilica.jpg" alt="original" width="400"/><img src="sample_images/bascilica-annotated.jpg" alt="annotated" width="400"/>
 
 If a `--model_filepath` arg isn't provided, then `zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96` will be used by default.
 
