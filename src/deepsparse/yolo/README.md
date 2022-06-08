@@ -81,14 +81,14 @@ https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1)
 If you don't have an image ready, pull a sample image down with
 
 ```
-wget -O abbey_road.jpg  https://upload.wikimedia.org/wikipedia/en/4/42/Beatles_-_Abbey_Road.jpg
+wget -O basilica.jpg  LINK TO GO HERE
 ```
 
 ```python
 from deepsparse.pipeline import Pipeline
 
 model_stub = "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
-images = ["abbey_road.jpg"]
+images = ["basilica.jpg"]
 
 yolo_pipeline = Pipeline.create(
     task="yolo",
@@ -101,8 +101,17 @@ pipeline_outputs = yolo_pipeline(images=images, iou_thres=0.6, conf_thres=0.001)
 #### Annotate CLI
 You can also use the annotate command to have the engine save an annotated photo on disk.
 ```bash
-deepsparse.object_detection.annotate --source abbey_road.jpg #Try --source 0 to annotate your live webcam feed
+deepsparse.object_detection.annotate --source basilica.jpg #Try --source 0 to annotate your live webcam feed
 ```
+
+Running the above command will create a `annotation-results` and place the annotated image inside.
+
+<img src="sample_images/basilica.jpg" alt="original" width="500"/>
+<img src="sample_images/bascilica-annotated.jpg" alt="annotated" width="500"/>
+
+If a `--model_filepath` arg isn't provided, then `zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96` will be used by default.
+
+
 #### HTTP Server
 Spinning up:
 ```bash
@@ -122,7 +131,7 @@ curl -X 'POST' \
   'http://localhost:5543/predict/from_files' \
   -H 'accept: application/json' \
   -H 'Content-Type: multipart/form-data' \
-  -F 'request=@abbey_road.jpg;type=image/jpeg'
+  -F 'request=@basilica.jpg;type=image/jpeg'
 ```
 
 ### Benchmarking
