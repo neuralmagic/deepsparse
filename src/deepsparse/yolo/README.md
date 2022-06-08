@@ -81,7 +81,7 @@ https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1)
 If you don't have an image ready, pull a sample image down with
 
 ```
-wget -O basilica.jpg  LINK TO GO HERE
+wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/bascilica.jpg
 ```
 
 ```python
@@ -106,8 +106,8 @@ deepsparse.object_detection.annotate --source basilica.jpg #Try --source 0 to an
 
 Running the above command will create a `annotation-results` and place the annotated image inside.
 
-<img src="sample_images/basilica.jpg" alt="original" width="500"/>
-<img src="sample_images/bascilica-annotated.jpg" alt="annotated" width="500"/>
+<img src="sample_images/basilica.jpg" alt="original" width="400"/>
+<img src="sample_images/bascilica-annotated.jpg" alt="annotated" width="400"/>
 
 If a `--model_filepath` arg isn't provided, then `zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96` will be used by default.
 
