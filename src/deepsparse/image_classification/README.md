@@ -132,7 +132,7 @@ cv_pipeline = Pipeline.create(
   task='image_classification', 
   model_path='zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none',  # Path to checkpoint or SparseZoo stub
 )
-input_image = ... # Read input images
+input_image = "my_image.png" # path to input image
 inference = cv_pipeline(images=input_image)
 ```
 
