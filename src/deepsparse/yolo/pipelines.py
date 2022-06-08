@@ -21,7 +21,14 @@ import onnx
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
-from deepsparse.yolo.utils import COCO_CLASSES, YoloPostprocessor, postprocess_nms
+from deepsparse.yolo.utils import (
+    COCO_CLASSES,
+    YoloPostprocessor,
+    get_onnx_expected_image_shape,
+    modify_yolo_onnx_input_shape,
+    postprocess_nms,
+    yolo_onnx_has_postprocessing,
+)
 
 
 try:
@@ -58,6 +65,9 @@ class YOLOPipeline(Pipeline):
     :param class_names: Optional string identifier, dict, or json file of
         class names to use for mapping class ids to class labels. Default is
         `coco`
+    :param image_size: optional image size to override with model shape. Can
+        be an int which will be the size for both dimensions, or a 2-tuple
+        of the width and height sizes. Default does not modify model image shape
     """
 
     def __init__(
@@ -65,8 +75,13 @@ class YOLOPipeline(Pipeline):
         *,
         class_names: Optional[Union[str, Dict[str, str]]] = "coco",
         model_config: Optional[str] = None,
+        image_size: Union[int, Tuple[int, int], None] = None,
         **kwargs,
     ):
+
+        self._image_size = image_size
+        self._onnx_temp_file = None  # placeholder for potential tmpfile reference
+
         super().__init__(
             **kwargs,
         )
@@ -92,16 +107,13 @@ class YOLOPipeline(Pipeline):
             )
 
         onnx_model = onnx.load(self.onnx_file_path)
-        self.has_postprocessing = self.model_has_postprocessing(
-            loaded_onnx_model=onnx_model,
-        )
-        self.input_shape = self._infer_image_shape(onnx_model=onnx_model)
+        self.has_postprocessing = yolo_onnx_has_postprocessing(onnx_model)
         self.is_quantized = self.model_is_quantized(onnx_model=onnx_model)
         self.postprocessor = (
             None
             if self.has_postprocessing
             else YoloPostprocessor(
-                image_size=self.input_shape,
+                image_size=self.image_size,
                 cfg=model_config,
             )
         )
@@ -114,6 +126,13 @@ class YOLOPipeline(Pipeline):
     @property
     def class_names(self) -> Optional[Dict[str, str]]:
         return self._class_names
+
+    @property
+    def image_size(self) -> Tuple[int, int]:
+        """
+        :return: shape of image size inference is run at
+        """
+        return self._image_size
 
     @property
     def input_schema(self) -> Type[YOLOInput]:
@@ -137,7 +156,18 @@ class YOLOPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        return model_to_path(self.model_path)
+        model_path = model_to_path(self.model_path)
+        if self._image_size is None:
+            self._image_size = get_onnx_expected_image_shape(onnx.load(model_path))
+        else:
+            # override model input shape to given image size
+            if isinstance(self._image_size, int):
+                self._image_size = (self._image_size, self._image_size)
+            self._image_size = self._image_size[:2]
+            model_path, self._onnx_temp_file = modify_yolo_onnx_input_shape(
+                model_path, self._image_size
+            )
+        return model_path
 
     def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
         """
@@ -149,6 +179,9 @@ class YOLOPipeline(Pipeline):
         # Noting that if numpy arrays are passed in, we assume they are
         # already the correct shape
 
+        if isinstance(inputs.images, str):
+            inputs.images = [inputs.images]
+
         image_batch = []
 
         for image in inputs.images:
@@ -158,7 +191,7 @@ class YOLOPipeline(Pipeline):
 
             if isinstance(image, str):
                 image = cv2.imread(image)
-                image = cv2.resize(image, dsize=self.input_shape)
+                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
 
             image = self._make_channels_first(image)
             image_batch.append(image)
@@ -248,18 +281,6 @@ class YOLOPipeline(Pipeline):
             return numpy.moveaxis(image, -1, 1)
 
         return image
-
-    def _infer_image_shape(self, onnx_model) -> Tuple[int, ...]:
-        """
-        Infer and return the expected shape of the input tensor
-
-        :return: The expected shape of the input tensor from onnx graph
-        """
-        input_tensor = onnx_model.graph.input[0]
-        return (
-            input_tensor.type.tensor_type.shape.dim[2].dim_value,
-            input_tensor.type.tensor_type.shape.dim[3].dim_value,
-        )
 
     def model_has_postprocessing(self, loaded_onnx_model) -> bool:
         """
