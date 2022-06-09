@@ -39,7 +39,7 @@ sparseml.yolov5.export_onnx \
 ```
 TThis creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
 
-####  SparseZoo stub
+####  SparseZoo Stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
 All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
 ## Deployment APIs
