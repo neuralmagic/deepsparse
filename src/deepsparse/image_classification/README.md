@@ -147,59 +147,13 @@ deepsparse.server \
 ```
 
 Making a request:
-`imagenet_client.py`
 ```python
-from glob import glob
-import pathlib
-import click
 import requests
-import cv2
-default_url = "http://localhost:5543/predict"
-@click.command()
-@click.option(
-    '--url',
-    default=default_url,
-    help='The URL to the server',
-    show_default=True,
-)
-@click.option(
-    '--data',
-    '--data',
-    default="data",
-    type=click.Path(exists=True, file_okay=True, dir_okay=True),
-)
-@click.option(
-    '--max_samples',
-    '--max-samples',
-    default=100,
-    type=int,
-    help='The maximum number of samples to test',
-)
-def main(url, data, max_samples):
-    input_path = pathlib.Path(data)
-    input_file_names = (
-        glob(f"{data}/*.jpg") + glob(f"{data}/*.jpeg") + glob(f"{data}/*.JPEG")
-        if input_path.is_dir()
-        else [data]
-    )
-    for index, image_path in enumerate(input_file_names):
-        if index >= max_samples:
-            break
-        image = cv2.imread(image_path)
-        image = cv2.resize(image, (224, 224))
-        payload = {
-            "images": [image.tolist()]
-        }
-        response = requests.post(url, json=payload)
-        print(response.json())
-if __name__ == '__main__':
-    main()
-```
 
-Invoke the client for 10 samples as follows:
-```bash
-python imagenet_client.py --data PATH/TO/IMAGE/DIRECTORY \
-    --max-samples 10
+url = 'http://0.0.0.0:5543/predict/from_files'
+path = ['golfish.jpeg', 'golfish.jpeg'] # just put the name of images in here
+files = [('request', open(img, 'rb')) for img in path]
+resp = requests.post(url=url, files=files)
 ```
 
 ### Benchmarking

@@ -50,7 +50,6 @@ deepsparse.benchmark "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagen
 ```
 
 The model stub can be replaced with any [SparseZoo](http://sparsezoo.neuralmagic.com/) stub or filepath to ONNX model file.
-Example:
 
 ## Example Image Classification Deployment with DeepSparse
 
