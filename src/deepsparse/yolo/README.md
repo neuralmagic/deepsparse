@@ -37,7 +37,7 @@ sparseml.yolov5.export_onnx \
     --weights path/to/your/model \
     --dynamic \ #Allows for dynamic input shape
 ```
-TThis creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
+This creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
 
 ####  SparseZoo stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
@@ -104,9 +104,14 @@ You can also use the annotate command to have the engine save an annotated photo
 deepsparse.object_detection.annotate --source basilica.jpg #Try --source 0 to annotate your live webcam feed
 ```
 
-Running the above command will create a `annotation-results` and place the annotated image inside.
+Running the above command will create an `annotation-results` folder and save the annotated image inside.
 
-<img src="sample_images/basilica.jpg" alt="original" width="400"/><img src="sample_images/bascilica-annotated.jpg" alt="annotated" width="400"/>
+<p align = "center">
+<img src="sample_images/basilica.jpg" alt="original" width="400"/> <img src="sample_images/bascilica-annotated.jpg" alt="annotated" width="400"/>
+</p>
+<p align = "center">
+Image annotated with 96% sparse YOLOv5s
+</p>
 
 If a `--model_filepath` arg isn't provided, then `zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96` will be used by default.
 
@@ -119,8 +124,7 @@ deepsparse.server \
     --model_path "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94"
 ```
 
-Once the server is running, it will print a local address to the terminal which you can use
-in your browser to access the server GUI. You can use the interface to upload images
+Once the server is running, it will print a local address to the terminal which you can use in your browser to access the server GUI. You can use the interface to upload images
 for inference. 
 
 Alternatively, you can use the following bash command to upload the images, with an additional `-F 'request=@...` line for each image
@@ -142,7 +146,7 @@ You only need to provide the model path of a SparseZoo ONNX model or your own lo
 ```bash
 deepsparse.benchmark \
     zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
-    scenario --sync 
+    --scenario sync 
 
 >> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
 >> Batch Size: 1
