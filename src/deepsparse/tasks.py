@@ -148,6 +148,8 @@ class SupportedTasks:
         task_names = []
         for task_category in cls.all_task_categories:
             for task in task_category:
-                unique_aliases = (alias for alias in task._aliases if alias != task._name)
+                unique_aliases = (
+                    alias for alias in task._aliases if alias != task._name
+                )
                 task_names += (task._name, *unique_aliases)
         return task_names
