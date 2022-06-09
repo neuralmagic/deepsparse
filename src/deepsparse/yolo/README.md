@@ -9,7 +9,7 @@ reduce compute required as well as accelerate memory-bound workloads. The engine
 methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061). 
 These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
 
-This integration currently supports the original YOLOv5 and updated V6.1 architectures
+This integration currently supports the original YOLOv5 and updated V6.1 architectures.
 
 ## Getting Started
 
