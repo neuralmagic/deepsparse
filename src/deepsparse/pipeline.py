@@ -510,6 +510,8 @@ class Pipeline(ABC):
         if issubclass(
             pipeline_constructor, Bucketable
         ) and pipeline_constructor.should_bucket(**kwargs):
+            if not context:
+                context = Context()
             buckets = pipeline_constructor.create_pipeline_buckets(
                 task=task,
                 model_path=model_path,
