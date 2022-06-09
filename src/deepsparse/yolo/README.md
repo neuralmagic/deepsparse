@@ -9,7 +9,7 @@ reduce compute required as well as accelerate memory-bound workloads. The engine
 methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061). 
 These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
 
-This integration currently supports the original YOLOv5 and updated V6.1 architectures
+This integration currently supports the original YOLOv5 and updated V6.1 architectures.
 
 ## Getting Started
 
@@ -22,11 +22,11 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 
 ### Model Format
 By default, to deploy YOLOv5 using DeepSparse Engine it is required to supply the model in the ONNX format. 
-This grants the Engine the flexibility to serve any model in a framework-agnostic environment. 
+This grants the engine the flexibility to serve any model in a framework-agnostic environment. 
 
 Below we describe two possibilities to obtain the required ONNX model.
 
-### Exporting the ONNX file from the contents of a local directory
+### Exporting the ONNX File From the Contents of a Local Directory
 This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
 For more information refer to the [appropriate YOLOv5 integration documentation in SparseML](https://github.com/neuralmagic/sparseml/tree/main/src/sparseml/yolov5).
 
@@ -39,20 +39,20 @@ sparseml.yolov5.export_onnx \
 ```
 This creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
 
-####  SparseZoo stub
+####  SparseZoo Stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
 All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
 ## Deployment APIs
 
-DeepSparse provides both a python Pipeline API and an out-of-the-box model server
-that can be used for end-to-end inference in either existing python workflows or as an HTTP endpoint.
+DeepSparse provides both a Python Pipeline API and an out-of-the-box model server
+that can be used for end-to-end inference in either existing Python workflows or as an HTTP endpoint.
 Both options provide similar specifications for configurations and support annotation serving for all 
 YOLOv5 models.
 
 ### Python Pipelines
 Pipelines are the default interface for running inference with the DeepSparse Engine.
 
-Once a model is obtained, either through SparseML training or directly from SparseZoo, deepsparse.Pipeline can be used to easily facilitate end to end inference and deployment of the sparsified transformers model.
+Once a model is obtained, either through SparseML training or directly from SparseZoo, `deepsparse.Pipeline` can be used to easily facilitate end-to-end inference and deployment of the sparsified transformers model.
 
 If no model is specified to the Pipeline for a given task, the Pipeline will automatically select a pruned and quantized model for the task from the SparseZoo that can be used for accelerated inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size, and accuracy.
 
@@ -65,7 +65,7 @@ endpoint descriptions and support for making sample requests.
 An example of starting and requesting a DeepSparse Server for YOLOv5 is given below.
 
 #### Installation
-The deepsparse server requirements can be installed by specifying the `server` extra dependency when installing
+The Deepsparse Server requirements can be installed by specifying the `server` extra dependency when installing
 DeepSparse.
 
 ```bash
@@ -127,7 +127,7 @@ deepsparse.server \
 Once the server is running, it will print a local address to the terminal which you can use in your browser to access the server GUI. You can use the interface to upload images
 for inference. 
 
-Alternatively, you can use the following bash command to upload the images, with an additional `-F 'request=@...` line for each image
+Alternatively, you can use the following bash command to upload the images, with an additional `-F 'request=@...` line for each image:
 
 ```bash
 curl -X 'POST' \

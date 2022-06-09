@@ -193,7 +193,7 @@ def sst2_eval(args):
     )
     print(f"Engine info: {text_classify.engine}")
 
-    label_map = {"negative": 0, "positive": 1}
+    label_map = {"negative": 0, "positive": 1, "LABEL_0": 0, "LABEL_1": 1}
 
     for idx, sample in enumerate(tqdm(sst2)):
         pred = text_classify(
