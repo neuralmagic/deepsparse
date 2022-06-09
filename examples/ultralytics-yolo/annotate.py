@@ -53,7 +53,7 @@ optional arguments:
                         benchmarks, this value is the number of cores per
                         socket
   -q, --quantized-inputs
-                        Set flag to execute with int8 inputs instead of
+                        Set flag to execute with uint8 inputs instead of
                         float32
   --fp16                Set flag to execute with torch in half precision
                         (fp16)
@@ -108,6 +108,7 @@ import argparse
 import logging
 import os
 import time
+from collections import deque
 from typing import Any, List, Union
 
 import numpy
@@ -192,7 +193,7 @@ def parse_args(arguments=None):
     parser.add_argument(
         "-q",
         "--quantized-inputs",
-        help=("Set flag to execute with int8 inputs instead of float32"),
+        help=("Set flag to execute with uint8 inputs instead of float32"),
         action="store_true",
     )
     parser.add_argument(
@@ -253,6 +254,10 @@ def parse_args(arguments=None):
             "YOLO config YAML file to override default anchor points when "
             "post-processing. Defaults to use standard YOLOv3/YOLOv5 anchors"
         ),
+    )
+
+    parser.add_argument(
+        "--conf-thres", type=float, default=0.35, help="confidence threshold"
     )
 
     args = parser.parse_args(args=arguments)
@@ -385,6 +390,20 @@ def _run_model(
     return outputs
 
 
+class AverageFPS:
+    def __init__(self, num_samples=50):
+        self.frame_times = deque(maxlen=num_samples)
+
+    def measure(self, duration):
+        self.frame_times.append(duration)
+
+    def calculate(self):
+        if len(self.frame_times) > 1:
+            return numpy.average(self.frame_times)
+        else:
+            return 0.0
+
+
 def annotate(args):
     save_dir = _get_save_dir(args)
     model, has_postprocessing = _load_model(args)
@@ -398,6 +417,9 @@ def annotate(args):
         if not has_postprocessing
         else None
     )
+
+    # Keep a running average of frame times
+    fps = AverageFPS()
 
     for iteration, (inp, source_img) in enumerate(loader):
         if args.device not in ["cpu", None]:
@@ -426,11 +448,14 @@ def annotate(args):
         measured_fps = (
             args.target_fps or (1.0 / (time.time() - iter_start)) if is_video else None
         )
+        fps.measure(measured_fps)
+        average_fps = fps.calculate()
         annotated_img = annotate_image(
             source_img,
             outputs,
+            score_threshold=args.conf_thres,
             model_input_size=args.image_shape,
-            images_per_sec=measured_fps,
+            images_per_sec=average_fps,
         )
 
         # display
@@ -451,7 +476,7 @@ def annotate(args):
 
     if saver:
         saver.close()
-    _LOGGER.info(f"Results saved to {save_dir}")
+        _LOGGER.info(f"Results saved to {save_dir}")
 
 
 def main():

@@ -52,7 +52,8 @@ _deps = [
     "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
-    "protobuf>=3.12.2",
+    "protobuf>=3.12.2,<4",
+    "click==8.0",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
@@ -84,10 +85,6 @@ _server_deps = [
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
-]
-
-_ic_integration_deps = [
-    "click<8.1",
 ]
 
 _yolo_integration_deps = [
@@ -197,7 +194,6 @@ def _setup_extras() -> Dict:
         "dev": _dev_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
-        "image_classification": _ic_integration_deps,
         "yolo": _yolo_integration_deps,
     }
 
@@ -205,6 +201,7 @@ def _setup_extras() -> Dict:
 def _setup_entry_points() -> Dict:
     data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     eval_downstream = "deepsparse.transformers.eval_downstream:main"
+    ic_eval = "deepsparse.image_classification.validation_script:main"
 
     return {
         "console_scripts": [
@@ -215,6 +212,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
+            f"deepsparse.image_classification.eval={ic_eval}",
         ]
     }
 

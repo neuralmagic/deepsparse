@@ -9,16 +9,20 @@ MDCHECKGLOBS := 'docs/**/*.md' 'docs/**/*.rst' 'examples/**/*.md' 'scripts/**/*.
 MDCHECKFILES := CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPING.md README.md
 SPARSEZOO_TEST_MODE := "true"
 
-TARGETS := ""  # targets for running pytests: cli,examples
+TARGETS := ""  # targets for running pytests: cli,examples,nobase
 PYTEST_ARGS ?= ""
 ifneq ($(findstring cli,$(TARGETS)),cli)
-	PYTEST_ARGS := $(PYTEST_ARGS) --ignore tests/test_benchmark.py \
+	PYTEST_ARGS += --ignore tests/test_benchmark.py \
 	--ignore tests/test_check_hardware.py \
 	--ignore tests/test_run_inference.py \
 	--ignore tests/test_server.py
 endif
 ifneq ($(findstring examples,$(TARGETS)),examples)
-	PYTEST_ARGS := $(PYTEST_ARGS) --ignore tests/test_examples.py
+	PYTEST_ARGS += --ignore tests/test_examples.py
+endif
+ifeq ($(findstring nobase,$(TARGETS)),nobase)
+	PYTEST_ARGS += --ignore tests/utils/test_data.py \
+	--ignore tests/test_engine.py
 endif
 
 PYTHON := python3

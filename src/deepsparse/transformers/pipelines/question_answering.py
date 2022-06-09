@@ -34,7 +34,7 @@ tasks
 """
 
 
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy
 from pydantic import BaseModel, Field
@@ -118,12 +118,13 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         Default is 'bert-base-uncased'
     :param doc_stride: if the context is too long to fit with the question for the
         model, it will be split in several chunks with some overlap. This argument
-        controls the size of that overlap. Currently, only reading the first span
-        is supported (everything after doc_stride will be truncated). Default
-        is 128
-    :param max_question_len: maximum length of the question after tokenization.
+        controls the size of that overlap. Default is 128
+    :param max_question_length: maximum length of the question after tokenization.
         It will be truncated if needed. Default is 64
-    :param max_answer_len: maximum length of answer after decoding. Default is 15
+    :param max_answer_length: maximum length of answer after decoding. Default is 15
+    :param num_spans: if the context is too long to fit with the question for the
+        model, it will be split in several chunks. This argument controls the maximum
+        number of spans to feed into the model.
     """
 
     def __init__(
@@ -132,6 +133,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         doc_stride: int = 128,
         max_question_length: int = 64,
         max_answer_length: int = 15,
+        num_spans: Optional[int] = None,
         **kwargs,
     ):
 
@@ -144,6 +146,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         self._doc_stride = doc_stride
         self._max_question_length = max_question_length
         self._max_answer_length = max_answer_length
+        self._num_spans = num_spans
 
         super().__init__(**kwargs)
 
@@ -152,8 +155,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         """
         :return: if the context is too long to fit with the question for the
             model, it will be split in several chunks with some overlap. This argument
-            controls the size of that overlap. Currently, only reading the first span
-            is supported (everything after doc_stride will be truncated)
+            controls the size of that overlap.
         """
         return self._doc_stride
 
@@ -186,13 +188,17 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         """
         return QuestionAnsweringOutput
 
-    # Override engine_forward to account for multiple sets of inputs (multiple spans)
-    def engine_forward(self, inputs: List[List[numpy.ndarray]], **kwargs):
-        engine_outputs = []
-        for inps in inputs:
-            engine_outputs.append(self.engine(inps))
+    def engine_forward(
+        self,
+        engine_inputs: List[List[numpy.ndarray]],
+    ) -> List[List[numpy.ndarray]]:
+        """
+        runs one forward pass for each span of the preprocessed input
 
-        return engine_outputs
+        :param engine_inputs: list of multiple inputs to engine forward pass
+        :return: result of each forward pass
+        """
+        return [self.engine(inputs) for inputs in engine_inputs]
 
     def process_inputs(
         self,
@@ -420,6 +426,9 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                         qas_id=None,
                     )
                 )
+
+        if self._num_spans is not None:
+            features = features[: self._num_spans]
 
         return features
 

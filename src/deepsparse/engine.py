@@ -16,6 +16,7 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
+import logging
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
@@ -60,6 +61,7 @@ __all__ = [
     "MultiModelEngine",
 ]
 
+_LOGGER = logging.getLogger(__name__)
 
 ARCH = cpu_architecture()
 NUM_CORES = ARCH.num_available_physical_cores
@@ -127,7 +129,10 @@ def _validate_num_streams(num_streams: Union[None, int], num_cores: int) -> int:
         raise ValueError("num_streams must be greater than 0")
 
     if num_streams > num_cores:
-        raise ValueError("num_streams cannot exceed num_cores.")
+        num_streams = num_cores
+        _LOGGER.warn(
+            "num_streams exceeds num_cores - capping to {}".format(num_streams)
+        )
 
     return num_streams
 
@@ -625,9 +630,9 @@ class MultiModelEngine(Engine):
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
-        self._num_cores = context.num_cores()
-        self._num_streams = context.num_streams()
-        self._scheduler = _validate_scheduler(context.scheduler())
+        self._num_cores = context.num_cores
+        self._num_streams = context.num_streams
+        self._scheduler = _validate_scheduler(context.scheduler)
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
@@ -642,7 +647,7 @@ class MultiModelEngine(Engine):
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
-                    context.value(),
+                    context.value,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -651,7 +656,7 @@ class MultiModelEngine(Engine):
                 self._num_cores,
                 self._num_streams,
                 self._scheduler.value,
-                context.value(),
+                context.value,
             )
 
 
