@@ -56,7 +56,7 @@ This creates `model.onnx` file, in the parent directory of your `model_path`
 
 Alternatively, you can skip the process of onnx model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
 Example:
-```pycon
+```python
 from sparsezoo import Zoo
 
 # you can lookup an appropriate model stub here: https://sparsezoo.neuralmagic.com/
