@@ -38,10 +38,10 @@ transformers tasks
 from typing import List, Type, Union
 
 import numpy
-import torch
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
+import torch
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
@@ -80,7 +80,9 @@ class ZeroShotClassificationOutput(BaseModel):
         description="A string or List of strings representing input to "
         "zero_shot_classification task"
     )
-    labels: Union[List[List[str]], List[str]] = Field(description="The predicted labels in batch order")
+    labels: Union[List[List[str]], List[str]] = Field(
+        description="The predicted labels in batch order"
+    )
     scores: Union[List[List[float]], List[float]] = Field(
         description="The corresponding probability for each label in the batch"
     )
@@ -141,6 +143,7 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
     :param contradiction_index: index of model output that represents contradiction
     :param multi_class: true if class probablities are independent
     """
+
     def __init__(
         self,
         *,
@@ -200,11 +203,11 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
             input = self.input_schema(**kwargs)
 
         num_sequences = 1 if isinstance(input.sequences, str) else len(input.sequences)
-        num_labels = len(input.labels)
-        if num_sequences * num_labels != self._batch_size:
+        if num_sequences != self._batch_size:
             raise ValueError(
-                f"Batch size ({self._batch_size}) must be equal to the number of "
-                f"sequences times the number of labels ({num_sequences * num_labels})")
+                f"the number of sequences {num_sequences} must be equal to "
+                f"the batch size the model was instantiated with {self._batch_size}"
+            )
 
         return input
 
@@ -241,7 +244,10 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
         sequence_pairs = []
         for sequence in sequences:
             sequence_pairs.extend(
-                [[sequence, self._hypothesis_template.format(label)] for label in labels]
+                [
+                    [sequence, self._hypothesis_template.format(label)]
+                    for label in labels
+                ]
             )
 
         tokens = self.tokenizer(
@@ -281,7 +287,9 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
         reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
 
         # Calculate scores
-        entailment_contradiction_logits = reshaped_outputs[:, :, [self._entailment_index, self._contradiction_index]]
+        entailment_contradiction_logits = reshaped_outputs[
+            :, :, [self._entailment_index, self._contradiction_index]
+        ]
         prob = torch.softmax(torch.tensor(entailment_contradiction_logits), dim=2)
         entailment_prob = prob[:, :, 0]
         if not self._multi_class:
@@ -292,7 +300,10 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
 
         # Hack: negate scores to perform reversed sort
         sorted_indexes = numpy.argsort(-1 * scores, axis=1)
-        labels = [numpy.array(candidate_labels)[sorted_indexes[i]].tolist() for i in range(num_sequences)]
+        labels = [
+            numpy.array(candidate_labels)[sorted_indexes[i]].tolist()
+            for i in range(num_sequences)
+        ]
         label_scores = numpy.take_along_axis(scores, sorted_indexes, axis=1).tolist()
 
         return self.output_schema(
@@ -300,3 +311,18 @@ class ZeroShotClassificationPipeline(TransformersPipeline):
             labels=labels,
             scores=label_scores,
         )
+
+    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        engine_inputs = numpy.array(engine_inputs)
+
+        engine_outputs = []
+        for batch_origin_index in range(0, engine_inputs.shape[1], self._batch_size):
+            labelwise_inputs = engine_inputs[
+                :, batch_origin_index : batch_origin_index + self._batch_size, :
+            ]
+            labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
+            engine_output = self.engine(labelwise_inputs)
+            engine_outputs += engine_output
+
+        engine_outputs = numpy.array(engine_outputs)
+        return engine_outputs
