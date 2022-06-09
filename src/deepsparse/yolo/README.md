@@ -52,7 +52,7 @@ YOLOv5 models.
 ### Python Pipelines
 Pipelines are the default interface for running inference with the DeepSparse Engine.
 
-Once a model is obtained, either through SparseML training or directly from SparseZoo, deepsparse.Pipeline can be used to easily facilitate end to end inference and deployment of the sparsified transformers model.
+Once a model is obtained, either through SparseML training or directly from SparseZoo, `deepsparse.Pipeline` can be used to easily facilitate end-to-end inference and deployment of the sparsified transformers model.
 
 If no model is specified to the Pipeline for a given task, the Pipeline will automatically select a pruned and quantized model for the task from the SparseZoo that can be used for accelerated inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size, and accuracy.
 
