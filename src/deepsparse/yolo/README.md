@@ -22,7 +22,7 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 
 ### Model Format
 By default, to deploy YOLOv5 using DeepSparse Engine it is required to supply the model in the ONNX format. 
-This grants the Engine the flexibility to serve any model in a framework-agnostic environment. 
+This grants the engine the flexibility to serve any model in a framework-agnostic environment. 
 
 Below we describe two possibilities to obtain the required ONNX model.
 
