@@ -26,7 +26,7 @@ This grants the engine the flexibility to serve any model in a framework-agnosti
 
 Below we describe two possibilities to obtain the required ONNX model.
 
-### Exporting the ONNX file from the contents of a local directory
+### Exporting the ONNX File From the Contents of a Local Directory
 This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
 For more information refer to the [appropriate YOLOv5 integration documentation in SparseML](https://github.com/neuralmagic/sparseml/tree/main/src/sparseml/yolov5).
 
