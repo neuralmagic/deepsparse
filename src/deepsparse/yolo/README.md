@@ -123,7 +123,7 @@ Once the server is running, it will print a local address to the terminal which 
 in your browser to access the server GUI. You can use the interface to upload images
 for inference. 
 
-Alternatively, you can use the following bash command to upload the images, with an additional `-F 'request=@...` line for each image
+Alternatively, you can use the following bash command to upload the images, with an additional `-F 'request=@...` line for each image:
 
 ```bash
 curl -X 'POST' \
