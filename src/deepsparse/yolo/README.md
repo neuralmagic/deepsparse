@@ -45,7 +45,7 @@ All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a lo
 ## Deployment APIs
 
 DeepSparse provides both a Python Pipeline API and an out-of-the-box model server
-that can be used for end-to-end inference in either existing python workflows or as an HTTP endpoint.
+that can be used for end-to-end inference in either existing Python workflows or as an HTTP endpoint.
 Both options provide similar specifications for configurations and support annotation serving for all 
 YOLOv5 models.
 
