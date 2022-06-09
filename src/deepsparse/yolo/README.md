@@ -44,7 +44,7 @@ Alternatively, you can skip the process of the ONNX model export by using Neural
 All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
 ## Deployment APIs
 
-DeepSparse provides both a python Pipeline API and an out-of-the-box model server
+DeepSparse provides both a Python Pipeline API and an out-of-the-box model server
 that can be used for end-to-end inference in either existing python workflows or as an HTTP endpoint.
 Both options provide similar specifications for configurations and support annotation serving for all 
 YOLOv5 models.
