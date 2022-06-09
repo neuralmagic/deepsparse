@@ -65,7 +65,7 @@ endpoint descriptions and support for making sample requests.
 An example of starting and requesting a DeepSparse Server for YOLOv5 is given below.
 
 #### Installation
-The deepsparse server requirements can be installed by specifying the `server` extra dependency when installing
+The Deepsparse Server requirements can be installed by specifying the `server` extra dependency when installing
 DeepSparse.
 
 ```bash
