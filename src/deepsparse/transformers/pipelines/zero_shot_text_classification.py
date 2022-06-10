@@ -30,7 +30,7 @@
 
 
 """
-Pipeline implementation and pydantic models for zero-shot mnli text classification
+Pipeline implementation and pydantic models for zero-shot text classification
 transformers tasks
 """
 
@@ -47,22 +47,22 @@ from deepsparse.transformers.pipelines import TransformersPipeline
 
 
 __all__ = [
-    "MnliTextClassificationInput",
-    "MnliTextClassificationOutput",
-    "MnliTextClassificationPipeline",
+    "ZeroShotTextClassificationInput",
+    "ZeroShotTextClassificationOutput",
+    "ZeroShotTextClassificationPipeline",
 ]
 
 
-class MnliTextClassificationInput(BaseModel):
+class ZeroShotTextClassificationInput(BaseModel):
     """
-    Schema for inputs to mnli_text_classification pipelines
+    Schema for inputs to zero_shot_text_classification pipelines
     Each sequence and each candidate label must be paired and passed through
     the model, so the total number of forward passes is num_labels * num_sequences
     """
 
     sequences: Union[List[List[str]], List[str], str] = Field(
         description="A string or List of strings representing input to "
-        "mnli_text_classification task"
+        "zero_shot_text_classification task"
     )
     labels: Union[List[List[str]], List[str], str] = Field(
         description="The set of possible class labels to classify each "
@@ -71,14 +71,14 @@ class MnliTextClassificationInput(BaseModel):
     )
 
 
-class MnliTextClassificationOutput(BaseModel):
+class ZeroShotTextClassificationOutput(BaseModel):
     """
-    Schema for mnli_text_classification pipeline output. Values are in batch order
+    Schema for zero_shot_text_classification pipeline output. Values are in batch order
     """
 
     sequences: Union[List[List[str]], List[str], str] = Field(
         description="A string or List of strings representing input to "
-        "mnli_text_classification task"
+        "zero_shot_text_classification task"
     )
     labels: Union[List[List[str]], List[str]] = Field(
         description="The predicted labels in batch order"
@@ -89,16 +89,16 @@ class MnliTextClassificationOutput(BaseModel):
 
 
 @Pipeline.register(
-    task="mnli_text_classification",
-    task_aliases=["mnli-text-classification", "mnli_text_classification"],
+    task="zero_shot_text_classification",
+    task_aliases=["zero-shot-text-classification", "zero_shot_text_classification"],
     default_model_path=(
         "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/"
         "mnli/pruned80_quant-none-vnni"
     ),
 )
-class MnliTextClassificationPipeline(TransformersPipeline):
+class ZeroShotTextClassificationPipeline(TransformersPipeline):
     """
-    transformers zero-shot mnli text classification pipeline
+    transformers zero-shot zero shot text classification pipeline
 
     example instantiation:
     ```python
@@ -166,14 +166,14 @@ class MnliTextClassificationPipeline(TransformersPipeline):
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return MnliTextClassificationInput
+        return ZeroShotTextClassificationInput
 
     @property
     def output_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
-        return MnliTextClassificationOutput
+        return ZeroShotTextClassificationOutput
 
     def _parse_labels(self, labels: Union[List[str], str]):
         if isinstance(labels, str):
@@ -213,11 +213,11 @@ class MnliTextClassificationPipeline(TransformersPipeline):
         return input
 
     def process_inputs(
-        self, inputs: MnliTextClassificationInput
+        self, inputs: ZeroShotTextClassificationInput
     ) -> List[numpy.ndarray]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the
-            MnliTextClassificationInput
+            ZeroShotTextClassificationInput
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
