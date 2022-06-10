@@ -124,17 +124,18 @@ deepsparse.server \
     --model_path "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94"
 ```
 
-Once the server is running, it will print a local address to the terminal which you can use in your browser to access the server GUI. You can use the interface to upload images
-for inference. 
+Making a request:
+```python
+import requests
+import json
 
-Alternatively, you can use the following bash command to upload the images, with an additional `-F 'request=@...` line for each image:
-
-```bash
-curl -X 'POST' \
-  'http://localhost:5543/predict/from_files' \
-  -H 'accept: application/json' \
-  -H 'Content-Type: multipart/form-data' \
-  -F 'request=@basilica.jpg;type=image/jpeg'
+url = 'http://0.0.0.0:5543/predict/from_files'
+path = ['bascilica.jpg'] # list of images for inference
+files = [('request', open(img, 'rb')) for img in path]
+resp = requests.post(url=url, files=files)
+annotations = json.loads(resp.text) # dictionary of annotation results
+bounding_boxes = annotations["predictions"]
+labels = annotations["labels"]
 ```
 
 ### Benchmarking
