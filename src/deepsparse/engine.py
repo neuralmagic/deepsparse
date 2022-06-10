@@ -630,9 +630,9 @@ class MultiModelEngine(Engine):
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
-        self._num_cores = context.num_cores()
-        self._num_streams = context.num_streams()
-        self._scheduler = _validate_scheduler(context.scheduler())
+        self._num_cores = context.num_cores
+        self._num_streams = context.num_streams
+        self._scheduler = _validate_scheduler(context.scheduler)
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
@@ -647,7 +647,7 @@ class MultiModelEngine(Engine):
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
-                    context.value(),
+                    context.value,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -656,7 +656,7 @@ class MultiModelEngine(Engine):
                 self._num_cores,
                 self._num_streams,
                 self._scheduler.value,
-                context.value(),
+                context.value,
             )
 
 
