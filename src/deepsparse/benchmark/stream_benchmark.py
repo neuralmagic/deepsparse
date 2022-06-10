@@ -104,7 +104,7 @@ def model_stream_benchmark(
         singlestream_benchmark(model, input_list, seconds_to_warmup)
         batch_times = singlestream_benchmark(model, input_list, seconds_to_run)
     elif scenario == "multistream":
-        singlestream_benchmark(model, input_list, seconds_to_warmup)
+        multistream_benchmark(model, input_list, seconds_to_warmup, num_streams)
         batch_times = multistream_benchmark(
             model, input_list, seconds_to_run, num_streams
         )
