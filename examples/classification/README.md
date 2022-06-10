@@ -24,7 +24,8 @@ or you can specify your own [ONNX](https://github.com/onnx/onnx) file.
 The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file, make sure to upgrade `pip` using `python -m pip install -U pip
 ` before running the following:
 ```bash
-pip3 install -r requirements.txt
+pip install -r requirements.txt
+pip install deepsparse
 ```
 
 ## Notebook
@@ -41,24 +42,19 @@ python classification.py mobilenet_v2 --batch_size 8 --num_cores 4
 Run with the `-h` flag to see all available models.
 
 ## Benchmarking Example
-`benchmark.py` is a script for benchmarking sparsified image classification model performance with DeepSparse. For a full list of options run `python benchmark.py -h`.
+`deepsparse.benchmark` is a utility for benchmarking sparsified image classification model performance with DeepSparse. For a full list of options run `deepsparse.benchmark -h`.
 To run a benchmark using the DeepSparse Engine with a moderately pruned ResNet model that uses all available CPU cores and batch size 1, run:
 
 ```bash
-python benchmark.py "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
+deepsparse.benchmark "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
 ```
 
-Example using own model and data:
+The model stub can be replaced with any [SparseZoo](http://sparsezoo.neuralmagic.com/) stub or filepath to ONNX model file.
 
-```bash
-python benchmark.py path_to_onnx_file \
---data-path path_to_data_directory
-```
+## Example Image Classification Deployment with DeepSparse
 
-Replace `path_to_onnx_file` with [SparseZoo](http://sparsezoo.neuralmagic.com/) stub or filepath to ONNX model file and replace `path_to_data_directory` with appropriate SparseZoo stub or path to a directory containing `.npz` files to be used as model inputs.
-## Example Image Classification DeepSparse Flask Deployment
-
-The [server.py](https://github.com/neuralmagic/deepsparse/blob/main/examples/classification/server.py) script uses Flask for hosting a compiled image classification model with the DeepSparse Engine.
+The [deepsparse.server](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/server) utility uses 
+[FastAPI](https://fastapi.tiangolo.com/) for hosting a compiled image classification model with the DeepSparse Engine.
 Client can make requests into the server returning inference results for given inputs.
 
 ### Server
@@ -66,40 +62,27 @@ First, start up the host server.py with your model of choice, SparseZoo stubs ar
 
 Example command:
 ```bash
-python server.py "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
+ deepsparse.server \
+     --model-path "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate" \
+     --task image_classification
 ```
 
 You can leave that running as a detached process or in a spare terminal.
 
-This starts a Flask app with the DeepSparse Engine as the inference backend, accessible at http://0.0.0.0:5543 by default.
+This starts a FastAPI app with the DeepSparse Engine as the inference backend, accessible at http://0.0.0.0:5543 by default.
 
 Once the server is running, our app creates two URLs, exposing the following HTTP endpoints:
 
-- `http://0.0.0.0:5543/info` to get information about the compiled model
+- `http://0.0.0.0:5543/docs` to get information about the compiled model
 - `http://0.0.0.0:5543/predict` to post inputs to the model and get inference results. The number of inputs should match the compiled model's batch size.
 
-Here http://0.0.0.0:5543 is the default url and port number, user can also specify their own url while running [server.py](https://github.com/neuralmagic/deepsparse/blob/main/examples/classification/server.py)
-For a full list of options, run `python server.py -h`.
+Here http://0.0.0.0:5543 is the default url and port number, user can also specify their own url while running [deepsparse.server](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/server)
+For a full list of options, run `deepsparse.server -h`.
   
   
 ### Client
 
-`client_examples.py` provides a `Client` object to make requests to the 
-server easy.
-The file is self-documented.  See example usage below:
-
-```python
-from client_example import Client
-from helper import load_data, _BatchLoader
-
-client = Client()
-resnet_stub = "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
-batch_loader = _BatchLoader(data=load_data(resnet_stub), batch_size=1, iterations=1)
-
-for batch in batch_loader:
-    out = client.classify(images=batch, )
-    print(f"outputs:{out}")
-```
+For an example client kindly refer to [appropriate DeepSparse Documentation](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/image_classification/README.md)
 
 ### SparseZoo Stubs
 [SparseZoo](http://sparsezoo.neuralmagic.com/) is a constantly growing repository of sparsified (pruned and 
