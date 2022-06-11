@@ -35,40 +35,35 @@ transformers tasks
 """
 
 
-from typing import List, Type, Union
+from enum import Enum
+from typing import List, Optional, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
-from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-import torch
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
+from deepsparse.transformers.pipelines.nli_text_classification import (
+    NliTextClassificationConfig,
+    NliTextClassificationInput,
+    nli_engine_forward,
+    process_nli_engine_outputs,
+    process_nli_inputs,
+)
 
 
 __all__ = [
-    "ZeroShotTextClassificationInput",
     "ZeroShotTextClassificationOutput",
     "ZeroShotTextClassificationPipeline",
 ]
 
 
-class ZeroShotTextClassificationInput(BaseModel):
-    """
-    Schema for inputs to zero_shot_text_classification pipelines
-    Each sequence and each candidate label must be paired and passed through
-    the model, so the total number of forward passes is num_labels * num_sequences
-    """
+class ModelSchemes(Enum):
+    nli = "nli"
 
-    sequences: Union[List[List[str]], List[str], str] = Field(
-        description="A string or List of strings representing input to "
-        "zero_shot_text_classification task"
-    )
-    labels: Union[List[List[str]], List[str], str] = Field(
-        description="The set of possible class labels to classify each "
-        "sequence into. Can be a single label, a string of comma-separated "
-        "labels, or a list of labels."
-    )
+    @classmethod
+    def to_list(cls):
+        return cls._value2member_map_
 
 
 class ZeroShotTextClassificationOutput(BaseModel):
@@ -102,9 +97,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
 
     example instantiation:
     ```python
-    mnli_text_classifier = Pipeline.create(
-        task="mnli_text_classification",
-        model_path="mnli_model_dir/",
+    nli_text_classifier = Pipeline.create(
+        task="zero_shot_text_classification",
+        model_path="nli_model_dir/",
     )
     ```
 
@@ -112,7 +107,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     ```python
     sequence_to_classify = "Who are you voting for in 2020?"
     candidate_labels = ["Europe", "public health", "politics"]
-    mnli_text_classifier(sequence_to_classify, candidate_labels)
+    nli_text_classifier(sequence_to_classify, candidate_labels)
     >>> {'sequence': 'Who are you voting for in 2020?',
         'labels': ['politics', 'Europe', 'public health'],
         'scores': [0.9676, 0.0195, 0.0128]}
@@ -138,35 +133,63 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
-    :param hypothesis_template: formattable string that wraps the given labels
-        Default is "This text is about {}"
-    :param entailment_index: index of model output that represents mnli entailment
-    :param contradiction_index: index of model output that represents mnli contradiction
-    :param multi_class: true if class probablities are independent
+    :param model_scheme: training scheme used to train the model used for zero shot.
+        Currently supported schemes are "nli"
+    :param model_scheme_config: Config object or a dict of config keyword arguments
     """
 
     def __init__(
         self,
         *,
-        hypothesis_template: str = "This text is about {}",
-        entailment_index: int = 0,
-        contradiction_index: int = 2,
-        multi_class: bool = False,
+        model_scheme: str = ModelSchemes.nli.value,
+        model_scheme_config: Optional[Union[NliTextClassificationConfig, dict]] = None,
         **kwargs,
     ):
-        self._hypothesis_template = hypothesis_template
-        self._entailment_index = entailment_index
-        self._contradiction_index = contradiction_index
-        self._multi_class = multi_class
+        if model_scheme not in ModelSchemes.to_list():
+            raise ValueError(
+                f"Unknown model_scheme {model_scheme}. Currently supported model "
+                f"schemes are {ModelSchemes.to_list()}"
+            )
+
+        self._model_scheme = model_scheme
+        self._config = self._parse_config(model_scheme_config)
 
         super().__init__(**kwargs)
+
+    def _parse_config(
+        self, model_scheme_config: Optional[Union[NliTextClassificationConfig, dict]]
+    ) -> Type[BaseModel]:
+        """
+        :param model_scheme_config: optional config arguments specified by user
+        :return: instance of config pydantic model for this pipeline's model scheme
+        """
+        model_scheme_config = model_scheme_config if model_scheme_config else {}
+
+        if self._model_scheme == ModelSchemes.nli.value:
+            config_schema = NliTextClassificationConfig
+        else:
+            raise Exception(f"Unknown model_scheme {self._model_scheme}")
+
+        if isinstance(model_scheme_config, config_schema):
+            return model_scheme_config
+
+        elif isinstance(model_scheme_config, dict):
+            return config_schema(**model_scheme_config)
+
+        else:
+            raise ValueError(
+                f"pipeline {self.__class__} only supports either only a "
+                f"{config_schema} object a dict of keywords used to construct "
+                f"one. Found {model_scheme_config} instead"
+            )
 
     @property
     def input_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return ZeroShotTextClassificationInput
+        if self._model_scheme == ModelSchemes.nli.value:
+            return NliTextClassificationInput
 
     @property
     def output_schema(self) -> Type[BaseModel]:
@@ -175,7 +198,13 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         """
         return ZeroShotTextClassificationOutput
 
-    def _parse_labels(self, labels: Union[List[str], str]):
+    def _parse_labels(self, labels: Union[List[str], str]) -> List[str]:
+        """
+        If given a string of comma separated labels, parses values into a list
+
+        :param labels: A string of comma separated labels or a list of labels
+        :return: a list of labels, parsed if originally in string form
+        """
         if isinstance(labels, str):
             labels = [label.strip() for label in labels.split(",") if label.strip()]
         return labels
@@ -203,127 +232,45 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         else:
             input = self.input_schema(**kwargs)
 
-        num_sequences = 1 if isinstance(input.sequences, str) else len(input.sequences)
-        if num_sequences != self._batch_size:
-            raise ValueError(
-                f"the number of sequences {num_sequences} must be equal to "
-                f"the batch size the model was instantiated with {self._batch_size}"
-            )
-
         return input
 
     def process_inputs(
-        self, inputs: ZeroShotTextClassificationInput
+        self, inputs: Union[NliTextClassificationInput]
     ) -> List[numpy.ndarray]:
         """
-        :param inputs: inputs to the pipeline. Must be the type of the
-            ZeroShotTextClassificationInput
+        Decides how to process inputs based on the _model_scheme of the pipeline
+
+        :param inputs: inputs to the pipeline.
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        sequences = inputs.sequences
-        labels = inputs.labels
-
-        if len(labels) == 0 or len(sequences) == 0:
-            raise ValueError(
-                "You must include at least one label and at least one sequence."
-            )
-
-        if isinstance(sequences, str):
-            sequences = [sequences]
-        labels = self._parse_labels(labels)
-
-        if self._hypothesis_template.format(labels[0]) == self._hypothesis_template:
-            raise ValueError(
-                (
-                    'The provided hypothesis_template "{}" was not able to be '
-                    "formatted with the target labels. Make sure the passed template "
-                    "includes formatting syntax such as {{}} where the label should go."
-                ).format(self._hypothesis_template)
-            )
-
-        sequence_pairs = []
-        for sequence in sequences:
-            sequence_pairs.extend(
-                [
-                    [sequence, self._hypothesis_template.format(label)]
-                    for label in labels
-                ]
-            )
-
-        tokens = self.tokenizer(
-            sequence_pairs,
-            add_special_tokens=True,
-            return_tensors="np",
-            padding=PaddingStrategy.MAX_LENGTH.value,
-            # tokenize only_first so that hypothesis (label) is not truncated
-            truncation=TruncationStrategy.ONLY_FIRST.value,
-        )
-
-        postprocessing_kwargs = dict(
-            sequences=sequences,
-            labels=labels,
-        )
-
-        return self.tokens_to_engine_input(tokens), postprocessing_kwargs
+        if self._model_scheme == ModelSchemes.nli.value:
+            return process_nli_inputs(self, inputs, self._config)
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
     ) -> BaseModel:
         """
+        Decides how to process engine outputs based on the _model_scheme of the pipeline
+
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        sequences = kwargs["sequences"]
-        candidate_labels = kwargs["labels"]
-
-        outputs = engine_outputs
-        if isinstance(outputs, list):
-            outputs = outputs[0]
-
-        # Reshape sequences
-        num_sequences = 1 if isinstance(sequences, str) else len(sequences)
-        reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
-
-        # Calculate scores
-        entailment_contradiction_logits = reshaped_outputs[
-            :, :, [self._entailment_index, self._contradiction_index]
-        ]
-        prob = torch.softmax(torch.tensor(entailment_contradiction_logits), dim=2)
-        entailment_prob = prob[:, :, 0]
-        if not self._multi_class:
-            scores = torch.softmax(entailment_prob, dim=1)
-        else:
-            scores = entailment_prob
-        scores = scores.numpy()
-
-        # Hack: negate scores to perform reversed sort
-        sorted_indexes = numpy.argsort(-1 * scores, axis=1)
-        labels = [
-            numpy.array(candidate_labels)[sorted_indexes[i]].tolist()
-            for i in range(num_sequences)
-        ]
-        label_scores = numpy.take_along_axis(scores, sorted_indexes, axis=1).tolist()
-
-        return self.output_schema(
-            sequences=sequences,
-            labels=labels,
-            scores=label_scores,
-        )
+        if self._model_scheme == ModelSchemes.nli.value:
+            return process_nli_engine_outputs(
+                self, engine_outputs, self._config, **kwargs
+            )
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
-        engine_inputs = numpy.array(engine_inputs)
+        """
+        Decides how to carry out about engine forward based on the _model_scheme of
+        the pipeline.
 
-        engine_outputs = []
-        for batch_origin_index in range(0, engine_inputs.shape[1], self._batch_size):
-            labelwise_inputs = engine_inputs[
-                :, batch_origin_index : batch_origin_index + self._batch_size, :
-            ]
-            labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
-            engine_output = self.engine(labelwise_inputs)
-            engine_outputs += engine_output
-
-        engine_outputs = numpy.array(engine_outputs)
-        return engine_outputs
+        :param engine_inputs: list of numpy inputs to Pipeline engine forward
+            pass
+        :return: result of forward pass to Pipeline engine
+        """
+        if self._model_scheme == ModelSchemes.nli.value:
+            return nli_engine_forward(self, engine_inputs)
