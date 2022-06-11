@@ -93,8 +93,7 @@ resnet50_imagenet_pruned = (
     type=int,
     default=224,
     show_default=True,
-    help="Test batch size, must divide the dataset evenly, else last "
-    "batch will be dropped",
+    help="integer size to evaluate images at (will be reshaped to square shape)",
 )
 def main(dataset_path: str, model_path: str, batch_size: int, image_size: int):
     """
