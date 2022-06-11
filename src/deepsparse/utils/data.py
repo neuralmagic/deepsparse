@@ -148,6 +148,7 @@ def parse_input_shapes(shape_string: str) -> List[List[int]]:
 
     return shapes_list
 
+
 def numpy_softmax(x: numpy.ndarray, axis: int = 0):
     """
     Ref: https://www.delftstack.com/howto/numpy/numpy-softmax/
