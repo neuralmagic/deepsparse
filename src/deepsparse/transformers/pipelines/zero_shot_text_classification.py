@@ -59,6 +59,10 @@ __all__ = [
 
 
 class ModelSchemes(Enum):
+    """
+    Enum containing all supported model schemes for zero shot text classification
+    """
+
     nli = "nli"
 
     @classmethod
@@ -97,8 +101,10 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
 
     example instantiation:
     ```python
-    nli_text_classifier = Pipeline.create(
+    zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
+        model_scheme="nli",
+        model_scheme_config={"multi_class": False},
         model_path="nli_model_dir/",
     )
     ```
@@ -107,7 +113,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     ```python
     sequence_to_classify = "Who are you voting for in 2020?"
     candidate_labels = ["Europe", "public health", "politics"]
-    nli_text_classifier(sequence_to_classify, candidate_labels)
+    zero_shot_text_classifier(sequence_to_classify, candidate_labels)
     >>> {'sequence': 'Who are you voting for in 2020?',
         'labels': ['politics', 'Europe', 'public health'],
         'scores': [0.9676, 0.0195, 0.0128]}

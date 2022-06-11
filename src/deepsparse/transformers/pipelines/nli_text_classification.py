@@ -105,6 +105,7 @@ def process_nli_inputs(
     """
     :param pipeline: pipeline instance performing the input processing
     :param inputs: inputs to the pipeline
+    :param config: instance of NliTextClassificationConfig
     :return: inputs of this model processed into a list of numpy arrays that
         can be directly passed into the forward pass of the pipeline engine
     """
@@ -169,6 +170,7 @@ def process_nli_engine_outputs(
     :param pipeline: pipeline instance performing the input processing
     :param engine_outputs: list of numpy arrays that are the output of the nli
         engine forward pass
+    :param config: instance of NliTextClassificationConfig
     :return: outputs of engine post-processed into an object in the `output_schema`
         format of this pipeline
     """
