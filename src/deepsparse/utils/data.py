@@ -24,6 +24,7 @@ __all__ = [
     "bytes_to_arrays",
     "verify_outputs",
     "parse_input_shapes",
+    "numpy_softmax",
 ]
 
 
@@ -146,3 +147,17 @@ def parse_input_shapes(shape_string: str) -> List[List[int]]:
             raise Exception(f"Can't parse input shapes parameter: {shape_string}")
 
     return shapes_list
+
+def numpy_softmax(x: numpy.ndarray, axis: int = 0):
+    """
+    Ref: https://www.delftstack.com/howto/numpy/numpy-softmax/
+
+    :param x: array containing values to be softmaxed
+    :param axis: axis across which to perform softmax
+    :return: x with values across axis softmaxed
+    """
+    max = numpy.max(x, axis=axis, keepdims=True)
+    e_x = numpy.exp(x - max)
+    sum = numpy.sum(e_x, axis=axis, keepdims=True)
+    f_x = e_x / sum
+    return f_x

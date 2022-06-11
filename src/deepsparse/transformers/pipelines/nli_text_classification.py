@@ -40,9 +40,7 @@ import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-import torch
-
-
+from deepsparse.utils import numpy_softmax
 if TYPE_CHECKING:
     from deepsparse.transformers.pipelines.zero_shot_text_classification import (
         ZeroShotTextClassificationPipeline,
@@ -187,13 +185,13 @@ def process_nli_engine_outputs(
     entailment_contradiction_logits = reshaped_outputs[
         :, :, [config.entailment_index, config.contradiction_index]
     ]
-    prob = torch.softmax(torch.tensor(entailment_contradiction_logits), dim=2)
+    prob = numpy_softmax(entailment_contradiction_logits, axis=2)
     entailment_prob = prob[:, :, 0]
     if not config.multi_class:
-        scores = torch.softmax(entailment_prob, dim=1)
+        scores = numpy_softmax(entailment_prob, axis=1)
     else:
         scores = entailment_prob
-    scores = scores.numpy()
+    scores = scores
 
     # Hack: negate scores to perform reversed sort
     sorted_indexes = numpy.argsort(-1 * scores, axis=1)
@@ -232,8 +230,3 @@ def nli_engine_forward(
 
     engine_outputs = numpy.array(engine_outputs)
     return engine_outputs
-
-
-def _softmax(x: numpy.ndarray, dim: int = 0) -> numpy.ndarray:
-    e_x = numpy.exp(x - numpy.max(x))
-    return e_x / e_x.sum()
