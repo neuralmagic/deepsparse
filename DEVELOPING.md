@@ -29,6 +29,7 @@ Here's some details to get started.
 git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse
 python3 -m pip install -e ./[dev]
+make artifacts
 ```
 
 This will clone the DeepSparse repo, install it, and install the development dependencies.
