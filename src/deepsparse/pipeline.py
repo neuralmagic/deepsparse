@@ -517,7 +517,6 @@ class Pipeline(ABC):
                 model_path=model_path,
                 engine_type=engine_type,
                 batch_size=batch_size,
-                scheduler=scheduler,
                 input_shapes=input_shapes,
                 alias=alias,
                 context=context,
