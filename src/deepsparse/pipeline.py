@@ -29,7 +29,6 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
-
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",
@@ -909,9 +908,13 @@ class BucketingPipeline(Pipeline):
         return self._pipeline_class.output_schema
 
     def _update_props(self):
-        # TODO: Current implementation might have unintended side effects, should only
-        # TODO: copy over props
-        self.__dict__.update(self._pipeline_class.__dict__)
+        # propagate props to this level if not already defined
+        for key, value in self._pipeline_class.__dict__:
+            if (
+                type(getattr(self._pipeline_class, f"{key}")) == property
+                and key not in self.__dict__
+            ):
+                self.__dict__[key] = value
 
 
 class Bucketable(ABC):
