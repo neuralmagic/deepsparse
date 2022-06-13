@@ -561,7 +561,7 @@ class Engine(object):
 
 class Context(object):
     """
-    Contexts can be used to run multiple instances of the MultiModelEngine with the same
+    Contexts can be used to run multiple instances of the (MultiModelEngine) with the same
     scheduler. This allows one scheduler to manage the resources of the system
     effectively, keeping engines that are running different models from fighting over system
     resources.
@@ -575,12 +575,13 @@ class Context(object):
 
     def __init__(
         self,
-        num_cores: int = None,
-        num_streams: int = None,
+        num_cores: Optional[int] = None,
+        num_streams: Optional[int] = None,
     ):
         self._num_cores = _validate_num_cores(num_cores)
         self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = Scheduler.from_str("elastic")
+        print([self._num_cores, self._num_streams, self._scheduler.value])
         self._deepsparse_context = LIB.deepsparse_context(
             self._num_cores, self._num_streams, self._scheduler.value
         )
@@ -627,12 +628,16 @@ class MultiModelEngine(Engine):
         batch_size: int,
         context: Context,
         input_shapes: List[List[int]] = None,
+        scheduler: Scheduler = None,
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = context.num_cores
         self._num_streams = context.num_streams
-        self._scheduler = _validate_scheduler(context.scheduler)
+        if scheduler is not None:
+            self._scheduler == _validate_scheduler(scheduler)
+        else:
+            self._scheduler = _validate_scheduler(context.scheduler)
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
