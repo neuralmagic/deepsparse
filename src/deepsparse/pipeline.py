@@ -511,13 +511,12 @@ class Pipeline(ABC):
             pipeline_constructor, Bucketable
         ) and pipeline_constructor.should_bucket(**kwargs):
             if not context:
-                context = Context()
+                context = Context(num_cores=num_cores)
             buckets = pipeline_constructor.create_pipeline_buckets(
                 task=task,
                 model_path=model_path,
                 engine_type=engine_type,
                 batch_size=batch_size,
-                num_cores=num_cores,
                 scheduler=scheduler,
                 input_shapes=input_shapes,
                 alias=alias,
@@ -880,7 +879,7 @@ class BucketingPipeline(Pipeline):
         self._pipeline_class = pipelines[0]
         self._update_props()
 
-    def __call__(self, inputs):
+    def __call__(self, **inputs):
         pipeline = self._pipeline_class.route_input_to_bucket(
             input_schema=self._pipeline_class.parse_inputs(**inputs),
             pipelines=self._pipelines,

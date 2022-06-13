@@ -154,7 +154,8 @@ class TransformersPipeline(Pipeline, Bucketable):
         return [tokens[name] for name in self.onnx_input_names]
 
     @staticmethod
-    def should_bucket(*args, sequence_length: Union[int, List[int]], **kwargs) -> bool:
+    def should_bucket(*args, **kwargs) -> bool:
+        sequence_length = kwargs.get("sequence_length", 128)
         return isinstance(sequence_length, list)
 
     @staticmethod
