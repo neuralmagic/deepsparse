@@ -24,7 +24,7 @@ or you can specify your own [ONNX](https://github.com/onnx/onnx) file.
 The dependencies for this example can be installed using `pip` and the supplied `requirements.txt` file, make sure to upgrade `pip` using `python -m pip install -U pip
 ` before running the following:
 ```bash
-pip3 install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Notebook
@@ -62,11 +62,13 @@ The [server.py](https://github.com/neuralmagic/deepsparse/blob/main/examples/cla
 Client can make requests into the server returning inference results for given inputs.
 
 ### Server
-First, start up the host server.py with your model of choice, SparseZoo stubs are also supported.
+First, start up the host server with your model of choice, SparseZoo stubs are also supported.
 
 Example command:
 ```bash
-python server.py "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate"
+ deepsparse.server \
+     --model_path "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate" \
+     --task image_classification
 ```
 
 You can leave that running as a detached process or in a spare terminal.
