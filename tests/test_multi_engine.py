@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from threading import Thread
+
 import pytest
-import threading
-from deepsparse import MultiModelEngine, Context
+from deepsparse import Context, MultiModelEngine
 from deepsparse.utils import verify_outputs
 from sparsezoo.models import classification
 from sparsezoo.objects import Model
@@ -61,13 +62,13 @@ class TestMultiModelEngineParametrized:
         threads = list()
 
         for i in range(num_requests):
-            thread = threading.Thread(
+            thread = Thread(
                 target=self.thread_function,
                 args=(models[model_index % len(models)], batch_size, context),
             )
             thread.start()
             threads.append(thread)
-            ++model_index
+            model_index += 1
 
         for thread in threads:
             thread.join()
