@@ -886,25 +886,53 @@ class BucketingPipeline(Pipeline):
         return pipeline(**inputs)
 
     def setup_onnx_file_path(self) -> str:
+        """
+        Performs any setup to unwrap and process the given `model_path` and other
+        class properties into an inference ready onnx file to be compiled by the
+        engine of the pipeline
+
+        :return: file path to the ONNX file for the engine to compile
+        """
         raise NotImplementedError
 
     def process_inputs(
         self,
         inputs: BaseModel,
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
+        """
+        :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
+            of this pipeline
+        :return: inputs of this model processed into a list of numpy arrays that
+            can be directly passed into the forward pass of the pipeline engine. Can
+            also include a tuple with engine inputs and special key word arguments
+            to pass to process_engine_outputs to facilitate information from the raw
+            inputs to postprocessing that may not be included in the engine inputs
+        """
         raise NotImplementedError
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
     ) -> BaseModel:
+        """
+        :param engine_outputs: list of numpy arrays that are the output of the engine
+            forward pass
+        :return: outputs of engine post-processed into an object in the `output_schema`
+            format of this pipeline
+        """
         raise NotImplementedError
 
     @property
     def input_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that inputs to this pipeline must comply to
+        """
         return self._pipeline_class.input_schema
 
     @property
     def output_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that outputs of this pipeline must comply to
+        """
         return self._pipeline_class.output_schema
 
     def _update_props(self):
@@ -927,11 +955,18 @@ class Bucketable(ABC):
     @staticmethod
     @abstractmethod
     def should_bucket(*args, **kwargs) -> bool:
+        """
+        :returns: True if buckets should be created else False
+        """
         pass
 
     @staticmethod
     @abstractmethod
     def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
+        """
+        :return: Create and return a list of Pipeline objects
+            representing different buckets
+        """
         pass
 
     @staticmethod
@@ -939,4 +974,9 @@ class Bucketable(ABC):
     def route_input_to_bucket(
         *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
     ) -> Pipeline:
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
         pass

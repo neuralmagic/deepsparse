@@ -315,7 +315,11 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     def route_input_to_bucket(
         *args, input_schema: BaseModel, pipelines: List[TransformersPipeline], **kwargs
     ) -> Pipeline:
-
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
         current_seq_len = len(input_schema.question.split())
 
         for pipeline in pipelines:
