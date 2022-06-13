@@ -25,7 +25,6 @@ The dependencies for this example can be installed using `pip` and the supplied 
 ` before running the following:
 ```bash
 pip install -r requirements.txt
-pip install deepsparse
 ```
 
 ## Notebook
@@ -58,12 +57,12 @@ The [deepsparse.server](https://github.com/neuralmagic/deepsparse/blob/main/src/
 Client can make requests into the server returning inference results for given inputs.
 
 ### Server
-First, start up the host server.py with your model of choice, SparseZoo stubs are also supported.
+First, start up the host server with your model of choice, SparseZoo stubs are also supported.
 
 Example command:
 ```bash
  deepsparse.server \
-     --model-path "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate" \
+     --model_path "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned-moderate" \
      --task image_classification
 ```
 
