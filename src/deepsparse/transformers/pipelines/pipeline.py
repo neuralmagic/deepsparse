@@ -17,7 +17,7 @@ Base Pipeline class for transformers inference pipeline
 """
 
 import warnings
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, List, Mapping, Optional
 
 import numpy
 from transformers.models.auto import AutoConfig, AutoTokenizer

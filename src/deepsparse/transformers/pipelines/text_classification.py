@@ -261,7 +261,8 @@ class TextClassificationPipeline(TransformersPipeline):
         :return: The correct Pipeline object (or Bucket) to route input to
         """
         current_seq_len = TextClassificationPipeline._get_current_sequence_length(
-            input_schema)
+            input_schema
+        )
 
         for pipeline in pipelines:
             if pipeline.sequence_length > current_seq_len:
@@ -279,8 +280,7 @@ class TextClassificationPipeline(TransformersPipeline):
                     current_seq_len = max(len(_input.split()), current_seq_len)
                 elif isinstance(_input, list):
                     current_seq_len = max(
-                        *(len(__input.split()) for __input in _input),
-                        current_seq_len
+                        *(len(__input.split()) for __input in _input), current_seq_len
                     )
         else:
             raise ValueError(

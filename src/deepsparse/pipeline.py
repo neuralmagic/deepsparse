@@ -29,6 +29,7 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
+
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",
