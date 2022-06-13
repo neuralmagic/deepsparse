@@ -192,9 +192,14 @@ def process_nli_engine_outputs(
     prob = numpy_softmax(entailment_contradiction_logits, axis=2)
     entailment_prob = prob[:, :, 0]
     if not config.multi_class:
-        scores = numpy_softmax(entailment_prob, axis=1)
+        entailment_logits = reshaped_outputs[:, :, config.entailment_index]
+        scores = numpy_softmax(entailment_logits, axis=1)
     else:
-        scores = entailment_prob
+        entailment_contradiction_logits = reshaped_outputs[
+            :, :, [config.entailment_index, config.contradiction_index]
+        ]
+        probabilities = numpy_softmax(entailment_contradiction_logits, axis=2)
+        scores = probabilities[:, :, 0]
     scores = scores
 
     # Hack: negate scores to perform reversed sort
@@ -229,7 +234,7 @@ def nli_engine_forward(
             :, batch_origin_index : batch_origin_index + pipeline._batch_size, :
         ]
         labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
-        engine_output = pipeline.engine(labelwise_inputs)
+        engine_output = pipeline.engine(labelwise_inputs)  # TODO: Parallelize
         engine_outputs += engine_output
 
     engine_outputs = numpy.array(engine_outputs)
