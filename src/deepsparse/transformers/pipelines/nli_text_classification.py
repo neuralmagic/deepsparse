@@ -186,11 +186,6 @@ def process_nli_engine_outputs(
     reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
 
     # Calculate scores
-    entailment_contradiction_logits = reshaped_outputs[
-        :, :, [config.entailment_index, config.contradiction_index]
-    ]
-    prob = numpy_softmax(entailment_contradiction_logits, axis=2)
-    entailment_prob = prob[:, :, 0]
     if not config.multi_class:
         entailment_logits = reshaped_outputs[:, :, config.entailment_index]
         scores = numpy_softmax(entailment_logits, axis=1)
