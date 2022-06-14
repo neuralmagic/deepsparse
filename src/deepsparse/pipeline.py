@@ -300,6 +300,15 @@ def yolo_pipeline(*args, **kwargs) -> "Pipeline":
     return Pipeline.create("yolo", *args, **kwargs)
 
 
+def yolact_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Image Segmentation YOLACT pipeline for DeepSparse
+
+    TODO: Fill out args
+    """
+    return Pipeline.create("yolact", *args, **kwargs)
+
+
 class Pipeline(ABC):
     """
     Generic Pipeline abstract class meant to wrap inference engine objects to include

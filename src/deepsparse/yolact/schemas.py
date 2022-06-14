@@ -12,7 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
+"""
+Input/Output Schemas for Image Segmentation with YOLACT
+"""
 
-from .pipelines import *
-from .schemas import *
+from pydantic import BaseModel
+
+
+__all__ = [
+    "YolactInputSchema",
+    "YolactOutputSchema",
+]
+
+
+class YolactInputSchema(BaseModel):
+    """
+    TODO: Define Fields
+    """
+
+
+class YolactOutputSchema(BaseModel):
+    """
+    TODO: Define Fields
+    """
