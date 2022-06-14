@@ -16,3 +16,4 @@
 
 from .data import *
 from .onnx import *
+from .annotate import *

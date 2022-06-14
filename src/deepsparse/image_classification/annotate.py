@@ -22,10 +22,10 @@ import cv2
 from deepsparse.image_classification.constants import IMAGENET_LABELS
 from deepsparse.image_classification.utils import annotate as _annotate
 from deepsparse.pipeline import Pipeline
-from deepsparse.yolo.utils import (
+from deepsparse.utils import (
     annotate,
     get_annotations_save_dir,
-    get_yolo_loader_and_saver,
+    get_image_loader_and_saver,
 )
 from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
@@ -146,7 +146,7 @@ def main(
         engine=engine,
     )
 
-    loader, saver, is_video = get_yolo_loader_and_saver(
+    loader, saver, is_video = get_image_loader_and_saver(
         path=source,
         save_dir=save_dir,
         image_shape=(224, 224),
