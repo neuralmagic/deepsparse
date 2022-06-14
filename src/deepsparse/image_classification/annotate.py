@@ -135,7 +135,7 @@ def main(
     name: Optional[str],
     target_fps: Optional[float],
     no_save: bool,
-    display: bool = False,
+    display: bool,
 ) -> None:
     """
     Annotation Script for Image Classification with DeepSparse
@@ -174,9 +174,9 @@ def main(
             display_image_shape=display_image_shape,
         )
 
-        # if display:
-        #     cv2.imshow("annotated", annotated_image)
-        #     cv2.waitKey(1)
+        if display:
+            cv2.imshow("annotated", annotated_image)
+            cv2.waitKey(1)
 
         # save
         if saver:

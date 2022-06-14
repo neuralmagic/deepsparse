@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import copy
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Tuple
 
 import numpy as np
 
