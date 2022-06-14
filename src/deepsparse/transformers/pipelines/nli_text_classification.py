@@ -192,7 +192,6 @@ def process_nli_engine_outputs(
         ]
         probabilities = numpy_softmax(entailment_contradiction_logits, axis=2)
         scores = probabilities[:, :, 0]
-    scores = scores
 
     # Hack: negate scores to perform reversed sort
     sorted_indexes = numpy.argsort(-1 * scores, axis=1)
