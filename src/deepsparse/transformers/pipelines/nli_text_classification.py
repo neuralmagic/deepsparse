@@ -219,9 +219,7 @@ def nli_engine_forward(
     :return: result of forward pass to Pipeline engine
     """
 
-    def _engine_forward(
-        batch_index: int, batch_origin: int, engine_outputs: List[numpy.ndarray]
-    ):
+    def _engine_forward(batch_index: int, batch_origin: int):
         labelwise_inputs = engine_inputs[
             :, batch_origin : batch_origin + pipeline._batch_size, :
         ]
