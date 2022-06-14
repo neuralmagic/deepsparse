@@ -56,7 +56,7 @@ class TestMultiModelEngineParametrized:
         num_requests: int,
     ):
         models = list(model_test_registry.values())
-        batch_size = 64
+        batch_size = 1
         context = Context(num_streams=num_streams)
         model_index = 0
         threads = list()
