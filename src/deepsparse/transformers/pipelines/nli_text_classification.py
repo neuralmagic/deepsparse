@@ -34,7 +34,7 @@ with nli models
 """
 
 
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -74,6 +74,9 @@ class NliTextClassificationConfig(BaseModel):
     contradiction_index: int = Field(
         description="Index of nli model outputs which denotes contradiction", default=2
     )
+    labels: Optional[List] = Field(
+        description="Static list of labels to be used for every inference"
+    )
 
 
 class NliTextClassificationInput(BaseModel):
@@ -87,7 +90,7 @@ class NliTextClassificationInput(BaseModel):
         description="A string or List of strings representing input to "
         "zero_shot_text_classification task"
     )
-    labels: Union[List[List[str]], List[str], str] = Field(
+    labels: Union[None, List[List[str]], List[str], str] = Field(
         description="The set of possible class labels to classify each "
         "sequence into. Can be a single label, a string of comma-separated "
         "labels, or a list of labels."
@@ -115,6 +118,20 @@ def process_nli_inputs(
             f"the number of sequences {num_sequences} must be equal to "
             f"the batch size the model was instantiated with {pipeline._batch_size}"
         )
+
+    if labels is None and config.labels is None:
+        raise ValueError(
+            "You must provide either static labels during pipeline creation or "
+            "dynamic labels at inference time"
+        )
+
+    if labels is not None and config.labels is not None:
+        raise ValueError(
+            "Found both static labels and dynamic labels at inference time. You "
+            "must provide only one"
+        )
+
+    labels = config.labels if config.labels is not None else labels
 
     if len(labels) == 0 or len(sequences) == 0:
         raise ValueError(

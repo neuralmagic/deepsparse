@@ -104,7 +104,8 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
         model_scheme="nli",
-        model_scheme_config={"hypothesis_template": "This text is related to {}"},
+        model_scheme_config={"hypothesis_template": "This text is related to {}",
+                             "labels": ['politics', 'Europe', 'public health']},
         model_path="nli_model_dir/",
     )
     ```
@@ -118,6 +119,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         labels=[['politics', 'Europe', 'public health']]
         scores=[[0.7635, 0.1357, 0.1007]]
     ```
+
+    Note that labels must either be provided during pipeline instantiation, or
+    at inference time, but not both.
 
     :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
         (preferred) a directory containing a model.onnx, tokenizer config, and model
