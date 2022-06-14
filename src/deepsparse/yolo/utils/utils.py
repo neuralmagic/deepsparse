@@ -890,9 +890,8 @@ def get_annotations_save_dir(
     :return: A new unique dir path to save annotations to
     """
     name = tag or f"{engine}-annotations"
-    initial_save_dir = os.path.join(initial_save_dir, name)
     counter = 0
-    new_save_dir = initial_save_dir
+    new_save_dir = os.path.join(initial_save_dir, name)
     while Path(new_save_dir).exists() and any(Path(new_save_dir).iterdir()):
         counter += 1
         new_save_dir = os.path.join(initial_save_dir, f"{name}-{counter:03d}")
