@@ -42,6 +42,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
+from deepsparse.engine import Context
 from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.pipelines.nli_text_classification import (
     NliTextClassificationConfig,
@@ -142,6 +143,8 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     :param model_scheme: training scheme used to train the model used for zero shot.
         Currently supported schemes are "nli"
     :param model_scheme_config: Config object or a dict of config keyword arguments
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels
     """
 
     def __init__(
@@ -149,6 +152,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         *,
         model_scheme: str = ModelSchemes.nli.value,
         model_scheme_config: Optional[Union[NliTextClassificationConfig, dict]] = None,
+        context: Context = None,
         **kwargs,
     ):
         if model_scheme not in ModelSchemes.to_list():
@@ -156,6 +160,10 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
                 f"Unknown model_scheme {model_scheme}. Currently supported model "
                 f"schemes are {ModelSchemes.to_list()}"
             )
+
+        if context is None and model_scheme == ModelSchemes.nli.value:
+            context = Context(num_cores=None, num_streams=2)
+            kwargs.update({"context": context})
 
         self._model_scheme = model_scheme
         self._config = self._parse_config(model_scheme_config)

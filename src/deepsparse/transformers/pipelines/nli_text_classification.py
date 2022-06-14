@@ -34,6 +34,7 @@ with nli models
 """
 
 
+from threading import Thread
 from typing import TYPE_CHECKING, List, Union
 
 import numpy
@@ -221,16 +222,28 @@ def nli_engine_forward(
         pass
     :return: result of forward pass to Pipeline engine
     """
-    engine_inputs = numpy.array(engine_inputs)
 
-    engine_outputs = []
-    for batch_origin_index in range(0, engine_inputs.shape[1], pipeline._batch_size):
+    def _engine_forward(batch_origin_index: int, engine_outputs: List[numpy.ndarray]):
         labelwise_inputs = engine_inputs[
             :, batch_origin_index : batch_origin_index + pipeline._batch_size, :
         ]
         labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
         engine_output = pipeline.engine(labelwise_inputs)  # TODO: Parallelize
         engine_outputs += engine_output
+
+    engine_inputs = numpy.array(engine_inputs)
+
+    engine_outputs = []
+    threads = []
+    for batch_origin_index in range(0, engine_inputs.shape[1], pipeline._batch_size):
+        thread = Thread(
+            target=_engine_forward, args=(batch_origin_index, engine_outputs)
+        )
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
 
     engine_outputs = numpy.array(engine_outputs)
     return engine_outputs

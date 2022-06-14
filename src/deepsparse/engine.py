@@ -581,7 +581,6 @@ class Context(object):
         self._num_cores = _validate_num_cores(num_cores)
         self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = Scheduler.from_str("elastic")
-        print([self._num_cores, self._num_streams, self._scheduler.value])
         self._deepsparse_context = LIB.deepsparse_context(
             self._num_cores, self._num_streams, self._scheduler.value
         )
