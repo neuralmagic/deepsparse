@@ -34,7 +34,7 @@ with nli models
 """
 
 
-from threading import Thread
+from multiprocessing.pool import ThreadPool
 from typing import TYPE_CHECKING, List, Union
 
 import numpy
@@ -219,27 +219,32 @@ def nli_engine_forward(
     :return: result of forward pass to Pipeline engine
     """
 
-    def _engine_forward(batch_origin_index: int, engine_outputs: List[numpy.ndarray]):
+    def _engine_forward(
+        batch_index: int, batch_origin: int, engine_outputs: List[numpy.ndarray]
+    ):
         labelwise_inputs = engine_inputs[
-            :, batch_origin_index : batch_origin_index + pipeline._batch_size, :
+            :, batch_origin : batch_origin + pipeline._batch_size, :
         ]
         labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
         engine_output = pipeline.engine(labelwise_inputs)  # TODO: Parallelize
-        engine_outputs += engine_output
+        engine_outputs[batch_index] = engine_output
 
+    # engine_inputs.shape: [transformer_inputs (3), num_labels * num_seqs, seq_len]
     engine_inputs = numpy.array(engine_inputs)
-
-    engine_outputs = []
-    threads = []
-    for batch_origin_index in range(0, engine_inputs.shape[1], pipeline._batch_size):
-        thread = Thread(
-            target=_engine_forward, args=(batch_origin_index, engine_outputs)
+    engine_outputs = [
+        None for _ in range(engine_inputs.shape[1] // pipeline._batch_size)
+    ]
+    engine_forward_args = [
+        (batch_index, batch_origin)
+        for batch_index, batch_origin in enumerate(
+            range(0, engine_inputs.shape[1], pipeline._batch_size)
         )
-        threads.append(thread)
-        thread.start()
+    ]
 
-    for thread in threads:
-        thread.join()
+    thread_pool = ThreadPool(processes=pipeline.engine.num_streams)
+    thread_pool.starmap(_engine_forward, engine_forward_args)
+    thread_pool.close()
+    thread_pool.join()
 
     engine_outputs = numpy.array(engine_outputs)
     return engine_outputs

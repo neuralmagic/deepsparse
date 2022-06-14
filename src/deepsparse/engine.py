@@ -561,7 +561,7 @@ class Engine(object):
 
 class Context(object):
     """
-    Contexts can be used to run multiple instances of the (MultiModelEngine) with the same
+    Contexts can be used to run multiple instances of the MultiModelEngine with the same
     scheduler. This allows one scheduler to manage the resources of the system
     effectively, keeping engines that are running different models from fighting over system
     resources.
