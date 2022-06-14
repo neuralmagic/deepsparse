@@ -29,7 +29,7 @@
 # limitations under the License.
 
 """
-Helper functions and pydnatic models for zero-shot text classification task
+Helper functions and pydantic models for zero-shot text classification task
 with nli models
 """
 
@@ -74,9 +74,6 @@ class NliTextClassificationConfig(BaseModel):
     )
     contradiction_index: int = Field(
         description="Index of nli model outputs which denotes contradiction", default=2
-    )
-    multi_class: bool = Field(
-        description="True if class probabilities are independent", default=False
     )
 
 
@@ -187,7 +184,7 @@ def process_nli_engine_outputs(
     reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
 
     # Calculate scores
-    if not config.multi_class:
+    if not pipeline._multi_class:
         entailment_logits = reshaped_outputs[:, :, config.entailment_index]
         scores = numpy_softmax(entailment_logits, axis=1)
     else:
