@@ -510,6 +510,10 @@ class Pipeline(ABC):
         if issubclass(
             pipeline_constructor, Bucketable
         ) and pipeline_constructor.should_bucket(**kwargs):
+            if input_shapes:
+                raise ValueError(
+                    "Overriding input shapes not supported with Bucketing enabled"
+                )
             if not context:
                 context = Context(num_cores=num_cores)
             buckets = pipeline_constructor.create_pipeline_buckets(
@@ -517,7 +521,6 @@ class Pipeline(ABC):
                 model_path=model_path,
                 engine_type=engine_type,
                 batch_size=batch_size,
-                input_shapes=input_shapes,
                 alias=alias,
                 context=context,
                 **kwargs,
@@ -868,81 +871,64 @@ class PipelineConfig(BaseModel):
     )
 
 
-class BucketingPipeline(Pipeline):
+class BucketingPipeline(object):
     """
-    A Pipeline that adds Bucketing functionality
+    A Proxy class that adds Bucketing functionality to Pipelines
     """
 
     def __init__(self, pipelines: List[Pipeline]):
+        if not (pipelines and isinstance(pipelines, list)):
+            raise ValueError(
+                "Expected a non empty List of pipeline objects but got " f"{pipelines}"
+            )
         self._pipelines = pipelines
-        self._pipeline_class = pipelines[0]
-        self._update_props()
+        self._pipeline_class = pipelines[0].__class__
+        self._validate_pipeline_class()
 
     def __call__(self, **inputs):
+        parsed_inputs = self._pipelines[-1].parse_inputs(**inputs)
         pipeline = self._pipeline_class.route_input_to_bucket(
-            input_schema=self._pipeline_class.parse_inputs(**inputs),
+            input_schema=parsed_inputs,
             pipelines=self._pipelines,
         )
-        return pipeline(**inputs)
+        return pipeline(parsed_inputs)
 
-    def setup_onnx_file_path(self) -> str:
-        """
-        Performs any setup to unwrap and process the given `model_path` and other
-        class properties into an inference ready onnx file to be compiled by the
-        engine of the pipeline
+    def __getattr__(self, item):
+        value = getattr(self._pipelines[0].__class__, item)
 
-        :return: file path to the ONNX file for the engine to compile
-        """
-        raise NotImplementedError
+        if isinstance(value, property):
+            return getattr(self._pipelines[0], item)
 
-    def process_inputs(
-        self,
-        inputs: BaseModel,
-    ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
-        """
-        :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
-            of this pipeline
-        :return: inputs of this model processed into a list of numpy arrays that
-            can be directly passed into the forward pass of the pipeline engine. Can
-            also include a tuple with engine inputs and special key word arguments
-            to pass to process_engine_outputs to facilitate information from the raw
-            inputs to postprocessing that may not be included in the engine inputs
-        """
-        raise NotImplementedError
-
-    def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], **kwargs
-    ) -> BaseModel:
-        """
-        :param engine_outputs: list of numpy arrays that are the output of the engine
-            forward pass
-        :return: outputs of engine post-processed into an object in the `output_schema`
-            format of this pipeline
-        """
-        raise NotImplementedError
+        raise AttributeError(
+            f"{item} not found in {self.__class__.__name__}, "
+            f"and is not a property of {self._pipeline_class.__name__}"
+        )
 
     @property
     def input_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return self._pipeline_class.input_schema
+        return self._pipelines[0].input_schema
 
     @property
     def output_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
-        return self._pipeline_class.output_schema
+        return self._pipelines[0].output_schema
 
-    def _update_props(self):
-        # propagate props to this level if not already defined
-        for key, value in self._pipeline_class.__dict__:
-            if (
-                type(getattr(self._pipeline_class, f"{key}")) == property
-                and key not in self.__dict__
-            ):
-                self.__dict__[key] = value
+    def _validate_pipeline_class(self):
+        # validate all pipelines belong to the same class
+
+        is_valid = all(
+            isinstance(pipeline, self._pipeline_class) for pipeline in self._pipelines
+        )
+
+        if not is_valid:
+            raise ValueError(
+                "All Pipeline Buckets must belong to the same Pipeline Class"
+            )
 
 
 class Bucketable(ABC):
