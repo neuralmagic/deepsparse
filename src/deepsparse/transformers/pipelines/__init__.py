@@ -14,6 +14,7 @@
 
 # flake8: noqa
 
+from .feature_extraction import *
 from .pipeline import *
 from .question_answering import *
 from .text_classification import *
