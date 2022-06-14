@@ -659,7 +659,7 @@ class YoloVideoLoader:
 
     def __init__(self, path: str, image_size: Tuple[int, int] = (640, 640)):
         self._path = path
-        self._image_size = image_size
+        self._image_size = (640, 640)
         self._vid = cv2.VideoCapture(self._path)
         self._total_frames = int(self._vid.get(cv2.CAP_PROP_FRAME_COUNT))
         self._fps = self._vid.get(cv2.CAP_PROP_FPS)
@@ -787,12 +787,12 @@ class VideoSaver(ImagesSaver):
         self,
         save_dir: str,
         original_fps: float,
-        output_frame_size: Tuple[int, int],
+        output_frame_size: Tuple[int, int] = (640, 640),
         target_fps: Optional[float] = None,
     ):
         super().__init__(save_dir)
 
-        self._output_frame_size = output_frame_size
+        self._output_frame_size = (640, 640)
         self._original_fps = original_fps
 
         if target_fps is not None and target_fps >= original_fps:
@@ -874,7 +874,7 @@ def load_image(
         image
     """
     img = cv2.imread(img) if isinstance(img, str) else img
-    img_resized = cv2.resize(img, image_size)
+    img_resized = cv2.resize(img, (224,224))
     img_transposed = img_resized[:, :, ::-1].transpose(2, 0, 1)
 
     return img_transposed, img

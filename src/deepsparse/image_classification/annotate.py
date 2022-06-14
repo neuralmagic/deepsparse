@@ -172,15 +172,15 @@ def main(
             image_batch=input_image,
             original_images=[source_image],
             display_image_shape=display_image_shape,
-        )[0]
+        )
 
-        if display:
-            cv2.imshow("annotated", annotated_image)
-            cv2.waitKey(1)
+        # if display:
+        #     cv2.imshow("annotated", annotated_image)
+        #     cv2.waitKey(1)
 
         # save
         if saver:
-            saver.save_frame(annotated_image)
+            saver.save_frame(annotated_image[0])
 
     if saver:
         saver.close()
