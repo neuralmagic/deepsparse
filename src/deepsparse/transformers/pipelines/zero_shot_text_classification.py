@@ -104,7 +104,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
         model_scheme="nli",
-        model_scheme_config={"multi_class": False},
+        model_scheme_config={"hypothesis_template": "This text is related to {}"},
         model_path="nli_model_dir/",
     )
     ```
@@ -114,9 +114,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     sequence_to_classify = "Who are you voting for in 2020?"
     candidate_labels = ["Europe", "public health", "politics"]
     zero_shot_text_classifier(sequence_to_classify, candidate_labels)
-    >>> {'sequence': 'Who are you voting for in 2020?',
-        'labels': ['politics', 'Europe', 'public health'],
-        'scores': [0.9676, 0.0195, 0.0128]}
+    >>> sequences=['Who are you voting for in 2020?']
+        labels=[['politics', 'Europe', 'public health']]
+        scores=[[0.7635, 0.1357, 0.1007]]
     ```
 
     :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
@@ -142,6 +142,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     :param model_scheme: training scheme used to train the model used for zero shot.
         Currently supported schemes are "nli"
     :param model_scheme_config: Config object or a dict of config keyword arguments
+    :param multi_class: True if class probabilities are independent, default False
     """
 
     def __init__(
@@ -149,6 +150,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         *,
         model_scheme: str = ModelSchemes.nli.value,
         model_scheme_config: Optional[Union[NliTextClassificationConfig, dict]] = None,
+        multi_class: bool = False,
         **kwargs,
     ):
         if model_scheme not in ModelSchemes.to_list():
@@ -159,6 +161,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
 
         self._model_scheme = model_scheme
         self._config = self._parse_config(model_scheme_config)
+        self._multi_class = multi_class
 
         super().__init__(**kwargs)
 
