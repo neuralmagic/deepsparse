@@ -792,7 +792,7 @@ class VideoSaver(ImagesSaver):
     ):
         super().__init__(save_dir)
 
-        self._output_frame_size = output_frame_size
+        self._output_frame_size = (640,640)
         self._original_fps = original_fps
 
         if target_fps is not None and target_fps >= original_fps:
