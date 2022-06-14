@@ -427,13 +427,15 @@ def set_tensor_dim_shape(tensor: onnx.TensorProto, dim: int, value: int):
 
 def annotate(
     pipeline: "YOLOPipeline",  # noqa: F821
+    annotation_func,
     image_batch: Union[List[numpy.ndarray], List[str]],
     target_fps: float = None,
     calc_fps: bool = False,
     original_images: Optional[Union[List[numpy.ndarray], numpy.ndarray]] = None,
+    **kwargs,
 ) -> List[numpy.ndarray]:
     """
-    Annotated and return image_batch with bounding boxes and labels
+    Annotate and return image_batch with bounding boxes and labels
 
     :param pipeline: A YOLOPipeline object
     :param image_batch: A list of image files, or batch of numpy image_batch
@@ -452,28 +454,25 @@ def annotate(
         original_images = image_batch
 
     batch_size = len(image_batch)
+    single_batch = batch_size == 1
     if image_batch and isinstance(image_batch[0], str):
         original_images = [cv2.imread(image) for image in image_batch]
 
     if target_fps is None and calc_fps:
         start = time.time()
-
+    image_batch = numpy.stack(image_batch)
     pipeline_outputs = pipeline(images=image_batch)
 
     if target_fps is None and calc_fps:
         target_fps = float(batch_size) / (time.time() - start)
 
     annotated_images = []
+    if single_batch:
+        pipeline_outputs = [pipeline_outputs]
+
     for index, image_output in enumerate(pipeline_outputs):
         image = original_images[index]
-        result = _annotate_image(
-            img=image,
-            boxes=image_output.boxes,
-            labels=image_output.labels,
-            scores=image_output.scores,
-            model_input_size=pipeline.image_size,
-            images_per_sec=target_fps,
-        )
+        result = annotation_func(image, image_output, **kwargs)
         annotated_images.append(result)
 
     return annotated_images
@@ -645,6 +644,9 @@ class YoloImageLoader:
         for image_path in self._image_file_paths:
             yield load_image(image_path, image_size=self._image_size)
 
+    def __len__(self):
+        return len(self._image_file_paths)
+
 
 class YoloVideoLoader:
     """
@@ -669,6 +671,9 @@ class YoloVideoLoader:
                 break
             yield load_image(frame, image_size=self._image_size)
         self._vid.release()
+
+    def __len__(self):
+        return len(self._total_frames)
 
     @property
     def original_fps(self) -> float:

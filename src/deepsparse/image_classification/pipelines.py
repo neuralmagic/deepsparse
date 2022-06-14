@@ -71,6 +71,7 @@ class ImageClassificationPipeline(Pipeline):
         self,
         *,
         class_names: Union[None, str, Dict[str, str]] = None,
+        top_k=1,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -83,6 +84,7 @@ class ImageClassificationPipeline(Pipeline):
             self._class_names = None
 
         self._image_size = self._infer_image_size()
+        self.top_k = top_k
 
         # torchvision transforms for raw inputs
         non_rand_resize_scale = 256.0 / 224.0  # standard used
@@ -214,13 +216,16 @@ class ImageClassificationPipeline(Pipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        labels = numpy.argmax(engine_outputs[0], axis=1).tolist()
-
+        labels = (-engine_outputs[0]).argsort(axis=1)[:, : self.top_k]
+        scores = engine_outputs[0][:, labels]
         if self.class_names is not None:
-            labels = [self.class_names[str(class_id)] for class_id in labels]
+            labels = [self.class_names[str(class_id)] for class_id in labels.flatten()]
+
+        else:
+            labels.flatten().tolist()
 
         return self.output_schema(
-            scores=numpy.max(engine_outputs[0], axis=1).tolist(),
+            scores=scores.flatten().tolist(),
             labels=labels,
         )
 
