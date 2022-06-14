@@ -98,17 +98,18 @@ def model_stream_benchmark(
     num_streams: int,
 ) -> Dict:
 
-    # Warmup the engine for a second
-    singlestream_benchmark(model, input_list, seconds_to_warmup)
-
-    # Run the benchmark scenario and collect batch times
+    # Run the benchmark scenario and collect batch times. The engine will be warmed up
+    # for a few seconds first using "seconds_to_warmup"
     if scenario == "singlestream":
+        singlestream_benchmark(model, input_list, seconds_to_warmup)
         batch_times = singlestream_benchmark(model, input_list, seconds_to_run)
     elif scenario == "multistream":
+        multistream_benchmark(model, input_list, seconds_to_warmup, num_streams)
         batch_times = multistream_benchmark(
             model, input_list, seconds_to_run, num_streams
         )
     elif scenario == "elastic":
+        multistream_benchmark(model, input_list, seconds_to_warmup, num_streams)
         batch_times = multistream_benchmark(
             model, input_list, seconds_to_run, num_streams
         )
