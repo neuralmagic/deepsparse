@@ -53,6 +53,7 @@ _deps = [
     "requests>=2.0.0",
     "tqdm>=4.0.0",
     "protobuf>=3.12.2,<4",
+    "click==8.0",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
@@ -81,6 +82,7 @@ _server_deps = [
     "fastapi>=0.70.0",
     "pydantic>=1.8.2",
     "requests>=2.26.0",
+    "python-multipart>=0.0.5",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
