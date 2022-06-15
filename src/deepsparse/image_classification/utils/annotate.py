@@ -77,7 +77,7 @@ def _put_target_fps(img, x_offset, y_offset, target_fps, font_scale, thickness):
         (int(x_offset), int(y_offset)),
         cv2.FONT_HERSHEY_DUPLEX,
         font_scale,
-        (0, 0, 0),  # black text
+        (0, 100, 0),  # green text
         thickness,
         cv2.LINE_AA,
     )
@@ -99,7 +99,7 @@ def _put_prediction(
         (int(x_offset), int(y_offset)),
         cv2.FONT_HERSHEY_DUPLEX,
         font_scale,
-        (0, 100, 0),  # green text
+        (0, 0, 0),  # black text
         thickness,
         cv2.LINE_AA,
     )
