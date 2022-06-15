@@ -66,10 +66,8 @@ def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
     )
     ```
 
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
@@ -83,9 +81,6 @@ def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
         Default is 128
-    :param default_model_name: huggingface transformers model name to use to
-        load a tokenizer and model config when none are provided in the `model_path`.
-        Default is 'bert-base-uncased'
     :param doc_stride: if the context is too long to fit with the question for the
         model, it will be split in several chunks with some overlap. This argument
         controls the size of that overlap. Currently, only reading the first span
@@ -129,10 +124,8 @@ def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
     ```
 
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
@@ -146,9 +139,6 @@ def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
         Default is 128
-    :param default_model_name: huggingface transformers model name to use to
-        load a tokenizer and model config when none are provided in the `model_path`.
-        Default is 'bert-base-uncased'
     :param return_all_scores: if True, instead of returning the prediction as the
         argmax of model class predictions, will return all scores and labels as
         a list for each result in the batch. Default is False
@@ -187,10 +177,8 @@ def sentiment_analysis_pipeline(*args, **kwargs) -> "Pipeline":
     sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
     ```
 
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
@@ -204,9 +192,6 @@ def sentiment_analysis_pipeline(*args, **kwargs) -> "Pipeline":
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
         Default is 128
-    :param default_model_name: huggingface transformers model name to use to
-        load a tokenizer and model config when none are provided in the `model_path`.
-        Default is 'bert-base-uncased'
     :param return_all_scores: if True, instead of returning the prediction as the
         argmax of model class predictions, will return all scores and labels as
         a list for each result in the batch. Default is False
@@ -227,10 +212,8 @@ def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
     )
     ```
 
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
@@ -244,9 +227,6 @@ def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
         Default is 128
-    :param default_model_name: huggingface transformers model name to use to
-        load a tokenizer and model config when none are provided in the `model_path`.
-        Default is 'bert-base-uncased'
     :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
         include 'none', 'simple', 'first', 'average', and 'max'. Default is None
     :param ignore_labels: list of label names to ignore in output. Default is
@@ -774,6 +754,7 @@ class Pipeline(ABC):
         if engine_type == DEEPSPARSE_ENGINE:
             if self.context is not None and isinstance(self.context, Context):
                 self._engine_args.pop("num_cores", None)
+                self._engine_args.pop("scheduler", None)
                 self._engine_args["context"] = self.context
                 return MultiModelEngine(
                     model=self.onnx_file_path,
