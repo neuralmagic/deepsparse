@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import copy
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -24,6 +24,7 @@ from deepsparse.image_classification.schemas import ImageClassificationOutput
 def annotate(
     img: np.ndarray,
     prediction: ImageClassificationOutput,
+    target_fps: Optional[float] = None,
     display_image_shape: Tuple = (640, 640),
     x_offset: int = 25,
     y_offset: int = 25,
@@ -60,6 +61,26 @@ def annotate(
         img = _put_prediction(
             img, label, score, x_offset, y_offset, font_scale, thickness
         )
+    if target_fps:
+        y_offset += y_shift
+        img = _put_target_fps(
+            img, x_offset, y_offset, target_fps, font_scale, thickness
+        )
+
+    return img
+
+
+def _put_target_fps(img, x_offset, y_offset, target_fps, font_scale, thickness):
+    cv2.putText(
+        img,
+        f"FPS: {target_fps:.2f}",
+        (int(x_offset), int(y_offset)),
+        cv2.FONT_HERSHEY_DUPLEX,
+        font_scale,
+        (0, 0, 0),  # black text
+        thickness,
+        cv2.LINE_AA,
+    )
     return img
 
 
@@ -78,7 +99,7 @@ def _put_prediction(
         (int(x_offset), int(y_offset)),
         cv2.FONT_HERSHEY_DUPLEX,
         font_scale,
-        (0, 0, 0),  # black text
+        (0, 100, 0),  # green text
         thickness,
         cv2.LINE_AA,
     )
@@ -94,10 +115,10 @@ def _put_text_box(
     # number of labels while
     # text box width is always half
     # the width of the image
-    rect = img[0 : y_offset * (num_labels + 2), 0 : int(img.shape[1] / 2)]
+    rect = img[0 : y_offset * (num_labels + 3), 0 : int(img.shape[1] / 2)]
     white_rect = np.ones(rect.shape, dtype=np.uint8) * 255
     rect_mixed = cv2.addWeighted(rect, 0.5, white_rect, 0.5, 1.0)
 
     # Putting the image back to its position
-    img[0 : y_offset * (num_labels + 2), 0 : int(img.shape[1] / 2)] = rect_mixed
+    img[0 : y_offset * (num_labels + 3), 0 : int(img.shape[1] / 2)] = rect_mixed
     return img

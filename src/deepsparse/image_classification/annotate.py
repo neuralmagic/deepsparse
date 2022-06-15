@@ -170,6 +170,7 @@ def main(
             pipeline=cv_pipeline,
             annotation_func=_annotate,
             image_batch=input_image,
+            calc_fps=is_video,
             original_images=[source_image],
             display_image_shape=display_image_shape,
         )

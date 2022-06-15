@@ -472,7 +472,7 @@ def annotate(
 
     for index, image_output in enumerate(pipeline_outputs):
         image = original_images[index]
-        result = annotation_func(image, image_output, **kwargs)
+        result = annotation_func(image, image_output, target_fps, **kwargs)
         annotated_images.append(result)
 
     return annotated_images
@@ -792,7 +792,7 @@ class VideoSaver(ImagesSaver):
     ):
         super().__init__(save_dir)
 
-        self._output_frame_size = (640,640)
+        self._output_frame_size = (640, 640)
         self._original_fps = original_fps
 
         if target_fps is not None and target_fps >= original_fps:
