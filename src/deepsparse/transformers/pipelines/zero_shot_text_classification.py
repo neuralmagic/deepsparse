@@ -35,6 +35,7 @@ transformers tasks
 """
 
 
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import List, Optional, Type, Union
 
@@ -163,13 +164,19 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
                 f"schemes are {ModelSchemes.to_list()}"
             )
 
-        if context is None and model_scheme == ModelSchemes.nli.value:
-            context = Context(num_cores=None, num_streams=2)
-            kwargs.update({"context": context})
-
         self._model_scheme = model_scheme
         self._config = self._parse_config(model_scheme_config)
         self._multi_class = multi_class
+        self._thread_pool = None
+
+        if context is None and model_scheme == ModelSchemes.nli.value:
+            num_streams = 2  # Arbitrarily chosen value >= 2
+            context = Context(num_cores=None, num_streams=num_streams)
+            kwargs.update({"context": context})
+            self._thread_pool = ThreadPoolExecutor(
+                max_workers=num_streams,
+                thread_name_prefix="deepsparse.pipelines.zero_shot_text_classifier",
+            )
 
         super().__init__(**kwargs)
 

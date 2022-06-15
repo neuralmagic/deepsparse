@@ -34,7 +34,7 @@ with nli models
 """
 
 
-from multiprocessing.pool import ThreadPool
+from concurrent.futures import wait
 from typing import TYPE_CHECKING, List, Union
 
 import numpy
@@ -232,17 +232,21 @@ def nli_engine_forward(
     engine_outputs = [
         None for _ in range(engine_inputs.shape[1] // pipeline._batch_size)
     ]
-    engine_forward_args = [
-        (batch_index, batch_origin)
+
+    # Execute in parallel threads or sequentially
+    if pipeline._thread_pool is not None:
+        futures = [
+            pipeline._thread_pool.submit(_engine_forward, batch_index, batch_origin)
+            for batch_index, batch_origin in enumerate(
+                range(0, engine_inputs.shape[1], pipeline._batch_size)
+            )
+        ]
+        wait(futures)
+    else:
         for batch_index, batch_origin in enumerate(
             range(0, engine_inputs.shape[1], pipeline._batch_size)
-        )
-    ]
-
-    thread_pool = ThreadPool(processes=pipeline.engine.num_streams)
-    thread_pool.starmap(_engine_forward, engine_forward_args)
-    thread_pool.close()
-    thread_pool.join()
+        ):
+            _engine_forward(batch_index, batch_origin)
 
     engine_outputs = numpy.array(engine_outputs)
     return engine_outputs
