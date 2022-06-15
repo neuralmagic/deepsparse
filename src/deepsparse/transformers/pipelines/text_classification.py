@@ -115,10 +115,8 @@ class TextClassificationPipeline(TransformersPipeline):
     sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
     ```
 
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
@@ -132,9 +130,6 @@ class TextClassificationPipeline(TransformersPipeline):
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
         Default is 128
-    :param default_model_name: huggingface transformers model name to use to
-        load a tokenizer and model config when none are provided in the `model_path`.
-        Default is 'bert-base-uncased'
     :param return_all_scores: if True, instead of returning the prediction as the
         argmax of model class predictions, will return all scores and labels as
         a list for each result in the batch. Default is False

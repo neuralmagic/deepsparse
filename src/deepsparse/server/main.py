@@ -85,7 +85,7 @@ from typing import List
 
 import click
 
-from deepsparse import Pipeline
+from deepsparse import Context, Pipeline
 from deepsparse.log import set_logging_level
 from deepsparse.server.asynchronous import execute_async, initialize_aysnc
 from deepsparse.server.config import (
@@ -214,7 +214,19 @@ def server_app_factory():
     _LOGGER.debug("loaded server config %s", config)
     _add_general_routes(app, config)
 
-    pipelines = [Pipeline.from_config(model_config) for model_config in config.models]
+    num_cores = None
+    for model_config in config.models:
+        num_cores = (
+            max(num_cores, model_config.num_cores)
+            if num_cores is not None and model_config.num_cores is not None
+            else num_cores or model_config.num_cores
+        )
+
+    context = Context(num_cores=num_cores)
+    pipelines = [
+        Pipeline.from_config(model_config, context=context)
+        for model_config in config.models
+    ]
     _LOGGER.debug("loaded pipeline definitions from config %s", pipelines)
     num_tasks = len(config.models)
     defined_tasks = set()
