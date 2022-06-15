@@ -774,6 +774,7 @@ class Pipeline(ABC):
         if engine_type == DEEPSPARSE_ENGINE:
             if self.context is not None and isinstance(self.context, Context):
                 self._engine_args.pop("num_cores", None)
+                self._engine_args.pop("scheduler", None)
                 self._engine_args["context"] = self.context
                 return MultiModelEngine(
                     model=self.onnx_file_path,
