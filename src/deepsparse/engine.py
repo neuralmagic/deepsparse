@@ -85,7 +85,7 @@ class Scheduler(Enum):
     - elastic: requests from separate threads are distributed across NUMA nodes
     """
 
-    default = "default"
+    default = "single_stream"
     single_stream = "single_stream"
     multi_stream = "multi_stream"
     elastic = "elastic"
