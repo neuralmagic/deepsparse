@@ -446,7 +446,7 @@ class Pipeline(ABC):
         task: str,
         model_path: str = None,
         engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: int = 1,
+        batch_size: Optional[int] = None,
         num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,

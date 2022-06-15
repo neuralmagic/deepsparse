@@ -34,8 +34,8 @@ with nli models
 """
 
 
-from typing import TYPE_CHECKING, List, Optional, Union
 from concurrent.futures import wait
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -75,9 +75,6 @@ class NliTextClassificationConfig(BaseModel):
     contradiction_index: int = Field(
         description="Index of nli model outputs which denotes contradiction", default=2
     )
-    labels: Optional[List] = Field(
-        description="Static list of labels to be used for every inference"
-    )
 
 
 class NliTextClassificationInput(BaseModel):
@@ -96,6 +93,12 @@ class NliTextClassificationInput(BaseModel):
         "sequence into. Can be a single label, a string of comma-separated "
         "labels, or a list of labels."
     )
+    hypothesis_template: Optional[str] = Field(
+        description="A formattable template for wrapping around the provided "
+        "labels to create an nli hypothesis. If provided, overrides the template "
+        "provided in the nli config.",
+        default=None,
+    )
 
 
 def process_nli_inputs(
@@ -111,28 +114,8 @@ def process_nli_inputs(
         can be directly passed into the forward pass of the pipeline engine
     """
     sequences = inputs.sequences
-    labels = inputs.labels
-
-    num_sequences = 1 if isinstance(sequences, str) else len(sequences)
-    if num_sequences != pipeline._batch_size:
-        raise ValueError(
-            f"the number of sequences {num_sequences} must be equal to "
-            f"the batch size the model was instantiated with {pipeline._batch_size}"
-        )
-
-    if labels is None and config.labels is None:
-        raise ValueError(
-            "You must provide either static labels during pipeline creation or "
-            "dynamic labels at inference time"
-        )
-
-    if labels is not None and config.labels is not None:
-        raise ValueError(
-            "Found both static labels and dynamic labels at inference time. You "
-            "must provide only one"
-        )
-
-    labels = config.labels if config.labels is not None else labels
+    labels = pipeline._labels or inputs.labels
+    hypothesis_template = inputs.hypothesis_template or config.hypothesis_template
 
     if len(labels) == 0 or len(sequences) == 0:
         raise ValueError(
@@ -141,21 +124,22 @@ def process_nli_inputs(
 
     if isinstance(sequences, str):
         sequences = [sequences]
+
     labels = pipeline._parse_labels(labels)
 
-    if config.hypothesis_template.format(labels[0]) == config.hypothesis_template:
+    if hypothesis_template.format(labels[0]) == hypothesis_template:
         raise ValueError(
             (
                 'The provided hypothesis_template "{}" was not able to be '
                 "formatted with the target labels. Make sure the passed template "
                 "includes formatting syntax such as {{}} where the label should go."
-            ).format(config.hypothesis_template)
+            ).format(hypothesis_template)
         )
 
     sequence_pairs = []
     for sequence in sequences:
         sequence_pairs.extend(
-            [[sequence, config.hypothesis_template.format(label)] for label in labels]
+            [[sequence, hypothesis_template.format(label)] for label in labels]
         )
 
     tokens = pipeline.tokenizer(
@@ -235,35 +219,32 @@ def nli_engine_forward(
         pass
     :return: result of forward pass to Pipeline engine
     """
-
-    def _engine_forward(batch_index: int, batch_origin: int):
-        labelwise_inputs = engine_inputs[
-            :, batch_origin : batch_origin + pipeline._batch_size, :
-        ]
-        labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
-        engine_output = pipeline.engine(labelwise_inputs)  # TODO: Parallelize
-        engine_outputs[batch_index] = engine_output
-
     # engine_inputs.shape: [transformer_inputs (3), num_labels * num_seqs, seq_len]
-    engine_inputs = numpy.array(engine_inputs)
-    engine_outputs = [
-        None for _ in range(engine_inputs.shape[1] // pipeline._batch_size)
-    ]
+    # Execute in parallel threads (dynamic labels) or as one batch (static labels)
+    if pipeline._labels is None:
 
-    # Execute in parallel threads or sequentially
-    if pipeline._thread_pool is not None:
+        def _engine_forward(batch_index: int, batch_origin: int):
+            labelwise_inputs = engine_inputs_numpy[
+                :, batch_origin : batch_origin + pipeline._batch_size, :
+            ]
+            labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
+            engine_output = pipeline.engine(labelwise_inputs)
+            engine_outputs[batch_index] = engine_output
+
+        engine_inputs_numpy = numpy.array(engine_inputs)
+        engine_outputs = [
+            None for _ in range(engine_inputs_numpy.shape[1] // pipeline._batch_size)
+        ]
+
         futures = [
             pipeline._thread_pool.submit(_engine_forward, batch_index, batch_origin)
             for batch_index, batch_origin in enumerate(
-                range(0, engine_inputs.shape[1], pipeline._batch_size)
+                range(0, engine_inputs_numpy.shape[1], pipeline._batch_size)
             )
         ]
         wait(futures)
     else:
-        for batch_index, batch_origin in enumerate(
-            range(0, engine_inputs.shape[1], pipeline._batch_size)
-        ):
-            _engine_forward(batch_index, batch_origin)
+        engine_outputs = pipeline.engine(engine_inputs)
 
     engine_outputs = numpy.array(engine_outputs)
     return engine_outputs
