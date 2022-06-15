@@ -85,16 +85,14 @@ class Scheduler(Enum):
     - elastic: requests from separate threads are distributed across NUMA nodes
     """
 
-    default = "default"
+    default = "single_stream"
     single_stream = "single_stream"
     multi_stream = "multi_stream"
     elastic = "elastic"
 
     @staticmethod
     def from_str(key: str):
-        if key in ("default"):
-            return Scheduler.default
-        elif key in ("sync", "single", "single_stream"):
+        if key in ("sync", "single", "single_stream"):
             return Scheduler.single_stream
         elif key in ("async", "multi", "multi_stream"):
             return Scheduler.multi_stream
@@ -181,10 +179,10 @@ class Engine(object):
         self,
         model: Union[str, Model, File],
         batch_size: int,
-        num_cores: Optional[int] = None,
-        num_streams: Optional[int] = None,
-        scheduler: Optional[Scheduler] = None,
-        input_shapes: Optional[List[List[int]]] = None,
+        num_cores: int = None,
+        num_streams: int = None,
+        scheduler: Scheduler = None,
+        input_shapes: List[List[int]] = None,
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
@@ -575,8 +573,8 @@ class Context(object):
 
     def __init__(
         self,
-        num_cores: Optional[int] = None,
-        num_streams: Optional[int] = None,
+        num_cores: int = None,
+        num_streams: int = None,
     ):
         self._num_cores = _validate_num_cores(num_cores)
         self._num_streams = _validate_num_streams(num_streams, self._num_cores)
@@ -626,17 +624,13 @@ class MultiModelEngine(Engine):
         model: Union[str, Model, File],
         batch_size: int,
         context: Context,
-        input_shapes: Optional[List[List[int]]] = None,
-        scheduler: Optional[Scheduler] = None,
+        input_shapes: List[List[int]] = None,
     ):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = context.num_cores
         self._num_streams = context.num_streams
-        if scheduler is not None:
-            self._scheduler == _validate_scheduler(scheduler)
-        else:
-            self._scheduler = _validate_scheduler(context.scheduler)
+        self._scheduler = _validate_scheduler(context.scheduler)
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
@@ -667,10 +661,10 @@ class MultiModelEngine(Engine):
 def compile_model(
     model: Union[str, Model, File],
     batch_size: int = 1,
-    num_cores: Optional[int] = None,
-    num_streams: Optional[int] = None,
-    scheduler: Optional[Scheduler] = None,
-    input_shapes: Optional[List[List[int]]] = None,
+    num_cores: int = None,
+    num_streams: int = None,
+    scheduler: Scheduler = None,
+    input_shapes: List[List[int]] = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -706,15 +700,15 @@ def benchmark_model(
     model: Union[str, Model, File],
     inp: List[numpy.ndarray],
     batch_size: int = 1,
-    num_cores: Optional[int] = None,
-    num_streams: Optional[int] = None,
+    num_cores: int = None,
+    num_streams: int = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     include_inputs: bool = False,
     include_outputs: bool = False,
     show_progress: bool = False,
-    scheduler: Optional[Scheduler] = None,
-    input_shapes: Optional[List[List[int]]] = None,
+    scheduler: Scheduler = None,
+    input_shapes: List[List[int]] = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -773,14 +767,14 @@ def analyze_model(
     model: Union[str, Model, File],
     inp: List[numpy.ndarray],
     batch_size: int = 1,
-    num_cores: Optional[int] = None,
+    num_cores: int = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     optimization_level: int = 1,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
-    scheduler: Optional[Scheduler] = None,
-    input_shapes: Optional[List[List[int]]] = None,
+    scheduler: Scheduler = None,
+    input_shapes: List[List[int]] = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
