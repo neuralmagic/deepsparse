@@ -146,6 +146,7 @@ def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     return Pipeline.create("text_classification", *args, **kwargs)
 
+
 def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     transformers zero-shot zero shot text classification pipeline
