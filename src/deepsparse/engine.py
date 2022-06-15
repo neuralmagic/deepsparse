@@ -92,9 +92,7 @@ class Scheduler(Enum):
 
     @staticmethod
     def from_str(key: str):
-        if key in ("default"):
-            return Scheduler.default
-        elif key in ("sync", "single", "single_stream"):
+        if key in ("sync", "single", "single_stream"):
             return Scheduler.single_stream
         elif key in ("async", "multi", "multi_stream"):
             return Scheduler.multi_stream
