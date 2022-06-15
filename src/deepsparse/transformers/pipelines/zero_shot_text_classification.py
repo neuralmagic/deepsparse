@@ -35,6 +35,7 @@ transformers tasks
 """
 
 
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import List, Optional, Type, Union
 
@@ -42,6 +43,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
+from deepsparse.engine import Context
 from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.pipelines.nli_text_classification import (
     NliTextClassificationConfig,
@@ -147,6 +149,8 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         Currently supported schemes are "nli"
     :param model_scheme_config: Config object or a dict of config keyword arguments
     :param multi_class: True if class probabilities are independent, default False
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels
     """
 
     def __init__(
@@ -155,6 +159,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         model_scheme: str = ModelSchemes.nli.value,
         model_scheme_config: Optional[Union[NliTextClassificationConfig, dict]] = None,
         multi_class: bool = False,
+        context: Context = None,
         **kwargs,
     ):
         if model_scheme not in ModelSchemes.to_list():
@@ -166,6 +171,16 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         self._model_scheme = model_scheme
         self._config = self._parse_config(model_scheme_config)
         self._multi_class = multi_class
+        self._thread_pool = None
+
+        if context is None and model_scheme == ModelSchemes.nli.value:
+            num_streams = 2  # Arbitrarily chosen value >= 2
+            context = Context(num_cores=None, num_streams=num_streams)
+            kwargs.update({"context": context})
+            self._thread_pool = ThreadPoolExecutor(
+                max_workers=num_streams,
+                thread_name_prefix="deepsparse.pipelines.zero_shot_text_classifier",
+            )
 
         super().__init__(**kwargs)
 

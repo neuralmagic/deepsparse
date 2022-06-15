@@ -35,6 +35,7 @@ with nli models
 
 
 from typing import TYPE_CHECKING, List, Optional, Union
+from concurrent.futures import wait
 
 import numpy
 from pydantic import BaseModel, Field
@@ -234,16 +235,35 @@ def nli_engine_forward(
         pass
     :return: result of forward pass to Pipeline engine
     """
-    engine_inputs = numpy.array(engine_inputs)
 
-    engine_outputs = []
-    for batch_origin_index in range(0, engine_inputs.shape[1], pipeline._batch_size):
+    def _engine_forward(batch_index: int, batch_origin: int):
         labelwise_inputs = engine_inputs[
-            :, batch_origin_index : batch_origin_index + pipeline._batch_size, :
+            :, batch_origin : batch_origin + pipeline._batch_size, :
         ]
         labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
         engine_output = pipeline.engine(labelwise_inputs)  # TODO: Parallelize
-        engine_outputs += engine_output
+        engine_outputs[batch_index] = engine_output
+
+    # engine_inputs.shape: [transformer_inputs (3), num_labels * num_seqs, seq_len]
+    engine_inputs = numpy.array(engine_inputs)
+    engine_outputs = [
+        None for _ in range(engine_inputs.shape[1] // pipeline._batch_size)
+    ]
+
+    # Execute in parallel threads or sequentially
+    if pipeline._thread_pool is not None:
+        futures = [
+            pipeline._thread_pool.submit(_engine_forward, batch_index, batch_origin)
+            for batch_index, batch_origin in enumerate(
+                range(0, engine_inputs.shape[1], pipeline._batch_size)
+            )
+        ]
+        wait(futures)
+    else:
+        for batch_index, batch_origin in enumerate(
+            range(0, engine_inputs.shape[1], pipeline._batch_size)
+        ):
+            _engine_forward(batch_index, batch_origin)
 
     engine_outputs = numpy.array(engine_outputs)
     return engine_outputs
