@@ -153,7 +153,6 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     :param num_sequences: the number of sequences to handle per batch.
     :param labels: static list of labels to perform text classification with. Can
         also be provided at inference time
-    :param multi_class: True if class probabilities are independent, default False
     :param context: context for engine. If None, then the engine will be initialized
         with 2 streams to make use of parallel inference of labels
     """
@@ -166,7 +165,6 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         model_config: Optional[Union[NliTextClassificationConfig, dict]] = None,
         num_sequences: int = 1,
         labels: Optional[List] = None,
-        multi_class: bool = False,
         context: Optional[Context] = None,
         batch_size: Optional[int] = None,
         **kwargs,
@@ -181,7 +179,6 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         self._config = self._parse_config(model_config)
         self._num_sequences = num_sequences
         self._labels = self._parse_labels(labels)
-        self._multi_class = multi_class
         self._thread_pool = None
 
         # If dynamic labels

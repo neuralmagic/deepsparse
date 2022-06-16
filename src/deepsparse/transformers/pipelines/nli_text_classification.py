@@ -75,6 +75,10 @@ class NliTextClassificationConfig(BaseModel):
     contradiction_index: int = Field(
         description="Index of nli model outputs which denotes contradiction", default=2
     )
+    multi_class: bool = Field(
+        description="True if class probabilities are independent, default False",
+        default=False,
+    )
 
 
 class NliTextClassificationInput(BaseModel):
@@ -96,7 +100,12 @@ class NliTextClassificationInput(BaseModel):
     hypothesis_template: Optional[str] = Field(
         description="A formattable template for wrapping around the provided "
         "labels to create an nli hypothesis. If provided, overrides the template "
-        "provided in the nli config.",
+        "in the nli config.",
+        default=None,
+    )
+    multi_class: Optional[bool] = Field(
+        description="True if class probabilities are independent, default False. "
+        "If provided, overrides the multi_class value in the nli config.",
         default=None,
     )
 
@@ -115,7 +124,14 @@ def process_nli_inputs(
     """
     sequences = inputs.sequences
     labels = pipeline._labels or inputs.labels
-    hypothesis_template = inputs.hypothesis_template or config.hypothesis_template
+    hypothesis_template = (
+        inputs.hypothesis_template
+        if inputs.hypothesis_template is not None
+        else config.hypothesis_template
+    )
+    multi_class = (
+        inputs.multi_class if inputs.multi_class is not None else config.multi_class
+    )
 
     if len(labels) == 0 or len(sequences) == 0:
         raise ValueError(
@@ -154,6 +170,7 @@ def process_nli_inputs(
     postprocessing_kwargs = dict(
         sequences=sequences,
         labels=labels,
+        multi_class=multi_class,
     )
 
     return pipeline.tokens_to_engine_input(tokens), postprocessing_kwargs
@@ -175,6 +192,7 @@ def process_nli_engine_outputs(
     """
     sequences = kwargs["sequences"]
     candidate_labels = kwargs["labels"]
+    multi_class = kwargs["multi_class"]
 
     outputs = engine_outputs
     if isinstance(outputs, list):
@@ -185,7 +203,7 @@ def process_nli_engine_outputs(
     reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
 
     # Calculate scores
-    if not pipeline._multi_class:
+    if not multi_class:
         entailment_logits = reshaped_outputs[:, :, config.entailment_index]
         scores = numpy_softmax(entailment_logits, axis=1)
     else:
