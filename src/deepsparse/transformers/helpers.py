@@ -73,6 +73,20 @@ def get_onnx_path_and_configs(
             )
         onnx_path = os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
 
+        # attempt to read config and tokenizer from sparsezoo-like framework directory
+        framework_dir = None
+        if "framework" in model_files:
+            framework_dir = os.path.join(model_path, "framework")
+        if "pytorch" in model_files:
+            framework_dir = os.path.join(model_path, "pytorch")
+        if framework_dir and os.path.isdir(framework_dir):
+            framework_files = os.listdir(framework_dir)
+            if _MODEL_DIR_CONFIG_NAME in framework_files:
+                config_path = framework_dir
+            if _MODEL_DIR_TOKENIZER_NAME in framework_files:
+                tokenizer_path = framework_dir
+
+        # prefer config and tokenizer files in same directory as model.onnx
         if _MODEL_DIR_CONFIG_NAME in model_files:
             config_path = model_path
         if _MODEL_DIR_TOKENIZER_NAME in model_files:
