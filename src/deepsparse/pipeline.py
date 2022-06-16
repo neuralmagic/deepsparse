@@ -271,6 +271,8 @@ class Pipeline(ABC):
         if task_aliases:
             task_names.extend(task_aliases)
 
+        task_names = [task_name.lower().replace("-", "_") for task_name in task_names]
+
         def _register_task(task_name, pipeline_class):
             if task_name in _REGISTERED_PIPELINES and (
                 pipeline_class is not _REGISTERED_PIPELINES[task_name]
