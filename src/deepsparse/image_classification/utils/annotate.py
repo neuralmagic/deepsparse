@@ -72,12 +72,12 @@ def annotate_image(
         y_offset += 2 * y_shift
         image = _put_text(
             image,
-            f"FPS: {images_per_sec:.2f}",
+            f"FPS: {int(images_per_sec)}",
             x_offset,
             y_offset,
             font_scale,
             thickness,
-            (100, 0, 0),
+            (245, 46, 6),
         )
 
     return image

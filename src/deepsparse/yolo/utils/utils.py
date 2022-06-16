@@ -502,14 +502,44 @@ def annotate_image(
             )
 
     if images_per_sec is not None:
-        cv2.putText(
-            img_res,
-            f"images_per_sec: {int(images_per_sec)}",
-            (50, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            2.0,  # font scale
-            (245, 46, 6),  # color
-            2,  # thickness
-            cv2.LINE_AA,
-        )
+        img_res = _plot_fps(x=20, y=30, font_scale=0.9, thickness=2)
+    return img_res
+
+
+def _plot_fps(
+    img_res: numpy.ndarray,
+    images_per_sec: float,
+    x: int,
+    y: int,
+    font_scale: float,
+    thickness: int,
+) -> numpy.ndarray:
+
+    annotation_text = f"FPS: {int(images_per_sec)}"
+    # calculate text size
+    (text_width, text_height), text_baseline = cv2.getTextSize(
+        annotation_text,
+        cv2.FONT_HERSHEY_SIMPLEX,
+        font_scale,  # font scale
+        thickness,  # thickness
+    )
+    # make solid background for annotation text
+    cv2.rectangle(
+        img_res,
+        (x, y - 3 * text_baseline),
+        (x + text_width, y + text_height - text_baseline),
+        (255, 255, 255),
+        thickness=-1,  # filled solid
+    )
+
+    cv2.putText(
+        img_res,
+        annotation_text,
+        (x, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        font_scale,
+        (245, 46, 6),  # color
+        thickness,
+        cv2.LINE_AA,
+    )
     return img_res

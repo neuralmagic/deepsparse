@@ -172,7 +172,7 @@ class ImageClassificationPipeline(Pipeline):
                 elif isinstance(image, str):
                     # load image from string filepath
                     image = Image.open(image)
-                elif isinstance(image, np.ndarray):
+                elif isinstance(image, numpy.ndarray):
                     image = image.astype(numpy.uint8)
                     if image.shape[0] < image.shape[-1]:
                         # put channel last
