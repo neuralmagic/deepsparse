@@ -196,13 +196,13 @@ def test_server_qa_config_file(cleanup: Dict[str, List]):
 
 def test_server_sst(cleanup: Dict[str, List]):
     stub = "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
-    model = predownload_stub(stub)
+    model = predownload_stub(stub, copy_framework_files=True)
     cmd = [
         "deepsparse.server",
         "--task",
         "sentiment_analysis",
         "--model_path",
-        model.onnx_file.path,
+        model.onnx_file.dir_path,
     ]
     print(f"\n==== test_server_sst command ====\n{' '.join(cmd)}\n==== ====")
     proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
