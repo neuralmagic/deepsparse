@@ -15,7 +15,6 @@
 Helpers and Utilities for
 Image Classification annotation script
 """
-import copy
 from typing import Tuple
 
 import numpy as numpy
@@ -38,6 +37,7 @@ def annotate_image(
 ) -> numpy.ndarray:
     """
     Annotate and return the img with the prediction data.
+    Predictions are written into lower-left corner of the image.
     Note: The layout by default is hard-coded to support
     (640,360) shape. If you wish to change
     the display image shape and preserve an aesthetic layout,
@@ -58,23 +58,23 @@ def annotate_image(
     is_video = images_per_sec is not None
 
     image = _put_text_box(image, y_offset, prediction, is_video)
-    y_shift = copy.deepcopy(y_offset)
-    for label, score in zip(prediction.labels, prediction.scores):
-        # every next label annotation is placed `y_shift` pixels lower than
+    y_shift = image.shape[0]
+    for label, score in zip(reversed(prediction.labels), reversed(prediction.scores)):
+        # every next label annotation is placed `y_shift` pixels higher than
         # the previous one
-        y_offset += y_shift
+        y_shift -= y_offset
         image = _put_text(
-            image, f"{label}: {score:.2f}%", x_offset, y_offset, font_scale, thickness
+            image, f"{label}: {score:.2f}%", x_offset, y_shift, font_scale, thickness
         )
     if is_video:
         # for the video annotation, additionally
         # include the FPS information
-        y_offset += 2 * y_shift
+        y_shift -= 2 * y_offset
         image = _put_text(
             image,
             f"FPS: {int(images_per_sec)}",
             x_offset,
-            y_offset,
+            y_shift,
             font_scale,
             thickness,
             (245, 46, 6),
@@ -120,10 +120,12 @@ def _put_text_box(
     # number of labels while
     # text box width is always half
     # the width of the image
-    rect = img[0 : y_offset * num_text_rows, 0 : int(img.shape[1] / 2)]
+    rect = img[-y_offset * num_text_rows : img.shape[0], 0 : int(img.shape[1] / 2)]
     white_rect = numpy.ones(rect.shape, dtype=numpy.uint8) * 255
     rect_mixed = cv2.addWeighted(rect, 0.5, white_rect, 0.5, 1.0)
 
     # Putting the image back to its position
-    img[0 : y_offset * num_text_rows, 0 : int(img.shape[1] / 2)] = rect_mixed
+    img[
+        -y_offset * num_text_rows : img.shape[0], 0 : int(img.shape[1] / 2)
+    ] = rect_mixed
     return img
