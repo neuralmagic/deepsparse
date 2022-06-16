@@ -19,7 +19,6 @@ import json
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
-import numpy as np
 import onnx
 from PIL import Image
 from torchvision import transforms
