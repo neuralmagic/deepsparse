@@ -502,7 +502,14 @@ def annotate_image(
             )
 
     if images_per_sec is not None:
-        img_res = _plot_fps(x=20, y=30, font_scale=0.9, thickness=2)
+        img_res = _plot_fps(
+            img_res=img_res,
+            images_per_sec=images_per_sec,
+            x=20,
+            y=30,
+            font_scale=0.9,
+            thickness=2,
+        )
     return img_res
 
 
