@@ -433,8 +433,8 @@ def annotate_image(
 
     :param image: original image to annotate (no pre-processing needed)
     :param prediction: predictions returned by the inference pipeline
-    :param images_per_sec: optional image_batch per second to annotate the left corner
-        of the image with
+    :param images_per_sec: optional fps value to annotate the left corner
+        of the image (video) with
     :param score_threshold: minimum score a detection should have to be annotated
         on the image. Default is 0.35
     :param model_input_size: 2-tuple of expected input size for the given model to

@@ -24,6 +24,9 @@ import cv2
 from deepsparse.image_classification.schemas import ImageClassificationOutput
 
 
+__all__ = ["annotate_image"]
+
+
 def annotate_image(
     image: numpy.ndarray,
     prediction: ImageClassificationOutput,

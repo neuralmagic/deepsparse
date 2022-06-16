@@ -38,6 +38,8 @@ except ModuleNotFoundError as cv2_import_error:
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = ["get_image_loader_and_saver", "get_annotations_save_dir", "annotate"]
+
 
 def get_image_loader_and_saver(
     path: str,
