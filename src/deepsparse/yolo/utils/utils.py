@@ -22,7 +22,6 @@ import random
 import time
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
-from deepsparse.yolo.schemas import YOLOOutput
 
 import numpy
 import onnx
@@ -30,6 +29,7 @@ import torchvision
 import yaml
 
 import torch
+from deepsparse.yolo.schemas import YOLOOutput
 
 
 try:
@@ -431,8 +431,8 @@ def annotate_image(
     """
     Draws bounding boxes on predictions of a detection model
 
-    :param image: Original image to annotate (no pre-processing needed)
-    :param prediction: ...
+    :param image: original image to annotate (no pre-processing needed)
+    :param prediction: predictions returned by the inference pipeline
     :param images_per_sec: optional image_batch per second to annotate the left corner
         of the image with
     :param score_threshold: minimum score a detection should have to be annotated

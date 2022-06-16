@@ -23,7 +23,7 @@ Options:
                                   used for annotation  [default: zoo:cv/detect
                                   ion/yolov5-s/pytorch/ultralytics/coco/pruned
                                   -aggressive_96]
-  --source TEXT                   File path to image or directory of image
+  --source TEXT                   File path to an image or directory of image
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
   --engine [deepsparse|onnxruntime|torch]
@@ -216,6 +216,7 @@ def main(
             target_fps=target_fps,
             calc_fps=is_video,
             original_image=source_image,
+            model_input_size=image_shape,
         )
 
         if is_webcam:

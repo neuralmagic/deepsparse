@@ -66,13 +66,15 @@ class ImageClassificationPipeline(Pipeline):
         inferencing with multiple models. Default is None
     :param class_names: Optional dict, or json file of class names to use for
         mapping class ids to class labels. Default is None
+    :param top_k: The integer that specifies how many most probable classes
+        we want to fetch per image. Default is 1.
     """
 
     def __init__(
         self,
         *,
         class_names: Union[None, str, Dict[str, str]] = None,
-        top_k=1,
+        top_k: int = 1,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -206,8 +208,6 @@ class ImageClassificationPipeline(Pipeline):
         if original_dtype == numpy.uint8:
 
             image_batch /= 255
-            if len(image_batch.shape) != 4:
-                image_batch = numpy.expand_dims(image_batch, axis=0)
             # normalize entire batch
             image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
             image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
@@ -230,10 +230,12 @@ class ImageClassificationPipeline(Pipeline):
             score = prediction_batch[label]
             labels.append(label)
             scores.append(score.tolist())
+
         if self.class_names is not None:
             labels = numpy.vectorize(self.class_names.__getitem__)(labels)
 
         labels = labels.tolist()
+
         if len(labels) == 1:
             labels = labels[0]
             scores = scores[0]

@@ -66,7 +66,7 @@ def annotate_image(
     if is_video:
         # for the video annotation, additionally
         # include the FPS information
-        y_offset += y_shift
+        y_offset += 2 * y_shift
         image = _put_text(
             image,
             f"FPS: {images_per_sec:.2f}",
@@ -112,7 +112,7 @@ def _put_text_box(
     num_text_rows = (
         len(prediction.labels) + 2
     )  # no of text rows + 2 margins (top, bottom)
-    num_text_rows += is_video  # add one more text row for FPS data
+    num_text_rows += 2 * int(is_video)  # add two more text rows for FPS data
     # text box height is a function of the
     # number of labels while
     # text box width is always half

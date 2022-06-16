@@ -125,6 +125,17 @@ _LOGGER = logging.getLogger(__name__)
     show_default=True,
 )
 @click.option(
+    "--num_cores",
+    "--num-cores",
+    type=int,
+    default=None,
+    help="The number of physical cores to run the annotations with, "
+    "defaults to using all physical cores available on the system."
+    " For DeepSparse benchmarks, this value is the number of cores "
+    "per socket",
+    show_default=True,
+)
+@click.option(
     "--save_dir",
     "--save-dir",
     type=click.Path(dir_okay=True, file_okay=False),
