@@ -16,16 +16,13 @@
 Helpers and Utilities for YOLO
 """
 import functools
-import glob
 import itertools
 import logging
-import os
 import random
-import shutil
 import time
-from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
+from deepsparse.yolo.schemas import YOLOOutput
 
 import numpy
 import onnx
@@ -424,38 +421,35 @@ def set_tensor_dim_shape(tensor: onnx.TensorProto, dim: int, value: int):
     tensor.type.tensor_type.shape.dim[dim].dim_value = value
 
 
-
-
-
-def _annotate_image(
-    img: numpy.ndarray,
-    boxes: List[List[float]],
-    scores: List[float],
-    labels: List[str],
+def annotate_image(
+    image: numpy.ndarray,
+    prediction: YOLOOutput,
+    images_per_sec: Optional[float] = None,
     score_threshold: float = 0.35,
     model_input_size: Tuple[int, int] = None,
-    images_per_sec: Optional[float] = None,
 ) -> numpy.ndarray:
     """
     Draws bounding boxes on predictions of a detection model
 
-    :param img: Original image to annotate (no pre-processing needed)
-    :param boxes: List of bounding boxes (x1, y1, x2, y2)
-    :param scores: List of scores for each bounding box
-    :param labels: List of labels for each bounding box
+    :param image: Original image to annotate (no pre-processing needed)
+    :param prediction: ...
+    :param images_per_sec: optional image_batch per second to annotate the left corner
+        of the image with
     :param score_threshold: minimum score a detection should have to be annotated
         on the image. Default is 0.35
     :param model_input_size: 2-tuple of expected input size for the given model to
         be used for bounding box scaling with original image. Scaling will not
         be applied if model_input_size is None. Default is None
-    :param images_per_sec: optional image_batch per second to annotate the left corner
-        of the image with
     :return: the original image annotated with the given bounding boxes
     """
-    img_res = numpy.copy(img)
+    boxes = prediction[0].boxes
+    scores = prediction[0].scores
+    labels = prediction[0].labels
 
-    scale_y = img.shape[0] / (1.0 * model_input_size[0]) if model_input_size else 1.0
-    scale_x = img.shape[1] / (1.0 * model_input_size[1]) if model_input_size else 1.0
+    img_res = numpy.copy(image)
+
+    scale_y = image.shape[0] / (1.0 * model_input_size[0]) if model_input_size else 1.0
+    scale_x = image.shape[1] / (1.0 * model_input_size[1]) if model_input_size else 1.0
 
     for idx in range(len(boxes)):
         label = labels[idx]
@@ -519,12 +513,3 @@ def _annotate_image(
             cv2.LINE_AA,
         )
     return img_res
-
-
-
-
-
-
-
-
-

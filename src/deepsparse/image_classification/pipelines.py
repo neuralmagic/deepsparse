@@ -19,6 +19,7 @@ import json
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
+import numpy as np
 import onnx
 from PIL import Image
 from torchvision import transforms
@@ -165,11 +166,17 @@ class ImageClassificationPipeline(Pipeline):
                     image = image.astype(numpy.uint8)
                     if image.shape[0] < image.shape[-1]:
                         # put channel last
-                        image = image.transpose(*range(1, len(image.shape), 0))
+                        image = numpy.einsum("cwh->whc", image)
                     image = Image.fromarray(image)
                 elif isinstance(image, str):
                     # load image from string filepath
                     image = Image.open(image)
+                elif isinstance(image, np.ndarray):
+                    image = image.astype(numpy.uint8)
+                    if image.shape[0] < image.shape[-1]:
+                        # put channel last
+                        image = numpy.einsum("cwh->whc", image)
+                    image = Image.fromarray(image)
 
                 if not isinstance(image, Image.Image):
                     raise ValueError(
@@ -199,7 +206,8 @@ class ImageClassificationPipeline(Pipeline):
         if original_dtype == numpy.uint8:
 
             image_batch /= 255
-
+            if len(image_batch.shape) != 4:
+                image_batch = numpy.expand_dims(image_batch, axis=0)
             # normalize entire batch
             image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
             image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
@@ -216,16 +224,22 @@ class ImageClassificationPipeline(Pipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        labels = (-engine_outputs[0]).argsort(axis=1)[:, : self.top_k]
-        scores = engine_outputs[0][:, labels]
+        labels, scores = [], []
+        for prediction_batch in engine_outputs[0]:
+            label = (-prediction_batch).argsort()[: self.top_k]
+            score = prediction_batch[label]
+            labels.append(label)
+            scores.append(score.tolist())
         if self.class_names is not None:
-            labels = [self.class_names[str(class_id)] for class_id in labels.flatten()]
+            labels = numpy.vectorize(self.class_names.__getitem__)(labels)
 
-        else:
-            labels.flatten().tolist()
+        labels = labels.tolist()
+        if len(labels) == 1:
+            labels = labels[0]
+            scores = scores[0]
 
         return self.output_schema(
-            scores=scores.flatten().tolist(),
+            scores=scores,
             labels=labels,
         )
 

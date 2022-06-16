@@ -23,14 +23,14 @@ Options:
                                   used for annotation  [default: zoo:cv/detect
                                   ion/yolov5-s/pytorch/ultralytics/coco/pruned
                                   -aggressive_96]
-  --source TEXT                   File path to image or directory of .jpg
+  --source TEXT                   File path to image or directory of image
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
   --engine [deepsparse|onnxruntime|torch]
                                   Inference engine backend to run on. Choices
                                   are 'deepsparse', 'onnxruntime', and
                                   'torch'. Default is 'deepsparse'
-  --image_shape, --image_shape INTEGER...
+  --image_shape, --image_shape INTEGER
                                   Image shape to use for inference, must be
                                   two integers  [default: 640, 640]
   --num_cores, --num-cores INTEGER
@@ -54,7 +54,7 @@ Options:
   --no_save, --no-save            Set flag when source is from webcam to not
                                   save results.Not supported for non-webcam
                                   sources  [default: False]
-  --help                          Show this message and exit.
+  --help                          Show this message and exit
 
 #######
 Examples:
@@ -71,7 +71,12 @@ import click
 
 import cv2
 from deepsparse.pipeline import Pipeline
-from deepsparse.yolo import utils
+from deepsparse.utils import (
+    annotate,
+    get_annotations_save_dir,
+    get_image_loader_and_saver,
+)
+from deepsparse.yolo.utils import annotate_image
 from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
 
@@ -111,7 +116,7 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "--image_shape",
-    "--image_shape",
+    "--image-shape",
     type=int,
     nargs=2,
     default=(640, 640),
@@ -178,13 +183,13 @@ def main(
     """
     Annotation Script for YOLO with DeepSparse
     """
-    save_dir = utils.get_annotations_save_dir(
+    save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
         tag=name,
         engine=engine,
     )
 
-    loader, saver, is_video = utils.get_yolo_loader_and_saver(
+    loader, saver, is_video = get_image_loader_and_saver(
         path=source,
         save_dir=save_dir,
         image_shape=image_shape,
@@ -204,23 +209,22 @@ def main(
     for iteration, (input_image, source_image) in enumerate(loader):
 
         # annotate
-        annotated_images = utils.annotate(
+        annotated_image = annotate(
             pipeline=yolo_pipeline,
-            image_batch=input_image,
+            annotation_func=annotate_image,
+            image=input_image,
             target_fps=target_fps,
             calc_fps=is_video,
-            original_images=[source_image],
+            original_image=source_image,
         )
 
-        for annotated_image in annotated_images:
-            # display
-            if is_webcam:
-                cv2.imshow("annotated", annotated_image)
-                cv2.waitKey(1)
+        if is_webcam:
+            cv2.imshow("annotated", annotated_image)
+            cv2.waitKey(1)
 
-            # save
-            if saver:
-                saver.save_frame(annotated_image)
+        # save
+        if saver:
+            saver.save_frame(annotated_image)
 
     if saver:
         saver.close()

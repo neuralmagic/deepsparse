@@ -212,7 +212,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
-            "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",
+            "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             f"deepsparse.image_classification.eval={ic_eval}",
         ]
     }

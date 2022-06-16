@@ -11,36 +11,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""
+Helpers and Utilities for
+Image Classification annotation script
+"""
 import copy
 from typing import Tuple
 
-import numpy as np
+import numpy as numpy
 
 import cv2
 from deepsparse.image_classification.schemas import ImageClassificationOutput
 
 
-def annotate(
-    img: np.ndarray,
+def annotate_image(
+    image: numpy.ndarray,
     prediction: ImageClassificationOutput,
-    display_image_shape: Tuple = (640, 640),
-    x_offset: int = 25,
-    y_offset: int = 25,
-    font_scale: float = 0.8,
+    images_per_sec: float,
+    x_offset: int = 10,
+    y_offset: int = 15,
+    font_scale: float = 0.5,
     thickness: int = 1,
-) -> np.ndarray:
+) -> numpy.ndarray:
     """
     Annotate and return the img with the prediction data.
-    Note: The layout is hard-coded, so that it supports
-    `display_image_shape` = (640,640). If you wish to change
+    Note: The layout by default is hard-coded to support
+    (640,360) shape. If you wish to change
     the display image shape and preserve an aesthetic layout,
     you will need to play with `x_offset`, `y_offset`, `font_scale` and
     `thickness` arguments.
 
-    :param img: original image to annotate
+    :param image: original image to annotate
     :param prediction: predictions returned by the inference pipeline
-    :param display_image_shape: target shape of the annotated image
+    :param images_per_sec: optional FPS value to display on the frame
     :param x_offset: x-coordinate of the upper,
         left corner of the prediction text box
     :param y_offset: y-coordinate of the upper,
@@ -49,36 +52,50 @@ def annotate(
     :param thickness: thickness of the label text
     :return: the original image annotated with the prediction data
     """
+    is_video = images_per_sec is not None
 
-    img = cv2.resize(img, display_image_shape)
-    img = _put_text_box(img, y_offset, prediction)
+    image = _put_text_box(image, y_offset, prediction, is_video)
     y_shift = copy.deepcopy(y_offset)
     for label, score in zip(prediction.labels, prediction.scores):
         # every next label annotation is placed `y_shift` pixels lower than
         # the previous one
         y_offset += y_shift
-        img = _put_prediction(
-            img, label, score, x_offset, y_offset, font_scale, thickness
+        image = _put_text(
+            image, f"{label}: {score:.2f}%", x_offset, y_offset, font_scale, thickness
         )
-    return img
+    if is_video:
+        # for the video annotation, additionally
+        # include the FPS information
+        y_offset += y_shift
+        image = _put_text(
+            image,
+            f"FPS: {images_per_sec:.2f}",
+            x_offset,
+            y_offset,
+            font_scale,
+            thickness,
+            (100, 0, 0),
+        )
+
+    return image
 
 
-def _put_prediction(
-    img: np.ndarray,
-    label: str,
-    score: str,
+def _put_text(
+    img: numpy.ndarray,
+    text: str,
     x_offset: int,
     y_offset: int,
     font_scale: float,
     thickness: int,
+    text_colour: Tuple = (0, 0, 0),
 ):
     cv2.putText(
         img,
-        f"{label}: {score:.2f}%",
+        text,
         (int(x_offset), int(y_offset)),
         cv2.FONT_HERSHEY_DUPLEX,
         font_scale,
-        (0, 0, 0),  # black text
+        text_colour,
         thickness,
         cv2.LINE_AA,
     )
@@ -86,18 +103,24 @@ def _put_prediction(
 
 
 def _put_text_box(
-    img: np.ndarray, y_offset: int, prediction: ImageClassificationOutput
+    img: numpy.ndarray,
+    y_offset: int,
+    prediction: ImageClassificationOutput,
+    is_video: bool,
 ):
 
-    num_labels = len(prediction.labels)
+    num_text_rows = (
+        len(prediction.labels) + 2
+    )  # no of text rows + 2 margins (top, bottom)
+    num_text_rows += is_video  # add one more text row for FPS data
     # text box height is a function of the
     # number of labels while
     # text box width is always half
     # the width of the image
-    rect = img[0 : y_offset * (num_labels + 2), 0 : int(img.shape[1] / 2)]
-    white_rect = np.ones(rect.shape, dtype=np.uint8) * 255
+    rect = img[0 : y_offset * num_text_rows, 0 : int(img.shape[1] / 2)]
+    white_rect = numpy.ones(rect.shape, dtype=numpy.uint8) * 255
     rect_mixed = cv2.addWeighted(rect, 0.5, white_rect, 0.5, 1.0)
 
     # Putting the image back to its position
-    img[0 : y_offset * (num_labels + 2), 0 : int(img.shape[1] / 2)] = rect_mixed
+    img[0 : y_offset * num_text_rows, 0 : int(img.shape[1] / 2)] = rect_mixed
     return img

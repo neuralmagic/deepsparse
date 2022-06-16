@@ -12,7 +12,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Usage: deepsparse.image_classification.annotate [OPTIONS]
 
+  Annotation Script for Image Classification with DeepSparse
+
+Options:
+  --model_filepath, --model-filepath TEXT
+                                  Path/SparseZoo stub to the model file to be
+                                  used for annotation  [default: "zoo:cv/classification
+                                  /resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none]
+  --source TEXT                   File path to image or directory of image
+                                  files, a .mp4 video [required]
+  --engine [deepsparse|onnxruntime|torch]
+                                  Inference engine backend to run on. Choices
+                                  are 'deepsparse', 'onnxruntime', and
+                                  'torch'. Default is 'deepsparse'
+  --image_shape, --image_shape INTEGER...
+                                  Image shape to use for inference, must be
+                                  two integers  [default: 224, 224]
+  --num_cores, --num-cores INTEGER
+                                  The number of physical cores to run the
+                                  annotations with, defaults to using all
+                                  physical cores available on the system. For
+                                  DeepSparse benchmarks, this value is the
+                                  number of cores per socket
+  --save_dir, --save-dir DIRECTORY
+                                  The path to the directory for saving results
+                                  [default: annotation-results]
+  --name TEXT                     Name of directory in save-dir to write
+                                  results to. defaults to
+                                  {engine}-annotations-{run_number}
+  --target_fps, --target-fps FLOAT
+                                  Target FPS when writing video files. Frames
+                                  will be dropped to closely match target FPS.
+                                  --source must be a video file and if target-
+                                  fps is greater than the source video fps
+                                  then it will be ignored
+  --display                       Set a flag to display annotated images while
+                                  running the inference pipeline
+                                  sources  [default: False]
+  --top_k, --top-k INTEGER        The number of the most probable classes
+                                  that will be displayed on an annotated image
+                                  [default: 3]
+  --help                          Show this message and exit
+
+#######
+Examples:
+
+1) deepsparse.image_classification.annotate --source PATH/TO/IMAGE.jpg
+2) deepsparse.image_classification.annotate --source PATH/TO/VIDEO.mp4
+3) deepsparse.image_classification.annotate --source PATH/TO/IMAGE_DIR
+"""
 import logging
 from typing import Optional
 
@@ -20,7 +71,7 @@ import click
 
 import cv2
 from deepsparse.image_classification.constants import IMAGENET_LABELS
-from deepsparse.image_classification.utils import annotate as _annotate
+from deepsparse.image_classification.utils import annotate_image
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import (
     annotate,
@@ -65,23 +116,12 @@ _LOGGER = logging.getLogger(__name__)
     "'onnxruntime', and 'torch'. Default is 'deepsparse'",
 )
 @click.option(
-    "--display_image_shape",
-    "--display_image_shape",
+    "--image_shape",
+    "--image-shape",
     type=int,
     nargs=2,
-    default=(640, 640),
-    help="Image shape of the annotated image, must be two integers",
-    show_default=True,
-)
-@click.option(
-    "--num_cores",
-    "--num-cores",
-    type=int,
-    default=None,
-    help="The number of physical cores to run the annotations with, "
-    "defaults to using all physical cores available on the system."
-    " For DeepSparse benchmarks, this value is the number of cores "
-    "per socket",
+    default=(224, 224),
+    help="The image shape of the input image (expected by the pipeline)",
     show_default=True,
 )
 @click.option(
@@ -115,31 +155,34 @@ _LOGGER = logging.getLogger(__name__)
     "--display",
     "--display",
     is_flag=True,
-    help="If set to True, annotated images using `imshow()` method.",
+    help="If set to True, annotated images will be displayed online, "
+    "while running the inference.",
     show_default=True,
 )
 @click.option(
-    "--no_save",
-    "--no-save",
-    is_flag=True,
-    help="If set to True, annotated images are saved to disk",
+    "--top_k",
+    "--top-k",
+    type=int,
+    default=3,
+    help="The number of top-k probabilities to be displayed on the annotated image",
     show_default=True,
 )
 def main(
     model_filepath: str,
     source: str,
     engine: str,
-    display_image_shape: tuple,
+    image_shape: tuple,
     num_cores: Optional[int],
     save_dir: str,
     name: Optional[str],
     target_fps: Optional[float],
-    no_save: bool,
     display: bool,
+    top_k: int,
 ) -> None:
     """
     Annotation Script for Image Classification with DeepSparse
     """
+
     save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
         tag=name,
@@ -149,9 +192,8 @@ def main(
     loader, saver, is_video = get_image_loader_and_saver(
         path=source,
         save_dir=save_dir,
-        image_shape=(224, 224),
+        image_shape=image_shape,
         target_fps=target_fps,
-        no_save=no_save,
     )
 
     cv_pipeline = Pipeline.create(
@@ -159,8 +201,8 @@ def main(
         model_path=model_filepath,
         engine_type=engine,
         num_cores=num_cores,
-        top_k=5,
-        class_names={str(idx): label for idx, label in enumerate(IMAGENET_LABELS)},
+        top_k=top_k,
+        class_names={idx: label for idx, label in enumerate(IMAGENET_LABELS)},
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
@@ -168,10 +210,11 @@ def main(
         # annotate
         annotated_image = annotate(
             pipeline=cv_pipeline,
-            annotation_func=_annotate,
-            image_batch=input_image,
-            original_images=[source_image],
-            display_image_shape=display_image_shape,
+            annotation_func=annotate_image,
+            image=input_image,
+            original_image=source_image,
+            target_fps=target_fps,
+            calc_fps=is_video,
         )
 
         if display:
@@ -180,7 +223,7 @@ def main(
 
         # save
         if saver:
-            saver.save_frame(annotated_image[0])
+            saver.save_frame(annotated_image)
 
     if saver:
         saver.close()

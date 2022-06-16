@@ -1,12 +1,32 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+A set of general functionalities that can be used to create
+an annotation script for any CV pipeline
+"""
 import glob
-from typing import Tuple, Iterator, Optional, Union, Iterable, Any, List
-import time
-from pathlib import Path
 import logging
 import os
-import numpy
 import shutil
+import time
+from pathlib import Path
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
+
+import numpy
+
 from sparsezoo.utils import create_dirs
+
 
 try:
     import cv2
@@ -18,13 +38,13 @@ except ModuleNotFoundError as cv2_import_error:
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def get_image_loader_and_saver(
     path: str,
     save_dir: str,
     image_shape: Tuple[int, int] = (640, 640),
     target_fps: Optional[float] = None,
     no_save: bool = False,
-    batch_size: int = 1,
 ) -> Union[Iterable, Any, bool]:
     """
 
@@ -58,7 +78,8 @@ def get_image_loader_and_saver(
         )
         return loader, saver, True
     # image file(s)
-    return ImageLoader(path, image_shape, batch_size), ImageSaver(save_dir), False
+    return ImageLoader(path, image_shape), ImageSaver(save_dir), False
+
 
 class ImageSaver:
     """
@@ -88,6 +109,7 @@ class ImageSaver:
         """
         pass
 
+
 class VideoLoader:
     """
     Class for pre-processing and iterating over video frames to be used as input for
@@ -97,7 +119,7 @@ class VideoLoader:
     :param image_size: size of input image_batch to model
     """
 
-    def __init__(self, path: str, image_size: Tuple[int, int] = (640, 640)):
+    def __init__(self, path: str, image_size: Tuple[int, int]):
         self._path = path
         self._image_size = image_size
         self._vid = cv2.VideoCapture(self._path)
@@ -139,9 +161,10 @@ class VideoLoader:
         """
         return self._total_frames
 
+
 class ImageLoader:
     """
-    Class for pre-processing and iterating over image_batch to be used as input for YOLO
+    Class for pre-processing and iterating over image_batch to be used as input for CV
     models
 
     :param path: Filepath to single image file or directory of image files to load,
@@ -149,10 +172,9 @@ class ImageLoader:
     :param image_size: size of input image_batch to model
     """
 
-    def __init__(self, path: str, image_size: Tuple[int, int] = (640, 640), batch_size = 1):
+    def __init__(self, path: str, image_size: Tuple[int, int]):
         self._path = path
         self._image_size = image_size
-        self._batch_size = batch_size
 
         if os.path.isdir(path):
             self._image_file_paths = [
@@ -161,32 +183,21 @@ class ImageLoader:
         elif "*" in path:
             self._image_file_paths = glob.glob(path)
         elif os.path.isfile(path):
-            # single file
-            if self._batch_size != 1:
-                raise ValueError("Attempting to instantiate `ImageLoader` that holds a "
-                                 f"single image, but the `batch_size` is set to {self.batch_size}. "
-                                 "Set `batch_size = 1`")
             self._image_file_paths = [path]
         else:
             raise ValueError(f"{path} is not a file, glob, or directory")
 
     def __iter__(self) -> Iterator[Tuple[numpy.ndarray, numpy.ndarray]]:
-
         for image_path in self._image_file_paths:
-            batch_input, batch_src = [], []
-            for _ in range(self._batch_size):
-                input_img, src_img = load_image(image_path, image_size=self._image_size)
-                batch_input.append(input_img)
-                batch_src.append(src_img)
-            yield numpy.stack(batch_input), numpy.stack(batch_src)
-
+            yield load_image(image_path, image_size=self._image_size)
 
     def __len__(self):
         return len(self._image_file_paths)
 
+
 class VideoSaver(ImageSaver):
     """
-    Class for saving YOLO model outputs as a VideoFile
+    Class for saving CV model outputs as a VideoFile
 
     :param save_dir: path to directory to write to
     :param original_fps: frames per second to save video with
@@ -205,7 +216,7 @@ class VideoSaver(ImageSaver):
     ):
         super().__init__(save_dir)
 
-        self._output_frame_size = (640,640)
+        self._output_frame_size = output_frame_size
         self._original_fps = original_fps
 
         if target_fps is not None and target_fps >= original_fps:
@@ -278,7 +289,7 @@ class VideoSaver(ImageSaver):
 
 
 def load_image(
-    img: Union[str, numpy.ndarray], image_size: Tuple[int, int] = (640, 640)
+    img: Union[str, numpy.ndarray], image_size: Tuple[int, int]
 ) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
     """
     :param img: file path to image or raw image array
@@ -287,7 +298,7 @@ def load_image(
         image
     """
     img = cv2.imread(img) if isinstance(img, str) else img
-    img_resized = cv2.resize(img, (224, 224))
+    img_resized = cv2.resize(img, image_size)
     img_transposed = img_resized[:, :, ::-1].transpose(2, 0, 1)
 
     return img_transposed, img
@@ -319,65 +330,58 @@ def get_annotations_save_dir(
     Path(new_save_dir).mkdir(parents=True, exist_ok=True)
     return new_save_dir
 
+
 def annotate(
-    pipeline: "YOLOPipeline",  # noqa: F821
-    annotation_func,
-    image_batch: Union[List[numpy.ndarray], List[str]],
+    pipeline: "Pipeline",  # noqa: F821
+    annotation_func: Callable,
+    image: Union[numpy.ndarray, str],
     target_fps: float = None,
     calc_fps: bool = False,
-    original_images: Optional[Union[List[numpy.ndarray], numpy.ndarray]] = None,
+    original_image: Optional[Union[numpy.ndarray, str]] = None,
     **kwargs,
-) -> List[numpy.ndarray]:
+) -> numpy.ndarray:
     """
-    Annotate and return image_batch with bounding boxes and labels
+    Annotate and return image_batch.
 
-    :param pipeline: A YOLOPipeline object
-    :param image_batch: A list of image files, or batch of numpy image_batch
+    :param pipeline: A Pipeline object
+    :param annotation_func: A pipeline-specific function
+        that annotates a single image
+    :param image: Image path or a numpy array
     :param target_fps: If not None, then the pipeline will be run at this target
     :param calc_fps: If True, and target_fps is None then the pipeline will
         calculate the FPS
-    :param original_images: images from input_batch before any processing
-    :return: A list of annotated images
-
+    :param original_image: The original `image` before any processing
+    :return: An annotated image
     """
 
-    if not isinstance(image_batch, list):
-        if isinstance(image_batch, numpy.ndarray) and image_batch.shape == 4:
-            image_batch = list(image_batch)
-        else:
-            image_batch = [image_batch]
+    if original_image is None:
+        original_image = image
 
-    if not original_images:
-        original_images = image_batch
-
-    batch_size = len(image_batch)
-    single_batch = batch_size == 1
-    if image_batch and isinstance(image_batch[0], str):
-        original_images = [cv2.imread(image) for image in image_batch]
+    if isinstance(original_image, str):
+        original_image = cv2.imread(image)
 
     if target_fps is None and calc_fps:
         start = time.time()
-    image_batch = numpy.stack(image_batch)
-    pipeline_outputs = pipeline(images=image_batch)
+
+    pipeline_output = pipeline(images=[image])
 
     if target_fps is None and calc_fps:
-        target_fps = float(batch_size) / (time.time() - start)
+        target_fps = 1 / (time.time() - start)
 
-    annotated_images = []
-    if single_batch:
-        pipeline_outputs = [pipeline_outputs]
+    result = annotation_func(
+        image=original_image,
+        prediction=pipeline_output,
+        images_per_sec=target_fps,
+        **kwargs,
+    )
 
-    for index, image_output in enumerate(pipeline_outputs):
-        image = original_images[index]
-        result = annotation_func(image, image_output, **kwargs)
-        annotated_images.append(result)
+    return result
 
-    return annotated_images
 
 class WebcamLoader:
     """
     Class for pre-processing and iterating over webcam frames to be used as input for
-    YOLO models.
+    CV models.
 
     Adapted from: https://github.com/ultralytics/yolov5/blob/master/utils/datasets.py
 
