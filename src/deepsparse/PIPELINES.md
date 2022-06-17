@@ -37,13 +37,13 @@ qa_pipeline(question="who is mark?", context="mark is batman")
 
 Development of new Pipelines for tasks is always ongoing. Currently supported tasks include:
 
-| Domain |         Task         | Documentation |
-|--------|:--------------------:|:-------------:|
-| NLP    | text-classification  |      TBA      |
-| NLP    | token-classification |      TBA      |
-| NLP    |  question-answering  |      TBA      |
-| CV     | image-classification |      TBA      |
-| CV     |   object-detection   |      TBA      |
+| Domain |         Task         |
+|--------|:--------------------:|
+| NLP    | [text-classification](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/README.md)  |
+| NLP    | [token-classification](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/README.md) |
+| NLP    | [question-answering](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/README.md)  |
+| CV     | [image-classification](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/image_classification/README.md) |
+| CV     | [object-detection](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/yolo/README.md)   |
 
 
 ## Deployment
