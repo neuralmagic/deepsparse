@@ -3,11 +3,11 @@
 
 [DeepSparse] Image Classification integration allows accelerated inference, 
 serving, and benchmarking of sparsified image classification models.
-This integration allows for leveraging the [DeepSparse] Engine to run 
+This integration allows for leveraging the DeepSparse Engine to run 
 sparsified image classification inference with GPU-class performance directly 
 on the CPU.
 
-The [DeepSparse] Engine takes advantage of sparsity within neural networks to 
+The DeepSparse Engine takes advantage of sparsity within neural networks to 
 reduce compute as well as accelerate memory-bound workloads. 
 The Engine is particularly effective when leveraging sparsification methods 
 such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and 
@@ -17,7 +17,7 @@ the baseline metrics.
 
 ## Getting Started
 
-Before you start your adventure with the [DeepSparse] Engine, make sure that 
+Before you start your adventure with the DeepSparse Engine, make sure that 
 your machine is compatible with our [hardware requirements].
 
 ### Installation
@@ -26,7 +26,7 @@ your machine is compatible with our [hardware requirements].
 
 ### Model Format
 
-By default, to deploy image classification models using the [DeepSparse] Engine,
+By default, to deploy image classification models using the DeepSparse Engine,
 the model should be supplied in the [ONNX] format. 
 This grants the Engine the flexibility to serve any model in a framework-agnostic
 manner. 
@@ -74,7 +74,7 @@ os.path.isfile(os.path.join(model.dir_path, "model.onnx"))
 
 ## Deployment APIs
 
-[DeepSparse] provides both a python Pipeline API and an out-of-the-box model 
+DeepSparse provides both a python Pipeline API and an out-of-the-box model 
 server that can be used for end-to-end inference in either existing python 
 workflows or as an HTTP endpoint. Both options provide similar specifications 
 for configurations and support a variety of Image Classification models.
@@ -82,7 +82,7 @@ for configurations and support a variety of Image Classification models.
 ### Python API
 
 Pipelines are the default interface for running the inference with the 
-[DeepSparse] Engine.
+DeepSparse Engine.
 
 Once a model is obtained, either through [SparseML] training or directly from [SparseZoo],
 `deepsparse.Pipeline` can be used to easily facilitate end to end inference and deployment
