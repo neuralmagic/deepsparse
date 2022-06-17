@@ -68,7 +68,7 @@ Neural Magic's DeepSparse Engine is able to integrate into popular deep learning
 - 🧰 [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
 
 ## Installation
-The DeepSparse Engine is tested on Python 3.6-3.9, ONNX 1.5.0-1.10.1, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended. Install the engine using the following command:
+The DeepSparse Engine is tested on Python 3.6-3.9, ONNX 1.5.0-1.10.1, ONNX opset version 11+, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended. Install the engine using the following command:
 
 ```bash
 pip install deepsparse
@@ -189,10 +189,6 @@ inputs = generate_random_inputs(onnx_filepath, batch_size)
 engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
-Compatibility/Support Notes:
-- ONNX version 1.5-1.7
-- ONNX opset version 11+
-- ONNX IR version has not been tested at this time
 
 The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes package APIs along with examples to quickly get started benchmarking and inferencing sparse models.
 
