@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Tuple, Type, Union
 import numpy
 from pydantic import BaseModel
 
+import cv2
 from deepsparse import Pipeline
 from deepsparse.yolact.schemas import YolactInputSchema, YolactOutputSchema
 
@@ -64,7 +65,32 @@ class YolactPipeline(Pipeline):
             to pass to process_engine_outputs to facilitate information from the raw
             inputs to postprocessing that may not be included in the engine inputs
         """
-        raise NotImplementedError()
+        if isinstance(inputs, list):
+
+            if isinstance(inputs[0], str):
+                raise NotImplementedError()
+
+            elif isinstance(inputs[0], numpy.ndarray):
+
+                def process_numpy_array(image):
+                    # We start with an input image (H, W, C)
+                    # and make sure it is type float
+                    image = image.astype(numpy.float32)
+                    # By default, when training we do not preserve
+                    # aspect ratio (simply explode the image size
+                    # to the default value)
+                    image = cv2.resize(image, (550, 550))
+                    # Apply the default backbone transform
+                    image /= 255
+                    image = image[:, :, [2, 0, 1]]  # BGR by default
+                    return image
+
+                return [process_numpy_array(array) for array in inputs]
+            else:
+                raise NotImplementedError()
+
+        else:
+            raise NotImplementedError()
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
