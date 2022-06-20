@@ -288,6 +288,7 @@ response = requests.post(url, json=obj)
 response.text
 
 >> '{"predictions":[[{"entity":"LABEL_0","score":0.9998655915260315,"index":1,"word":"drive","start":0,"end":5,"is_grouped":false},{"entity":"LABEL_0","score":0.9998604655265808,"index":2,"word":"from","start":6,"end":10,"is_grouped":false},{"entity":"LABEL_5","score":0.9994636178016663,"index":3,"word":"california","start":11,"end":21,"is_grouped":false},{"entity":"LABEL_0","score":0.999838650226593,"index":4,"word":"to","start":22,"end":24,"is_grouped":false},{"entity":"LABEL_5","score":0.9994573593139648,"index":5,"word":"texas","start":25,"end":30,"is_grouped":false},{"entity":"LABEL_0","score":0.9998716711997986,"index":6,"word":"!","start":30,"end":31,"is_grouped":false}]]}'
+```
 
 ## Benchmarking
 The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse Hugging Face ONNX models perform inference? 
