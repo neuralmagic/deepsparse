@@ -101,21 +101,36 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     """
     transformers zero-shot zero shot text classification pipeline
 
-    example instantiation:
+    example dynamic labels:
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
+        num_sequences=1,
         model_scheme="nli",
         model_config={"hypothesis_template": "This text is related to {}"},
         model_path="nli_model_dir/",
     )
-    ```
 
-    example batch size 1, single sequence and three labels:
-    ```python
     sequence_to_classify = "Who are you voting for in 2020?"
     candidate_labels = ["Europe", "public health", "politics"]
     zero_shot_text_classifier(sequence_to_classify, candidate_labels)
+    >>> sequences=['Who are you voting for in 2020?']
+        labels=[['politics', 'Europe', 'public health']]
+        scores=[[0.7635, 0.1357, 0.1007]]
+    ```
+
+    example static labels:
+    ```python
+    zero_shot_text_classifier = Pipeline.create(
+        task="zero_shot_text_classification",
+        num_sequences=1,
+        model_scheme="nli",
+        model_path="nli_model_dir/",
+        labels=["politics", "Europe", "public health"]
+    )
+
+    sequence_to_classify = "Who are you voting for in 2020?"
+    zero_shot_text_classifier(sequence_to_classify)
     >>> sequences=['Who are you voting for in 2020?']
         labels=[['politics', 'Europe', 'public health']]
         scores=[[0.7635, 0.1357, 0.1007]]
@@ -157,7 +172,6 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         with 2 streams to make use of parallel inference of labels
     """
 
-    # Note batch_size is for compatibility and users should instead use num_sequences
     def __init__(
         self,
         *,
@@ -169,6 +183,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         batch_size: Optional[int] = None,
         **kwargs,
     ):
+        # Note: users should use num_sequences argument instead of batch_size
         if model_scheme not in ModelSchemes.to_list():
             raise ValueError(
                 f"Unknown model_scheme {model_scheme}. Currently supported model "

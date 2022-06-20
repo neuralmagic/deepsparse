@@ -151,18 +151,16 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     transformers zero-shot zero shot text classification pipeline
 
-    example instantiation:
+    example dynamic labels:
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
+        num_sequences=1,
         model_scheme="nli",
-        model_scheme_config={"hypothesis_template": "This text is related to {}"},
+        model_config={"hypothesis_template": "This text is related to {}"},
         model_path="nli_model_dir/",
     )
-    ```
 
-    example batch size 1, single sequence and three labels:
-    ```python
     sequence_to_classify = "Who are you voting for in 2020?"
     candidate_labels = ["Europe", "public health", "politics"]
     zero_shot_text_classifier(sequence_to_classify, candidate_labels)
@@ -171,13 +169,35 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         scores=[[0.7635, 0.1357, 0.1007]]
     ```
 
+    example static labels:
+    ```python
+    zero_shot_text_classifier = Pipeline.create(
+        task="zero_shot_text_classification",
+        num_sequences=1,
+        model_scheme="nli",
+        model_path="nli_model_dir/",
+        labels=["politics", "Europe", "public health"]
+    )
+
+    sequence_to_classify = "Who are you voting for in 2020?"
+    zero_shot_text_classifier(sequence_to_classify)
+    >>> sequences=['Who are you voting for in 2020?']
+        labels=[['politics', 'Europe', 'public health']]
+        scores=[[0.7635, 0.1357, 0.1007]]
+    ```
+
+    Note that labels must either be provided during pipeline instantiation via
+    the constructor, at inference time, but not both.
+
+    Note that if a hypothesis_template is provided at inference time, then it
+    will override the value provided during model instantiation
+
     :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
         (preferred) a directory containing a model.onnx, tokenizer config, and model
         config. If no tokenizer and/or model config(s) are found, then they will be
         loaded from huggingface transformers using the `default_model_name` key
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -193,8 +213,13 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         Default is "bert-base-uncased"
     :param model_scheme: training scheme used to train the model used for zero shot.
         Currently supported schemes are "nli"
-    :param model_scheme_config: Config object or a dict of config keyword arguments
-    :param multi_class: True if class probabilities are independent, default False
+    :param model_config: config object specific to the model_scheme of this model
+        or a dict of config keyword arguments
+    :param num_sequences: the number of sequences to handle per batch.
+    :param labels: static list of labels to perform text classification with. Can
+        also be provided at inference time
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
 
