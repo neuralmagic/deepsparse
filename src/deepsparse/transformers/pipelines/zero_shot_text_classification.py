@@ -35,6 +35,7 @@ transformers tasks
 """
 
 
+from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import List, Optional, Type, Union
 
@@ -42,6 +43,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
+from deepsparse.engine import Context
 from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.pipelines.nli_text_classification import (
     NliTextClassificationConfig,
@@ -104,7 +106,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
         model_scheme="nli",
-        model_scheme_config={"hypothesis_template": "This text is related to {}"},
+        model_config={"hypothesis_template": "This text is related to {}"},
         model_path="nli_model_dir/",
     )
     ```
@@ -119,13 +121,18 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         scores=[[0.7635, 0.1357, 0.1007]]
     ```
 
+    Note that labels must either be provided during pipeline instantiation via
+    the constructor, at inference time, but not both.
+
+    Note that if a hypothesis_template is provided at inference time, then it
+    will override the value provided during model instantiation
+
     :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
         (preferred) a directory containing a model.onnx, tokenizer config, and model
         config. If no tokenizer and/or model config(s) are found, then they will be
         loaded from huggingface transformers using the `default_model_name` key
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -141,16 +148,25 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         Default is "bert-base-uncased"
     :param model_scheme: training scheme used to train the model used for zero shot.
         Currently supported schemes are "nli"
-    :param model_scheme_config: Config object or a dict of config keyword arguments
-    :param multi_class: True if class probabilities are independent, default False
+    :param model_config: config object specific to the model_scheme of this model
+        or a dict of config keyword arguments
+    :param num_sequences: the number of sequences to handle per batch.
+    :param labels: static list of labels to perform text classification with. Can
+        also be provided at inference time
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels
     """
 
+    # Note batch_size is for compatibility and users should instead use num_sequences
     def __init__(
         self,
         *,
         model_scheme: str = ModelSchemes.nli.value,
-        model_scheme_config: Optional[Union[NliTextClassificationConfig, dict]] = None,
-        multi_class: bool = False,
+        model_config: Optional[Union[NliTextClassificationConfig, dict]] = None,
+        num_sequences: int = 1,
+        labels: Optional[List] = None,
+        context: Optional[Context] = None,
+        batch_size: Optional[int] = None,
         **kwargs,
     ):
         if model_scheme not in ModelSchemes.to_list():
@@ -160,8 +176,43 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
             )
 
         self._model_scheme = model_scheme
-        self._config = self._parse_config(model_scheme_config)
-        self._multi_class = multi_class
+        self._config = self._parse_config(model_config)
+        self._num_sequences = num_sequences
+        self._labels = self._parse_labels(labels)
+        self._thread_pool = None
+
+        # If dynamic labels
+        if self._labels is None:
+            if context is None:
+                # num_streams is arbitrarily chosen to be any value >= 2
+                context = Context(num_cores=None, num_streams=2)
+                kwargs.update({"context": context})
+
+            self._thread_pool = ThreadPoolExecutor(
+                max_workers=context.num_streams or 2,
+                thread_name_prefix="deepsparse.pipelines.zero_shot_text_classifier",
+            )
+
+            if batch_size is not None and batch_size != num_sequences:
+                raise ValueError(
+                    f"This pipeline requires that batch_size {batch_size} match "
+                    f"num_sequences {num_sequences} when no static labels are "
+                    f"provided"
+                )
+            kwargs.update({"batch_size": num_sequences})
+
+        # If static labels
+        else:
+            if batch_size is not None and batch_size != num_sequences * len(
+                self._labels
+            ):
+                raise ValueError(
+                    f"This pipeline requires that batch_size {batch_size} match "
+                    f"num_sequences times the number labels "
+                    f"{num_sequences * len(self._labels)} when static labels are "
+                    f"provided"
+                )
+            kwargs.update({"batch_size": num_sequences * len(self._labels)})
 
         super().__init__(**kwargs)
 
@@ -207,7 +258,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         """
         return ZeroShotTextClassificationOutput
 
-    def _parse_labels(self, labels: Union[List[str], str]) -> List[str]:
+    def _parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
         """
         If given a string of comma separated labels, parses values into a list
 
@@ -253,6 +304,31 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
+
+        # Check for absent labels
+        if inputs.labels is None and self._labels is None:
+            raise ValueError(
+                "You must provide either static labels during pipeline creation or "
+                "dynamic labels at inference time"
+            )
+
+        # Check for conflicting labels
+        if inputs.labels is not None and self._labels is not None:
+            raise ValueError(
+                "Found both static labels and dynamic labels at inference time. You "
+                "must provide only one"
+            )
+
+        # Check for incorrect number of sequences
+        num_sequences = (
+            1 if isinstance(inputs.sequences, str) else len(inputs.sequences)
+        )
+        if num_sequences != self._num_sequences:
+            raise ValueError(
+                f"number of sequences {num_sequences} must match the number of "
+                f"sequences the pipeline was instantiated with {self._num_sequences}"
+            )
+
         if self._model_scheme == ModelSchemes.nli.value:
             return process_nli_inputs(self, inputs, self._config)
 
