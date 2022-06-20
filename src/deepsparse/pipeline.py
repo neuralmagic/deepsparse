@@ -17,7 +17,6 @@ Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
 
-
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -42,14 +41,14 @@ __all__ = [
     "token_classification_pipeline",
     "image_classification_pipeline",
     "yolo_pipeline",
+    "Bucketable",
+    "BucketingPipeline",
 ]
-
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
-
 
 _REGISTERED_PIPELINES = {}
 
@@ -488,6 +487,26 @@ class Pipeline(ABC):
                 "provide a model path for pipelines that do not have a default defined"
             )
 
+        if issubclass(
+            pipeline_constructor, Bucketable
+        ) and pipeline_constructor.should_bucket(**kwargs):
+            if input_shapes:
+                raise ValueError(
+                    "Overriding input shapes not supported with Bucketing enabled"
+                )
+            if not context:
+                context = Context(num_cores=num_cores)
+            buckets = pipeline_constructor.create_pipeline_buckets(
+                task=task,
+                model_path=model_path,
+                engine_type=engine_type,
+                batch_size=batch_size,
+                alias=alias,
+                context=context,
+                **kwargs,
+            )
+            return BucketingPipeline(pipelines=buckets)
+
         return pipeline_constructor(
             model_path=model_path,
             engine_type=engine_type,
@@ -832,3 +851,106 @@ class PipelineConfig(BaseModel):
             "into the pipeline as kwargs"
         ),
     )
+
+
+class BucketingPipeline(object):
+    """
+    A Proxy class that adds Bucketing functionality to Pipelines
+
+    :param pipelines: A list of Pipeline objects/buckets that implement
+        `Bucketable` contract
+    """
+
+    def __init__(self, pipelines: List[Pipeline]):
+        if not (pipelines and isinstance(pipelines, list)):
+            raise ValueError(
+                "Expected a non empty List of pipeline objects but got " f"{pipelines}"
+            )
+        self._pipelines = pipelines
+        self._pipeline_class = pipelines[0].__class__
+        self._validate_pipeline_class()
+
+    def __call__(self, **inputs):
+        parsed_inputs = self._pipelines[-1].parse_inputs(**inputs)
+        pipeline = self._pipeline_class.route_input_to_bucket(
+            input_schema=parsed_inputs,
+            pipelines=self._pipelines,
+        )
+        return pipeline(parsed_inputs)
+
+    def __getattr__(self, item):
+        value = getattr(self._pipelines[0].__class__, item)
+
+        if isinstance(value, property):
+            return getattr(self._pipelines[0], item)
+
+        raise AttributeError(
+            f"{item} not found in {self.__class__.__name__}, "
+            f"and is not a property of {self._pipeline_class.__name__}"
+        )
+
+    @property
+    def input_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that inputs to this pipeline must comply to
+        """
+        return self._pipelines[0].input_schema
+
+    @property
+    def output_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that outputs of this pipeline must comply to
+        """
+        return self._pipelines[0].output_schema
+
+    def _validate_pipeline_class(self):
+        # validate all pipelines belong to the same class
+
+        if not issubclass(self._pipeline_class, Bucketable):
+            raise ValueError(f"{self._pipeline_class} is not Bucketable")
+
+        is_valid = all(
+            isinstance(pipeline, self._pipeline_class) for pipeline in self._pipelines
+        )
+
+        if not is_valid:
+            raise ValueError(
+                "All Pipeline Buckets must belong to the same Pipeline Class"
+            )
+
+
+class Bucketable(ABC):
+    """
+    A contract, that ensures implementing Pipeline class can create multiple Pipeline
+    instances and route each input sample to correct instance based off of specific
+    implementations of abstract methods defined in this contract
+    """
+
+    @staticmethod
+    @abstractmethod
+    def should_bucket(*args, **kwargs) -> bool:
+        """
+        :returns: True if buckets should be created else False
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
+        """
+        :return: Create and return a list of Pipeline objects
+            representing different buckets
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def route_input_to_bucket(
+        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+    ) -> Pipeline:
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
+        pass
