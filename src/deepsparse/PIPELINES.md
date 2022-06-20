@@ -3,22 +3,22 @@
 ## Introduction
 
 DeepSparse Pipelines provide a simple interface for end-to-end ML inference that wraps
-the [DeepSparse Engine](https://github.com/neuralmagic/deepsparse) with task specific
+the [DeepSparse Engine](https://github.com/neuralmagic/deepsparse) with task-specific
 processing. Pipelines are created for a given task and include support for transforming
 raw inputs into fully processed predictions with sparse acceleration.
 
 Inputs and outputs can be given as [pydantic](https://pydantic-docs.helpmanual.io/)
-schemas or may be parsed into them. This provides out of the box type checking and
+schemas or may be parsed into them. This provides out-of-the-box type checking and
 validation for Pipelines.
 
 Pipelines are created through the `Pipeline.create(...)` method.  `create` requires a
-`task` name, an optional `model_path`, as well as other task specific key word arguments
-for deployment.  Full documentation can be found in
+`task` name, an optional `model_path`, as well as other task-specific key word arguments
+for deployment.  Full documentation is found in
 [`pipelines.py`](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/pipeline.py)
-and task specific docs.
+and task-specific docs.
 
 While a default model for each task will be downloaded when `model_path` is not specified,
-however `model_path` may be a [SparseZoo](https://github.com/neuralmagic/deepsparse)
+however `model_path` may be a [SparseZoo](https://github.com/neuralmagic/sparsezoo)
 model stub, path to a local ONNX file, or deployment directory with an ONNX file.
 
 ### Example Usage
@@ -60,7 +60,7 @@ can easily be added to the config of these deployments.
 Custom tasks may be defined by inheriting from the base Pipeline class in 
 [`pipelines.py`](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/pipeline.py)
 and implementing the `abstractmethod` stubs.  This includes defining input and output
-pydantic schemas and defining pre and post processing flows.
+pydantic schemas and defining pre- and post-processing flows.
 
 Tasks may also be registered to `Pipeline.create` by decorating the implemented class
 with `@Pipeline.register`. This enables easy instantiation of the new pipeline in existing
