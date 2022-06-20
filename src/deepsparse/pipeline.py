@@ -874,6 +874,9 @@ class PipelineConfig(BaseModel):
 class BucketingPipeline(object):
     """
     A Proxy class that adds Bucketing functionality to Pipelines
+
+    :param pipelines: A list of Pipeline objects/buckets that implement
+        `Bucketable` contract
     """
 
     def __init__(self, pipelines: List[Pipeline]):
@@ -920,6 +923,9 @@ class BucketingPipeline(object):
 
     def _validate_pipeline_class(self):
         # validate all pipelines belong to the same class
+
+        if not issubclass(self._pipeline_class, Bucketable):
+            raise ValueError(f"{self._pipeline_class} is not Bucketable")
 
         is_valid = all(
             isinstance(pipeline, self._pipeline_class) for pipeline in self._pipelines
