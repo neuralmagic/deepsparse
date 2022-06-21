@@ -69,13 +69,14 @@ class SupportedTasks:
     """
 
     nlp = namedtuple(
-        "nlp", ["question_answering", "text_classification", "token_classification"]
+        "nlp", ["question_answering", "text_classification", "token_classification", "embedding_extraction"]
     )(
         question_answering=AliasedTask("question_answering", ["qa"]),
         text_classification=AliasedTask(
             "text_classification", ["glue", "sentiment_analysis"]
         ),
         token_classification=AliasedTask("token_classification", ["ner"]),
+        embedding_extraction=AliasedTask("embedding_extraction", [])
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(
@@ -123,6 +124,7 @@ class SupportedTasks:
             cls.nlp.question_answering.matches(task)
             or cls.nlp.text_classification.matches(task)
             or cls.nlp.token_classification.matches(task)
+            or cls.nlp.embedding_extraction.matches(task)
         )
 
     @classmethod
