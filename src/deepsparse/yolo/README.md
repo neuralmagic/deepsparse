@@ -80,8 +80,8 @@ https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1)
 
 If you don't have an image ready, pull a sample image down with
 
-```
-wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/bascilica.jpg
+```bash
+wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/basilica.jpg
 ```
 
 ```python
