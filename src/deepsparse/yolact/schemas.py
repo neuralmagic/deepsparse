@@ -16,7 +16,9 @@
 Input/Output Schemas for Image Segmentation with YOLACT
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Union, List, Any
+import numpy
 
 
 __all__ = [
@@ -27,11 +29,17 @@ __all__ = [
 
 class YolactInputSchema(BaseModel):
     """
-    TODO: Define Fields
+    Input Model for YOLACT
     """
+    images: Union[str, List[str], List[Any], numpy.ndarray] = Field(
+        description="List of images to process"
+    )
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class YolactOutputSchema(BaseModel):
     """
     TODO: Define Fields
     """
+    pass

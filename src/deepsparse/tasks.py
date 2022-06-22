@@ -105,13 +105,13 @@ class SupportedTasks:
             # register with Pipeline.register
             import deepsparse.image_classification.pipelines  # noqa: F401
 
-        elif cls.is_yolo(task):
-            # trigger yolo pipelines to register with Pipeline.register
-            import deepsparse.yolo.pipelines  # noqa: F401
-
         elif cls.is_yolact(task):
             # trigger yolo pipelines to register with Pipeline.register
             import deepsparse.yolact.pipelines  # noqa: F401
+
+        elif cls.is_yolo(task):
+            # trigger yolo pipelines to register with Pipeline.register
+            import deepsparse.yolo.pipelines  # noqa: F401
 
         else:
             raise ValueError(
