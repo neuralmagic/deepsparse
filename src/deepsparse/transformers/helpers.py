@@ -159,7 +159,6 @@ def overwrite_transformer_onnx_model_inputs(
         onnx.save(model, output_path)
         return input_names
 
-
 def _get_file_parent(file_path: str) -> str:
     return str(Path(file_path).parent.absolute())
 

@@ -264,3 +264,18 @@ def override_onnx_input_shapes(
     finally:
         os.unlink(shaped_model.name)
         shaped_model.close()
+
+
+def get_layer_name_by_depth(onnx_filepath: str, depth: int):
+    model = onnx.load(path)
+    layers = [node for node in model.graph if node.op_type in ["MatMulInteger"]]
+    return layers[depth]
+
+def add_onnx_model_output(onnx_filepath: str, input_node_name: str):
+    model = onnx.load(path)
+    output_node = onnx.helper.make_node(
+        'embedding',                  # name
+        [input_node_name], # inputs
+    )
+    model.output = [output_node]
+    return model
