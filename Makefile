@@ -22,7 +22,8 @@ ifneq ($(findstring examples,$(TARGETS)),examples)
 endif
 ifeq ($(findstring nobase,$(TARGETS)),nobase)
 	PYTEST_ARGS += --ignore tests/utils/test_data.py \
-	--ignore tests/test_engine.py
+	--ignore tests/test_engine.py \
+	--ignore tests/test_multi_engine.py
 endif
 
 PYTHON := python3

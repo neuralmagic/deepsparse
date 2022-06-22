@@ -306,6 +306,22 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 answer=example.context_text[char_start[0] : char_end[1]],
             )
 
+    @staticmethod
+    def route_input_to_bucket(
+        *args, input_schema: BaseModel, pipelines: List[TransformersPipeline], **kwargs
+    ) -> Pipeline:
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
+        current_seq_len = len(input_schema.question.split())
+
+        for pipeline in pipelines:
+            if pipeline.sequence_length > current_seq_len:
+                return pipeline
+        return pipelines[-1]
+
     def _process_single_feature(self, feature, engine_outputs):
         """
         :param feature: a SQuAD feature object

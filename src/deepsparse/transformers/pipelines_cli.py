@@ -20,7 +20,7 @@ inference using pipelines
 usage: deepsparse.transformers.run_inference [-h]
                            [-t {ner,question-answering,sentiment-analysis,
                            text-classification,token-classification}]
-                           -d DATA [--model-name MODEL_NAME] --model-path
+                           -d DATA --model-path
                            MODEL_PATH [--engine-type {deepsparse,onnxruntime}]
                            [--max-length MAX_LENGTH] [--num-cores NUM_CORES]
                            [-b BATCH_SIZE] [--scheduler {multi,single}]
@@ -40,9 +40,6 @@ optional arguments:
                         classification', 'token-classification']
   -d DATA, --data DATA  Path to file containing data for inferences, inputs
                         should be separated via newline
-  --model-name MODEL_NAME, --model_name MODEL_NAME
-                        Canonical name of the hugging face model this model is
-                        based on
   --model-path MODEL_PATH, --model_path MODEL_PATH
                         Path to (ONNX) model file to run, can also be a
                         SparseZoo stub
@@ -84,14 +81,14 @@ Example commands:
 
 import argparse
 import json
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from pydantic import BaseModel
 
+from deepsparse import Pipeline
 from deepsparse.pipeline import SUPPORTED_PIPELINE_ENGINES
 from deepsparse.transformers import fix_numpy_types
 from deepsparse.transformers.loaders import SUPPORTED_EXTENSIONS, get_batch_loader
-from deepsparse.transformers.pipelines import pipeline
 
 
 __all__ = [
@@ -130,14 +127,6 @@ def _parse_args() -> argparse.Namespace:
         f"{SUPPORTED_EXTENSIONS} files",
         required=True,
         type=str,
-    )
-
-    parser.add_argument(
-        "--model-name",
-        "--model_name",
-        help="Canonical name of the hugging face model this model is based on",
-        default=None,
-        type=Optional[str],
     )
 
     parser.add_argument(
@@ -213,12 +202,11 @@ def cli():
     """
     _args = _parse_args()
 
-    pipe = pipeline(
+    pipe = Pipeline.create(
         task=_args.task,
-        model_name=_args.model_name,
         model_path=_args.model_path,
         engine_type=_args.engine_type,
-        max_length=_args.max_length,
+        sequence_length=_args.max_length,
         num_cores=_args.num_cores,
         batch_size=_args.batch_size,
         scheduler=_args.scheduler,

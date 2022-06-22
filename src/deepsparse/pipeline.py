@@ -17,7 +17,6 @@ Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
 
-
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -43,319 +42,16 @@ __all__ = [
     "token_classification_pipeline",
     "image_classification_pipeline",
     "yolo_pipeline",
+    "Bucketable",
+    "BucketingPipeline",
 ]
-
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
-
 _REGISTERED_PIPELINES = {}
-
-
-def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
-    """
-    transformers question_answering pipeline
-
-    example instantiation:
-    ```python
-    question_answering = Pipeline.create(
-        task="question_answering",
-        model_path="question_answering_model_dir/",
-    )
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
-    :param doc_stride: if the context is too long to fit with the question for the
-        model, it will be split in several chunks with some overlap. This argument
-        controls the size of that overlap. Currently, only reading the first span
-        is supported (everything after doc_stride will be truncated). Default
-        is 128
-    :param max_question_len: maximum length of the question after tokenization.
-        It will be truncated if needed. Default is 64
-    :param max_answer_len: maximum length of answer after decoding. Default is 15
-    """
-    return Pipeline.create("question_answering", *args, **kwargs)
-
-
-def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
-    """
-    transformers text classification pipeline
-
-    example instantiation:
-    ```python
-    text_classifier = Pipeline.create(
-        task="text_classification",
-        model_path="text_classification_model_dir/",
-        batch_size=BATCH_SIZE,
-    )
-    ```
-
-    example batch size 1, single text inputs (ie sentiment analysis):
-    ```python
-    sentiment = text_classifier("the food tastes great")
-    sentiment = text_classifier(["the food tastes great"])
-    sentiment = text_classifier([["the food tastes great"]])
-    ```
-
-    example batch size 1, multi text input (ie QQP like tasks):
-    ```python
-    prediction = text_classifier([["how is the food?", "what is the food?"]])
-    ```
-
-    example batch size n, single text inputs:
-    ```python
-    sentiments = text_classifier(["the food tastes great", "the food tastes bad"])
-    sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
-    :param return_all_scores: if True, instead of returning the prediction as the
-        argmax of model class predictions, will return all scores and labels as
-        a list for each result in the batch. Default is False
-    """
-    return Pipeline.create("text_classification", *args, **kwargs)
-
-
-def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
-    """
-    transformers zero-shot zero shot text classification pipeline
-
-    example dynamic labels:
-    ```python
-    zero_shot_text_classifier = Pipeline.create(
-        task="zero_shot_text_classification",
-        num_sequences=1,
-        model_scheme="nli",
-        model_config={"hypothesis_template": "This text is related to {}"},
-        model_path="nli_model_dir/",
-    )
-
-    sequence_to_classify = "Who are you voting for in 2020?"
-    candidate_labels = ["Europe", "public health", "politics"]
-    zero_shot_text_classifier(sequence_to_classify, candidate_labels)
-    >>> sequences=['Who are you voting for in 2020?']
-        labels=[['politics', 'Europe', 'public health']]
-        scores=[[0.7635, 0.1357, 0.1007]]
-    ```
-
-    example static labels:
-    ```python
-    zero_shot_text_classifier = Pipeline.create(
-        task="zero_shot_text_classification",
-        num_sequences=1,
-        model_scheme="nli",
-        model_path="nli_model_dir/",
-        labels=["politics", "Europe", "public health"]
-    )
-
-    sequence_to_classify = "Who are you voting for in 2020?"
-    zero_shot_text_classifier(sequence_to_classify)
-    >>> sequences=['Who are you voting for in 2020?']
-        labels=[['politics', 'Europe', 'public health']]
-        scores=[[0.7635, 0.1357, 0.1007]]
-    ```
-
-    Note that labels must either be provided during pipeline instantiation via
-    the constructor, at inference time, but not both.
-
-    Note that if a hypothesis_template is provided at inference time, then it
-    will override the value provided during model instantiation
-
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
-    :param default_model_name: huggingface transformers model name to use to
-        load a tokenizer and model config when none are provided in the `model_path`.
-        Default is "bert-base-uncased"
-    :param model_scheme: training scheme used to train the model used for zero shot.
-        Currently supported schemes are "nli"
-    :param model_config: config object specific to the model_scheme of this model
-        or a dict of config keyword arguments
-    :param num_sequences: the number of sequences to handle per batch.
-    :param labels: static list of labels to perform text classification with. Can
-        also be provided at inference time
-    :param context: context for engine. If None, then the engine will be initialized
-        with 2 streams to make use of parallel inference of labels
-    """
-    return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
-
-
-def sentiment_analysis_pipeline(*args, **kwargs) -> "Pipeline":
-    """
-    transformers text classification pipeline
-
-    example instantiation:
-    ```python
-    text_classifier = Pipeline.create(
-        task="text_classification",
-        model_path="text_classification_model_dir/",
-        batch_size=BATCH_SIZE,
-    )
-    ```
-
-    example batch size 1, single text inputs (ie sentiment analysis):
-    ```python
-    sentiment = text_classifier("the food tastes great")
-    sentiment = text_classifier(["the food tastes great"])
-    sentiment = text_classifier([["the food tastes great"]])
-    ```
-
-    example batch size 1, multi text input (ie QQP like tasks):
-    ```python
-    prediction = text_classifier([["how is the food?", "what is the food?"]])
-    ```
-
-    example batch size n, single text inputs:
-    ```python
-    sentiments = text_classifier(["the food tastes great", "the food tastes bad"])
-    sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
-    :param return_all_scores: if True, instead of returning the prediction as the
-        argmax of model class predictions, will return all scores and labels as
-        a list for each result in the batch. Default is False
-    """
-    return Pipeline.create("text_classification", *args, **kwargs)
-
-
-def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
-    """
-    transformers token classification pipeline
-
-    example instantiation:
-    ```python
-    token_classifier = Pipeline.create(
-        task="token_classification",
-        model_path="token_classification_model_dir/",
-        batch_size=BATCH_SIZE,
-    )
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
-    :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
-        include 'none', 'simple', 'first', 'average', and 'max'. Default is None
-    :param ignore_labels: list of label names to ignore in output. Default is
-        ['0'] which ignores the default known class label
-    """
-    return Pipeline.create("token_classification", *args, **kwargs)
-
-
-def image_classification_pipeline(*args, **kwargs) -> "Pipeline":
-    """
-    Image classification pipeline for DeepSparse
-
-    :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param class_names: Optional dict, or json file of class names to use for
-        mapping class ids to class labels. Default is None
-    """
-    return Pipeline.create("image_classification", *args, **kwargs)
-
-
-def yolo_pipeline(*args, **kwargs) -> "Pipeline":
-    """
-    Image Segmentation YOLO pipeline for DeepSparse
-
-    :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values
-        include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param class_names: Optional string identifier, dict, or json file of
-        class names to use for mapping class ids to class labels. Default is
-        `coco`
-    """
-    return Pipeline.create("yolo", *args, **kwargs)
 
 
 class Pipeline(ABC):
@@ -571,6 +267,26 @@ class Pipeline(ABC):
         if batch_size is not None:
             kwargs["batch_size"] = batch_size
 
+        if issubclass(
+            pipeline_constructor, Bucketable
+        ) and pipeline_constructor.should_bucket(**kwargs):
+            if input_shapes:
+                raise ValueError(
+                    "Overriding input shapes not supported with Bucketing enabled"
+                )
+            if not context:
+                context = Context(num_cores=num_cores)
+            buckets = pipeline_constructor.create_pipeline_buckets(
+                task=task,
+                model_path=model_path,
+                engine_type=engine_type,
+                batch_size=batch_size,
+                alias=alias,
+                context=context,
+                **kwargs,
+            )
+            return BucketingPipeline(pipelines=buckets)
+
         return pipeline_constructor(
             model_path=model_path,
             engine_type=engine_type,
@@ -606,6 +322,8 @@ class Pipeline(ABC):
         task_names = [task]
         if task_aliases:
             task_names.extend(task_aliases)
+
+        task_names = [task_name.lower().replace("-", "_") for task_name in task_names]
 
         def _register_task(task_name, pipeline_class):
             if task_name in _REGISTERED_PIPELINES and (
@@ -912,3 +630,409 @@ class PipelineConfig(BaseModel):
             "into the pipeline as kwargs"
         ),
     )
+
+
+class BucketingPipeline(object):
+    """
+    A Proxy class that adds Bucketing functionality to Pipelines
+
+    :param pipelines: A list of Pipeline objects/buckets that implement
+        `Bucketable` contract
+    """
+
+    def __init__(self, pipelines: List[Pipeline]):
+        if not (pipelines and isinstance(pipelines, list)):
+            raise ValueError(
+                "Expected a non empty List of pipeline objects but got " f"{pipelines}"
+            )
+        self._pipelines = pipelines
+        self._pipeline_class = pipelines[0].__class__
+        self._validate_pipeline_class()
+
+    def __call__(self, **inputs):
+        parsed_inputs = self._pipelines[-1].parse_inputs(**inputs)
+        pipeline = self._pipeline_class.route_input_to_bucket(
+            input_schema=parsed_inputs,
+            pipelines=self._pipelines,
+        )
+        return pipeline(parsed_inputs)
+
+    def __getattr__(self, item):
+        value = getattr(self._pipelines[0].__class__, item)
+
+        if isinstance(value, property):
+            return getattr(self._pipelines[0], item)
+
+        raise AttributeError(
+            f"{item} not found in {self.__class__.__name__}, "
+            f"and is not a property of {self._pipeline_class.__name__}"
+        )
+
+    @property
+    def input_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that inputs to this pipeline must comply to
+        """
+        return self._pipelines[0].input_schema
+
+    @property
+    def output_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that outputs of this pipeline must comply to
+        """
+        return self._pipelines[0].output_schema
+
+    def _validate_pipeline_class(self):
+        # validate all pipelines belong to the same class
+
+        if not issubclass(self._pipeline_class, Bucketable):
+            raise ValueError(f"{self._pipeline_class} is not Bucketable")
+
+        is_valid = all(
+            isinstance(pipeline, self._pipeline_class) for pipeline in self._pipelines
+        )
+
+        if not is_valid:
+            raise ValueError(
+                "All Pipeline Buckets must belong to the same Pipeline Class"
+            )
+
+
+class Bucketable(ABC):
+    """
+    A contract, that ensures implementing Pipeline class can create multiple Pipeline
+    instances and route each input sample to correct instance based off of specific
+    implementations of abstract methods defined in this contract
+    """
+
+    @staticmethod
+    @abstractmethod
+    def should_bucket(*args, **kwargs) -> bool:
+        """
+        :returns: True if buckets should be created else False
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
+        """
+        :return: Create and return a list of Pipeline objects
+            representing different buckets
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def route_input_to_bucket(
+        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+    ) -> Pipeline:
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
+        pass
+
+
+def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers zero-shot zero shot text classification pipeline
+
+    example dynamic labels:
+    ```python
+    zero_shot_text_classifier = Pipeline.create(
+        task="zero_shot_text_classification",
+        num_sequences=1,
+        model_scheme="nli",
+        model_config={"hypothesis_template": "This text is related to {}"},
+        model_path="nli_model_dir/",
+    )
+
+    sequence_to_classify = "Who are you voting for in 2020?"
+    candidate_labels = ["Europe", "public health", "politics"]
+    zero_shot_text_classifier(sequence_to_classify, candidate_labels)
+    >>> sequences=['Who are you voting for in 2020?']
+        labels=[['politics', 'Europe', 'public health']]
+        scores=[[0.7635, 0.1357, 0.1007]]
+    ```
+
+    example static labels:
+    ```python
+    zero_shot_text_classifier = Pipeline.create(
+        task="zero_shot_text_classification",
+        num_sequences=1,
+        model_scheme="nli",
+        model_path="nli_model_dir/",
+        labels=["politics", "Europe", "public health"]
+    )
+
+    sequence_to_classify = "Who are you voting for in 2020?"
+    zero_shot_text_classifier(sequence_to_classify)
+    >>> sequences=['Who are you voting for in 2020?']
+        labels=[['politics', 'Europe', 'public health']]
+        scores=[[0.7635, 0.1357, 0.1007]]
+    ```
+
+    Note that labels must either be provided during pipeline instantiation via
+    the constructor, at inference time, but not both.
+
+    Note that if a hypothesis_template is provided at inference time, then it
+    will override the value provided during model instantiation
+
+    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
+        (preferred) a directory containing a model.onnx, tokenizer config, and model
+        config. If no tokenizer and/or model config(s) are found, then they will be
+        loaded from huggingface transformers using the `default_model_name` key
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        Default is 128
+    :param default_model_name: huggingface transformers model name to use to
+        load a tokenizer and model config when none are provided in the `model_path`.
+        Default is "bert-base-uncased"
+    :param model_scheme: training scheme used to train the model used for zero shot.
+        Currently supported schemes are "nli"
+    :param model_config: config object specific to the model_scheme of this model
+        or a dict of config keyword arguments
+    :param num_sequences: the number of sequences to handle per batch.
+    :param labels: static list of labels to perform text classification with. Can
+        also be provided at inference time
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels
+    """
+    return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
+
+
+def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers question_answering pipeline
+
+    example instantiation:
+    ```python
+    question_answering = Pipeline.create(
+        task="question_answering",
+        model_path="question_answering_model_dir/",
+    )
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        Default is 128
+    :param doc_stride: if the context is too long to fit with the question for the
+        model, it will be split in several chunks with some overlap. This argument
+        controls the size of that overlap. Currently, only reading the first span
+        is supported (everything after doc_stride will be truncated). Default
+        is 128
+    :param max_question_len: maximum length of the question after tokenization.
+        It will be truncated if needed. Default is 64
+    :param max_answer_len: maximum length of answer after decoding. Default is 15
+    """
+    return Pipeline.create("question_answering", *args, **kwargs)
+
+
+def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers text classification pipeline
+
+    example instantiation:
+    ```python
+    text_classifier = Pipeline.create(
+        task="text_classification",
+        model_path="text_classification_model_dir/",
+        batch_size=BATCH_SIZE,
+    )
+    ```
+
+    example batch size 1, single text inputs (ie sentiment analysis):
+    ```python
+    sentiment = text_classifier("the food tastes great")
+    sentiment = text_classifier(["the food tastes great"])
+    sentiment = text_classifier([["the food tastes great"]])
+    ```
+
+    example batch size 1, multi text input (ie QQP like tasks):
+    ```python
+    prediction = text_classifier([["how is the food?", "what is the food?"]])
+    ```
+
+    example batch size n, single text inputs:
+    ```python
+    sentiments = text_classifier(["the food tastes great", "the food tastes bad"])
+    sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        Default is 128
+    :param return_all_scores: if True, instead of returning the prediction as the
+        argmax of model class predictions, will return all scores and labels as
+        a list for each result in the batch. Default is False
+    """
+    return Pipeline.create("text_classification", *args, **kwargs)
+
+
+def sentiment_analysis_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers text classification pipeline
+
+    example instantiation:
+    ```python
+    text_classifier = Pipeline.create(
+        task="text_classification",
+        model_path="text_classification_model_dir/",
+        batch_size=BATCH_SIZE,
+    )
+    ```
+
+    example batch size 1, single text inputs (ie sentiment analysis):
+    ```python
+    sentiment = text_classifier("the food tastes great")
+    sentiment = text_classifier(["the food tastes great"])
+    sentiment = text_classifier([["the food tastes great"]])
+    ```
+
+    example batch size 1, multi text input (ie QQP like tasks):
+    ```python
+    prediction = text_classifier([["how is the food?", "what is the food?"]])
+    ```
+
+    example batch size n, single text inputs:
+    ```python
+    sentiments = text_classifier(["the food tastes great", "the food tastes bad"])
+    sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        Default is 128
+    :param return_all_scores: if True, instead of returning the prediction as the
+        argmax of model class predictions, will return all scores and labels as
+        a list for each result in the batch. Default is False
+    """
+    return Pipeline.create("text_classification", *args, **kwargs)
+
+
+def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers token classification pipeline
+
+    example instantiation:
+    ```python
+    token_classifier = Pipeline.create(
+        task="token_classification",
+        model_path="token_classification_model_dir/",
+        batch_size=BATCH_SIZE,
+    )
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        Default is 128
+    :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
+        include 'none', 'simple', 'first', 'average', and 'max'. Default is None
+    :param ignore_labels: list of label names to ignore in output. Default is
+        ['0'] which ignores the default known class label
+    """
+    return Pipeline.create("token_classification", *args, **kwargs)
+
+
+def image_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Image classification pipeline for DeepSparse
+
+    :param model_path: path on local system or SparseZoo stub to load the model from
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param class_names: Optional dict, or json file of class names to use for
+        mapping class ids to class labels. Default is None
+    """
+    return Pipeline.create("image_classification", *args, **kwargs)
+
+
+def yolo_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Image Segmentation YOLO pipeline for DeepSparse
+
+    :param model_path: path on local system or SparseZoo stub to load the model from
+    :param engine_type: inference engine to use. Currently supported values
+        include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param class_names: Optional string identifier, dict, or json file of
+        class names to use for mapping class ids to class labels. Default is
+        `coco`
+    """
+    return Pipeline.create("yolo", *args, **kwargs)

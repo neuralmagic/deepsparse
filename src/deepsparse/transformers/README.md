@@ -10,10 +10,10 @@ methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [q
 These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
 
 This integration currently supports several fundamental NLP tasks:
-- **Question Answering** - posing questions about a document.
+- **Question Answering** - posing questions about a document
 - **Sentiment Analysis** - assigning a sentiment to a piece of text
-- **Text Classification** - assigning a label or class to a piece of text (e.g duplicate question pairing). 
-- **Token Classification** - attributing a label to each token in a sentence (e.g. Named Entity Recognition task).
+- **Text Classification** - assigning a label or class to a piece of text (e.g duplicate question pairing)
+- **Token Classification** - attributing a label to each token in a sentence (e.g. Named Entity Recognition task)
 
 We are actively working on adding more use cases, stay tuned!
 
@@ -50,13 +50,13 @@ sparseml.transformers.export_onnx --task question-answering --model_path model_p
 This creates `model.onnx` file, in the directory of your `model_path`(e.g. `/trained_model/model.onnx`). 
 The `tokenizer.json` and `config.json` are stored under the `model_path` folder as well, so a DeepSparse pipeline ca be directly instantiated by using that folder after export (e.g. `/trained_model/`).
 
-####  SparseZoo stub
+####  SparseZoo Stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
 All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
 
 ## Deployment APIs
 
-DeepSparse provides both a python Pipeline API and an out-of-the-box model server
+DeepSparse provides both a Python Pipeline API and an out-of-the-box model server
 that can be used for end-to-end inference in either existing python workflows or as an HTTP endpoint.
 Both options provide similar specifications for configurations and support a variety of NLP transformers
 tasks including question answering, text classification, sentiment analysis, and token classification.
@@ -83,8 +83,8 @@ Example deployments using NLP transformer models are provided below.
 For full documentation on deploying sparse transformer models with the DeepSparse Server, see the
 [documentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server).
 
-##### Installation
-The deepsparse server requirements can be installed by specifying the `server` extra dependency when installing
+#### Installation
+The DeepSparse Server requirements can be installed by specifying the `server` extra dependency when installing
 DeepSparse.
 
 ```bash
@@ -156,7 +156,7 @@ inference = sa_pipeline("Snorlax loves my Tesla!")
 
 >> [{'label': 'LABEL_1', 'score': 0.9884248375892639}]  # positive sentiment
 
-inference = tc_pipeline("Snorlax hates pineapple pizza!")
+inference = sa_pipeline("Snorlax hates pineapple pizza!")
 
 >> [{'label': 'LABEL_0', 'score': 0.9981569051742554}]  # negative sentiment
 ```
@@ -166,7 +166,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     --task sentiment-analysis \
-    --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
 ```
 
 Making a request:
@@ -180,7 +180,7 @@ obj = {"sequences": "Snorlax loves my Tesla!"}
 response = requests.post(url, json=obj)
 response.text
 
->> '[{"label": "LABEL_1", "score": 0.9884248375892639}]'
+>> '{"labels":["LABEL_1"],"scores":[0.9884248375892639]}'
 ```
 
 ### Text Classification
@@ -271,8 +271,8 @@ inference = tc_pipeline("Drive from California to Texas!")
 Spinning up:
 ```bash
 deepsparse.server \
-    --task text-classification \
-    --model_path "zoo:nlp/text_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
+    --task token-classification \
+    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
 ```
 
 Making a request:
@@ -287,7 +287,7 @@ obj = {"inputs": "Drive from California to Texas!"}
 response = requests.post(url, json=obj)
 response.text
 
->> "[{'entity': 'LABEL_0','word': 'drive', ...}, {'entity': 'LABEL_0','word': 'from', ...}, {'entity': 'LABEL_5','word': 'california', ...}, {'entity': 'LABEL_0','word': 'to', ...}, {'entity': 'LABEL_5','word': 'texas', ...}, {'entity': 'LABEL_0','word': '!', ...}]"
+>> '{"predictions":[[{"entity":"LABEL_0","score":0.9998655915260315,"index":1,"word":"drive","start":0,"end":5,"is_grouped":false},{"entity":"LABEL_0","score":0.9998604655265808,"index":2,"word":"from","start":6,"end":10,"is_grouped":false},{"entity":"LABEL_5","score":0.9994636178016663,"index":3,"word":"california","start":11,"end":21,"is_grouped":false},{"entity":"LABEL_0","score":0.999838650226593,"index":4,"word":"to","start":22,"end":24,"is_grouped":false},{"entity":"LABEL_5","score":0.9994573593139648,"index":5,"word":"texas","start":25,"end":30,"is_grouped":false},{"entity":"LABEL_0","score":0.9998716711997986,"index":6,"word":"!","start":30,"end":31,"is_grouped":false}]]}'
 ```
 
 ## Benchmarking
