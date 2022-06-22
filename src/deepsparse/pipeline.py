@@ -567,17 +567,13 @@ class Pipeline(ABC):
                 "provide a model path for pipelines that do not have a default defined"
             )
 
-        # zero shot pipeline requires batch_size to default to None
-        if (
-            batch_size is None
-            and not SupportedTasks.nlp.zero_shot_text_classification.matches(task)
-        ):
-            batch_size = 1
+        # if batch size is not given, use default from pipeline_constructor
+        if batch_size is not None:
+            kwargs["batch_size"] = batch_size
 
         return pipeline_constructor(
             model_path=model_path,
             engine_type=engine_type,
-            batch_size=batch_size,
             num_cores=num_cores,
             scheduler=scheduler,
             input_shapes=input_shapes,
