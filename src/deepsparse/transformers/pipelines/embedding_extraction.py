@@ -35,9 +35,9 @@ tasks
 """
 
 
-from typing import List, Type, Union
-
 import os
+from typing import Any, List, Type, Union
+
 import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
@@ -71,7 +71,7 @@ class EmbeddingExtractionOutput(BaseModel):
     Schema for embedding_extraction pipeline output. Values are in batch order
     """
 
-    embeddings: Union[List[numpy.ndarray], numpy.ndarray] = Field(
+    embeddings: Union[List[Any], Any] = Field(
         description="The output of the model which is an embedded "
         "representation of the input"
     )
@@ -95,7 +95,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         self._show_progress_bar = show_progress_bar
 
         super().__init__(**kwargs)
-
 
     @property
     def input_schema(self) -> Type[BaseModel]:
@@ -147,7 +146,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
         return self.input_schema(**kwargs)
 
-
     def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
         tokens = pipeline.tokenizer(
             inputs.sequences,
@@ -157,18 +155,18 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             truncation=TruncationStrategy.LONGEST_FIRST.value,
         )
 
-        '''
+        """
         postprocessing_kwargs = dict(
             sequences=sequences,
             labels=labels,
             multi_class=multi_class,
         )
-        '''
+        """
         return self.tokens_to_engine_input(tokens)
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
 
-        '''
+        """
         def _engine_forward(batch_index: int, batch_origin: int):
             labelwise_inputs = engine_inputs_numpy[
                 :, batch_origin : batch_origin + pipeline._batch_size, :
@@ -189,7 +187,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             )
         ]
         wait(futures)
-        '''
+        """
         return self.engine(engine_inputs)
 
     def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:

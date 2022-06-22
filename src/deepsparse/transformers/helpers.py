@@ -25,6 +25,7 @@ from typing import List, Optional, Tuple
 import numpy
 import onnx
 
+from deepsparse.utils.onnx import override_onnx_output
 from sparsezoo import Zoo
 
 
@@ -159,6 +160,7 @@ def overwrite_transformer_onnx_model_inputs(
         onnx.save(model, output_path)
         return input_names
 
+
 def _get_file_parent(file_path: str) -> str:
     return str(Path(file_path).parent.absolute())
 
@@ -192,3 +194,27 @@ def fix_numpy_types(func):
         return result
 
     return _wrapper
+
+
+def write_transformer_onnx_model_subgraph(
+    model_path: str,
+    output_path: Optional[str] = None,
+) -> Tuple[str, str]:
+
+    # get final node name
+    final_node_name = ""
+    output_name = ""
+
+    # Override outputs to create subgraph
+    if output_path is None:
+        tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
+
+        override_onnx_output(
+            model_path, tmp_file.name, [final_node_name], [output_name]
+        )
+        return tmp_file.name, output_name
+    else:
+        override_onnx_output(
+            model_path, output_path, [final_node_name], [output_name]
+        )
+        return output_path, output_name

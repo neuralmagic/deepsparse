@@ -44,6 +44,7 @@ __all__ = [
     "generate_random_inputs",
     "override_onnx_batch_size",
     "override_onnx_input_shapes",
+    "override_onnx_output",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -266,16 +267,64 @@ def override_onnx_input_shapes(
         shaped_model.close()
 
 
-def get_layer_name_by_depth(onnx_filepath: str, depth: int):
-    model = onnx.load(path)
-    layers = [node for node in model.graph if node.op_type in ["MatMulInteger"]]
-    return layers[depth]
+def override_onnx_output(
+    onnx_filepath: str,
+    output_filepath: str,
+    final_node_names: List[str],
+    graph_output_names: List[str],
+) -> None:
+    """
+    :param onnx_filepath: file path to onnx model
+    :param output_filepath: file path to save new onnx model
+    :param final_node_names: list of node names whose outputs will become the
+        outputs of the graph
+    :param graph_output_names: list of names to call the graph outputs. Names
+        correspond with the outputs specified in final_node_names
+    :param graph_output_types: list of numpy dtypes
+    :return: None
+    """
 
-def add_onnx_model_output(onnx_filepath: str, input_node_name: str):
-    model = onnx.load(path)
-    output_node = onnx.helper.make_node(
-        'embedding',                  # name
-        [input_node_name], # inputs
+    def _clear_buffer(x: "Protobuf") -> None:
+        [x.pop() for _ in x]
+
+    if len(final_node_names) != len(graph_output_names):
+        raise ValueError(
+            f"length of final_node_names {len(final_node_names)} must match "
+            f"the length of graph_output_names {len(graph_output_names)}"
+        )
+
+    if len(set(final_node_names)) != len(final_node_names):
+        raise ValueError("final_node_names must not contain duplicate names")
+
+    if len(set(graph_output_names)) != len(graph_output_names):
+        raise ValueError("graph_output_names must not contain duplicate names")
+
+    model = onnx.load(onnx_filepath)
+    final_nodes = [node for node in model.graph.node if node.name in final_node_names]
+
+    if len(final_nodes) != len(final_node_names):
+        raise ValueError("Could not find final node names in model graph")
+
+    for i, (final_node, graph_output_name) in enumerate(
+        zip(final_nodes, graph_output_names)
+    ):
+        # Write each node's output to new output
+        _clear_buffer(final_node.output)
+        final_node.output.append(graph_output_name)
+
+        # Write graph output. TODO: use ort to find real shapes and types
+        output_value_info = onnx.helper.make_tensor_value_info(
+            graph_output_name, onnx.TensorProto.UNDEFINED, [None]
+        )
+        model.graph.output.append(output_value_info)
+
+    # Collect graph inputs
+    graph_input_names = [input.name for input in model.graph.input]
+
+    # Use extractor to create and write subgraph
+    extractor = onnx.utils.Extractor(model)
+    extracted_model = extractor.extract_model(
+        input_names=graph_input_names, output_names=graph_output_names
     )
-    model.output = [output_node]
-    return model
+    onnx.save(extracted_model, output_filepath)
+    onnx.checker.check_model(output_filepath)
