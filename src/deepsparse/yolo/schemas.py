@@ -35,11 +35,11 @@ _YOLOImageOutput = namedtuple(
 
 class YOLOInput(BaseModel):
     """
-    Input model for image classification
+    Input model for image detection
     """
 
     images: Union[str, List[str], List[Any]] = Field(
-        description="List of Images to process"
+        description="List of images to process"
     )
     iou_thres: float = Field(
         default=0.25,
@@ -70,7 +70,7 @@ class YOLOInput(BaseModel):
 
 class YOLOOutput(BaseModel):
     """
-    Output model for image classification
+    Output model for image detection
     """
 
     predictions: List[List[List[float]]] = Field(description="List of predictions")

@@ -39,6 +39,7 @@ except ModuleNotFoundError as cv2_import_error:
     cv2 = None
     cv2_error = cv2_import_error
 
+__all__ = ["YOLOPipeline"]
 
 @Pipeline.register(
     task="yolo",
@@ -48,10 +49,10 @@ except ModuleNotFoundError as cv2_import_error:
 )
 class YOLOPipeline(Pipeline):
     """
-    Image Segmentation YOLO pipeline for DeepSparse
+    Image segmentation YOLO pipeline for DeepSparse
 
     :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values
+    :param engine_type: inference engine to use. Currently, supported values
         include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: static batch size to use for inference. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None

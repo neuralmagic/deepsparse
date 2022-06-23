@@ -12,48 +12,97 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Tuple, Type, Union
+from typing import List,Type, Optional, Union, Dict, Tuple
 
 import numpy
-from pydantic import BaseModel
 
-import cv2
-import torch
+import json
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
-from deepsparse.yolact.schemas import YolactInputSchema, YolactOutputSchema
-from deepsparse.yolact.utils.utils import decode, detect, postprocess
+from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
+from deepsparse.yolact.utils.utils import decode, detect, postprocess, preprocess_array
+from deepsparse.yolo.utils import COCO_CLASSES
 
 
-class Config:
-    arbitrary_types_allowed = True
+try:
+    import cv2
+
+    cv2_error = None
+except ModuleNotFoundError as cv2_import_error:
+    cv2 = None
+    cv2_error = cv2_import_error
 
 
-__all__ = ["YolactPipeline"]
+__all__ = ["YOLACTPipeline"]
 
 
 @Pipeline.register(
     task="yolact",
-    default_model_path=(None),
+    default_model_path=("zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"),
 )
-class YolactPipeline(Pipeline):
+class YOLACTPipeline(Pipeline):
     """
-    An inference pipeline for YOLACT, encodes the preprocessing, inference and
-    postprocessing for YOLACT models into a single callable object
+    Image classification pipeline for DeepSparse
 
-    TODO: Fill Out Method Implementation
+    :param model_path: path on local system or SparseZoo stub to load the model from
+    :param engine_type: inference engine to use. Currently, supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param class_names: Optional dict, or json file of class names to use for
+        mapping class ids to class labels. Default is None
+    :param top_k: The integer that specifies how many most probable classes
+        we want to fetch per image. Default is 1.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *,
+                 class_names: Optional[Union[str, Dict[str, str]]] = "coco",
+                 image_size: Union[int, Tuple[int, int]] = (550, 550),
+                 top_k: int = 50,
+                 **kwargs):
 
-        super().__init__(*args, **kwargs)
+        self._image_size = image_size if isinstance(image_size, Tuple) else (image_size, image_size)
+        self.top_k = top_k
 
-        self.confidence_threshold = 0.05
-        self.nms_threshold = 0.5
-        self.score_threshold = 0
-        self.preprocessing_top_k = 200
-        self.max_num_detections = 100
-        self.top_k = 3
+        super().__init__( **kwargs)
+
+        if isinstance(class_names, str):
+            if class_names.endswith(".json"):
+                class_names = json.load(open(class_names))
+            elif class_names == "coco":
+                class_names = COCO_CLASSES
+            else:
+                raise ValueError(f"Unknown class_names: {class_names}")
+
+        if isinstance(class_names, dict):
+            self._class_names = class_names
+        elif isinstance(class_names, list):
+            self._class_names = {
+                str(index): class_name for index, class_name in enumerate(class_names)
+            }
+        else:
+            raise ValueError(
+                "class_names must be a str identifier, dict, json file, or "
+                f"list of class names got {type(class_names)}"
+            )
+
+    @property
+    def class_names(self) -> Optional[Dict[str, str]]:
+        return self._class_names
+
+    @property
+    def image_size(self) -> Tuple[int, int]:
+        """
+        :return: shape of image size inference is run at
+        """
+        return self._image_size
 
     def setup_onnx_file_path(self) -> str:
         """
@@ -67,7 +116,7 @@ class YolactPipeline(Pipeline):
 
     def process_inputs(
         self,
-        inputs: BaseModel,
+        inputs: YOLACTInputSchema,
     ) -> List[numpy.ndarray]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
@@ -79,17 +128,26 @@ class YolactPipeline(Pipeline):
             inputs to postprocessing that may not be included in the engine inputs
         """
         images = inputs.images
+
         if not isinstance(images, list):
             images = [images]
 
         if isinstance(images[0], str):
             images = [cv2.imread(file_path) for file_path in images]
 
-        return [self._process_numpy_array(array) for array in images]
+        postprocessing_kwargs = dict(
+            confidence_threshold = inputs.confidence_threshold,
+            nms_threshold = inputs.nms_threshold,
+            score_threshold = inputs.score_threshold,
+            top_k_preprocessing = inputs.top_k_preprocessing,
+            max_num_detections = inputs.max_num_detections
+        )
+
+        return [preprocess_array(array, self.image_size) for array in images], postprocessing_kwargs
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
-    ) -> BaseModel:
+    ) -> YOLACTOutputSchema:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
@@ -99,8 +157,9 @@ class YolactPipeline(Pipeline):
         boxes, confidence, masks, priors, protos = engine_outputs
         batch_size, num_priors, _ = boxes.shape
 
-        batch_classes, batch_scores, batch_boxes, batch_masks = [], [], [], []
         # Preprocess every image in the batch individually
+        batch_classes, batch_scores, batch_boxes, batch_masks = [], [], [], []
+
         for batch_idx, (
             boxes_single_image,
             masks_single_image,
@@ -111,56 +170,46 @@ class YolactPipeline(Pipeline):
                 confidence_single_image,
                 decoded_boxes,
                 masks_single_image,
-                confidence_threshold=self.confidence_threshold,
-                nms_threshold=self.nms_threshold,
-                top_k=self.preprocessing_top_k,
+                confidence_threshold=kwargs["confidence_threshold"],
+                nms_threshold=kwargs["nms_threshold"],
+                max_num_detections = kwargs["max_num_detections"],
+                top_k=kwargs["top_k_preprocessing"],
             )
             if results is not None and protos is not None:
                 results["protos"] = protos[batch_idx]
 
-            classes, scores, boxes, masks = postprocess(results, crop_masks=True, score_threshold=self.score_threshold)
+            classes, scores, boxes, masks = postprocess(
+                results, crop_masks=True, score_threshold=kwargs.get("score_threshold"),
+            )
 
-            # Choose the best k detections for every # TODO for every what?
-            idx = numpy.argsort(scores)[::-1][:self.top_k]
+            # Choose the best k detections for every image
+            # basing on scores
+            idx = numpy.argsort(scores)[::-1][: self.top_k]
 
             batch_classes.append(classes[idx].tolist())
             batch_scores.append(scores[idx].tolist())
             batch_boxes.append(boxes[idx].tolist())
-            batch_masks.append([mask[idx].astype(numpy.float32) for mask in masks])
+            batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])
 
-        return YolactOutputSchema(classes = batch_classes, scores = batch_scores, boxes = batch_boxes, masks = batch_masks)
-
+        return YOLACTOutputSchema(
+            classes=batch_classes,
+            scores=batch_scores,
+            boxes=batch_boxes,
+            masks=batch_masks,
+        )
 
     @property
-    def input_schema(self) -> Type[YolactInputSchema]:
+    def input_schema(self) -> Type[YOLACTInputSchema]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return YolactInputSchema
+        return YOLACTInputSchema
 
     @property
-    def output_schema(self) -> Type[YolactOutputSchema]:
+    def output_schema(self) -> Type[YOLACTOutputSchema]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
-        return YolactOutputSchema
+        return YOLACTOutputSchema
 
-    def _process_numpy_array(self, image):
-        import torch.nn.functional as F
 
-        # We start with an input image (H, W, C)
-        # and make sure it is type float
-        image = image.astype(numpy.float32)
-        image = cv2.resize(image, (550, 550))
-        image = numpy.expand_dims(image, 0)
-        # By default, when training we do not preserve
-        # aspect ratio (simply explode the image size
-        # to the default value)
-        image = image.transpose(0, 3, 1, 2)
-        # Apply the default backbone transform
-        image /= 255
-        image = image[:, (2, 1, 0), :, :]
-        image = numpy.broadcast_to(image, (2,3,550,550))
-        image = numpy.ascontiguousarray(image)
-
-        return image

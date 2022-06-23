@@ -15,12 +15,48 @@
 """
 Helpers and Utilities for YOLACT
 """
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 import numpy
+import numpy as np
 
-_all__ = ["detect", "decode"]
+try:
+    import cv2
 
+    cv2_error = None
+except ModuleNotFoundError as cv2_import_error:
+    cv2 = None
+    cv2_error = cv2_import_error
+
+
+_all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "preprocess_array"]
+
+
+def preprocess_array(image: numpy.ndarray, input_image_size: Tuple[int, int] = (550,550)) -> np.ndarray:
+    """
+    Input preprocessing before feeding it into the YOLACT deepsparse pipeline
+
+    :param image: numpy array representing input image(s) with dimensions
+        (B, H, W,C) or (B, W, W,C) and BGR channel order
+    :param input_image_size: image size expected by the YOLACT network. Default is (550,550).
+    :return: preprocessed numpy array (B, C, D, D). It is a contiguous array with RGB channel order.
+    """
+    image = image.astype(numpy.float32)
+
+    if image.ndim == 4:
+        image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
+
+    else:
+        image = cv2.resize(image, input_image_size)
+        image = numpy.expand_dims(image, 0)
+
+    image = image.transpose(0, 3, 1, 2)
+    image /= 255
+    image = image[:, (2, 1, 0), :, :]
+    image = numpy.broadcast_to(image, (2, 3, 550, 550))
+    image = numpy.ascontiguousarray(image)
+
+    return image
 
 def jaccard(
     box_a: numpy.ndarray, box_b: numpy.ndarray, iscrowd: bool = False
@@ -152,8 +188,6 @@ def fast_nms(
     """
     idx, scores = numpy.argsort(scores)[:, ::-1], numpy.sort(scores)[:, ::-1]
 
-    scores = scores[:, :top_k]
-
     num_classes, num_dets = idx.shape
 
     boxes = boxes[idx.flatten(), :].reshape(num_classes, num_dets, 4)
@@ -164,7 +198,8 @@ def fast_nms(
 
     # Now just filter out the ones higher than the threshold
     keep = iou_max <= iou_threshold
-
+    # TODO: Maybe remove it
+    scores = scores[:, :top_k] #if top_k > keep.shape[1] else scores[:, : keep.shape[1]]
     # We should also only keep detections over the confidence threshold, but at the cost of
     # maxing out your detection count for every image, you can just not do that. Because we
     # have such a minimal amount of computation per detection (matrix multiplication only),
@@ -240,6 +275,7 @@ def detect(
     mask_data: numpy.ndarray,
     confidence_threshold: float,
     nms_threshold: float,
+    max_num_detections,
     top_k: int,
 ) -> Dict[str, numpy.ndarray]:
     """
@@ -259,15 +295,21 @@ def detect(
     if scores.shape[0] == 0:
         return None
 
-    boxes, masks, classes, scores = fast_nms(boxes, masks, scores, nms_threshold, top_k)
+    boxes, masks, classes, scores = fast_nms(boxes,
+                                             masks,
+                                             scores,
+                                             confidence_threshold,
+                                             max_num_detections,
+                                             nms_threshold,
+                                             top_k)
 
     return {"box": boxes, "mask": masks, "class": classes, "score": scores}
 
 
 def postprocess(
     det_output: Dict[str, numpy.ndarray],
-    crop_masks: bool=True,
-    score_threshold:float=0,
+    crop_masks: bool = True,
+    score_threshold: float = 0,
 ):
     """
     Ported from https://github.com/neuralmagic/yolact/blob/master/layers/output_utils.py
@@ -294,7 +336,13 @@ def postprocess(
             if k != "protos":
                 detections[k] = detections[k][keep]
 
-    classes, boxes, scores, masks, proto_data = detections["class"], detections["box"], detections["score"], detections["mask"], detections["protos"]
+    classes, boxes, scores, masks, proto_data = (
+        detections["class"],
+        detections["box"],
+        detections["score"],
+        detections["mask"],
+        detections["protos"],
+    )
 
     masks = proto_data @ masks.T
 

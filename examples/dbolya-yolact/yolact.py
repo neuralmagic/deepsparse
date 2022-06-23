@@ -14,13 +14,19 @@
 
 import numpy
 
-from deepsparse import Pipeline, compile_model
+import cv2
+from deepsparse import Pipeline
+from deepsparse.yolact.utils.annotate import annotate_image
 
 
+src = "golfish.jpeg"
 cv_pipeline = Pipeline.create(
     task="yolact",
     model_path="zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none",
-    batch_size = 2
+    batch_size=2,
 )
+img_numpy = cv2.imread(src)
+img_numpy = cv2.cvtColor(img_numpy, cv2.COLOR_BGR2RGB)
 
-inference = cv_pipeline(images=["golfish.jpeg"])
+inference = cv_pipeline(images=[src])
+annotate_image(img_numpy, inference)
