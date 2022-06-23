@@ -133,6 +133,7 @@ class Pipeline(ABC):
         self._model_path_orig = model_path
         self._model_path = model_path
         self._engine_type = engine_type
+        self._batch_size = batch_size
         self._alias = alias
 
         self.context = context

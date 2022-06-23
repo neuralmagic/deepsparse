@@ -208,12 +208,17 @@ def cut_transformer_onnx_model(
     output_path: Optional[str] = None,
 ) -> str:
     """
+    Determines where to cut the transformer model using a variety of guesses.
+    Saves cut model to output_path or temporary file
+
     :param model_path: path of onnx file to be cut
     :param final_node_name: name of last computed node in graph
     :param output_name: name of graph output, default "embedding"
     :param output_path: path to write resulting onnx file. If not provided,
         will create a temporary file path that will be destroyed on program end
-    :return: path to written onnx file. Could be temporary file
+    :return: if no output path, a tuple of the saved path to the model, list of
+        model output names, and reference to the tempfile object will be returned
+        otherwise, only the model output names will be returned
     """
 
     def _check_initializer_names(model: ModelProto) -> Union[str, None]:
@@ -241,8 +246,8 @@ def cut_transformer_onnx_model(
             if final_node_initializer_name in node.input
         ][0]
 
+    # Determine where to cut the model
     if final_node_name is None:
-        # Determine where to cut the model
         model = onnx.load(model_path)
 
         try:
@@ -262,7 +267,7 @@ def cut_transformer_onnx_model(
         override_onnx_output(
             model_path, tmp_file.name, [final_node_name], [output_name]
         )
-        return tmp_file.name
+        return tmp_file.name, [output_name], tmp_file
     else:
         override_onnx_output(model_path, output_path, [final_node_name], [output_name])
-        return output_path
+        return [output_name]
