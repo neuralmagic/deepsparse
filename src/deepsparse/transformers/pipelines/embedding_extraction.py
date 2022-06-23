@@ -35,7 +35,7 @@ tasks
 """
 
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 import os
 from typing import Any, List, Type, Union, Tuple, Optional
 
@@ -110,7 +110,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
             self._thread_pool = ThreadPoolExecutor(
                 max_workers=context.num_streams or 2,
-                thread_name_prefix="deepsparse.pipelines.zero_shot_text_classifier",
+                thread_name_prefix="deepsparse.pipelines.embedding_extraction",
             )
 
         super().__init__(**kwargs)
@@ -152,11 +152,18 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         onnx_path = super().setup_onnx_file_path()
 
+        """
         (
             onnx_path,
             self.onnx_output_names,
             self._temp_model_directory,
-        ) = cut_transformer_onnx_model(onnx_path)
+        ) = cut_transformer_onnx_model(onnx_path, final_node_name="Add_333")
+        """
+        (
+            self.onnx_output_names,
+        ) = cut_transformer_onnx_model(onnx_path, output_path="./tmp_model_dir/mlm_cut.onnx", final_node_name="Add_333")
+        self._temp_model_directory = "./tmp_model_dir"
+        onnx_path = "./tmp_model_dir/mlm_cut.onnx"
 
         return onnx_path
 
@@ -179,12 +186,14 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         return self.input_schema(**kwargs)
 
     def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
-        if any([isinstance(input, List) for input in inputs]):
+        if any([isinstance(input, Tuple) for input in inputs.texts]):
             # TODO: For now, strip away titles
-            inputs = [input[1] for input in inputs]
+            texts = [text for (_title, text) in inputs.texts]
+        else:
+            texts = inputs.texts
 
         tokens = self.tokenizer(
-            inputs.texts,
+            texts,
             add_special_tokens=True,
             return_tensors="np",
             padding=PaddingStrategy.MAX_LENGTH.value,
@@ -203,14 +212,15 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
 
         def _engine_forward(batch_index: int, batch_origin: int):
-            labelwise_inputs = engine_inputs_numpy[
+            engine_input = engine_inputs_numpy[
                 :, batch_origin : batch_origin + self._batch_size, :
             ]
-            labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
-            engine_output = self.engine(labelwise_inputs)
-            engine_outputs[batch_index] = engine_output
+            engine_input = [model_input for model_input in engine_input]
+            engine_output = self.engine(engine_input)
+            engine_outputs[batch_index] = engine_output[0][0].flatten() # TODO: Double check this
 
         engine_inputs_numpy = numpy.array(engine_inputs)
+        assert engine_inputs_numpy.shape[1] % self._batch_size == 0
         engine_outputs = [
             None for _ in range(engine_inputs_numpy.shape[1] // self._batch_size)
         ]
@@ -226,6 +236,4 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         return engine_outputs
 
     def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
-        engine_outputs = [engine_output.T for engine_output in engine_outputs[0]]
-        print(numpy.array(engine_outputs).shape)
         return self.output_schema(embeddings=engine_outputs)
