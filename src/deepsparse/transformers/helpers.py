@@ -18,13 +18,16 @@ Helper functions for working with ONNX exports of transformer models and deepspa
 
 
 import os
+import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
+from onnx import ModelProto
 
+from deepsparse.log import get_main_logger
 from deepsparse.utils.onnx import override_onnx_output
 from sparsezoo import Zoo
 
@@ -33,8 +36,10 @@ __all__ = [
     "get_onnx_path_and_configs",
     "overwrite_transformer_onnx_model_inputs",
     "fix_numpy_types",
+    "cut_transformer_onnx_model",
 ]
 
+_LOGGER = get_main_logger()
 
 _MODEL_DIR_ONNX_NAME = "model.onnx"
 _MODEL_DIR_CONFIG_NAME = "config.json"
@@ -196,14 +201,59 @@ def fix_numpy_types(func):
     return _wrapper
 
 
-def write_transformer_onnx_model_subgraph(
+def cut_transformer_onnx_model(
     model_path: str,
+    final_node_name: Optional[str] = None,
+    output_name: str = "embedding",
     output_path: Optional[str] = None,
-) -> Tuple[str, str]:
+) -> str:
+    """
+    :param model_path: path of onnx file to be cut
+    :param final_node_name: name of last computed node in graph
+    :param output_name: name of graph output, default "embedding"
+    :param output_path: path to write resulting onnx file. If not provided,
+        will create a temporary file path that will be destroyed on program end
+    :return: path to written onnx file. Could be temporary file
+    """
 
-    # get final node name
-    final_node_name = ""
-    output_name = ""
+    def _check_initializer_names(model: ModelProto) -> Union[str, None]:
+        layer_last_init_prog = re.compile(
+            r"bert\.encoder\.layer\.[0-9]+\.output\.LayerNorm\.bias"
+        )
+        layer_last_initializer_names = [
+            initializer.name
+            for initializer in model.graph.initializer
+            if layer_last_init_prog.match(initializer.name)
+        ]
+
+        layer_num_prog = re.compile(
+            r"bert\.encoder\.layer\.(.*)\.output\.LayerNorm\.bias"
+        )
+        final_node_initializer_name = sorted(
+            layer_last_initializer_names,
+            key=lambda name: int(layer_num_prog.findall(name)[0]),
+            reverse=True,
+        )[0]
+
+        return [
+            node.name
+            for node in model.graph.node
+            if final_node_initializer_name in node.input
+        ][0]
+
+    if final_node_name is None:
+        # Determine where to cut the model
+        model = onnx.load(model_path)
+
+        try:
+            # Try to match bert layers by initializer names
+            final_node_name = _check_initializer_names(model)
+        except Exception as exception:
+            # TODO: implement other methods
+            _LOGGER.info(
+                f"Failed to cut transformer using initializer method {exception}"
+            )
+            raise Exception(f"Failed to cut transformer model")
 
     # Override outputs to create subgraph
     if output_path is None:
@@ -212,9 +262,7 @@ def write_transformer_onnx_model_subgraph(
         override_onnx_output(
             model_path, tmp_file.name, [final_node_name], [output_name]
         )
-        return tmp_file.name, output_name
+        return tmp_file.name
     else:
-        override_onnx_output(
-            model_path, output_path, [final_node_name], [output_name]
-        )
-        return output_path, output_name
+        override_onnx_output(model_path, output_path, [final_node_name], [output_name])
+        return output_path
