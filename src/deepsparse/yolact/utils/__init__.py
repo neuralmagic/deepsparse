@@ -12,15 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
-
-from deepsparse import Pipeline, compile_model
-
-
-cv_pipeline = Pipeline.create(
-    task="yolact",
-    model_path="zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none",
-    batch_size = 2
-)
-
-inference = cv_pipeline(images=["golfish.jpeg"])
+from .utils import *
