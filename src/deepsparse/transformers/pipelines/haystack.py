@@ -61,10 +61,11 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         max_seq_len: int = 512,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
-        emb_extraction_layer: int = -1,
+        emb_extraction_layer: int = -1, # TODO: Utilize this
         top_k: int = 10,
         progress_bar: bool = True,
         scale_score: bool = True,
+        **embedding_pipeline_kwargs,
     ):
         super(BaseRetriever).__init__()
 
@@ -86,10 +87,10 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         # TODO: Throw value error if unknown model
         # TODO: Throw warning if using wrong kind of model
 
-        self.embedding_encoder = _DeepSparseEmbeddingEncoder(self)
+        self.embedding_encoder = _DeepSparseEmbeddingEncoder(self, embedding_pipeline_kwargs)
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "DeepSparseEmbeddingRetriever"):
+    def __init__(self, retriever: "DeepSparseEmbeddingRetriever", embedding_pipeline_kwargs):
         # TODO: Check imports work
         self.embedding_pipeline = Pipeline.create(
             "embedding_extraction",
@@ -97,6 +98,7 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
             batch_size=retriever.batch_size,
             sequence_length=retriever.max_seq_len,
             show_progress_bar=retriever.progress_bar,
+            **retriever.embedding_pipeline_kwargs
         )
 
         self.batch_size = retriever.batch_size
@@ -229,14 +231,26 @@ class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        sequence_length: int = 512,
         config: Optional[Union[HaystackPipelineConfig, dict]] = None,
         **kwargs,
     ):
-        self.sequence_length = sequence_length
+        # TODO: Set member values from kwargs
+
+
+
+        self.embedding_pipeline_kwargs = kwargs
 
         self._config = self._parse_config(config)
+
         self.initialize_pipeline()
+
+    def create_retriever_args(retriever_args, kwargs):
+        # If conflicts, throw
+
+        retriever_args.update(kwargs)
+
+        return retriever_args
+
 
     def initialize_pipeline(self):
         self._document_store = self._config.document_store.construct(
@@ -259,52 +273,18 @@ class HaystackPipeline(TransformersPipeline):
             # self._config.haystack_pipeline_args
         )
 
-    @staticmethod
-    def should_bucket(*args, **kwargs) -> bool:
-        return False
-
-    @staticmethod
-    def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
-        pass
-
-    @staticmethod
-    def route_input_to_bucket(
-        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
-    ) -> Pipeline:
-        pass
-
-    @property
-    def input_schema(self) -> Type[BaseModel]:
-        """
-        :return: pydantic model class that inputs to this pipeline must comply to
-        """
-        return EmbeddingExtractionInput
-
-    @property
-    def output_schema(self) -> Type[BaseModel]:
-        """
-        :return: pydantic model class that outputs of this pipeline must comply to
-        """
-        return EmbeddingExtractionOutput
-
-    @property
-    def config_schema(self) -> Type[BaseModel]:
-        """
-        TODO
-        """
-        return HaystackPipelineConfig
-
     def _parse_config(self, config: Optional[Union[HaystackPipelineConfig, dict]]) -> Type[BaseModel]:
         """
         TODO:
         """
-        config = config if config else {}
+        config = config if config else self.config_schema()
 
+        # cast to config_schema
         if isinstance(config, self.config_schema):
-            return config
+            pass
 
         elif isinstance(config, dict):
-            return self.config_schema(**config)
+            config = self.config_schema(**config)
 
         else:
             raise ValueError(
@@ -312,6 +292,13 @@ class HaystackPipeline(TransformersPipeline):
                 f"{self.config_schema} object a dict of keywords used to "
                 f"construct one. Found {config} instead"
             )
+
+        # reconcile retriever args
+        retriever_args = create_retriever_args(config.retriever_args, self.kwargs)
+        config.retriever_args = retriever_args
+
+        return config
+
 
     def __call__(self, *args, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
@@ -355,6 +342,30 @@ class HaystackPipeline(TransformersPipeline):
     def process_pipeline_outputs(self, results):
         print_documents(results, max_text_len=200)
 
+
+    #######
+
+    @property
+    def input_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that inputs to this pipeline must comply to
+        """
+        return EmbeddingExtractionInput
+
+    @property
+    def output_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that outputs of this pipeline must comply to
+        """
+        return EmbeddingExtractionOutput
+
+    @property
+    def config_schema(self) -> Type[BaseModel]:
+        """
+        TODO
+        """
+        return HaystackPipelineConfig
+
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
@@ -367,3 +378,17 @@ class HaystackPipeline(TransformersPipeline):
         inputs: BaseModel,
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
         raise NotImplementedError()
+
+    @staticmethod
+    def should_bucket(*args, **kwargs) -> bool:
+        return False
+
+    @staticmethod
+    def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
+        pass
+
+    @staticmethod
+    def route_input_to_bucket(
+        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+    ) -> Pipeline:
+        pass
