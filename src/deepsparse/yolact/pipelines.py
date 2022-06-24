@@ -60,14 +60,17 @@ class YOLACTPipeline(Pipeline):
         inferencing with multiple models. Default is None
     :param class_names: Optional dict, or json file of class names to use for
         mapping class ids to class labels. Default is None
+    :param image_size: optional image size to override with model shape. Can
+        be an int which will be the size for both dimensions, or a 2-tuple
+        of the width and height sizes. Default does not modify model image shape
     :param top_k: The integer that specifies how many most probable classes
-        we want to fetch per image. Default is 1.
+        we want to fetch per image. Default is 50.
     """
 
     def __init__(
         self,
         *,
-        class_names: Optional[Union[str, Dict[str, str]]] = "coco",
+        class_names: Optional[Union[str, Dict[str, str]]] = None,
         image_size: Union[int, Tuple[int, int]] = (550, 550),
         top_k: int = 50,
         **kwargs,
@@ -95,7 +98,7 @@ class YOLACTPipeline(Pipeline):
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
         else:
-            self._class_names = class_names
+            self._class_names = None
 
     @property
     def class_names(self) -> Optional[Dict[str, str]]:
@@ -193,8 +196,11 @@ class YOLACTPipeline(Pipeline):
             # Choose the best k detections (taking into account all the classes)
             idx = numpy.argsort(scores)[::-1][: self.top_k]
 
-            batch_classes.append(list(map(self.class_names.__getitem__, map(str,classes[idx]))) if self.class_names is not None else classes[idx].tolist())
-
+            batch_classes.append(
+                list(map(self.class_names.__getitem__, map(str, classes[idx])))
+                if self.class_names is not None
+                else classes[idx].tolist()
+            )
             batch_scores.append(scores[idx].tolist())
             batch_boxes.append(boxes[idx].tolist())
             batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])

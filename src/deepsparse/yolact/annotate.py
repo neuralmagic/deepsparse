@@ -13,16 +13,15 @@
 # limitations under the License.
 
 """
-Usage: deepsparse.object_segmentation.annotate [OPTIONS]
+Usage: deepsparse.instance_segmentation.annotate [OPTIONS]
 
   Annotation Script for YOLACT with DeepSparse
 
 Options:
   --model_filepath, --model-filepath TEXT
                                   Path/SparseZoo stub to the model file to be
-                                  used for annotation  [default: zoo:cv/detect
-                                  ion/yolov5-s/pytorch/ultralytics/coco/pruned
-                                  -aggressive_96]
+                                  used for annotation  [default: zoo:cv/segmentation/
+                                  yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none]
   --source TEXT                   File path to an image or directory of image
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
@@ -32,7 +31,7 @@ Options:
                                   'torch'. Default is 'deepsparse'
   --image_shape, --image_shape INTEGER
                                   Image shape to use for inference, must be
-                                  two integers  [default: 640, 640]
+                                  two integers  [default: 550, 550]
   --num_cores, --num-cores INTEGER
                                   The number of physical cores to run the
                                   annotations with, defaults to using all
@@ -59,10 +58,10 @@ Options:
 #######
 Examples:
 
-1) deepsparse.object_detection.annotate --source PATH/TO/IMAGE.jpg
-2) deepsparse.object_detection.annotate --source PATH/TO/VIDEO.mp4
-3) deepsparse.object_detection.annotate --source 0
-4) deepsparse.object_detection.annotate --source PATH/TO/IMAGE_DIR
+1) deepsparse.instance_segmentation.annotate --source PATH/TO/IMAGE.jpg
+2) deepsparse.instance_segmentation.annotate --source PATH/TO/VIDEO.mp4
+3) deepsparse.instance_segmentation.annotate --source 0
+4) deepsparse.instance_segmentation.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
 from typing import Optional
@@ -80,7 +79,7 @@ from deepsparse.yolact.utils import annotate_image
 from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
 
-yolo_v5_default_stub = (
+yolact_v5_default_stub = (
     "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
 )
 
@@ -96,7 +95,7 @@ _LOGGER = logging.getLogger(__name__)
     "--model_filepath",
     "--model-filepath",
     type=str,
-    default=yolo_v5_default_stub,
+    default=yolact_v5_default_stub,
     help="Path/SparseZoo stub to the model file to be used for annotation",
     show_default=True,
 )

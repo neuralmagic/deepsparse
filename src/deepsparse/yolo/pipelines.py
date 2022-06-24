@@ -50,7 +50,7 @@ __all__ = ["YOLOPipeline"]
 )
 class YOLOPipeline(Pipeline):
     """
-    Image segmentation YOLO pipeline for DeepSparse
+    Image detection YOLO pipeline for DeepSparse
 
     :param model_path: path on local system or SparseZoo stub to load the model from
     :param engine_type: inference engine to use. Currently, supported values
@@ -75,7 +75,7 @@ class YOLOPipeline(Pipeline):
     def __init__(
         self,
         *,
-        class_names: Optional[Union[str, Dict[str, str]]] = "coco",
+        class_names: Optional[Union[str, Dict[str, str]]] = None,
         model_config: Optional[str] = None,
         image_size: Union[int, Tuple[int, int], None] = None,
         **kwargs,
@@ -103,10 +103,7 @@ class YOLOPipeline(Pipeline):
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
         else:
-            raise ValueError(
-                "class_names must be a str identifier, dict, json file, or "
-                f"list of class names got {type(class_names)}"
-            )
+            self._class_names = None
 
         onnx_model = onnx.load(self.onnx_file_path)
         self.has_postprocessing = yolo_onnx_has_postprocessing(onnx_model)
@@ -245,12 +242,12 @@ class YOLOPipeline(Pipeline):
             batch_predictions.append(image_output.tolist())
             batch_boxes.append(image_output[:, 0:4].tolist())
             batch_scores.append(image_output[:, 4].tolist())
-            batch_labels.append(
-                [
+            batch_scores.append(image_output[:, 5].tolist())
+            if self.class_names is not None:
+                batch_labels[-1] = [
                     self.class_names[str(class_ids)]
-                    for class_ids in image_output[:, 5].astype(int)
+                    for class_ids in batch_labels[-1].astype(int)
                 ]
-            )
 
         return YOLOOutput(
             predictions=batch_predictions,

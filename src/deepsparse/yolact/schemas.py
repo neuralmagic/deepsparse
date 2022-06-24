@@ -43,24 +43,30 @@ class YOLACTInputSchema(BaseModel):
     )
 
     confidence_threshold: float = Field(
-        default=0.2,
-        description="Confidence threshold applied to the raw detection at `detection` step. If a raw detection's score lower than threshold, it will be automatically discarded",
+        default=0.1,
+        description="Confidence threshold applied to the raw detection at "
+        "`detection` step. If a raw detection's score is lower "
+        "than the threshold, it will be automatically discarded",
     )
     nms_threshold: float = Field(
         default=0.5,
-        description="Minimum IoU overlap threshold for a prediction to be valid (used in Non-Maximum-Suppression step)",
+        description="Minimum IoU overlap threshold for a prediction to "
+        "consider it valid (used in Non-Maximum-Suppression step)",
     )
     top_k_preprocessing: int = Field(
         default=100,
-        description="The limiting number of best detections (per class) to be kept after the Non-Maximum-Suppression step",
+        description="The maximal number of best detections (per class) to be "
+        "kept after the Non-Maximum-Suppression step",
     )
     max_num_detections: int = Field(
         default=100,
-        description="The limiting number of best detections (across all classes) to be kept after the Non-Maximum-Suppression step",
+        description="The maximal number of best detections (across all classes) "
+        "to be kept after the Non-Maximum-Suppression step",
     )
     score_threshold: float = Field(
         default=0.0,
-        description="Confidence threshold applied to the raw detection at `postprocess` step (optional)",
+        description="Confidence threshold applied to the raw detection at "
+        "`postprocess` step (optional)",
     )
 
     @classmethod
@@ -88,13 +94,13 @@ class YOLACTOutputSchema(BaseModel):
 
     classes: List[List[Union[int, str]]] = Field(description="List of predictions")
     scores: List[List[float]] = Field(
-        description="List of bounding boxes, one for each prediction"
-    )
-    boxes: List[List[List[float]]] = Field(
         description="List of scores, one for each prediction"
     )
+    boxes: List[List[List[float]]] = Field(
+        description="List of bounding boxes, one for each prediction"
+    )
     masks: List[List[numpy.ndarray]] = Field(
-        description="List of labels, one for each prediction"
+        description="List of masks, one for each prediction"
     )
 
     class Config:

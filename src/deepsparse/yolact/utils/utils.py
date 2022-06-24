@@ -15,6 +15,7 @@
 """
 Helpers and Utilities for YOLACT
 """
+
 from typing import Dict, Tuple
 
 import numpy
@@ -37,12 +38,15 @@ def preprocess_array(
     image: numpy.ndarray, input_image_size: Tuple[int, int] = (550, 550)
 ) -> np.ndarray:
     """
-    Input preprocessing before feeding it into the YOLACT deepsparse pipeline
+    Preprocessing the input before feeding it into the YOLACT deepsparse pipeline
 
-    :param image: numpy array representing input image(s) with dimensions
-        (B, H, W,C) or (B, W, W,C) and BGR channel order
-    :param input_image_size: image size expected by the YOLACT network. Default is (550,550).
-    :return: preprocessed numpy array (B, C, D, D). It is a contiguous array with RGB channel order.
+    :param image: numpy array representing input image(s). It can be batched (or not)
+        and have an arbitrary dimensions order ((C,H,W) or (H,W,C)).
+        It must have BGR channel order
+    :param input_image_size: image size expected by the YOLACT network.
+        Default is (550,550).
+    :return: preprocessed numpy array (B, C, D, D); where (D,D) is image size expected
+        by the network. It is a contiguous array with RGB channel order.
     """
     image = image.astype(numpy.float32)
     image = _assert_channels_last(image)
@@ -56,6 +60,7 @@ def preprocess_array(
 
     image = image.transpose(0, 3, 1, 2)
     image /= 255
+    # BGR -> RGB
     image = image[:, (2, 1, 0), :, :]
     image = numpy.ascontiguousarray(image)
 
@@ -68,8 +73,8 @@ def jaccard(
     """
     Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
 
-    Compute the jaccard overlap of two sets of boxes.  The jaccard overlap
-    is simply the intersection over union of two boxes.  Here we operate on
+    Compute the jaccard overlap of two sets of boxes. The jaccard overlap
+    is simply the intersection over union of two boxes. Here we operate on
     ground truth boxes and default boxes. If iscrowd=True, put the crowd in box_b.
     E.g.:
         A ∩ B / A ∪ B = A ∩ B / (area(A) + area(B) - A ∩ B)
@@ -106,7 +111,8 @@ def sanitize_coordinates(
     """
     Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
 
-    Sanitizes the input coordinates so that x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
+    Sanitizes the input coordinates so that
+    x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
     Also converts from relative to absolute coordinates.
     """
     _x1 = _x1 * img_size
@@ -188,7 +194,8 @@ def fast_nms(
     second_threshold: bool = False,
 ) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
     """
-    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
+    Ported from
+    https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
     """
     idx, scores = numpy.argsort(scores)[:, ::-1], numpy.sort(scores)[:, ::-1]
 
@@ -204,11 +211,14 @@ def fast_nms(
     keep = iou_max <= iou_threshold
 
     scores = scores[:, :top_k] if top_k > keep.shape[1] else scores[:, : keep.shape[1]]
-    # We should also only keep detections over the confidence threshold, but at the cost of
-    # maxing out your detection count for every image, you can just not do that. Because we
-    # have such a minimal amount of computation per detection (matrix multiplication only),
-    # this increase doesn't affect us much (+0.2 mAP for 34 -> 33 fps), so we leave it out.
-    # However, when you implement this in your method, you should do this second threshold.
+    # We should also only keep detections over the confidence threshold,
+    # but at the cost of maxing out your detection count for every image,
+    # you can just not do that. Because we have such a minimal amount of
+    # computation per detection (matrix multiplication only), this increase
+    # doesn't affect us much (+0.2 mAP for 34 -> 33 fps), so we leave it out.
+    # However, when you implement this in your method,
+    # you should do this second threshold.
+
     if second_threshold:
         keep *= scores > confidence_threshold
 
@@ -232,7 +242,8 @@ def fast_nms(
 
 def decode(loc: numpy.ndarray, priors: numpy.ndarray) -> numpy.ndarray:
     """
-    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
+    Ported from
+    https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
 
     Decode predicted bbox coordinates using the same scheme
     employed by Yolov2: https://arxiv.org/pdf/1612.08242.pdf
@@ -255,7 +266,8 @@ def decode(loc: numpy.ndarray, priors: numpy.ndarray) -> numpy.ndarray:
         - loc:    The predicted bounding boxes of size [num_priors, 4]
         - priors: The prior box coords with size [num_priors, 4]
 
-    Returns: An array of decoded relative coordinates in point form with size [num_priors, 4]
+    Returns: An array of decoded relative coordinates
+        in point form with size [num_priors, 4]
     """
 
     variances = [0.1, 0.2]
@@ -283,7 +295,8 @@ def detect(
     top_k: int,
 ) -> Dict[str, numpy.ndarray]:
     """
-    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
+    Ported from
+    https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
 
     Perform nms for only the max scoring class that isn't background (class 0)
     """
@@ -316,7 +329,7 @@ def postprocess(
     det_output: Dict[str, numpy.ndarray],
     crop_masks: bool = True,
     score_threshold: float = 0,
-):
+) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
     """
     Ported from https://github.com/neuralmagic/yolact/blob/master/layers/output_utils.py
 
@@ -329,7 +342,8 @@ def postprocess(
     Returns 4 torch Tensors (in the following order):
         - classes [num_det]: The class idx for each detection.
         - scores  [num_det]: The confidence score for each detection.
-        - boxes   [num_det, 4]: The bounding box for each detection in absolute point form.
+        - boxes   [num_det, 4]: The bounding box for each detection
+                                in absolute point form.
         - masks   [num_det, h, w]: Full image masks for each detection.
     """
 
@@ -365,12 +379,14 @@ def postprocess(
 
     return classes, scores, boxes, masks
 
-def _assert_channels_last(array: numpy.ndarray)-> np.ndarray:
+
+def _assert_channels_last(array: numpy.ndarray) -> np.ndarray:
+    # make sure that the output is the array with dims
+    # (B, H, W, C) or (H,W,C)
     if array.ndim == 4:
-        if array.shape[1] <  array.shape[2]:
-            array = array.transpose(0,2,3,1)
+        if array.shape[1] < array.shape[2]:
+            array = array.transpose(0, 2, 3, 1)
     else:
         if array.shape[0] < array.shape[1]:
             array = array.transpose(1, 2, 0)
     return array
-

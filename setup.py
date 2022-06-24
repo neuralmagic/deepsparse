@@ -214,7 +214,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.server=deepsparse.server.main:start_server",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
-            "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",  # noqa E501
+            "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
         ]
     }
