@@ -14,5 +14,6 @@
 
 # flake8: noqa
 
+from .annotate import *
 from .pipelines import *
 from .schemas import *

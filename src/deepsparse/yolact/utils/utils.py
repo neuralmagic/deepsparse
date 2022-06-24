@@ -20,6 +20,7 @@ from typing import Dict, Tuple
 import numpy
 import numpy as np
 
+
 try:
     import cv2
 
@@ -32,7 +33,9 @@ except ModuleNotFoundError as cv2_import_error:
 _all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "preprocess_array"]
 
 
-def preprocess_array(image: numpy.ndarray, input_image_size: Tuple[int, int] = (550,550)) -> np.ndarray:
+def preprocess_array(
+    image: numpy.ndarray, input_image_size: Tuple[int, int] = (550, 550)
+) -> np.ndarray:
     """
     Input preprocessing before feeding it into the YOLACT deepsparse pipeline
 
@@ -42,21 +45,22 @@ def preprocess_array(image: numpy.ndarray, input_image_size: Tuple[int, int] = (
     :return: preprocessed numpy array (B, C, D, D). It is a contiguous array with RGB channel order.
     """
     image = image.astype(numpy.float32)
-
-    if image.ndim == 4:
+    image = _assert_channels_last(image)
+    if image.ndim == 4 and image.shape[:2] != input_image_size:
         image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
 
     else:
-        image = cv2.resize(image, input_image_size)
+        if image.shape[:2] != input_image_size:
+            image = cv2.resize(image, input_image_size)
         image = numpy.expand_dims(image, 0)
 
     image = image.transpose(0, 3, 1, 2)
     image /= 255
     image = image[:, (2, 1, 0), :, :]
-    image = numpy.broadcast_to(image, (2, 3, 550, 550))
     image = numpy.ascontiguousarray(image)
 
     return image
+
 
 def jaccard(
     box_a: numpy.ndarray, box_b: numpy.ndarray, iscrowd: bool = False
@@ -198,8 +202,8 @@ def fast_nms(
 
     # Now just filter out the ones higher than the threshold
     keep = iou_max <= iou_threshold
-    # TODO: Maybe remove it
-    scores = scores[:, :top_k] #if top_k > keep.shape[1] else scores[:, : keep.shape[1]]
+
+    scores = scores[:, :top_k] if top_k > keep.shape[1] else scores[:, : keep.shape[1]]
     # We should also only keep detections over the confidence threshold, but at the cost of
     # maxing out your detection count for every image, you can just not do that. Because we
     # have such a minimal amount of computation per detection (matrix multiplication only),
@@ -295,13 +299,15 @@ def detect(
     if scores.shape[0] == 0:
         return None
 
-    boxes, masks, classes, scores = fast_nms(boxes,
-                                             masks,
-                                             scores,
-                                             confidence_threshold,
-                                             max_num_detections,
-                                             nms_threshold,
-                                             top_k)
+    boxes, masks, classes, scores = fast_nms(
+        boxes,
+        masks,
+        scores,
+        confidence_threshold,
+        max_num_detections,
+        nms_threshold,
+        top_k,
+    )
 
     return {"box": boxes, "mask": masks, "class": classes, "score": scores}
 
@@ -358,3 +364,13 @@ def postprocess(
     masks = masks.transpose(2, 0, 1)
 
     return classes, scores, boxes, masks
+
+def _assert_channels_last(array: numpy.ndarray)-> np.ndarray:
+    if array.ndim == 4:
+        if array.shape[1] <  array.shape[2]:
+            array = array.transpose(0,2,3,1)
+    else:
+        if array.shape[0] < array.shape[1]:
+            array = array.transpose(1, 2, 0)
+    return array
+

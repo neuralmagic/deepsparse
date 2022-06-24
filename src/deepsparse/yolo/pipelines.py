@@ -41,6 +41,7 @@ except ModuleNotFoundError as cv2_import_error:
 
 __all__ = ["YOLOPipeline"]
 
+
 @Pipeline.register(
     task="yolo",
     default_model_path=(

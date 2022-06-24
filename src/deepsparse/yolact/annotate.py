@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """
-Usage: deepsparse.object_detection.annotate [OPTIONS]
+Usage: deepsparse.object_segmentation.annotate [OPTIONS]
 
-  Annotation Script for YOLO with DeepSparse
+  Annotation Script for YOLACT with DeepSparse
 
 Options:
   --model_filepath, --model-filepath TEXT
@@ -76,12 +76,12 @@ from deepsparse.utils import (
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
-from deepsparse.yolo.utils import annotate_image
+from deepsparse.yolact.utils import annotate_image
 from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
 
 yolo_v5_default_stub = (
-    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96"
+    "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
 )
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -119,7 +119,7 @@ _LOGGER = logging.getLogger(__name__)
     "--image-shape",
     type=int,
     nargs=2,
-    default=(640, 640),
+    default=(550, 550),
     help="Image shape to use for inference, must be two integers",
     show_default=True,
 )
@@ -181,7 +181,7 @@ def main(
     no_save: bool,
 ) -> None:
     """
-    Annotation Script for YOLO with DeepSparse
+    Annotation Script for YOLACT with DeepSparse
     """
     save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
@@ -198,8 +198,8 @@ def main(
     )
 
     is_webcam = source.isnumeric()
-    yolo_pipeline = Pipeline.create(
-        task="yolo",
+    yolact_pipeline = Pipeline.create(
+        task="yolact",
         model_path=model_filepath,
         class_names="coco",
         engine_type=engine,
@@ -210,13 +210,12 @@ def main(
 
         # annotate
         annotated_image = annotate(
-            pipeline=yolo_pipeline,
+            pipeline=yolact_pipeline,
             annotation_func=annotate_image,
             image=input_image,
             target_fps=target_fps,
             calc_fps=is_video,
             original_image=source_image,
-            model_input_size=image_shape,
         )
 
         if is_webcam:

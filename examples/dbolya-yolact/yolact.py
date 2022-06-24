@@ -19,7 +19,7 @@ from deepsparse import Pipeline
 from deepsparse.yolact.utils.annotate import annotate_image
 
 
-src = "golfish.jpeg"
+src = "/home/damian/deepsparse_copy/src/deepsparse/yolo/sample_images/basilica.jpg"
 cv_pipeline = Pipeline.create(
     task="yolact",
     model_path="zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none",

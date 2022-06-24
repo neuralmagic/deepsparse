@@ -42,12 +42,26 @@ class YOLACTInputSchema(BaseModel):
         description="List of images to process"
     )
 
-    confidence_threshold: float = Field(default = 0.05, description ="Confidence threshold applied to the raw detection at `detection` step. If a raw detection's score lower than threshold, it will be automatically discarded")
-    nms_threshold: float = Field(default=0.5, description="Minimum IoU overlap threshold for a prediction to be valid (used in Non-Maximum-Suppression step)")
-    top_k_preprocessing: int = Field(default=200, description="The limiting number of best detections (per class) to be kept after the Non-Maximum-Suppression step")
-    max_num_detections: int = Field(default=100, description="The limiting number of best detections (across all classes) to be kept after the Non-Maximum-Suppression step")
-    score_threshold: float = Field(default=0.0, description="Confidence threshold applied to the raw detection at `postprocess` step (optional)")
-
+    confidence_threshold: float = Field(
+        default=0.2,
+        description="Confidence threshold applied to the raw detection at `detection` step. If a raw detection's score lower than threshold, it will be automatically discarded",
+    )
+    nms_threshold: float = Field(
+        default=0.5,
+        description="Minimum IoU overlap threshold for a prediction to be valid (used in Non-Maximum-Suppression step)",
+    )
+    top_k_preprocessing: int = Field(
+        default=100,
+        description="The limiting number of best detections (per class) to be kept after the Non-Maximum-Suppression step",
+    )
+    max_num_detections: int = Field(
+        default=100,
+        description="The limiting number of best detections (across all classes) to be kept after the Non-Maximum-Suppression step",
+    )
+    score_threshold: float = Field(
+        default=0.0,
+        description="Confidence threshold applied to the raw detection at `postprocess` step (optional)",
+    )
 
     @classmethod
     def from_files(cls, files: List[str], **kwargs) -> "YOLACTInputSchema":
@@ -72,7 +86,7 @@ class YOLACTOutputSchema(BaseModel):
     Output Model for YOLACT
     """
 
-    classes: List[List[int]] = Field(description="List of predictions")
+    classes: List[List[Union[int, str]]] = Field(description="List of predictions")
     scores: List[List[float]] = Field(
         description="List of bounding boxes, one for each prediction"
     )

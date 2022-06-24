@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List,Type, Optional, Union, Dict, Tuple
+import json
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 
-import json
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
@@ -38,7 +38,9 @@ __all__ = ["YOLACTPipeline"]
 
 @Pipeline.register(
     task="yolact",
-    default_model_path=("zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"),
+    default_model_path=(
+        "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
+    ),
 )
 class YOLACTPipeline(Pipeline):
     """
@@ -62,16 +64,21 @@ class YOLACTPipeline(Pipeline):
         we want to fetch per image. Default is 1.
     """
 
-    def __init__(self, *,
-                 class_names: Optional[Union[str, Dict[str, str]]] = "coco",
-                 image_size: Union[int, Tuple[int, int]] = (550, 550),
-                 top_k: int = 50,
-                 **kwargs):
+    def __init__(
+        self,
+        *,
+        class_names: Optional[Union[str, Dict[str, str]]] = "coco",
+        image_size: Union[int, Tuple[int, int]] = (550, 550),
+        top_k: int = 50,
+        **kwargs,
+    ):
 
-        self._image_size = image_size if isinstance(image_size, Tuple) else (image_size, image_size)
+        self._image_size = (
+            image_size if isinstance(image_size, Tuple) else (image_size, image_size)
+        )
         self.top_k = top_k
 
-        super().__init__( **kwargs)
+        super().__init__(**kwargs)
 
         if isinstance(class_names, str):
             if class_names.endswith(".json"):
@@ -88,10 +95,7 @@ class YOLACTPipeline(Pipeline):
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
         else:
-            raise ValueError(
-                "class_names must be a str identifier, dict, json file, or "
-                f"list of class names got {type(class_names)}"
-            )
+            self._class_names = class_names
 
     @property
     def class_names(self) -> Optional[Dict[str, str]]:
@@ -136,14 +140,16 @@ class YOLACTPipeline(Pipeline):
             images = [cv2.imread(file_path) for file_path in images]
 
         postprocessing_kwargs = dict(
-            confidence_threshold = inputs.confidence_threshold,
-            nms_threshold = inputs.nms_threshold,
-            score_threshold = inputs.score_threshold,
-            top_k_preprocessing = inputs.top_k_preprocessing,
-            max_num_detections = inputs.max_num_detections
+            confidence_threshold=inputs.confidence_threshold,
+            nms_threshold=inputs.nms_threshold,
+            score_threshold=inputs.score_threshold,
+            top_k_preprocessing=inputs.top_k_preprocessing,
+            max_num_detections=inputs.max_num_detections,
         )
 
-        return [preprocess_array(array, self.image_size) for array in images], postprocessing_kwargs
+        return [
+            preprocess_array(array, self.image_size) for array in images
+        ], postprocessing_kwargs
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
@@ -172,21 +178,23 @@ class YOLACTPipeline(Pipeline):
                 masks_single_image,
                 confidence_threshold=kwargs["confidence_threshold"],
                 nms_threshold=kwargs["nms_threshold"],
-                max_num_detections = kwargs["max_num_detections"],
+                max_num_detections=kwargs["max_num_detections"],
                 top_k=kwargs["top_k_preprocessing"],
             )
             if results is not None and protos is not None:
                 results["protos"] = protos[batch_idx]
 
             classes, scores, boxes, masks = postprocess(
-                results, crop_masks=True, score_threshold=kwargs.get("score_threshold"),
+                results,
+                crop_masks=True,
+                score_threshold=kwargs["score_threshold"],
             )
 
-            # Choose the best k detections for every image
-            # basing on scores
+            # Choose the best k detections (taking into account all the classes)
             idx = numpy.argsort(scores)[::-1][: self.top_k]
 
-            batch_classes.append(classes[idx].tolist())
+            batch_classes.append(list(map(self.class_names.__getitem__, map(str,classes[idx]))) if self.class_names is not None else classes[idx].tolist())
+
             batch_scores.append(scores[idx].tolist())
             batch_boxes.append(boxes[idx].tolist())
             batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])
@@ -211,5 +219,3 @@ class YOLACTPipeline(Pipeline):
         :return: pydantic model class that outputs of this pipeline must comply to
         """
         return YOLACTOutputSchema
-
-
