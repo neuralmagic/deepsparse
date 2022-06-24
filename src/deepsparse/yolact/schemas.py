@@ -17,7 +17,7 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import List, Union
+from typing import List, Optional, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -43,7 +43,7 @@ class YOLACTInputSchema(BaseModel):
     )
 
     confidence_threshold: float = Field(
-        default=0.1,
+        default=0.2,
         description="Confidence threshold applied to the raw detection at "
         "`detection` step. If a raw detection's score is lower "
         "than the threshold, it will be automatically discarded",
@@ -92,14 +92,16 @@ class YOLACTOutputSchema(BaseModel):
     Output Model for YOLACT
     """
 
-    classes: List[List[Union[int, str]]] = Field(description="List of predictions")
-    scores: List[List[float]] = Field(
+    classes: List[List[Optional[Union[int, str]]]] = Field(
+        description="List of predictions"
+    )
+    scores: List[List[Optional[float]]] = Field(
         description="List of scores, one for each prediction"
     )
-    boxes: List[List[List[float]]] = Field(
+    boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[List[numpy.ndarray]] = Field(
+    masks: List[List[Optional[numpy.ndarray]]] = Field(
         description="List of masks, one for each prediction"
     )
 

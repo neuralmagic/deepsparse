@@ -52,12 +52,17 @@ def annotate_image(
     :param score_threshold: minimum score a detection should have to be annotated
         on the image. Default is 0.35
     :return: the original image annotated with the given bounding boxes
+        (if predictions are not None)
     """
 
     masks = prediction.masks[0]
     boxes = prediction.boxes[0]
     classes = prediction.classes[0]
     scores = prediction.scores[0]
+
+    if any(x[0] is None for x in [masks, boxes, classes, scores]):
+        # no detections found
+        return image
 
     image_res = copy.copy(image)
 
@@ -115,14 +120,12 @@ def _put_annotation_text(
     text_height: int,
     left: int,
     top: int,
-    top_offset: int = 30,
-    top_offset_text: int = 10,
 ) -> numpy.ndarray:
 
     image = cv2.rectangle(
         image,
-        (int(left), int(top) - top_offset),
-        (int(left) + text_width, int(top) - top_offset + text_height),
+        (int(left), int(top)),
+        (int(left) + text_width, int(top) + text_height),
         colour,
         thickness=-1,
     )
@@ -130,7 +133,7 @@ def _put_annotation_text(
     image = cv2.putText(
         image,
         annotation_text,
-        (int(left), int(top) - top_offset_text),
+        (int(left), int(top) + text_height),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.9,  # font scale
         (255, 255, 255),  # white text
@@ -183,6 +186,7 @@ def _resize_to_fit_img(
     # Reshape the bounding boxes
     boxes = numpy.stack(boxes)
     from deepsparse.yolact.utils import sanitize_coordinates
+
     boxes[:, 0], boxes[:, 2] = sanitize_coordinates(boxes[:, 0], boxes[:, 2], w)
     boxes[:, 1], boxes[:, 3] = sanitize_coordinates(boxes[:, 1], boxes[:, 3], h)
     boxes = boxes.astype(numpy.int64)

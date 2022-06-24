@@ -187,23 +187,30 @@ class YOLACTPipeline(Pipeline):
             if results is not None and protos is not None:
                 results["protos"] = protos[batch_idx]
 
-            classes, scores, boxes, masks = postprocess(
-                results,
-                crop_masks=True,
-                score_threshold=kwargs["score_threshold"],
-            )
+            if results:
+                classes, scores, boxes, masks = postprocess(
+                    results,
+                    crop_masks=True,
+                    score_threshold=kwargs["score_threshold"],
+                )
 
-            # Choose the best k detections (taking into account all the classes)
-            idx = numpy.argsort(scores)[::-1][: self.top_k]
+                # Choose the best k detections (taking into account all the classes)
+                idx = numpy.argsort(scores)[::-1][: self.top_k]
 
-            batch_classes.append(
-                list(map(self.class_names.__getitem__, map(str, classes[idx])))
-                if self.class_names is not None
-                else classes[idx].tolist()
-            )
-            batch_scores.append(scores[idx].tolist())
-            batch_boxes.append(boxes[idx].tolist())
-            batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])
+                batch_classes.append(
+                    list(map(self.class_names.__getitem__, map(str, classes[idx])))
+                    if self.class_names is not None
+                    else classes[idx].tolist()
+                )
+                batch_scores.append(scores[idx].tolist())
+                batch_boxes.append(boxes[idx].tolist())
+                batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])
+
+            else:
+                batch_classes.append([None])
+                batch_scores.append([None])
+                batch_boxes.append([None])
+                batch_masks.append([None])
 
         return YOLACTOutputSchema(
             classes=batch_classes,

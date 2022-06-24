@@ -16,7 +16,7 @@
 Helpers and Utilities for YOLACT
 """
 
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy
 import numpy as np
@@ -192,7 +192,7 @@ def fast_nms(
     iou_threshold: float = 0.5,
     top_k: int = 200,
     second_threshold: bool = False,
-) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+) -> Optional[Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]]:
     """
     Ported from
     https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
@@ -200,6 +200,9 @@ def fast_nms(
     idx, scores = numpy.argsort(scores)[:, ::-1], numpy.sort(scores)[:, ::-1]
 
     num_classes, num_dets = idx.shape
+
+    if not num_dets:
+        return None
 
     boxes = boxes[idx.flatten(), :].reshape(num_classes, num_dets, 4)
     masks = masks[idx.flatten(), :].reshape(num_classes, num_dets, -1)
@@ -312,7 +315,7 @@ def detect(
     if scores.shape[0] == 0:
         return None
 
-    boxes, masks, classes, scores = fast_nms(
+    nms_outputs = fast_nms(
         boxes,
         masks,
         scores,
@@ -321,8 +324,11 @@ def detect(
         nms_threshold,
         top_k,
     )
-
-    return {"box": boxes, "mask": masks, "class": classes, "score": scores}
+    if nms_outputs is None:
+        return None
+    else:
+        boxes, masks, classes, scores = nms_outputs
+        return {"box": boxes, "mask": masks, "class": classes, "score": scores}
 
 
 def postprocess(
