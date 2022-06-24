@@ -53,8 +53,9 @@ python eval_downstream.py \
     --dataset squad
 """
 
-
 import argparse
+import json
+import os
 
 from tqdm.auto import tqdm
 
@@ -122,7 +123,7 @@ def mnli_eval(args):
     )
     print(f"Engine info: {text_classify.engine}")
 
-    label_map = {"entailment": 0, "neutral": 1, "contradiction": 2}
+    label_map = _get_label2id(args.onnx_filepath)
 
     for idx, sample in _enumerate_progress(mnli_matched, args.max_samples):
         pred = text_classify([[sample["premise"], sample["hypothesis"]]])
@@ -162,7 +163,7 @@ def qqp_eval(args):
     )
     print(f"Engine info: {text_classify.engine}")
 
-    label_map = {"not_duplicate": 0, "duplicate": 1}
+    label_map = _get_label2id(args.onnx_filepath)
 
     for idx, sample in _enumerate_progress(qqp, args.max_samples):
         pred = text_classify([[sample["question1"], sample["question2"]]])
@@ -193,7 +194,7 @@ def sst2_eval(args):
     )
     print(f"Engine info: {text_classify.engine}")
 
-    label_map = {"negative": 0, "positive": 1, "LABEL_0": 0, "LABEL_1": 1}
+    label_map = _get_label2id(args.onnx_filepath)
 
     for idx, sample in _enumerate_progress(sst2, args.max_samples):
         pred = text_classify(
@@ -214,6 +215,13 @@ def sst2_eval(args):
 def _enumerate_progress(dataset, max_steps):
     progress_bar = tqdm(dataset, total=max_steps) if max_steps else tqdm(dataset)
     return enumerate(progress_bar)
+
+
+def _get_label2id(onnx_file_path):
+    config_file_path = os.path.join(onnx_file_path, "config.json")
+    with open(config_file_path) as f:
+        config = json.load(f)
+    return config["label2id"]
 
 
 # Register all the supported downstream datasets here
