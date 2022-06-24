@@ -283,10 +283,6 @@ def override_onnx_output(
     :param graph_output_types: list of numpy dtypes
     :return: None
     """
-
-    def _clear_buffer(x: "Protobuf") -> None:
-        [x.pop() for _ in x]
-
     if len(final_node_names) != len(graph_output_names):
         raise ValueError(
             f"length of final_node_names {len(final_node_names)} must match "
@@ -309,7 +305,7 @@ def override_onnx_output(
         zip(final_nodes, graph_output_names)
     ):
         # Write each node's output to new output
-        _clear_buffer(final_node.output)
+        [final_node.output.pop() for _ in final_node.output]
         final_node.output.append(graph_output_name)
 
         # Write graph output. TODO: use ort to find real shapes and types

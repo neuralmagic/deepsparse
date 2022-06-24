@@ -28,16 +28,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: Double check this
 """
 Pipeline implementation and pydantic models for embedding extraction transformers
 tasks
 """
 
 
-from concurrent.futures import ThreadPoolExecutor, wait
 import os
-from typing import Any, List, Type, Union, Tuple, Optional
+from concurrent.futures import ThreadPoolExecutor, wait
+from typing import Any, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -45,12 +44,8 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 
 from deepsparse import Pipeline
 from deepsparse.engine import Context
+from deepsparse.transformers.helpers import cut_transformer_onnx_model
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.helpers import (
-    get_onnx_path_and_configs,
-    overwrite_transformer_onnx_model_inputs,
-    cut_transformer_onnx_model,
-)
 
 
 __all__ = [
@@ -152,18 +147,11 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         onnx_path = super().setup_onnx_file_path()
 
-        """
         (
             onnx_path,
             self.onnx_output_names,
             self._temp_model_directory,
-        ) = cut_transformer_onnx_model(onnx_path, final_node_name="Add_333")
-        """
-        (
-            self.onnx_output_names,
-        ) = cut_transformer_onnx_model(onnx_path, output_path="./tmp_model_dir/mlm_cut.onnx", final_node_name="Add_333")
-        self._temp_model_directory = "./tmp_model_dir"
-        onnx_path = "./tmp_model_dir/mlm_cut.onnx"
+        ) = cut_transformer_onnx_model(onnx_path)
 
         return onnx_path
 
@@ -176,7 +164,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
         if args:
             if len(args) == 1:
-                # passed input_schema schema directly
                 if isinstance(args[0], self.input_schema):
                     return args[0]
                 return self.input_schema(texts=args[0])
@@ -187,7 +174,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
     def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
         if any([isinstance(input, Tuple) for input in inputs.texts]):
-            # TODO: For now, strip away titles
             texts = [text for (_title, text) in inputs.texts]
         else:
             texts = inputs.texts
@@ -200,24 +186,18 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             truncation=TruncationStrategy.LONGEST_FIRST.value,
         )
 
-        """
-        postprocessing_kwargs = dict(
-            sequences=sequences,
-            labels=labels,
-            multi_class=multi_class,
-        )
-        """
         return self.tokens_to_engine_input(tokens)
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
-
         def _engine_forward(batch_index: int, batch_origin: int):
             engine_input = engine_inputs_numpy[
                 :, batch_origin : batch_origin + self._batch_size, :
             ]
             engine_input = [model_input for model_input in engine_input]
             engine_output = self.engine(engine_input)
-            engine_outputs[batch_index] = engine_output[0][0].flatten() # TODO: Double check this
+            engine_outputs[batch_index] = engine_output[0][
+                0
+            ].flatten()  # TODO: Double check this
 
         engine_inputs_numpy = numpy.array(engine_inputs)
         assert engine_inputs_numpy.shape[1] % self._batch_size == 0
