@@ -56,8 +56,8 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         document_store: BaseDocumentStore,
         model_path: str,
         model_version: Optional[str] = None,
-        use_gpu: bool = True,
-        batch_size: int = 32,
+        use_gpu: bool = False,
+        batch_size: int = 1,
         max_seq_len: int = 512,
         model_format: str = "farm",
         pooling_strategy: str = "reduce_mean",
@@ -65,7 +65,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         top_k: int = 10,
         progress_bar: bool = True,
         scale_score: bool = True,
-        **embedding_pipeline_kwargs,
+        **kwargs,
     ):
         super(BaseRetriever).__init__()
 
@@ -77,20 +77,23 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         self.batch_size = batch_size
         self.max_seq_len = max_seq_len
         self.pooling_strategy = pooling_strategy
-        self.emb_extraction_layer = emb_extraction_layer
+        self.emb_extraction_layer = emb_extraction_layer #  TODO: utilize this
         self.top_k = top_k
         self.progress_bar = progress_bar
         self.scale_score = scale_score
 
         _LOGGER.info(f"Init retriever using embeddings of model at {model_path}")
 
+        if use_gpu:
+            raise ValueError("DeepSparseEmbeddingRetriever uses cpu, set use_gpu to False")
+
         # TODO: Throw value error if unknown model
         # TODO: Throw warning if using wrong kind of model
 
-        self.embedding_encoder = _DeepSparseEmbeddingEncoder(self, embedding_pipeline_kwargs)
+        self.embedding_encoder = _DeepSparseEmbeddingEncoder(self, kwargs)
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "DeepSparseEmbeddingRetriever", embedding_pipeline_kwargs):
+    def __init__(self, retriever: "DeepSparseEmbeddingRetriever", kwargs):
         # TODO: Check imports work
         self.embedding_pipeline = Pipeline.create(
             "embedding_extraction",
@@ -98,7 +101,7 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
             batch_size=retriever.batch_size,
             sequence_length=retriever.max_seq_len,
             show_progress_bar=retriever.progress_bar,
-            **retriever.embedding_pipeline_kwargs
+            **kwargs
         )
 
         self.batch_size = retriever.batch_size
@@ -202,7 +205,7 @@ class HaystackPipelineConfig(BaseModel):
     )
     retriever_args: dict = Field(
         description="TODO",
-        default={"use_gpu":False, "embedding_dim":393216}
+        default={}
     )
     haystack_pipeline: PipelineType = Field(
         description="TODO",
@@ -210,7 +213,7 @@ class HaystackPipelineConfig(BaseModel):
     )
     haystack_pipeline_args: dict = Field(
         description="TODO",
-        default={"use_gpu":False, "embedding_dim":393216}
+        default={}
     )
 
 
@@ -231,24 +234,38 @@ class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
+        docs: Optional[List[str]] = None,
         config: Optional[Union[HaystackPipelineConfig, dict]] = None,
         **kwargs,
     ):
-        # TODO: Set member values from kwargs
+        # TODO: Assign necessary members
 
-
-
-        self.embedding_pipeline_kwargs = kwargs
-
-        self._config = self._parse_config(config)
+        self.docs = docs
+        self._config = self._parse_config(config, kwargs)
 
         self.initialize_pipeline()
 
-    def create_retriever_args(retriever_args, kwargs):
+    def merge_retriever_args(self, retriever_args, kwargs):
+        kwargs = kwargs.copy()
+
+        # Update kwargs names
+        if "sequence_length" in kwargs:
+            kwargs["max_seq_len"] = kwargs["sequence_length"]
+
         # If conflicts, throw
+        if "max_seq_len" in kwargs and "max_seq_len" in retriever_args:
+            raise ValueError(
+                "Found sequence_length in pipeline initialization and max_seq_len in retriever args. Use only one"
+            )
+
+        for kwarg in kwargs:
+            if kwarg in retriever_args.keys():
+                raise ValueError(
+                    f"Found {kwarg} in both HaystackPipeline arguments and "
+                    "config retriever_args. Use only one"
+                )
 
         retriever_args.update(kwargs)
-
         return retriever_args
 
 
@@ -256,14 +273,14 @@ class HaystackPipeline(TransformersPipeline):
         self._document_store = self._config.document_store.construct(
             **self._config.document_store_args
         )
-        document_store.write_documents(docs)
+        if self.docs is not None:
+            self._document_store.write_documents(self.docs)
 
         self._retriever = self._config.retriever.construct(
             self._document_store,
-            self.model_path
-            # self._config.retriever_args
+            **self._config.retriever_args
         )
-        document_store.update_embeddings(embedding_retriever, update_existing_embeddings=False)
+        self._document_store.update_embeddings(self._retriever, update_existing_embeddings=True)
 
         # TODO: Adjust embedding_dim
         #print(self._retriever.embedding_encoder.embedding_pipeline.)
@@ -273,7 +290,11 @@ class HaystackPipeline(TransformersPipeline):
             # self._config.haystack_pipeline_args
         )
 
-    def _parse_config(self, config: Optional[Union[HaystackPipelineConfig, dict]]) -> Type[BaseModel]:
+    def _parse_config(
+        self,
+        config: Optional[Union[HaystackPipelineConfig, dict]],
+        kwargs: Dict
+    ) -> Type[BaseModel]:
         """
         TODO:
         """
@@ -293,9 +314,13 @@ class HaystackPipeline(TransformersPipeline):
                 f"construct one. Found {config} instead"
             )
 
-        # reconcile retriever args
-        retriever_args = create_retriever_args(config.retriever_args, self.kwargs)
+        # merge args
+        #retriever_args = merge_retriever_args(config.retriever_args, self.kwargs)
+        #config.retriever_args = retriever_args
+        retriever_args = self.merge_retriever_args(config.retriever_args, kwargs)
         config.retriever_args = retriever_args
+        #retriever_args = merge_retriever_args(config.retriever_args, self.kwargs)
+        #config.retriever_args = retriever_args
 
         return config
 
