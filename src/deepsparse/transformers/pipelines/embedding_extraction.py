@@ -62,9 +62,8 @@ class EmbeddingExtractionInput(BaseModel):
     Schema for inputs to embedding_extraction pipelines
     """
 
-    texts: Union[List[Tuple[str, str]], List[str]] = Field(
-        description="A list of document title and content pairs, or a list of "
-        "document contents"
+    texts: Union[List[str]] = Field(
+        description="A list of document contents"
     )
 
 
@@ -173,13 +172,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         return self.input_schema(**kwargs)
 
     def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
-        if any([isinstance(input, Tuple) for input in inputs.texts]):
-            texts = [text for (_title, text) in inputs.texts]
-        else:
-            texts = inputs.texts
-
         tokens = self.tokenizer(
-            texts,
+            inputs.texts,
             add_special_tokens=True,
             return_tensors="np",
             padding=PaddingStrategy.MAX_LENGTH.value,
@@ -189,28 +183,31 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         return self.tokens_to_engine_input(tokens)
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
-        def _engine_forward(batch_index: int, batch_origin: int):
+        def _engine_forward(batch_origin: int):
             engine_input = engine_inputs_numpy[
                 :, batch_origin : batch_origin + self._batch_size, :
             ]
             engine_input = [model_input for model_input in engine_input]
             engine_output = self.engine(engine_input)
-            engine_outputs[batch_index] = engine_output[0][
-                0
-            ].flatten()  # TODO: Double check this
+            engine_outputs[batch_origin: batch_origin + self._batch_size] = engine_output[0].reshape((self._batch_size, -1))
 
         engine_inputs_numpy = numpy.array(engine_inputs)
-        assert engine_inputs_numpy.shape[1] % self._batch_size == 0
+        if engine_inputs_numpy.shape[1] % self._batch_size != 0:
+            raise ValueError(
+                f"number of engine inputs {engine_inputs_numpy.shape[1]} must "
+                f"be divisible by batch_size {self._batch_size}"
+            )
+
+
         engine_outputs = [
-            None for _ in range(engine_inputs_numpy.shape[1] // self._batch_size)
+            None for _ in range(engine_inputs_numpy.shape[1])
         ]
 
         futures = [
-            self._thread_pool.submit(_engine_forward, batch_index, batch_origin)
-            for batch_index, batch_origin in enumerate(
-                range(0, engine_inputs_numpy.shape[1], self._batch_size)
-            )
+            self._thread_pool.submit(_engine_forward, batch_origin)
+            for batch_origin in range(0, engine_inputs_numpy.shape[1], self._batch_size)
         ]
+
         wait(futures)
 
         return engine_outputs

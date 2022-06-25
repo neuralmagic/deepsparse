@@ -86,26 +86,11 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         self.scale_score = scale_score
 
         _LOGGER.info(f"Init retriever using embeddings of model at {model_path}")
-        if use_gpu:
-            _LOGGER.info(
-                "DeepSparseEmbeddingRetriever was initialized with use_gpu=True. "
-                "However, the deepsparse engine uses cpu. Engine outputs will be "
-                "sent to gpu device after inference"
-            )
-
-        if devices is not None:
-            self.devices = [torch.device(device) for device in devices]
-        else:
-            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
-
-        # TODO: Throw value error if unknown model
-        # TODO: Throw warning if using wrong kind of model
 
         self.embedding_encoder = _DeepSparseEmbeddingEncoder(self, kwargs)
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "DeepSparseEmbeddingRetriever", kwargs):
-        # TODO: Check imports work
         self.embedding_pipeline = Pipeline.create(
             "embedding_extraction",
             model_path=retriever.model_path,
@@ -117,8 +102,6 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         self.batch_size = retriever.batch_size
         self.show_progress_bar = retriever.progress_bar
-        self.use_gpu = retriever.use_gpu
-        self.devices = retriever.devices
         document_store = retriever.document_store
         if document_store.similarity != "cosine":
             _LOGGER.warning(
@@ -130,20 +113,20 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[numpy.ndarray]:
         model_output = self.embedding_pipeline(texts)
         embeddings = [embedding for embedding in model_output.embeddings]
-        print(model_output.embeddings[0].dtype)
-        if self.use_gpu:
-            embeddings = [torch.tensor(embedding, device=self.devices[0]) for embedding in model_output.embeddings]
+        print(len(texts))
+        print(len(embeddings))
         return embeddings
 
     def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
+        print(texts)
         return self.embed(texts)
 
     def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
+        passages = [d.content for d in docs]  # type: ignore
         return self.embed(passages)
 
 class HaystackPipelineInput(BaseModel):
-    query: Union[str, List[str]] = Field(
+    queries: Union[str, List[str]] = Field(
         description="TODO:"
     )
     params: Dict = Field(
@@ -152,19 +135,19 @@ class HaystackPipelineInput(BaseModel):
     )
 
 class HaystackPipelineOutput(BaseModel):
-    documents: List[Document] = Field(
+    documents: Union[List[Document], List[List[Document]]] = Field(
         description="TODO:"
     )
-    root_node: str = Field(
+    root_node: Union[str, List[str]] = Field(
         description="TODO:"
     )
-    params: Dict[str, Any] = Field(
+    params: Union[Dict[str, Any], List[Dict[str, Any]]] = Field(
         description="TODO:"
     )
     query: Union[str, List[str]] = Field(
         description="TODO:"
     )
-    node_id: str = Field(
+    node_id: Union[str, List[str]] = Field(
         description="TODO:"
     )
 
@@ -247,9 +230,6 @@ class HaystackPipelineConfig(BaseModel):
     )
 
 
-
-
-
 '''
 @Pipeline.register(
     task="embedding_extraction",
@@ -264,15 +244,17 @@ class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        batch_size: int = 1,
         docs: Optional[List[str]] = None,
         config: Optional[Union[HaystackPipelineConfig, dict]] = None,
         **kwargs,
     ):
         # TODO: Assign necessary members
 
-        # pass to embedding extraction pipeline
-        kwargs.update({"batch_size": batch_size})
+        if kwargs.get("batch_size") and kwargs["batch_size"] > 1:
+            raise ValueError(
+                f"{self.__class__.__name__} currently only supports batch size 1, "
+                f"batch size set to {kwargs['batch_size']}"
+            )
 
         self.docs = docs
         self._config = self._parse_config(config, kwargs)
@@ -314,14 +296,12 @@ class HaystackPipeline(TransformersPipeline):
             self._document_store,
             **self._config.retriever_args
         )
-        self._document_store.update_embeddings(self._retriever, update_existing_embeddings=True)
-
         # TODO: Adjust embedding_dim
-        #print(self._retriever.embedding_encoder.embedding_pipeline.)
+        self._document_store.update_embeddings(self._retriever, update_existing_embeddings=True)
 
         self._haystack_pipeline = self._config.haystack_pipeline.construct(
             self._retriever
-            # self._config.haystack_pipeline_args
+            **self._config.haystack_pipeline_args
         )
 
     def _parse_config(
@@ -375,7 +355,10 @@ class HaystackPipeline(TransformersPipeline):
             )
 
         # run pipeline
-        pipeline_results = self._haystack_pipeline.run(query=pipeline_inputs.query, params=pipeline_inputs.params)
+        if isinstance(pipeline_inputs.queries, List):
+            pipeline_results = [self._haystack_pipeline.run(query=query, params=pipeline_inputs.params) for query in pipeline_inputs.queries]
+        else:
+            pipeline_results = self._haystack_pipeline.run(query=pipeline_inputs.queries, params=pipeline_inputs.params)
 
         outputs = self.process_pipeline_outputs(
             pipeline_results
@@ -391,8 +374,19 @@ class HaystackPipeline(TransformersPipeline):
         return outputs
 
     def process_pipeline_outputs(self, results):
-        print_documents(results, max_text_len=200)
-        return self.output_schema(**results)
+        # zip dictionaries for each output
+
+        if isinstance(results, List):
+            outputs = {}
+            for result in results:
+                for key, value in result.items():
+                    if key not in outputs:
+                        outputs[key] = []
+                    outputs[key].append(value)
+        else:
+            outputs = results
+        print(outputs)
+        return self.output_schema(**outputs)
 
 
     #######
