@@ -32,6 +32,7 @@ TODO:
 """
 from typing import List, Optional, Union, Dict, Type, Tuple, Any
 
+import torch
 from enum import Enum
 import numpy
 from haystack.nodes.retriever.base import BaseRetriever
@@ -41,6 +42,7 @@ from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
 from haystack.schema import Document
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.utils import print_documents
+from haystack.modeling.utils import initialize_device_settings
 
 from pydantic import BaseModel, Field
 
@@ -64,6 +66,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         emb_extraction_layer: int = -1, # TODO: Utilize this
         top_k: int = 10,
         progress_bar: bool = True,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         scale_score: bool = True,
         **kwargs,
     ):
@@ -83,9 +86,17 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         self.scale_score = scale_score
 
         _LOGGER.info(f"Init retriever using embeddings of model at {model_path}")
-
         if use_gpu:
-            raise ValueError("DeepSparseEmbeddingRetriever uses cpu, set use_gpu to False")
+            _LOGGER.info(
+                "DeepSparseEmbeddingRetriever was initialized with use_gpu=True. "
+                "However, the deepsparse engine uses cpu. Engine outputs will be "
+                "sent to gpu device after inference"
+            )
+
+        if devices is not None:
+            self.devices = [torch.device(device) for device in devices]
+        else:
+            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
 
         # TODO: Throw value error if unknown model
         # TODO: Throw warning if using wrong kind of model
@@ -106,6 +117,8 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         self.batch_size = retriever.batch_size
         self.show_progress_bar = retriever.progress_bar
+        self.use_gpu = retriever.use_gpu
+        self.devices = retriever.devices
         document_store = retriever.document_store
         if document_store.similarity != "cosine":
             _LOGGER.warning(
@@ -117,6 +130,9 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[numpy.ndarray]:
         model_output = self.embedding_pipeline(texts)
         embeddings = [embedding for embedding in model_output.embeddings]
+        print(model_output.embeddings[0].dtype)
+        if self.use_gpu:
+            embeddings = [torch.tensor(embedding, device=self.devices[0]) for embedding in model_output.embeddings]
         return embeddings
 
     def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
@@ -126,8 +142,46 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
 
+class HaystackPipelineInput(BaseModel):
+    query: Union[str, List[str]] = Field(
+        description="TODO:"
+    )
+    params: Dict = Field(
+        description="TODO:",
+        default={}
+    )
 
-class DocumentStoreType(Enum):
+class HaystackPipelineOutput(BaseModel):
+    documents: List[Document] = Field(
+        description="TODO:"
+    )
+    root_node: str = Field(
+        description="TODO:"
+    )
+    params: Dict[str, Any] = Field(
+        description="TODO:"
+    )
+    query: Union[str, List[str]] = Field(
+        description="TODO:"
+    )
+    node_id: str = Field(
+        description="TODO:"
+    )
+
+class HaystackType():
+    """
+    TODO:
+    """
+    @classmethod
+    def to_list(cls):
+        return cls._value2member_map_
+
+    @property
+    def construct(self):
+        return self._constructor_dict.value[self.value]
+
+
+class DocumentStoreType(HaystackType, Enum):
     """
     Enum containing all supported haystack document stores
     """
@@ -138,16 +192,8 @@ class DocumentStoreType(Enum):
         "InMemoryDocumentStore": InMemoryDocumentStore
     }
 
-    @classmethod
-    def to_list(cls):
-        return cls._value2member_map_
 
-    @property
-    def construct(self):
-        return self._constructor_dict.value[self.value]
-
-
-class RetrieverType(Enum):
+class RetrieverType(HaystackType, Enum):
     """
     Enum containing all supported haystack retrievers
     """
@@ -158,16 +204,8 @@ class RetrieverType(Enum):
         "DeepSparseEmbeddingRetriever": DeepSparseEmbeddingRetriever
     }
 
-    @classmethod
-    def to_list(cls):
-        return cls._value2member_map_
 
-    @property
-    def construct(self):
-        return self._constructor_dict.value[self.value]
-
-
-class PipelineType(Enum):
+class PipelineType(HaystackType, Enum):
     """
     Enum containing all supported haystack pipelines
     """
@@ -177,14 +215,6 @@ class PipelineType(Enum):
     _constructor_dict = {
         "DocumentSearchPipeline": DocumentSearchPipeline
     }
-
-    @classmethod
-    def to_list(cls):
-        return cls._value2member_map_
-
-    @property
-    def construct(self):
-        return self._constructor_dict.value[self.value]
 
 
 class HaystackPipelineConfig(BaseModel):
@@ -234,11 +264,15 @@ class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
+        batch_size: int = 1,
         docs: Optional[List[str]] = None,
         config: Optional[Union[HaystackPipelineConfig, dict]] = None,
         **kwargs,
     ):
         # TODO: Assign necessary members
+
+        # pass to embedding extraction pipeline
+        kwargs.update({"batch_size": batch_size})
 
         self.docs = docs
         self._config = self._parse_config(config, kwargs)
@@ -341,31 +375,24 @@ class HaystackPipeline(TransformersPipeline):
             )
 
         # run pipeline
-        query, params = self.process_inputs(pipeline_inputs)
+        pipeline_results = self._haystack_pipeline.run(query=pipeline_inputs.query, params=pipeline_inputs.params)
 
-        pipeline_results = self._haystack_pipeline.run(query=query, params={"Retriever": {"top_k": 2}})
-        return engine_outputs
-
-        pipeline_results = self.process_pipeline_outputs(
-            pipeline_results, **postprocess_kwargs
+        outputs = self.process_pipeline_outputs(
+            pipeline_results
         )
 
         # validate outputs format
-        if not isinstance(pipeline_results, self.output_schema):
+        if not isinstance(outputs, self.output_schema):
             raise ValueError(
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_results)}"
             )
 
-        return pipeline_results
-
-    def process_inputs(pipeline_inputs):
-        query = "asdf"
-        params = {}
-        return query, params
+        return outputs
 
     def process_pipeline_outputs(self, results):
         print_documents(results, max_text_len=200)
+        return self.output_schema(**results)
 
 
     #######
@@ -375,14 +402,14 @@ class HaystackPipeline(TransformersPipeline):
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return EmbeddingExtractionInput
+        return HaystackPipelineInput
 
     @property
     def output_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
-        return EmbeddingExtractionOutput
+        return HaystackPipelineOutput
 
     @property
     def config_schema(self) -> Type[BaseModel]:
