@@ -86,12 +86,17 @@ from deepsparse.pipeline import Pipeline
 model_stub = "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
 images = ["thailand.jpg"]
 
-yolo_pipeline = Pipeline.create(
+yolact_pipeline = Pipeline.create(
     task="yolact",
     model_path=model_stub,
+    class_names="coco",
 )
 
-pipeline_outputs = yolo_pipeline(images=images, # other args)
+predictions = yolact_pipeline(images=images, confidence_threshold=0.2, nms_threshold = 0.5)
+# predictions has attributes `boxes`, `classes`, `masks` and `scores`
+predictions.classes[0]
+>> ['elephant', 'elephant', 'person', ...]
+
 ```
 
 #### Annotate CLI
@@ -106,13 +111,13 @@ Running the above command will create an `annotation-results` folder and save th
 <img src="sample_images/thailand.jpg" alt="original" width="400"/> <img src="sample_images/thailand-annotated.jpg" alt="annotated" width="400"/>
 </p>
 <p align = "center">
-Image annotated with 96% sparse YOLOv5s
+Image annotated with 82.8% sparse and quantized YOLACT
 </p>
 
 If a `--model_filepath` arg isn't provided, then `zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none` will be used by default.
 
 
-#### HTTP Server
+#### HTTP Server (TODO)
 Spinning up:
 ```bash
 deepsparse.server \
@@ -145,14 +150,14 @@ deepsparse.benchmark \
     zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none \
     --scenario sync 
 
->> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+>> Original Model Path: zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none
 >> Batch Size: 1
->> Scenario: sync
->> Throughput (items/sec): 74.0355
->> Latency Mean (ms/batch): 13.4924
->> Latency Median (ms/batch): 13.4177
->> Latency Std (ms/batch): 0.2166
->> Iterations: 741
+>> Scenario: singlestream
+>> Throughput (items/sec): 26.2600
+>> Latency Mean (ms/batch): 38.0612
+>> Latency Median (ms/batch): 38.0063
+>> Latency Std (ms/batch): 0.2885
+>> Iterations: 263
 ```
 
 To learn more about benchmarking, refer to the appropriate documentation.
