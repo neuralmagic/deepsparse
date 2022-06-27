@@ -38,6 +38,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, wait
 from typing import Any, List, Optional, Tuple, Type, Union
 
+import tqdm
 import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
@@ -183,22 +184,29 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         def _engine_forward(batch_origin: int):
+            # run engine
             engine_input = engine_inputs_numpy[
                 :, batch_origin : batch_origin + self._batch_size, :
             ]
             engine_input = [model_input for model_input in engine_input]
             engine_output = self.engine(engine_input)
 
-            # get cls token index
+            # get embedding from cls token
             if not self._return_all_pos:
                 target_index = 0
             else:
                 target_index = range(engine_output[0].shape[1])
             cls_token_embedding = engine_output[0][:, target_index, :]
 
+            # save results
             engine_outputs[batch_origin: batch_origin + self._batch_size] = cls_token_embedding
 
+            # update tqdm
+            if progress:
+                progress.update(1)
+
         engine_inputs_numpy = numpy.array(engine_inputs)
+
         if engine_inputs_numpy.shape[1] % self._batch_size != 0:
             raise ValueError(
                 f"number of engine inputs {engine_inputs_numpy.shape[1]} must "
@@ -209,15 +217,16 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             None for _ in range(engine_inputs_numpy.shape[1])
         ]
 
-        '''
+        num_batches = engine_inputs_numpy.shape[1] // self._batch_size
+        progress = tqdm.tqdm(desc="Inferencing Samples", total=num_batches) if self._show_progress_bar else None
+
         futures = [
             self._thread_pool.submit(_engine_forward, batch_origin)
             for batch_origin in range(0, engine_inputs_numpy.shape[1], self._batch_size)
         ]
 
         wait(futures)
-        '''
-        [_engine_forward(batch_origin) for batch_origin in range(0, engine_inputs_numpy.shape[1], self._batch_size)]
+        #[_engine_forward(batch_origin) for batch_origin in range(0, engine_inputs_numpy.shape[1], self._batch_size)]
 
         return engine_outputs
 

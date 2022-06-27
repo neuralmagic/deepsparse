@@ -212,8 +212,6 @@ class HaystackPipeline(TransformersPipeline):
 
 
     def initialize_pipeline(self):
-        print()
-        print(self._config.document_store_args)
         self._document_store = self._config.document_store.construct(
             **self._config.document_store_args
         )
@@ -227,7 +225,6 @@ class HaystackPipeline(TransformersPipeline):
         )
         # TODO: Adjust embedding_dim
         self._document_store.update_embeddings(self._retriever)
-        print(self._document_store.get_all_documents(return_embedding=True))
 
         self._haystack_pipeline = self._config.haystack_pipeline.construct(
             self._retriever,
@@ -259,15 +256,8 @@ class HaystackPipeline(TransformersPipeline):
             )
 
         # merge args
-        #retriever_args = merge_retriever_args(config.retriever_args, self.kwargs)
-        #config.retriever_args = retriever_args
         if config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
-            retriever_args = self.merge_retriever_args(config.retriever_args, kwargs)
-        else:
-            retriever_args = config.retriever_args
-        config.retriever_args = retriever_args
-        #retriever_args = merge_retriever_args(config.retriever_args, self.kwargs)
-        #config.retriever_args = retriever_args
+            config.retriever_args = self.merge_retriever_args(config.retriever_args, kwargs)
 
         return config
 
