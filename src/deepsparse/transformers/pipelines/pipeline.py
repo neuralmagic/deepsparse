@@ -16,6 +16,7 @@
 Base Pipeline class for transformers inference pipeline
 """
 
+import os
 import warnings
 from typing import Any, List, Mapping, Optional
 
@@ -75,6 +76,8 @@ class TransformersPipeline(Pipeline, Bucketable):
 
         self.config = None
         self.tokenizer = None
+        self.config_path = None
+        self.tokenizer_config_path = None  # path to 'tokenizer.json'
         self.onnx_input_names = None
 
         self._temp_model_directory = None
@@ -105,6 +108,8 @@ class TransformersPipeline(Pipeline, Bucketable):
         self.tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path, model_max_length=self.sequence_length
         )
+        self.config_path = os.path.join(config_path, "config.json")
+        self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
 
         # overwrite onnx graph to given required input shape
         (
