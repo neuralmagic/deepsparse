@@ -28,55 +28,65 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-TODO:
+Pipeline implementation and pydantic models for haystack pipeline. Supports a
+sample of haystack nodes meant to be used DeepSparseEmbeddingRetriever
 """
-from typing import List, Optional, Union, Dict, Type, Tuple, Any
-
-import torch
 from enum import Enum
-import numpy
-from haystack.document_stores import InMemoryDocumentStore as InMemoryDocumentStoreModule
-from haystack.document_stores import ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule
-from haystack.schema import Document
-from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
-from haystack.nodes import EmbeddingRetriever as EmbeddingRetrieverModule
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
+import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.pipelines.haystack_integrations import DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule
+from deepsparse.transformers.pipelines.haystack_integrations import (
+    DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule,
+)
+from haystack.document_stores import (
+    ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule,
+)
+from haystack.document_stores import (
+    InMemoryDocumentStore as InMemoryDocumentStoreModule,
+)
+from haystack.nodes import EmbeddingRetriever as EmbeddingRetrieverModule
+from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
+from haystack.schema import Document
+
+__all__ [
+    "HaystackPipelineInput",
+    "HaystackPipelineOutput",
+    "DocumentStoreType",
+    "RetrieverType",
+    "HaystackPipelineConfig",
+    "HaystackPipeline",
+]
+
 
 class HaystackPipelineInput(BaseModel):
-    queries: Union[str, List[str]] = Field(
-        description="TODO:"
-    )
-    params: Dict = Field(
-        description="TODO:",
-        default={}
-    )
+    """
+    Schema for inputs to haystack pipelines
+    """
+    queries: Union[str, List[str]] = Field(description="TODO:")
+    params: Dict = Field(description="TODO:", default={})
+
 
 class HaystackPipelineOutput(BaseModel):
-    documents: Union[List[List[Document]], List[Document]] = Field(
-        description="TODO:"
-    )
-    root_node: Union[str, List[str]] = Field(
-        description="TODO:"
-    )
-    params: Union[List[Dict[str, Any]], Dict[str, Any]] = Field(
-        description="TODO:"
-    )
-    query: Union[List[str], str] = Field(
-        description="TODO:"
-    )
-    node_id: Union[List[str], str] = Field(
-        description="TODO:"
-    )
+    """
+    Schema for outputs to haystack pipelines
+    """
+    documents: Union[List[List[Document]], List[Document]] = Field(description="TODO:")
+    root_node: Union[str, List[str]] = Field(description="TODO:")
+    params: Union[List[Dict[str, Any]], Dict[str, Any]] = Field(description="TODO:")
+    query: Union[List[str], str] = Field(description="TODO:")
+    node_id: Union[List[str], str] = Field(description="TODO:")
 
-class HaystackType():
+
+class HaystackType:
     """
-    TODO:
+    Parent class to Haystack node types
+    (DocumentStoreType, RetrieverType, PipelineType
     """
+
     @classmethod
     def to_list(cls):
         return cls._value2member_map_
@@ -110,7 +120,7 @@ class RetrieverType(HaystackType, Enum):
 
     _constructor_dict = {
         "EmbeddingRetriever": EmbeddingRetrieverModule,
-        "DeepSparseEmbeddingRetriever": DeepSparseEmbeddingRetrieverModule
+        "DeepSparseEmbeddingRetriever": DeepSparseEmbeddingRetrieverModule,
     }
 
 
@@ -121,42 +131,45 @@ class PipelineType(HaystackType, Enum):
 
     DocumentSearchPipeline = "DocumentSearchPipeline"
 
-    _constructor_dict = {
-        "DocumentSearchPipeline": DocumentSearchPipelineModule
-    }
+    _constructor_dict = {"DocumentSearchPipeline": DocumentSearchPipelineModule}
 
 
 class HaystackPipelineConfig(BaseModel):
     """
-    TODO:
+    Schema specifying HaystackPipeline config. Allows for specifying which
+    haystack nodes to use and what their arguments should be
     """
+
     document_store: DocumentStoreType = Field(
-        description="TODO",
+        description="Name of haystack document store to use. "
+        "Default ElasticsearchDocumentStore",
         default=DocumentStoreType.ElasticsearchDocumentStore
     )
     document_store_args: dict = Field(
-        description="TODO",
+        description="Keyword arguments for initializing document_store",
         default={}
     )
     retriever: RetrieverType = Field(
-        description="TODO",
+        description="Name of document retriever to use. Default "
+        "DeepSparseEmbeddingRetriever (recommended)",
         default=RetrieverType.DeepSparseEmbeddingRetriever
     )
     retriever_args: dict = Field(
-        description="TODO",
+        description="Keyword arguments for initializing retriever",
         default={}
     )
     haystack_pipeline: PipelineType = Field(
-        description="TODO",
+        description="Name of haystack pipeline to use. Default "
+        "DocumentSearchPipeline",
         default=PipelineType.DocumentSearchPipeline
     )
     haystack_pipeline_args: dict = Field(
-        description="TODO",
+        description="Keyword arguments for initializing haystack_pipeline",
         default={}
     )
 
 
-'''
+"""
 @Pipeline.register(
     task="embedding_extraction",
     task_aliases=[],
@@ -165,7 +178,7 @@ class HaystackPipelineConfig(BaseModel):
         "wikipedia_bookcorpus/12layer_pruned80_quant-none-vnni"
     ),
 )
-'''
+"""
 class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
@@ -197,7 +210,8 @@ class HaystackPipeline(TransformersPipeline):
         # If conflicts, throw
         if "max_seq_len" in kwargs and "max_seq_len" in retriever_args:
             raise ValueError(
-                "Found sequence_length in pipeline initialization and max_seq_len in retriever args. Use only one"
+                "Found sequence_length in pipeline initialization and "
+                "max_seq_len in retriever args. Use only one"
             )
 
         for kwarg in kwargs:
@@ -210,7 +224,6 @@ class HaystackPipeline(TransformersPipeline):
         retriever_args.update(kwargs)
         return retriever_args
 
-
     def initialize_pipeline(self):
         self._document_store = self._config.document_store.construct(
             **self._config.document_store_args
@@ -220,21 +233,17 @@ class HaystackPipeline(TransformersPipeline):
             self._document_store.write_documents(self.docs)
 
         self._retriever = self._config.retriever.construct(
-            self._document_store,
-            **self._config.retriever_args
+            self._document_store, **self._config.retriever_args
         )
         # TODO: Adjust embedding_dim
         self._document_store.update_embeddings(self._retriever)
 
         self._haystack_pipeline = self._config.haystack_pipeline.construct(
-            self._retriever,
-            **self._config.haystack_pipeline_args
+            self._retriever, **self._config.haystack_pipeline_args
         )
 
     def _parse_config(
-        self,
-        config: Optional[Union[HaystackPipelineConfig, dict]],
-        kwargs: Dict
+        self, config: Optional[Union[HaystackPipelineConfig, dict]], kwargs: Dict
     ) -> Type[BaseModel]:
         """
         TODO:
@@ -257,10 +266,11 @@ class HaystackPipeline(TransformersPipeline):
 
         # merge args
         if config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
-            config.retriever_args = self.merge_retriever_args(config.retriever_args, kwargs)
+            config.retriever_args = self.merge_retriever_args(
+                config.retriever_args, kwargs
+            )
 
         return config
-
 
     def __call__(self, *args, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
@@ -279,13 +289,16 @@ class HaystackPipeline(TransformersPipeline):
 
         # run pipeline
         if isinstance(pipeline_inputs.queries, List):
-            pipeline_results = [self._haystack_pipeline.run(query=query, params=pipeline_inputs.params) for query in pipeline_inputs.queries]
+            pipeline_results = [
+                self._haystack_pipeline.run(query=query, params=pipeline_inputs.params)
+                for query in pipeline_inputs.queries
+            ]
         else:
-            pipeline_results = self._haystack_pipeline.run(query=pipeline_inputs.queries, params=pipeline_inputs.params)
+            pipeline_results = self._haystack_pipeline.run(
+                query=pipeline_inputs.queries, params=pipeline_inputs.params
+            )
 
-        outputs = self.process_pipeline_outputs(
-            pipeline_results
-        )
+        outputs = self.process_pipeline_outputs(pipeline_results)
 
         # validate outputs format
         if not isinstance(outputs, self.output_schema):
@@ -308,7 +321,6 @@ class HaystackPipeline(TransformersPipeline):
             outputs = results
 
         return self.output_schema(**outputs)
-
 
     #######
 

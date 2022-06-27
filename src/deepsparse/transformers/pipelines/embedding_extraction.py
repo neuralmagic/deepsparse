@@ -34,18 +34,17 @@ tasks
 """
 
 
-import os
 from concurrent.futures import ThreadPoolExecutor, wait
-from typing import Any, List, Optional, Tuple, Type, Union
+from typing import List, Optional, Type, Union
 
-import tqdm
 import numpy
+import tqdm
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
 from deepsparse.engine import Context
-from deepsparse.transformers.helpers import cut_transformer_onnx_model
+from deepsparse.transformers.helpers import truncate_transformer_onnx_model
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -55,13 +54,14 @@ __all__ = [
     "EmbeddingExtractionPipeline",
 ]
 
+
 class EmbeddingExtractionInput(BaseModel):
     """
     Schema for inputs to embedding_extraction pipelines
     """
 
-    texts: Union[List[str]] = Field(
-        description="A list of document contents"
+    texts: List[str] = Field(
+        description="A list of texts from which to get embeddings"
     )
 
 
@@ -86,15 +86,65 @@ class EmbeddingExtractionOutput(BaseModel):
     ),
 )
 class EmbeddingExtractionPipeline(TransformersPipeline):
+    """
+    embedding extraction pipeline for extracting intermediate layer embeddings
+    from transformer models
+
+    example instantiation:
+    ```python
+    embedding_extraction_pipeline = Pipeline.create(
+        task="embedding_extraction",
+        model_path="masked_language_modeling_model_dir/",
+    )
+    results = embedding_extraction_pipeline(
+        [
+            "the warriors have won the nba finals"
+            "the warriors are the greatest basketball team ever"
+        ]
+    )
+    emb_1, emb_2 = results.embeddings
+    (expect emb_1 and emb_2 to have high cosine similiarity)
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        Default is 128
+    :param emb_extraction_layer: transformer layer number from which the embeddings
+        will be extracted. Default is -1 (last layer)
+    :param model_size: size of transformer model (size of hidden layer per token).
+        Default is 768
+    :param extract_index: index
+    :param show_progress_bar: token index(es) to extract from the embedding. Can
+        either be an integer representing the CLS token index, or a list of indexes
+        to extract. Default is 0
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels. Default is None
+    """
     def __init__(
         self,
         *,
-        return_all_pos: bool = False,
+        emb_extraction_layer: int = -1,
+        model_size: int = 768,
+        extract_index: Union[List[int], int] = 0,
         show_progress_bar: bool = False,
         context: Optional[Context] = None,
         **kwargs,
     ):
-        self._return_all_pos = return_all_pos
+        self._emb_extraction_layer = emb_extraction_layer
+        self._model_size = model_size
+        self._extract_index = extract_index
         self._show_progress_bar = show_progress_bar
 
         if context is None:
@@ -139,8 +189,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
     def setup_onnx_file_path(self) -> str:
         """
-        Performs setup done in parent class as well as cutting the model to an
-        intermediate layer for latent space comparison
+        Performs setup done in pipeline parent class as well as truncating the
+        model to an intermediate layer for embedding extraction
 
         :return: file path to the processed ONNX file for the engine to compile
         """
@@ -150,11 +200,19 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             onnx_path,
             self.onnx_output_names,
             self._temp_model_directory,
-        ) = cut_transformer_onnx_model(onnx_path)
+        ) = truncate_transformer_onnx_model(onnx_path, emb_extraction_layer=self._emb_extraction_layer, model_size=self._model_size)
 
         return onnx_path
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
+        """
+        :param args: ordered arguments to pipeline, either a input_schema object,
+            a string text, or a list of texts
+        :param kwargs: keyword arguments to pipeline
+        :return: pipeline arguments parsed into the given `input_schema`
+            schema if necessary. If an instance of the `input_schema` is provided
+            it will be returned
+        """
         if args and kwargs:
             raise ValueError(
                 f"{self.__class__} only support args OR kwargs. Found "
@@ -162,16 +220,27 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             )
 
         if args:
+            if isinstance(args, str):
+                return self.input_schema(texts=[args[0]])
+
             if len(args) == 1:
                 if isinstance(args[0], self.input_schema):
                     return args[0]
-                return self.input_schema(texts=args[0])
+                else:
+                    return self.input_schema(texts=args[0])
             else:
                 return self.input_schema(texts=args)
-
-        return self.input_schema(**kwargs)
+        else:
+            return self.input_schema(**kwargs)
 
     def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
+        """
+        Tokenizes input texts
+
+        :param inputs: inputs to the pipeline.
+        :return: inputs of this model processed into a list of numpy arrays that
+            can be directly passed into the forward pass of the pipeline engine
+        """
         tokens = self.tokenizer(
             inputs.texts,
             add_special_tokens=True,
@@ -183,6 +252,12 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         return self.tokens_to_engine_input(tokens)
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        """
+        Handles multithreaded engine inference
+
+        :param engine_inputs: list of numpy inputs to Pipeline engine forward pass
+        :return: result of forward pass to Pipeline engine
+        """
         def _engine_forward(batch_origin: int):
             # run engine
             engine_input = engine_inputs_numpy[
@@ -191,15 +266,10 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             engine_input = [model_input for model_input in engine_input]
             engine_output = self.engine(engine_input)
 
-            # get embedding from cls token
-            if not self._return_all_pos:
-                target_index = 0
-            else:
-                target_index = range(engine_output[0].shape[1])
-            cls_token_embedding = engine_output[0][:, target_index, :]
-
             # save results
-            engine_outputs[batch_origin: batch_origin + self._batch_size] = cls_token_embedding
+            engine_outputs[
+                batch_origin : batch_origin + self._batch_size
+            ] = engine_output[0]
 
             # update tqdm
             if progress:
@@ -213,12 +283,14 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 f"be divisible by batch_size {self._batch_size}"
             )
 
-        engine_outputs = [
-            None for _ in range(engine_inputs_numpy.shape[1])
-        ]
+        engine_outputs = [None for _ in range(engine_inputs_numpy.shape[1])]
 
         num_batches = engine_inputs_numpy.shape[1] // self._batch_size
-        progress = tqdm.tqdm(desc="Inferencing Samples", total=num_batches) if self._show_progress_bar else None
+        progress = (
+            tqdm.tqdm(desc="Inferencing Samples", total=num_batches)
+            if self._show_progress_bar
+            else None
+        )
 
         futures = [
             self._thread_pool.submit(_engine_forward, batch_origin)
@@ -226,10 +298,23 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         ]
 
         wait(futures)
-        #[_engine_forward(batch_origin) for batch_origin in range(0, engine_inputs_numpy.shape[1], self._batch_size)]
 
         return engine_outputs
 
     def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
-        embeddings = [engine_output.tolist() for engine_output in engine_outputs]
+        """
+        Picks the extract_index from the intermediate layer and returns its value
+
+        :param engine_outputs: list of numpy arrays that are the output of the engine
+            forward pass
+        :return: outputs of engine post-processed into an object in the `output_schema`
+            format of this pipeline
+        """
+        embeddings = []
+        for engine_output in engine_outputs:
+            assert engine_output.shape[0] == self.sequence_length
+            assert engine_output.shape[1] == self._model_size
+            embedding = engine_output[self._extract_index].flatten().tolist()
+            embeddings.append(embedding)
+
         return self.output_schema(embeddings=embeddings)

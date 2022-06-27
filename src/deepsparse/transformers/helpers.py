@@ -36,7 +36,7 @@ __all__ = [
     "get_onnx_path_and_configs",
     "overwrite_transformer_onnx_model_inputs",
     "fix_numpy_types",
-    "cut_transformer_onnx_model",
+    "truncate_transformer_onnx_model",
 ]
 
 _LOGGER = get_main_logger()
@@ -201,8 +201,10 @@ def fix_numpy_types(func):
     return _wrapper
 
 
-def cut_transformer_onnx_model(
+def truncate_transformer_onnx_model(
     model_path: str,
+    emb_extraction_layer: int = -1,
+    model_size: Optional[int] = None,
     final_node_name: Optional[str] = None,
     output_name: str = "embedding",
     output_path: Optional[str] = None,
@@ -222,23 +224,20 @@ def cut_transformer_onnx_model(
     """
 
     def _check_initializer_names(model: ModelProto) -> Union[str, None]:
-        layer_last_init_prog = re.compile(
-            r"bert\.encoder\.layer\.[0-9]+\.output\.LayerNorm\.bias"
+        layer_num_prog = re.compile(
+            r"bert\.encoder\.layer\.\d+\.output\.LayerNorm\.bias"
         )
-        layer_last_initializer_names = [
+        layer_init_names = [
             initializer.name
             for initializer in model.graph.initializer
-            if layer_last_init_prog.match(initializer.name)
+            if layer_num_prog.match(initializer.name)
         ]
 
-        layer_num_prog = re.compile(
-            r"bert\.encoder\.layer\.(.*)\.output\.LayerNorm\.bias"
-        )
         final_node_initializer_name = sorted(
-            layer_last_initializer_names,
-            key=lambda name: int(layer_num_prog.findall(name)[0]),
-            reverse=True,
-        )[0]
+            layer_init_names,
+            key=lambda name: int(re.findall("[0-9]+", name)[0]),
+            reverse=False,
+        )[emb_extraction_layer]
 
         return [
             node.name
@@ -249,25 +248,39 @@ def cut_transformer_onnx_model(
     # Determine where to cut the model
     if final_node_name is None:
         model = onnx.load(model_path)
+        final_node_name = None
 
+        # Try to match bert layers by initializer names
         try:
-            # Try to match bert layers by initializer names
             final_node_name = _check_initializer_names(model)
         except Exception as exception:
-            # TODO: implement other methods
             _LOGGER.info(
-                f"Failed to cut transformer using initializer method {exception}"
+                f"Failed to truncate transformer {exception}"
             )
-            raise Exception(f"Failed to cut transformer model")
+
+        if final_node_name is None:
+            raise Exception(f"Failed to truncate transformer model")
 
     # Override outputs to create subgraph
+    _LOGGER.info(
+        f"Truncating transformer model to {final_node_name}"
+    )
     if output_path is None:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
 
         override_onnx_output(
-            model_path, tmp_file.name, [final_node_name], [output_name]
+            onnx_filepath=model_path,
+            output_filepath=tmp_file.name,
+            final_node_names=[final_node_name],
+            graph_output_names=[output_name],
+            graph_output_shapes=[[model_size]]
         )
         return tmp_file.name, [output_name], tmp_file
     else:
-        override_onnx_output(model_path, output_path, [final_node_name], [output_name])
+        override_onnx_output(
+            onnx_filepath=model_path,
+            output_filepath=output_path,
+            final_node_names=[final_node_name],
+            graph_output_names=[output_name],
+            graph_output_shapes=[[model_size]])
         return [output_name]

@@ -16,7 +16,7 @@ import contextlib
 import logging
 import os
 import tempfile
-from typing import List, Union
+from typing import List, Union, Optional, Tuple
 
 import numpy
 import onnx
@@ -272,6 +272,7 @@ def override_onnx_output(
     output_filepath: str,
     final_node_names: List[str],
     graph_output_names: List[str],
+    graph_output_shapes: Optional[List[List[int]]] = None,
 ) -> None:
     """
     :param onnx_filepath: file path to onnx model
@@ -283,10 +284,14 @@ def override_onnx_output(
     :param graph_output_types: list of numpy dtypes
     :return: None
     """
-    if len(final_node_names) != len(graph_output_names):
+    if graph_output_shapes is None:
+        graph_output_shapes = [[None]] * len(final_node_names)
+
+    if len(final_node_names) != len(graph_output_names) != len(graph_output_shapes):
         raise ValueError(
-            f"length of final_node_names {len(final_node_names)} must match "
-            f"the length of graph_output_names {len(graph_output_names)}"
+            f"length of final_node_names {len(final_node_names)}, "
+            f"graph_output_names {len(graph_output_names)}, and "
+            f"graph_output_shapes {len(graph_output_shapes)} must all match"
         )
 
     if len(set(final_node_names)) != len(final_node_names):
@@ -301,8 +306,8 @@ def override_onnx_output(
     if len(final_nodes) != len(final_node_names):
         raise ValueError("Could not find final node names in model graph")
 
-    for i, (final_node, graph_output_name) in enumerate(
-        zip(final_nodes, graph_output_names)
+    for i, (final_node, graph_output_name, graph_output_shape) in enumerate(
+        zip(final_nodes, graph_output_names, graph_output_shapes)
     ):
         # Write each node's output to new output
         [final_node.output.pop() for _ in final_node.output]
@@ -310,7 +315,7 @@ def override_onnx_output(
 
         # Write graph output. TODO: use ort to find real shapes and types
         output_value_info = onnx.helper.make_tensor_value_info(
-            graph_output_name, onnx.TensorProto.UNDEFINED, [None]
+            graph_output_name, onnx.TensorProto.UNDEFINED, graph_output_shape
         )
         model.graph.output.append(output_value_info)
 
