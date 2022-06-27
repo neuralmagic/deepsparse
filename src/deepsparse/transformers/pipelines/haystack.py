@@ -35,95 +35,17 @@ from typing import List, Optional, Union, Dict, Type, Tuple, Any
 import torch
 from enum import Enum
 import numpy
-from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes import EmbeddingRetriever
-from haystack.document_stores import BaseDocumentStore, InMemoryDocumentStore
-from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
+from haystack.document_stores import InMemoryDocumentStore as InMemoryDocumentStoreModule
+from haystack.document_stores import ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule
 from haystack.schema import Document
-from haystack.pipelines import DocumentSearchPipeline
-from haystack.utils import print_documents
-from haystack.modeling.utils import initialize_device_settings
+from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
+from haystack.nodes import EmbeddingRetriever as EmbeddingRetrieverModule
 
 from pydantic import BaseModel, Field
 
-from deepsparse.log import get_main_logger
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-
-_LOGGER = get_main_logger()
-
-class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
-    def __init__(
-        self,
-        document_store: BaseDocumentStore,
-        model_path: str,
-        model_version: Optional[str] = None,
-        use_gpu: bool = False,
-        batch_size: int = 1,
-        max_seq_len: int = 512,
-        model_format: str = "farm",
-        pooling_strategy: str = "reduce_mean",
-        emb_extraction_layer: int = -1, # TODO: Utilize this
-        top_k: int = 10,
-        progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
-        scale_score: bool = True,
-        **kwargs,
-    ):
-        super(BaseRetriever).__init__()
-
-        self.document_store = document_store
-        self.model_path = model_path
-        self.model_format = model_format
-        self.model_version = model_version
-        self.use_gpu = use_gpu
-        self.batch_size = batch_size
-        self.max_seq_len = max_seq_len
-        self.pooling_strategy = pooling_strategy
-        self.emb_extraction_layer = emb_extraction_layer #  TODO: utilize this
-        self.top_k = top_k
-        self.progress_bar = progress_bar
-        self.scale_score = scale_score
-
-        _LOGGER.info(f"Init retriever using embeddings of model at {model_path}")
-
-        self.embedding_encoder = _DeepSparseEmbeddingEncoder(self, kwargs)
-
-class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "DeepSparseEmbeddingRetriever", kwargs):
-        self.embedding_pipeline = Pipeline.create(
-            "embedding_extraction",
-            model_path=retriever.model_path,
-            batch_size=retriever.batch_size,
-            sequence_length=retriever.max_seq_len,
-            show_progress_bar=retriever.progress_bar,
-            **kwargs
-        )
-
-        self.batch_size = retriever.batch_size
-        self.show_progress_bar = retriever.progress_bar
-        document_store = retriever.document_store
-        if document_store.similarity != "cosine":
-            _LOGGER.warning(
-                f"You are using document store embeddings with the "
-                f"{document_store.similarity} function. We recommend using "
-                "cosine instead. This can be set when initializing DocumentStore"
-            )
-
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[numpy.ndarray]:
-        model_output = self.embedding_pipeline(texts)
-        embeddings = [embedding for embedding in model_output.embeddings]
-        print(len(texts))
-        print(len(embeddings))
-        return embeddings
-
-    def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
-        print(texts)
-        return self.embed(texts)
-
-    def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
-        passages = [d.content for d in docs]  # type: ignore
-        return self.embed(passages)
+from deepsparse.transformers.pipelines.haystack_integrations import DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule
 
 class HaystackPipelineInput(BaseModel):
     queries: Union[str, List[str]] = Field(
@@ -135,19 +57,19 @@ class HaystackPipelineInput(BaseModel):
     )
 
 class HaystackPipelineOutput(BaseModel):
-    documents: Union[List[Document], List[List[Document]]] = Field(
+    documents: Union[List[List[Document]], List[Document]] = Field(
         description="TODO:"
     )
     root_node: Union[str, List[str]] = Field(
         description="TODO:"
     )
-    params: Union[Dict[str, Any], List[Dict[str, Any]]] = Field(
+    params: Union[List[Dict[str, Any]], Dict[str, Any]] = Field(
         description="TODO:"
     )
-    query: Union[str, List[str]] = Field(
+    query: Union[List[str], str] = Field(
         description="TODO:"
     )
-    node_id: Union[str, List[str]] = Field(
+    node_id: Union[List[str], str] = Field(
         description="TODO:"
     )
 
@@ -169,10 +91,12 @@ class DocumentStoreType(HaystackType, Enum):
     Enum containing all supported haystack document stores
     """
 
-    InMemoryDocumentStore_ = "InMemoryDocumentStore"
+    InMemoryDocumentStore = "InMemoryDocumentStore"
+    ElasticsearchDocumentStore = "ElasticsearchDocumentStore"
 
     _constructor_dict = {
-        "InMemoryDocumentStore": InMemoryDocumentStore
+        "InMemoryDocumentStore": InMemoryDocumentStoreModule,
+        "ElasticsearchDocumentStore": ElasticsearchDocumentStoreModule,
     }
 
 
@@ -181,10 +105,12 @@ class RetrieverType(HaystackType, Enum):
     Enum containing all supported haystack retrievers
     """
 
-    DeepSparseEmbeddingRetriever_ = "DeepSparseEmbeddingRetriever"
+    EmbeddingRetriever = "EmbeddingRetriever"
+    DeepSparseEmbeddingRetriever = "DeepSparseEmbeddingRetriever"
 
     _constructor_dict = {
-        "DeepSparseEmbeddingRetriever": DeepSparseEmbeddingRetriever
+        "EmbeddingRetriever": EmbeddingRetrieverModule,
+        "DeepSparseEmbeddingRetriever": DeepSparseEmbeddingRetrieverModule
     }
 
 
@@ -193,10 +119,10 @@ class PipelineType(HaystackType, Enum):
     Enum containing all supported haystack pipelines
     """
 
-    DocumentSearchPipeline_ = "DocumentSearchPipeline"
+    DocumentSearchPipeline = "DocumentSearchPipeline"
 
     _constructor_dict = {
-        "DocumentSearchPipeline": DocumentSearchPipeline
+        "DocumentSearchPipeline": DocumentSearchPipelineModule
     }
 
 
@@ -206,15 +132,15 @@ class HaystackPipelineConfig(BaseModel):
     """
     document_store: DocumentStoreType = Field(
         description="TODO",
-        default=DocumentStoreType.InMemoryDocumentStore_
+        default=DocumentStoreType.ElasticsearchDocumentStore
     )
     document_store_args: dict = Field(
         description="TODO",
-        default={"similarity": "cosine", "use_gpu": False, "embedding_dim": 393216}
+        default={}
     )
     retriever: RetrieverType = Field(
         description="TODO",
-        default=RetrieverType.DeepSparseEmbeddingRetriever_
+        default=RetrieverType.DeepSparseEmbeddingRetriever
     )
     retriever_args: dict = Field(
         description="TODO",
@@ -222,7 +148,7 @@ class HaystackPipelineConfig(BaseModel):
     )
     haystack_pipeline: PipelineType = Field(
         description="TODO",
-        default=PipelineType.DocumentSearchPipeline_
+        default=PipelineType.DocumentSearchPipeline
     )
     haystack_pipeline_args: dict = Field(
         description="TODO",
@@ -244,13 +170,13 @@ class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        docs: Optional[List[str]] = None,
+        docs: Optional[List[Dict]] = None,
         config: Optional[Union[HaystackPipelineConfig, dict]] = None,
         **kwargs,
     ):
         # TODO: Assign necessary members
 
-        if kwargs.get("batch_size") and kwargs["batch_size"] > 1:
+        if kwargs.get("batch_size") and kwargs["batch_size"] != 1:
             raise ValueError(
                 f"{self.__class__.__name__} currently only supports batch size 1, "
                 f"batch size set to {kwargs['batch_size']}"
@@ -286,10 +212,13 @@ class HaystackPipeline(TransformersPipeline):
 
 
     def initialize_pipeline(self):
+        print()
+        print(self._config.document_store_args)
         self._document_store = self._config.document_store.construct(
             **self._config.document_store_args
         )
         if self.docs is not None:
+            self._document_store.delete_documents()
             self._document_store.write_documents(self.docs)
 
         self._retriever = self._config.retriever.construct(
@@ -297,10 +226,11 @@ class HaystackPipeline(TransformersPipeline):
             **self._config.retriever_args
         )
         # TODO: Adjust embedding_dim
-        self._document_store.update_embeddings(self._retriever, update_existing_embeddings=True)
+        self._document_store.update_embeddings(self._retriever)
+        print(self._document_store.get_all_documents(return_embedding=True))
 
         self._haystack_pipeline = self._config.haystack_pipeline.construct(
-            self._retriever
+            self._retriever,
             **self._config.haystack_pipeline_args
         )
 
@@ -331,7 +261,10 @@ class HaystackPipeline(TransformersPipeline):
         # merge args
         #retriever_args = merge_retriever_args(config.retriever_args, self.kwargs)
         #config.retriever_args = retriever_args
-        retriever_args = self.merge_retriever_args(config.retriever_args, kwargs)
+        if config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
+            retriever_args = self.merge_retriever_args(config.retriever_args, kwargs)
+        else:
+            retriever_args = config.retriever_args
         config.retriever_args = retriever_args
         #retriever_args = merge_retriever_args(config.retriever_args, self.kwargs)
         #config.retriever_args = retriever_args
@@ -377,15 +310,13 @@ class HaystackPipeline(TransformersPipeline):
         # zip dictionaries for each output
 
         if isinstance(results, List):
-            outputs = {}
+            outputs = {key: [] for key in results[0].keys()}
             for result in results:
                 for key, value in result.items():
-                    if key not in outputs:
-                        outputs[key] = []
                     outputs[key].append(value)
         else:
             outputs = results
-        print(outputs)
+
         return self.output_schema(**outputs)
 
 

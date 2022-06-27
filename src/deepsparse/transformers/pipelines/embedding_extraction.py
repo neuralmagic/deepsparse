@@ -54,9 +54,6 @@ __all__ = [
     "EmbeddingExtractionPipeline",
 ]
 
-CACHE_DIR = os.path.expanduser(os.path.join("~", ".cache", "deepsparse"))
-
-
 class EmbeddingExtractionInput(BaseModel):
     """
     Schema for inputs to embedding_extraction pipelines
@@ -72,8 +69,8 @@ class EmbeddingExtractionOutput(BaseModel):
     Schema for embedding_extraction pipeline output. Values are in batch order
     """
 
-    # TODO: better type checking
-    embeddings: Union[List[Any], Any] = Field(
+    # TODO: converting to lists leads to slowdowns. is there a better way?
+    embeddings: Union[List[List[float]], List[float]] = Field(
         description="The output of the model which is an embedded "
         "representation of the input"
     )
@@ -91,10 +88,12 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
+        return_all_pos: bool = False,
         show_progress_bar: bool = False,
         context: Optional[Context] = None,
         **kwargs,
     ):
+        self._return_all_pos = return_all_pos
         self._show_progress_bar = show_progress_bar
 
         if context is None:
@@ -189,7 +188,15 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             ]
             engine_input = [model_input for model_input in engine_input]
             engine_output = self.engine(engine_input)
-            engine_outputs[batch_origin: batch_origin + self._batch_size] = engine_output[0].reshape((self._batch_size, -1))
+
+            # get cls token index
+            if not self._return_all_pos:
+                target_index = 0
+            else:
+                target_index = range(engine_output[0].shape[1])
+            cls_token_embedding = engine_output[0][:, target_index, :]
+
+            engine_outputs[batch_origin: batch_origin + self._batch_size] = cls_token_embedding
 
         engine_inputs_numpy = numpy.array(engine_inputs)
         if engine_inputs_numpy.shape[1] % self._batch_size != 0:
@@ -198,19 +205,22 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 f"be divisible by batch_size {self._batch_size}"
             )
 
-
         engine_outputs = [
             None for _ in range(engine_inputs_numpy.shape[1])
         ]
 
+        '''
         futures = [
             self._thread_pool.submit(_engine_forward, batch_origin)
             for batch_origin in range(0, engine_inputs_numpy.shape[1], self._batch_size)
         ]
 
         wait(futures)
+        '''
+        [_engine_forward(batch_origin) for batch_origin in range(0, engine_inputs_numpy.shape[1], self._batch_size)]
 
         return engine_outputs
 
     def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
-        return self.output_schema(embeddings=engine_outputs)
+        embeddings = [engine_output.tolist() for engine_output in engine_outputs]
+        return self.output_schema(embeddings=embeddings)
