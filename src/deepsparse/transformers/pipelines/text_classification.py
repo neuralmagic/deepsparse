@@ -257,31 +257,16 @@ class TextClassificationPipeline(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        current_seq_len = TextClassificationPipeline._get_current_sequence_length(
-            input_schema
+        tokenizer = pipelines[0].tokenizer
+        tokens = tokenizer(
+            input_schema.sequences,
+            add_special_tokens=True,
+            return_tensors="np",
+            padding=False,
+            truncation=False,
         )
-
+        current_seq_len = len(tokens)
         for pipeline in pipelines:
             if pipeline.sequence_length > current_seq_len:
                 return pipeline
         return pipelines[-1]
-
-    @staticmethod
-    def _get_current_sequence_length(input_schema):
-        if isinstance(input_schema.inputs, str):
-            current_seq_len = len(input_schema.sequences.split())
-        elif isinstance(input_schema.inputs, list):
-            current_seq_len = float("-inf")
-            for _input in input_schema.sequences:
-                if isinstance(_input, str):
-                    current_seq_len = max(len(_input.split()), current_seq_len)
-                elif isinstance(_input, list):
-                    current_seq_len = max(
-                        *(len(__input.split()) for __input in _input), current_seq_len
-                    )
-        else:
-            raise ValueError(
-                "Expected a str or List[str] or List[List[str]] as input but got "
-                f"{type(input_schema.sequences)}"
-            )
-        return max(current_seq_len, 0)
