@@ -232,9 +232,10 @@ class ImageClassificationPipeline(Pipeline):
 
         if self.class_names is not None:
             labels = numpy.vectorize(self.class_names.__getitem__)(labels)
-
-        if isinstance(labels, numpy.ndarray):
             labels = labels.tolist()
+
+        if isinstance(labels[0], numpy.ndarray):
+            labels = [label.tolist() for label in labels]
 
         if len(labels) == 1:
             labels = labels[0]
