@@ -28,7 +28,7 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import override_onnx_output
+from deepsparse.utils.onnx import truncate_onnx_model
 from sparsezoo import Zoo
 
 
@@ -214,6 +214,8 @@ def truncate_transformer_onnx_model(
     Saves cut model to output_path or temporary file
 
     :param model_path: path of onnx file to be cut
+    :param emb_extraction_layer: last bert layer to include.
+        default -1 (last layer)
     :param final_node_name: name of last computed node in graph
     :param output_name: name of graph output, default "embedding"
     :param output_path: path to write resulting onnx file. If not provided,
@@ -268,7 +270,7 @@ def truncate_transformer_onnx_model(
     if output_path is None:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
 
-        override_onnx_output(
+        truncate_onnx_model(
             onnx_filepath=model_path,
             output_filepath=tmp_file.name,
             final_node_names=[final_node_name],
@@ -277,7 +279,7 @@ def truncate_transformer_onnx_model(
         )
         return tmp_file.name, [output_name], tmp_file
     else:
-        override_onnx_output(
+        truncate_onnx_model(
             onnx_filepath=model_path,
             output_filepath=output_path,
             final_node_names=[final_node_name],

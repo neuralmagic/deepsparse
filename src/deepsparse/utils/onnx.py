@@ -44,7 +44,7 @@ __all__ = [
     "generate_random_inputs",
     "override_onnx_batch_size",
     "override_onnx_input_shapes",
-    "override_onnx_output",
+    "truncate_onnx_model",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -267,7 +267,7 @@ def override_onnx_input_shapes(
         shaped_model.close()
 
 
-def override_onnx_output(
+def truncate_onnx_model(
     onnx_filepath: str,
     output_filepath: str,
     final_node_names: List[str],
@@ -282,6 +282,8 @@ def override_onnx_output(
     :param graph_output_names: list of names to call the graph outputs. Names
         correspond with the outputs specified in final_node_names
     :param graph_output_types: list of numpy dtypes
+    :param graph_output_shapes: list of shapes for each output. If not provided,
+        defaults to [None] for each output and leads to slight performance loss
     :return: None
     """
     if graph_output_shapes is None:

@@ -125,7 +125,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         will be extracted. Default is -1 (last layer)
     :param model_size: size of transformer model (size of hidden layer per token).
         Default is 768
-    :param extract_index: index
+    :param extraction_strategy: TODO
     :param show_progress_bar: token index(es) to extract from the embedding. Can
         either be an integer representing the CLS token index, or a list of indexes
         to extract. Default is 0
@@ -137,14 +137,14 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         *,
         emb_extraction_layer: int = -1,
         model_size: int = 768,
-        extract_index: Union[List[int], int] = 0,
+        extraction_strategy: str = "cls_token",
         show_progress_bar: bool = False,
         context: Optional[Context] = None,
         **kwargs,
     ):
         self._emb_extraction_layer = emb_extraction_layer
         self._model_size = model_size
-        self._extract_index = extract_index
+        self._extraction_strategy = extraction_strategy
         self._show_progress_bar = show_progress_bar
 
         if context is None:
@@ -155,6 +155,11 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             self._thread_pool = ThreadPoolExecutor(
                 max_workers=context.num_streams or 2,
                 thread_name_prefix="deepsparse.pipelines.embedding_extraction",
+            )
+
+        if self._extraction_strategy not in ["per_token", "reduce_mean", "reduce_max", "cls_token"]:
+            raise ValueError(
+                f"Unsupported extraction_strategy {self._extraction_strategy}"
             )
 
         super().__init__(**kwargs)
@@ -303,7 +308,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
     def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
         """
-        Picks the extract_index from the intermediate layer and returns its value
+        Implements extraction_strategy from the intermediate layer and returns its value
 
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
@@ -314,7 +319,24 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         for engine_output in engine_outputs:
             assert engine_output.shape[0] == self.sequence_length
             assert engine_output.shape[1] == self._model_size
-            embedding = engine_output[self._extract_index].flatten().tolist()
+            if self._extraction_strategy == "per_token":
+                embedding = engine_output.flatten().tolist()
+            if self._extraction_strategy == "reduce_mean":
+                # TODO : https://github.com/deepset-ai/haystack/blob/master/haystack/modeling/model/language_model.py
+                vecs = self._pool_tokens(
+                    sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token # true
+                )
+            if self._extraction_strategy == "reduce_max":
+                # TODO : https://github.com/deepset-ai/haystack/blob/master/haystack/modeling/model/language_model.py
+                vecs = self._pool_tokens(
+                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token # true
+            )
+            if self._extraction_strategy == "cls_token":
+                embedding = engine_output[0].flatten().tolist()
+            else:
+                raise ValueError(
+                    f"Unsupported extraction_strategy {self._extraction_strategy}"
+                )
             embeddings.append(embedding)
 
         return self.output_schema(embeddings=embeddings)

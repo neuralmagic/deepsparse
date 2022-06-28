@@ -30,20 +30,53 @@ _LOGGER = get_main_logger()
 
 
 class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
+    """
+    Deepsparse implementation of Haystack EmbeddingRetriever
+    Utilizes EmbeddingExtractionPipeline to create embeddings
+
+    example integration into haystack pipeline:
+    ```python
+    document_store = ElasticsearchDocumentStore()
+    retriever = DeepSparseEmbeddingRetriever(
+        document_store=document_store,
+        model_path="masked_language_modeling_model_dir/"
+    )
+    pipeline = DocumentSearchPipeline(retriever)
+    ```
+
+    :param document_store: reference to document store to retrieve from
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param batch_size: number of documents to encode at once
+    :param max_seq_len: longest length of each document sequence. Maximum number
+        of tokens for the document text. Longer ones will be cut down
+    :param pooling_strategy: TODO support this
+    :param emb_extraction_layer: number of layer from which the embeddings shall
+        be extracted. Default: -1 (very last layer)
+    :param top_k: how many documents to return per query
+    :param progress_bar: if true displays progress bar during embedding
+    :param scale_score: whether to scale the similarity score to the unit interval
+        (range of [0,1]). If true (default) similarity scores (e.g. cosine or
+        dot_product) which naturally have a different value range will be scaled
+        to a range of [0,1], where 1 means extremely relevant. Otherwise raw
+        similarity scores (e.g. cosine or dot_product) will be used
+    :param embed_meta_fields: concatenate the provided meta fields and text
+        passage / table to a text pair that is then used to create the embedding.
+        This approach is also used in the TableTextRetriever paper and is likely
+        to improve  performance if your titles contain meaningful information for
+        retrieval (topic, entities etc.).
+    :param kwargs: extra arguments passed to EmbeddingExtractionPipeline
+    """
     def __init__(
         self,
         document_store: BaseDocumentStore,
         model_path: str,
-        model_version: Optional[str] = None,
-        use_gpu: bool = False,
         batch_size: int = 1,
         max_seq_len: int = 512,
-        model_format: str = "neuralmagic",
-        pooling_strategy: str = "reduce_mean",
-        emb_extraction_layer: int = -1,  # TODO: Utilize this
+        pooling_strategy: str = "cls_token", # reduce_mean
+        emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
         scale_score: bool = True,
         embed_meta_fields: List[str] = [],
         **kwargs,
@@ -52,13 +85,10 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 
         self.document_store = document_store
         self.model_path = model_path
-        self.model_format = model_format
-        self.model_version = model_version
-        self.use_gpu = use_gpu
         self.batch_size = batch_size
         self.max_seq_len = max_seq_len
         self.pooling_strategy = pooling_strategy
-        self.emb_extraction_layer = emb_extraction_layer  #  TODO: utilize this
+        self.emb_extraction_layer = emb_extraction_layer
         self.top_k = top_k
         self.progress_bar = progress_bar
         self.scale_score = scale_score
@@ -66,22 +96,18 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 
         _LOGGER.info(f"Init retriever using embeddings of model at {model_path}")
 
-        if use_gpu:
-            _LOGGER.warn(
-                f"DeepSparseEmbeddingRetriever does not use gpu, set use_gpu to False"
-            )
-
         self.embedding_encoder = _DeepSparseEmbeddingEncoder(self, kwargs)
 
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "DeepSparseEmbeddingRetriever", kwargs):
+    def __init__(self, retriever: DeepSparseEmbeddingRetriever, kwargs):
         self.embedding_pipeline = Pipeline.create(
             "embedding_extraction",
             model_path=retriever.model_path,
             batch_size=retriever.batch_size,
             sequence_length=retriever.max_seq_len,
             emb_extraction_layer=retriever.emb_extraction_layer,
+            extraction_strategy=retriever.pooling_strategy,
             show_progress_bar=retriever.progress_bar,
             **kwargs,
         )
