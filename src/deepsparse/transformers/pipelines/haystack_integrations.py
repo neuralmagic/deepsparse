@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Union
+from typing import List, Union
 
 import numpy
 
-import torch
 from deepsparse import Pipeline
 from deepsparse.log import get_main_logger
 from haystack.document_stores import BaseDocumentStore
@@ -67,17 +66,18 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         retrieval (topic, entities etc.).
     :param kwargs: extra arguments passed to EmbeddingExtractionPipeline
     """
+
     def __init__(
         self,
         document_store: BaseDocumentStore,
         model_path: str,
         batch_size: int = 1,
         max_seq_len: int = 512,
-        pooling_strategy: str = "cls_token", # reduce_mean
+        pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        scale_score: bool = True,
+        scale_score: bool = True,  # TODO: Check this is implemented
         embed_meta_fields: List[str] = [],
         **kwargs,
     ):
@@ -100,6 +100,10 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
+    """
+    TODO
+    """
+
     def __init__(self, retriever: DeepSparseEmbeddingRetriever, kwargs):
         self.embedding_pipeline = Pipeline.create(
             "embedding_extraction",

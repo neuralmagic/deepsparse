@@ -256,17 +256,13 @@ def truncate_transformer_onnx_model(
         try:
             final_node_name = _check_initializer_names(model)
         except Exception as exception:
-            _LOGGER.info(
-                f"Failed to truncate transformer {exception}"
-            )
+            _LOGGER.info(f"Failed to truncate transformer {exception}")
 
         if final_node_name is None:
             raise Exception(f"Failed to truncate transformer model")
 
     # Override outputs to create subgraph
-    _LOGGER.info(
-        f"Truncating transformer model to {final_node_name}"
-    )
+    _LOGGER.info(f"Truncating transformer model to {final_node_name}")
     if output_path is None:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
 
@@ -275,7 +271,7 @@ def truncate_transformer_onnx_model(
             output_filepath=tmp_file.name,
             final_node_names=[final_node_name],
             graph_output_names=[output_name],
-            graph_output_shapes=[[model_size]]
+            graph_output_shapes=[[None, model_size]],
         )
         return tmp_file.name, [output_name], tmp_file
     else:
@@ -284,5 +280,6 @@ def truncate_transformer_onnx_model(
             output_filepath=output_path,
             final_node_names=[final_node_name],
             graph_output_names=[output_name],
-            graph_output_shapes=[[model_size]])
+            graph_output_shapes=[[None, model_size]],
+        )
         return [output_name]

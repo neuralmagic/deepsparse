@@ -60,9 +60,7 @@ class EmbeddingExtractionInput(BaseModel):
     Schema for inputs to embedding_extraction pipelines
     """
 
-    texts: List[str] = Field(
-        description="A list of texts from which to get embeddings"
-    )
+    texts: List[str] = Field(description="A list of texts from which to get embeddings")
 
 
 class EmbeddingExtractionOutput(BaseModel):
@@ -132,12 +130,13 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     :param context: context for engine. If None, then the engine will be initialized
         with 2 streams to make use of parallel inference of labels. Default is None
     """
+
     def __init__(
         self,
         *,
         emb_extraction_layer: int = -1,
         model_size: int = 768,
-        extraction_strategy: str = "cls_token",
+        extraction_strategy: str = "reduce_mean",
         show_progress_bar: bool = False,
         context: Optional[Context] = None,
         **kwargs,
@@ -157,7 +156,12 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 thread_name_prefix="deepsparse.pipelines.embedding_extraction",
             )
 
-        if self._extraction_strategy not in ["per_token", "reduce_mean", "reduce_max", "cls_token"]:
+        if self._extraction_strategy not in [
+            "per_token",
+            "reduce_mean",
+            "reduce_max",
+            "cls_token",
+        ]:
             raise ValueError(
                 f"Unsupported extraction_strategy {self._extraction_strategy}"
             )
@@ -201,11 +205,22 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         onnx_path = super().setup_onnx_file_path()
 
+        #"""
         (
             onnx_path,
             self.onnx_output_names,
             self._temp_model_directory,
-        ) = truncate_transformer_onnx_model(onnx_path, emb_extraction_layer=self._emb_extraction_layer, model_size=self._model_size)
+        ) = truncate_transformer_onnx_model(
+            onnx_path,
+            emb_extraction_layer=self._emb_extraction_layer,
+            model_size=self._model_size,
+        )
+        #"""
+
+        #import shutil
+        #shutil.copyfile("/home/kyle/testing/sparseml/info_ret/12layercut.onnx", onnx_path)
+        #shutil.copyfile(onnx_path, "/home/kyle/testing/sparseml/info_ret/model_cut.onnx")
+        print("copied")
 
         return onnx_path
 
@@ -254,7 +269,13 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             truncation=TruncationStrategy.LONGEST_FIRST.value,
         )
 
-        return self.tokens_to_engine_input(tokens)
+        # mask padding
+        pool_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
+
+        # mask first (cls) token
+        pool_masks[:, 0] = True
+
+        return self.tokens_to_engine_input(tokens), {"pool_masks": pool_masks}
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
@@ -263,6 +284,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :param engine_inputs: list of numpy inputs to Pipeline engine forward pass
         :return: result of forward pass to Pipeline engine
         """
+
         def _engine_forward(batch_origin: int):
             # run engine
             engine_input = engine_inputs_numpy[
@@ -306,7 +328,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
         return engine_outputs
 
-    def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
+    def process_engine_outputs(
+        self, engine_outputs: List[numpy.ndarray], pool_masks: numpy.ndarray
+    ) -> BaseModel:
         """
         Implements extraction_strategy from the intermediate layer and returns its value
 
@@ -315,28 +339,29 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
+        # TODO: vectorize
         embeddings = []
-        for engine_output in engine_outputs:
+        for engine_output, pool_mask in zip(engine_outputs, pool_masks):
             assert engine_output.shape[0] == self.sequence_length
             assert engine_output.shape[1] == self._model_size
             if self._extraction_strategy == "per_token":
                 embedding = engine_output.flatten().tolist()
             if self._extraction_strategy == "reduce_mean":
-                # TODO : https://github.com/deepset-ai/haystack/blob/master/haystack/modeling/model/language_model.py
-                vecs = self._pool_tokens(
-                    sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token # true
-                )
+                masked_embedding = self._remove_1d_mask(engine_output, mask=pool_mask)
+                #print(f"masked_embedding: {masked_embedding}")
+                embedding = masked_embedding.mean(axis=0).flatten().tolist()
+                #print(f"embedding: {embedding}")
             if self._extraction_strategy == "reduce_max":
-                # TODO : https://github.com/deepset-ai/haystack/blob/master/haystack/modeling/model/language_model.py
-                vecs = self._pool_tokens(
-                sequence_output, padding_mask, self.extraction_strategy, ignore_first_token=ignore_first_token # true
-            )
+                masked_embedding = self._remove_1d_mask(engine_output, mask=pool_mask)
+                embedding = masked_embedding.max(axis=0).flatten().tolist()
             if self._extraction_strategy == "cls_token":
                 embedding = engine_output[0].flatten().tolist()
-            else:
-                raise ValueError(
-                    f"Unsupported extraction_strategy {self._extraction_strategy}"
-                )
             embeddings.append(embedding)
 
         return self.output_schema(embeddings=embeddings)
+
+    def _remove_1d_mask(self, array, mask):
+        array_masked = numpy.ma.masked_array(array)
+        array_masked[mask == True] = numpy.ma.masked
+
+        return array_masked

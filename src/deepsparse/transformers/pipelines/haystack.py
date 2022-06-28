@@ -52,7 +52,8 @@ from haystack.nodes import EmbeddingRetriever as EmbeddingRetrieverModule
 from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
 from haystack.schema import Document
 
-__all__ [
+
+__all__ = [
     "HaystackPipelineInput",
     "HaystackPipelineOutput",
     "DocumentStoreType",
@@ -66,6 +67,7 @@ class HaystackPipelineInput(BaseModel):
     """
     Schema for inputs to haystack pipelines
     """
+
     queries: Union[str, List[str]] = Field(description="TODO:")
     params: Dict = Field(description="TODO:", default={})
 
@@ -74,6 +76,7 @@ class HaystackPipelineOutput(BaseModel):
     """
     Schema for outputs to haystack pipelines
     """
+
     documents: Union[List[List[Document]], List[Document]] = Field(description="TODO:")
     root_node: Union[str, List[str]] = Field(description="TODO:")
     params: Union[List[Dict[str, Any]], Dict[str, Any]] = Field(description="TODO:")
@@ -143,29 +146,26 @@ class HaystackPipelineConfig(BaseModel):
     document_store: DocumentStoreType = Field(
         description="Name of haystack document store to use. "
         "Default ElasticsearchDocumentStore",
-        default=DocumentStoreType.ElasticsearchDocumentStore
+        default=DocumentStoreType.ElasticsearchDocumentStore,
     )
     document_store_args: dict = Field(
-        description="Keyword arguments for initializing document_store",
-        default={}
+        description="Keyword arguments for initializing document_store", default={}
     )
     retriever: RetrieverType = Field(
         description="Name of document retriever to use. Default "
         "DeepSparseEmbeddingRetriever (recommended)",
-        default=RetrieverType.DeepSparseEmbeddingRetriever
+        default=RetrieverType.DeepSparseEmbeddingRetriever,
     )
     retriever_args: dict = Field(
-        description="Keyword arguments for initializing retriever",
-        default={}
+        description="Keyword arguments for initializing retriever", default={}
     )
     haystack_pipeline: PipelineType = Field(
         description="Name of haystack pipeline to use. Default "
         "DocumentSearchPipeline",
-        default=PipelineType.DocumentSearchPipeline
+        default=PipelineType.DocumentSearchPipeline,
     )
     haystack_pipeline_args: dict = Field(
-        description="Keyword arguments for initializing haystack_pipeline",
-        default={}
+        description="Keyword arguments for initializing haystack_pipeline", default={}
     )
 
 
@@ -179,6 +179,8 @@ class HaystackPipelineConfig(BaseModel):
     ),
 )
 """
+
+
 class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
@@ -321,8 +323,6 @@ class HaystackPipeline(TransformersPipeline):
             outputs = results
 
         return self.output_schema(**outputs)
-
-    #######
 
     @property
     def input_schema(self) -> Type[BaseModel]:

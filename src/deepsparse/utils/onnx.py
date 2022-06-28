@@ -16,7 +16,7 @@ import contextlib
 import logging
 import os
 import tempfile
-from typing import List, Union, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -311,21 +311,24 @@ def truncate_onnx_model(
     for i, (final_node, graph_output_name, graph_output_shape) in enumerate(
         zip(final_nodes, graph_output_names, graph_output_shapes)
     ):
-        # Write each node's output to new output
+        # write each node's output to new output
         [final_node.output.pop() for _ in final_node.output]
         final_node.output.append(graph_output_name)
 
-        # Write graph output. TODO: use ort to find real shapes and types
+        # write graph output. TODO: use ort to find real shapes and types
         output_value_info = onnx.helper.make_tensor_value_info(
             graph_output_name, onnx.TensorProto.UNDEFINED, graph_output_shape
         )
         model.graph.output.append(output_value_info)
 
-    # Collect graph inputs
+    # collect graph inputs
     graph_input_names = [input.name for input in model.graph.input]
 
-    # Use extractor to create and write subgraph
+    # use extractor to create and write subgraph
     extractor = onnx.utils.Extractor(model)
+    _LOGGER.info(
+        f"Extracting model inputs={graph_input_names} outputs={graph_output_names}"
+    )
     extracted_model = extractor.extract_model(
         input_names=graph_input_names, output_names=graph_output_names
     )
