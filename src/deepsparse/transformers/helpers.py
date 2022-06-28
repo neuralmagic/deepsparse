@@ -226,14 +226,19 @@ def truncate_transformer_onnx_model(
     """
 
     def _check_initializer_names(model: ModelProto) -> Union[str, None]:
-        layer_num_prog = re.compile(
+        bert_layer_prog = re.compile(
             r"bert\.encoder\.layer\.\d+\.output\.LayerNorm\.bias"
         )
+        distillbert_layer_prog = re.compile(
+            r"distilbert.transformer.layer.\d+\.output_layer_norm.bias"
+        )
+
         layer_init_names = [
             initializer.name
             for initializer in model.graph.initializer
-            if layer_num_prog.match(initializer.name)
+            if bert_layer_prog.match(initializer.name) or distillbert_layer_prog.match(initializer.name)
         ]
+        assert len(layer_init_names) > 0
 
         final_node_initializer_name = sorted(
             layer_init_names,
@@ -256,7 +261,7 @@ def truncate_transformer_onnx_model(
         try:
             final_node_name = _check_initializer_names(model)
         except Exception as exception:
-            _LOGGER.info(f"Failed to truncate transformer {exception}")
+            _LOGGER.info(f"Failed to truncate transformer: {exception}")
 
         if final_node_name is None:
             raise Exception(f"Failed to truncate transformer model")

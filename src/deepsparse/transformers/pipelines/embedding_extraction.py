@@ -205,7 +205,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         onnx_path = super().setup_onnx_file_path()
 
-        #"""
         (
             onnx_path,
             self.onnx_output_names,
@@ -215,12 +214,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             emb_extraction_layer=self._emb_extraction_layer,
             model_size=self._model_size,
         )
-        #"""
-
-        #import shutil
-        #shutil.copyfile("/home/kyle/testing/sparseml/info_ret/12layercut.onnx", onnx_path)
-        #shutil.copyfile(onnx_path, "/home/kyle/testing/sparseml/info_ret/model_cut.onnx")
-        print("copied")
 
         return onnx_path
 
