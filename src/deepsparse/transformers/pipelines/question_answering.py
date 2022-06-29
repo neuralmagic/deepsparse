@@ -110,7 +110,9 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param doc_stride: if the context is too long to fit with the question for the
         model, it will be split in several chunks with some overlap. This argument
         controls the size of that overlap. Default is 128
