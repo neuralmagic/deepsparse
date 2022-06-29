@@ -24,6 +24,10 @@ from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
 
+__all__ = [
+    "DeepSparseEmbeddingRetriever"
+]
+
 
 _LOGGER = get_main_logger()
 
@@ -49,7 +53,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
     :param batch_size: number of documents to encode at once
     :param max_seq_len: longest length of each document sequence. Maximum number
         of tokens for the document text. Longer ones will be cut down
-    :param pooling_strategy: TODO support this
+    :param pooling_strategy: strategy for combining embeddings
     :param emb_extraction_layer: number of layer from which the embeddings shall
         be extracted. Default: -1 (very last layer)
     :param top_k: how many documents to return per query
@@ -77,7 +81,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         emb_extraction_layer: int = -1,
         top_k: int = 10,
         progress_bar: bool = True,
-        scale_score: bool = True,  # TODO: Check this is implemented
+        scale_score: bool = True,
         embed_meta_fields: List[str] = [],
         **kwargs,
     ):

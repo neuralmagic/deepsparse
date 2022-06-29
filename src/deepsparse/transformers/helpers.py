@@ -210,7 +210,7 @@ def truncate_transformer_onnx_model(
     output_path: Optional[str] = None,
 ) -> str:
     """
-    Determines where to cut the transformer model using a variety of guesses.
+    Determines where to cut the transformer model using best-guess heuristics
     Saves cut model to output_path or temporary file
 
     :param model_path: path of onnx file to be cut

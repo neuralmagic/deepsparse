@@ -21,6 +21,7 @@ from typing import List, Optional, Tuple, Union
 import numpy
 import onnx
 
+from deepsparse.utils.extractor import Extractor
 
 try:
     from sparsezoo import Zoo
@@ -325,10 +326,7 @@ def truncate_onnx_model(
     graph_input_names = [input.name for input in model.graph.input]
 
     # use extractor to create and write subgraph
-    extractor = onnx.utils.Extractor(model)
-    _LOGGER.info(
-        f"Extracting model inputs={graph_input_names} outputs={graph_output_names}"
-    )
+    extractor = Extractor(model)
     extracted_model = extractor.extract_model(
         input_names=graph_input_names, output_names=graph_output_names
     )

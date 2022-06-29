@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.pipelines.haystack_integrations import (
+from deepsparse.transformers.haystack import (
     DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule,
 )
 from haystack.document_stores import (
@@ -185,37 +185,70 @@ class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
+        model_path: str,
+        engine_type: str = None,
+        batch_size: int = 1,
+        num_cores: int = None,
+        scheduler: Scheduler = None,
+        input_shapes: List[List[int]] = None,
+        alias: Optional[str] = None,
+        context: Optional[Context] = None,
+        sequence_length: int = 128,
         docs: Optional[List[Dict]] = None,
         config: Optional[Union[HaystackPipelineConfig, dict]] = None,
-        **kwargs,
+        **retriever_kwargs,
     ):
-        # TODO: Assign necessary members
+        # transformer pipeline members
+        self._sequence_length = sequence_length
+        self.config = None
+        self.tokenizer = None
+        self.onnx_input_names = None
+        self._temp_model_directory = None
 
-        if kwargs.get("batch_size") and kwargs["batch_size"] != 1:
+        # pipeline members
+        self._model_path_orig = model_path
+        self._model_path = model_path
+        self._engine_type = engine_type
+        self._batch_size = batch_size
+        self._alias = alias
+
+        if retriever_kwargs.get("batch_size") and retriever_kwargs["batch_size"] != 1:
             raise ValueError(
                 f"{self.__class__.__name__} currently only supports batch size 1, "
                 f"batch size set to {kwargs['batch_size']}"
             )
 
-        self.docs = docs
-        self._config = self._parse_config(config, kwargs)
+        # pass arguments to retriever (which then passes to extraction pipeline)
+        retriever_kwargs["model_path"] = model_path
+        retriever_kwargs["engine_type"] = engine_type
+        retriever_kwargs["batch_size"] = batch_size
+        retriever_kwargs["num_cores"] = num_cores
+        retriever_kwargs["scheduler"] = scheduler
+        retriever_kwargs["input_shapes"] = input_shapes
+        retriever_kwargs["alias"] = alias
+        retriever_kwargs["context"] = context
+        retriever_kwargs["sequence_length"] = sequence_length
+        self._config = self._parse_config(config, retriever_kwargs)
 
-        self.initialize_pipeline()
+        self.initialize_pipeline(docs)
+        if docs is not None:
+            self.write_docs(docs, refresh=True)
 
     def merge_retriever_args(self, retriever_args, kwargs):
         kwargs = kwargs.copy()
 
-        # Update kwargs names
+        # rename kwargs
         if "sequence_length" in kwargs:
             kwargs["max_seq_len"] = kwargs["sequence_length"]
 
-        # If conflicts, throw
+        # custom message for renamed kwargs
         if "max_seq_len" in kwargs and "max_seq_len" in retriever_args:
             raise ValueError(
                 "Found sequence_length in pipeline initialization and "
                 "max_seq_len in retriever args. Use only one"
             )
 
+        # check for conflicting arguments
         for kwarg in kwargs:
             if kwarg in retriever_args.keys():
                 raise ValueError(
@@ -226,33 +259,41 @@ class HaystackPipeline(TransformersPipeline):
         retriever_args.update(kwargs)
         return retriever_args
 
-    def initialize_pipeline(self):
+    def initialize_pipeline(self, retriever_kwargs: Dict):
+        # merge retriever_args
+        if config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
+            retriever_args = self.merge_retriever_args(
+                config.retriever_args, retriever_kwargs
+            )
+        else:
+            retriever_args = config.retriever_args
+
+        # intialize haystack nodes
         self._document_store = self._config.document_store.construct(
             **self._config.document_store_args
         )
-        if self.docs is not None:
-            self._document_store.delete_documents()
-            self._document_store.write_documents(self.docs)
-
         self._retriever = self._config.retriever.construct(
-            self._document_store, **self._config.retriever_args
+            self._document_store, **retriever_args
         )
-        # TODO: Adjust embedding_dim
-        self._document_store.update_embeddings(self._retriever)
-
         self._haystack_pipeline = self._config.haystack_pipeline.construct(
             self._retriever, **self._config.haystack_pipeline_args
         )
 
+    def write_docs(docs: List[Dict], refresh: bool = True):
+        if refresh:
+            self._document_store.delete_documents()
+        self._document_store.write_documents(docs)
+        self._document_store.update_embeddings(self._retriever)
+
+
     def _parse_config(
-        self, config: Optional[Union[HaystackPipelineConfig, dict]], kwargs: Dict
+        self, config: Optional[Union[HaystackPipelineConfig, dict]], retriever_kwargs: Dict
     ) -> Type[BaseModel]:
         """
         TODO:
         """
         config = config if config else self.config_schema()
 
-        # cast to config_schema
         if isinstance(config, self.config_schema):
             pass
 
@@ -264,12 +305,6 @@ class HaystackPipeline(TransformersPipeline):
                 f"pipeline {self.__class__} only supports either only a "
                 f"{self.config_schema} object a dict of keywords used to "
                 f"construct one. Found {config} instead"
-            )
-
-        # merge args
-        if config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
-            config.retriever_args = self.merge_retriever_args(
-                config.retriever_args, kwargs
             )
 
         return config
@@ -358,16 +393,27 @@ class HaystackPipeline(TransformersPipeline):
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
         raise NotImplementedError()
 
-    @staticmethod
-    def should_bucket(*args, **kwargs) -> bool:
-        return False
-
-    @staticmethod
-    def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
-        pass
 
     @staticmethod
     def route_input_to_bucket(
         *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
     ) -> Pipeline:
-        pass
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
+        if isinstance(input_schema.inputs, str):
+            current_seq_len = len(input_schema.inputs.split())
+        elif isinstance(input_schema.inputs, list):
+            current_seq_len = max(len(_input.split()) for _input in input_schema.inputs)
+        else:
+            raise ValueError(
+                "Expected a str or List[str] as input but got "
+                f"{type(input_schema.inputs)}"
+            )
+
+        for pipeline in pipelines:
+            if pipeline.sequence_length > current_seq_len:
+                return pipeline
+        return pipelines[-1]

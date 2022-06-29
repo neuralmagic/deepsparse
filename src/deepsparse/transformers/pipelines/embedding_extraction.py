@@ -60,7 +60,7 @@ class EmbeddingExtractionInput(BaseModel):
     Schema for inputs to embedding_extraction pipelines
     """
 
-    texts: List[str] = Field(description="A list of texts from which to get embeddings")
+    inputs: List[str] = Field(description="A list of sequences from which to get embeddings")
 
 
 class EmbeddingExtractionOutput(BaseModel):
@@ -68,11 +68,13 @@ class EmbeddingExtractionOutput(BaseModel):
     Schema for embedding_extraction pipeline output. Values are in batch order
     """
 
-    # TODO: converting to lists leads to slowdowns. is there a better way?
-    embeddings: Union[List[List[float]], List[float]] = Field(
+    embeddings: List[numpy.ndarray] = Field(
         description="The output of the model which is an embedded "
         "representation of the input"
     )
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 @Pipeline.register(
@@ -123,7 +125,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         will be extracted. Default is -1 (last layer)
     :param model_size: size of transformer model (size of hidden layer per token).
         Default is 768
-    :param extraction_strategy: TODO
+    :param extraction_strategy: method of pooling embedding values. Currently
+        supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
+        Default is 'per_token'
     :param show_progress_bar: token index(es) to extract from the embedding. Can
         either be an integer representing the CLS token index, or a list of indexes
         to extract. Default is 0
@@ -136,7 +140,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         *,
         emb_extraction_layer: int = -1,
         model_size: int = 768,
-        extraction_strategy: str = "reduce_mean",
+        extraction_strategy: str = "per_token",
         show_progress_bar: bool = False,
         context: Optional[Context] = None,
         **kwargs,
@@ -167,20 +171,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             )
 
         super().__init__(**kwargs)
-
-    @staticmethod
-    def should_bucket(*args, **kwargs) -> bool:
-        return False
-
-    @staticmethod
-    def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
-        pass
-
-    @staticmethod
-    def route_input_to_bucket(
-        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
-    ) -> Pipeline:
-        pass
 
     @property
     def input_schema(self) -> Type[BaseModel]:
@@ -220,7 +210,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """
         :param args: ordered arguments to pipeline, either a input_schema object,
-            a string text, or a list of texts
+            a string text, or a list of inputs
         :param kwargs: keyword arguments to pipeline
         :return: pipeline arguments parsed into the given `input_schema`
             schema if necessary. If an instance of the `input_schema` is provided
@@ -234,38 +224,36 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
         if args:
             if isinstance(args, str):
-                return self.input_schema(texts=[args[0]])
+                return self.input_schema(inputs=[args[0]])
 
             if len(args) == 1:
                 if isinstance(args[0], self.input_schema):
                     return args[0]
                 else:
-                    return self.input_schema(texts=args[0])
+                    return self.input_schema(inputs=args[0])
             else:
-                return self.input_schema(texts=args)
+                return self.input_schema(inputs=args)
         else:
             return self.input_schema(**kwargs)
 
     def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
         """
-        Tokenizes input texts
+        Tokenizes input
 
         :param inputs: inputs to the pipeline.
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
         tokens = self.tokenizer(
-            inputs.texts,
+            inputs.inputs,
             add_special_tokens=True,
             return_tensors="np",
             padding=PaddingStrategy.MAX_LENGTH.value,
             truncation=TruncationStrategy.LONGEST_FIRST.value,
         )
 
-        # mask padding
+        # mask padding and cls token
         pool_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
-
-        # mask first (cls) token
         pool_masks[:, 0] = True
 
         return self.tokens_to_engine_input(tokens), {"pool_masks": pool_masks}
@@ -332,29 +320,57 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        # TODO: vectorize
         embeddings = []
         for engine_output, pool_mask in zip(engine_outputs, pool_masks):
             assert engine_output.shape[0] == self.sequence_length
             assert engine_output.shape[1] == self._model_size
             if self._extraction_strategy == "per_token":
-                embedding = engine_output.flatten().tolist()
+                embedding = engine_output.flatten()
             if self._extraction_strategy == "reduce_mean":
                 masked_embedding = self._remove_1d_mask(engine_output, mask=pool_mask)
-                #print(f"masked_embedding: {masked_embedding}")
-                embedding = masked_embedding.mean(axis=0).flatten().tolist()
-                #print(f"embedding: {embedding}")
+                embedding = masked_embedding.mean(axis=0).flatten()
             if self._extraction_strategy == "reduce_max":
                 masked_embedding = self._remove_1d_mask(engine_output, mask=pool_mask)
-                embedding = masked_embedding.max(axis=0).flatten().tolist()
+                embedding = masked_embedding.max(axis=0).flatten()
             if self._extraction_strategy == "cls_token":
-                embedding = engine_output[0].flatten().tolist()
+                embedding = engine_output[0].flatten()
             embeddings.append(embedding)
 
         return self.output_schema(embeddings=embeddings)
 
-    def _remove_1d_mask(self, array, mask):
+    def _remove_1d_mask(self, array: numpy.ndarray, mask: numpy.ndarray):
+        """
+        Helper function to mask out values from a 1 dimensional mask
+
+        :param array: array containing values to be masked out
+        :param mask: 1 dimensional mask
+        :return: numpy masked array
+        """
         array_masked = numpy.ma.masked_array(array)
         array_masked[mask == True] = numpy.ma.masked
 
         return array_masked
+
+    @staticmethod
+    def route_input_to_bucket(
+        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+    ) -> Pipeline:
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
+        if isinstance(input_schema.inputs, str):
+            current_seq_len = len(input_schema.inputs.split())
+        elif isinstance(input_schema.inputs, list):
+            current_seq_len = max(len(_input.split()) for _input in input_schema.inputs)
+        else:
+            raise ValueError(
+                "Expected a str or List[str] as input but got "
+                f"{type(input_schema.inputs)}"
+            )
+
+        for pipeline in pipelines:
+            if pipeline.sequence_length > current_seq_len:
+                return pipeline
+        return pipelines[-1]
