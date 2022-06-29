@@ -213,6 +213,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
+            "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             f"deepsparse.image_classification.eval={ic_eval}",
         ]
     }
@@ -247,7 +248,7 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.6.0",
+    python_requires=">=3.6, <3.10",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",

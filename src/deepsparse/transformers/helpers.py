@@ -105,7 +105,7 @@ def get_onnx_path_and_configs(
         for framework_file in zoo_model.framework_files:
             if framework_file.display_name == _MODEL_DIR_CONFIG_NAME:
                 config_path = _get_file_parent(framework_file.downloaded_path())
-            if "tokenizer" in framework_file.display_name:
+            if "tokenizer.json" in framework_file.display_name:
                 tokenizer_path = _get_file_parent(framework_file.downloaded_path())
     elif require_configs and (config_path is None or tokenizer_path is None):
         raise RuntimeError(

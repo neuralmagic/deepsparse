@@ -13,26 +13,24 @@
 # limitations under the License.
 
 """
-Usage: deepsparse.object_detection.annotate [OPTIONS]
+Usage: deepsparse.image_classification.annotate [OPTIONS]
 
-  Annotation Script for YOLO with DeepSparse
+  Annotation Script for Image Classification with DeepSparse
 
 Options:
   --model_filepath, --model-filepath TEXT
                                   Path/SparseZoo stub to the model file to be
-                                  used for annotation  [default: zoo:cv/detect
-                                  ion/yolov5-s/pytorch/ultralytics/coco/pruned
-                                  -aggressive_96]
-  --source TEXT                   File path to an image or directory of image
-                                  files, a .mp4 video, or an integer (i.e. 0)
-                                  for webcam  [required]
+                                  used for annotation  [default: "zoo:cv/classification
+                                  /resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none]
+  --source TEXT                   File path to image or directory of image
+                                  files, a .mp4 video [required]
   --engine [deepsparse|onnxruntime|torch]
                                   Inference engine backend to run on. Choices
                                   are 'deepsparse', 'onnxruntime', and
                                   'torch'. Default is 'deepsparse'
-  --image_shape, --image_shape INTEGER
+  --image_shape, --image_shape INTEGER...
                                   Image shape to use for inference, must be
-                                  two integers  [default: 640, 640]
+                                  two integers  [default: 224, 224]
   --num_cores, --num-cores INTEGER
                                   The number of physical cores to run the
                                   annotations with, defaults to using all
@@ -51,18 +49,20 @@ Options:
                                   --source must be a video file and if target-
                                   fps is greater than the source video fps
                                   then it will be ignored
-  --no_save, --no-save            Set flag when source is from webcam to not
-                                  save results.Not supported for non-webcam
+  --display                       Set a flag to display annotated images while
+                                  running the inference pipeline
                                   sources  [default: False]
+  --top_k, --top-k INTEGER        The number of the most probable classes
+                                  that will be displayed on an annotated image
+                                  [default: 3]
   --help                          Show this message and exit
 
 #######
 Examples:
 
-1) deepsparse.object_detection.annotate --source PATH/TO/IMAGE.jpg
-2) deepsparse.object_detection.annotate --source PATH/TO/VIDEO.mp4
-3) deepsparse.object_detection.annotate --source 0
-4) deepsparse.object_detection.annotate --source PATH/TO/IMAGE_DIR
+1) deepsparse.image_classification.annotate --source PATH/TO/IMAGE.jpg
+2) deepsparse.image_classification.annotate --source PATH/TO/VIDEO.mp4
+3) deepsparse.image_classification.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
 from typing import Optional
@@ -70,18 +70,19 @@ from typing import Optional
 import click
 
 import cv2
+from deepsparse.image_classification.constants import IMAGENET_LABELS
+from deepsparse.image_classification.utils import annotate_image
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import (
     annotate,
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
-from deepsparse.yolo.utils import annotate_image
 from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
 
-yolo_v5_default_stub = (
-    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/" "pruned-aggressive_96"
+ic_default_stub = (
+    "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none"
 )
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -96,7 +97,7 @@ _LOGGER = logging.getLogger(__name__)
     "--model_filepath",
     "--model-filepath",
     type=str,
-    default=yolo_v5_default_stub,
+    default=ic_default_stub,
     help="Path/SparseZoo stub to the model file to be used for annotation",
     show_default=True,
 )
@@ -104,8 +105,8 @@ _LOGGER = logging.getLogger(__name__)
     "--source",
     type=str,
     required=True,
-    help="File path to image or directory of .jpg files, a .mp4 video, "
-    "or an integer (i.e. 0) for webcam",
+    help="File path to an image file OR an .mp4 video file OR a directory of "
+    "with image files",
 )
 @click.option(
     "--engine",
@@ -119,8 +120,8 @@ _LOGGER = logging.getLogger(__name__)
     "--image-shape",
     type=int,
     nargs=2,
-    default=(640, 640),
-    help="Image shape to use for inference, must be two integers",
+    default=(224, 224),
+    help="The image shape of the input image (expected by the pipeline)",
     show_default=True,
 )
 @click.option(
@@ -162,11 +163,19 @@ _LOGGER = logging.getLogger(__name__)
     show_default=True,
 )
 @click.option(
-    "--no_save",
-    "--no-save",
+    "--display",
+    "--display",
     is_flag=True,
-    help="Set flag when source is from webcam to not save results."
-    "Not supported for non-webcam sources",
+    help="If set to True, annotated images will be displayed online, "
+    "while running the inference.",
+    show_default=True,
+)
+@click.option(
+    "--top_k",
+    "--top-k",
+    type=int,
+    default=3,
+    help="The number of top-k probabilities to be displayed on the annotated image",
     show_default=True,
 )
 def main(
@@ -178,11 +187,13 @@ def main(
     save_dir: str,
     name: Optional[str],
     target_fps: Optional[float],
-    no_save: bool,
+    display: bool,
+    top_k: int,
 ) -> None:
     """
-    Annotation Script for YOLO with DeepSparse
+    Annotation Script for Image Classification with DeepSparse
     """
+
     save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
         tag=name,
@@ -194,32 +205,30 @@ def main(
         save_dir=save_dir,
         image_shape=image_shape,
         target_fps=target_fps,
-        no_save=no_save,
     )
 
-    is_webcam = source.isnumeric()
-    yolo_pipeline = Pipeline.create(
-        task="yolo",
+    cv_pipeline = Pipeline.create(
+        task="image_classification",
         model_path=model_filepath,
-        class_names="coco",
         engine_type=engine,
         num_cores=num_cores,
+        top_k=top_k,
+        class_names={idx: label for idx, label in enumerate(IMAGENET_LABELS)},
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
 
         # annotate
         annotated_image = annotate(
-            pipeline=yolo_pipeline,
+            pipeline=cv_pipeline,
             annotation_func=annotate_image,
             image=input_image,
+            original_image=source_image,
             target_fps=target_fps,
             calc_fps=is_video,
-            original_image=source_image,
-            model_input_size=image_shape,
         )
 
-        if is_webcam:
+        if display:
             cv2.imshow("annotated", annotated_image)
             cv2.waitKey(1)
 

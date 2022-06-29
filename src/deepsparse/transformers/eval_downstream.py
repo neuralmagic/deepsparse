@@ -53,8 +53,8 @@ python eval_downstream.py \
     --dataset squad
 """
 
-
 import argparse
+import json
 
 from tqdm.auto import tqdm
 
@@ -88,7 +88,7 @@ def squad_eval(args):
     )
     print(f"Engine info: {question_answer.engine}")
 
-    for idx, sample in enumerate(tqdm(squad)):
+    for idx, sample in _enumerate_progress(squad, args.max_samples):
         pred = question_answer(
             question=sample["question"],
             context=sample["context"],
@@ -99,7 +99,7 @@ def squad_eval(args):
             references=[{"answers": sample["answers"], "id": sample["id"]}],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     return squad_metrics
@@ -122,26 +122,29 @@ def mnli_eval(args):
     )
     print(f"Engine info: {text_classify.engine}")
 
-    label_map = {"entailment": 0, "neutral": 1, "contradiction": 2}
+    try:
+        label_map = _get_label2id(text_classify.config_path)
+    except KeyError:
+        label_map = {"entailment": 0, "neutral": 1, "contradiction": 2}
 
-    for idx, sample in enumerate(tqdm(mnli_matched)):
+    for idx, sample in _enumerate_progress(mnli_matched, args.max_samples):
         pred = text_classify([[sample["premise"], sample["hypothesis"]]])
         mnli_metrics.add_batch(
             predictions=[label_map.get(pred.labels[0])],
             references=[sample["label"]],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
-    for idx, sample in enumerate(tqdm(mnli_mismatched)):
+    for idx, sample in _enumerate_progress(mnli_mismatched, args.max_samples):
         pred = text_classify([[sample["premise"], sample["hypothesis"]]])
         mnli_metrics.add_batch(
             predictions=[label_map.get(pred.labels[0])],
             references=[sample["label"]],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     return mnli_metrics
@@ -162,9 +165,12 @@ def qqp_eval(args):
     )
     print(f"Engine info: {text_classify.engine}")
 
-    label_map = {"not_duplicate": 0, "duplicate": 1}
+    try:
+        label_map = _get_label2id(text_classify.config_path)
+    except KeyError:
+        label_map = {"not_duplicate": 0, "duplicate": 1, "LABEL_0": 0, "LABEL_1": 1}
 
-    for idx, sample in enumerate(tqdm(qqp)):
+    for idx, sample in _enumerate_progress(qqp, args.max_samples):
         pred = text_classify([[sample["question1"], sample["question2"]]])
 
         qqp_metrics.add_batch(
@@ -172,7 +178,7 @@ def qqp_eval(args):
             references=[sample["label"]],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     return qqp_metrics
@@ -193,9 +199,12 @@ def sst2_eval(args):
     )
     print(f"Engine info: {text_classify.engine}")
 
-    label_map = {"negative": 0, "positive": 1, "LABEL_0": 0, "LABEL_1": 1}
+    try:
+        label_map = _get_label2id(text_classify.config_path)
+    except KeyError:
+        label_map = {"negative": 0, "positive": 1, "LABEL_0": 0, "LABEL_1": 1}
 
-    for idx, sample in enumerate(tqdm(sst2)):
+    for idx, sample in _enumerate_progress(sst2, args.max_samples):
         pred = text_classify(
             sample["sentence"],
         )
@@ -205,10 +214,21 @@ def sst2_eval(args):
             references=[sample["label"]],
         )
 
-        if args.max_samples and idx > args.max_samples:
+        if args.max_samples and idx >= args.max_samples:
             break
 
     return sst2_metrics
+
+
+def _enumerate_progress(dataset, max_steps):
+    progress_bar = tqdm(dataset, total=max_steps) if max_steps else tqdm(dataset)
+    return enumerate(progress_bar)
+
+
+def _get_label2id(config_file_path):
+    with open(config_file_path) as f:
+        config = json.load(f)
+    return config["label2id"]
 
 
 # Register all the supported downstream datasets here
