@@ -226,6 +226,11 @@ class HaystackPipeline(Pipeline):
             )
 
         # pass arguments to retriever (which then passes to extraction pipeline)
+        if "model_path" in retriever_kwargs or "embedding_model" in retriever_kwargs or "query_model_path" in retriever_kwargs or "passage_model_path" in retriever_kwargs:
+            raise ValueError(
+                "Found model path in HaystackPipeline arguments. Specify model path "
+                "through config.retriever_args instead"
+            )
         retriever_kwargs["engine_type"] = engine_type
         retriever_kwargs["batch_size"] = batch_size
         retriever_kwargs["num_cores"] = num_cores
