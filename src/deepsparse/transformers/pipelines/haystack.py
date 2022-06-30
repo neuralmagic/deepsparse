@@ -38,17 +38,21 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
+from deepsparse.pipeline import DEEPSPARSE_ENGINE
+from deepsparse.engine import Scheduler, Context
 from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.haystack import (
     DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule,
-)
-from haystack.document_stores import (
-    ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule,
+    DeepSparseDensePassageRetriever as DeepSparseDensePassageRetrieverModule
 )
 from haystack.document_stores import (
     InMemoryDocumentStore as InMemoryDocumentStoreModule,
+    ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule,
 )
-from haystack.nodes import EmbeddingRetriever as EmbeddingRetrieverModule
+from haystack.nodes import (
+    EmbeddingRetriever as EmbeddingRetrieverModule,
+    DensePassageRetriever as DensePassageRetrieverModule,
+)
 from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
 from haystack.schema import Document
 
@@ -112,7 +116,7 @@ class DocumentStoreType(HaystackType, Enum):
         "ElasticsearchDocumentStore": ElasticsearchDocumentStoreModule,
     }
 
-
+# TODO: the error message for unknown RetrieverType arg is quite messy
 class RetrieverType(HaystackType, Enum):
     """
     Enum containing all supported haystack retrievers
@@ -120,10 +124,14 @@ class RetrieverType(HaystackType, Enum):
 
     EmbeddingRetriever = "EmbeddingRetriever"
     DeepSparseEmbeddingRetriever = "DeepSparseEmbeddingRetriever"
+    DensePassageRetriever = "DensePassageRetriever"
+    DeepSparseDensePassageRetriever = "DeepSparseDensePassageRetriever"
 
     _constructor_dict = {
         "EmbeddingRetriever": EmbeddingRetrieverModule,
         "DeepSparseEmbeddingRetriever": DeepSparseEmbeddingRetrieverModule,
+        "DensePassageRetriever": DensePassageRetrieverModule,
+        "DeepSparseDensePassageRetriever": DeepSparseDensePassageRetrieverModule
     }
 
 
@@ -169,7 +177,7 @@ class HaystackPipelineConfig(BaseModel):
     )
 
 
-"""
+""" TODO
 @Pipeline.register(
     task="embedding_extraction",
     task_aliases=[],
@@ -179,14 +187,12 @@ class HaystackPipelineConfig(BaseModel):
     ),
 )
 """
-
-
 class HaystackPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
         model_path: str,
-        engine_type: str = None,
+        engine_type: str = DEEPSPARSE_ENGINE,
         batch_size: int = 1,
         num_cores: int = None,
         scheduler: Scheduler = None,
@@ -227,26 +233,15 @@ class HaystackPipeline(TransformersPipeline):
         retriever_kwargs["input_shapes"] = input_shapes
         retriever_kwargs["alias"] = alias
         retriever_kwargs["context"] = context
-        retriever_kwargs["sequence_length"] = sequence_length
+        retriever_kwargs["max_seq_len"] = sequence_length
         self._config = self._parse_config(config, retriever_kwargs)
 
-        self.initialize_pipeline(docs)
+        self.initialize_pipeline(retriever_kwargs)
         if docs is not None:
             self.write_docs(docs, refresh=True)
 
-    def merge_retriever_args(self, retriever_args, kwargs):
-        kwargs = kwargs.copy()
-
-        # rename kwargs
-        if "sequence_length" in kwargs:
-            kwargs["max_seq_len"] = kwargs["sequence_length"]
-
-        # custom message for renamed kwargs
-        if "max_seq_len" in kwargs and "max_seq_len" in retriever_args:
-            raise ValueError(
-                "Found sequence_length in pipeline initialization and "
-                "max_seq_len in retriever args. Use only one"
-            )
+    def merge_retriever_args(self, retriever_args, retriever_kwargs):
+        kwargs = retriever_kwargs.copy()
 
         # check for conflicting arguments
         for kwarg in kwargs:
@@ -261,12 +256,12 @@ class HaystackPipeline(TransformersPipeline):
 
     def initialize_pipeline(self, retriever_kwargs: Dict):
         # merge retriever_args
-        if config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
+        if self._config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
             retriever_args = self.merge_retriever_args(
-                config.retriever_args, retriever_kwargs
+                self._config.retriever_args, retriever_kwargs
             )
         else:
-            retriever_args = config.retriever_args
+            retriever_args = self._config.retriever_args
 
         # intialize haystack nodes
         self._document_store = self._config.document_store.construct(
@@ -279,7 +274,7 @@ class HaystackPipeline(TransformersPipeline):
             self._retriever, **self._config.haystack_pipeline_args
         )
 
-    def write_docs(docs: List[Dict], refresh: bool = True):
+    def write_docs(self, docs: List[Dict], refresh: bool = True):
         if refresh:
             self._document_store.delete_documents()
         self._document_store.write_documents(docs)

@@ -105,6 +105,7 @@ class TransformersPipeline(Pipeline, Bucketable):
         self.config = AutoConfig.from_pretrained(
             config_path, finetuning_task=self.task if hasattr(self, "task") else None
         )
+        print(tokenizer_path)
         self.tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_path, model_max_length=self.sequence_length
         )

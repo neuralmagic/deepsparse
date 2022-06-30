@@ -120,11 +120,14 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param emb_extraction_layer: transformer layer number from which the embeddings
-        will be extracted. Default is -1 (last layer)
-    :param model_size: size of transformer model (size of hidden layer per token).
-        Default is 768
+        will be extracted. If None, then extract from the final layer of the model.
+        Default is -1 (last layer)
+    :param model_size: size of transformer model (size of hidden layer per token
+        if the model is cut). Default is 768
     :param extraction_strategy: method of pooling embedding values. Currently
         supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
         Default is 'per_token'
@@ -138,7 +141,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        emb_extraction_layer: int = -1,
+        emb_extraction_layer: Optional[int] = -1,
         model_size: int = 768,
         extraction_strategy: str = "per_token",
         show_progress_bar: bool = False,
@@ -195,15 +198,16 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         onnx_path = super().setup_onnx_file_path()
 
-        (
-            onnx_path,
-            self.onnx_output_names,
-            self._temp_model_directory,
-        ) = truncate_transformer_onnx_model(
-            onnx_path,
-            emb_extraction_layer=self._emb_extraction_layer,
-            model_size=self._model_size,
-        )
+        if self._emb_extraction_layer is not None:
+            (
+                onnx_path,
+                self.onnx_output_names,
+                self._temp_model_directory,
+            ) = truncate_transformer_onnx_model(
+                onnx_path,
+                emb_extraction_layer=self._emb_extraction_layer,
+                model_size=self._model_size,
+            )
 
         return onnx_path
 
@@ -323,7 +327,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         embeddings = []
         for engine_output, pool_mask in zip(engine_outputs, pool_masks):
             assert engine_output.shape[0] == self.sequence_length
-            assert engine_output.shape[1] == self._model_size
+            assert self._emb_extraction_layer is None or engine_output.shape[1] == self._model_size
             if self._extraction_strategy == "per_token":
                 embedding = engine_output.flatten()
             if self._extraction_strategy == "reduce_mean":

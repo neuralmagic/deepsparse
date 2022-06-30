@@ -12,20 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Union
+from typing import List, Union, Optional
 
 import numpy
 
 from deepsparse import Pipeline
 from deepsparse.log import get_main_logger
+from deepsparse.engine import Context
+
 from haystack.document_stores import BaseDocumentStore
-from haystack.nodes import EmbeddingRetriever
+from haystack.nodes import EmbeddingRetriever, DensePassageRetriever
 from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
+from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 
 __all__ = [
-    "DeepSparseEmbeddingRetriever"
+    "DeepSparseEmbeddingRetriever",
+    "DeepSparseDensePassageRetriever"
 ]
 
 
@@ -102,6 +106,161 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 
         self.embedding_encoder = _DeepSparseEmbeddingEncoder(self, kwargs)
 
+    def train(*args, **kwargs):
+        raise NotImplementedError()
+
+    def save(*args, **kwargs):
+        raise NotImplementedError()
+
+    def load(*args, **kwargs):
+        raise NotImplementedError()
+
+class DeepSparseDensePassageRetriever(DensePassageRetriever):
+    def __init__(
+        self,
+        document_store: BaseDocumentStore,
+        query_model_path: str = "", # TODO: default
+        passage_model_path: str = "",
+        max_seq_len_query: int = 64,
+        max_seq_len_passage: int = 256,
+        top_k: int = 10,
+        batch_size: int = 16,
+        embed_title: bool = True,
+        similarity_function: str = "dot_product",
+        progress_bar: bool = True,
+        scale_score: bool = True,
+        context: Optional[Context] = None,
+        **pipeline_kwargs
+    ):
+        super(BaseRetriever).__init__()
+
+        self.document_store = document_store
+        self.batch_size = batch_size
+        self.progress_bar = progress_bar
+        self.top_k = top_k
+        self.scale_score = scale_score
+        self.context = context
+        self.use_gpu = False
+        self.devices = ["cpu"]
+
+        if document_store is None:
+            logger.warning(
+                "DensePassageRetriever initialized without a document store. "
+                "This is fine if you are performing DPR training. "
+                "Otherwise, please provide a document store in the constructor."
+            )
+        elif document_store.similarity != "dot_product":
+            logger.warning(
+                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
+                "We recommend you use dot_product instead. "
+                "This can be set when initializing the DocumentStore"
+            )
+
+        if self.context is None:
+            self.context = Context(num_cores=None, num_streams=2) # arbitrarily choose 2
+
+        pipeline_kwargs["batch_size"] = batch_size
+        pipeline_kwargs["show_progress_bar"] = progress_bar
+        pipeline_kwargs["context"] = context
+
+        _LOGGER.info("Creating query pipeline")
+        self.query_pipeline = Pipeline.create(
+            "embedding_extraction",
+            query_model_path,
+            emb_extraction_layer=None,
+            extraction_strategy="per_token",
+            **pipeline_kwargs
+        )
+        _LOGGER.info("Creating passage pipeline")
+        self.passage_pipeline = Pipeline.create(
+            "embedding_extraction",
+            passage_model_path,
+            emb_extraction_layer=None,
+            extraction_strategy="per_token",
+            **pipeline_kwargs
+        )
+        _LOGGER.info("Query and passage pipelines initialized")
+
+        # initialize model
+        """
+        self.processor = TextSimilarityProcessor(
+            query_tokenizer=self.query_pipeline.tokenizer,
+            passage_tokenizer=self.passage_pipeline.tokenizer,
+            max_seq_len_passage=max_seq_len_passage,
+            max_seq_len_query=max_seq_len_query,
+            label_list=["hard_negative", "positive"],
+            metric="text_similarity_metric",
+            embed_title=embed_title,
+            num_hard_negatives=0,
+            num_positives=1,
+        )
+        """
+        self.max_seq_len_query = max_seq_len_query
+        self.max_seq_len_passage = max_seq_len_passage
+        self.embed_title = embed_title
+        self.model = None
+        """
+        _DeepSparseBiAdaptiveModel(
+            query_pipeline=self.query_pipeline,
+            passage_pipeline=self.passage_pipeline,
+        )
+        """
+
+    def _get_predictions(self, dicts):
+
+        # TODO: fix me please
+        print(dicts)
+        query_inputs = []
+        passage_inputs = []
+        for sample in dicts:
+            assert len(sample.keys())
+            if list(sample.keys())[0] == "query":
+                query_inputs.append(sample["query"])
+            if list(sample.keys())[0] == "passages":
+                passage_inputs.extend(sample["passages"])
+
+        print(query_inputs)
+        print(passage_inputs)
+        query_outputs = self.query_pipeline(query_inputs)
+        passage_outputs = self.passage_pipeline(passage_inputs)
+
+        return {"query": query_outputs, "passage": passage_outputs}
+
+
+    def train(*args, **kwargs):
+        raise NotImplementedError()
+
+    def save(*args, **kwargs):
+        raise NotImplementedError()
+
+    def load(*args, **kwargs):
+        raise NotImplementedError()
+
+class _DeepSparseBiAdaptiveModel():
+    def __init__(
+        self,
+        query_pipeline,
+        passage_pipeline,
+    ):
+        self._query_pipeline = query_pipeline
+        self._passage_pipeline = passage_pipeline
+
+    def forward(self, **kwargs):
+        print("_DeepSparseBiAdaptiveModel.foward")
+        #TODO
+
+        # extract inputs from kwargs["query_input_ids"] and such
+        print(kwargs)
+
+        # run pipelines
+        self._query_pipeline()
+        self._passage_pipeline()
+
+        # [(query_outputs, passage_outputs)], either can be None
+        return [(None, None)]
+
+    def eval(self):
+        pass
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     """
