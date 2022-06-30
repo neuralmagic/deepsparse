@@ -18,7 +18,7 @@ Base Pipeline class for transformers inference pipeline
 
 import os
 import warnings
-from typing import Any, List, Mapping, Optional
+from typing import Any, List, Mapping, Optional, Union
 
 import numpy
 from transformers.models.auto import AutoConfig, AutoTokenizer
@@ -62,13 +62,16 @@ class TransformersPipeline(Pipeline, Bucketable):
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
-    :param sequence_length: static sequence length to use for inference
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     """
 
     def __init__(
         self,
         *,
-        sequence_length: int = 128,
+        sequence_length: Union[int, List[int]] = 128,
         **kwargs,
     ):
 
@@ -85,7 +88,7 @@ class TransformersPipeline(Pipeline, Bucketable):
         super().__init__(**kwargs)
 
     @property
-    def sequence_length(self) -> int:
+    def sequence_length(self) -> Union[int, List[int]]:
         """
         :return: static sequence length to use for inference
         """

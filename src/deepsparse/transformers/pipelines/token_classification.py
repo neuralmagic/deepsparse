@@ -155,7 +155,9 @@ class TokenClassificationPipeline(TransformersPipeline):
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
         include 'none', 'simple', 'first', 'average', and 'max'. Default is None
     :param ignore_labels: list of label names to ignore in output. Default is

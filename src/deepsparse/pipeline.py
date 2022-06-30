@@ -757,7 +757,9 @@ def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param doc_stride: if the context is too long to fit with the question for the
         model, it will be split in several chunks with some overlap. This argument
         controls the size of that overlap. Currently, only reading the first span
@@ -815,7 +817,9 @@ def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param return_all_scores: if True, instead of returning the prediction as the
         argmax of model class predictions, will return all scores and labels as
         a list for each result in the batch. Default is False
@@ -868,7 +872,9 @@ def sentiment_analysis_pipeline(*args, **kwargs) -> "Pipeline":
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param return_all_scores: if True, instead of returning the prediction as the
         argmax of model class predictions, will return all scores and labels as
         a list for each result in the batch. Default is False
@@ -903,7 +909,9 @@ def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
         include 'none', 'simple', 'first', 'average', and 'max'. Default is None
     :param ignore_labels: list of label names to ignore in output. Default is
