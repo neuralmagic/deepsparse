@@ -370,7 +370,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             current_seq_len = max(len(_input.split()) for _input in input_schema.inputs)
         else:
             raise ValueError(
-                "Expected a str or List[str] as input but got "
+                "Expected a List[str] as input but got "
                 f"{type(input_schema.inputs)}"
             )
 

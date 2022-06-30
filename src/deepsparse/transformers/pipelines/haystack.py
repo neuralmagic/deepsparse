@@ -38,9 +38,8 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
-from deepsparse.pipeline import DEEPSPARSE_ENGINE
+from deepsparse.pipeline import Pipeline, DEEPSPARSE_ENGINE
 from deepsparse.engine import Scheduler, Context
-from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.haystack import (
     DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule,
     DeepSparseDensePassageRetriever as DeepSparseDensePassageRetrieverModule
@@ -73,7 +72,7 @@ class HaystackPipelineInput(BaseModel):
     """
 
     queries: Union[str, List[str]] = Field(description="TODO:")
-    params: Dict = Field(description="TODO:", default={})
+    params: Dict[Any, Any] = Field(description="TODO:", default={})
 
 
 class HaystackPipelineOutput(BaseModel):
@@ -156,7 +155,7 @@ class HaystackPipelineConfig(BaseModel):
         "Default ElasticsearchDocumentStore",
         default=DocumentStoreType.ElasticsearchDocumentStore,
     )
-    document_store_args: dict = Field(
+    document_store_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing document_store", default={}
     )
     retriever: RetrieverType = Field(
@@ -164,7 +163,7 @@ class HaystackPipelineConfig(BaseModel):
         "DeepSparseEmbeddingRetriever (recommended)",
         default=RetrieverType.DeepSparseEmbeddingRetriever,
     )
-    retriever_args: dict = Field(
+    retriever_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing retriever", default={}
     )
     haystack_pipeline: PipelineType = Field(
@@ -172,7 +171,7 @@ class HaystackPipelineConfig(BaseModel):
         "DocumentSearchPipeline",
         default=PipelineType.DocumentSearchPipeline,
     )
-    haystack_pipeline_args: dict = Field(
+    haystack_pipeline_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing haystack_pipeline", default={}
     )
 
@@ -187,11 +186,10 @@ class HaystackPipelineConfig(BaseModel):
     ),
 )
 """
-class HaystackPipeline(TransformersPipeline):
+class HaystackPipeline(Pipeline):
     def __init__(
         self,
         *,
-        model_path: str,
         engine_type: str = DEEPSPARSE_ENGINE,
         batch_size: int = 1,
         num_cores: int = None,
@@ -204,6 +202,9 @@ class HaystackPipeline(TransformersPipeline):
         config: Optional[Union[HaystackPipelineConfig, dict]] = None,
         **retriever_kwargs,
     ):
+        """
+        TODO:
+        """
         # transformer pipeline members
         self._sequence_length = sequence_length
         self.config = None
@@ -212,8 +213,8 @@ class HaystackPipeline(TransformersPipeline):
         self._temp_model_directory = None
 
         # pipeline members
-        self._model_path_orig = model_path
-        self._model_path = model_path
+        self._model_path_orig = None
+        self._model_path = None
         self._engine_type = engine_type
         self._batch_size = batch_size
         self._alias = alias
@@ -225,7 +226,6 @@ class HaystackPipeline(TransformersPipeline):
             )
 
         # pass arguments to retriever (which then passes to extraction pipeline)
-        retriever_kwargs["model_path"] = model_path
         retriever_kwargs["engine_type"] = engine_type
         retriever_kwargs["batch_size"] = batch_size
         retriever_kwargs["num_cores"] = num_cores
@@ -238,9 +238,12 @@ class HaystackPipeline(TransformersPipeline):
 
         self.initialize_pipeline(retriever_kwargs)
         if docs is not None:
-            self.write_docs(docs, refresh=True)
+            self.write_docs(docs, overwrite=True)
 
-    def merge_retriever_args(self, retriever_args, retriever_kwargs):
+    def merge_retriever_args(self, retriever_args: Dict[str, Any], retriever_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        TODO:
+        """
         kwargs = retriever_kwargs.copy()
 
         # check for conflicting arguments
@@ -254,7 +257,10 @@ class HaystackPipeline(TransformersPipeline):
         retriever_args.update(kwargs)
         return retriever_args
 
-    def initialize_pipeline(self, retriever_kwargs: Dict):
+    def initialize_pipeline(self, retriever_kwargs: Dict[str, Any]) -> None:
+        """
+        TODO:
+        """
         # merge retriever_args
         if self._config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
             retriever_args = self.merge_retriever_args(
@@ -274,15 +280,18 @@ class HaystackPipeline(TransformersPipeline):
             self._retriever, **self._config.haystack_pipeline_args
         )
 
-    def write_docs(self, docs: List[Dict], refresh: bool = True):
-        if refresh:
+    def write_docs(self, docs: List[Dict], overwrite: bool = True):
+        """
+        TODO:
+        """
+        if overwrite:
             self._document_store.delete_documents()
         self._document_store.write_documents(docs)
         self._document_store.update_embeddings(self._retriever)
 
 
     def _parse_config(
-        self, config: Optional[Union[HaystackPipelineConfig, dict]], retriever_kwargs: Dict
+        self, config: Optional[Union[HaystackPipelineConfig, dict]], retriever_kwargs: Dict[str, Any]
     ) -> Type[BaseModel]:
         """
         TODO:
@@ -305,6 +314,9 @@ class HaystackPipeline(TransformersPipeline):
         return config
 
     def __call__(self, *args, **kwargs) -> BaseModel:
+        """
+        TODO:
+        """
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
@@ -342,8 +354,9 @@ class HaystackPipeline(TransformersPipeline):
         return outputs
 
     def process_pipeline_outputs(self, results):
-        # zip dictionaries for each output
-
+        """
+        TODO:
+        """
         if isinstance(results, List):
             outputs = {key: [] for key in results[0].keys()}
             for result in results:
@@ -375,6 +388,9 @@ class HaystackPipeline(TransformersPipeline):
         """
         return HaystackPipelineConfig
 
+    def setup_onnx_file_path(self) -> str:
+        raise NotImplementedError()
+
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
@@ -387,28 +403,3 @@ class HaystackPipeline(TransformersPipeline):
         inputs: BaseModel,
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
         raise NotImplementedError()
-
-
-    @staticmethod
-    def route_input_to_bucket(
-        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
-    ) -> Pipeline:
-        """
-        :param input_schema: The schema representing an input to the pipeline
-        :param pipelines: Different buckets to be used
-        :return: The correct Pipeline object (or Bucket) to route input to
-        """
-        if isinstance(input_schema.inputs, str):
-            current_seq_len = len(input_schema.inputs.split())
-        elif isinstance(input_schema.inputs, list):
-            current_seq_len = max(len(_input.split()) for _input in input_schema.inputs)
-        else:
-            raise ValueError(
-                "Expected a str or List[str] as input but got "
-                f"{type(input_schema.inputs)}"
-            )
-
-        for pipeline in pipelines:
-            if pipeline.sequence_length > current_seq_len:
-                return pipeline
-        return pipelines[-1]
