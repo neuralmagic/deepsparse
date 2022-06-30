@@ -198,11 +198,11 @@ def process_nli_engine_outputs(
     if isinstance(outputs, list):
         outputs = outputs[0]
 
-    # Reshape sequences
+    # reshape sequences
     num_sequences = 1 if isinstance(sequences, str) else len(sequences)
     reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
 
-    # Calculate scores
+    # calculate scores
     if not multi_class:
         entailment_logits = reshaped_outputs[:, :, config.entailment_index]
         scores = numpy_softmax(entailment_logits, axis=1)
@@ -213,7 +213,7 @@ def process_nli_engine_outputs(
         probabilities = numpy_softmax(entailment_contradiction_logits, axis=2)
         scores = probabilities[:, :, 0]
 
-    # Hack: negate scores to perform reversed sort
+    # hack: negate scores to perform reversed sort
     sorted_indexes = numpy.argsort(-1 * scores, axis=1)
     labels = [
         numpy.array(candidate_labels)[sorted_indexes[i]].tolist()
@@ -238,7 +238,7 @@ def nli_engine_forward(
     :return: result of forward pass to Pipeline engine
     """
     # engine_inputs.shape: [transformer_inputs (3), num_labels * num_seqs, seq_len]
-    # Execute in parallel threads (dynamic labels) or as one batch (static labels)
+    # execute in parallel threads (dynamic labels) or as one batch (static labels)
     if pipeline._labels is None:
 
         def _engine_forward(batch_index: int, batch_origin: int):

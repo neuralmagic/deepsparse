@@ -157,7 +157,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
@@ -196,7 +198,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         self._labels = self._parse_labels(labels)
         self._thread_pool = None
 
-        # If dynamic labels
+        # if dynamic labels
         if self._labels is None:
             if context is None:
                 # num_streams is arbitrarily chosen to be any value >= 2
@@ -216,7 +218,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
                 )
             kwargs.update({"batch_size": num_sequences})
 
-        # If static labels
+        # if static labels
         else:
             if batch_size is not None and batch_size != num_sequences * len(
                 self._labels
@@ -320,21 +322,21 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
             can be directly passed into the forward pass of the pipeline engine
         """
 
-        # Check for absent labels
+        # check for absent labels
         if inputs.labels is None and self._labels is None:
             raise ValueError(
                 "You must provide either static labels during pipeline creation or "
                 "dynamic labels at inference time"
             )
 
-        # Check for conflicting labels
+        # check for conflicting labels
         if inputs.labels is not None and self._labels is not None:
             raise ValueError(
                 "Found both static labels and dynamic labels at inference time. You "
                 "must provide only one"
             )
 
-        # Check for incorrect number of sequences
+        # check for incorrect number of sequences
         num_sequences = (
             1 if isinstance(inputs.sequences, str) else len(inputs.sequences)
         )
@@ -374,3 +376,50 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         """
         if self._model_scheme == ModelSchemes.nli.value:
             return nli_engine_forward(self, engine_inputs)
+
+    @staticmethod
+    def route_input_to_bucket(
+        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+    ) -> Pipeline:
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
+        current_seq_len = (
+            ZeroShotTextClassificationPipeline._get_current_sequence_length(
+                input_schema
+            )
+        )
+
+        for pipeline in pipelines:
+            if pipeline.sequence_length > current_seq_len:
+                return pipeline
+        return pipelines[-1]
+
+    @staticmethod
+    def _get_current_sequence_length(input_schema: BaseModel) -> int:
+        """
+        Helper function to get max sequence length in provided sequences input
+
+        :param input_schema: input to pipeline
+        :return: max sequence length in input_schema
+        """
+        if isinstance(input_schema.sequences, str):
+            current_seq_len = len(input_schema.sequences.split())
+        elif isinstance(input_schema.sequences, list):
+            current_seq_len = float("-inf")
+            for _input in input_schema.sequences:
+                if isinstance(_input, str):
+                    current_seq_len = max(len(_input.split()), current_seq_len)
+                elif isinstance(_input, list):
+                    current_seq_len = max(
+                        *(len(__input.split()) for __input in _input), current_seq_len
+                    )
+        else:
+            raise ValueError(
+                "Expected a str or List[str] or List[List[str]] as input but got "
+                f"{type(input_schema.sequences)}"
+            )
+
+        return current_seq_len

@@ -795,7 +795,9 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
