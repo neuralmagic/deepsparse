@@ -121,10 +121,11 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         document_store: BaseDocumentStore,
         query_model_path: str = "", # TODO: default
         passage_model_path: str = "",
-        max_seq_len_query: int = 64,
-        max_seq_len_passage: int = 256,
+        max_seq_len_query: int = 512,
+        max_seq_len_passage: int = 512,
+        pooling_strategy: str = "per_token",
         top_k: int = 10,
-        batch_size: int = 16,
+        batch_size: int = 1,
         embed_title: bool = True,
         similarity_function: str = "dot_product",
         progress_bar: bool = True,
@@ -136,6 +137,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
 
         self.document_store = document_store
         self.batch_size = batch_size
+        self.embed_title = embed_title
         self.progress_bar = progress_bar
         self.top_k = top_k
         self.scale_score = scale_score
@@ -144,60 +146,54 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         self.devices = ["cpu"]
 
         if document_store is None:
-            logger.warning(
+            _LOGGER.warning(
                 "DensePassageRetriever initialized without a document store. "
                 "This is fine if you are performing DPR training. "
                 "Otherwise, please provide a document store in the constructor."
             )
         elif document_store.similarity != "dot_product":
-            logger.warning(
+            _LOGGER.warning(
                 f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
                 "We recommend you use dot_product instead. "
                 "This can be set when initializing the DocumentStore"
+            )
+        if pooling_strategy != "per_token":
+            _LOGGER.warning(
+                f"You are using a Dense Passage Retriever model with {pooling_strategy} pooling_strategy. "
+                "We recommend you use per_token instead."
             )
 
         if self.context is None:
             self.context = Context(num_cores=None, num_streams=2) # arbitrarily choose 2
 
-        pipeline_kwargs["batch_size"] = batch_size
-        pipeline_kwargs["show_progress_bar"] = progress_bar
-        pipeline_kwargs["context"] = context
-
         _LOGGER.info("Creating query pipeline")
         self.query_pipeline = Pipeline.create(
             "embedding_extraction",
             query_model_path,
+            batch_size=batch_size,
+            sequence_length=max_seq_len_query,
             emb_extraction_layer=None,
-            extraction_strategy="per_token",
+            extraction_strategy=pooling_strategy,
+            show_progress_bar=progress_bar,
+            context=context,
             **pipeline_kwargs
         )
         _LOGGER.info("Creating passage pipeline")
         self.passage_pipeline = Pipeline.create(
             "embedding_extraction",
             passage_model_path,
+            batch_size=batch_size,
+            sequence_length=max_seq_len_passage,
             emb_extraction_layer=None,
-            extraction_strategy="per_token",
+            extraction_strategy=pooling_strategy,
+            show_progress_bar=progress_bar,
+            context=context,
             **pipeline_kwargs
         )
         _LOGGER.info("Query and passage pipelines initialized")
+        #https://github.com/deepset-ai/haystack/blob/master/haystack/nodes/retriever/dense.py
 
         # initialize model
-        """
-        self.processor = TextSimilarityProcessor(
-            query_tokenizer=self.query_pipeline.tokenizer,
-            passage_tokenizer=self.passage_pipeline.tokenizer,
-            max_seq_len_passage=max_seq_len_passage,
-            max_seq_len_query=max_seq_len_query,
-            label_list=["hard_negative", "positive"],
-            metric="text_similarity_metric",
-            embed_title=embed_title,
-            num_hard_negatives=0,
-            num_positives=1,
-        )
-        """
-        self.max_seq_len_query = max_seq_len_query
-        self.max_seq_len_passage = max_seq_len_passage
-        self.embed_title = embed_title
         self.model = None
         """
         _DeepSparseBiAdaptiveModel(
@@ -206,26 +202,16 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         )
         """
 
-    def _get_predictions(self, dicts):
+    def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
+        return self.query_pipeline(texts).embeddings
 
-        # TODO: fix me please
-        print(dicts)
-        query_inputs = []
-        passage_inputs = []
-        for sample in dicts:
-            assert len(sample.keys())
-            if list(sample.keys())[0] == "query":
-                query_inputs.append(sample["query"])
-            if list(sample.keys())[0] == "passages":
-                passage_inputs.extend(sample["passages"])
+    def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
+        # TODO: deal with self.embed_title
+        passage_inputs = [doc.content for doc in docs]
+        return self.passage_pipeline(passage_inputs).embeddings
 
-        print(query_inputs)
-        print(passage_inputs)
-        query_outputs = self.query_pipeline(query_inputs)
-        passage_outputs = self.passage_pipeline(passage_inputs)
-
-        return {"query": query_outputs, "passage": passage_outputs}
-
+    def _get_predictions(*args, **kwargs):
+        raise NotImplementedError()
 
     def train(*args, **kwargs):
         raise NotImplementedError()

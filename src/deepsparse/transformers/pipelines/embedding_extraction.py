@@ -124,8 +124,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         tokenizer will be compiled capable of handling that sequence length
         (also known as a bucket). Default is 128
     :param emb_extraction_layer: transformer layer number from which the embeddings
-        will be extracted. If None, then extract from the final layer of the model.
-        Default is -1 (last layer)
+        will be extracted. If None, leave the model unchanged. Default is -1
+        (last layer)
     :param model_size: size of transformer model (size of hidden layer per token
         if the model is cut). Default is 768
     :param extraction_strategy: method of pooling embedding values. Currently
@@ -141,7 +141,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        emb_extraction_layer: Optional[int] = -1,
+        emb_extraction_layer: Union[int, None] = -1,
         model_size: int = 768,
         extraction_strategy: str = "per_token",
         show_progress_bar: bool = False,
