@@ -191,16 +191,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             **pipeline_kwargs
         )
         _LOGGER.info("Query and passage pipelines initialized")
-        #https://github.com/deepset-ai/haystack/blob/master/haystack/nodes/retriever/dense.py
-
-        # initialize model
-        self.model = None
-        """
-        _DeepSparseBiAdaptiveModel(
-            query_pipeline=self.query_pipeline,
-            passage_pipeline=self.passage_pipeline,
-        )
-        """
 
     def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
         return self.query_pipeline(texts).embeddings
@@ -221,32 +211,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
 
     def load(*args, **kwargs):
         raise NotImplementedError()
-
-class _DeepSparseBiAdaptiveModel():
-    def __init__(
-        self,
-        query_pipeline,
-        passage_pipeline,
-    ):
-        self._query_pipeline = query_pipeline
-        self._passage_pipeline = passage_pipeline
-
-    def forward(self, **kwargs):
-        print("_DeepSparseBiAdaptiveModel.foward")
-        #TODO
-
-        # extract inputs from kwargs["query_input_ids"] and such
-        print(kwargs)
-
-        # run pipelines
-        self._query_pipeline()
-        self._passage_pipeline()
-
-        # [(query_outputs, passage_outputs)], either can be None
-        return [(None, None)]
-
-    def eval(self):
-        pass
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     """
