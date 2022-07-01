@@ -35,7 +35,7 @@ _YOLOImageOutput = namedtuple(
 
 class YOLOInput(BaseModel):
     """
-    Input model for image detection
+    Input model for object detection
     """
 
     images: Union[str, List[str], List[Any]] = Field(
