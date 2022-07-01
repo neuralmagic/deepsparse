@@ -18,7 +18,7 @@ import numpy
 
 import cv2
 from deepsparse.yolact.schemas import YOLACTOutputSchema
-from deepsparse.yolo.utils import _get_color, _plot_fps
+from deepsparse.yolo.utils.utils import _get_color, _plot_fps
 
 
 __all__ = ["annotate_image"]
@@ -164,12 +164,14 @@ def _put_bounding_box(
     return image
 
 
-def _get_text_size(annotation_text: str) -> Tuple[int, int]:
+def _get_text_size(
+    annotation_text: str, text_font_scale: float = 0.9, text_thickness: int = 2
+) -> Tuple[int, int]:
     (text_width, text_height), text_baseline = cv2.getTextSize(
         annotation_text,
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,  # font scale
-        2,  # thickness
+        text_font_scale,  # font scale
+        text_thickness,  # thickness
     )
     text_height += text_baseline
     return text_width, text_height
