@@ -70,7 +70,7 @@ class YOLOInput(BaseModel):
 
 class YOLOOutput(BaseModel):
     """
-    Output model for image detection
+    Output model for object detection
     """
 
     predictions: List[List[List[float]]] = Field(description="List of predictions")
