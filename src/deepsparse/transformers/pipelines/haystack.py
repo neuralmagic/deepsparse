@@ -28,7 +28,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Pipeline implementation and pydantic models for haystack pipeline. Supports a
+Pipeline implementation and pydantic models for Haystack pipeline. Supports a
 sample of haystack nodes meant to be used DeepSparseEmbeddingRetriever
 """
 from enum import Enum
@@ -47,6 +47,7 @@ from deepsparse.transformers.haystack import (
 from haystack.document_stores import (
     InMemoryDocumentStore as InMemoryDocumentStoreModule,
     ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule,
+    FAISSDocumentStore as FAISSDocumentStoreModule,
 )
 from haystack.nodes import (
     EmbeddingRetriever as EmbeddingRetrieverModule,
@@ -54,6 +55,7 @@ from haystack.nodes import (
 )
 from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
 from haystack.schema import Document
+from haystack.utils import print_documents
 
 
 __all__ = [
@@ -63,60 +65,81 @@ __all__ = [
     "RetrieverType",
     "HaystackPipelineConfig",
     "HaystackPipeline",
+    "print_pipeline_documents",
 ]
 
 
 class HaystackPipelineInput(BaseModel):
     """
-    Schema for inputs to haystack pipelines
+    Schema for inputs to Haystack pipelines
     """
 
-    queries: Union[str, List[str]] = Field(description="TODO:")
-    params: Dict[Any, Any] = Field(description="TODO:", default={})
+    queries: Union[str, List[str]] = Field(description="String or list of strings to query documents with")
+    params: Dict[Any, Any] = Field(description="Dictionary of params to pass to Haystack pipeline", default={})
 
 
 class HaystackPipelineOutput(BaseModel):
     """
-    Schema for outputs to haystack pipelines
+    Schema for outputs to Haystack pipelines
     """
 
-    documents: Union[List[List[Document]], List[Document]] = Field(description="TODO:")
-    root_node: Union[str, List[str]] = Field(description="TODO:")
-    params: Union[List[Dict[str, Any]], Dict[str, Any]] = Field(description="TODO:")
-    query: Union[List[str], str] = Field(description="TODO:")
-    node_id: Union[List[str], str] = Field(description="TODO:")
+    documents: Union[List[List[Document]], List[Document]] = Field(
+        description="List of document results for each input query"
+    )
+    root_node: Union[str, List[str]] = Field(
+        description="Root node of Haystack Pipeline's graph"
+    )
+    params: Union[List[Dict[str, Any]], Dict[str, Any]] = Field(
+        description="Params passed to Haystack pipeline"
+    )
+    query: Union[List[str], str] = Field(
+        description="Query passed to Haystack Pipeline"
+    )
+    node_id: Union[List[str], str] = Field(
+        description="Node id field from Haystack Pipeline output"
+    )
 
 
-class HaystackType:
-    """
-    Parent class to Haystack node types
-    (DocumentStoreType, RetrieverType, PipelineType
-    """
-
-    @classmethod
-    def to_list(cls):
-        return cls._value2member_map_
-
-    @property
-    def construct(self):
-        return self._constructor_dict.value[self.value]
-
-
-class DocumentStoreType(HaystackType, Enum):
+class DocumentStoreType(str, Enum):
     """
     Enum containing all supported haystack document stores
     """
 
     InMemoryDocumentStore = "InMemoryDocumentStore"
     ElasticsearchDocumentStore = "ElasticsearchDocumentStore"
+    FAISSDocumentStore = "FAISSDocumentStore"
 
-    _constructor_dict = {
-        "InMemoryDocumentStore": InMemoryDocumentStoreModule,
-        "ElasticsearchDocumentStore": ElasticsearchDocumentStoreModule,
-    }
+    @property
+    def constructor(self) -> Type[Any]:
+        if self.value == DocumentStoreType.InMemoryDocumentStore:
+            return InMemoryDocumentStoreModule
+        if self.value == DocumentStoreType.ElasticsearchDocumentStore:
+            return ElasticsearchDocumentStoreModule
+        if self.value == DocumentStoreType.FAISSDocumentStore:
+            return FAISSDocumentStoreModule
+        else:
+            raise ValueError(f"Unknown enum value {self.value}")
+
+    @property
+    def default_args(self) -> Dict[str, Any]:
+        if self.value == DocumentStoreType.InMemoryDocumentStore:
+            return {
+                "similarity": "cosine",
+            }
+        if self.value == DocumentStoreType.ElasticsearchDocumentStore:
+            return {
+                "similarity": "cosine",
+            }
+        if self.value == DocumentStoreType.FAISSDocumentStore:
+            return {
+                "faiss_index_factory_str": "Flat",
+                "similarity": "cosine",
+            }
+        else:
+            raise ValueError(f"Unknown enum value {self.value}")
 
 # TODO: the error message for unknown RetrieverType arg is quite messy
-class RetrieverType(HaystackType, Enum):
+class RetrieverType(str, Enum):
     """
     Enum containing all supported haystack retrievers
     """
@@ -126,22 +149,60 @@ class RetrieverType(HaystackType, Enum):
     DensePassageRetriever = "DensePassageRetriever"
     DeepSparseDensePassageRetriever = "DeepSparseDensePassageRetriever"
 
-    _constructor_dict = {
-        "EmbeddingRetriever": EmbeddingRetrieverModule,
-        "DeepSparseEmbeddingRetriever": DeepSparseEmbeddingRetrieverModule,
-        "DensePassageRetriever": DensePassageRetrieverModule,
-        "DeepSparseDensePassageRetriever": DeepSparseDensePassageRetrieverModule
-    }
+    @property
+    def constructor(self) -> Type[Any]:
+        if self.value == RetrieverType.EmbeddingRetriever:
+            return EmbeddingRetrieverModule
+        if self.value == RetrieverType.DeepSparseEmbeddingRetriever:
+            return DeepSparseEmbeddingRetrieverModule
+        if self.value == RetrieverType.DensePassageRetriever:
+            return DensePassageRetrieverModule
+        if self.value == RetrieverType.DeepSparseDensePassageRetriever:
+            return DeepSparseDensePassageRetrieverModule
+        else:
+            raise ValueError(f"Unknown enum value {self.value}")
+
+    @property
+    def default_args(self) -> Dict[str, Any]:
+        if self.value == RetrieverType.EmbeddingRetriever:
+            return {
+                "pooling_strategy": "reduce_mean"
+            }
+        if self.value == RetrieverType.DeepSparseEmbeddingRetriever:
+            return {
+                "pooling_strategy": "reduce_mean",
+                "emb_extraction_layer": -1,
+            }
+        if self.value == RetrieverType.DensePassageRetriever:
+            return {}
+        if self.value == RetrieverType.DeepSparseDensePassageRetriever:
+            return {
+                "pooling_strategy": "reduce_mean"
+            }
+        else:
+            raise ValueError(f"Unknown enum value {self.value}")
 
 
-class PipelineType(HaystackType, Enum):
+class PipelineType(str, Enum):
     """
-    Enum containing all supported haystack pipelines
+    Enum containing all supported Haystack pipelines
     """
 
     DocumentSearchPipeline = "DocumentSearchPipeline"
 
-    _constructor_dict = {"DocumentSearchPipeline": DocumentSearchPipelineModule}
+    @property
+    def constructor(self) -> Type[Any]:
+        if self.value == PipelineType.DocumentSearchPipeline:
+            return DocumentSearchPipelineModule
+        else:
+            raise ValueError(f"Unknown enum value {self.value}")
+
+    @property
+    def default_args(self) -> Dict[str, Any]:
+        if self.value == PipelineType.DocumentSearchPipeline:
+            return {}
+        else:
+            raise ValueError(f"Unknown enum value {self.value}")
 
 
 class HaystackPipelineConfig(BaseModel):
@@ -153,10 +214,11 @@ class HaystackPipelineConfig(BaseModel):
     document_store: DocumentStoreType = Field(
         description="Name of haystack document store to use. "
         "Default ElasticsearchDocumentStore",
-        default=DocumentStoreType.ElasticsearchDocumentStore,
+        default=DocumentStoreType.FAISSDocumentStore,
     )
     document_store_args: Dict[str, Any] = Field(
-        description="Keyword arguments for initializing document_store", default={}
+        description="Keyword arguments for initializing document_store",
+        default=document_store.default.default_args,
     )
     retriever: RetrieverType = Field(
         description="Name of document retriever to use. Default "
@@ -164,43 +226,126 @@ class HaystackPipelineConfig(BaseModel):
         default=RetrieverType.DeepSparseEmbeddingRetriever,
     )
     retriever_args: Dict[str, Any] = Field(
-        description="Keyword arguments for initializing retriever", default={}
+        description="Keyword arguments for initializing retriever",
+        default=retriever.default.default_args,
     )
     haystack_pipeline: PipelineType = Field(
-        description="Name of haystack pipeline to use. Default "
+        description="Name of Haystack pipeline to use. Default "
         "DocumentSearchPipeline",
         default=PipelineType.DocumentSearchPipeline,
     )
     haystack_pipeline_args: Dict[str, Any] = Field(
-        description="Keyword arguments for initializing haystack_pipeline", default={}
+        description="Keyword arguments for initializing haystack_pipeline",
+        default=haystack_pipeline.default.default_args,
     )
 
 
-""" TODO
 @Pipeline.register(
     task="haystack",
     task_aliases=[],
     default_model_path=None,
 )
-"""
 class HaystackPipeline(Pipeline):
     def __init__(
         self,
         *,
         engine_type: str = DEEPSPARSE_ENGINE,
         batch_size: int = 1,
-        num_cores: int = None,
-        scheduler: Scheduler = None,
+        num_cores: Optional[int] = None,
+        scheduler: Optional[Scheduler] = None,
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         sequence_length: int = 128,
         docs: Optional[List[Dict]] = None,
-        config: Optional[Union[HaystackPipelineConfig, dict]] = None,
+        config: Optional[Union[HaystackPipelineConfig, Dict[str, Any]]] = None,
         **retriever_kwargs,
     ):
         """
-        TODO:
+        Neural Magic's pipeline for running Haystack's DocumentSearchPipeline.
+        Supports selected Haystack Nodes as well as Haystack nodes integrated
+        with the Neural Magic DeepSparse Engine
+
+        example instantiation:
+        ```python
+        haystack_pipeline = Pipeline.create(
+            task="haystack",
+            config: {
+                "retriever": "DeepSparseEmbeddingRetriever",
+                "retriever_args": {
+                    "model_path": "masked_language_modeling_model_dir/"
+                    "extraction_strategy": "reduce_mean"
+                }
+            },
+        )
+        ```
+
+        writing documents:
+        ```
+        haystack_pipeline.write_documents(
+            {
+                "title": "Claude Shannon"
+                "content": "Claude Elwood Shannon was an American mathematician, "
+                "electrical engineer, and cryptographer known as a father of "
+                "information theory."
+            },
+            {
+                "title": "Vincent van Gogh"
+                "content": "Van Gogh was born into an upper-middle-class family. "
+                "As a child he was serious, quiet and thoughtful. He began drawing "
+                "at an early age and as a young man worked as an art dealer."
+            },
+            {
+                "title": "Stevie Wonder"
+                "content": "Stevland Hardaway Morris, known professionally as "
+                "Stevie Wonder, is an American singer and musician, who is "
+                "credited as a pioneer and influence by musicians across a range "
+                "of genres that includes rhythm and blues, pop, soul, gospel, "
+                "funk and jazz."
+            }
+        )
+        ```
+
+        example queries:
+        ```python
+        results = haystack_pipeline(
+            queries="who invented information theory",
+            params={"Retriever": {"top_k": 4}}
+        )
+        results = haystack_pipeline(
+            queries=[
+                "famous artists",
+                "what is Stevie Wonder's real name?"
+            ],
+            params={"Retriever": {"top_k": 4}}
+        )
+        ```
+
+        :param model_path: sparsezoo stub to a transformers model or (preferred) a
+            directory containing a model.onnx, tokenizer config, and model config
+        :param engine_type: inference engine to use. Currently supported values include
+            'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+        :param batch_size: static batch size to use for inference. Default is 1
+        :param num_cores: number of CPU cores to allocate for inference engine. None
+            specifies all available cores. Default is None
+        :param scheduler: (deepsparse only) kind of scheduler to execute with.
+            Pass None for the default
+        :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+            to use model as-is. Default is None
+        :param alias: optional name to give this pipeline instance, useful when
+            inferencing with multiple models. Default is None
+        :param sequence_length: sequence length to compile model and tokenizer for.
+            If a list of lengths is provided, then for each length, a model and
+            tokenizer will be compiled capable of handling that sequence length
+            (also known as a bucket). Default is 128
+        :param docs: list of documents to be written to document_store. Can also
+            be written after instantiation with write_documents method.
+            Default is None
+        :param config: dictionary or instance of HaystackPipelineConfig. Used to
+            specify Haystack node arguments
+        :param retriever_kwargs: keyword arguments to be passed to retriever. If
+            the retriever is a deepsparse retriever, then these arguments will also
+            be passed to the EmbeddingExtractionPipeline of the retriever
         """
         # transformer pipeline members
         self._sequence_length = sequence_length
@@ -228,6 +373,10 @@ class HaystackPipeline(Pipeline):
                 "Found model path in HaystackPipeline arguments. Specify model path "
                 "through config.retriever_args instead"
             )
+        if "max_seq_len" in retriever_kwargs:
+            raise ValueError(
+                "Specify max_seq_len by passing sequence_length to pipeline constructor"
+            )
         retriever_kwargs["engine_type"] = engine_type
         retriever_kwargs["batch_size"] = batch_size
         retriever_kwargs["num_cores"] = num_cores
@@ -236,23 +385,31 @@ class HaystackPipeline(Pipeline):
         retriever_kwargs["alias"] = alias
         retriever_kwargs["context"] = context
         retriever_kwargs["max_seq_len"] = sequence_length
-        self._config = self._parse_config(config, retriever_kwargs)
+        self._config = self._parse_config(config)
 
         self.initialize_pipeline(retriever_kwargs)
         if docs is not None:
-            self.write_docs(docs, overwrite=True)
+            self.write_documents(docs, overwrite=True)
 
     @property
     @staticmethod
-    def default_model_path(cls):
+    def default_model_path() -> str:
         """
-        TODO
+        model_path is not supported by HaystackPipeline
+
+        :return: empty string
         """
         return ""
 
-    def merge_retriever_args(self, retriever_args: Dict[str, Any], retriever_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_retriever_args(self, config_retriever_args: Dict[str, Any], init_retriever_kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """
-        TODO:
+        Merges retriever args given in config with args given at
+        HaystackPipeline initialization. Raises errors for conflicts
+
+        :param config_retriever_args: arguments given in config
+        :param init_retriever_kwargs: retriever arguments given at
+            HaystackPipeline initialization
+        :return: merged arguments from both inputs
         """
         kwargs = retriever_kwargs.copy()
 
@@ -267,32 +424,40 @@ class HaystackPipeline(Pipeline):
         retriever_args.update(kwargs)
         return retriever_args
 
-    def initialize_pipeline(self, retriever_kwargs: Dict[str, Any]) -> None:
+    def initialize_pipeline(self, init_retriever_kwargs: Dict[str, Any]) -> None:
         """
-        TODO:
+        Instantiate Haystack nodes needed to run pipeline
+
+        :param init_retriever_kwargs: retriever args passed at the initialization
+        of this pipeline
+        :return: None
         """
         # merge retriever_args
         if self._config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
-            retriever_args = self.merge_retriever_args(
-                self._config.retriever_args, retriever_kwargs
+            retriever_args = self._merge_retriever_args(
+                self._config.retriever_args, init_retriever_kwargs
             )
         else:
             retriever_args = self._config.retriever_args
 
         # intialize haystack nodes
-        self._document_store = self._config.document_store.construct(
+        self._document_store = self._config.document_store.constructor(
             **self._config.document_store_args
         )
-        self._retriever = self._config.retriever.construct(
+        self._retriever = self._config.retriever.constructor(
             self._document_store, **retriever_args
         )
-        self._haystack_pipeline = self._config.haystack_pipeline.construct(
+        self._haystack_pipeline = self._config.haystack_pipeline.constructor(
             self._retriever, **self._config.haystack_pipeline_args
         )
 
-    def write_docs(self, docs: List[Dict], overwrite: bool = True):
+    def write_documents(self, docs: List[Union[Dict[Any, Any], Document]], overwrite: bool = True) -> None:
         """
-        TODO:
+        Write documents to document_store
+
+        :param docs: list of dicts or Documents to write
+        :param overwrite: delete previous documents in store before writing
+        :return: None
         """
         if overwrite:
             self._document_store.delete_documents()
@@ -301,10 +466,11 @@ class HaystackPipeline(Pipeline):
 
 
     def _parse_config(
-        self, config: Optional[Union[HaystackPipelineConfig, dict]], retriever_kwargs: Dict[str, Any]
-    ) -> Type[BaseModel]:
+        self, config: Optional[Union[HaystackPipelineConfig, dict]],
+    ) -> BaseModel:
         """
-        TODO:
+        :param config: instance of config_schema or dictionary of config values
+        :return: instance of config_schema
         """
         config = config if config else self.config_schema()
 
@@ -325,7 +491,12 @@ class HaystackPipeline(Pipeline):
 
     def __call__(self, *args, **kwargs) -> BaseModel:
         """
-        TODO:
+        Run Haystack pipeline
+
+        :param args: input args
+        :param kwargs: input kwargs
+        :return: outputs from Haystack pipeline. If multiple inputs are passed,
+            then each field contains a list of values
         """
         if "engine_inputs" in kwargs:
             raise ValueError(
@@ -363,9 +534,12 @@ class HaystackPipeline(Pipeline):
 
         return outputs
 
-    def process_pipeline_outputs(self, results):
+    def process_pipeline_outputs(self, results: Union[Dict[str, Any], List[Dict[str, Any]]]) -> BaseModel:
         """
-        TODO:
+        :results: list or instance of a dictionary containing outputs from
+            Haystack pipeline
+        :return: results cast to output_schema. If multiple inputs are passed,
+            then each field contains a list of values
         """
         if isinstance(results, List):
             outputs = {key: [] for key in results[0].keys()}
@@ -394,7 +568,8 @@ class HaystackPipeline(Pipeline):
     @property
     def config_schema(self) -> Type[BaseModel]:
         """
-        TODO:
+        :return: pydantic model class that configs passed to this pipeline must
+            comply to
         """
         return HaystackPipelineConfig
 
@@ -413,3 +588,18 @@ class HaystackPipeline(Pipeline):
         inputs: BaseModel,
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
         raise NotImplementedError()
+
+def print_pipeline_documents(haystack_pipeline_output: HaystackPipelineOutput) -> None:
+    """
+    Helper function to print documents directly from NM Haystack Pipeline outputs
+
+    :param haystack_pipeline_output: instance of HaystackPipelineOutput schema
+    :return: None
+    """
+    documents = haystack_pipeline_output.documents
+    if isinstance(documents, list):
+        for i in range(len(documents)):
+            results_dict = {key: value[i] for key, value in haystack_pipeline_output.dict().items()}
+            print_documents(results_dict)
+    else:
+        print_documents(documents.dict())

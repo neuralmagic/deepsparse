@@ -75,6 +75,7 @@ class SupportedTasks:
             "text_classification",
             "token_classification",
             "embedding_extraction",
+            "haystack",
         ],
     )(
         question_answering=AliasedTask("question_answering", ["qa"]),
@@ -83,6 +84,7 @@ class SupportedTasks:
         ),
         token_classification=AliasedTask("token_classification", ["ner"]),
         embedding_extraction=AliasedTask("embedding_extraction", []),
+        haystack=AliasedTask("haystack", []),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(

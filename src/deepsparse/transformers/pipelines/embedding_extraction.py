@@ -68,7 +68,7 @@ class EmbeddingExtractionOutput(BaseModel):
     Schema for embedding_extraction pipeline output. Values are in batch order
     """
 
-    embeddings: List[numpy.ndarray] = Field(
+    embeddings: Union[List[List[float]], List[numpy.ndarray]] = Field(
         description="The output of the model which is an embedded "
         "representation of the input"
     )
@@ -103,7 +103,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         ]
     )
     emb_1, emb_2 = results.embeddings
-    (expect emb_1 and emb_2 to have high cosine similiarity)
+    # (expect emb_1 and emb_2 to have high cosine similiarity)
     ```
 
     :param model_path: sparsezoo stub to a transformers model or (preferred) a
@@ -134,6 +134,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     :param show_progress_bar: token index(es) to extract from the embedding. Can
         either be an integer representing the CLS token index, or a list of indexes
         to extract. Default is 0
+    :param return_numpy: return embeddings a list of numpy arrays, list of lists
+        of floats otherwise. Default is True
     :param context: context for engine. If None, then the engine will be initialized
         with 2 streams to make use of parallel inference of labels. Default is None
     """
@@ -145,6 +147,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         model_size: int = 768,
         extraction_strategy: str = "per_token",
         show_progress_bar: bool = False,
+        return_numpy: bool = True,
         context: Optional[Context] = None,
         **kwargs,
     ):
@@ -152,6 +155,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         self._model_size = model_size
         self._extraction_strategy = extraction_strategy
         self._show_progress_bar = show_progress_bar
+        self._return_numpy = return_numpy
 
         if context is None:
             # num_streams is arbitrarily chosen to be any value >= 2
@@ -256,9 +260,10 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             truncation=TruncationStrategy.LONGEST_FIRST.value,
         )
 
-        # mask padding and cls token
-        pool_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
-        pool_masks[:, 0] = True
+        # mask padding and cls_token
+        pad_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
+        cls_masks = tokens["input_ids"] == self.tokenizer.cls_token_id
+        pool_masks = cls_masks | pad_masks
 
         return self.tokens_to_engine_input(tokens), {"pool_masks": pool_masks}
 
@@ -270,7 +275,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: result of forward pass to Pipeline engine
         """
 
-        def _engine_forward(batch_origin: int):
+        def _engine_forward(batch_origin: int) -> List[numpy.ndarray]:
             # run engine
             engine_input = engine_inputs_numpy[
                 :, batch_origin : batch_origin + self._batch_size, :
@@ -338,6 +343,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 embedding = masked_embedding.max(axis=0).flatten()
             if self._extraction_strategy == "cls_token":
                 embedding = engine_output[0].flatten()
+
+            if not self._return_numpy:
+                embedding = embedding.tolist()
 
             embeddings.append(embedding)
 
