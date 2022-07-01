@@ -121,13 +121,13 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     :param max_answer_length: maximum length of answer after decoding. Default is 15
     :param num_spans: if the context is too long to fit with the question for the
         model, it will be split in several chunks. This argument controls the maximum
-        number of spans to feed into the model.
+        number of spans to feed into the model. Default is None (all spans)
     """
 
     def __init__(
         self,
         *,
-        doc_stride: int = 128,
+        doc_stride: int = 120,
         max_question_length: int = 64,
         max_answer_length: int = 15,
         num_spans: Optional[int] = None,
@@ -369,6 +369,8 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         return ans_start, ans_end, score
 
     def _tokenize(self, example: SquadExample):
+        print(self.doc_stride)
+        print(self.sequence_length)
         if not self.tokenizer.is_fast:
             features = squad_convert_examples_to_features(
                 examples=[example],
