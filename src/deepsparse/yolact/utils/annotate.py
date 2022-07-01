@@ -18,7 +18,7 @@ import numpy
 
 import cv2
 from deepsparse.yolact.schemas import YOLACTOutputSchema
-from deepsparse.yolo.utils.utils import _get_color, _plot_fps
+from deepsparse.yolo.utils import _get_color, _plot_fps
 
 
 __all__ = ["annotate_image"]
