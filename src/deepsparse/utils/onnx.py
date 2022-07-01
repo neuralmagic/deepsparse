@@ -16,12 +16,13 @@ import contextlib
 import logging
 import os
 import tempfile
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 import numpy
 import onnx
 
 from deepsparse.utils.extractor import Extractor
+
 
 try:
     from sparsezoo import Zoo

@@ -60,7 +60,9 @@ class EmbeddingExtractionInput(BaseModel):
     Schema for inputs to embedding_extraction pipelines
     """
 
-    inputs: List[str] = Field(description="A list of sequences from which to get embeddings")
+    inputs: List[str] = Field(
+        description="A list of sequences from which to get embeddings"
+    )
 
 
 class EmbeddingExtractionOutput(BaseModel):
@@ -332,7 +334,10 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         embeddings = []
         for engine_output, pool_mask in zip(engine_outputs, pool_masks):
             assert engine_output.shape[0] == self.sequence_length
-            assert self._emb_extraction_layer is None or engine_output.shape[1] == self._model_size
+            assert (
+                self._emb_extraction_layer is None
+                or engine_output.shape[1] == self._model_size
+            )
             if self._extraction_strategy == "per_token":
                 embedding = engine_output.flatten()
             if self._extraction_strategy == "reduce_mean":
@@ -351,7 +356,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
         return self.output_schema(embeddings=embeddings)
 
-    def _remove_1d_mask(self, array: numpy.ndarray, mask: numpy.ndarray) -> numpy.ndarray:
+    def _remove_1d_mask(
+        self, array: numpy.ndarray, mask: numpy.ndarray
+    ) -> numpy.ndarray:
         """
         Helper function to mask out values from a 1 dimensional mask
 
@@ -360,7 +367,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: numpy masked array
         """
         array_masked = numpy.ma.masked_array(array)
-        array_masked[mask == True] = numpy.ma.masked
+        array_masked[mask] = numpy.ma.masked
 
         return array_masked
 
@@ -379,8 +386,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             current_seq_len = max(len(_input.split()) for _input in input_schema.inputs)
         else:
             raise ValueError(
-                "Expected a List[str] as input but got "
-                f"{type(input_schema.inputs)}"
+                "Expected a List[str] as input but got " f"{type(input_schema.inputs)}"
             )
 
         for pipeline in pipelines:

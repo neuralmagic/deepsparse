@@ -38,24 +38,25 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
-from deepsparse.pipeline import Pipeline, DEEPSPARSE_ENGINE
-from deepsparse.engine import Scheduler, Context
+from deepsparse.engine import Context, Scheduler
+from deepsparse.pipeline import DEEPSPARSE_ENGINE
+from deepsparse.transformers.haystack import (
+    DeepSparseDensePassageRetriever as DeepSparseDensePassageRetrieverModule,
+)
 from deepsparse.transformers.haystack import (
     DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule,
-    DeepSparseDensePassageRetriever as DeepSparseDensePassageRetrieverModule
 )
 from haystack.document_stores import (
-    InMemoryDocumentStore as InMemoryDocumentStoreModule,
     ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule,
-    FAISSDocumentStore as FAISSDocumentStoreModule,
 )
-from haystack.nodes import (
-    EmbeddingRetriever as EmbeddingRetrieverModule,
-    DensePassageRetriever as DensePassageRetrieverModule,
+from haystack.document_stores import FAISSDocumentStore as FAISSDocumentStoreModule
+from haystack.document_stores import (
+    InMemoryDocumentStore as InMemoryDocumentStoreModule,
 )
+from haystack.nodes import DensePassageRetriever as DensePassageRetrieverModule
+from haystack.nodes import EmbeddingRetriever as EmbeddingRetrieverModule
 from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
 from haystack.schema import Document
-from haystack.utils import print_documents
 
 
 __all__ = [
@@ -65,7 +66,6 @@ __all__ = [
     "RetrieverType",
     "HaystackPipelineConfig",
     "HaystackPipeline",
-    "print_pipeline_documents",
 ]
 
 
@@ -74,8 +74,12 @@ class HaystackPipelineInput(BaseModel):
     Schema for inputs to Haystack pipelines
     """
 
-    queries: Union[str, List[str]] = Field(description="String or list of strings to query documents with")
-    params: Dict[Any, Any] = Field(description="Dictionary of params to pass to Haystack pipeline", default={})
+    queries: Union[str, List[str]] = Field(
+        description="String or list of strings to query documents with"
+    )
+    params: Dict[Any, Any] = Field(
+        description="Dictionary of params to pass to Haystack pipeline", default={}
+    )
 
 
 class HaystackPipelineOutput(BaseModel):
@@ -138,6 +142,7 @@ class DocumentStoreType(str, Enum):
         else:
             raise ValueError(f"Unknown enum value {self.value}")
 
+
 # TODO: the error message for unknown RetrieverType arg is quite messy
 class RetrieverType(str, Enum):
     """
@@ -165,9 +170,7 @@ class RetrieverType(str, Enum):
     @property
     def default_args(self) -> Dict[str, Any]:
         if self.value == RetrieverType.EmbeddingRetriever:
-            return {
-                "pooling_strategy": "reduce_mean"
-            }
+            return {"pooling_strategy": "reduce_mean"}
         if self.value == RetrieverType.DeepSparseEmbeddingRetriever:
             return {
                 "pooling_strategy": "reduce_mean",
@@ -176,9 +179,7 @@ class RetrieverType(str, Enum):
         if self.value == RetrieverType.DensePassageRetriever:
             return {}
         if self.value == RetrieverType.DeepSparseDensePassageRetriever:
-            return {
-                "pooling_strategy": "reduce_mean"
-            }
+            return {"pooling_strategy": "reduce_mean"}
         else:
             raise ValueError(f"Unknown enum value {self.value}")
 
@@ -308,10 +309,12 @@ class HaystackPipeline(Pipeline):
 
         example queries:
         ```python
-        results = haystack_pipeline(
+        from deepsparse.transformers.haystack import print_pipeline_documents
+        pipeline_outputs = haystack_pipeline(
             queries="who invented information theory",
             params={"Retriever": {"top_k": 4}}
         )
+        print_pipeline_documents(pipeline_outputs)
         results = haystack_pipeline(
             queries=[
                 "famous artists",
@@ -319,6 +322,7 @@ class HaystackPipeline(Pipeline):
             ],
             params={"Retriever": {"top_k": 4}}
         )
+        print_pipeline_documents(pipeline_outputs)
         ```
 
         :param model_path: sparsezoo stub to a transformers model or (preferred) a
@@ -364,11 +368,16 @@ class HaystackPipeline(Pipeline):
         if retriever_kwargs.get("batch_size") and retriever_kwargs["batch_size"] != 1:
             raise ValueError(
                 f"{self.__class__.__name__} currently only supports batch size 1, "
-                f"batch size set to {kwargs['batch_size']}"
+                f"batch size set to {retriever_kwargs['batch_size']}"
             )
 
         # pass arguments to retriever (which then passes to extraction pipeline)
-        if "model_path" in retriever_kwargs or "embedding_model" in retriever_kwargs or "query_model_path" in retriever_kwargs or "passage_model_path" in retriever_kwargs:
+        if (
+            "model_path" in retriever_kwargs
+            or "embedding_model" in retriever_kwargs
+            or "query_model_path" in retriever_kwargs
+            or "passage_model_path" in retriever_kwargs
+        ):
             raise ValueError(
                 "Found model path in HaystackPipeline arguments. Specify model path "
                 "through config.retriever_args instead"
@@ -401,7 +410,11 @@ class HaystackPipeline(Pipeline):
         """
         return ""
 
-    def _merge_retriever_args(self, config_retriever_args: Dict[str, Any], init_retriever_kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_retriever_args(
+        self,
+        config_retriever_args: Dict[str, Any],
+        init_retriever_kwargs: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """
         Merges retriever args given in config with args given at
         HaystackPipeline initialization. Raises errors for conflicts
@@ -411,18 +424,18 @@ class HaystackPipeline(Pipeline):
             HaystackPipeline initialization
         :return: merged arguments from both inputs
         """
-        kwargs = retriever_kwargs.copy()
+        init_retriever_kwargs = init_retriever_kwargs.copy()
 
         # check for conflicting arguments
-        for kwarg in kwargs:
-            if kwarg in retriever_args.keys():
+        for key in init_retriever_kwargs.keys():
+            if key in config_retriever_args.keys():
                 raise ValueError(
-                    f"Found {kwarg} in both HaystackPipeline arguments and "
-                    "config retriever_args. Use only one"
+                    f"Found {key} in both HaystackPipeline arguments and config "
+                    "retriever_args. Specify only one"
                 )
 
-        retriever_args.update(kwargs)
-        return retriever_args
+        config_retriever_args.update(init_retriever_kwargs)
+        return config_retriever_args
 
     def initialize_pipeline(self, init_retriever_kwargs: Dict[str, Any]) -> None:
         """
@@ -451,7 +464,9 @@ class HaystackPipeline(Pipeline):
             self._retriever, **self._config.haystack_pipeline_args
         )
 
-    def write_documents(self, docs: List[Union[Dict[Any, Any], Document]], overwrite: bool = True) -> None:
+    def write_documents(
+        self, docs: List[Union[Dict[Any, Any], Document]], overwrite: bool = True
+    ) -> None:
         """
         Write documents to document_store
 
@@ -464,9 +479,9 @@ class HaystackPipeline(Pipeline):
         self._document_store.write_documents(docs)
         self._document_store.update_embeddings(self._retriever)
 
-
     def _parse_config(
-        self, config: Optional[Union[HaystackPipelineConfig, dict]],
+        self,
+        config: Optional[Union[HaystackPipelineConfig, dict]],
     ) -> BaseModel:
         """
         :param config: instance of config_schema or dictionary of config values
@@ -534,7 +549,9 @@ class HaystackPipeline(Pipeline):
 
         return outputs
 
-    def process_pipeline_outputs(self, results: Union[Dict[str, Any], List[Dict[str, Any]]]) -> BaseModel:
+    def process_pipeline_outputs(
+        self, results: Union[Dict[str, Any], List[Dict[str, Any]]]
+    ) -> BaseModel:
         """
         :results: list or instance of a dictionary containing outputs from
             Haystack pipeline
@@ -588,18 +605,3 @@ class HaystackPipeline(Pipeline):
         inputs: BaseModel,
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
         raise NotImplementedError()
-
-def print_pipeline_documents(haystack_pipeline_output: HaystackPipelineOutput) -> None:
-    """
-    Helper function to print documents directly from NM Haystack Pipeline outputs
-
-    :param haystack_pipeline_output: instance of HaystackPipelineOutput schema
-    :return: None
-    """
-    documents = haystack_pipeline_output.documents
-    if isinstance(documents, list):
-        for i in range(len(documents)):
-            results_dict = {key: value[i] for key, value in haystack_pipeline_output.dict().items()}
-            print_documents(results_dict)
-    else:
-        print_documents(documents.dict())

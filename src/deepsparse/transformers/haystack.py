@@ -12,24 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 import numpy
 
 from deepsparse import Pipeline
-from deepsparse.log import get_main_logger
 from deepsparse.engine import Context
-
+from deepsparse.log import get_main_logger
 from haystack.document_stores import BaseDocumentStore
-from haystack.nodes import EmbeddingRetriever, DensePassageRetriever
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
-from haystack.modeling.data_handler.processor import TextSimilarityProcessor
+from haystack.utils import print_documents
+
 
 __all__ = [
     "DeepSparseEmbeddingRetriever",
-    "DeepSparseDensePassageRetriever"
+    "DeepSparseDensePassageRetriever",
+    "print_pipeline_documents",
 ]
 
 
@@ -115,11 +116,12 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
     def load(*args, **kwargs):
         raise NotImplementedError()
 
+
 class DeepSparseDensePassageRetriever(DensePassageRetriever):
     def __init__(
         self,
         document_store: BaseDocumentStore,
-        query_model_path: str = "", # TODO: default
+        query_model_path: str = "",  # TODO: default
         passage_model_path: str = "",
         max_seq_len_query: int = 32,
         max_seq_len_passage: int = 32,
@@ -131,8 +133,12 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         progress_bar: bool = True,
         scale_score: bool = True,
         context: Optional[Context] = None,
-        **pipeline_kwargs
+        **pipeline_kwargs,
     ):
+        """
+        TODO:
+
+        """
         super(BaseRetriever).__init__()
 
         self.document_store = document_store
@@ -154,18 +160,22 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             )
         elif document_store.similarity != "dot_product":
             _LOGGER.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
-                "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
+                "You are using a Dense Passage Retriever model with the "
+                f"{document_store.similarity} function. We recommend you use "
+                "dot_product instead. This can be set when initializing the "
+                "DocumentStore"
             )
         if pooling_strategy != "per_token":
             _LOGGER.warning(
-                f"You are using a Dense Passage Retriever model with {pooling_strategy} pooling_strategy. "
-                "We recommend you use per_token instead."
+                "You are using a Dense Passage Retriever model with "
+                f"{pooling_strategy} pooling_strategy. We recommend you use "
+                "per_token instead."
             )
 
         if self.context is None:
-            self.context = Context(num_cores=None, num_streams=2) # arbitrarily choose 2
+            self.context = Context(
+                num_cores=None, num_streams=2
+            )  # arbitrarily choose 2
 
         _LOGGER.info("Creating query pipeline")
         self.query_pipeline = Pipeline.create(
@@ -177,7 +187,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             extraction_strategy=pooling_strategy,
             show_progress_bar=progress_bar,
             context=context,
-            **pipeline_kwargs
+            **pipeline_kwargs,
         )
         _LOGGER.info("Creating passage pipeline")
         self.passage_pipeline = Pipeline.create(
@@ -189,7 +199,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             extraction_strategy=pooling_strategy,
             show_progress_bar=progress_bar,
             context=context,
-            **pipeline_kwargs
+            **pipeline_kwargs,
         )
         _LOGGER.info("Query and passage pipelines initialized")
 
@@ -212,6 +222,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
 
     def load(*args, **kwargs):
         raise NotImplementedError()
+
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     """
@@ -253,3 +264,21 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
         passages = [d.content for d in docs]  # type: ignore
         return self.embed(passages)
+
+
+def print_pipeline_documents(haystack_pipeline_output: "HaystackPipelineOutput") -> None:
+    """
+    Helper function to print documents directly from NM Haystack Pipeline outputs
+
+    :param haystack_pipeline_output: instance of HaystackPipelineOutput schema
+    :return: None
+    """
+    documents = haystack_pipeline_output.documents
+    if isinstance(documents, list):
+        for i in range(len(documents)):
+            results_dict = {
+                key: value[i] for key, value in haystack_pipeline_output.dict().items()
+            }
+            print_documents(results_dict)
+    else:
+        print_documents(documents.dict())

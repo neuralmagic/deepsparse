@@ -236,7 +236,8 @@ def truncate_transformer_onnx_model(
         layer_init_names = [
             initializer.name
             for initializer in model.graph.initializer
-            if bert_layer_prog.match(initializer.name) or distillbert_layer_prog.match(initializer.name)
+            if bert_layer_prog.match(initializer.name)
+            or distillbert_layer_prog.match(initializer.name)
         ]
         assert len(layer_init_names) > 0
 
