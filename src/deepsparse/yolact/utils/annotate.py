@@ -15,7 +15,6 @@ import copy
 from typing import Optional, Tuple
 
 import numpy
-import numpy as np
 
 import cv2
 from deepsparse.yolact.schemas import YOLACTOutputSchema
