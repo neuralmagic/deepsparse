@@ -21,6 +21,9 @@ from deepsparse.yolact.schemas import YOLACTOutputSchema
 from deepsparse.yolo.utils.utils import _get_color, _plot_fps
 
 
+__all__ = ["annotate_image"]
+
+
 def annotate_image(
     image: numpy.ndarray,
     prediction: YOLACTOutputSchema,
@@ -69,10 +72,10 @@ def annotate_image(
 
     for box, mask, class_, score in zip(boxes, masks, classes, scores):
         if score > score_threshold:
-            colour = _get_color(class_)
+            color = _get_color(class_)
             left, top, _, _ = box
-            image_res = _put_mask(image=image_res, mask=mask, colour=colour)
-            image_res = _put_bounding_box(image=image_res, box=box, colour=colour)
+            image_res = _put_mask(image=image_res, mask=mask, color=color)
+            image_res = _put_bounding_box(image=image_res, box=box, color=color)
 
             annotation_text = f"{class_}: {score:.0%}"
             text_width, text_height = _get_text_size(annotation_text)
@@ -81,7 +84,7 @@ def annotate_image(
                 annotation_text=annotation_text,
                 left=left,
                 top=top,
-                colour=colour,
+                color=color,
                 text_width=text_width,
                 text_height=text_height,
             )
@@ -100,10 +103,10 @@ def annotate_image(
 
 
 def _put_mask(
-    image: numpy.ndarray, mask: numpy.ndarray, colour: Tuple[int, int, int]
-) -> np.ndarray:
-    img_with_non_transparent_masks = np.where(
-        mask[..., None], np.array(colour, dtype="uint8"), image
+    image: numpy.ndarray, mask: numpy.ndarray, color: Tuple[int, int, int]
+) -> numpy.ndarray:
+    img_with_non_transparent_masks = numpy.where(
+        mask[..., None], numpy.array(color, dtype="uint8"), image
     )
     img_with_non_transparent_masks = cv2.addWeighted(
         image, 0.3, img_with_non_transparent_masks, 0.7, 0
@@ -114,18 +117,20 @@ def _put_mask(
 def _put_annotation_text(
     image: numpy.ndarray,
     annotation_text: str,
-    colour: Tuple[int, int, int],
+    color: Tuple[int, int, int],
     text_width: int,
     text_height: int,
     left: int,
     top: int,
+    text_font_scale: float = 0.9,
+    text_thickness: int = 2,
 ) -> numpy.ndarray:
 
     image = cv2.rectangle(
         image,
         (int(left), int(top)),
         (int(left) + text_width, int(top) + text_height),
-        colour,
+        color,
         thickness=-1,
     )
 
@@ -134,24 +139,27 @@ def _put_annotation_text(
         annotation_text,
         (int(left), int(top) + text_height),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,  # font scale
+        text_font_scale,
         (255, 255, 255),  # white text
-        2,  # thickness
+        text_thickness,
         cv2.LINE_AA,
     )
     return image
 
 
 def _put_bounding_box(
-    image: numpy.ndarray, box: numpy.ndarray, colour: numpy.ndarray
+    image: numpy.ndarray,
+    box: numpy.ndarray,
+    color: numpy.ndarray,
+    bbox_thickness: int = 2,
 ) -> numpy.ndarray:
     left, top, right, bottom = box
     image = cv2.rectangle(
         image,
         (int(left), int(top)),
         (int(right), int(bottom)),
-        colour,
-        thickness=2,
+        color,
+        bbox_thickness,
     )
     return image
 
@@ -168,7 +176,7 @@ def _get_text_size(annotation_text: str) -> Tuple[int, int]:
 
 
 def _resize_to_fit_img(
-    original_image: numpy.ndarray, masks: numpy.ndarray, boxes
+    original_image: numpy.ndarray, masks: numpy.ndarray, boxes: numpy.ndarray
 ) -> Tuple[numpy.ndarray, numpy.ndarray]:
     # Ported from from
     # https://github.com/neuralmagic/yolact/blob/master/layers/output_utils.py

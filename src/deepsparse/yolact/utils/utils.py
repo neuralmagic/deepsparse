@@ -35,7 +35,7 @@ _all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "preprocess
 
 def preprocess_array(
     image: numpy.ndarray, input_image_size: Tuple[int, int] = (550, 550)
-) -> np.ndarray:
+) -> numpy.ndarray:
     """
     Preprocessing the input before feeding it into the YOLACT deepsparse pipeline
 
@@ -245,7 +245,7 @@ def fast_nms(
 def decode(loc: numpy.ndarray, priors: numpy.ndarray) -> numpy.ndarray:
     """
     Ported from
-    https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
+    https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
 
     Decode predicted bbox coordinates using the same scheme
     employed by Yolov2: https://arxiv.org/pdf/1612.08242.pdf
@@ -385,8 +385,8 @@ def postprocess(
     return classes, scores, boxes, masks
 
 
-def _assert_channels_last(array: numpy.ndarray) -> np.ndarray:
-    # make sure that the output is the array with dims
+def _assert_channels_last(array: numpy.ndarray) -> numpy.ndarray:
+    # make sure that the output is an array with dims
     # (B, H, W, C) or (H,W,C)
     if array.ndim == 4:
         if array.shape[1] < array.shape[2]:
