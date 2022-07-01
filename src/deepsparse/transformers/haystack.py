@@ -121,8 +121,8 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         document_store: BaseDocumentStore,
         query_model_path: str = "", # TODO: default
         passage_model_path: str = "",
-        max_seq_len_query: int = 512,
-        max_seq_len_passage: int = 512,
+        max_seq_len_query: int = 32,
+        max_seq_len_passage: int = 32,
         pooling_strategy: str = "per_token",
         top_k: int = 10,
         batch_size: int = 1,
@@ -139,6 +139,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         self.batch_size = batch_size
         self.embed_title = embed_title
         self.progress_bar = progress_bar
+        self.pooling_strategy = pooling_strategy
         self.top_k = top_k
         self.scale_score = scale_score
         self.context = context

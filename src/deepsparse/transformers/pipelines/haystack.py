@@ -178,12 +178,9 @@ class HaystackPipelineConfig(BaseModel):
 
 """ TODO
 @Pipeline.register(
-    task="embedding_extraction",
+    task="haystack",
     task_aliases=[],
-    default_model_path=(
-        "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        "wikipedia_bookcorpus/12layer_pruned80_quant-none-vnni"
-    ),
+    default_model_path=None,
 )
 """
 class HaystackPipeline(Pipeline):
@@ -244,6 +241,14 @@ class HaystackPipeline(Pipeline):
         self.initialize_pipeline(retriever_kwargs)
         if docs is not None:
             self.write_docs(docs, overwrite=True)
+
+    @property
+    @staticmethod
+    def default_model_path(cls):
+        """
+        TODO
+        """
+        return ""
 
     def merge_retriever_args(self, retriever_args: Dict[str, Any], retriever_kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -389,7 +394,7 @@ class HaystackPipeline(Pipeline):
     @property
     def config_schema(self) -> Type[BaseModel]:
         """
-        TODO
+        TODO:
         """
         return HaystackPipelineConfig
 

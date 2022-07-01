@@ -338,11 +338,12 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 embedding = masked_embedding.max(axis=0).flatten()
             if self._extraction_strategy == "cls_token":
                 embedding = engine_output[0].flatten()
+
             embeddings.append(embedding)
 
         return self.output_schema(embeddings=embeddings)
 
-    def _remove_1d_mask(self, array: numpy.ndarray, mask: numpy.ndarray):
+    def _remove_1d_mask(self, array: numpy.ndarray, mask: numpy.ndarray) -> numpy.ndarray:
         """
         Helper function to mask out values from a 1 dimensional mask
 
