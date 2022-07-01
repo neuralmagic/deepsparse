@@ -19,7 +19,6 @@ Helpers and Utilities for YOLACT
 from typing import Dict, Optional, Tuple
 
 import numpy
-import numpy as np
 
 
 try:
