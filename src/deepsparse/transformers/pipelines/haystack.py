@@ -143,7 +143,6 @@ class DocumentStoreType(str, Enum):
             raise ValueError(f"Unknown enum value {self.value}")
 
 
-# TODO: the error message for unknown RetrieverType arg is quite messy
 class RetrieverType(str, Enum):
     """
     Enum containing all supported haystack retrievers
@@ -170,7 +169,10 @@ class RetrieverType(str, Enum):
     @property
     def default_args(self) -> Dict[str, Any]:
         if self.value == RetrieverType.EmbeddingRetriever:
-            return {"pooling_strategy": "reduce_mean"}
+            return {
+                "pooling_strategy": "reduce_mean",
+                "batch_size": 64,
+            }
         if self.value == RetrieverType.DeepSparseEmbeddingRetriever:
             return {
                 "pooling_strategy": "reduce_mean",

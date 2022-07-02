@@ -125,19 +125,54 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         passage_model_path: str = "",
         max_seq_len_query: int = 32,
         max_seq_len_passage: int = 32,
+        batch_size: int = 1,
         pooling_strategy: str = "per_token",
         top_k: int = 10,
-        batch_size: int = 1,
-        embed_title: bool = True,
-        similarity_function: str = "dot_product",
+        embed_title: bool = False,
         progress_bar: bool = True,
         scale_score: bool = True,
         context: Optional[Context] = None,
         **pipeline_kwargs,
     ):
         """
-        TODO:
+        Deepsparse implementation of Haystack DensePassageRetriever
+        Utilizes two instances of EmbeddingExtractionPipeline
 
+        example integration into haystack pipeline:
+        ```python
+        document_store = ElasticsearchDocumentStore()
+        retriever = DeepSparseDensePassageRetriever(
+            document_store=document_store,
+            query_model_path="query_model_dir/",
+            passage_model_path="query_model_dir/"
+        )
+        pipeline = DocumentSearchPipeline(retriever)
+        ```
+
+        :param document_store: reference to document store to retrieve from
+        :param query_model_path: sparsezoo stub to a query model or (preferred) a
+            directory containing a model.onnx, tokenizer config, and model config
+        :param passage_model_path: sparsezoo stub to a passage model or (preferred)
+            a directory containing a model.onnx, tokenizer config, and model config
+        :param max_seq_len_query: longest length of each query sequence. Maximum
+            number of tokens for the document text. Longer ones will be cut down
+        :param max_seq_len_passage: longest length of each document sequence.
+            Maximum number of tokens for the document text. Longer ones will be
+            cut down
+        :param batch_size: number of documents and queries to encode at once
+        :param pooling_strategy: strategy for combining embeddings
+        :param top_k: how many documents to return per query
+        :param embed_title: True if titles should be embedded into the passage.
+            Default is False
+        :param progress_bar: if true displays progress bar during embedding
+        :param scale_score: whether to scale the similarity score to the unit interval
+            (range of [0,1]). If true (default) similarity scores (e.g. cosine or
+            dot_product) which naturally have a different value range will be scaled
+            to a range of [0,1], where 1 means extremely relevant. Otherwise raw
+            similarity scores (e.g. cosine or dot_product) will be used
+        :param context: context shared between query and passage models. If None
+            is provided, then a new context with 4 streams will be created
+        :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
         """
         super(BaseRetriever).__init__()
 
@@ -153,10 +188,9 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         self.devices = ["cpu"]
 
         if document_store is None:
-            _LOGGER.warning(
-                "DensePassageRetriever initialized without a document store. "
-                "This is fine if you are performing DPR training. "
-                "Otherwise, please provide a document store in the constructor."
+            raise ValueError(
+                "DeepSparseDensePassageRetriever must be initialized with a "
+                "document_store"
             )
         elif document_store.similarity != "dot_product":
             _LOGGER.warning(
@@ -169,13 +203,18 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             _LOGGER.warning(
                 "You are using a Dense Passage Retriever model with "
                 f"{pooling_strategy} pooling_strategy. We recommend you use "
-                "per_token instead."
+                "per_token instead"
+            )
+        if embed_title:
+            raise ValueError(
+                "DeepSparseDensePassageRetriever does not support embedding "
+                "titles"
             )
 
         if self.context is None:
             self.context = Context(
-                num_cores=None, num_streams=2
-            )  # arbitrarily choose 2
+                num_cores=None, num_streams=4
+            )  # arbitrarily choose 4
 
         _LOGGER.info("Creating query pipeline")
         self.query_pipeline = Pipeline.create(
@@ -207,7 +246,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         return self.query_pipeline(texts).embeddings
 
     def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
-        # TODO: deal with self.embed_title
         passage_inputs = [doc.content for doc in docs]
         return self.passage_pipeline(passage_inputs).embeddings
 

@@ -44,6 +44,7 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 
 from deepsparse import Pipeline
 from deepsparse.engine import Context
+from deepsparse.log import get_main_logger
 from deepsparse.transformers.helpers import truncate_transformer_onnx_model
 from deepsparse.transformers.pipelines import TransformersPipeline
 
@@ -54,13 +55,15 @@ __all__ = [
     "EmbeddingExtractionPipeline",
 ]
 
+_LOGGER = get_main_logger()
+
 
 class EmbeddingExtractionInput(BaseModel):
     """
     Schema for inputs to embedding_extraction pipelines
     """
 
-    inputs: List[str] = Field(
+    inputs: Union[str, List[str]] = Field(
         description="A list of sequences from which to get embeddings"
     )
 
@@ -162,12 +165,13 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         if context is None:
             # num_streams is arbitrarily chosen to be any value >= 2
             context = Context(num_cores=None, num_streams=2)
-            kwargs.update({"context": context})
 
-            self._thread_pool = ThreadPoolExecutor(
-                max_workers=context.num_streams or 2,
-                thread_name_prefix="deepsparse.pipelines.embedding_extraction",
-            )
+        kwargs.update({"context": context})
+
+        self._thread_pool = ThreadPoolExecutor(
+            max_workers=context.num_streams or 2,
+            thread_name_prefix="deepsparse.pipelines.embedding_extraction",
+        )
 
         if self._extraction_strategy not in [
             "per_token",
@@ -214,6 +218,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 emb_extraction_layer=self._emb_extraction_layer,
                 model_size=self._model_size,
             )
+        else:
+            _LOGGER.info("Skipping model truncation")
 
         return onnx_path
 
@@ -254,6 +260,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
+        if isinstance(inputs.inputs, str):
+            inputs.inputs = [inputs.inputs]
+
         tokens = self.tokenizer(
             inputs.inputs,
             add_special_tokens=True,
@@ -265,9 +274,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         # mask padding and cls_token
         pad_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
         cls_masks = tokens["input_ids"] == self.tokenizer.cls_token_id
-        pool_masks = cls_masks | pad_masks
 
-        return self.tokens_to_engine_input(tokens), {"pool_masks": pool_masks}
+        return self.tokens_to_engine_input(tokens), {"pad_masks": pad_masks, "cls_masks": cls_masks}
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
@@ -321,18 +329,21 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         return engine_outputs
 
     def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], pool_masks: numpy.ndarray
+        self, engine_outputs: List[numpy.ndarray], pad_masks: numpy.ndarray, cls_masks: numpy.ndarray
     ) -> BaseModel:
         """
         Implements extraction_strategy from the intermediate layer and returns its value
 
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
+        :param pad_masks: mask of the padding token for each engine input
+        :param cls_masks: mask of the cls token for each engine input
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
         embeddings = []
-        for engine_output, pool_mask in zip(engine_outputs, pool_masks):
+        assert len(engine_outputs) == len(pad_masks) == len(cls_masks)
+        for engine_output, pad_mask, cls_mask in zip(engine_outputs, pad_masks, cls_masks):
             assert engine_output.shape[0] == self.sequence_length
             assert (
                 self._emb_extraction_layer is None
@@ -341,13 +352,13 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             if self._extraction_strategy == "per_token":
                 embedding = engine_output.flatten()
             if self._extraction_strategy == "reduce_mean":
-                masked_embedding = self._remove_1d_mask(engine_output, mask=pool_mask)
+                masked_embedding = self._remove_1d_mask(engine_output, mask=(pad_mask | cls_mask))
                 embedding = masked_embedding.mean(axis=0).flatten()
             if self._extraction_strategy == "reduce_max":
-                masked_embedding = self._remove_1d_mask(engine_output, mask=pool_mask)
+                masked_embedding = self._remove_1d_mask(engine_output, mask=(pad_mask | cls_mask))
                 embedding = masked_embedding.max(axis=0).flatten()
             if self._extraction_strategy == "cls_token":
-                embedding = engine_output[0].flatten()
+                embedding = engine_output[numpy.where(cls_mask)[0][0]].flatten()
 
             if not self._return_numpy:
                 embedding = embedding.tolist()

@@ -104,7 +104,6 @@ class TransformersPipeline(Pipeline, Bucketable):
         onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
             self.model_path, require_configs=True
         )
-        print(tokenizer_path)
 
         self.config = AutoConfig.from_pretrained(
             config_path, finetuning_task=self.task if hasattr(self, "task") else None
