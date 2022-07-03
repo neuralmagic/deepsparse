@@ -275,7 +275,10 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         pad_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
         cls_masks = tokens["input_ids"] == self.tokenizer.cls_token_id
 
-        return self.tokens_to_engine_input(tokens), {"pad_masks": pad_masks, "cls_masks": cls_masks}
+        return self.tokens_to_engine_input(tokens), {
+            "pad_masks": pad_masks,
+            "cls_masks": cls_masks,
+        }
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
@@ -329,7 +332,10 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         return engine_outputs
 
     def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], pad_masks: numpy.ndarray, cls_masks: numpy.ndarray
+        self,
+        engine_outputs: List[numpy.ndarray],
+        pad_masks: numpy.ndarray,
+        cls_masks: numpy.ndarray,
     ) -> BaseModel:
         """
         Implements extraction_strategy from the intermediate layer and returns its value
@@ -343,7 +349,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         embeddings = []
         assert len(engine_outputs) == len(pad_masks) == len(cls_masks)
-        for engine_output, pad_mask, cls_mask in zip(engine_outputs, pad_masks, cls_masks):
+        for engine_output, pad_mask, cls_mask in zip(
+            engine_outputs, pad_masks, cls_masks
+        ):
             assert engine_output.shape[0] == self.sequence_length
             assert (
                 self._emb_extraction_layer is None
@@ -352,10 +360,14 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             if self._extraction_strategy == "per_token":
                 embedding = engine_output.flatten()
             if self._extraction_strategy == "reduce_mean":
-                masked_embedding = self._remove_1d_mask(engine_output, mask=(pad_mask | cls_mask))
+                masked_embedding = self._remove_1d_mask(
+                    engine_output, mask=(pad_mask | cls_mask)
+                )
                 embedding = masked_embedding.mean(axis=0).flatten()
             if self._extraction_strategy == "reduce_max":
-                masked_embedding = self._remove_1d_mask(engine_output, mask=(pad_mask | cls_mask))
+                masked_embedding = self._remove_1d_mask(
+                    engine_output, mask=(pad_mask | cls_mask)
+                )
                 embedding = masked_embedding.max(axis=0).flatten()
             if self._extraction_strategy == "cls_token":
                 embedding = engine_output[numpy.where(cls_mask)[0][0]].flatten()

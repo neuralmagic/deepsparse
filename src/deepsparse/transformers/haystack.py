@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Union
+from typing import List, Optional, Type, Union
 
 import numpy
+from pydantic import BaseModel
 
 from deepsparse import Pipeline
 from deepsparse.engine import Context
@@ -207,8 +208,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             )
         if embed_title:
             raise ValueError(
-                "DeepSparseDensePassageRetriever does not support embedding "
-                "titles"
+                "DeepSparseDensePassageRetriever does not support embedding titles"
             )
 
         if self.context is None:
@@ -304,7 +304,9 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         return self.embed(passages)
 
 
-def print_pipeline_documents(haystack_pipeline_output: "HaystackPipelineOutput") -> None:
+def print_pipeline_documents(
+    haystack_pipeline_output: Type[BaseModel],
+) -> None:
     """
     Helper function to print documents directly from NM Haystack Pipeline outputs
 
