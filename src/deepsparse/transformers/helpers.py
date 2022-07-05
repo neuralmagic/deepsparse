@@ -265,7 +265,7 @@ def truncate_transformer_onnx_model(
             _LOGGER.info(f"Failed to truncate transformer: {exception}")
 
         if final_node_name is None:
-            raise Exception(f"Failed to truncate transformer model")
+            raise Exception("Failed to truncate transformer model")
 
     # Override outputs to create subgraph
     _LOGGER.info(f"Truncating transformer model to {final_node_name}")
