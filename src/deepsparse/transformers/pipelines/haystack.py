@@ -249,6 +249,96 @@ class HaystackPipelineConfig(BaseModel):
     default_model_path=None,
 )
 class HaystackPipeline(Pipeline):
+    """
+    Neural Magic's pipeline for running Haystack's DocumentSearchPipeline.
+    Supports selected Haystack Nodes as well as Haystack nodes integrated
+    with the Neural Magic DeepSparse Engine
+
+    example instantiation:
+    ```python
+    haystack_pipeline = Pipeline.create(
+        task="haystack",
+        config: {
+            "retriever": "DeepSparseEmbeddingRetriever",
+            "retriever_args": {
+                "model_path": "masked_language_modeling_model_dir/"
+                "extraction_strategy": "reduce_mean"
+            }
+        },
+    )
+    ```
+
+    writing documents:
+    ```
+    haystack_pipeline.write_documents(
+        {
+            "title": "Claude Shannon"
+            "content": "Claude Elwood Shannon was an American mathematician, "
+            "electrical engineer, and cryptographer known as a father of "
+            "information theory."
+        },
+        {
+            "title": "Vincent van Gogh"
+            "content": "Van Gogh was born into an upper-middle-class family. "
+            "As a child he was serious, quiet and thoughtful. He began drawing "
+            "at an early age and as a young man worked as an art dealer."
+        },
+        {
+            "title": "Stevie Wonder"
+            "content": "Stevland Hardaway Morris, known professionally as "
+            "Stevie Wonder, is an American singer and musician, who is "
+            "credited as a pioneer and influence by musicians across a range "
+            "of genres that includes rhythm and blues, pop, soul, gospel, "
+            "funk and jazz."
+        }
+    )
+    ```
+
+    example queries:
+    ```python
+    from deepsparse.transformers.haystack import print_pipeline_documents
+    pipeline_outputs = haystack_pipeline(
+        queries="who invented information theory",
+        params={"Retriever": {"top_k": 4}}
+    )
+    print_pipeline_documents(pipeline_outputs)
+    results = haystack_pipeline(
+        queries=[
+            "famous artists",
+            "what is Stevie Wonder's real name?"
+        ],
+        params={"Retriever": {"top_k": 4}}
+    )
+    print_pipeline_documents(pipeline_outputs)
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param docs: list of documents to be written to document_store. Can also
+        be written after instantiation with write_documents method.
+        Default is None
+    :param config: dictionary or instance of HaystackPipelineConfig. Used to
+        specify Haystack node arguments
+    :param retriever_kwargs: keyword arguments to be passed to retriever. If
+        the retriever is a deepsparse retriever, then these arguments will also
+        be passed to the EmbeddingExtractionPipeline of the retriever
+    """
+
     def __init__(
         self,
         *,
@@ -264,95 +354,6 @@ class HaystackPipeline(Pipeline):
         config: Optional[Union[HaystackPipelineConfig, Dict[str, Any]]] = None,
         **retriever_kwargs,
     ):
-        """
-        Neural Magic's pipeline for running Haystack's DocumentSearchPipeline.
-        Supports selected Haystack Nodes as well as Haystack nodes integrated
-        with the Neural Magic DeepSparse Engine
-
-        example instantiation:
-        ```python
-        haystack_pipeline = Pipeline.create(
-            task="haystack",
-            config: {
-                "retriever": "DeepSparseEmbeddingRetriever",
-                "retriever_args": {
-                    "model_path": "masked_language_modeling_model_dir/"
-                    "extraction_strategy": "reduce_mean"
-                }
-            },
-        )
-        ```
-
-        writing documents:
-        ```
-        haystack_pipeline.write_documents(
-            {
-                "title": "Claude Shannon"
-                "content": "Claude Elwood Shannon was an American mathematician, "
-                "electrical engineer, and cryptographer known as a father of "
-                "information theory."
-            },
-            {
-                "title": "Vincent van Gogh"
-                "content": "Van Gogh was born into an upper-middle-class family. "
-                "As a child he was serious, quiet and thoughtful. He began drawing "
-                "at an early age and as a young man worked as an art dealer."
-            },
-            {
-                "title": "Stevie Wonder"
-                "content": "Stevland Hardaway Morris, known professionally as "
-                "Stevie Wonder, is an American singer and musician, who is "
-                "credited as a pioneer and influence by musicians across a range "
-                "of genres that includes rhythm and blues, pop, soul, gospel, "
-                "funk and jazz."
-            }
-        )
-        ```
-
-        example queries:
-        ```python
-        from deepsparse.transformers.haystack import print_pipeline_documents
-        pipeline_outputs = haystack_pipeline(
-            queries="who invented information theory",
-            params={"Retriever": {"top_k": 4}}
-        )
-        print_pipeline_documents(pipeline_outputs)
-        results = haystack_pipeline(
-            queries=[
-                "famous artists",
-                "what is Stevie Wonder's real name?"
-            ],
-            params={"Retriever": {"top_k": 4}}
-        )
-        print_pipeline_documents(pipeline_outputs)
-        ```
-
-        :param model_path: sparsezoo stub to a transformers model or (preferred) a
-            directory containing a model.onnx, tokenizer config, and model config
-        :param engine_type: inference engine to use. Currently supported values include
-            'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-        :param batch_size: static batch size to use for inference. Default is 1
-        :param num_cores: number of CPU cores to allocate for inference engine. None
-            specifies all available cores. Default is None
-        :param scheduler: (deepsparse only) kind of scheduler to execute with.
-            Pass None for the default
-        :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-            to use model as-is. Default is None
-        :param alias: optional name to give this pipeline instance, useful when
-            inferencing with multiple models. Default is None
-        :param sequence_length: sequence length to compile model and tokenizer for.
-            If a list of lengths is provided, then for each length, a model and
-            tokenizer will be compiled capable of handling that sequence length
-            (also known as a bucket). Default is 128
-        :param docs: list of documents to be written to document_store. Can also
-            be written after instantiation with write_documents method.
-            Default is None
-        :param config: dictionary or instance of HaystackPipelineConfig. Used to
-            specify Haystack node arguments
-        :param retriever_kwargs: keyword arguments to be passed to retriever. If
-            the retriever is a deepsparse retriever, then these arguments will also
-            be passed to the EmbeddingExtractionPipeline of the retriever
-        """
         # transformer pipeline members
         self._sequence_length = sequence_length
         self.config = None

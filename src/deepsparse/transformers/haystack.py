@@ -119,11 +119,52 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 
 
 class DeepSparseDensePassageRetriever(DensePassageRetriever):
+    """
+    Deepsparse implementation of Haystack DensePassageRetriever
+    Utilizes two instances of EmbeddingExtractionPipeline
+
+    example integration into haystack pipeline:
+    ```python
+    document_store = ElasticsearchDocumentStore()
+    retriever = DeepSparseDensePassageRetriever(
+        document_store=document_store,
+        query_model_path="query_model_dir/",
+        passage_model_path="query_model_dir/"
+    )
+    pipeline = DocumentSearchPipeline(retriever)
+    ```
+
+    :param document_store: reference to document store to retrieve from
+    :param query_model_path: sparsezoo stub to a query model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param passage_model_path: sparsezoo stub to a passage model or (preferred)
+        a directory containing a model.onnx, tokenizer config, and model config
+    :param max_seq_len_query: longest length of each query sequence. Maximum
+        number of tokens for the document text. Longer ones will be cut down
+    :param max_seq_len_passage: longest length of each document sequence.
+        Maximum number of tokens for the document text. Longer ones will be
+        cut down
+    :param batch_size: number of documents and queries to encode at once
+    :param pooling_strategy: strategy for combining embeddings
+    :param top_k: how many documents to return per query
+    :param embed_title: True if titles should be embedded into the passage.
+        Default is False
+    :param progress_bar: if true displays progress bar during embedding
+    :param scale_score: whether to scale the similarity score to the unit interval
+        (range of [0,1]). If true (default) similarity scores (e.g. cosine or
+        dot_product) which naturally have a different value range will be scaled
+        to a range of [0,1], where 1 means extremely relevant. Otherwise raw
+        similarity scores (e.g. cosine or dot_product) will be used
+    :param context: context shared between query and passage models. If None
+        is provided, then a new context with 4 streams will be created
+    :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
+    """
+
     def __init__(
         self,
         document_store: BaseDocumentStore,
-        query_model_path: str = "",  # TODO: default
-        passage_model_path: str = "",
+        query_model_path,
+        passage_model_path,
         max_seq_len_query: int = 32,
         max_seq_len_passage: int = 32,
         batch_size: int = 1,
@@ -135,46 +176,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         context: Optional[Context] = None,
         **pipeline_kwargs,
     ):
-        """
-        Deepsparse implementation of Haystack DensePassageRetriever
-        Utilizes two instances of EmbeddingExtractionPipeline
-
-        example integration into haystack pipeline:
-        ```python
-        document_store = ElasticsearchDocumentStore()
-        retriever = DeepSparseDensePassageRetriever(
-            document_store=document_store,
-            query_model_path="query_model_dir/",
-            passage_model_path="query_model_dir/"
-        )
-        pipeline = DocumentSearchPipeline(retriever)
-        ```
-
-        :param document_store: reference to document store to retrieve from
-        :param query_model_path: sparsezoo stub to a query model or (preferred) a
-            directory containing a model.onnx, tokenizer config, and model config
-        :param passage_model_path: sparsezoo stub to a passage model or (preferred)
-            a directory containing a model.onnx, tokenizer config, and model config
-        :param max_seq_len_query: longest length of each query sequence. Maximum
-            number of tokens for the document text. Longer ones will be cut down
-        :param max_seq_len_passage: longest length of each document sequence.
-            Maximum number of tokens for the document text. Longer ones will be
-            cut down
-        :param batch_size: number of documents and queries to encode at once
-        :param pooling_strategy: strategy for combining embeddings
-        :param top_k: how many documents to return per query
-        :param embed_title: True if titles should be embedded into the passage.
-            Default is False
-        :param progress_bar: if true displays progress bar during embedding
-        :param scale_score: whether to scale the similarity score to the unit interval
-            (range of [0,1]). If true (default) similarity scores (e.g. cosine or
-            dot_product) which naturally have a different value range will be scaled
-            to a range of [0,1], where 1 means extremely relevant. Otherwise raw
-            similarity scores (e.g. cosine or dot_product) will be used
-        :param context: context shared between query and passage models. If None
-            is provided, then a new context with 4 streams will be created
-        :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
-        """
         super(BaseRetriever).__init__()
 
         self.document_store = document_store
@@ -243,9 +244,17 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         _LOGGER.info("Query and passage pipelines initialized")
 
     def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
+        """
+        :param texts: list of query strings to embed
+        :return: list of embeddings for each query
+        """
         return self.query_pipeline(texts).embeddings
 
     def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
+        """
+        :param docs: list of document strings to embed
+        :return: list of embeddings for each document
+        """
         passage_inputs = [doc.content for doc in docs]
         return self.passage_pipeline(passage_inputs).embeddings
 
@@ -264,10 +273,13 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
 
 class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     """
-    TODO
+    Deepsparse implementation of Haystack EmbeddingEncoder
+
+    :param retriever: retriever that uses this encoder
+    :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
     """
 
-    def __init__(self, retriever: DeepSparseEmbeddingRetriever, kwargs):
+    def __init__(self, retriever: DeepSparseEmbeddingRetriever, pipeline_kwargs):
         self.embedding_pipeline = Pipeline.create(
             "embedding_extraction",
             model_path=retriever.model_path,
@@ -276,7 +288,7 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
             emb_extraction_layer=retriever.emb_extraction_layer,
             extraction_strategy=retriever.pooling_strategy,
             show_progress_bar=retriever.progress_bar,
-            **kwargs,
+            **pipeline_kwargs,
         )
 
         self.batch_size = retriever.batch_size
@@ -292,15 +304,27 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed(
         self, texts: Union[List[List[str]], List[str], str]
     ) -> List[numpy.ndarray]:
+        """
+        :param texts: list of strings to embed
+        :return: list of embeddings for each string
+        """
         model_output = self.embedding_pipeline(texts)
         embeddings = [numpy.array(embedding) for embedding in model_output.embeddings]
         return embeddings
 
     def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
+        """
+        :param texts: list of query strings to embed
+        :return: list of embeddings for each query
+        """
         return self.embed(texts)
 
     def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
-        passages = [d.content for d in docs]  # type: ignore
+        """
+        :param docs: list of document strings to embed
+        :return: list of embeddings for each document
+        """
+        passages = [d.content for d in docs]
         return self.embed(passages)
 
 
