@@ -166,7 +166,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         query_model_path,
         passage_model_path,
         max_seq_len_query: int = 32,
-        max_seq_len_passage: int = 32,
+        max_seq_len_passage: int = 156,
         batch_size: int = 1,
         pooling_strategy: str = "per_token",
         top_k: int = 10,
@@ -201,11 +201,17 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
                 "dot_product instead. This can be set when initializing the "
                 "DocumentStore"
             )
-        if pooling_strategy != "per_token":
+        if pooling_strategy != "cls_token":
             _LOGGER.warning(
                 "You are using a Dense Passage Retriever model with "
                 f"{pooling_strategy} pooling_strategy. We recommend you use "
-                "per_token instead"
+                "cls_token instead"
+            )
+        if pooling_strategy == "per_token" and max_seq_len_query != max_seq_len_passage:
+            raise ValueError(
+                "per_token pooling strategy requires that max_seq_len_query "
+                f"({max_seq_len_query}) match max_seq_len_passage "
+                f"({max_seq_len_passage})"
             )
         if embed_title:
             raise ValueError(
@@ -223,7 +229,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             query_model_path,
             batch_size=batch_size,
             sequence_length=max_seq_len_query,
-            emb_extraction_layer=None,
+            emb_extraction_layer=-1,
             extraction_strategy=pooling_strategy,
             show_progress_bar=progress_bar,
             context=context,
@@ -235,7 +241,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             passage_model_path,
             batch_size=batch_size,
             sequence_length=max_seq_len_passage,
-            emb_extraction_layer=None,
+            emb_extraction_layer=-1,
             extraction_strategy=pooling_strategy,
             show_progress_bar=progress_bar,
             context=context,
