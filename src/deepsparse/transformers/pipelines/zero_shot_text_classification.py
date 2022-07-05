@@ -99,7 +99,7 @@ class ZeroShotTextClassificationOutput(BaseModel):
 )
 class ZeroShotTextClassificationPipeline(TransformersPipeline):
     """
-    transformers zero-shot zero shot text classification pipeline
+    transformers zero shot text classification pipeline
 
     example dynamic labels:
     ```python
@@ -200,6 +200,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
 
         # if dynamic labels
         if self._labels is None:
+            # TODO: refactor when elastic scheduler implements work stealing
             if context is None:
                 # num_streams is arbitrarily chosen to be any value >= 2
                 context = Context(num_cores=None, num_streams=2)
