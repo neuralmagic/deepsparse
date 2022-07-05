@@ -136,8 +136,7 @@ path = ['thailand.jpg'] # list of images for inference
 files = [('request', open(img, 'rb')) for img in path]
 resp = requests.post(url=url, files=files)
 annotations = json.loads(resp.text) # dictionary of annotation results
-bounding_boxes = annotations["predictions"]
-labels = annotations["labels"]
+boxes, classes, masks, scores = annotations["boxes"], annotations["classes"], annotations["masks"], annotations["scores"]
 ```
 
 ### Benchmarking
