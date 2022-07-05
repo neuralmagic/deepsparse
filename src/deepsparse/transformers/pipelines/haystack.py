@@ -246,7 +246,8 @@ class HaystackPipelineConfig(BaseModel):
 @Pipeline.register(
     task="haystack",
     task_aliases=[],
-    default_model_path=None,
+    default_model_path="zoo:nlp/masked_language_modeling/bert-base/pytorch/"
+    "huggingface/bookcorpus_wikitext/3layer_pruned90-none",
 )
 class HaystackPipeline(Pipeline):
     """
@@ -375,16 +376,6 @@ class HaystackPipeline(Pipeline):
             )
 
         # pass arguments to retriever (which then passes to extraction pipeline)
-        if (
-            "model_path" in retriever_kwargs
-            or "embedding_model" in retriever_kwargs
-            or "query_model_path" in retriever_kwargs
-            or "passage_model_path" in retriever_kwargs
-        ):
-            raise ValueError(
-                "Found model path in HaystackPipeline arguments. Specify model path "
-                "through config.retriever_args instead"
-            )
         if "max_seq_len" in retriever_kwargs:
             raise ValueError(
                 "Specify max_seq_len by passing sequence_length to pipeline constructor"
@@ -402,16 +393,6 @@ class HaystackPipeline(Pipeline):
         self.initialize_pipeline(retriever_kwargs)
         if docs is not None:
             self.write_documents(docs, overwrite=True)
-
-    @property
-    @staticmethod
-    def default_model_path() -> str:
-        """
-        model_path is not supported by HaystackPipeline
-
-        :return: empty string
-        """
-        return ""
 
     def _merge_retriever_args(
         self,

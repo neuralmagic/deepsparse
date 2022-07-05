@@ -337,12 +337,11 @@ def print_pipeline_documents(
     :param haystack_pipeline_output: instance of HaystackPipelineOutput schema
     :return: None
     """
-    documents = haystack_pipeline_output.documents
-    if isinstance(documents, list):
-        for i in range(len(documents)):
+    if isinstance(haystack_pipeline_output.query, list):
+        for i in range(len(haystack_pipeline_output.query)):
             results_dict = {
                 key: value[i] for key, value in haystack_pipeline_output.dict().items()
             }
             print_documents(results_dict)
     else:
-        print_documents(documents.dict())
+        print_documents(haystack_pipeline_output.dict())
