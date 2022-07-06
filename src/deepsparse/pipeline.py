@@ -737,16 +737,22 @@ class Bucketable(ABC):
 
 def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
-    transformers zero-shot zero shot text classification pipeline
+    Transformers zero shot text classification pipeline. This pipeline allows for
+    text classification using models which were trained on datasets not originally
+    meant for this task.
+
+    This class upon construction returns an instance of a child Pipeline which
+    inherits from ZeroShotTextClassificationImplementation. Which type of Pipeline
+    is returned depends on the value of the passed model_scheme argument.
 
     example dynamic labels:
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
         num_sequences=1,
-        model_scheme="nli",
+        model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
-        model_path="nli_model_dir/",
+        model_path="mnli_model_dir/",
     )
 
     sequence_to_classify = "Who are you voting for in 2020?"
@@ -762,8 +768,8 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
         num_sequences=1,
-        model_scheme="nli",
-        model_path="nli_model_dir/",
+        model_scheme="mnli",
+        model_path="mnli_model_dir/",
         labels=["politics", "Europe", "public health"]
     )
 
@@ -802,7 +808,7 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
     :param model_scheme: training scheme used to train the model used for zero shot.
-        Currently supported schemes are "nli"
+        Default is "mnli"
     :param model_config: config object specific to the model_scheme of this model
         or a dict of config keyword arguments
     :param num_sequences: the number of sequences to handle per batch.
