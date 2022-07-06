@@ -19,17 +19,6 @@ import pytest
 from deepsparse import Pipeline
 
 
-try:
-    import pytest_asyncio
-except Exception:
-    pytest_asyncio = None
-
-async_only = pytest.mark.skipif(
-    pytest_asyncio is None,
-    reason="Run only when pytest-asyncio available",
-)
-
-
 @pytest.fixture()
 def pipeline():
     """
@@ -129,20 +118,6 @@ def test_passing_threadpool_during_pipeline_call_results_in_correct_schema(
 ):
     sync_result = pipeline(**qa_input)
     async_result = pipeline(**qa_input, threadpool=threadpool).result()
-
-    assert type(sync_result) == type(
-        async_result
-    ), "Schema mismatch b/w Sequential and Async pipeline"
-
-
-@async_only
-@pytest.mark.asyncio
-async def test_awaiting_async_pipeline_results_in_correct_schema(
-    pipeline, threaded_pipeline, qa_input
-):
-    # Will be skipped if pytest-asyncio not installed
-    sync_result = pipeline(**qa_input)
-    async_result = await threaded_pipeline(**qa_input)
 
     assert type(sync_result) == type(
         async_result
