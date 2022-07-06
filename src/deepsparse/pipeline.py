@@ -17,9 +17,9 @@ Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
 
-import concurrent.futures
 import os
 from abc import ABC, abstractmethod
+from concurrent.futures import Future
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -164,55 +164,10 @@ class Pipeline(ABC):
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
 
-
-
-    def __call__(self, *args, **kwargs) -> BaseModel:
-        if "engine_inputs" in kwargs:
-            raise ValueError(
-                "invalid kwarg engine_inputs. engine inputs determined "
-                f"by {self.__class__.__qualname__}.parse_inputs"
-            )
-
-        # parse inputs into input_schema schema if necessary
-        pipeline_inputs = self.parse_inputs(*args, **kwargs)
-        if not isinstance(pipeline_inputs, self.input_schema):
-            raise RuntimeError(
-                f"Unable to parse {self.__class__} inputs into a "
-                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
-            )
-
-        # run pipeline
-        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
-
-        if isinstance(engine_inputs, tuple):
-            engine_inputs, postprocess_kwargs = engine_inputs
-        else:
-            postprocess_kwargs = {}
-
-        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
-        pipeline_outputs = self.process_engine_outputs(
-            engine_outputs, **postprocess_kwargs
-        )
-
-        # validate outputs format
-        if not isinstance(pipeline_outputs, self.output_schema):
-            raise ValueError(
-                f"Outputs of {self.__class__} must be instances of "
-                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
-            )
-
-        return pipeline_outputs
-
-    def submit(self, *args, **kwargs) -> concurrent.futures:
-        """
-        Asynchronous inference, returns a future
-        """
-        if not self._threadpool:
-            raise ValueError(
-                "Cannot submit jobs to an uninitialized threadpool"
-            )
-        future = self._threadpool.submit(lambda: self(*args, **kwargs))
-        return future
+    def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
+        if self._threadpool:
+            return self._threadpool.submit(lambda: self._execute(*args, **kwargs))
+        return self._execute(*args, **kwargs)
 
     @staticmethod
     def create(
@@ -563,6 +518,43 @@ class Pipeline(ABC):
         :return: result of forward pass to Pipeline engine
         """
         return self.engine(engine_inputs)
+
+    def _execute(self, *args, **kwargs):
+        if "engine_inputs" in kwargs:
+            raise ValueError(
+                "invalid kwarg engine_inputs. engine inputs determined "
+                f"by {self.__class__.__qualname__}.parse_inputs"
+            )
+
+        # parse inputs into input_schema schema if necessary
+        pipeline_inputs = self.parse_inputs(*args, **kwargs)
+        if not isinstance(pipeline_inputs, self.input_schema):
+            raise RuntimeError(
+                f"Unable to parse {self.__class__} inputs into a "
+                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
+            )
+
+        # run pipeline
+        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
+
+        if isinstance(engine_inputs, tuple):
+            engine_inputs, postprocess_kwargs = engine_inputs
+        else:
+            postprocess_kwargs = {}
+
+        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
+        pipeline_outputs = self.process_engine_outputs(
+            engine_outputs, **postprocess_kwargs
+        )
+
+        # validate outputs format
+        if not isinstance(pipeline_outputs, self.output_schema):
+            raise ValueError(
+                f"Outputs of {self.__class__} must be instances of "
+                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
+            )
+
+        return pipeline_outputs
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
