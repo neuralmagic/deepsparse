@@ -35,10 +35,10 @@ transformers tasks
 """
 
 
+from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 from typing import List, Optional, Type, Union
-from abc import ABC, abstractmethod
 
 import numpy
 from pydantic import BaseModel, Field
@@ -46,35 +46,21 @@ from pydantic import BaseModel, Field
 from deepsparse import Pipeline
 from deepsparse.engine import Context
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.pipelines.nli_text_classification import NliTextClassificationPipeline
+from deepsparse.transformers.pipelines.mnli_text_classification import (
+    MnliTextClassificationPipeline,
+)
+
 
 class ModelSchemes(str, Enum):
     """
     Enum containing all supported model schemes for zero shot text classification
     """
 
-    nli = "nli"
+    mnli = "mnli"
 
     @classmethod
     def to_list(cls):
         return cls._value2member_map_
-
-
-class ZeroShotTextClassificationOutput(BaseModel):
-    """
-    Schema for zero_shot_text_classification pipeline output. Values are in batch order
-    """
-
-    sequences: Union[List[List[str]], List[str], str] = Field(
-        description="A string or List of strings representing input to "
-        "zero_shot_text_classification task"
-    )
-    labels: Union[List[List[str]], List[str]] = Field(
-        description="The predicted labels in batch order"
-    )
-    scores: Union[List[List[float]], List[float]] = Field(
-        description="The corresponding probability for each label in the batch"
-    )
 
 
 @Pipeline.register(
@@ -94,9 +80,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
         num_sequences=1,
-        model_scheme="nli",
+        model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
-        model_path="nli_model_dir/",
+        model_path="mnli_model_dir/",
     )
 
     sequence_to_classify = "Who are you voting for in 2020?"
@@ -112,8 +98,8 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
         num_sequences=1,
-        model_scheme="nli",
-        model_path="nli_model_dir/",
+        model_scheme="mnli",
+        model_path="mnli_model_dir/",
         labels=["politics", "Europe", "public health"]
     )
 
@@ -152,7 +138,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
     :param model_scheme: training scheme used to train the model used for zero shot.
-        Currently supported schemes are "nli"
+        Currently supported schemes are "mnli"
     :param model_config: config object specific to the model_scheme of this model
         or a dict of config keyword arguments
     :param num_sequences: the number of sequences to handle per batch.
@@ -165,11 +151,11 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     def __new__(
         cls,
         model_path: str,
-        model_scheme: str = ModelSchemes.nli.value,
+        model_scheme: str = ModelSchemes.mnli.value,
         **kwargs,
     ):
-        if model_scheme == ModelSchemes.nli:
-            return NliTextClassificationPipeline(model_path, **kwargs)
+        if model_scheme == ModelSchemes.mnli:
+            return MnliTextClassificationPipeline(model_path, **kwargs)
         else:
             raise ValueError(
                 f"Unknown model_scheme {model_scheme}. Currently supported model "

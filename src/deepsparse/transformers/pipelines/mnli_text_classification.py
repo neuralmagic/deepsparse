@@ -30,41 +30,44 @@
 
 """
 Helper functions and pydantic models for zero-shot text classification task
-with nli models
+with mnli models
 """
 
 
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import wait
+from concurrent.futures import ThreadPoolExecutor, wait
 from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-from deepsparse.utils import numpy_softmax
-#from deepsparse.transformers.pipelines.zero_shot_text_classification import (
+# from deepsparse.transformers.pipelines.zero_shot_text_classification import (
 #    ZeroShotTextClassificationImplementation,
-#)
+# ) TODO
 from deepsparse.engine import Context
-from .imp import ZeroShotTextClassificationImplementation
+from deepsparse.utils import numpy_softmax
+
+from .imp import (
+    ZeroShotTextClassificationImplementation,
+    ZeroShotTextClassificationOutput,
+)
 
 
-class NliTextClassificationConfig(BaseModel):
+class MnliTextClassificationConfig(BaseModel):
     """
-    Schema for configuration options when running zero shot with nli
+    Schema for configuration options when running zero shot with mnli
     """
 
     hypothesis_template: str = Field(
         description="A formattable template for wrapping around the provided "
-        "labels to create an nli hypothesis",
+        "labels to create an mnli hypothesis",
         default="This text is about {}",
     )
     entailment_index: int = Field(
-        description="Index of nli model outputs which denotes entailment", default=0
+        description="Index of mnli model outputs which denotes entailment", default=0
     )
     contradiction_index: int = Field(
-        description="Index of nli model outputs which denotes contradiction", default=2
+        description="Index of mnli model outputs which denotes contradiction", default=2
     )
     multi_class: bool = Field(
         description="True if class probabilities are independent, default False",
@@ -72,7 +75,7 @@ class NliTextClassificationConfig(BaseModel):
     )
 
 
-class NliTextClassificationInput(BaseModel):
+class MnliTextClassificationInput(BaseModel):
     """
     Schema for inputs to zero_shot_text_classification pipelines
     Each sequence and each candidate label must be paired and passed through
@@ -90,21 +93,22 @@ class NliTextClassificationInput(BaseModel):
     )
     hypothesis_template: Optional[str] = Field(
         description="A formattable template for wrapping around the provided "
-        "labels to create an nli hypothesis. If provided, overrides the template "
-        "in the nli config.",
+        "labels to create an mnli hypothesis. If provided, overrides the template "
+        "in the mnli config.",
         default=None,
     )
     multi_class: Optional[bool] = Field(
         description="True if class probabilities are independent, default False. "
-        "If provided, overrides the multi_class value in the nli config.",
+        "If provided, overrides the multi_class value in the mnli config.",
         default=None,
     )
 
-class NliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
+
+class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
     def __init__(
         self,
         model_path: str,
-        model_config: Optional[Union[NliTextClassificationConfig, dict]] = None,
+        model_config: Optional[Union[MnliTextClassificationConfig, dict]] = None,
         num_sequences: int = 1,
         labels: Optional[List] = None,
         batch_size: Optional[int] = None,
@@ -157,11 +161,11 @@ class NliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
         """
         TODO
         """
-        return NliTextClassificationConfig
+        return MnliTextClassificationConfig
 
     @property
     def input_schema(self):
-        return NliTextClassificationInput
+        return MnliTextClassificationInput
 
     def _parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
         """
@@ -175,7 +179,8 @@ class NliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
         return labels
 
     def process_inputs(
-        self, inputs: NliTextClassificationInput,
+        self,
+        inputs: MnliTextClassificationInput,
     ) -> List[numpy.ndarray]:
         """
         :param inputs: inputs to the pipeline
@@ -190,7 +195,9 @@ class NliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
             else self._config.hypothesis_template
         )
         multi_class = (
-            inputs.multi_class if inputs.multi_class is not None else self._config.multi_class
+            inputs.multi_class
+            if inputs.multi_class is not None
+            else self._config.multi_class
         )
         if isinstance(sequences, str):
             sequences = [sequences]
@@ -257,14 +264,13 @@ class NliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
 
         return self.tokens_to_engine_input(tokens), postprocessing_kwargs
 
-
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
         **kwargs,
     ) -> BaseModel:
         """
-        :param engine_outputs: list of numpy arrays that are the output of the nli
+        :param engine_outputs: list of numpy arrays that are the output of the mnli
             engine forward pass
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
@@ -306,10 +312,7 @@ class NliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
             scores=label_scores,
         )
 
-
-    def engine_forward(
-        self, engine_inputs: List[numpy.ndarray]
-    ) -> List[numpy.ndarray]:
+    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
         :param engine_inputs: list of numpy inputs to Pipeline engine forward
             pass
@@ -323,7 +326,9 @@ class NliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
                 labelwise_inputs = engine_inputs_numpy[
                     :, batch_origin : batch_origin + self._batch_size, :
                 ]
-                labelwise_inputs = [labelwise_input for labelwise_input in labelwise_inputs]
+                labelwise_inputs = [
+                    labelwise_input for labelwise_input in labelwise_inputs
+                ]
                 engine_output = self.engine(labelwise_inputs)
                 engine_outputs[batch_index] = engine_output
 
