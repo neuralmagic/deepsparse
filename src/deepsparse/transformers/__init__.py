@@ -64,7 +64,7 @@ def _install_transformers_and_deps():
                 "pip",
                 "install",
                 transformers_requirement,
-                "datasets<1.18.0",
+                "datasets<=1.18.4",
                 "sklearn",
                 "seqeval",
             ]
