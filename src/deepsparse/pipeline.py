@@ -118,6 +118,9 @@ class Pipeline(ABC):
         other runtime information that will be used across instances of the
         MultiModelEngine to provide optimal performance when running multiple
         models concurrently
+    :param threadpool: An optional ThreadPoolExecutor() object, if given the
+        pipeline executes inference requests in a non-blocking manner and returns
+        a Future object, call Future.result() on returned object to get the result
     """
 
     def __init__(
