@@ -121,7 +121,8 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 class DeepSparseDensePassageRetriever(DensePassageRetriever):
     """
     Deepsparse implementation of Haystack DensePassageRetriever
-    Utilizes two instances of EmbeddingExtractionPipeline
+    Utilizes two instances of EmbeddingExtractionPipeline to perform query model
+    and passage model inference
 
     example integration into haystack pipeline:
     ```python
@@ -140,23 +141,28 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param passage_model_path: sparsezoo stub to a passage model or (preferred)
         a directory containing a model.onnx, tokenizer config, and model config
     :param max_seq_len_query: longest length of each query sequence. Maximum
-        number of tokens for the document text. Longer ones will be cut down
+        number of tokens for the document text. Longer ones will be cut down.
+        Default is 32
     :param max_seq_len_passage: longest length of each document sequence.
         Maximum number of tokens for the document text. Longer ones will be
-        cut down
-    :param batch_size: number of documents and queries to encode at once
-    :param pooling_strategy: strategy for combining embeddings
-    :param top_k: how many documents to return per query
+        cut down. Default is 156
+    :param batch_size: number of documents and queries to encode at once.
+        Default is 1
+    :param pooling_strategy: strategy for combining embeddings. Default is
+        "cls_token"
+    :param top_k: how many documents to return per query. Default is 10
     :param embed_title: True if titles should be embedded into the passage.
         Default is False
-    :param progress_bar: if true displays progress bar during embedding
+    :param progress_bar: if true displays progress bar during embedding. Default
+        is True
     :param scale_score: whether to scale the similarity score to the unit interval
         (range of [0,1]). If true (default) similarity scores (e.g. cosine or
         dot_product) which naturally have a different value range will be scaled
         to a range of [0,1], where 1 means extremely relevant. Otherwise raw
-        similarity scores (e.g. cosine or dot_product) will be used
+        similarity scores will be used. Default is True
     :param context: context shared between query and passage models. If None
-        is provided, then a new context with 4 streams will be created
+        is provided, then a new context with 4 streams will be created. Default
+        is None
     :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
     """
 
@@ -168,7 +174,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         max_seq_len_query: int = 32,
         max_seq_len_passage: int = 156,
         batch_size: int = 1,
-        pooling_strategy: str = "per_token",
+        pooling_strategy: str = "cls_token",
         top_k: int = 10,
         embed_title: bool = False,
         progress_bar: bool = True,
