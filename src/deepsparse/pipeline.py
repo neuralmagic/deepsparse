@@ -19,14 +19,14 @@ inference engine and include pre/postprocessing
 
 import os
 from abc import ABC, abstractmethod
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse import Context, Engine, MultiModelEngine, Scheduler, ThreadPool
+from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
@@ -130,7 +130,7 @@ class Pipeline(ABC):
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
         context: Optional[Context] = None,
-        threadpool: Optional[ThreadPool] = None,
+        threadpool: Optional[ThreadPoolExecutor] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -139,9 +139,9 @@ class Pipeline(ABC):
         self.context = context
         self._threadpool = threadpool
 
-        if self._threadpool and not isinstance(self._threadpool, ThreadPool):
+        if self._threadpool and not isinstance(self._threadpool, ThreadPoolExecutor):
             raise ValueError(
-                f"Expected a deepsparse.ThreadPool object to submit jobs"
+                f"Expected a ThreadPoolExecutor object to submit jobs"
                 f"asynchronously but got {self._threadpool} instead"
             )
         if self.context is not None:
@@ -164,10 +164,11 @@ class Pipeline(ABC):
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
 
-    def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
-        if self._threadpool:
-            return self._threadpool.submit(lambda: self._execute(*args, **kwargs))
-        return self._execute(*args, **kwargs)
+    def __call__(self, threadpool=None, *args, **kwargs) -> Union[BaseModel, Future]:
+        threadpool = threadpool or self._threadpool
+        if threadpool:
+            return threadpool.submit(self._run, *args, **kwargs)
+        return self._run(*args, **kwargs)
 
     @staticmethod
     def create(
@@ -519,7 +520,7 @@ class Pipeline(ABC):
         """
         return self.engine(engine_inputs)
 
-    def _execute(self, *args, **kwargs):
+    def _run(self, *args, **kwargs):
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "

@@ -12,49 +12,138 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import concurrent.futures
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 
 import pytest
-from deepsparse import Pipeline, ThreadPool
+from deepsparse import Pipeline
+
+
+try:
+    import pytest_asyncio
+except Exception:
+    pytest_asyncio = None
+
+async_only = pytest.mark.skipif(
+    pytest_asyncio is None,
+    reason="Run only when pytest-asyncio available",
+)
+
+
+@pytest.fixture()
+def pipeline():
+    """
+    Auto-del fixture for Sequential Pipeline
+    """
+    yield Pipeline.create(task="question-answering")
+
+
+@pytest.fixture()
+def threadpool():
+    """
+    Auto-del fixture for yielding a ThreadPoolExecutor
+    """
+    yield ThreadPoolExecutor()
+
+
+@pytest.fixture()
+def threaded_pipeline(threadpool):
+    """
+    Auto-del fixture for Threaded Pipeline
+    """
+    yield Pipeline.create(task="question-answering", threadpool=threadpool)
+
+
+@pytest.fixture()
+def qa_input():
+    """
+    Auto-del fixture that yield a valid input for a qa Pipeline
+    """
+    yield {
+        "question": "Who am I?",
+        "context": "I am Snorlax",
+    }
 
 
 @pytest.mark.parametrize(
-    "question,context,n",
+    "tries",
     [
-        ("who is mark", "mark is batman", 5),
-        ("Fourth of July is Independence day", "when is Independence day", 5),
+        1,
+        2,
     ],
 )
-def test_qa_async_pipeline_is_faster(question, context, n):
-    sync_qa_pipeline = Pipeline.create(task="question-answering")
+def test_async_submit_is_faster_than_sequential_execution(
+    pipeline,
+    threaded_pipeline,
+    qa_input,
+    tries,
+):
     sequential_start_time = time.time()
+    for _ in range(tries):
+        pipeline(**qa_input)
+    total_sequential_execution_time = time.time() - sequential_start_time
 
-    for _ in range(n):
-        sync_qa_pipeline(question=question, context=context)
-
-    avg_sequential_run_time = (time.time() - sequential_start_time) / n
-    del sync_qa_pipeline
-
-    futures = []
-    async_qa_pipeline = Pipeline.create(
-        task="question-answering",
-        threadpool=ThreadPool(),
-    )
     async_start_time = time.time()
+    for _ in range(tries):
+        threaded_pipeline(**qa_input)
+    async_submit_time = time.time() - async_start_time
 
-    for _ in range(n):
-        futures.append(async_qa_pipeline(question=question, context=context))
+    assert (
+        async_submit_time < total_sequential_execution_time
+    ), "Asynchronous pipeline submit is slower than sequential execution"
 
-    concurrent.futures.wait(futures)  # returns when all futures complete
-    avg_async_run_time = (time.time() - async_start_time) / n
 
-    del async_qa_pipeline
+def test_async_pipeline_returns_a_future(threaded_pipeline, qa_input):
+    return_value = threaded_pipeline(**qa_input)
+    assert isinstance(return_value, Future), "Async Pipeline must return a Future"
 
-    print(
-        f"Sync: {avg_sequential_run_time}, Async: {avg_async_run_time}",
-    )
 
-    assert avg_async_run_time < avg_sequential_run_time, (
-        "Asynchronous pipeline inference is slower than synchronous execution",
-    )
+def test_async_pipeline_results_in_correct_schema(
+    pipeline,
+    threaded_pipeline,
+    qa_input,
+):
+    sync_result = pipeline(**qa_input)
+    async_result = threaded_pipeline(**qa_input).result()
+
+    assert type(sync_result) == type(
+        async_result
+    ), "Schema mismatch b/w Sequential and Async pipeline results"
+
+
+def test_passing_threadpool_during_pipeline_call_returns_a_future(
+    pipeline,
+    qa_input,
+    threadpool,
+):
+    return_value = pipeline(**qa_input, threadpool=threadpool)
+    assert isinstance(
+        return_value, Future
+    ), "Sync Pipeline must return a Future when a threadpool is passed during call"
+
+
+def test_passing_threadpool_during_pipeline_call_results_in_correct_schema(
+    pipeline,
+    qa_input,
+    threadpool,
+):
+    sync_result = pipeline(**qa_input)
+    async_result = pipeline(**qa_input, threadpool=threadpool).result()
+
+    assert type(sync_result) == type(
+        async_result
+    ), "Schema mismatch b/w Sequential and Async pipeline"
+
+
+@async_only
+@pytest.mark.asyncio
+async def test_awaiting_async_pipeline_results_in_correct_schema(
+    pipeline, threaded_pipeline, qa_input
+):
+    # Will be skipped if pytest-asyncio not installed
+    sync_result = pipeline(**qa_input)
+    async_result = await threaded_pipeline(**qa_input)
+
+    assert type(sync_result) == type(
+        async_result
+    ), "Schema mismatch b/w Sequential and Async pipeline"
