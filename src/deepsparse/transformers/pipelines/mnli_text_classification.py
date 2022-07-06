@@ -35,22 +35,24 @@ with mnli models
 
 
 from concurrent.futures import ThreadPoolExecutor, wait
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import List, Optional, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-# from deepsparse.transformers.pipelines.zero_shot_text_classification import (
-#    ZeroShotTextClassificationImplementation,
-# ) TODO
 from deepsparse.engine import Context
+from deepsparse.transformers.pipelines.zero_shot_text_classification import (
+    ZeroShotTextClassificationImplementation,
+)
 from deepsparse.utils import numpy_softmax
 
-from .imp import (
-    ZeroShotTextClassificationImplementation,
-    ZeroShotTextClassificationOutput,
-)
+
+__all__ = [
+    "MnliTextClassificationConfig",
+    "MnliTextClassificationInput",
+    "MnliTextClassificationPipeline",
+]
 
 
 class MnliTextClassificationConfig(BaseModel):
@@ -115,9 +117,9 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
         context: Optional[Context] = None,
         **kwargs,
     ):
-        self._config = self._parse_config(model_config)
         self._num_sequences = num_sequences
-        self._labels = self._parse_labels(labels)
+        self._config = self.parse_config(model_config)
+        self._labels = self.parse_labels(labels)
 
         if batch_size is not None and batch_size != num_sequences:
             raise ValueError(
@@ -143,6 +145,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
 
         # if static labels
         else:
+            self._thread_pool = None
             if batch_size is not None and batch_size != num_sequences * len(
                 self._labels
             ):
@@ -157,26 +160,18 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
         super().__init__(model_path=model_path, **kwargs)
 
     @property
-    def config_schema(self):
+    def config_schema(self) -> Type[BaseModel]:
         """
-        TODO
+        Config schema the model_config argument must comply to
         """
         return MnliTextClassificationConfig
 
     @property
-    def input_schema(self):
+    def input_schema(self) -> Type[BaseModel]:
+        """
+        Input schema inputs using the mnli model scheme must comply to
+        """
         return MnliTextClassificationInput
-
-    def _parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
-        """
-        If given a string of comma separated labels, parses values into a list
-
-        :param labels: A string of comma separated labels or a list of labels
-        :return: a list of labels, parsed if originally in string form
-        """
-        if isinstance(labels, str):
-            labels = [label.strip() for label in labels.split(",") if label.strip()]
-        return labels
 
     def process_inputs(
         self,
@@ -264,63 +259,14 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
 
         return self.tokens_to_engine_input(tokens), postprocessing_kwargs
 
-    def process_engine_outputs(
-        self,
-        engine_outputs: List[numpy.ndarray],
-        **kwargs,
-    ) -> BaseModel:
-        """
-        :param engine_outputs: list of numpy arrays that are the output of the mnli
-            engine forward pass
-        :return: outputs of engine post-processed into an object in the `output_schema`
-            format of this pipeline
-        """
-        sequences = kwargs["sequences"]
-        candidate_labels = kwargs["labels"]
-        multi_class = kwargs["multi_class"]
-
-        outputs = engine_outputs
-        if isinstance(outputs, list):
-            outputs = outputs[0]
-
-        # reshape sequences
-        num_sequences = 1 if isinstance(sequences, str) else len(sequences)
-        reshaped_outputs = outputs.reshape((num_sequences, len(candidate_labels), -1))
-
-        # calculate scores
-        if not multi_class:
-            entailment_logits = reshaped_outputs[:, :, self._config.entailment_index]
-            scores = numpy_softmax(entailment_logits, axis=1)
-        else:
-            entailment_contradiction_logits = reshaped_outputs[
-                :, :, [self._config.entailment_index, self._config.contradiction_index]
-            ]
-            probabilities = numpy_softmax(entailment_contradiction_logits, axis=2)
-            scores = probabilities[:, :, 0]
-
-        # hack: negate scores to perform reversed sort
-        sorted_indexes = numpy.argsort(-1 * scores, axis=1)
-        labels = [
-            numpy.array(candidate_labels)[sorted_indexes[i]].tolist()
-            for i in range(num_sequences)
-        ]
-        label_scores = numpy.take_along_axis(scores, sorted_indexes, axis=1).tolist()
-
-        return self.output_schema(
-            sequences=sequences,
-            labels=labels,
-            scores=label_scores,
-        )
-
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
-        :param engine_inputs: list of numpy inputs to Pipeline engine forward
-            pass
+        :param engine_inputs: list of numpy inputs to Pipeline engine forward pass
         :return: result of forward pass to Pipeline engine
         """
         # engine_inputs.shape: [transformer_inputs (3), num_labels * num_seqs, seq_len]
         # execute in parallel threads (dynamic labels) or as one batch (static labels)
-        if self._labels is None:
+        if self._thread_pool is not None:
 
             def _engine_forward(batch_index: int, batch_origin: int):
                 labelwise_inputs = engine_inputs_numpy[
@@ -347,8 +293,53 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
         else:
             engine_outputs = self.engine(engine_inputs)
 
-        engine_outputs = numpy.array(engine_outputs)
         return engine_outputs
+
+    def process_engine_outputs(
+        self,
+        engine_outputs: List[numpy.ndarray],
+        **kwargs,
+    ) -> BaseModel:
+        """
+        :param engine_outputs: list of numpy arrays that are the output of the mnli
+            engine forward pass
+        :return: outputs of engine post-processed into an object in the `output_schema`
+            format of this pipeline
+        """
+        sequences = kwargs["sequences"]
+        candidate_labels = kwargs["labels"]
+        multi_class = kwargs["multi_class"]
+
+        # reshape sequences
+        num_sequences = 1 if isinstance(sequences, str) else len(sequences)
+        reshaped_outputs = numpy.reshape(
+            engine_outputs, (num_sequences, len(candidate_labels), -1)
+        )
+
+        # calculate scores
+        if not multi_class:
+            entailment_logits = reshaped_outputs[:, :, self._config.entailment_index]
+            scores = numpy_softmax(entailment_logits, axis=1)
+        else:
+            entailment_contradiction_logits = reshaped_outputs[
+                :, :, [self._config.entailment_index, self._config.contradiction_index]
+            ]
+            probabilities = numpy_softmax(entailment_contradiction_logits, axis=2)
+            scores = probabilities[:, :, 0]
+
+        # negate scores to perform reversed sort
+        sorted_indexes = numpy.argsort(-1 * scores, axis=1)
+        labels = [
+            numpy.array(candidate_labels)[sorted_indexes[i]].tolist()
+            for i in range(num_sequences)
+        ]
+        label_scores = numpy.take_along_axis(scores, sorted_indexes, axis=1).tolist()
+
+        return self.output_schema(
+            sequences=sequences,
+            labels=labels,
+            scores=label_scores,
+        )
 
     @classmethod
     def get_current_sequence_length(input_schema: BaseModel) -> int:

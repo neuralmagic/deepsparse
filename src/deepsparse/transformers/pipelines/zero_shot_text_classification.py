@@ -35,20 +35,22 @@ transformers tasks
 """
 
 
-from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
+from abc import abstractmethod
 from enum import Enum
-from typing import List, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 
-import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
-from deepsparse.engine import Context
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.pipelines.mnli_text_classification import (
-    MnliTextClassificationPipeline,
-)
+
+
+__all__ = [
+    "ZeroShotTextClassificationPipeline",
+    "ZeroShotTextClassificationOutput",
+    "ZeroShotTextClassificationImplementation",
+    "ModelSchemes",
+]
 
 
 class ModelSchemes(str, Enum):
@@ -59,7 +61,7 @@ class ModelSchemes(str, Enum):
     mnli = "mnli"
 
     @classmethod
-    def to_list(cls):
+    def to_list(cls) -> List[str]:
         return cls._value2member_map_
 
 
@@ -73,7 +75,13 @@ class ModelSchemes(str, Enum):
 )
 class ZeroShotTextClassificationPipeline(TransformersPipeline):
     """
-    transformers zero shot text classification pipeline
+    Transformers zero shot text classification pipeline. This pipeline allows for
+    text classification using models which were trained on datasets not originally
+    meant for this task.
+
+    This class upon construction returns an instance of a child Pipeline which
+    inherits from ZeroShotTextClassificationImplementation. Which type of Pipeline
+    is returned depends on the value of the passed model_scheme argument.
 
     example dynamic labels:
     ```python
@@ -138,7 +146,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
     :param model_scheme: training scheme used to train the model used for zero shot.
-        Currently supported schemes are "mnli"
+        Default is "mnli"
     :param model_config: config object specific to the model_scheme of this model
         or a dict of config keyword arguments
     :param num_sequences: the number of sequences to handle per batch.
@@ -155,9 +163,159 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         **kwargs,
     ):
         if model_scheme == ModelSchemes.mnli:
+            from deepsparse.transformers.pipelines.mnli_text_classification import (
+                MnliTextClassificationPipeline,
+            )
+
             return MnliTextClassificationPipeline(model_path, **kwargs)
         else:
             raise ValueError(
                 f"Unknown model_scheme {model_scheme}. Currently supported model "
                 f"schemes are {ModelSchemes.to_list()}"
             )
+
+
+class ZeroShotTextClassificationOutput(BaseModel):
+    """
+    Schema for zero_shot_text_classification pipeline output. Values are in batch order
+    """
+
+    sequences: Union[List[List[str]], List[str], str] = Field(
+        description="A string or List of strings representing input to "
+        "zero_shot_text_classification task"
+    )
+    labels: Union[List[List[str]], List[str]] = Field(
+        description="The predicted labels in batch order"
+    )
+    scores: Union[List[List[float]], List[float]] = Field(
+        description="The corresponding probability for each label in the batch"
+    )
+
+
+class ZeroShotTextClassificationImplementation(TransformersPipeline):
+    """
+    Base class for implementing zero shot text classification. Implementations of
+    zero shot text classification inherit from this class.
+
+    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
+        (preferred) a directory containing a model.onnx, tokenizer config, and model
+        config. If no tokenizer and/or model config(s) are found, then they will be
+        loaded from huggingface transformers using the `default_model_name` key
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param default_model_name: huggingface transformers model name to use to
+        load a tokenizer and model config when none are provided in the `model_path`.
+        Default is "bert-base-uncased"
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels
+    """
+
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+    def parse_config(
+        self, model_scheme_config: Optional[Union[BaseModel, Dict]]
+    ) -> Type[BaseModel]:
+        """
+        :param model_scheme_config: optional config arguments specified by user
+        :return: instance of config pydantic model for this pipeline's model scheme
+        """
+        model_scheme_config = model_scheme_config if model_scheme_config else {}
+
+        if isinstance(model_scheme_config, self.config_schema):
+            return model_scheme_config
+
+        elif isinstance(model_scheme_config, dict):
+            return self.config_schema(**model_scheme_config)
+
+        else:
+            raise ValueError(
+                f"pipeline {self.__class__} only supports either only a "
+                f"{self.config_schema} object a dict of keywords used to construct "
+                f"one. Found {model_scheme_config} instead"
+            )
+
+    @property
+    def output_schema(self) -> Type[BaseModel]:
+        """
+        :return: pydantic model class that outputs of this pipeline must comply to
+        """
+        return ZeroShotTextClassificationOutput
+
+    def parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
+        """
+        If given a string of comma separated labels, parses values into a list
+
+        :param labels: A string of comma separated labels or a list of labels
+        :return: a list of labels, parsed if originally in string form
+        """
+        if isinstance(labels, str):
+            labels = [label.strip() for label in labels.split(",") if label.strip()]
+        return labels
+
+    def parse_inputs(self, *args, **kwargs) -> BaseModel:
+        """
+        :param args: ordered arguments to pipeline, only an input_schema object
+            is supported as an arg for this function
+        :param kwargs: keyword arguments to pipeline
+        :return: pipeline arguments parsed into the given `input_schema`
+            schema if necessary. If an instance of the `input_schema` is provided
+            it will be returned
+        """
+        if args and kwargs:
+            raise ValueError(
+                f"{self.__class__} only support args OR kwargs. Found "
+                f" {len(args)} args and {len(kwargs)} kwargs"
+            )
+
+        if args:
+            if len(args) == 1 and isinstance(args[0], self.input_schema):
+                input = args[0]
+            else:
+                input = self.input_schema(*args)
+        else:
+            input = self.input_schema(**kwargs)
+
+        return input
+
+    @staticmethod
+    def route_input_to_bucket(
+        cls, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+    ) -> Pipeline:
+        """
+        :param input_schema: The schema representing an input to the pipeline
+        :param pipelines: Different buckets to be used
+        :return: The correct Pipeline object (or Bucket) to route input to
+        """
+        current_seq_len = cls.get_current_sequence_length(input_schema)
+
+        for pipeline in pipelines:
+            if pipeline.sequence_length > current_seq_len:
+                return pipeline
+        return pipelines[-1]
+
+    @staticmethod
+    @abstractmethod
+    def get_current_sequence_length(input_schema: BaseModel) -> int:
+        """
+        Helper function to get max sequence length in provided sequences input
+
+        :param input_schema: input to pipeline
+        :return: max sequence length in input_schema
+        """
+        raise NotImplementedError()
