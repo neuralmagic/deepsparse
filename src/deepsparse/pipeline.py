@@ -17,6 +17,7 @@ Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
 
+import concurrent.futures
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -25,7 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse import Context, Engine, MultiModelEngine, Scheduler
+from deepsparse import Context, Engine, MultiModelEngine, Scheduler, ThreadPool
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
@@ -129,13 +130,20 @@ class Pipeline(ABC):
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
         context: Optional[Context] = None,
+        threadpool: Optional[ThreadPool] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
         self._engine_type = engine_type
         self._alias = alias
-
         self.context = context
+        self._threadpool = threadpool
+
+        if self._threadpool and not isinstance(self._threadpool, ThreadPool):
+            raise ValueError(
+                f"Expected a deepsparse.ThreadPool object to submit jobs"
+                f"asynchronously but got {self._threadpool} instead"
+            )
         if self.context is not None:
             num_cores = num_cores or self.context.num_cores
             if self.context.num_cores != num_cores:
@@ -155,6 +163,8 @@ class Pipeline(ABC):
 
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
+
+
 
     def __call__(self, *args, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
@@ -192,6 +202,17 @@ class Pipeline(ABC):
             )
 
         return pipeline_outputs
+
+    def submit(self, *args, **kwargs) -> concurrent.futures:
+        """
+        Asynchronous inference, returns a future
+        """
+        if not self._threadpool:
+            raise ValueError(
+                "Cannot submit jobs to an uninitialized threadpool"
+            )
+        future = self._threadpool.submit(lambda: self(*args, **kwargs))
+        return future
 
     @staticmethod
     def create(

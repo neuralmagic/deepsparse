@@ -31,9 +31,9 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
+from .threads import *
 from .pipeline import *
 from .version import __version__, is_release
-
 
 try:
     from sparsezoo.package import check_package_version as _check_package_version
