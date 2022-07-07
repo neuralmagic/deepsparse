@@ -30,7 +30,7 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 
-_all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "preprocess_array"]
+_all__ = ["detect", "decode", "postprocess", "sanitize_coordinates"]
 
 
 def jaccard(

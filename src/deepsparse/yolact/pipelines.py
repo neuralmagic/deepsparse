@@ -135,9 +135,19 @@ class YOLACTPipeline(Pipeline):
             to pass to process_engine_outputs to facilitate information from the raw
             inputs to postprocessing that may not be included in the engine inputs
         """
+        # `preprocess_images` returns a list of image_batches
+        # with dimensions (B, D, D, C)
         images_input = preprocess_images(
             images=inputs.images, image_size=self.image_size
         )
+        for idx, image_batch in enumerate(images_input):
+            image_batch = image_batch.astype(numpy.float32)
+            image_batch = image_batch.transpose(0, 3, 1, 2)
+            image_batch /= 255
+            # BGR -> RGB
+            image_batch = image_batch[:, (2, 1, 0), :, :]
+            image_batch = numpy.ascontiguousarray(image_batch)
+            images_input[idx] = image_batch
 
         postprocessing_kwargs = dict(
             confidence_threshold=inputs.confidence_threshold,

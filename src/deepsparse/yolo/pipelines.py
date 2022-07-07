@@ -176,6 +176,8 @@ class YOLOPipeline(Pipeline):
             can be directly passed into the forward pass of the pipeline engine
         """
 
+        # `preprocess_images` returns a list of image_batches
+        # with dimensions (B, D, D, C)
         images_input = preprocess_images(
             images=inputs.images, image_size=self.image_size
         )

@@ -67,30 +67,6 @@ def preprocess_images(
     return images
 
 
-def preprocess_yolact(
-    image: numpy.ndarray, input_image_size: Tuple[int, int]
-) -> numpy.ndarray:
-    """
-    Preprocessing the input before feeding it into the YOLACT deepsparse pipeline
-
-    :param image: numpy array representing input image(s). It can be batched (or not)
-        and have an arbitrary dimensions order ((C,H,W) or (H,W,C)).
-        It must have BGR channel order
-    :param input_image_size: image size expected by the YOLACT network.
-        Default is (550,550).
-    :return: preprocessed numpy array (B, C, D, D); where (D,D) is image size expected
-        by the network. It is a contiguous array with RGB channel order.
-    """
-    image = image.astype(numpy.float32)
-    image = image.transpose(0, 3, 1, 2)
-    image /= 255
-    # BGR -> RGB
-    image = image[:, (2, 1, 0), :, :]
-    image = numpy.ascontiguousarray(image)
-
-    return image
-
-
 def _assert_channels_last(array: numpy.ndarray) -> numpy.ndarray:
     # make sure that the output is an array with dims
     # (B, H, W, C) or (H,W,C)

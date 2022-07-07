@@ -29,8 +29,7 @@ from deepsparse.image_classification.schemas import (
 )
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
-from deepsparse.vision import preprocess_images
-from deepsparse.vision.utils import IMAGENET_RGB_MEANS, IMAGENET_RGB_STDS
+from deepsparse.vision import IMAGENET_RGB_MEANS, IMAGENET_RGB_STDS, preprocess_images
 
 
 __all__ = [
@@ -142,19 +141,21 @@ class ImageClassificationPipeline(Pipeline):
         :param inputs: input model
         :return: list of preprocessed numpy arrays
         """
+        # `preprocess_images` returns a list of image_batches
+        # with dimensions (B, D, D, C)
         images_input = preprocess_images(
             images=inputs.images, image_size=self._image_size
         )
 
-        # apply resize and center crop
         images_input_numpy = numpy.array(images_input)
-        N, B, H, W, C = images_input_numpy.shape
+        N, B, D, _, C = images_input_numpy.shape
+        # apply resize and center crop
         images_input_pil = [
             self._pre_normalization_transforms(Image.fromarray(image))
-            for image in images_input_numpy.reshape(-1, H, W, C)
+            for image in images_input_numpy.reshape(-1, D, D, C)
         ]
         images_input = numpy.array([numpy.array(image) for image in images_input_pil])
-        images_input = [image for image in images_input.reshape(N, B, H, W, C)]
+        images_input = [image for image in images_input.reshape(N, B, D, D, C)]
         # make channel first dimension
         images_input = [image.transpose(0, 3, 1, 2) for image in images_input]
         # if pixel values not in range 0.0 - 1.0, make them so
