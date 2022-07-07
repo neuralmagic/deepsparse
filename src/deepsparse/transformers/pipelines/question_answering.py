@@ -502,21 +502,15 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         :return: The correct Pipeline object (or Bucket) to route input to
         """
         tokenizer = pipelines[0].tokenizer
-        context_tokens = tokenizer(
-            input_schema.context,
+        tokens = tokenizer(
+            " ".join((input_schema.context, input_schema.question)),
             add_special_tokens=True,
             return_tensors="np",
             padding=False,
             truncation=False,
         )
-        question_tokens = tokenizer(
-            input_schema.question,
-            add_special_tokens=True,
-            return_tensors="np",
-            padding=False,
-            truncation=False,
-        )
-        current_seq_len = len(context_tokens) + len(question_tokens)
+
+        current_seq_len = len(tokens)
         for pipeline in pipelines:
             if pipeline.sequence_length > current_seq_len:
                 return pipeline
