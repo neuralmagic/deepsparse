@@ -20,9 +20,9 @@ import onnx
 
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
-from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
+from deepsparse.vision.utils import COCO_CLASSES, preprocess_images
+from deepsparse.yolo.schemas import YOLOInputSchema, YOLOOutputSchema
 from deepsparse.yolo.utils import (
-    COCO_CLASSES,
     YoloPostprocessor,
     get_onnx_expected_image_shape,
     modify_yolo_onnx_input_shape,
@@ -134,18 +134,18 @@ class YOLOPipeline(Pipeline):
         return self._image_size
 
     @property
-    def input_schema(self) -> Type[YOLOInput]:
+    def input_schema(self) -> Type[YOLOInputSchema]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return YOLOInput
+        return YOLOInputSchema
 
     @property
-    def output_schema(self) -> Type[YOLOOutput]:
+    def output_schema(self) -> Type[YOLOOutputSchema]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
-        return YOLOOutput
+        return YOLOOutputSchema
 
     def setup_onnx_file_path(self) -> str:
         """
@@ -168,52 +168,40 @@ class YOLOPipeline(Pipeline):
             )
         return model_path
 
-    def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
+    def process_inputs(self, inputs: YOLOInputSchema) -> List[numpy.ndarray]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
             of this pipeline
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        # Noting that if numpy arrays are passed in, we assume they are
-        # already the correct shape
 
-        if isinstance(inputs.images, str):
-            inputs.images = [inputs.images]
-
-        image_batch = []
-
-        for image in inputs.images:
-            if isinstance(image, list):
-                # image consists of floats or ints
-                image = numpy.asarray(image)
-
-            if isinstance(image, str):
-                image = cv2.imread(image)
-                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
-
-            image = self._make_channels_first(image)
-            image_batch.append(image)
-
-        image_batch = self._make_batch(image_batch)
-        image_batch = numpy.ascontiguousarray(
-            image_batch,
-            dtype=numpy.uint8 if self.is_quantized else numpy.float32,
+        images_input = preprocess_images(
+            images=inputs.images, image_size=self.image_size
         )
 
+        images_input = [
+            numpy.ascontiguousarray(
+                image_batch.transpose(0, 3, 1, 2),
+                dtype=numpy.uint8 if self.is_quantized else numpy.float32,
+            )
+            for image_batch in images_input
+        ]
+
         if not self.is_quantized:
-            image_batch /= 255
+            images_input = [image_batch / 255 for image_batch in images_input]
+
         postprocessing_kwargs = dict(
             iou_thres=inputs.iou_thres,
             conf_thres=inputs.conf_thres,
         )
-        return [image_batch], postprocessing_kwargs
+        return images_input, postprocessing_kwargs
 
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
         **kwargs,
-    ) -> YOLOOutput:
+    ) -> YOLOOutputSchema:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
@@ -245,57 +233,15 @@ class YOLOPipeline(Pipeline):
             batch_labels.append(image_output[:, 5].tolist())
             if self.class_names is not None:
                 batch_labels[-1] = [
-                    getattr(self.class_names, str(int(label)))
-                    for label in batch_labels[-1]
+                    self.class_names[str(int(label))] for label in batch_labels[-1]
                 ]
 
-        return YOLOOutput(
+        return YOLOOutputSchema(
             predictions=batch_predictions,
             boxes=batch_boxes,
             scores=batch_scores,
             labels=batch_labels,
         )
-
-    def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
-        # return a numpy batch of images
-        if len(image_batch) == 1:
-            current_batch = image_batch[0]
-            if current_batch.ndim == 4:
-                return current_batch
-
-        return numpy.stack(image_batch, axis=0)
-
-    def _make_channels_first(self, image: numpy.ndarray) -> numpy.ndarray:
-        # return a numpy array with channels first
-        is_single_image = image.ndim == 3
-        is_batch = image.ndim == 4
-
-        if image.shape[-1] != 3:
-            return image
-
-        if is_single_image:
-            return numpy.moveaxis(image, -1, 0)
-
-        if is_batch:
-            return numpy.moveaxis(image, -1, 1)
-
-        return image
-
-    def model_has_postprocessing(self, loaded_onnx_model) -> bool:
-        """
-        :return: True if loaded_onnx_model has postprocessing, False otherwise
-        """
-        # get number of dimensions in each output
-        outputs_num_dims = [
-            len(output.type.tensor_type.shape.dim)
-            for output in loaded_onnx_model.graph.output
-        ]
-
-        # assume if only one output, then it is post-processed
-        if len(outputs_num_dims) == 1:
-            return True
-
-        return all(num_dims > outputs_num_dims[0] for num_dims in outputs_num_dims[1:])
 
     def model_is_quantized(self, onnx_model) -> bool:
         """

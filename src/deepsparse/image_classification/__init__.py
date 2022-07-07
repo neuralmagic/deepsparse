@@ -94,6 +94,5 @@ def _check_if_dependency_installed(dependency: _Dependency, raise_on_fail=False)
 
 _auto_install_dependencies()
 
-from .constants import *
 from .pipelines import *
 from .schemas import *

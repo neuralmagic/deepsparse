@@ -20,7 +20,9 @@ from collections import namedtuple
 from typing import List, Optional, Union
 
 import numpy
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from deepsparse.vision.schemas import VisionInputSchema, VisionOutputSchema
 
 
 __all__ = [
@@ -33,14 +35,10 @@ _YOLACTImageOutput = namedtuple(
 )
 
 
-class YOLACTInputSchema(BaseModel):
+class YOLACTInputSchema(VisionInputSchema):
     """
-    Input Model for YOLACT
+    Input Schema for YOLACT
     """
-
-    images: Union[str, numpy.ndarray, List[Union[str, numpy.ndarray]]] = Field(
-        description="List of images to process"
-    )
 
     confidence_threshold: float = Field(
         default=0.2,
@@ -69,27 +67,10 @@ class YOLACTInputSchema(BaseModel):
         "`postprocess` step (optional)",
     )
 
-    @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "YOLACTInputSchema":
-        """
-        :param files: list of file paths to create YOLOInput from
-        :param kwargs: extra keyword args to pass to YOLOInput constructor
-        :return: YOLOInput constructed from files
-        """
-        if "images" in kwargs:
-            raise ValueError(
-                f"argument 'images' cannot be specified in {cls.__name__} when "
-                "constructing from file(s)"
-            )
-        return cls(images=files, **kwargs)
 
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class YOLACTOutputSchema(BaseModel):
+class YOLACTOutputSchema(VisionOutputSchema):
     """
-    Output Model for YOLACT
+    Output Schema for YOLACT
     """
 
     classes: List[List[Optional[Union[int, str]]]] = Field(

@@ -48,11 +48,8 @@ import torchvision
 from torchvision import transforms
 from tqdm import tqdm
 
-from deepsparse.image_classification.constants import (
-    IMAGENET_RGB_MEANS,
-    IMAGENET_RGB_STDS,
-)
 from deepsparse.pipeline import Pipeline
+from deepsparse.vision.utils import IMAGENET_RGB_MEANS, IMAGENET_RGB_STDS
 from torch.utils.data import DataLoader
 
 

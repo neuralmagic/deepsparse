@@ -11,6 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Helper objects/functions related to the MS-COCO dataset
+"""
+import itertools
+
+
+__all__ = ["COCO_CLASSES", "COCO_CLASS_COLORS"]
+COCO_CLASS_COLORS = list(itertools.product([0, 255, 128, 64, 192], repeat=3))
+COCO_CLASS_COLORS.remove((255, 255, 255))  # remove white from possible colors
+
 
 COCO_CLASSES = [
     "person",

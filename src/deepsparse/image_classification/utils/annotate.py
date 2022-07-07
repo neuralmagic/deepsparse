@@ -15,12 +15,14 @@
 Helpers and Utilities for
 Image Classification annotation script
 """
+
 from typing import Tuple
 
 import numpy as numpy
 
 import cv2
 from deepsparse.image_classification.schemas import ImageClassificationOutput
+from deepsparse.vision.utils import plot_fps
 
 
 __all__ = ["annotate_image"]
@@ -57,7 +59,7 @@ def annotate_image(
     """
     is_video = images_per_sec is not None
 
-    image = _put_text_box(image, y_offset, prediction, is_video)
+    image = _put_text_box(image, y_offset, prediction)
     y_shift = image.shape[0]
     for label, score in zip(reversed(prediction.labels), reversed(prediction.scores)):
         # every next label annotation is placed `y_shift` pixels higher than
@@ -69,17 +71,14 @@ def annotate_image(
     if is_video:
         # for the video annotation, additionally
         # include the FPS information
-        y_shift -= 2 * y_offset
-        image = _put_text(
-            image,
-            f"FPS: {int(images_per_sec)}",
-            x_offset,
-            y_shift,
-            font_scale,
-            thickness,
-            (245, 46, 6),
+        image = plot_fps(
+            image=image,
+            images_per_sec=f"FPS: {int(images_per_sec)}",
+            left=x_offset,
+            top=y_shift,
+            text_font_scale=font_scale,
+            text_thickness=thickness,
         )
-
     return image
 
 
@@ -109,13 +108,11 @@ def _put_text_box(
     img: numpy.ndarray,
     y_offset: int,
     prediction: ImageClassificationOutput,
-    is_video: bool,
 ):
 
     num_text_rows = (
         len(prediction.labels) + 2
     )  # no of text rows + 2 margins (top, bottom)
-    num_text_rows += 2 * int(is_video)  # add two more text rows for FPS data
     # text box height is a function of the
     # number of labels while
     # text box width is always half

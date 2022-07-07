@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Helper objects/functions related to the ImageNet dataset
+"""
 
 __all__ = [
     "IMAGENET_RGB_MEANS",
     "IMAGENET_RGB_STDS",
-    "IMAGENET_LABELS",
+    "IMAGENET_CLASSES",
 ]
 
 IMAGENET_RGB_MEANS = [0.485, 0.456, 0.406]
 IMAGENET_RGB_STDS = [0.229, 0.224, 0.225]
 
-IMAGENET_LABELS = [
+IMAGENET_CLASSES = [
     "tench",
     "goldfish",
     "great white shark",

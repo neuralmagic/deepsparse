@@ -16,10 +16,11 @@
 Input/Output Schemas for Image Classification.
 """
 
-from typing import Any, List, Union
+from typing import List, Union
 
-import numpy
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from deepsparse.vision import VisionInputSchema, VisionOutputSchema
 
 
 __all__ = [
@@ -28,33 +29,15 @@ __all__ = [
 ]
 
 
-class ImageClassificationInput(BaseModel):
+class ImageClassificationInput(VisionInputSchema):
     """
     Input model for image classification
     """
 
-    images: Union[str, List[str], List[Any], numpy.ndarray] = Field(
-        description="List of Images to process"
-    )
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "ImageClassificationInput":
-        """
-        :param files: list of file paths to create ImageClassificationInput from
-        :return: ImageClassificationInput constructed from files
-        """
-        if kwargs:
-            raise ValueError(
-                f"{cls.__name__} does not support additional arguments "
-                f"{list(kwargs.keys())}"
-            )
-        return cls(images=files)
+    pass
 
 
-class ImageClassificationOutput(BaseModel):
+class ImageClassificationOutput(VisionOutputSchema):
     """
     Output model for image classification
     """

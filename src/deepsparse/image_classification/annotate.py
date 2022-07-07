@@ -70,15 +70,15 @@ from typing import Optional
 import click
 
 import cv2
-from deepsparse.image_classification.constants import IMAGENET_LABELS
 from deepsparse.image_classification.utils import annotate_image
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import (
     annotate,
+    create_dir_callback,
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
-from deepsparse.yolo.utils.cli_helpers import create_dir_callback
+from deepsparse.vision.utils import IMAGENET_CLASSES
 
 
 ic_default_stub = (
@@ -213,7 +213,7 @@ def main(
         engine_type=engine,
         num_cores=num_cores,
         top_k=top_k,
-        class_names={idx: label for idx, label in enumerate(IMAGENET_LABELS)},
+        class_names={idx: label for idx, label in enumerate(IMAGENET_CLASSES)},
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):

@@ -12,13 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
+import functools
+import random
 from typing import Optional, Tuple
+
+
+try:
+    import cv2
+
+    cv2_error = None
+except ModuleNotFoundError as cv2_import_error:
+    cv2 = None
+    cv2_error = cv2_import_error
 
 import numpy
 
-import cv2
+from deepsparse.vision import (
+    COCO_CLASS_COLORS,
+    plot_fps,
+    put_annotation_text,
+    put_bounding_box,
+    put_mask,
+)
 from deepsparse.yolact.schemas import YOLACTOutputSchema
-from deepsparse.yolo.utils.utils import _get_color, _plot_fps
 
 
 __all__ = ["annotate_image"]
@@ -38,11 +54,11 @@ def annotate_image(
     - annotate every prediction with its proper label
     - draw segmentation mask on the image
 
-    Note: in private functions:
-     - `_put_mask()`
-     - `_put_annotation_text()`
-     - `_put_bounding_box()`
-     - `_get_text_size()`
+    Note: in functions:
+     - `put_mask()`
+     - `put_annotation_text()`
+     - `put_bounding_box()`
+     - `get_text_size()`
 
     there are some hard-coded values that parameterize the layout of the annotations.
     You may need to adjust the parameters to improve the aesthetics of your annotations.
@@ -74,23 +90,21 @@ def annotate_image(
         if score > score_threshold:
             color = _get_color(class_)
             left, top, _, _ = box
-            image_res = _put_mask(image=image_res, mask=mask, color=color)
-            image_res = _put_bounding_box(image=image_res, box=box, color=color)
+            image_res = put_mask(image=image_res, mask=mask, color=color)
+            image_res = put_bounding_box(image=image_res, box=box, color=color)
 
             annotation_text = f"{class_}: {score:.0%}"
-            text_width, text_height = _get_text_size(annotation_text)
-            image_res = _put_annotation_text(
+
+            image_res = put_annotation_text(
                 image=image_res,
                 annotation_text=annotation_text,
                 left=left,
                 top=top,
                 color=color,
-                text_width=text_width,
-                text_height=text_height,
             )
 
     if images_per_sec is not None:
-        image_res = _plot_fps(
+        image_res = plot_fps(
             img_res=image_res,
             images_per_sec=images_per_sec,
             x=20,
@@ -102,79 +116,10 @@ def annotate_image(
     return image_res
 
 
-def _put_mask(
-    image: numpy.ndarray, mask: numpy.ndarray, color: Tuple[int, int, int]
-) -> numpy.ndarray:
-    img_with_non_transparent_masks = numpy.where(
-        mask[..., None], numpy.array(color, dtype="uint8"), image
-    )
-    img_with_non_transparent_masks = cv2.addWeighted(
-        image, 0.3, img_with_non_transparent_masks, 0.7, 0
-    )
-    return img_with_non_transparent_masks
-
-
-def _put_annotation_text(
-    image: numpy.ndarray,
-    annotation_text: str,
-    color: Tuple[int, int, int],
-    text_width: int,
-    text_height: int,
-    left: int,
-    top: int,
-    text_font_scale: float = 0.9,
-    text_thickness: int = 2,
-) -> numpy.ndarray:
-
-    image = cv2.rectangle(
-        image,
-        (int(left), int(top)),
-        (int(left) + text_width, int(top) + text_height),
-        color,
-        thickness=-1,
-    )
-
-    image = cv2.putText(
-        image,
-        annotation_text,
-        (int(left), int(top) + text_height),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        text_font_scale,
-        (255, 255, 255),  # white text
-        text_thickness,
-        cv2.LINE_AA,
-    )
-    return image
-
-
-def _put_bounding_box(
-    image: numpy.ndarray,
-    box: numpy.ndarray,
-    color: numpy.ndarray,
-    bbox_thickness: int = 2,
-) -> numpy.ndarray:
-    left, top, right, bottom = box
-    image = cv2.rectangle(
-        image,
-        (int(left), int(top)),
-        (int(right), int(bottom)),
-        color,
-        bbox_thickness,
-    )
-    return image
-
-
-def _get_text_size(
-    annotation_text: str, text_font_scale: float = 0.9, text_thickness: int = 2
-) -> Tuple[int, int]:
-    (text_width, text_height), text_baseline = cv2.getTextSize(
-        annotation_text,
-        cv2.FONT_HERSHEY_SIMPLEX,
-        text_font_scale,  # font scale
-        text_thickness,  # thickness
-    )
-    text_height += text_baseline
-    return text_width, text_height
+@functools.lru_cache(maxsize=None)
+def _get_color(label):
+    # cache color lookups
+    return random.choice(COCO_CLASS_COLORS)
 
 
 def _resize_to_fit_img(

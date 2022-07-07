@@ -33,39 +33,6 @@ except ModuleNotFoundError as cv2_import_error:
 _all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "preprocess_array"]
 
 
-def preprocess_array(
-    image: numpy.ndarray, input_image_size: Tuple[int, int] = (550, 550)
-) -> numpy.ndarray:
-    """
-    Preprocessing the input before feeding it into the YOLACT deepsparse pipeline
-
-    :param image: numpy array representing input image(s). It can be batched (or not)
-        and have an arbitrary dimensions order ((C,H,W) or (H,W,C)).
-        It must have BGR channel order
-    :param input_image_size: image size expected by the YOLACT network.
-        Default is (550,550).
-    :return: preprocessed numpy array (B, C, D, D); where (D,D) is image size expected
-        by the network. It is a contiguous array with RGB channel order.
-    """
-    image = image.astype(numpy.float32)
-    image = _assert_channels_last(image)
-    if image.ndim == 4 and image.shape[:2] != input_image_size:
-        image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
-
-    else:
-        if image.shape[:2] != input_image_size:
-            image = cv2.resize(image, input_image_size)
-        image = numpy.expand_dims(image, 0)
-
-    image = image.transpose(0, 3, 1, 2)
-    image /= 255
-    # BGR -> RGB
-    image = image[:, (2, 1, 0), :, :]
-    image = numpy.ascontiguousarray(image)
-
-    return image
-
-
 def jaccard(
     box_a: numpy.ndarray, box_b: numpy.ndarray, iscrowd: bool = False
 ) -> numpy.ndarray:
@@ -383,15 +350,3 @@ def postprocess(
     masks = masks.transpose(2, 0, 1)
 
     return classes, scores, boxes, masks
-
-
-def _assert_channels_last(array: numpy.ndarray) -> numpy.ndarray:
-    # make sure that the output is an array with dims
-    # (B, H, W, C) or (H,W,C)
-    if array.ndim == 4:
-        if array.shape[1] < array.shape[2]:
-            array = array.transpose(0, 2, 3, 1)
-    else:
-        if array.shape[0] < array.shape[1]:
-            array = array.transpose(1, 2, 0)
-    return array

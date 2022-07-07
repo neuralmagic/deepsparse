@@ -15,5 +15,6 @@
 # limitations under the License.
 
 from .annotate import *
+from .cli_helpers import *
 from .data import *
 from .onnx import *

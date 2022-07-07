@@ -15,10 +15,8 @@
 """
 Helpers and Utilities for YOLO
 """
-import functools
-import itertools
+
 import logging
-import random
 import time
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
@@ -29,7 +27,6 @@ import torchvision
 import yaml
 
 import torch
-from deepsparse.yolo.schemas import YOLOOutput
 
 
 try:
@@ -40,8 +37,6 @@ except ModuleNotFoundError as cv2_import_error:
     cv2 = None
     cv2_error = cv2_import_error
 
-_YOLO_CLASS_COLORS = list(itertools.product([0, 255, 128, 64, 192], repeat=3))
-_YOLO_CLASS_COLORS.remove((255, 255, 255))  # remove white from possible colors
 _LOGGER = logging.getLogger(__name__)
 
 # Default YOLO anchor grids
@@ -53,12 +48,6 @@ _YOLO_DEFAULT_ANCHORS = [
 _YOLO_DEFAULT_ANCHOR_GRIDS = [
     t.clone().view(1, -1, 1, 1, 2) for t in _YOLO_DEFAULT_ANCHORS
 ]
-
-
-@functools.lru_cache(maxsize=None)
-def _get_color(label):
-    # cache color lookups
-    return random.choice(_YOLO_CLASS_COLORS)
 
 
 class YoloPostprocessor:
@@ -419,134 +408,3 @@ def set_tensor_dim_shape(tensor: onnx.TensorProto, dim: int, value: int):
     :param value: new shape for the given dimension
     """
     tensor.type.tensor_type.shape.dim[dim].dim_value = value
-
-
-def annotate_image(
-    image: numpy.ndarray,
-    prediction: YOLOOutput,
-    images_per_sec: Optional[float] = None,
-    score_threshold: float = 0.35,
-    model_input_size: Tuple[int, int] = None,
-) -> numpy.ndarray:
-    """
-    Draws bounding boxes on predictions of a detection model
-
-    :param image: original image to annotate (no pre-processing needed)
-    :param prediction: predictions returned by the inference pipeline
-    :param images_per_sec: optional fps value to annotate the left corner
-        of the image (video) with
-    :param score_threshold: minimum score a detection should have to be annotated
-        on the image. Default is 0.35
-    :param model_input_size: 2-tuple of expected input size for the given model to
-        be used for bounding box scaling with original image. Scaling will not
-        be applied if model_input_size is None. Default is None
-    :return: the original image annotated with the given bounding boxes
-    """
-    boxes = prediction[0].boxes
-    scores = prediction[0].scores
-    labels = prediction[0].labels
-
-    img_res = numpy.copy(image)
-
-    scale_y = image.shape[0] / (1.0 * model_input_size[0]) if model_input_size else 1.0
-    scale_x = image.shape[1] / (1.0 * model_input_size[1]) if model_input_size else 1.0
-
-    for idx in range(len(boxes)):
-        label = labels[idx]
-        if scores[idx] > score_threshold:
-            annotation_text = f"{label}: {scores[idx]:.0%}"
-
-            # bounding box points
-            left = boxes[idx][0] * scale_x
-            top = boxes[idx][1] * scale_y
-            right = boxes[idx][2] * scale_x
-            bottom = boxes[idx][3] * scale_y
-
-            # calculate text size
-            (text_width, text_height), text_baseline = cv2.getTextSize(
-                annotation_text,
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.9,  # font scale
-                2,  # thickness
-            )
-            text_height += text_baseline
-
-            # make solid background for annotation text
-            cv2.rectangle(
-                img_res,
-                (int(left), int(top) - 33),
-                (int(left) + text_width, int(top) - 28 + text_height),
-                _get_color(label),
-                thickness=-1,  # filled solid
-            )
-
-            # add white annotation text
-            cv2.putText(
-                img_res,
-                annotation_text,
-                (int(left), int(top) - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.9,  # font scale
-                (255, 255, 255),  # white text
-                2,  # thickness
-                cv2.LINE_AA,
-            )
-
-            # draw bounding box
-            cv2.rectangle(
-                img_res,
-                (int(left), int(top)),
-                (int(right), int(bottom)),
-                _get_color(label),
-                thickness=2,
-            )
-
-    if images_per_sec is not None:
-        img_res = _plot_fps(
-            img_res=img_res,
-            images_per_sec=images_per_sec,
-            x=20,
-            y=30,
-            font_scale=0.9,
-            thickness=2,
-        )
-    return img_res
-
-
-def _plot_fps(
-    img_res: numpy.ndarray,
-    images_per_sec: float,
-    x: int,
-    y: int,
-    font_scale: float,
-    thickness: int,
-) -> numpy.ndarray:
-
-    annotation_text = f"FPS: {int(images_per_sec)}"
-    # calculate text size
-    (text_width, text_height), text_baseline = cv2.getTextSize(
-        annotation_text,
-        cv2.FONT_HERSHEY_SIMPLEX,
-        font_scale,  # font scale
-        thickness,  # thickness
-    )
-    # make solid background for annotation text
-    cv2.rectangle(
-        img_res,
-        (x, y - 3 * text_baseline),
-        (x + text_width, y + text_height - text_baseline),
-        (255, 255, 255),
-        thickness=-1,  # filled solid
-    )
-
-    cv2.putText(
-        img_res,
-        annotation_text,
-        (x, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        font_scale,
-        (245, 46, 6),  # color
-        thickness,
-        cv2.LINE_AA,
-    )
-    return img_res

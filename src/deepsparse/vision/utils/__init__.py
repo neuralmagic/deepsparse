@@ -14,5 +14,7 @@
 
 # flake8: noqa
 
-from .annotation import *
+from .annotation_helpers import *
+from .coco import *
+from .imagenet import *
 from .utils import *

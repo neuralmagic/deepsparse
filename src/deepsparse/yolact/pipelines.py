@@ -19,9 +19,10 @@ import numpy
 
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
+from deepsparse.vision import preprocess_images
+from deepsparse.vision.utils import COCO_CLASSES
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
-from deepsparse.yolact.utils import decode, detect, postprocess, preprocess_array
-from deepsparse.yolo.utils import COCO_CLASSES
+from deepsparse.yolact.utils import decode, detect, postprocess
 
 
 try:
@@ -134,13 +135,9 @@ class YOLACTPipeline(Pipeline):
             to pass to process_engine_outputs to facilitate information from the raw
             inputs to postprocessing that may not be included in the engine inputs
         """
-        images = inputs.images
-
-        if not isinstance(images, list):
-            images = [images]
-
-        if isinstance(images[0], str):
-            images = [cv2.imread(file_path) for file_path in images]
+        images_input = preprocess_images(
+            images=inputs.images, image_size=self.image_size
+        )
 
         postprocessing_kwargs = dict(
             confidence_threshold=inputs.confidence_threshold,
@@ -150,9 +147,7 @@ class YOLACTPipeline(Pipeline):
             max_num_detections=inputs.max_num_detections,
         )
 
-        return [
-            preprocess_array(array, self.image_size) for array in images
-        ], postprocessing_kwargs
+        return images_input, postprocessing_kwargs
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs

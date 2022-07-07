@@ -23,16 +23,14 @@ import onnx
 from PIL import Image
 from torchvision import transforms
 
-from deepsparse.image_classification.constants import (
-    IMAGENET_RGB_MEANS,
-    IMAGENET_RGB_STDS,
-)
 from deepsparse.image_classification.schemas import (
     ImageClassificationInput,
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
+from deepsparse.vision import preprocess_images
+from deepsparse.vision.utils import IMAGENET_RGB_MEANS, IMAGENET_RGB_STDS
 
 
 __all__ = [
@@ -144,74 +142,33 @@ class ImageClassificationPipeline(Pipeline):
         :param inputs: input model
         :return: list of preprocessed numpy arrays
         """
+        images_input = preprocess_images(
+            images=inputs.images, image_size=self._image_size
+        )
 
-        if isinstance(inputs.images, numpy.ndarray):
-            image_batch = inputs.images
-        else:
+        # apply resize and center crop
+        images_input_numpy = numpy.array(images_input)
+        N, B, H, W, C = images_input_numpy.shape
+        images_input_pil = [
+            self._pre_normalization_transforms(Image.fromarray(image))
+            for image in images_input_numpy.reshape(-1, H, W, C)
+        ]
+        images_input = numpy.array([numpy.array(image) for image in images_input_pil])
+        images_input = [image for image in images_input.reshape(N, B, H, W, C)]
+        # make channel first dimension
+        images_input = [image.transpose(0, 3, 1, 2) for image in images_input]
+        # if pixel values not in range 0.0 - 1.0, make them so
+        if not images_input[0].max() <= 1.0:
+            images_input = [image / 255 for image in images_input]
 
-            image_batch = []
+        # apply ImageNet specific preprocessing
+        for idx, image in enumerate(images_input):
+            image -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
+            image /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
+            image = numpy.ascontiguousarray(image, dtype=numpy.float32)
+            images_input[idx] = image
 
-            if isinstance(inputs.images, str):
-                inputs.images = [inputs.images]
-
-            for image in inputs.images:
-                if isinstance(image, List):
-                    # image given as raw list
-                    image = numpy.asarray(image)
-                    if image.dtype == numpy.float32:
-                        # image is already processed, append and continue
-                        image_batch.append(image)
-                        continue
-                    # assume raw image input
-                    # put image in PIL format for torchvision processing
-                    image = image.astype(numpy.uint8)
-                    if image.shape[0] < image.shape[-1]:
-                        # put channel last
-                        image = numpy.einsum("cwh->whc", image)
-                    image = Image.fromarray(image)
-                elif isinstance(image, str):
-                    # load image from string filepath
-                    image = Image.open(image)
-                elif isinstance(image, numpy.ndarray):
-                    image = image.astype(numpy.uint8)
-                    if image.shape[0] < image.shape[-1]:
-                        # put channel last
-                        image = numpy.einsum("cwh->whc", image)
-                    image = Image.fromarray(image)
-
-                if not isinstance(image, Image.Image):
-                    raise ValueError(
-                        f"inputs to {self.__class__.__name__} must be a string image "
-                        "file path(s), a list representing a raw image, "
-                        "PIL.Image.Image object(s), or a numpy array representing"
-                        f"the entire pre-processed batch. Found {type(image)}"
-                    )
-
-                # apply resize and center crop
-                image = self._pre_normalization_transforms(image)
-                image_numpy = numpy.array(image)
-                image.close()
-
-                # make channel first dimension
-                image_numpy = image_numpy.transpose(2, 0, 1)
-
-                # append to batch
-                image_batch.append(image_numpy)
-
-            # build batch
-            image_batch = numpy.stack(image_batch, axis=0)
-
-        original_dtype = image_batch.dtype
-        image_batch = numpy.ascontiguousarray(image_batch, dtype=numpy.float32)
-
-        if original_dtype == numpy.uint8:
-
-            image_batch /= 255
-            # normalize entire batch
-            image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
-            image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
-
-        return [image_batch]
+        return images_input
 
     def process_engine_outputs(
         self,
