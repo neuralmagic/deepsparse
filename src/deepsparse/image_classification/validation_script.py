@@ -140,6 +140,7 @@ def main(
         batch_size=batch_size,
         num_cores=num_cores,
     )
+    print(f"engine info: {pipeline.engine}")
     correct = total = 0
     progress_bar = tqdm(data_loader)
 
