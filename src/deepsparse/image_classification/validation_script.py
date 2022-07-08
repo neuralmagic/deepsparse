@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Usage: validation_script.py [OPTIONS]
+Usage: deepsparse.image_classification.eval [OPTIONS]
 
   Validation Script for Image Classification Models
 
@@ -23,14 +23,20 @@ Options:
   --model-path, --model_path TEXT
                                   Path/SparseZoo stub for the Image
                                   Classification model to be evaluated.
-                                  Defaults to resnet50 trained on
-                                  Imagenette  [default: zoo:cv/classification/
-                                  resnet_v1-50/pytorch/sparseml/imagenette/
+                                  Defaults to dense (vanilla) resnet50 trained
+                                  on Imagenette  [default: zoo:cv/classificati
+                                  on/resnet_v1-50/pytorch/sparseml/imagenette/
                                   base-none]
   --batch-size, --batch_size INTEGER
                                   Test batch size, must divide the dataset
-                                  evenly, else the last batch will be dropped
+                                  evenly, else last batch will be dropped
                                   [default: 1]
+  --image-size, --image_size INTEGER
+                                  integer size to evaluate images at (will be
+                                  reshaped to square shape)  [default: 224]
+  --num-cores, --num_cores INTEGER
+                                  Number of CPU cores to run deepsparse with,
+                                  default is all available
   --help                          Show this message and exit.
 
 #########
@@ -95,7 +101,17 @@ resnet50_imagenet_pruned = (
     show_default=True,
     help="integer size to evaluate images at (will be reshaped to square shape)",
 )
-def main(dataset_path: str, model_path: str, batch_size: int, image_size: int):
+@click.option(
+    "--num-cores",
+    "--num_cores",
+    type=int,
+    default=None,
+    show_default=True,
+    help="Number of CPU cores to run deepsparse with, default is all available",
+)
+def main(
+    dataset_path: str, model_path: str, batch_size: int, image_size: int, num_cores: int
+):
     """
     Validation Script for Image Classification Models
     """
@@ -122,6 +138,7 @@ def main(dataset_path: str, model_path: str, batch_size: int, image_size: int):
         task="image_classification",
         model_path=model_path,
         batch_size=batch_size,
+        num_cores=num_cores,
     )
     correct = total = 0
     progress_bar = tqdm(data_loader)
