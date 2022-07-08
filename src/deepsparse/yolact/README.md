@@ -9,6 +9,7 @@ These techniques result in significantly more performant and smaller models with
 
 
 ## Getting Started
+
 Before you start your adventure with the DeepSparse Engine, make sure that your machine is 
 compatible with our [hardware requirements](https://docs.neuralmagic.com/deepsparse/source/hardware.html).
 
@@ -31,12 +32,12 @@ After training your model with `SparseML`, locate the `.pth` file for the model 
 ```bash
 sparseml.yolact.export_onnx --checkpoint PATH_TO_YOLACT_PTH_CHECKPOINT
 ```
+This creates `model.onnx` file, in the directory of your `weights` (e.g. `/weights/model.onnx`).
 For additional options invoke the command-line callable with `--help` option like `sparseml.yolact.export_onnx --help`
 
 ####  SparseZoo Stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
 All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
-
 ## Deployment APIs
 DeepSparse provides both a Python Pipeline API and an out-of-the-box model server
 that can be used for end-to-end inference in either existing Python workflows or as an HTTP endpoint.
