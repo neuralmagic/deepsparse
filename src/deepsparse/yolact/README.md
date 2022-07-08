@@ -24,7 +24,7 @@ Below we describe two possibilities to obtain the required ONNX model.
 
 ### Exporting the ONNX File From the Contents of a Local Directory
 This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
-For more information refer to the [appropriate YOLACT integration documentation in SparseML](...)
+For more information refer to the [appropriate YOLACT integration documentation in SparseML](https://github.com/neuralmagic/sparseml/tree/main/integrations/dbolya-yolact)
 
 After training your model with `SparseML`, locate the `.pth` file for the model you'd like to export and run the `SparseML` integrated YOLACT ONNX export script below.
 
