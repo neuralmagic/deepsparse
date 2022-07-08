@@ -1,6 +1,4 @@
 # YOLACT Inference Pipelines
-
-
 DeepSparse allows accelerated inference, serving, and benchmarking of sparsified YOLACT models [YOLACT] ([original codebase](https://github.com/dbolya/yolact) and [paper](https://arxiv.org/abs/1904.02689)).  
 This integration allows for leveraging the DeepSparse Engine to run the sparsified YOLACT inference with GPU-class performance directly on the CPU.
 
@@ -11,7 +9,6 @@ These techniques result in significantly more performant and smaller models with
 
 
 ## Getting Started
-
 Before you start your adventure with the DeepSparse Engine, make sure that your machine is 
 compatible with our [hardware requirements](https://docs.neuralmagic.com/deepsparse/source/hardware.html).
 
@@ -27,19 +24,20 @@ Below we describe two possibilities to obtain the required ONNX model.
 
 ### Exporting the ONNX File From the Contents of a Local Directory
 This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
-For more information refer to the [appropriate YOLACT integration documentation in SparseML](...). # TODO
+For more information refer to the [appropriate YOLACT integration documentation in SparseML](...)
 
 After training your model with `SparseML`, locate the `.pth` file for the model you'd like to export and run the `SparseML` integrated YOLACT ONNX export script below.
 
 ```bash
-# TODO
+sparseml.yolact.export_onnx --checkpoint PATH_TO_YOLACT_PTH_CHECKPOINT
 ```
+For additional options invoke the command-line callable with `--help` option like `sparseml.yolact.export_onnx --help`
 
 ####  SparseZoo Stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
 All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
-## Deployment APIs
 
+## Deployment APIs
 DeepSparse provides both a Python Pipeline API and an out-of-the-box model server
 that can be used for end-to-end inference in either existing Python workflows or as an HTTP endpoint.
 Both options provide similar specifications for configurations and support annotation serving for all 
