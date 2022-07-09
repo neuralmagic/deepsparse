@@ -33,17 +33,15 @@ Pipeline implementation and pydantic models for question answering transformers
 tasks
 """
 
-
+import collections
+import json
+import logging
+import os
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy
 from pydantic import BaseModel, Field
-from transformers.data import (
-    SquadExample,
-    SquadFeatures,
-    squad_convert_examples_to_features,
-)
-from transformers.tokenization_utils_base import PaddingStrategy
+from transformers.data import SquadExample
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
@@ -55,12 +53,15 @@ __all__ = [
     "QuestionAnsweringPipeline",
 ]
 
+_LOGGER = logging.getLogger(__name__)
+
 
 class QuestionAnsweringInput(BaseModel):
     """
     Schema for inputs to question_answering pipelines
     """
 
+    id: str = Field(description="Example identifier")
     question: str = Field(description="String question to be answered")
     context: str = Field(description="String representing context for answer")
 
@@ -119,6 +120,13 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     :param max_question_length: maximum length of the question after tokenization.
         It will be truncated if needed. Default is 64
     :param max_answer_length: maximum length of answer after decoding. Default is 15
+    :param n_best_size: number of n-best predictions to generate when looking for
+        an answer. Default is 20
+    :param pad_to_max_length: whether to pad all samples to max sequence length.
+        If False, will pad the samples dynamically when batching to the maximum length
+        in the batch
+    :param version_2_with_negative: if true, some examples do not have an answer
+    :param output_dir: output folder to save predictions, used for debugging
     :param num_spans: if the context is too long to fit with the question for the
         model, it will be split in several chunks. This argument controls the maximum
         number of spans to feed into the model.
@@ -130,6 +138,10 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         doc_stride: int = 128,
         max_question_length: int = 64,
         max_answer_length: int = 15,
+        n_best_size: int = 20,
+        pad_to_max_length: bool = True,
+        version_2_with_negative: bool = False,
+        output_dir: str = None,
         num_spans: Optional[int] = None,
         **kwargs,
     ):
@@ -143,6 +155,10 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         self._doc_stride = doc_stride
         self._max_question_length = max_question_length
         self._max_answer_length = max_answer_length
+        self._n_best_size = n_best_size
+        self._pad_to_max_length = pad_to_max_length
+        self._version_2_with_negative = version_2_with_negative
+        self._output_dir = output_dir
         self._num_spans = num_spans
 
         super().__init__(**kwargs)
@@ -164,12 +180,42 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         return self._max_answer_length
 
     @property
+    def n_best_size(self) -> int:
+        """
+        :return: The total number of n-best predictions to generate when looking
+            for an answer
+        """
+        return self._n_best_size
+
+    @property
+    def pad_to_max_length(self) -> int:
+        """
+        :return: whether to pad all samples to max_sequence_length
+        """
+        return self._pad_to_max_length
+
+    @property
     def max_question_length(self) -> int:
         """
         :return: maximum length of the question after tokenization.
             It will be truncated if needed
         """
         return self._max_question_length
+
+    @property
+    def version_2_with_negative(self) -> bool:
+        """
+        :return: Whether or not the underlying dataset contains examples with
+            no answers
+        """
+        return self._version_2_with_negative
+
+    @property
+    def output_dir(self) -> str:
+        """
+        :return: path to output folder for predictions
+        """
+        return self._output_dir
 
     @property
     def input_schema(self) -> Type[BaseModel]:
@@ -209,18 +255,37 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             dictionary of parsed features and original extracted example
         """
         squad_example = SquadExample(
-            None, inputs.question, inputs.context, None, None, None
+            inputs.id, inputs.question, inputs.context, None, None, None
         )
-        features = self._tokenize(squad_example)
-        tokens = [f.__dict__ for f in features]
+        tokenized_example = self._tokenize(
+            squad_example
+        )  # type: transformers.tokenization_utils_base.BatchEncoding
 
-        engine_inputs_ = [self.tokens_to_engine_input(t) for t in tokens]
+        span_engine_inputs = []
+        span_extra_info = []
+        num_spans = len(tokenized_example["input_ids"])
+        for i in range(num_spans):
+            span_input = [
+                numpy.array(tokenized_example[k][i]) for k in self.onnx_input_names
+            ]
+            span_engine_inputs.append(span_input)
+
+            span_extra_info.append(
+                {
+                    k: numpy.array(tokenized_example[k][i])
+                    for k in tokenized_example.keys()
+                    if k not in self.onnx_input_names
+                }
+            )
+
         # add batch dimension, assuming batch size 1
         engine_inputs = []
-        for inps in engine_inputs_:
+        for inps in span_engine_inputs:
             engine_inputs.append([numpy.expand_dims(inp, axis=0) for inp in inps])
 
-        return engine_inputs, dict(features=features, example=squad_example)
+        return engine_inputs, dict(
+            span_extra_info=span_extra_info, example=squad_example
+        )
 
     def process_engine_outputs(
         self,
@@ -233,80 +298,219 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-
-        features = kwargs["features"]
+        span_extra_info = kwargs["span_extra_info"]
         example = kwargs["example"]
+        num_spans = len(span_extra_info)
 
-        # Loop through all features
-        # Selects the feature with highest score
-        score = -float("Inf")
-        ans_start = None
-        ans_end = None
-        feature = None
-        for feature_, outputs in zip(features, engine_outputs):
-            ans_start_, ans_end_, score_ = self._process_single_feature(
-                feature_, outputs
+        if len(engine_outputs) != num_spans:
+            raise ValueError(
+                "Engine outputs expected for {num_spans} span(s), "
+                "but found for {len(engine_outputs)}"
             )
-            if score_ > score:
-                score = score_
-                ans_start = ans_start_
-                ans_end = ans_end_
-                feature = feature_
 
-        # decode start, end idx into text
-        if not self.tokenizer.is_fast:
-            char_to_word = numpy.array(example.char_to_word_offset)
-            return self.output_schema(
-                score=score.item(),
-                start=numpy.where(char_to_word == feature.token_to_orig_map[ans_start])[
-                    0
-                ][0].item(),
-                end=numpy.where(char_to_word == feature.token_to_orig_map[ans_end])[0][
-                    -1
-                ].item(),
-                answer=" ".join(
-                    example.doc_tokens[
-                        feature.token_to_orig_map[
-                            ans_start
-                        ] : feature.token_to_orig_map[ans_end]
-                        + 1
-                    ]
-                ),
+        if len(engine_outputs[0]) != 2:
+            raise ValueError(
+                "`engine_outputs` should be a list with two elements "
+                "[start_logits, end_logits]."
             )
-        else:
-            question_first = bool(self.tokenizer.padding_side == "right")
+        if self.version_2_with_negative:
+            scores_diff_json = collections.OrderedDict()
+            null_score_diff_threshold = 0.0
 
-            # Sometimes the max probability token is in the middle of a word so:
-            # we start by finding the right word containing the token with
-            # `token_to_word` then we convert this word in a character span
+        min_null_prediction = None
+        prelim_predictions = []
+        for span_idx in range(num_spans):
+            start_logits, end_logits = [
+                logits.reshape((logits.size,)) for logits in engine_outputs[span_idx]
+            ]
 
-            # If the start or end token point to the separator token
-            # move the token by one
-            def _token_to_char(token):
-                w = feature.encoding.token_to_word(token)
-                if w is None:
-                    return None
-                else:
-                    return feature.encoding.word_to_chars(
-                        w, sequence_index=1 if question_first else 0
+            # This is what will allow us to map some the positions in our logits to
+            # span of texts in the original context.
+            offset_mapping = span_extra_info[span_idx]["offset_mapping"]
+
+            # Optional `token_is_max_context`, if provided we will remove answers
+            # that do not have the maximum context available in the current feature.
+            token_is_max_context = span_extra_info[span_idx].get(
+                "token_is_max_context", None
+            )
+
+            # Update minimum null prediction.
+            feature_null_score = start_logits[0] + end_logits[0]
+            if (
+                min_null_prediction is None
+                or min_null_prediction["score"] > feature_null_score
+            ):
+                min_null_prediction = {
+                    "offsets": (0, 0),
+                    "score": feature_null_score,
+                    "start_logit": start_logits[0],
+                    "end_logit": end_logits[0],
+                }
+
+            # Go through all possibilities for the `self.n_best_size` greater start
+            # and end logits.
+            start_indexes = numpy.argsort(start_logits)[
+                -1 : -self.n_best_size - 1 : -1
+            ].tolist()
+            end_indexes = numpy.argsort(end_logits)[
+                -1 : -self.n_best_size - 1 : -1
+            ].tolist()
+            for start_index in start_indexes:
+                for end_index in end_indexes:
+                    # Don't consider out-of-scope answers, either because the indices
+                    # are out of bounds or correspond to part of the input_ids that
+                    # are not in the context.
+                    if (
+                        start_index >= len(offset_mapping)
+                        or end_index >= len(offset_mapping)
+                        or offset_mapping[start_index] is None
+                        or len(offset_mapping[start_index]) < 2
+                        or offset_mapping[end_index] is None
+                        or len(offset_mapping[end_index]) < 2
+                    ):
+                        continue
+                    # Don't consider answers with a length that is
+                    # either < 0 or > max_answer_length.
+                    if (
+                        end_index < start_index
+                        or end_index - start_index + 1 > self.max_answer_length
+                    ):
+                        continue
+                    # Don't consider answer that don't have the maximum context
+                    # available (if such information is provided).
+                    if (
+                        token_is_max_context is not None
+                        and not token_is_max_context.get(str(start_index), False)
+                    ):
+                        continue
+                    prelim_predictions.append(
+                        {
+                            "offsets": (
+                                offset_mapping[start_index][0],
+                                offset_mapping[end_index][1],
+                            ),
+                            "score": start_logits[start_index] + end_logits[end_index],
+                            "start_logit": start_logits[start_index],
+                            "end_logit": end_logits[end_index],
+                        }
                     )
+        if self.version_2_with_negative:
+            # Add the minimum null prediction
+            prelim_predictions.append(min_null_prediction)
+            null_score = min_null_prediction["score"]
 
-            char_start = _token_to_char(ans_start)
-            while char_start is None:
-                ans_start += 1
-                char_start = _token_to_char(ans_start)
+        # Only keep the best `self.n_best_size` predictions.
+        predictions = sorted(
+            prelim_predictions, key=lambda x: x["score"], reverse=True
+        )[: self.n_best_size]
 
-            char_end = _token_to_char(ans_end)
-            while char_end is None:
-                ans_end += 1
-                char_end = _token_to_char(ans_end)
+        # Add back the minimum null prediction if it was removed because of its
+        # low score.
+        if self.version_2_with_negative and not any(
+            p["offsets"] == (0, 0) for p in predictions
+        ):
+            predictions.append(min_null_prediction)
 
-            return self.output_schema(
-                score=score.item(),
-                start=char_start[0],
-                end=char_end[1],
-                answer=example.context_text[char_start[0] : char_end[1]],
+        best_start, best_end = predictions[0]["offsets"]
+        best_score = predictions[0]["score"]
+
+        # Use the offsets to gather the answer text in the original context.
+        context = example.context_text
+        for pred in predictions:
+            offsets = pred.pop("offsets")
+            pred["text"] = context[offsets[0] : offsets[1]]
+
+        # In the very rare edge case we have not a single non-null prediction, we
+        # create a fake prediction to avoid failure
+        if len(predictions) == 0 or (
+            len(predictions) == 1 and predictions[0]["text"] == ""
+        ):
+            predictions.insert(
+                0, {"text": "empty", "start_logit": 0.0, "end_logit": 0.0, "score": 0.0}
             )
+
+        # Compute the softmax of all scores (we do it with numpy to stay independent
+        # from torch/tf in this file, using the LogSumExp trick)
+        scores = numpy.array([pred.pop("score") for pred in predictions])
+        exp_scores = numpy.exp(scores - numpy.max(scores))
+        probs = exp_scores / exp_scores.sum()
+
+        # Include the probabilities in our predictions.
+        for prob, pred in zip(probs, predictions):
+            pred["probability"] = prob
+
+        # The dictionaries we have to fill.
+        all_predictions = collections.OrderedDict()
+        all_nbest_json = collections.OrderedDict()
+
+        # Pick the best prediction. If the null answer is not possible, this is easy.
+        if not self.version_2_with_negative:
+            all_predictions[example.qas_id] = predictions[0]["text"]
+        else:
+            # Otherwise we first need to find the best non-empty prediction.
+            i = 0
+            while predictions[i]["text"] == "":
+                i += 1
+            best_non_null_pred = predictions[i]
+
+            # Then we compare to the null prediction using the threshold.
+            score_diff = (
+                null_score
+                - best_non_null_pred["start_logit"]
+                - best_non_null_pred["end_logit"]
+            )
+            scores_diff_json[example.qas_id] = float(
+                score_diff
+            )  # To be JSON-serializable.
+            if score_diff > null_score_diff_threshold:
+                all_predictions[example.qas_id] = ""
+            else:
+                all_predictions[example.qas_id] = best_non_null_pred["text"]
+
+        # Make `predictions` JSON-serializable by casting numpy.float back to float.
+        all_nbest_json[example.qas_id] = [
+            {
+                k: (
+                    float(v)
+                    if isinstance(v, (numpy.float16, numpy.float32, numpy.float64))
+                    else v
+                )
+                for k, v in pred.items()
+            }
+            for pred in predictions
+        ]
+
+        if self.output_dir is not None:
+            if not os.path.exists(self.output_dir):
+                raise ValueError(f"Output folder {self.output_dir} not found.")
+
+            if not os.path.isdir(self.output_dir):
+                raise EnvironmentError(f"{self.output_dir} is not a directory.")
+
+            prediction_file = os.path.join(self.output_dir, "predictions.json")
+            nbest_file = os.path.join(self.output_dir, "nbest_predictions.json")
+            if self.version_2_with_negative:
+                null_odds_file = os.path.join(self.output_dir, "null_odds.json")
+
+            mode = "a" if os.path.exists(prediction_file) else "w"
+            with open(prediction_file, mode) as writer:
+                writer.write(json.dumps(all_predictions, indent=4) + "\n")
+
+            mode = "a" if os.path.exists(nbest_file) else "w"
+            with open(nbest_file, mode) as writer:
+                writer.write(json.dumps(all_nbest_json, indent=4) + "\n")
+
+            if self.version_2_with_negative:
+                mode = "a" if os.path.exists(null_odds_file) else "w"
+                with open(null_odds_file, mode) as writer:
+                    writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
+
+        return self.output_schema(
+            score=best_score,
+            start=best_start,
+            end=best_end,
+            answer=example.context_text[best_start:best_end],
+        )
 
     @staticmethod
     def route_input_to_bucket(
@@ -324,145 +528,55 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 return pipeline
         return pipelines[-1]
 
-    def _process_single_feature(self, feature, engine_outputs):
-        """
-        :param feature: a SQuAD feature object
-        :param engine_outputs: logits for start and end tokens
-        :return: answer start token (int), answer end token (int), score (float)
-        """
-        start_vals, end_vals = engine_outputs[:2]
-
-        # assuming batch size 0
-        start = start_vals[0]
-        end = end_vals[0]
-
-        # Ensure padded tokens & question tokens cannot belong
-        undesired_tokens = (
-            numpy.abs(numpy.array(feature.p_mask) - 1) & feature.attention_mask
-        )
-
-        # Generate mask
-        undesired_tokens_mask = undesired_tokens == 0.0
-
-        # Make sure non-context indexes cannot contribute to the softmax
-        start = numpy.where(undesired_tokens_mask, -10000.0, start)
-        end = numpy.where(undesired_tokens_mask, -10000.0, end)
-
-        # Normalize logits and spans to retrieve the answer
-        start = numpy.exp(
-            start - numpy.log(numpy.sum(numpy.exp(start), axis=-1, keepdims=True))
-        )
-        end = numpy.exp(
-            end - numpy.log(numpy.sum(numpy.exp(end), axis=-1, keepdims=True))
-        )
-
-        # Mask CLS
-        start[0] = 0.0
-        end[0] = 0.0
-
-        ans_start, ans_end, scores = self._decode(start, end)
-        # assuming one stride, so grab first idx
-        ans_start = ans_start[0]
-        ans_end = ans_end[0]
-        score = scores[0]
-
-        return ans_start, ans_end, score
-
-    def _tokenize(self, example: SquadExample):
+    def _tokenize(self, example: SquadExample, *args):
+        # The logic here closely matches the tokenization step performed
+        # on evaluation dataset in the SparseML question answering training script
         if not self.tokenizer.is_fast:
-            features = squad_convert_examples_to_features(
-                examples=[example],
-                tokenizer=self.tokenizer,
-                max_set_length=self.sequence_length,
-                doc_stride=self.doc_stride,
-                max_query_length=self.max_question_length,
-                padding_strategy=PaddingStrategy.MAX_LENGTH.value,
-                is_training=False,
-                tqdm_enabled=False,
+            raise ValueError(
+                "This example script only works for models that have a fast tokenizer."
             )
         else:
-            question_first = bool(self.tokenizer.padding_side == "right")
-            encoded_inputs = self.tokenizer(
-                text=example.question_text if question_first else example.context_text,
+            pad_on_right = self.tokenizer.padding_side == "right"
+            tokenized_example = self.tokenizer(
+                text=example.question_text if pad_on_right else example.context_text,
                 text_pair=(
-                    example.context_text if question_first else example.question_text
+                    example.context_text if pad_on_right else example.question_text
                 ),
-                padding=PaddingStrategy.MAX_LENGTH.value,
-                truncation="only_second" if question_first else "only_first",
+                truncation="only_second" if pad_on_right else "only_first",
                 max_length=self.sequence_length,
                 stride=self.doc_stride,
-                return_tensors="np",
                 return_token_type_ids=True,
                 return_overflowing_tokens=True,
                 return_offsets_mapping=True,
                 return_special_tokens_mask=True,
+                padding="max_length" if self.pad_to_max_length else False,
             )
 
-            # p_mask: mask with 1 for token than cannot be in the answer
-            # We put 0 on the tokens from the context and 1 everywhere else
-            p_mask = numpy.asarray(
-                [
-                    [
-                        tok != 1 if question_first else 0
-                        for tok in encoded_inputs.sequence_ids(0)
-                    ]
+            # For evaluation, we will need to convert our predictions to substrings of
+            # the context, so we keep the corresponding example_id and we will store
+            # the offset mappings.
+            tokenized_example["example_id"] = []
+
+            n_spans = len(tokenized_example["input_ids"])
+            for i in range(n_spans):
+                # Grab the sequence corresponding to that example
+                # (to know what is the context and what is the question).
+                sequence_ids = tokenized_example.sequence_ids(i)
+                context_index = 1 if pad_on_right else 0
+
+                # Set to None the offset_mapping that are not part of the context so
+                # it's easy to determine if a token position is part of the context or not
+                tokenized_example["offset_mapping"][i] = [
+                    (o if sequence_ids[k] == context_index else None)
+                    for k, o in enumerate(tokenized_example["offset_mapping"][i])
                 ]
-            )
 
-            # keep the cls_token unmasked
-            if self.tokenizer.cls_token_id is not None:
-                cls_index = numpy.nonzero(
-                    encoded_inputs["input_ids"][0] == self.tokenizer.cls_token_id
-                )
-                p_mask[cls_index] = 0
+                tokenized_example["example_id"].append(example.qas_id)
 
-            features = []
-            for i in range(len(encoded_inputs["input_ids"])):
-                features.append(
-                    SquadFeatures(
-                        input_ids=encoded_inputs["input_ids"][i],
-                        attention_mask=encoded_inputs["attention_mask"][i],
-                        token_type_ids=encoded_inputs["token_type_ids"][i],
-                        p_mask=p_mask[0].tolist(),
-                        encoding=encoded_inputs[i],
-                        # the following values are unused for fast tokenizers
-                        cls_index=None,
-                        token_to_orig_map={},
-                        example_index=0,
-                        unique_id=0,
-                        paragraph_len=0,
-                        token_is_max_context=0,
-                        tokens=[],
-                        start_position=0,
-                        end_position=0,
-                        is_impossible=False,
-                        qas_id=None,
-                    )
-                )
+            if self._num_spans is not None:
+                tokenized_example = {
+                    k: tokenized_example[k][: self._num_spans]
+                    for k in tokenized_example.keys()
+                }
 
-        if self._num_spans is not None:
-            features = features[: self._num_spans]
-
-        return features
-
-    def _decode(self, start: numpy.ndarray, end: numpy.ndarray) -> Tuple:
-        # Ensure we have batch axis
-        if start.ndim == 1:
-            start = start[None]
-
-        if end.ndim == 1:
-            end = end[None]
-
-        # Compute the score of each tuple(start, end) to be the real answer
-        outer = numpy.matmul(numpy.expand_dims(start, -1), numpy.expand_dims(end, 1))
-
-        # Remove candidate with end < start and end - start > max_answer_len
-        candidates = numpy.tril(numpy.triu(outer), self.max_answer_length - 1)
-
-        #  Inspired by Chen & al. (https://github.com/facebookresearch/DrQA)
-        scores_flat = candidates.flatten()
-        # only returning best result, use argsort for topk support
-        idx_sort = [numpy.argmax(scores_flat)]
-
-        start, end = numpy.unravel_index(idx_sort, candidates.shape)[1:]
-        return start, end, candidates[0, start, end]
+            return tokenized_example
