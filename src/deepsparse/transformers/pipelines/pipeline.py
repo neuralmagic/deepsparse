@@ -132,7 +132,7 @@ class TransformersPipeline(Pipeline):
         if not all(name in tokens for name in self.onnx_input_names):
             raise ValueError(
                 f"pipeline expected arrays with names {self.onnx_input_names}, "
-                f"received inputs: {list(tokens.keys())}"
+                f"received inputs: {list(tokens[0].keys())}"
             )
 
         return [tokens[name] for name in self.onnx_input_names]
