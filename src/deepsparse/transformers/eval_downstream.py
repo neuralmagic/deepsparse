@@ -55,6 +55,8 @@ python eval_downstream.py \
 
 import argparse
 import json
+from cProfile import Profile
+from pstats import Stats
 
 from tqdm.auto import tqdm
 
@@ -302,6 +304,13 @@ def parse_args():
         help=("Folder to save output predictions, used for debugging"),
     )
 
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        default=False,
+        help=("Run with profiling, used for debugging"),
+    )
+
     # Arguments specific for the Question Answering task
     parser.add_argument(
         "--max-answer-length",
@@ -337,9 +346,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-
+def _main(args):
     dataset = args.dataset.lower()
 
     if dataset not in SUPPORTED_DATASETS:
@@ -351,6 +358,19 @@ def main():
     metrics = SUPPORTED_DATASETS[dataset](args)
 
     print(f"\n{dataset} eval results: {metrics.compute()}")
+
+
+def main():
+    args = parse_args()
+    if args.profile:
+        profiler = Profile()
+        profiler.runcall(lambda: _main(args))
+        stats = Stats(profiler)
+        stats.strip_dirs()
+        stats.sort_stats("cumulative")
+        stats.print_stats()
+    else:
+        _main(args)
 
 
 if __name__ == "__main__":
