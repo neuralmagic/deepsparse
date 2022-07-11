@@ -63,7 +63,7 @@ class QuestionAnsweringInput(BaseModel):
 
     question: str = Field(description="String question to be answered")
     context: str = Field(description="String representing context for answer")
-    id: str = None
+    id: str = Field(description="Sample identifier", default=None)
 
 
 class QuestionAnsweringOutput(BaseModel):
@@ -263,17 +263,18 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         span_engine_inputs = []
         span_extra_info = []
         num_spans = len(tokenized_example["input_ids"])
-        for i in range(num_spans):
+        for span in range(num_spans):
             span_input = [
-                numpy.array(tokenized_example[k][i]) for k in self.onnx_input_names
+                numpy.array(tokenized_example[key][span])
+                for key in self.onnx_input_names
             ]
             span_engine_inputs.append(span_input)
 
             span_extra_info.append(
                 {
-                    k: numpy.array(tokenized_example[k][i])
-                    for k in tokenized_example.keys()
-                    if k not in self.onnx_input_names
+                    key: numpy.array(tokenized_example[key][span])
+                    for key in tokenized_example.keys()
+                    if key not in self.onnx_input_names
                 }
             )
 
@@ -480,29 +481,10 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         ]
 
         if self.output_dir is not None:
-            if not os.path.exists(self.output_dir):
-                raise ValueError(f"Output folder {self.output_dir} not found.")
-
-            if not os.path.isdir(self.output_dir):
-                raise EnvironmentError(f"{self.output_dir} is not a directory.")
-
-            prediction_file = os.path.join(self.output_dir, "predictions.json")
-            nbest_file = os.path.join(self.output_dir, "nbest_predictions.json")
-            if self.version_2_with_negative:
-                null_odds_file = os.path.join(self.output_dir, "null_odds.json")
-
-            mode = "a" if os.path.exists(prediction_file) else "w"
-            with open(prediction_file, mode) as writer:
-                writer.write(json.dumps(all_predictions, indent=4) + "\n")
-
-            mode = "a" if os.path.exists(nbest_file) else "w"
-            with open(nbest_file, mode) as writer:
-                writer.write(json.dumps(all_nbest_json, indent=4) + "\n")
-
-            if self.version_2_with_negative:
-                mode = "a" if os.path.exists(null_odds_file) else "w"
-                with open(null_odds_file, mode) as writer:
-                    writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
+            scores_diff_json = (
+                None if not self.version_2_with_negative else scores_diff_json
+            )
+            self._save_predictions(all_predictions, all_nbest_json, scores_diff_json)
 
         return self.output_schema(
             score=best_score,
@@ -557,18 +539,20 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             tokenized_example["example_id"] = []
 
             n_spans = len(tokenized_example["input_ids"])
-            for i in range(n_spans):
+            for span in range(n_spans):
                 # Grab the sequence corresponding to that example
                 # (to know what is the context and what is the question).
-                sequence_ids = tokenized_example.sequence_ids(i)
+                sequence_ids = tokenized_example.sequence_ids(span)
                 context_index = 1 if pad_on_right else 0
 
                 # Set to None the offset_mapping that are not part of the context so
                 # it's easy to determine if a token position is part of the
                 # context or not
-                tokenized_example["offset_mapping"][i] = [
-                    (o if sequence_ids[k] == context_index else None)
-                    for k, o in enumerate(tokenized_example["offset_mapping"][i])
+                tokenized_example["offset_mapping"][span] = [
+                    (ofmap if sequence_ids[key] == context_index else None)
+                    for key, ofmap in enumerate(
+                        tokenized_example["offset_mapping"][span]
+                    )
                 ]
 
                 tokenized_example["example_id"].append(example.qas_id)
@@ -580,3 +564,28 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 }
 
             return tokenized_example
+
+    def _save_predictions(self, all_predictions, all_nbest_json, scores_diff_json):
+        if not os.path.exists(self.output_dir):
+            raise ValueError(f"Output folder {self.output_dir} not found.")
+
+        if not os.path.isdir(self.output_dir):
+            raise EnvironmentError(f"{self.output_dir} is not a directory.")
+
+        prediction_file = os.path.join(self.output_dir, "predictions.json")
+        nbest_file = os.path.join(self.output_dir, "nbest_predictions.json")
+        if self.version_2_with_negative:
+            null_odds_file = os.path.join(self.output_dir, "null_odds.json")
+
+        mode = "a" if os.path.exists(prediction_file) else "w"
+        with open(prediction_file, mode) as writer:
+            writer.write(json.dumps(all_predictions, indent=4) + "\n")
+
+        mode = "a" if os.path.exists(nbest_file) else "w"
+        with open(nbest_file, mode) as writer:
+            writer.write(json.dumps(all_nbest_json, indent=4) + "\n")
+
+        if self.version_2_with_negative:
+            mode = "a" if os.path.exists(null_odds_file) else "w"
+            with open(null_odds_file, mode) as writer:
+                writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
