@@ -77,6 +77,8 @@ from deepsparse.utils import (
 )
 from deepsparse.yolact.utils import annotate_image
 from deepsparse.yolo.utils.cli_helpers import create_dir_callback
+import cProfile as profile
+import pstats
 
 
 yolact_v5_default_stub = (
@@ -205,8 +207,9 @@ def main(
         num_cores=num_cores,
     )
 
+    prof = profile.Profile()
+    prof.enable()
     for iteration, (input_image, source_image) in enumerate(loader):
-
         # annotate
         annotated_image = annotate(
             pipeline=yolact_pipeline,
@@ -223,12 +226,17 @@ def main(
 
         # save
         if saver:
-            saver.save_frame(annotated_image)
+            pass
+            #saver.save_frame(annotated_image)
 
     if saver:
-        saver.close()
-
+        pass
+        #saver.close()
+    prof.disable()
     _LOGGER.info(f"Results saved to {save_dir}")
+    stats = pstats.Stats(prof).sort_stats("cumtime")
+    stats.print_stats(20)
+    prof.dump_stats('log.prof')
 
 
 if __name__ == "__main__":

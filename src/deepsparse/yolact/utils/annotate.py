@@ -90,6 +90,7 @@ def annotate_image(
             )
 
     if images_per_sec is not None:
+        print(images_per_sec)
         image_res = _plot_fps(
             img_res=image_res,
             images_per_sec=images_per_sec,

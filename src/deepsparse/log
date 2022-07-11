@@ -1,0 +1,21 @@
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     3260    0.101    0.000  372.574    0.114 /home/damian/deepsparse_copy/src/deepsparse/utils/annotate.py:336(annotate)
+     3260    0.086    0.000  289.917    0.089 /home/damian/deepsparse_copy/src/deepsparse/pipeline.py:158(__call__)
+     3260    0.011    0.000  188.837    0.058 /home/damian/deepsparse_copy/src/deepsparse/pipeline.py:537(engine_forward)
+     3260    0.012    0.000  188.826    0.058 /home/damian/deepsparse_copy/src/deepsparse/engine.py:218(__call__)
+     3260  188.784    0.058  188.814    0.058 /home/damian/deepsparse_copy/src/deepsparse/engine.py:313(run)
+     3260    5.985    0.002   90.991    0.028 /home/damian/deepsparse_copy/src/deepsparse/yolact/pipelines.py:157(process_engine_outputs)
+     3260    0.148    0.000   82.552    0.025 /home/damian/deepsparse_copy/src/deepsparse/yolact/utils/annotate.py:27(annotate_image)
+     2838   42.447    0.015   72.072    0.025 /home/damian/deepsparse_copy/src/deepsparse/yolact/utils/utils.py:333(postprocess)
+     2838    9.920    0.003   68.502    0.024 /home/damian/deepsparse_copy/src/deepsparse/yolact/utils/annotate.py:180(_resize_to_fit_img)
+167035/107437   36.807    0.000   42.079    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
+   145160   31.815    0.000   31.815    0.000 {resize}
+     2838    0.060    0.000   30.499    0.011 /home/damian/deepsparse_copy/src/deepsparse/yolact/utils/annotate.py:189(<listcomp>)
+     8936    0.033    0.000   24.639    0.003 <__array_function__ internals>:177(concatenate)
+     5676    0.018    0.000   24.439    0.004 <__array_function__ internals>:177(stack)
+     5676    0.083    0.000   24.310    0.004 /home/damian/deepsparse_venv/lib/python3.8/site-packages/numpy/core/shape_base.py:357(stack)
+     2838   15.513    0.005   16.143    0.006 /home/damian/deepsparse_copy/src/deepsparse/yolact/utils/utils.py:127(crop)
+     2838   13.475    0.005   13.475    0.005 /home/damian/deepsparse_copy/src/deepsparse/yolact/utils/utils.py:374(sigmoid)
+     3159    0.016    0.000   12.611    0.004 /home/damian/deepsparse_copy/src/deepsparse/yolact/utils/annotate.py:105(_put_mask)
+     5997    0.006    0.000   12.020    0.002 <__array_function__ internals>:177(where)
+   153674   11.854    0.000   11.854    0.000 {method 'astype' of 'numpy.ndarray' objects}
