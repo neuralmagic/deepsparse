@@ -61,9 +61,9 @@ class QuestionAnsweringInput(BaseModel):
     Schema for inputs to question_answering pipelines
     """
 
-    id: str = Field(description="Example identifier")
     question: str = Field(description="String question to be answered")
     context: str = Field(description="String representing context for answer")
+    id: str = None
 
 
 class QuestionAnsweringOutput(BaseModel):
