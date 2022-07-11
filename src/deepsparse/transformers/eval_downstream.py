@@ -55,6 +55,8 @@ python eval_downstream.py \
 
 import argparse
 import json
+from cProfile import Profile
+from pstats import Stats
 
 from tqdm.auto import tqdm
 
@@ -62,7 +64,6 @@ from deepsparse import Pipeline
 
 
 from datasets import load_dataset, load_metric  # isort: skip
-
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
@@ -85,11 +86,15 @@ def squad_eval(args):
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
+        max_answer_length=args.max_answer_length,
+        n_best_size=args.n_best_size,
+        pad_to_max_length=args.pad_to_max_length,
+        output_dir=args.output_dir,
     )
     print(f"Engine info: {question_answer.engine}")
-
     for idx, sample in _enumerate_progress(squad, args.max_samples):
         pred = question_answer(
+            id=sample["id"],
             question=sample["question"],
             context=sample["context"],
         )
@@ -291,12 +296,57 @@ def parse_args():
         default=None,
     )
 
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=str,
+        default=None,
+        help=("Folder to save output predictions, used for debugging"),
+    )
+
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        default=False,
+        help=("Run with profiling, used for debugging"),
+    )
+
+    # Arguments specific for the Question Answering task
+    parser.add_argument(
+        "--max-answer-length",
+        help="The maximum length of an answer that can be generated. This is "
+        "needed because the start and end predictions are not conditioned "
+        "on one another.",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
+        "--version-2-with-negative",
+        help="Whether or not the underlying dataset contains examples with "
+        "no answers",
+        type=bool,
+        default=False,
+    )
+    parser.add_argument(
+        "--pad-to-max-length",
+        help="Whether to pad all samples to `max_seq_length`. If False, "
+        "will pad the samples dynamically when batching to the maximum length "
+        "in the batch (which can be faster on GPU but will be slower on TPU).",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument(
+        "--n-best-size",
+        help="The total number of n-best predictions to generate when looking "
+        "for an answer.",
+        type=int,
+        default=20,
+    )
+
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-
+def _main(args):
     dataset = args.dataset.lower()
 
     if dataset not in SUPPORTED_DATASETS:
@@ -308,6 +358,19 @@ def main():
     metrics = SUPPORTED_DATASETS[dataset](args)
 
     print(f"\n{dataset} eval results: {metrics.compute()}")
+
+
+def main():
+    args = parse_args()
+    if args.profile:
+        profiler = Profile()
+        profiler.runcall(lambda: _main(args))
+        stats = Stats(profiler)
+        stats.strip_dirs()
+        stats.sort_stats("cumulative")
+        stats.print_stats()
+    else:
+        _main(args)
 
 
 if __name__ == "__main__":
