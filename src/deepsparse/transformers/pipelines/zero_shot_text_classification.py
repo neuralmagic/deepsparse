@@ -35,7 +35,6 @@ transformers tasks
 """
 
 
-from abc import abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Type, Union
 
@@ -47,6 +46,7 @@ from deepsparse.transformers.pipelines import TransformersPipeline
 
 __all__ = [
     "ZeroShotTextClassificationPipeline",
+    "ZeroShotTextClassificationInputImplementation",
     "ZeroShotTextClassificationOutput",
     "ZeroShotTextClassificationImplementation",
     "ModelSchemes",
@@ -95,10 +95,11 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
 
     sequence_to_classify = "Who are you voting for in 2020?"
     candidate_labels = ["Europe", "public health", "politics"]
-    zero_shot_text_classifier(sequence_to_classify, candidate_labels)
-    >>> sequences=['Who are you voting for in 2020?']
-        labels=[['politics', 'Europe', 'public health']]
-        scores=[[0.7635, 0.1357, 0.1007]]
+    zero_shot_text_classifier(sequences=sequence_to_classify, labels=candidate_labels)
+    >>> ZeroShotTextClassificationOutput(
+        sequences=['Who are you voting for in 2020?'],
+        labels=[['politics', 'public health', 'Europe']],
+        scores=[[0.9073666334152222, 0.046810582280159, 0.04582275450229645]])
     ```
 
     example static labels:
@@ -107,15 +108,17 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         task="zero_shot_text_classification",
         num_sequences=1,
         model_scheme="mnli",
+        model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
         labels=["politics", "Europe", "public health"]
     )
 
     sequence_to_classify = "Who are you voting for in 2020?"
-    zero_shot_text_classifier(sequence_to_classify)
-    >>> sequences=['Who are you voting for in 2020?']
-        labels=[['politics', 'Europe', 'public health']]
-        scores=[[0.7635, 0.1357, 0.1007]]
+    zero_shot_text_classifier(sequences=sequence_to_classify)
+    >>> ZeroShotTextClassificationOutput(
+        sequences=['Who are you voting for in 2020?'],
+        labels=[['politics', 'public health', 'Europe']],
+        scores=[[0.9073666334152222, 0.046810582280159, 0.04582275450229645]])
     ```
 
     Note that labels must either be provided during pipeline instantiation via
@@ -173,6 +176,19 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
                 f"Unknown model_scheme {model_scheme}. Currently supported model "
                 f"schemes are {ModelSchemes.to_list()}"
             )
+
+
+class ZeroShotTextClassificationInputImplementation(BaseModel):
+    """
+    Schema for inputs to zero_shot_text_classification pipelines
+    Each sequence and each candidate label must be paired and passed through
+    the model, so the total number of forward passes is num_labels * num_sequences
+    """
+
+    sequences: Union[List[List[str]], List[str], str] = Field(
+        description="A string or List of strings representing input to "
+        "zero_shot_text_classification task"
+    )
 
 
 class ZeroShotTextClassificationOutput(BaseModel):
@@ -302,20 +318,17 @@ class ZeroShotTextClassificationImplementation(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        current_seq_len = cls.get_current_sequence_length(input_schema)
+        tokenizer = pipelines[0].tokenizer
+        tokens = tokenizer(
+            " ".join(input_schema.sequences),
+            add_special_tokens=True,
+            return_tensors="np",
+            padding=False,
+            truncation=False,
+        )
+        current_seq_len = len(tokens)
 
         for pipeline in pipelines:
             if pipeline.sequence_length > current_seq_len:
                 return pipeline
         return pipelines[-1]
-
-    @staticmethod
-    @abstractmethod
-    def get_current_sequence_length(input_schema: BaseModel) -> int:
-        """
-        Helper function to get max sequence length in provided sequences input
-
-        :param input_schema: input to pipeline
-        :return: max sequence length in input_schema
-        """
-        raise NotImplementedError()

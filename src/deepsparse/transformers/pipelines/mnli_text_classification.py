@@ -44,6 +44,7 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 from deepsparse.engine import Context
 from deepsparse.transformers.pipelines.zero_shot_text_classification import (
     ZeroShotTextClassificationImplementation,
+    ZeroShotTextClassificationInputImplementation,
 )
 from deepsparse.utils import numpy_softmax
 
@@ -77,17 +78,13 @@ class MnliTextClassificationConfig(BaseModel):
     )
 
 
-class MnliTextClassificationInput(BaseModel):
+class MnliTextClassificationInput(ZeroShotTextClassificationInputImplementation):
     """
     Schema for inputs to zero_shot_text_classification pipelines
     Each sequence and each candidate label must be paired and passed through
     the model, so the total number of forward passes is num_labels * num_sequences
     """
 
-    sequences: Union[List[List[str]], List[str], str] = Field(
-        description="A string or List of strings representing input to "
-        "zero_shot_text_classification task"
-    )
     labels: Union[None, List[List[str]], List[str], str] = Field(
         description="The set of possible class labels to classify each "
         "sequence into. Can be a single label, a string of comma-separated "
@@ -101,7 +98,7 @@ class MnliTextClassificationInput(BaseModel):
     )
     multi_class: Optional[bool] = Field(
         description="True if class probabilities are independent, default False. "
-        "If provided, overrides the multi_class value in the mnli config.",
+        "If provided, overrides the multi_class value in the config.",
         default=None,
     )
 
@@ -130,7 +127,6 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
 
         # if dynamic labels
         if self._labels is None:
-            # TODO: refactor when elastic scheduler implements work stealing
             if context is None:
                 # num_streams is arbitrarily chosen to be any value >= 2
                 context = Context(num_cores=None, num_streams=2)
@@ -229,11 +225,10 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
         # check for invalid hypothesis template
         if hypothesis_template.format(labels[0]) == hypothesis_template:
             raise ValueError(
-                (
-                    'The provided hypothesis_template "{}" was not able to be '
-                    "formatted with the target labels. Make sure the passed template "
-                    "includes formatting syntax such as {{}} where the label should go."
-                ).format(hypothesis_template)
+                f"The provided hypothesis_template {hypothesis_template} was not "
+                "able to be formatted with the target labels. Make sure the "
+                "passed template includes formatting syntax such as {} where "
+                "the label should go."
             )
 
         sequence_pairs = []
@@ -340,30 +335,3 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
             labels=labels,
             scores=label_scores,
         )
-
-    @classmethod
-    def get_current_sequence_length(input_schema: BaseModel) -> int:
-        """
-        Helper function to get max sequence length in provided sequences input
-
-        :param input_schema: input to pipeline
-        :return: max sequence length in input_schema
-        """
-        if isinstance(input_schema.sequences, str):
-            current_seq_len = len(input_schema.sequences.split())
-        elif isinstance(input_schema.sequences, list):
-            current_seq_len = float("-inf")
-            for _input in input_schema.sequences:
-                if isinstance(_input, str):
-                    current_seq_len = max(len(_input.split()), current_seq_len)
-                elif isinstance(_input, list):
-                    current_seq_len = max(
-                        *(len(__input.split()) for __input in _input), current_seq_len
-                    )
-        else:
-            raise ValueError(
-                "Expected a str or List[str] or List[List[str]] as input but got "
-                f"{type(input_schema.sequences)}"
-            )
-
-        return current_seq_len
