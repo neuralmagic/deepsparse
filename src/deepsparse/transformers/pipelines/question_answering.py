@@ -257,9 +257,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         squad_example = SquadExample(
             inputs.id, inputs.question, inputs.context, None, None, None
         )
-        tokenized_example = self._tokenize(
-            squad_example
-        )  # type: transformers.tokenization_utils_base.BatchEncoding
+        tokenized_example = self._tokenize(squad_example)
 
         span_engine_inputs = []
         span_extra_info = []
@@ -565,7 +563,8 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 context_index = 1 if pad_on_right else 0
 
                 # Set to None the offset_mapping that are not part of the context so
-                # it's easy to determine if a token position is part of the context or not
+                # it's easy to determine if a token position is part of the
+                # context or not
                 tokenized_example["offset_mapping"][i] = [
                     (o if sequence_ids[k] == context_index else None)
                     for k, o in enumerate(tokenized_example["offset_mapping"][i])
