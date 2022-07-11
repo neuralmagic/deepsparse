@@ -1,3 +1,4 @@
 include LICENSE
+include utils/artifacts.py
 recursive-include src/deepsparse/avx2 *
 recursive-include src/deepsparse/avx512 *
