@@ -963,3 +963,121 @@ def yolo_pipeline(*args, **kwargs) -> "Pipeline":
         `coco`
     """
     return Pipeline.create("yolo", *args, **kwargs)
+
+
+def haystack_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Neural Magic pipeline for running Haystack DocumentSearchPipeline.
+    Supports selected Haystack Nodes as well as Haystack nodes integrated
+    with the Neural Magic DeepSparse Engine
+
+    example embedding model instantiation:
+    ```python
+    haystack_pipeline = Pipeline.create(
+        task="information_retrieval_haystack",
+        model_path="masked_language_modeling_model_dir/",
+        config={
+            "document_store": "InMemoryDocumentStore",
+            "document_store_args": {
+                "similarity": "cosine",
+                "use_gpu": False,
+            },
+            "retriever": "DeepSparseEmbeddingRetriever",
+            "retriever_args": {
+                "extraction_strategy": "reduce_mean"
+            }
+        },
+    )
+    ```
+
+    example deepsparse biencoder instantiation
+    ```python
+    haystack_pipeline = Pipeline.create(
+        task="information_retrieval_haystack",
+        config={
+            "document_store": "InMemoryDocumentStore",
+            "document_store_args": {
+                "similarity": "cosine",
+                "use_gpu": False,
+            },
+            "retriever": "DeepSparseDensePassageRetriever",
+            "retriever_args": {
+                "query_model_path": "./query_model",
+                "passage_model_path": "./passage_model"
+            }
+        },
+    )
+    ```
+
+    writing documents:
+    ```python
+    haystack_pipeline.write_documents([
+        {
+            "title": "Claude Shannon",
+            "content": "Claude Elwood Shannon was an American mathematician, "
+            "electrical engineer, and cryptographer known as a father of "
+            "information theory. He was a 21-year-old master's degree student at "
+            "the Massachusetts Institute of Technology (MIT)."
+        },
+        {
+            "title": "Vincent van Gogh",
+            "content": "Van Gogh was born into an upper-middle-class family. "
+            "As a child he was serious, quiet and thoughtful. He began drawing "
+            "at an early age and as a young man worked as an art dealer."
+        },
+        {
+            "title": "Stevie Wonder",
+            "content": "Stevland Hardaway Morris, known professionally as "
+            "Stevie Wonder, is an American singer and musician, who is "
+            "credited as a pioneer and influence by musicians across a range "
+            "of genres."
+        }
+    ])
+    ```
+
+    example queries:
+    ```python
+    from deepsparse.transformers.haystack import print_pipeline_documents
+    pipeline_outputs = haystack_pipeline(
+        queries="who invented information theory",
+        params={"Retriever": {"top_k": 4}}
+    )
+    print_pipeline_documents(pipeline_outputs)
+
+    pipeline_outputs = haystack_pipeline(
+        queries=[
+            "famous artists",
+            "What is Stevie Wonder's real name?"
+        ],
+        params={"Retriever": {"top_k": 4}}
+    )
+    print_pipeline_documents(pipeline_outputs)
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param docs: list of documents to be written to document_store. Can also
+        be written after instantiation with write_documents method.
+        Default is None
+    :param config: dictionary or instance of HaystackPipelineConfig. Used to
+        specify Haystack node arguments
+    :param retriever_kwargs: keyword arguments to be passed to retriever. If
+        the retriever is a deepsparse retriever, then these arguments will also
+        be passed to the EmbeddingExtractionPipeline of the retriever
+    """
+    return Pipeline.create("information_retrieval_haystack", *args, **kwargs)

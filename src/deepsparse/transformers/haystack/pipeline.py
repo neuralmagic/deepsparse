@@ -124,24 +124,6 @@ class DocumentStoreType(str, Enum):
         else:
             raise ValueError(f"Unknown enum value {self.value}")
 
-    @property
-    def default_args(self) -> Dict[str, Any]:
-        if self.value == DocumentStoreType.InMemoryDocumentStore:
-            return {
-                "similarity": "cosine",
-            }
-        if self.value == DocumentStoreType.ElasticsearchDocumentStore:
-            return {
-                "similarity": "cosine",
-            }
-        if self.value == DocumentStoreType.FAISSDocumentStore:
-            return {
-                "faiss_index_factory_str": "Flat",
-                "similarity": "cosine",
-            }
-        else:
-            raise ValueError(f"Unknown enum value {self.value}")
-
 
 class RetrieverType(str, Enum):
     """
@@ -166,25 +148,6 @@ class RetrieverType(str, Enum):
         else:
             raise ValueError(f"Unknown enum value {self.value}")
 
-    @property
-    def default_args(self) -> Dict[str, Any]:
-        if self.value == RetrieverType.EmbeddingRetriever:
-            return {
-                "pooling_strategy": "reduce_mean",
-                "batch_size": 64,
-            }
-        if self.value == RetrieverType.DeepSparseEmbeddingRetriever:
-            return {
-                "pooling_strategy": "reduce_mean",
-                "emb_extraction_layer": -1,
-            }
-        if self.value == RetrieverType.DensePassageRetriever:
-            return {}
-        if self.value == RetrieverType.DeepSparseDensePassageRetriever:
-            return {"pooling_strategy": "reduce_mean"}
-        else:
-            raise ValueError(f"Unknown enum value {self.value}")
-
 
 class PipelineType(str, Enum):
     """
@@ -197,13 +160,6 @@ class PipelineType(str, Enum):
     def constructor(self) -> Type[Any]:
         if self.value == PipelineType.DocumentSearchPipeline:
             return DocumentSearchPipelineModule
-        else:
-            raise ValueError(f"Unknown enum value {self.value}")
-
-    @property
-    def default_args(self) -> Dict[str, Any]:
-        if self.value == PipelineType.DocumentSearchPipeline:
-            return {}
         else:
             raise ValueError(f"Unknown enum value {self.value}")
 
@@ -221,7 +177,7 @@ class HaystackPipelineConfig(BaseModel):
     )
     document_store_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing document_store",
-        default=document_store.default.default_args,
+        default={},
     )
     retriever: RetrieverType = Field(
         description="Name of document retriever to use. Default "
@@ -230,7 +186,7 @@ class HaystackPipelineConfig(BaseModel):
     )
     retriever_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing retriever",
-        default=retriever.default.default_args,
+        default={},
     )
     haystack_pipeline: PipelineType = Field(
         description="Name of Haystack pipeline to use. Default "
@@ -239,60 +195,84 @@ class HaystackPipelineConfig(BaseModel):
     )
     haystack_pipeline_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing haystack_pipeline",
-        default=haystack_pipeline.default.default_args,
+        default={},
     )
 
 
 @Pipeline.register(
-    task="haystack",
-    task_aliases=[],
+    task="information_retrieval_haystack",
+    task_aliases=["haystack"],
     default_model_path="zoo:nlp/masked_language_modeling/bert-base/pytorch/"
     "huggingface/bookcorpus_wikitext/3layer_pruned90-none",
 )
 class HaystackPipeline(Pipeline):
     """
-    Neural Magic's pipeline for running Haystack's DocumentSearchPipeline.
+    Neural Magic pipeline for running Haystack DocumentSearchPipeline.
     Supports selected Haystack Nodes as well as Haystack nodes integrated
     with the Neural Magic DeepSparse Engine
 
-    example instantiation:
+    example embedding model instantiation:
     ```python
     haystack_pipeline = Pipeline.create(
-        task="haystack",
-        config: {
+        task="information_retrieval_haystack",
+        model_path="masked_language_modeling_model_dir/",
+        config={
+            "document_store": "InMemoryDocumentStore",
+            "document_store_args": {
+                "similarity": "cosine",
+                "use_gpu": False,
+            },
             "retriever": "DeepSparseEmbeddingRetriever",
             "retriever_args": {
-                "model_path": "masked_language_modeling_model_dir/"
                 "extraction_strategy": "reduce_mean"
             }
         },
     )
     ```
 
-    writing documents:
+    example deepsparse biencoder instantiation
+    ```python
+    haystack_pipeline = Pipeline.create(
+        task="information_retrieval_haystack",
+        config={
+            "document_store": "InMemoryDocumentStore",
+            "document_store_args": {
+                "similarity": "cosine",
+                "use_gpu": False,
+            },
+            "retriever": "DeepSparseDensePassageRetriever",
+            "retriever_args": {
+                "query_model_path": "./query_model",
+                "passage_model_path": "./passage_model"
+            }
+        },
+    )
     ```
-    haystack_pipeline.write_documents(
+
+    writing documents:
+    ```python
+    haystack_pipeline.write_documents([
         {
-            "title": "Claude Shannon"
+            "title": "Claude Shannon",
             "content": "Claude Elwood Shannon was an American mathematician, "
             "electrical engineer, and cryptographer known as a father of "
-            "information theory."
+            "information theory. He was a 21-year-old master's degree student at "
+            "the Massachusetts Institute of Technology (MIT)."
         },
         {
-            "title": "Vincent van Gogh"
+            "title": "Vincent van Gogh",
             "content": "Van Gogh was born into an upper-middle-class family. "
             "As a child he was serious, quiet and thoughtful. He began drawing "
             "at an early age and as a young man worked as an art dealer."
         },
         {
-            "title": "Stevie Wonder"
+            "title": "Stevie Wonder",
             "content": "Stevland Hardaway Morris, known professionally as "
             "Stevie Wonder, is an American singer and musician, who is "
             "credited as a pioneer and influence by musicians across a range "
-            "of genres that includes rhythm and blues, pop, soul, gospel, "
-            "funk and jazz."
+            "of genres."
         }
-    )
+    ])
     ```
 
     example queries:
@@ -303,10 +283,11 @@ class HaystackPipeline(Pipeline):
         params={"Retriever": {"top_k": 4}}
     )
     print_pipeline_documents(pipeline_outputs)
-    results = haystack_pipeline(
+
+    pipeline_outputs = haystack_pipeline(
         queries=[
             "famous artists",
-            "what is Stevie Wonder's real name?"
+            "What is Stevie Wonder's real name?"
         ],
         params={"Retriever": {"top_k": 4}}
     )
@@ -350,13 +331,13 @@ class HaystackPipeline(Pipeline):
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
         context: Optional[Context] = None,
-        sequence_length: int = 128,
+        sequence_length: Optional[int] = None,
         docs: Optional[List[Dict]] = None,
         config: Optional[Union[HaystackPipelineConfig, Dict[str, Any]]] = None,
         **retriever_kwargs,
     ):
         # transformer pipeline members
-        self._sequence_length = sequence_length
+        self._sequence_length = sequence_length or 128
         self.config = None
         self.tokenizer = None
         self.onnx_input_names = None
@@ -376,10 +357,6 @@ class HaystackPipeline(Pipeline):
             )
 
         # pass arguments to retriever (which then passes to extraction pipeline)
-        if "max_seq_len" in retriever_kwargs:
-            raise ValueError(
-                "Specify max_seq_len by passing sequence_length to pipeline constructor"
-            )
         retriever_kwargs["engine_type"] = engine_type
         retriever_kwargs["batch_size"] = batch_size
         retriever_kwargs["num_cores"] = num_cores
@@ -387,7 +364,7 @@ class HaystackPipeline(Pipeline):
         retriever_kwargs["input_shapes"] = input_shapes
         retriever_kwargs["alias"] = alias
         retriever_kwargs["context"] = context
-        retriever_kwargs["max_seq_len"] = sequence_length
+        retriever_kwargs["sequence_length"] = self._sequence_length
         self._config = self._parse_config(config)
 
         self.initialize_pipeline(retriever_kwargs)
@@ -408,8 +385,6 @@ class HaystackPipeline(Pipeline):
             HaystackPipeline initialization
         :return: merged arguments from both inputs
         """
-        init_retriever_kwargs = init_retriever_kwargs.copy()
-
         # check for conflicting arguments
         for key in init_retriever_kwargs.keys():
             if key in config_retriever_args.keys():
@@ -418,8 +393,30 @@ class HaystackPipeline(Pipeline):
                     "retriever_args. Specify only one"
                 )
 
-        config_retriever_args.update(init_retriever_kwargs)
-        return config_retriever_args
+        # merge
+        merged_args = {}
+        merged_args.update(config_retriever_args)
+        merged_args.update(init_retriever_kwargs)
+
+        # rename pipeline arguments to fit retriever arguments
+        if "extraction_strategy" in merged_args:
+            if "pooling_strategy" in merged_args:
+                raise ValueError(
+                    "Found both extraction_strategy and pooling_strategy in "
+                    "arguments. Specify only one"
+                )
+            merged_args["pooling_strategy"] = merged_args["extraction_strategy"]
+            del merged_args["extraction_strategy"]
+        if "sequence_length" in merged_args:
+            if "max_seq_len" in merged_args:
+                raise ValueError(
+                    "Found both sequence_length and max_seq_len in "
+                    "arguments. Specify only one"
+                )
+            merged_args["max_seq_len"] = merged_args["sequence_length"]
+            del merged_args["sequence_length"]
+
+        return merged_args
 
     def initialize_pipeline(self, init_retriever_kwargs: Dict[str, Any]) -> None:
         """
@@ -430,7 +427,7 @@ class HaystackPipeline(Pipeline):
         :return: None
         """
         # merge retriever_args
-        if self._config.retriever == RetrieverType.DeepSparseEmbeddingRetriever:
+        if self._config.retriever in [RetrieverType.DeepSparseEmbeddingRetriever, RetrieverType.DeepSparseDensePassageRetriever]:
             retriever_args = self._merge_retriever_args(
                 self._config.retriever_args, init_retriever_kwargs
             )

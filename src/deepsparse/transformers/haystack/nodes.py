@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Union
 
 import numpy
-from pydantic import BaseModel
 
 from deepsparse import Pipeline
 from deepsparse.engine import Context
@@ -25,13 +24,12 @@ from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
-from haystack.utils import print_documents
 
 
 __all__ = [
     "DeepSparseEmbeddingRetriever",
     "DeepSparseDensePassageRetriever",
-    "print_pipeline_documents",
+    "DeepSparseEmbeddingEncoder",
 ]
 
 
@@ -106,7 +104,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 
         _LOGGER.info(f"Init retriever using embeddings of model at {model_path}")
 
-        self.embedding_encoder = _DeepSparseEmbeddingEncoder(self, kwargs)
+        self.embedding_encoder = DeepSparseEmbeddingEncoder(self, kwargs)
 
     def train(*args, **kwargs):
         raise NotImplementedError()
@@ -195,6 +193,10 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         self.use_gpu = False
         self.devices = ["cpu"]
 
+        if "model_path" in pipeline_kwargs:
+            del pipeline_kwargs["model_path"]  # ignore model_path argument
+        if "max_seq_len" in pipeline_kwargs:
+            del pipeline_kwargs["max_seq_len"]  # ignore max_seq_len argument
         if document_store is None:
             raise ValueError(
                 "DeepSparseDensePassageRetriever must be initialized with a "
@@ -237,7 +239,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             sequence_length=max_seq_len_query,
             emb_extraction_layer=-1,
             extraction_strategy=pooling_strategy,
-            show_progress_bar=progress_bar,
+            progress_bar=progress_bar,
             context=context,
             **pipeline_kwargs,
         )
@@ -249,7 +251,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             sequence_length=max_seq_len_passage,
             emb_extraction_layer=-1,
             extraction_strategy=pooling_strategy,
-            show_progress_bar=progress_bar,
+            progress_bar=progress_bar,
             context=context,
             **pipeline_kwargs,
         )
@@ -283,7 +285,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         raise NotImplementedError()
 
 
-class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
+class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     """
     Deepsparse implementation of Haystack EmbeddingEncoder
 
@@ -299,7 +301,7 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
             sequence_length=retriever.max_seq_len,
             emb_extraction_layer=retriever.emb_extraction_layer,
             extraction_strategy=retriever.pooling_strategy,
-            show_progress_bar=retriever.progress_bar,
+            progress_bar=retriever.progress_bar,
             **pipeline_kwargs,
         )
 
@@ -338,22 +340,3 @@ class _DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
         passages = [d.content for d in docs]
         return self.embed(passages)
-
-
-def print_pipeline_documents(
-    haystack_pipeline_output: Type[BaseModel],
-) -> None:
-    """
-    Helper function to print documents directly from NM Haystack Pipeline outputs
-
-    :param haystack_pipeline_output: instance of HaystackPipelineOutput schema
-    :return: None
-    """
-    if isinstance(haystack_pipeline_output.query, list):
-        for i in range(len(haystack_pipeline_output.query)):
-            results_dict = {
-                key: value[i] for key, value in haystack_pipeline_output.dict().items()
-            }
-            print_documents(results_dict)
-    else:
-        print_documents(haystack_pipeline_output.dict())

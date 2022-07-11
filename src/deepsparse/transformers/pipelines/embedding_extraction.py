@@ -34,8 +34,9 @@ tasks
 """
 
 
-from concurrent.futures import ThreadPoolExecutor, wait
-from typing import List, Optional, Type, Union
+from concurrent.futures import wait
+from enum import Enum
+from typing import List, Type, Union
 
 import numpy
 import tqdm
@@ -43,7 +44,6 @@ from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
-from deepsparse.engine import Context
 from deepsparse.log import get_main_logger
 from deepsparse.transformers.helpers import truncate_transformer_onnx_model
 from deepsparse.transformers.pipelines import TransformersPipeline
@@ -80,6 +80,21 @@ class EmbeddingExtractionOutput(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+class ExtractionStrategy(str, Enum):
+    """
+    Schema for supported extraction strategies
+    """
+
+    per_token = "per_token"
+    reduce_mean = "reduce_mean"
+    reduce_max = "reduce_max"
+    cls_token = "cls_token"
+
+    @classmethod
+    def to_list(cls) -> List[str]:
+        return cls._value2member_map_
 
 
 @Pipeline.register(
@@ -150,35 +165,26 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         *,
         emb_extraction_layer: Union[int, None] = -1,
         model_size: int = 768,
-        extraction_strategy: str = "per_token",
-        show_progress_bar: bool = False,
+        extraction_strategy: ExtractionStrategy = "per_token",
+        progress_bar: bool = False,
         return_numpy: bool = True,
-        context: Optional[Context] = None,
         **kwargs,
     ):
+        if kwargs.get("batch_size") and kwargs["batch_size"] > 1:
+            raise ValueError(
+                f"{self.__class__.__name__} currently only supports batch size 1, "
+                f"batch size set to {kwargs['batch_size']}"
+            )
+
         self._emb_extraction_layer = emb_extraction_layer
         self._model_size = model_size
         self._extraction_strategy = extraction_strategy
-        self._show_progress_bar = show_progress_bar
+        self._show_progress_bar = progress_bar
         self._return_numpy = return_numpy
 
-        if context is None:
-            # num_streams is arbitrarily chosen to be any value >= 2
-            context = Context(num_cores=None, num_streams=2)
+        self._thread_pool = None
 
-        kwargs.update({"context": context})
-
-        self._thread_pool = ThreadPoolExecutor(
-            max_workers=context.num_streams or 2,
-            thread_name_prefix="deepsparse.pipelines.embedding_extraction",
-        )
-
-        if self._extraction_strategy not in [
-            "per_token",
-            "reduce_mean",
-            "reduce_max",
-            "cls_token",
-        ]:
+        if self._extraction_strategy not in ExtractionStrategy.to_list():
             raise ValueError(
                 f"Unsupported extraction_strategy {self._extraction_strategy}"
             )
@@ -216,7 +222,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             ) = truncate_transformer_onnx_model(
                 onnx_path,
                 emb_extraction_layer=self._emb_extraction_layer,
-                model_size=self._model_size,
+                hidden_layer_size=self._model_size,
             )
         else:
             _LOGGER.info("Skipping model truncation")
@@ -322,12 +328,21 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             else None
         )
 
-        futures = [
-            self._thread_pool.submit(_engine_forward, batch_origin)
-            for batch_origin in range(0, engine_inputs_numpy.shape[1], self._batch_size)
-        ]
-
-        wait(futures)
+        if self._thread_pool is not None:
+            futures = [
+                self._thread_pool.submit(_engine_forward, batch_origin)
+                for batch_origin in range(
+                    0, engine_inputs_numpy.shape[1], self._batch_size
+                )
+            ]
+            wait(futures)
+        else:
+            [
+                _engine_forward(batch_origin)
+                for batch_origin in range(
+                    0, engine_inputs_numpy.shape[1], self._batch_size
+                )
+            ]
 
         return engine_outputs
 
@@ -358,19 +373,19 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 )
 
             # extraction strategy
-            if self._extraction_strategy == "per_token":
+            if self._extraction_strategy == ExtractionStrategy.per_token:
                 embedding = engine_output
-            if self._extraction_strategy == "reduce_mean":
+            if self._extraction_strategy == ExtractionStrategy.reduce_mean:
                 masked_output = self._remove_1d_mask(
                     engine_output, mask=(pad_mask | cls_mask)
                 )
                 embedding = masked_output.mean(axis=0)
-            if self._extraction_strategy == "reduce_max":
+            if self._extraction_strategy == ExtractionStrategy.reduce_max:
                 masked_output = self._remove_1d_mask(
                     engine_output, mask=(pad_mask | cls_mask)
                 )
                 embedding = masked_output.max(axis=0)
-            if self._extraction_strategy == "cls_token":
+            if self._extraction_strategy == ExtractionStrategy.cls_token:
                 embedding = engine_output[numpy.where(cls_mask)[0][0]]
 
             # flatten
@@ -407,14 +422,15 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        if isinstance(input_schema.inputs, str):
-            current_seq_len = len(input_schema.inputs.split())
-        elif isinstance(input_schema.inputs, list):
-            current_seq_len = max(len(_input.split()) for _input in input_schema.inputs)
-        else:
-            raise ValueError(
-                "Expected a List[str] as input but got " f"{type(input_schema.inputs)}"
-            )
+        tokenizer = pipelines[0].tokenizer
+        tokens = tokenizer(
+            " ".join(input_schema.inputs),
+            add_special_tokens=True,
+            return_tensors="np",
+            padding=False,
+            truncation=False,
+        )
+        current_seq_len = len(tokens)
 
         for pipeline in pipelines:
             if pipeline.sequence_length > current_seq_len:

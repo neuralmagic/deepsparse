@@ -204,7 +204,7 @@ def fix_numpy_types(func):
 def truncate_transformer_onnx_model(
     model_path: str,
     emb_extraction_layer: int = -1,
-    model_size: Optional[int] = None,
+    hidden_layer_size: Optional[int] = None,
     final_node_name: Optional[str] = None,
     output_name: str = "embedding",
     output_path: Optional[str] = None,
@@ -222,24 +222,29 @@ def truncate_transformer_onnx_model(
         will create a temporary file path that will be destroyed on program end
     :return: if no output path, a tuple of the saved path to the model, list of
         model output names, and reference to the tempfile object will be returned
-        otherwise, only the model output names will be returned
+        otherwise, a tuple containing the given output_path argument, the model
+        output names, and None
     """
 
     def _check_initializer_names(model: ModelProto) -> Union[str, None]:
-        bert_layer_prog = re.compile(
+        bert_layer_pattern = re.compile(
             r"bert\.encoder\.layer\.\d+\.output\.LayerNorm\.bias"
         )
-        distillbert_layer_prog = re.compile(
+        distillbert_layer_pattern = re.compile(
             r"distilbert.transformer.layer.\d+\.output_layer_norm.bias"
         )
 
         layer_init_names = [
             initializer.name
             for initializer in model.graph.initializer
-            if bert_layer_prog.match(initializer.name)
-            or distillbert_layer_prog.match(initializer.name)
+            if bert_layer_pattern.match(initializer.name)
+            or distillbert_layer_pattern.match(initializer.name)
         ]
-        assert len(layer_init_names) > 0
+        if len(layer_init_names) <= 0:
+            raise RuntimeError(
+                "Unable to find bert layers within onnx graph using initializer "
+                "name matching"
+            )
 
         final_node_initializer_name = sorted(
             layer_init_names,
@@ -253,39 +258,37 @@ def truncate_transformer_onnx_model(
             if final_node_initializer_name in node.input
         ][0]
 
-    # Determine where to cut the model
+    # determine where to cut the model
     if final_node_name is None:
         model = onnx.load(model_path)
-        final_node_name = None
 
-        # Try to match bert layers by initializer names
+        # try to match bert layers by initializer names
         try:
             final_node_name = _check_initializer_names(model)
         except Exception as exception:
             _LOGGER.info(f"Failed to truncate transformer: {exception}")
 
         if final_node_name is None:
-            raise Exception("Failed to truncate transformer model")
+            raise RuntimeError("Failed to truncate transformer model")
 
-    # Override outputs to create subgraph
     _LOGGER.info(f"Truncating transformer model to {final_node_name}")
+
+    # create temporary file if necessary
     if output_path is None:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-
-        truncate_onnx_model(
-            onnx_filepath=model_path,
-            output_filepath=tmp_file.name,
-            final_node_names=[final_node_name],
-            graph_output_names=[output_name],
-            graph_output_shapes=[[None, model_size]],
-        )
-        return tmp_file.name, [output_name], tmp_file
+        output_filepath = tmp_file.name
+        tmp_file_or_none = tmp_file
     else:
-        truncate_onnx_model(
-            onnx_filepath=model_path,
-            output_filepath=output_path,
-            final_node_names=[final_node_name],
-            graph_output_names=[output_name],
-            graph_output_shapes=[[None, model_size]],
-        )
-        return [output_name]
+        output_filepath = output_path
+        tmp_file_or_none = None
+
+    # create subgraph
+    truncate_onnx_model(
+        onnx_filepath=model_path,
+        output_filepath=output_filepath,
+        final_node_names=[final_node_name],
+        graph_output_names=[output_name],
+        graph_output_shapes=[[None, hidden_layer_size]],
+    )
+
+    return output_filepath, [output_name], tmp_file_or_none
