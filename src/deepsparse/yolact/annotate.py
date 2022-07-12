@@ -65,7 +65,7 @@ Examples:
 """
 import logging
 from typing import Optional
-
+import os
 import click
 
 import cv2
@@ -88,7 +88,7 @@ ORT_ENGINE = "onnxruntime"
 TORCH_ENGINE = "torch"
 
 _LOGGER = logging.getLogger(__name__)
-
+os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 @click.command()
 @click.option(

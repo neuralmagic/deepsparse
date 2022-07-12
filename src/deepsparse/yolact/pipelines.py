@@ -16,6 +16,7 @@ import json
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
+import torch
 
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
@@ -174,7 +175,9 @@ class YOLACTPipeline(Pipeline):
             masks_single_image,
             confidence_single_image,
         ) in enumerate(zip(boxes, masks, confidence)):
-            decoded_boxes = decode(boxes_single_image, priors)
+
+            decoded_boxes = decode(torch.from_numpy(boxes_single_image).cpu(),
+                                   torch.from_numpy(priors).cpu())
             results = detect(
                 confidence_single_image,
                 decoded_boxes,
@@ -185,16 +188,21 @@ class YOLACTPipeline(Pipeline):
                 top_k=kwargs["top_k_preprocessing"],
             )
             if results is not None and protos is not None:
-                results["protos"] = protos[batch_idx]
+                results["protos"] = torch.from_numpy(protos[batch_idx]).cpu()
 
             if results:
                 classes, scores, boxes, masks = postprocess(
-                    results,
+                    dets = results,
                     crop_masks=True,
                     score_threshold=kwargs["score_threshold"],
                 )
 
                 # Choose the best k detections (taking into account all the classes)
+                classes = classes.numpy()
+                scores = scores.numpy()
+                boxes = boxes.numpy()
+                masks = masks.numpy()
+
                 idx = numpy.argsort(scores)[::-1][: self.top_k]
 
                 batch_classes.append(
