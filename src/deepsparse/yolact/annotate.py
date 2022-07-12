@@ -235,7 +235,7 @@ def main(
     prof.disable()
     _LOGGER.info(f"Results saved to {save_dir}")
     stats = pstats.Stats(prof).sort_stats("cumtime")
-    stats.print_stats(20)
+    stats.print_stats(40)
     prof.dump_stats('log.prof')
 
 

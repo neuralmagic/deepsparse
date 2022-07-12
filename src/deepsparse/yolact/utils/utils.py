@@ -17,7 +17,7 @@ Helpers and Utilities for YOLACT
 """
 
 from typing import Dict, Optional, Tuple
-
+from scipy.special import expit
 import numpy
 
 
@@ -90,18 +90,14 @@ def jaccard(
         box_b = box_b[None, ...]
 
     inter = intersect(box_a, box_b)
-    area_a = numpy.expand_dims(
-        (box_a[:, :, 2] - box_a[:, :, 0]) * (box_a[:, :, 3] - box_a[:, :, 1]), 2
-    )  # [A,B]
-    area_b = numpy.expand_dims(
-        (box_b[:, :, 2] - box_b[:, :, 0]) * (box_b[:, :, 3] - box_b[:, :, 1]), 1
-    )  # [A,B]
-    area_a = numpy.broadcast_to(area_a, inter.shape)
-    area_b = numpy.broadcast_to(area_b, inter.shape)
+    area_a = (box_a[:, :, 2] - box_a[:, :, 0]) * (box_a[:, :, 3] - box_a[:, :, 1])
+    area_b = (box_b[:, :, 2] - box_b[:, :, 0]) * (box_b[:, :, 3] - box_b[:, :, 1])
+    area_a = numpy.broadcast_to(area_a[..., None], inter.shape)
+    area_b = numpy.broadcast_to(area_b[..., None], inter.shape)
     union = area_a + area_b - inter
 
     out = inter / area_a if iscrowd else inter / union
-    return out if use_batch else numpy.expand_dims(out, 0)
+    return out if use_batch else out[None, ...]
 
 
 def sanitize_coordinates(
@@ -114,14 +110,14 @@ def sanitize_coordinates(
     x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
     Also converts from relative to absolute coordinates.
     """
-    _x1 = _x1 * img_size
-    _x2 = _x2 * img_size
-    x1 = numpy.minimum(_x1, _x2)
-    x2 = numpy.maximum(_x1, _x2)
-    x1 = numpy.clip(x1 - padding, a_min=0, a_max=None)
-    x2 = numpy.clip(x2 + padding, a_min=None, a_max=img_size)
+    _x1 *= img_size
+    _x2 *= img_size
+    numpy.minimum(_x1, _x2, _x1)
+    numpy.maximum(_x1, _x2, _x2)
+    numpy.clip(_x1 - padding, a_min=0, a_max=None, out = _x1)
+    numpy.clip(_x2 + padding, a_min=None, a_max=img_size, out = _x2)
 
-    return x1, x2
+    return _x1, _x2
 
 
 def crop(masks: numpy.ndarray, boxes: numpy.ndarray, padding: int = 1) -> numpy.ndarray:
@@ -196,8 +192,8 @@ def fast_nms(
     Ported from
     https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
     """
-    idx, scores = numpy.argsort(scores)[:, ::-1], numpy.sort(scores)[:, ::-1]
-
+    idx = numpy.argsort(scores)[:, ::-1]
+    scores = numpy.take_along_axis(scores, idx, axis=1)
     num_classes, num_dets = idx.shape
 
     if not num_dets:
@@ -231,7 +227,8 @@ def fast_nms(
     boxes, masks, scores = boxes[keep], masks[keep], scores[keep]
 
     # Only keep the top cfg.max_num_detections the highest scores across all classes
-    scores, idx = numpy.sort(scores)[::-1], numpy.argsort(scores)[::-1]
+    idx = numpy.argsort(scores)[::-1]
+    scores = numpy.take_along_axis(scores, idx, axis=0)
     idx = idx[:max_num_detections]
     scores = scores[:max_num_detections]
 
@@ -273,14 +270,9 @@ def decode(loc: numpy.ndarray, priors: numpy.ndarray) -> numpy.ndarray:
     """
 
     variances = [0.1, 0.2]
-
-    boxes = numpy.concatenate(
-        (
-            priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
-            priors[:, 2:] * numpy.exp(loc[:, 2:] * variances[1]),
-        ),
-        1,
-    )
+    boxes = numpy.empty(shape=(priors.shape[0], 4))
+    boxes[:, :2] = priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:]
+    boxes[:, 2:] = priors[:, 2:] * numpy.exp(loc[:, 2:] * variances[1])
     boxes[:, :2] -= boxes[:, 2:] / 2
     boxes[:, 2:] += boxes[:, :2]
 
@@ -290,7 +282,7 @@ def decode(loc: numpy.ndarray, priors: numpy.ndarray) -> numpy.ndarray:
 def detect(
     conf_preds: numpy.ndarray,
     decoded_boxes: numpy.ndarray,
-    mask_data: numpy.ndarray,
+    masks: numpy.ndarray,
     confidence_threshold: float,
     nms_threshold: float,
     max_num_detections,
@@ -302,14 +294,14 @@ def detect(
 
     Perform nms for only the max scoring class that isn't background (class 0)
     """
-    conf_preds = conf_preds.transpose(1, 0)
+    conf_preds = conf_preds.T
     cur_scores = conf_preds[1:, :]
     conf_scores = numpy.max(cur_scores, axis=0)
 
     keep = conf_scores > confidence_threshold
     scores = cur_scores[:, keep]
     boxes = decoded_boxes[keep, :]
-    masks = mask_data[keep, :]
+    masks = masks[keep, :]
 
     if scores.shape[0] == 0:
         return None
@@ -331,7 +323,7 @@ def detect(
 
 
 def postprocess(
-    det_output: Dict[str, numpy.ndarray],
+    detections: Dict[str, numpy.ndarray],
     crop_masks: bool = True,
     score_threshold: float = 0,
 ) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]:
@@ -342,7 +334,7 @@ def postprocess(
     accounting for all the possible configuration settings.
 
     Args:
-        - det_output: The lost of dicts that Detect outputs.
+        - detections: The lost of dicts that Detect outputs.
 
     Returns 4 torch Tensors (in the following order):
         - classes [num_det]: The class idx for each detection.
@@ -351,8 +343,6 @@ def postprocess(
                                 in absolute point form.
         - masks   [num_det, h, w]: Full image masks for each detection.
     """
-
-    detections = det_output
 
     if score_threshold > 0:
         keep = detections["score"] > score_threshold
@@ -371,10 +361,7 @@ def postprocess(
 
     masks = proto_data @ masks.T
 
-    def sigmoid(x):
-        return 1 / (1 + numpy.exp(-x))
-
-    masks = sigmoid(masks)
+    masks = expit(masks)
 
     if crop_masks:
         masks = crop(masks, boxes)
