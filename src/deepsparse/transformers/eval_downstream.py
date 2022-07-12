@@ -225,6 +225,59 @@ def sst2_eval(args):
     return sst2_metrics
 
 
+def conll2003_eval(args):
+    # load qqp validation dataset and eval tool
+    conll2003 = load_dataset("conll2003")["validation"]
+    conll2003_metrics = load_metric("seqeval")
+
+    # load pipeline
+    token_classify = Pipeline.create(
+        task="token-classification",
+        model_path=args.onnx_filepath,
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+    )
+    print(f"Engine info: {token_classify.engine}")
+
+    ner_tag_map = {
+        "O": 0,
+        "B-PER": 1,
+        "I-PER": 2,
+        "B-ORG": 3,
+        "I-ORG": 4,
+        "B-LOC": 5,
+        "I-LOC": 6,
+        "B-MISC": 7,
+        "I-MISC": 8,
+    }
+    # map entity id and raw id from pipeline to NER tag
+    label_map = {label_id: ner_tag for ner_tag, label_id in ner_tag_map.items()}
+    label_map.update(
+        {
+            token_classify.config.id2label[label_id]: tag
+            for tag, label_id in ner_tag_map.items()
+        }
+    )
+
+    for idx, sample in _enumerate_progress(conll2003, args.max_samples):
+        if not sample["tokens"]:
+            continue  # invalid dataset item, no tokens
+        pred = token_classify(inputs=sample["tokens"], is_split_into_words=True)
+        pred_ids = [label_map[prediction.entity] for prediction in pred.predictions[0]]
+        label_ids = [label_map[ner_tag] for ner_tag in sample["ner_tags"]]
+
+        conll2003_metrics.add_batch(
+            predictions=[pred_ids],
+            references=[label_ids],
+        )
+
+        if args.max_samples and idx >= args.max_samples:
+            break
+
+    return conll2003_metrics
+
+
 def _enumerate_progress(dataset, max_steps):
     progress_bar = tqdm(dataset, total=max_steps) if max_steps else tqdm(dataset)
     return enumerate(progress_bar)
@@ -242,6 +295,7 @@ SUPPORTED_DATASETS = {
     "mnli": mnli_eval,
     "qqp": qqp_eval,
     "sst2": sst2_eval,
+    "conll2003": conll2003_eval,
 }
 
 
