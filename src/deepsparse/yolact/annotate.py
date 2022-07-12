@@ -206,12 +206,14 @@ def main(
         engine_type=engine,
         num_cores=num_cores,
     )
-
+    all_fps = []
     prof = profile.Profile()
     prof.enable()
     for iteration, (input_image, source_image) in enumerate(loader):
         # annotate
-        annotated_image = annotate(
+        if iteration > 300:
+            continue
+        annotated_image, fps = annotate(
             pipeline=yolact_pipeline,
             annotation_func=annotate_image,
             image=input_image,
@@ -219,7 +221,7 @@ def main(
             calc_fps=is_video,
             original_image=source_image,
         )
-
+        all_fps.append(fps)
         if is_webcam:
             cv2.imshow("annotated", annotated_image)
             cv2.waitKey(1)
@@ -235,6 +237,8 @@ def main(
     prof.disable()
     _LOGGER.info(f"Results saved to {save_dir}")
     stats = pstats.Stats(prof).sort_stats("cumtime")
+    import numpy as np
+    print('FPS: ', np.mean(all_fps))
     stats.print_stats(20)
     prof.dump_stats('log.prof')
 

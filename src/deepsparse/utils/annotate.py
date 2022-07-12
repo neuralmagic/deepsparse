@@ -377,7 +377,7 @@ def annotate(
         **kwargs,
     )
 
-    return result
+    return result, target_fps
 
 
 class WebcamLoader:
