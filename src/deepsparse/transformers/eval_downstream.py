@@ -55,6 +55,8 @@ python eval_downstream.py \
 
 import argparse
 import json
+from cProfile import Profile
+from pstats import Stats
 
 from tqdm.auto import tqdm
 
@@ -62,7 +64,6 @@ from deepsparse import Pipeline
 
 
 from datasets import load_dataset, load_metric  # isort: skip
-
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
@@ -85,11 +86,15 @@ def squad_eval(args):
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
+        max_answer_length=args.max_answer_length,
+        n_best_size=args.n_best_size,
+        pad_to_max_length=args.pad_to_max_length,
+        output_dir=args.output_dir,
     )
     print(f"Engine info: {question_answer.engine}")
-
     for idx, sample in _enumerate_progress(squad, args.max_samples):
         pred = question_answer(
+            id=sample["id"],
             question=sample["question"],
             context=sample["context"],
         )
@@ -220,6 +225,59 @@ def sst2_eval(args):
     return sst2_metrics
 
 
+def conll2003_eval(args):
+    # load qqp validation dataset and eval tool
+    conll2003 = load_dataset("conll2003")["validation"]
+    conll2003_metrics = load_metric("seqeval")
+
+    # load pipeline
+    token_classify = Pipeline.create(
+        task="token-classification",
+        model_path=args.onnx_filepath,
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+    )
+    print(f"Engine info: {token_classify.engine}")
+
+    ner_tag_map = {
+        "O": 0,
+        "B-PER": 1,
+        "I-PER": 2,
+        "B-ORG": 3,
+        "I-ORG": 4,
+        "B-LOC": 5,
+        "I-LOC": 6,
+        "B-MISC": 7,
+        "I-MISC": 8,
+    }
+    # map entity id and raw id from pipeline to NER tag
+    label_map = {label_id: ner_tag for ner_tag, label_id in ner_tag_map.items()}
+    label_map.update(
+        {
+            token_classify.config.id2label[label_id]: tag
+            for tag, label_id in ner_tag_map.items()
+        }
+    )
+
+    for idx, sample in _enumerate_progress(conll2003, args.max_samples):
+        if not sample["tokens"]:
+            continue  # invalid dataset item, no tokens
+        pred = token_classify(inputs=sample["tokens"], is_split_into_words=True)
+        pred_ids = [label_map[prediction.entity] for prediction in pred.predictions[0]]
+        label_ids = [label_map[ner_tag] for ner_tag in sample["ner_tags"]]
+
+        conll2003_metrics.add_batch(
+            predictions=[pred_ids],
+            references=[label_ids],
+        )
+
+        if args.max_samples and idx >= args.max_samples:
+            break
+
+    return conll2003_metrics
+
+
 def _enumerate_progress(dataset, max_steps):
     progress_bar = tqdm(dataset, total=max_steps) if max_steps else tqdm(dataset)
     return enumerate(progress_bar)
@@ -237,6 +295,7 @@ SUPPORTED_DATASETS = {
     "mnli": mnli_eval,
     "qqp": qqp_eval,
     "sst2": sst2_eval,
+    "conll2003": conll2003_eval,
 }
 
 
@@ -291,12 +350,57 @@ def parse_args():
         default=None,
     )
 
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=str,
+        default=None,
+        help=("Folder to save output predictions, used for debugging"),
+    )
+
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        default=False,
+        help=("Run with profiling, used for debugging"),
+    )
+
+    # Arguments specific for the Question Answering task
+    parser.add_argument(
+        "--max-answer-length",
+        help="The maximum length of an answer that can be generated. This is "
+        "needed because the start and end predictions are not conditioned "
+        "on one another.",
+        type=int,
+        default=30,
+    )
+    parser.add_argument(
+        "--version-2-with-negative",
+        help="Whether or not the underlying dataset contains examples with "
+        "no answers",
+        type=bool,
+        default=False,
+    )
+    parser.add_argument(
+        "--pad-to-max-length",
+        help="Whether to pad all samples to `max_seq_length`. If False, "
+        "will pad the samples dynamically when batching to the maximum length "
+        "in the batch (which can be faster on GPU but will be slower on TPU).",
+        type=bool,
+        default=True,
+    )
+    parser.add_argument(
+        "--n-best-size",
+        help="The total number of n-best predictions to generate when looking "
+        "for an answer.",
+        type=int,
+        default=20,
+    )
+
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-
+def _main(args):
     dataset = args.dataset.lower()
 
     if dataset not in SUPPORTED_DATASETS:
@@ -308,6 +412,19 @@ def main():
     metrics = SUPPORTED_DATASETS[dataset](args)
 
     print(f"\n{dataset} eval results: {metrics.compute()}")
+
+
+def main():
+    args = parse_args()
+    if args.profile:
+        profiler = Profile()
+        profiler.runcall(lambda: _main(args))
+        stats = Stats(profiler)
+        stats.strip_dirs()
+        stats.sort_stats("cumulative")
+        stats.print_stats()
+    else:
+        _main(args)
 
 
 if __name__ == "__main__":
