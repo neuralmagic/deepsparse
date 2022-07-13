@@ -146,6 +146,9 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         cut down. Default is 156
     :param batch_size: number of documents and queries to encode at once.
         Default is 1
+    :param emb_extraction_layer: transformer layer number from which the embeddings
+        will be extracted. If None, leave the model unchanged. Default is None
+        (last layer)
     :param pooling_strategy: strategy for combining embeddings. Default is
         "cls_token"
     :param top_k: how many documents to return per query. Default is 10
@@ -172,6 +175,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         max_seq_len_query: int = 32,
         max_seq_len_passage: int = 156,
         batch_size: int = 1,
+        emb_extraction_layer: Union[int, None] = None,
         pooling_strategy: str = "cls_token",
         top_k: int = 10,
         embed_title: bool = False,
@@ -237,7 +241,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             query_model_path,
             batch_size=batch_size,
             sequence_length=max_seq_len_query,
-            emb_extraction_layer=-1,
+            emb_extraction_layer=emb_extraction_layer,
             extraction_strategy=pooling_strategy,
             progress_bar=progress_bar,
             context=context,
@@ -249,7 +253,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             passage_model_path,
             batch_size=batch_size,
             sequence_length=max_seq_len_passage,
-            emb_extraction_layer=-1,
+            emb_extraction_layer=emb_extraction_layer,
             extraction_strategy=pooling_strategy,
             progress_bar=progress_bar,
             context=context,
