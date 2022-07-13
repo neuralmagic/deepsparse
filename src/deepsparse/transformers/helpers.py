@@ -208,7 +208,7 @@ def truncate_transformer_onnx_model(
     final_node_name: Optional[str] = None,
     output_name: str = "embedding",
     output_path: Optional[str] = None,
-) -> str:
+) -> Tuple[str, List[str], Union[NamedTemporaryFile, None]]:
     """
     Determines where to cut the transformer model using best-guess heuristics
     Saves cut model to output_path or temporary file
@@ -216,6 +216,8 @@ def truncate_transformer_onnx_model(
     :param model_path: path of onnx file to be cut
     :param emb_extraction_layer: last bert layer to include.
         default -1 (last layer)
+    :param hidden_layer_size: guess for the number of embedded values per token
+        in provided model. Used by deepsparse engine to optimize memory allocation
     :param final_node_name: name of last computed node in graph
     :param output_name: name of graph output, default "embedding"
     :param output_path: path to write resulting onnx file. If not provided,

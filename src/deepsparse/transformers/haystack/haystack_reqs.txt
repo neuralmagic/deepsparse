@@ -35,7 +35,7 @@ certifi==2022.6.15
 cffi==1.15.1
 charset-normalizer==2.0.12
 ci-sdr==0.0.0
-click==8.0.4
+click==8.0 #click==8.0.4
 cloudpickle==2.1.0
 coloredlogs==15.0.1
 ConfigArgParse==1.5.3
