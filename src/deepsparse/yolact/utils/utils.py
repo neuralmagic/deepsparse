@@ -15,6 +15,7 @@
 """
 Helpers and Utilities for YOLACT
 """
+import numpy as np
 import torch
 from typing import Dict, Optional, Tuple
 
@@ -30,7 +31,7 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 
-_all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "preprocess_array"]
+_all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "sanitize_coordinates_numpy", "preprocess_array"]
 
 
 def preprocess_array(
@@ -92,6 +93,26 @@ def jaccard(box_a, box_b, iscrowd:bool=False):
 
     out = inter / area_a if iscrowd else inter / union
     return out if use_batch else out.squeeze(0)
+
+def sanitize_coordinates_numpy(
+    _x1: numpy.ndarray, _x2: numpy.ndarray, img_size: int, padding: int = 0
+) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    """
+    This is numpy-based version of the torch.jit.script() `sanitize_coordinates`
+    function; used only for annotation, not inference.
+    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+    Sanitizes the input coordinates so that
+    x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
+    Also converts from relative to absolute coordinates.
+    """
+    _x1 *= img_size
+    _x2 *= img_size
+    x1 = numpy.minimum(_x1, _x2)
+    x2 = numpy.maximum(_x1, _x2)
+    numpy.clip(x1 - padding, a_min=0, a_max=None, out = x1)
+    numpy.clip(x2 + padding, a_min=None, a_max=img_size, out = x2)
+
+    return x1, x2
 
 
 @torch.jit.script
@@ -208,7 +229,7 @@ def fast_nms(boxes, masks, scores, confidence_threshold, max_num_detections, nms
 
 
 @torch.jit.script
-def decode(loc, priors):
+def decode(loc: torch.Tensor, priors: torch.Tensor)-> torch.Tensor:
     """
     Decode predicted bbox coordinates using the same scheme
     employed by Yolov2: https://arxiv.org/pdf/1612.08242.pdf
@@ -233,7 +254,6 @@ def decode(loc, priors):
     Returns: A tensor of decoded relative coordinates in point form
              form with size [num_priors, 4]
     """
-
 
     variances = [0.1, 0.2]
 

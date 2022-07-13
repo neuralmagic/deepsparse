@@ -65,10 +65,8 @@ Examples:
 """
 import logging
 from typing import Optional
-import os
+
 import click
-import cProfile as profile
-import pstats
 
 import cv2
 from deepsparse.pipeline import Pipeline
@@ -90,7 +88,7 @@ ORT_ENGINE = "onnxruntime"
 TORCH_ENGINE = "torch"
 
 _LOGGER = logging.getLogger(__name__)
-os.environ["CUDA_VISIBLE_DEVICES"]=""
+
 
 @click.command()
 @click.option(
@@ -206,14 +204,11 @@ def main(
         engine_type=engine,
         num_cores=num_cores,
     )
-    all_fps = []
-    prof = profile.Profile()
-    prof.enable()
+
     for iteration, (input_image, source_image) in enumerate(loader):
+
         # annotate
-        if iteration > 300:
-            continue
-        annotated_image, fps = annotate(
+        annotated_image = annotate(
             pipeline=yolact_pipeline,
             annotation_func=annotate_image,
             image=input_image,
@@ -221,26 +216,19 @@ def main(
             calc_fps=is_video,
             original_image=source_image,
         )
-        all_fps.append(fps)
+
         if is_webcam:
             cv2.imshow("annotated", annotated_image)
             cv2.waitKey(1)
 
         # save
         if saver:
-            pass
-            # saver.save_frame(annotated_image)
+            saver.save_frame(annotated_image)
 
     if saver:
-        pass
-        # saver.close()
-    prof.disable()
+        saver.close()
+
     _LOGGER.info(f"Results saved to {save_dir}")
-    stats = pstats.Stats(prof).sort_stats("cumtime")
-    import numpy as np
-    print('FPS: ', np.mean(all_fps))
-    stats.print_stats(20)
-    prof.dump_stats('log.prof')
 
 
 if __name__ == "__main__":

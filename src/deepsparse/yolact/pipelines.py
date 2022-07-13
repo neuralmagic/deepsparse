@@ -176,8 +176,11 @@ class YOLACTPipeline(Pipeline):
             confidence_single_image,
         ) in enumerate(zip(boxes, masks, confidence)):
 
-            decoded_boxes = decode(torch.from_numpy(boxes_single_image).cpu(),
-                                   torch.from_numpy(priors).cpu())
+            loc = torch.from_numpy(loc).cpu()
+            priors = torch.from_numpy(priors).cpu()
+
+            decoded_boxes = decode(boxes_single_image, priors)
+
             results = detect(
                 confidence_single_image,
                 decoded_boxes,
@@ -188,6 +191,7 @@ class YOLACTPipeline(Pipeline):
                 top_k=kwargs["top_k_preprocessing"],
             )
             if results is not None and protos is not None:
+                torch.from_numpy(protos[batch_idx]).cpu()
                 results["protos"] = torch.from_numpy(protos[batch_idx]).cpu()
 
             if results:
