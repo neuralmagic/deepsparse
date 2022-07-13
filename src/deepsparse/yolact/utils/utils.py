@@ -17,7 +17,7 @@ Helpers and Utilities for YOLACT
 """
 
 from typing import Dict, Optional, Tuple
-
+from scipy.special import expit
 import numpy
 
 
@@ -114,12 +114,12 @@ def sanitize_coordinates(
     x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
     Also converts from relative to absolute coordinates.
     """
-    _x1 = _x1 * img_size
-    _x2 = _x2 * img_size
-    x1 = numpy.minimum(_x1, _x2)
-    x2 = numpy.maximum(_x1, _x2)
-    x1 = numpy.clip(x1 - padding, a_min=0, a_max=None)
-    x2 = numpy.clip(x2 + padding, a_min=None, a_max=img_size)
+    x1 = _x1 * img_size
+    x2 = _x2 * img_size
+    numpy.minimum(x1, x2, x1)
+    numpy.maximum(x1, x2, x2)
+    numpy.clip(x1 - padding, a_min=0, a_max=None, out=x1)
+    numpy.clip(x2 + padding, a_min=None, a_max=img_size, out=x2)
 
     return x1, x2
 
@@ -371,10 +371,7 @@ def postprocess(
 
     masks = proto_data @ masks.T
 
-    def sigmoid(x):
-        return 1 / (1 + numpy.exp(-x))
-
-    masks = sigmoid(masks)
+    masks = expit(masks)
 
     if crop_masks:
         masks = crop(masks, boxes)

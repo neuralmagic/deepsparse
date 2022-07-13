@@ -135,12 +135,17 @@ class YOLACTPipeline(Pipeline):
             inputs to postprocessing that may not be included in the engine inputs
         """
         images = inputs.images
+        with threadpool_limits(limits=1):
+            if not isinstance(images, list):
+                images = [images]
 
-        if not isinstance(images, list):
-            images = [images]
+            if isinstance(images[0], str):
+                images = [cv2.imread(file_path) for file_path in images]
 
-        if isinstance(images[0], str):
-            images = [cv2.imread(file_path) for file_path in images]
+
+            out = [
+                preprocess_array(array, self.image_size) for array in images
+            ]
 
         postprocessing_kwargs = dict(
             confidence_threshold=inputs.confidence_threshold,
@@ -150,9 +155,7 @@ class YOLACTPipeline(Pipeline):
             max_num_detections=inputs.max_num_detections,
         )
 
-        return [
-            preprocess_array(array, self.image_size) for array in images
-        ], postprocessing_kwargs
+        return out, postprocessing_kwargs
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
@@ -168,7 +171,7 @@ class YOLACTPipeline(Pipeline):
 
         # Preprocess every image in the batch individually
         batch_classes, batch_scores, batch_boxes, batch_masks = [], [], [], []
-        with threadpool_limits(limits=1, user_api='blas'):
+        with threadpool_limits(limits=1):
             for batch_idx, (
                 boxes_single_image,
                 masks_single_image,
