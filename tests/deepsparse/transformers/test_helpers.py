@@ -99,5 +99,5 @@ def test_truncate_transformer_onnx_model(
     truncated_onnx = onnx.load(truncated_onnx_path)
     assert len(truncated_onnx.graph.output) == 1
     assert truncated_onnx.graph.output[0].name == output_name
-    final_node = get_onnx_final_node(truncated_onnx, "embedding")
+    final_node = get_onnx_final_node(truncated_onnx, output_name)
     assert final_node.name == expected_final_node_name
