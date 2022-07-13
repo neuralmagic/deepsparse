@@ -15,15 +15,15 @@
 from typing import List, Optional, Union
 
 import numpy
-
-from deepsparse import Pipeline
-from deepsparse.engine import Context
-from deepsparse.log import get_main_logger
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
+
+from deepsparse import Pipeline
+from deepsparse.engine import Context
+from deepsparse.log import get_main_logger
 
 
 __all__ = [

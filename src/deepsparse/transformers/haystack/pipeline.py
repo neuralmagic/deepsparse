@@ -35,17 +35,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
-from pydantic import BaseModel, Field
-
-from deepsparse import Pipeline
-from deepsparse.engine import Context, Scheduler
-from deepsparse.pipeline import DEEPSPARSE_ENGINE
-from deepsparse.transformers.haystack import (
-    DeepSparseDensePassageRetriever as DeepSparseDensePassageRetrieverModule,
-)
-from deepsparse.transformers.haystack import (
-    DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule,
-)
 from haystack.document_stores import (
     ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule,
 )
@@ -57,6 +46,17 @@ from haystack.nodes import DensePassageRetriever as DensePassageRetrieverModule
 from haystack.nodes import EmbeddingRetriever as EmbeddingRetrieverModule
 from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
 from haystack.schema import Document
+from pydantic import BaseModel, Field
+
+from deepsparse import Pipeline
+from deepsparse.engine import Context, Scheduler
+from deepsparse.pipeline import DEEPSPARSE_ENGINE
+from deepsparse.transformers.haystack import (
+    DeepSparseDensePassageRetriever as DeepSparseDensePassageRetrieverModule,
+)
+from deepsparse.transformers.haystack import (
+    DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule,
+)
 
 
 __all__ = [
@@ -427,7 +427,10 @@ class HaystackPipeline(Pipeline):
         :return: None
         """
         # merge retriever_args
-        if self._config.retriever in [RetrieverType.DeepSparseEmbeddingRetriever, RetrieverType.DeepSparseDensePassageRetriever]:
+        if self._config.retriever in [
+            RetrieverType.DeepSparseEmbeddingRetriever,
+            RetrieverType.DeepSparseDensePassageRetriever,
+        ]:
             retriever_args = self._merge_retriever_args(
                 self._config.retriever_args, init_retriever_kwargs
             )

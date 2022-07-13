@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from deepsparse.transformers.haystack import HaystackPipelineOutput
 from haystack.utils import print_documents
+
+from deepsparse.transformers.haystack import HaystackPipelineOutput
 
 
 __all__ = [
