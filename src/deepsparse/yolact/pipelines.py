@@ -16,7 +16,7 @@ import json
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
-
+from threadpoolctl import threadpool_limits
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
@@ -168,49 +168,49 @@ class YOLACTPipeline(Pipeline):
 
         # Preprocess every image in the batch individually
         batch_classes, batch_scores, batch_boxes, batch_masks = [], [], [], []
-
-        for batch_idx, (
-            boxes_single_image,
-            masks_single_image,
-            confidence_single_image,
-        ) in enumerate(zip(boxes, masks, confidence)):
-            decoded_boxes = decode(boxes_single_image, priors)
-            results = detect(
-                confidence_single_image,
-                decoded_boxes,
+        with threadpool_limits(limits=2, user_api='blas'):
+            for batch_idx, (
+                boxes_single_image,
                 masks_single_image,
-                confidence_threshold=kwargs["confidence_threshold"],
-                nms_threshold=kwargs["nms_threshold"],
-                max_num_detections=kwargs["max_num_detections"],
-                top_k=kwargs["top_k_preprocessing"],
-            )
-            if results is not None and protos is not None:
-                results["protos"] = protos[batch_idx]
-
-            if results:
-                classes, scores, boxes, masks = postprocess(
-                    results,
-                    crop_masks=True,
-                    score_threshold=kwargs["score_threshold"],
+                confidence_single_image,
+            ) in enumerate(zip(boxes, masks, confidence)):
+                decoded_boxes = decode(boxes_single_image, priors)
+                results = detect(
+                    confidence_single_image,
+                    decoded_boxes,
+                    masks_single_image,
+                    confidence_threshold=kwargs["confidence_threshold"],
+                    nms_threshold=kwargs["nms_threshold"],
+                    max_num_detections=kwargs["max_num_detections"],
+                    top_k=kwargs["top_k_preprocessing"],
                 )
+                if results is not None and protos is not None:
+                    results["protos"] = protos[batch_idx]
 
-                # Choose the best k detections (taking into account all the classes)
-                idx = numpy.argsort(scores)[::-1][: self.top_k]
+                if results:
+                    classes, scores, boxes, masks = postprocess(
+                        results,
+                        crop_masks=True,
+                        score_threshold=kwargs["score_threshold"],
+                    )
 
-                batch_classes.append(
-                    list(map(self.class_names.__getitem__, map(str, classes[idx])))
-                    if self.class_names is not None
-                    else classes[idx].tolist()
-                )
-                batch_scores.append(scores[idx].tolist())
-                batch_boxes.append(boxes[idx].tolist())
-                batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])
+                    # Choose the best k detections (taking into account all the classes)
+                    idx = numpy.argsort(scores)[::-1][: self.top_k]
 
-            else:
-                batch_classes.append([None])
-                batch_scores.append([None])
-                batch_boxes.append([None])
-                batch_masks.append([None])
+                    batch_classes.append(
+                        list(map(self.class_names.__getitem__, map(str, classes[idx])))
+                        if self.class_names is not None
+                        else classes[idx].tolist()
+                    )
+                    batch_scores.append(scores[idx].tolist())
+                    batch_boxes.append(boxes[idx].tolist())
+                    batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])
+
+                else:
+                    batch_classes.append([None])
+                    batch_scores.append([None])
+                    batch_boxes.append([None])
+                    batch_masks.append([None])
 
         return YOLACTOutputSchema(
             classes=batch_classes,
