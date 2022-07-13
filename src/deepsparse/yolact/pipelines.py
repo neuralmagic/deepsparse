@@ -168,7 +168,7 @@ class YOLACTPipeline(Pipeline):
 
         # Preprocess every image in the batch individually
         batch_classes, batch_scores, batch_boxes, batch_masks = [], [], [], []
-        with threadpool_limits(limits=2, user_api='blas'):
+        with threadpool_limits(limits=1, user_api='blas'):
             for batch_idx, (
                 boxes_single_image,
                 masks_single_image,

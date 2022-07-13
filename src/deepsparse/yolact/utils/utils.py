@@ -302,7 +302,7 @@ def detect(
 
     Perform nms for only the max scoring class that isn't background (class 0)
     """
-    conf_preds = conf_preds.transpose(1, 0)
+    conf_preds = conf_preds.T
     cur_scores = conf_preds[1:, :]
     conf_scores = numpy.max(cur_scores, axis=0)
 
