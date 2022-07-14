@@ -181,9 +181,12 @@ def _sanitize_coordinates(
     _x1: numpy.ndarray, _x2: numpy.ndarray, img_size: int, padding: int = 0
 ) -> Tuple[numpy.ndarray, numpy.ndarray]:
     """
-    This is numpy-based version of the torch.jit.script() `sanitize_coordinates`
-    function; used only for annotation, not inference.
+    This is numpy-based version of the torch.jit.script()
+    `sanitize_coordinates` function.
+    Used only for annotation, not the inference pipeline.
+
     Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+
     Sanitizes the input coordinates so that
     x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
     Also converts from relative to absolute coordinates.
@@ -207,11 +210,8 @@ def _resize_to_fit_img(
 
     # Resize the masks
     masks = numpy.stack(
-        [cv2.resize(mask, (w, h), interpolation=cv2.INTER_LINEAR) for mask in masks]
+        [cv2.resize(_mask, (w, h), interpolation=cv2.INTER_LINEAR) for _mask in masks]
     )
-
-    # Binarize the masks
-    masks = (masks > 0.5).astype(numpy.int8)
 
     # Reshape the bounding boxes
     boxes = numpy.stack(boxes)

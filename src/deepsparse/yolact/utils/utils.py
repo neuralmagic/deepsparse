@@ -31,7 +31,7 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 
-_all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "preprocess_array"]
+_all__ = ["detect", "decode", "postprocess", "preprocess_array"]
 
 
 def preprocess_array(
@@ -73,8 +73,8 @@ def jaccard(
     """
     Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
 
-    Compute the jaccard overlap of two sets of boxes.  The jaccard overlap
-    is simply the intersection over union of two boxes.  Here we operate on
+    Compute the jaccard overlap of two sets of boxes. The jaccard overlap
+    is simply the intersection over union of two boxes. Here we operate on
     ground truth boxes and default boxes. If iscrowd=True, put the crowd in box_b.
     E.g.:
         A ∩ B / A ∪ B = A ∩ B / (area(A) + area(B) - A ∩ B)
@@ -141,13 +141,13 @@ def sanitize_coordinates(
     return x1, x2
 
 
-@torch.jit.script
+# @torch.jit.script
 def crop(masks: torch.Tensor, boxes: torch.Tensor, padding: int = 1) -> torch.Tensor:
     """
     Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
 
     "Crop" predicted masks by zeroing out everything not in the predicted bbox.
-    Vectorized by Chong (thanks Chong).
+
     Args:
         - masks should be a size [h, w, n] tensor of masks
         - boxes should be a size [n, 4] tensor of bbox coords in relative point form
@@ -174,7 +174,7 @@ def crop(masks: torch.Tensor, boxes: torch.Tensor, padding: int = 1) -> torch.Te
 
     crop_mask = masks_left * masks_right * masks_up * masks_down
 
-    return masks * crop_mask.float()
+    return masks * crop_mask
 
 
 @torch.jit.script
@@ -285,20 +285,20 @@ def decode(loc: torch.Tensor, priors: torch.Tensor) -> torch.Tensor:
         b_w = prior_w * exp(loc_w)
         b_h = prior_h * exp(loc_h)
 
-    Note that loc is inputed as [(s(x)-.5)/conv_w, (s(y)-.5)/conv_h, w, h]
-    while priors are inputed as [x, y, w, h] where each coordinate
+    Note that loc is input as [(s(x)-.5)/conv_w, (s(y)-.5)/conv_h, w, h]
+    while priors are input as [x, y, w, h] where each coordinate
     is relative to size of the image (even sigmoid(x)). We do this
     in the network by dividing by the 'cell size', which is just
-    the size of the convouts.
+    the size of the convo-uts.
 
     Also note that prior_x and prior_y are center coordinates which
     is why we have to subtract .5 from sigmoid(pred_x and pred_y).
 
     Args:
         - loc:    The predicted bounding boxes of size [num_priors, 4]
-        - priors: The priorbox coords with size [num_priors, 4]
+        - priors: The prior box coords with size [num_priors, 4]
 
-    Returns: A tensor of decoded relative coordinates in point form
+    Returns: A tensor of decoded relative coordinates in point
              form with size [num_priors, 4]
     """
 
@@ -398,8 +398,10 @@ def postprocess(
 
     # Permute into the correct output shape [num_dets, proto_h, proto_w]
     masks = masks.permute(2, 0, 1).contiguous()
+    # Binarize the masks
+    masks.gt_(0.5)
 
-    return classes, scores, boxes, masks
+    return classes, scores, boxes, masks.type(torch.uint8)
 
 
 def _assert_channels_last(array: numpy.ndarray) -> numpy.ndarray:

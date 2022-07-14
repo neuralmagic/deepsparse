@@ -204,12 +204,12 @@ class YOLACTPipeline(Pipeline):
                     score_threshold=kwargs["score_threshold"],
                 )
 
-                # Choose the best k detections (taking into account all the classes)
                 classes = classes.numpy()
                 scores = scores.numpy()
                 boxes = boxes.numpy()
                 masks = masks.numpy()
 
+                # Choose the best k detections (taking into account all the classes)
                 idx = numpy.argsort(scores)[::-1][: self.top_k]
 
                 batch_classes.append(
@@ -219,13 +219,13 @@ class YOLACTPipeline(Pipeline):
                 )
                 batch_scores.append(scores[idx].tolist())
                 batch_boxes.append(boxes[idx].tolist())
-                batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])
+                batch_masks.append(masks[idx])
 
             else:
                 batch_classes.append([None])
                 batch_scores.append([None])
                 batch_boxes.append([None])
-                batch_masks.append([None])
+                batch_masks.append(None)
 
         return YOLACTOutputSchema(
             classes=batch_classes,
