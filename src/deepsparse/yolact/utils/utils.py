@@ -398,10 +398,8 @@ def postprocess(
 
     # Permute into the correct output shape [num_dets, proto_h, proto_w]
     masks = masks.permute(2, 0, 1).contiguous()
-    # Binarize the masks
-    masks.gt_(0.5)
 
-    return classes, scores, boxes, masks.type(torch.uint8)
+    return classes, scores, boxes, masks
 
 
 def _assert_channels_last(array: numpy.ndarray) -> numpy.ndarray:
