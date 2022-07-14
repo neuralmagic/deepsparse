@@ -289,7 +289,7 @@ def decode(loc: torch.Tensor, priors: torch.Tensor) -> torch.Tensor:
     while priors are input as [x, y, w, h] where each coordinate
     is relative to size of the image (even sigmoid(x)). We do this
     in the network by dividing by the 'cell size', which is just
-    the size of the convo-uts.
+    the size of the conv-outs.
 
     Also note that prior_x and prior_y are center coordinates which
     is why we have to subtract .5 from sigmoid(pred_x and pred_y).
