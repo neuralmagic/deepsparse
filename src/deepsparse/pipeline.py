@@ -127,7 +127,7 @@ class Pipeline(ABC):
         self,
         model_path: str,
         engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: int = 1,
+        batch_size: Optional[int] = None,
         num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
@@ -141,6 +141,13 @@ class Pipeline(ABC):
         self._alias = alias
         self.context = context
         self._threadpool = threadpool
+        self._batch_size = batch_size
+
+        if self._batch_size is None and self._threadpool is None:
+            raise ValueError(
+                "Expected a ThreadPoolExecutor object to initialize a "
+                f"dynamic batch pipeline but got {self._threadpool}"
+            )
 
         if self._threadpool and not isinstance(self._threadpool, ThreadPoolExecutor):
             raise ValueError(
@@ -157,7 +164,7 @@ class Pipeline(ABC):
                 )
 
         self._engine_args = dict(
-            batch_size=batch_size,
+            batch_size=self._batch_size or 1,
             num_cores=num_cores,
             input_shapes=input_shapes,
         )

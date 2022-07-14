@@ -34,8 +34,7 @@ Pipeline implementation and pydantic models for text classification transformers
 tasks
 """
 
-
-from typing import List, Type, Union
+from typing import Any, List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -43,7 +42,7 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-
+from deepsparse.utils import SplittableSchema
 
 __all__ = [
     "TextClassificationInput",
@@ -52,15 +51,52 @@ __all__ = [
 ]
 
 
-class TextClassificationInput(BaseModel):
+class TextClassificationInput(BaseModel, SplittableSchema):
     """
     Schema for inputs to text_classification pipelines
     """
 
     sequences: Union[List[List[str]], List[str], str] = Field(
         description="A string or List of strings representing input to"
-        "text_classification task"
+                    "text_classification task"
     )
+
+    @staticmethod
+    def create_sample_inputs(batch_size: int = 1):
+        assert isinstance(batch_size,
+                          int) and batch_size > 0, "batch size must be greater than 1"
+        _inputs = ["I am Batman"] * batch_size
+        return TextClassificationInput(
+            **{"sequences": _inputs}
+        )
+
+    def split(self, _input: "TextClassificationInput") -> List[Any]:
+        """
+        TODO: Fill docstring
+        :param _input:
+        :return:
+        """
+
+        sequences = _input.sequences
+
+        # case 1: do nothing if single input of batch_size 1
+
+        if isinstance(sequences, str):
+            yield _input
+
+        elif isinstance(sequences, list) and len(sequences) and isinstance(sequences[0],
+                                                                           str):
+            # case 2: List[str] -> multi-batches of size 1 Or batch-size 1 multi-inputs
+
+            for sequence in sequences:
+                yield TextClassificationInput(
+                    **{
+                        "sequences": sequence
+                    }
+                )
+        else:
+            # TODO: complete logic for List[List[str]]]
+            raise NotImplementedError
 
 
 class TextClassificationOutput(BaseModel):
@@ -239,8 +275,8 @@ class TextClassificationPipeline(TransformersPipeline):
         else:
             # return all scores and labels for each item in batch
             labels = [
-                [self.config.id2label[idx] for idx in range(scores.shape[1])]
-            ] * len(scores)
+                         [self.config.id2label[idx] for idx in range(scores.shape[1])]
+                     ] * len(scores)
             label_scores = [score.reshape(-1).tolist() for score in scores]
 
         return self.output_schema(
