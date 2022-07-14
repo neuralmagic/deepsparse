@@ -15,8 +15,13 @@
 from abc import ABC, abstractmethod
 from typing import Any, List
 
+__all__ = [
+    "Splittable",
+    "Joinable",
+]
 
-class SplittableSchema(ABC):
+
+class Splittable(ABC):
     """
     A contract that ensures implementing subclass objects(representing a batch
     size of b) can be split into a smaller List of objects each representing a input
@@ -27,16 +32,20 @@ class SplittableSchema(ABC):
     def split(self, *args, **kwargs) -> List[Any]:
         """
         Utility abstract method that subclasses must implement, the goal of
-        this function is to take in a Schema object with a batch size b, and
-        split it into a List b smaller Schema objects with batch size 1
+        this function is to split a Schema object with a batch size b, into a
+        List of b smaller Schema objects with batch size 1
 
         :return: A List of smaller objects each representing an input of
             batch-size 1
         """
         raise NotImplementedError
 
+    def __iter__(self):
+        for _input in self.split():
+            yield _input
 
-class JoinableSchema(ABC):
+
+class Joinable(ABC):
     """
     A contract that ensures multiple objects of the implementing subclass can be
     combined into one object representing a bigger batch size

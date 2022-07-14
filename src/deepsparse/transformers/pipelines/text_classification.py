@@ -34,7 +34,7 @@ Pipeline implementation and pydantic models for text classification transformers
 tasks
 """
 
-from typing import Any, List, Type, Union
+from typing import Any, Dict, List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -42,7 +42,7 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.utils import SplittableSchema
+from deepsparse.utils import Splittable, Joinable
 
 __all__ = [
     "TextClassificationInput",
@@ -51,7 +51,7 @@ __all__ = [
 ]
 
 
-class TextClassificationInput(BaseModel, SplittableSchema):
+class TextClassificationInput(BaseModel, Splittable):
     """
     Schema for inputs to text_classification pipelines
     """
@@ -62,27 +62,32 @@ class TextClassificationInput(BaseModel, SplittableSchema):
     )
 
     @staticmethod
-    def create_sample_inputs(batch_size: int = 1):
-        assert isinstance(batch_size,
-                          int) and batch_size > 0, "batch size must be greater than 1"
-        _inputs = ["I am Batman"] * batch_size
-        return TextClassificationInput(
-            **{"sequences": _inputs}
+    def create_sample_inputs(
+        batch_size: int = 1,
+    ) -> Dict[str, Union[List[List[str]], List[str], str]]:
+        """
+        Utility method to return a Dict representing sample inputs of given batch
+        size for current Schema
+        """
+        assert isinstance(batch_size, int) and batch_size > 0, (
+            "batch size must be greater than 1"
         )
+        _inputs = ["I am Batman" for _ in range(batch_size)]
+        return {"sequences": _inputs}
 
-    def split(self, _input: "TextClassificationInput") -> List[Any]:
+    def split(self) -> List[Any]:
         """
         TODO: Fill docstring
         :param _input:
         :return:
         """
 
-        sequences = _input.sequences
+        sequences = self.sequences
 
         # case 1: do nothing if single input of batch_size 1
 
         if isinstance(sequences, str):
-            yield _input
+            yield self
 
         elif isinstance(sequences, list) and len(sequences) and isinstance(sequences[0],
                                                                            str):
@@ -97,6 +102,7 @@ class TextClassificationInput(BaseModel, SplittableSchema):
         else:
             # TODO: complete logic for List[List[str]]]
             raise NotImplementedError
+
 
 
 class TextClassificationOutput(BaseModel):

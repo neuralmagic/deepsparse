@@ -30,7 +30,6 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
 
-
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",
@@ -45,6 +44,8 @@ __all__ = [
     "Bucketable",
     "BucketingPipeline",
 ]
+
+from deepsparse.utils import Joinable, Splittable
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
@@ -174,11 +175,18 @@ class Pipeline(ABC):
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
 
-    def __call__(self, threadpool=None, *args, **kwargs) -> Union[BaseModel, Future]:
-        threadpool = threadpool or self._threadpool
-        if threadpool:
-            return threadpool.submit(self._run, *args, **kwargs)
-        return self._run(*args, **kwargs)
+    def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
+        threadpool = kwargs.get("threadpool")
+        if threadpool is not None:
+            kwargs.pop("threadpool")
+        else:
+            threadpool = self._threadpool
+
+        return (
+            threadpool.submit(self._run, *args, **kwargs)
+            if threadpool
+            else self._run(*args, **kwargs)
+        )
 
     @staticmethod
     def create(
@@ -531,12 +539,45 @@ class Pipeline(ABC):
         return self.engine(engine_inputs)
 
     def _run(self, *args, **kwargs):
+        run_with_dynamic_batch = (
+            self._batch_size is None
+            and self._threadpool
+            and isinstance(Splittable, self.input_schema)
+            and isinstance(Joinable, self.output_schema)
+        )
+        pipeline_outputs = self._run_in_one_thread(args, kwargs)
+        return pipeline_outputs
+
+    def _run_with_dynamic_batch(self, *args, **kwargs):
+
+        for
+            engine_inputs, postprocess_kwargs = self._threadpool.submit(
+                self.preprocess_step, args, kwargs)
+
+    def _run_in_one_thread(self, *args, **kwargs):
+        engine_inputs, postprocess_kwargs = self.preprocess_step(args, kwargs)
+        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
+        pipeline_outputs = self.postprocess_step(engine_outputs, postprocess_kwargs)
+        return pipeline_outputs
+
+    def postprocess_step(self, engine_outputs, postprocess_kwargs):
+        pipeline_outputs = self.process_engine_outputs(
+            engine_outputs, **postprocess_kwargs
+        )
+        # validate outputs format
+        if not isinstance(pipeline_outputs, self.output_schema):
+            raise ValueError(
+                f"Outputs of {self.__class__} must be instances of "
+                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
+            )
+        return pipeline_outputs
+
+    def preprocess_step(self, args, kwargs):
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
-
         # parse inputs into input_schema schema if necessary
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_schema):
@@ -544,28 +585,13 @@ class Pipeline(ABC):
                 f"Unable to parse {self.__class__} inputs into a "
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
-
         # run pipeline
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
-
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
-
-        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
-        pipeline_outputs = self.process_engine_outputs(
-            engine_outputs, **postprocess_kwargs
-        )
-
-        # validate outputs format
-        if not isinstance(pipeline_outputs, self.output_schema):
-            raise ValueError(
-                f"Outputs of {self.__class__} must be instances of "
-                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
-            )
-
-        return pipeline_outputs
+        return engine_inputs, postprocess_kwargs
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
