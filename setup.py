@@ -93,11 +93,6 @@ _yolo_integration_deps = [
     "opencv-python",
 ]
 
-_yolact_integration_deps = [
-    "torchvision>=0.3.0,<=0.10.1",
-    "opencv-python",
-]
-
 
 def _check_supported_system():
     if sys.platform.startswith("linux"):
@@ -201,7 +196,6 @@ def _setup_extras() -> Dict:
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
         "yolo": _yolo_integration_deps,
-        "yolact": _yolact_integration_deps,
     }
 
 
