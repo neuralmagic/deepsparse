@@ -16,8 +16,8 @@ import json
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
-import torch
 
+import torch
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
@@ -165,7 +165,14 @@ class YOLACTPipeline(Pipeline):
             format of this pipeline
         """
         boxes, confidence, masks, priors, protos = engine_outputs
-        batch_size, num_priors, _ = boxes.shape
+
+        boxes = torch.from_numpy(boxes).cpu()
+        confidence = torch.from_numpy(confidence).cpu()
+        masks = torch.from_numpy(masks).cpu()
+        priors = torch.from_numpy(priors).cpu()
+        protos = torch.from_numpy(protos).cpu()
+
+        batch_size, num_priors, _ = boxes.size()
 
         # Preprocess every image in the batch individually
         batch_classes, batch_scores, batch_boxes, batch_masks = [], [], [], []
@@ -175,9 +182,6 @@ class YOLACTPipeline(Pipeline):
             masks_single_image,
             confidence_single_image,
         ) in enumerate(zip(boxes, masks, confidence)):
-
-            loc = torch.from_numpy(loc).cpu()
-            priors = torch.from_numpy(priors).cpu()
 
             decoded_boxes = decode(boxes_single_image, priors)
 
@@ -191,12 +195,11 @@ class YOLACTPipeline(Pipeline):
                 top_k=kwargs["top_k_preprocessing"],
             )
             if results is not None and protos is not None:
-                torch.from_numpy(protos[batch_idx]).cpu()
-                results["protos"] = torch.from_numpy(protos[batch_idx]).cpu()
+                results["protos"] = protos[batch_idx]
 
             if results:
                 classes, scores, boxes, masks = postprocess(
-                    dets = results,
+                    dets=results,
                     crop_masks=True,
                     score_threshold=kwargs["score_threshold"],
                 )

@@ -15,11 +15,11 @@
 """
 Helpers and Utilities for YOLACT
 """
-import numpy as np
-import torch
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import numpy
+
+import torch
 
 
 try:
@@ -31,7 +31,7 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 
-_all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "sanitize_coordinates_numpy", "preprocess_array"]
+_all__ = ["detect", "decode", "postprocess", "sanitize_coordinates", "preprocess_array"]
 
 
 def preprocess_array(
@@ -66,8 +66,14 @@ def preprocess_array(
 
     return image
 
-def jaccard(box_a, box_b, iscrowd:bool=False):
-    """Compute the jaccard overlap of two sets of boxes.  The jaccard overlap
+
+def jaccard(
+    box_a: torch.Tensor, box_b: torch.Tensor, iscrowd: bool = False
+) -> torch.Tensor:
+    """
+    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+
+    Compute the jaccard overlap of two sets of boxes.  The jaccard overlap
     is simply the intersection over union of two boxes.  Here we operate on
     ground truth boxes and default boxes. If iscrowd=True, put the crowd in box_b.
     E.g.:
@@ -85,43 +91,42 @@ def jaccard(box_a, box_b, iscrowd:bool=False):
         box_b = box_b[None, ...]
 
     inter = intersect(box_a, box_b)
-    area_a = ((box_a[:, :, 2]-box_a[:, :, 0]) *
-              (box_a[:, :, 3]-box_a[:, :, 1])).unsqueeze(2).expand_as(inter)  # [A,B]
-    area_b = ((box_b[:, :, 2]-box_b[:, :, 0]) *
-              (box_b[:, :, 3]-box_b[:, :, 1])).unsqueeze(1).expand_as(inter)  # [A,B]
+    area_a = (
+        ((box_a[:, :, 2] - box_a[:, :, 0]) * (box_a[:, :, 3] - box_a[:, :, 1]))
+        .unsqueeze(2)
+        .expand_as(inter)
+    )  # [A,B]
+    area_b = (
+        ((box_b[:, :, 2] - box_b[:, :, 0]) * (box_b[:, :, 3] - box_b[:, :, 1]))
+        .unsqueeze(1)
+        .expand_as(inter)
+    )  # [A,B]
     union = area_a + area_b - inter
 
     out = inter / area_a if iscrowd else inter / union
     return out if use_batch else out.squeeze(0)
 
-def sanitize_coordinates_numpy(
-    _x1: numpy.ndarray, _x2: numpy.ndarray, img_size: int, padding: int = 0
-) -> Tuple[numpy.ndarray, numpy.ndarray]:
-    """
-    This is numpy-based version of the torch.jit.script() `sanitize_coordinates`
-    function; used only for annotation, not inference.
-    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
-    Sanitizes the input coordinates so that
-    x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
-    Also converts from relative to absolute coordinates.
-    """
-    _x1 *= img_size
-    _x2 *= img_size
-    x1 = numpy.minimum(_x1, _x2)
-    x2 = numpy.maximum(_x1, _x2)
-    numpy.clip(x1 - padding, a_min=0, a_max=None, out = x1)
-    numpy.clip(x2 + padding, a_min=None, a_max=img_size, out = x2)
-
-    return x1, x2
-
 
 @torch.jit.script
-def sanitize_coordinates(_x1, _x2, img_size:int, padding:int=0, cast:bool=True):
+def sanitize_coordinates(
+    _x1: torch.Tensor,
+    _x2: torch.Tensor,
+    img_size: int,
+    padding: int = 0,
+    cast: bool = True,
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
-    Sanitizes the input coordinates so that x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
-    Also converts from relative to absolute coordinates and casts the results to long tensors.
+    Ported from
+    https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+
+    Sanitizes the input coordinates so that
+    x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
+    Also converts from relative to absolute coordinates
+    and casts the results to long tensors.
     If cast is false, the result won't be cast to longs.
-    Warning: this does things in-place behind the scenes so copy if necessary.
+
+    Warning:
+    this does things in-place behind the scenes so copy if necessary.
     """
     _x1 = _x1 * img_size
     _x2 = _x2 * img_size
@@ -130,15 +135,17 @@ def sanitize_coordinates(_x1, _x2, img_size:int, padding:int=0, cast:bool=True):
         _x2 = _x2.long()
     x1 = torch.min(_x1, _x2)
     x2 = torch.max(_x1, _x2)
-    x1 = torch.clamp(x1-padding, min=0)
-    x2 = torch.clamp(x2+padding, max=img_size)
+    x1 = torch.clamp(x1 - padding, min=0)
+    x2 = torch.clamp(x2 + padding, max=img_size)
 
     return x1, x2
 
 
 @torch.jit.script
-def crop(masks, boxes, padding: int = 1):
+def crop(masks: torch.Tensor, boxes: torch.Tensor, padding: int = 1) -> torch.Tensor:
     """
+    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+
     "Crop" predicted masks by zeroing out everything not in the predicted bbox.
     Vectorized by Chong (thanks Chong).
     Args:
@@ -149,8 +156,16 @@ def crop(masks, boxes, padding: int = 1):
     x1, x2 = sanitize_coordinates(boxes[:, 0], boxes[:, 2], w, padding, cast=False)
     y1, y2 = sanitize_coordinates(boxes[:, 1], boxes[:, 3], h, padding, cast=False)
 
-    rows = torch.arange(w, device=masks.device, dtype=x1.dtype).view(1, -1, 1).expand(h, w, n)
-    cols = torch.arange(h, device=masks.device, dtype=x1.dtype).view(-1, 1, 1).expand(h, w, n)
+    rows = (
+        torch.arange(w, device=masks.device, dtype=x1.dtype)
+        .view(1, -1, 1)
+        .expand(h, w, n)
+    )
+    cols = (
+        torch.arange(h, device=masks.device, dtype=x1.dtype)
+        .view(-1, 1, 1)
+        .expand(h, w, n)
+    )
 
     masks_left = rows >= x1.view(1, 1, -1)
     masks_right = rows < x2.view(1, 1, -1)
@@ -163,8 +178,11 @@ def crop(masks, boxes, padding: int = 1):
 
 
 @torch.jit.script
-def intersect(box_a, box_b):
-    """ We resize both tensors to [A,B,2] without new malloc:
+def intersect(box_a: torch.Tensor, box_b: torch.Tensor) -> torch.Tensor:
+    """
+    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+
+    We resize both tensors to [A,B,2] without new malloc:
     [A,2] -> [A,1,2] -> [A,B,2]
     [B,2] -> [1,B,2] -> [A,B,2]
     Then we compute the area of intersect between box_a and box_b.
@@ -177,14 +195,31 @@ def intersect(box_a, box_b):
     n = box_a.size(0)
     A = box_a.size(1)
     B = box_b.size(1)
-    max_xy = torch.min(box_a[:, :, 2:].unsqueeze(2).expand(n, A, B, 2),
-                       box_b[:, :, 2:].unsqueeze(1).expand(n, A, B, 2))
-    min_xy = torch.max(box_a[:, :, :2].unsqueeze(2).expand(n, A, B, 2),
-                       box_b[:, :, :2].unsqueeze(1).expand(n, A, B, 2))
+    max_xy = torch.min(
+        box_a[:, :, 2:].unsqueeze(2).expand(n, A, B, 2),
+        box_b[:, :, 2:].unsqueeze(1).expand(n, A, B, 2),
+    )
+    min_xy = torch.max(
+        box_a[:, :, :2].unsqueeze(2).expand(n, A, B, 2),
+        box_b[:, :, :2].unsqueeze(1).expand(n, A, B, 2),
+    )
     return torch.clamp(max_xy - min_xy, min=0).prod(3)  # inter
 
 
-def fast_nms(boxes, masks, scores, confidence_threshold, max_num_detections, nms_threshold, top_k):
+def fast_nms(
+    boxes: torch.Tensor,
+    masks: torch.Tensor,
+    scores: torch.Tensor,
+    max_num_detections: int,
+    nms_threshold: float = 0.5,
+    top_k: int = 200,
+    second_threshold: bool = False,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Ported from
+    https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
+    """
+
     scores, idx = scores.sort(1, descending=True)
 
     idx = idx[:, :top_k].contiguous()
@@ -199,14 +234,23 @@ def fast_nms(boxes, masks, scores, confidence_threshold, max_num_detections, nms
     iou.triu_(diagonal=1)
     iou_max, _ = iou.max(dim=1)
 
-    # Now just filter out the ones higher than the threshold
-    keep = (iou_max <= nms_threshold)
+    # Now just filter out the ones
+    # higher than the threshold
+    keep = iou_max <= nms_threshold
 
-    # We should also only keep detections over the confidence threshold, but at the cost of
-    # maxing out your detection count for every image, you can just not do that. Because we
-    # have such a minimal amount of computation per detection (matrix mulitplication only),
-    # this increase doesn't affect us much (+0.2 mAP for 34 -> 33 fps), so we leave it out.
-    # However, when you implement this in your method, you should do this second threshold.
+    # We should also only keep detections over
+    # the confidence threshold, but at the cost of
+    # maxing out your detection count for every image,
+    # you can just not do that. Because we
+    # have such a minimal amount of computation
+    # per detection (matrix mulitplication only),
+    # this increase doesn't affect us much
+    # (+0.2 mAP for 34 -> 33 fps), so we leave it out.
+    # However, when you implement this in your method,
+    # you should do this second threshold.
+
+    if second_threshold:
+        keep *= scores > second_threshold
 
     # Assign each kept detection to its corresponding class
     classes = torch.arange(num_classes, device=boxes.device)[:, None].expand_as(keep)
@@ -229,8 +273,11 @@ def fast_nms(boxes, masks, scores, confidence_threshold, max_num_detections, nms
 
 
 @torch.jit.script
-def decode(loc: torch.Tensor, priors: torch.Tensor)-> torch.Tensor:
+def decode(loc: torch.Tensor, priors: torch.Tensor) -> torch.Tensor:
     """
+    Ported from
+    https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+
     Decode predicted bbox coordinates using the same scheme
     employed by Yolov2: https://arxiv.org/pdf/1612.08242.pdf
         b_x = (sigmoid(pred_x) - .5) / conv_w + prior_x
@@ -257,20 +304,34 @@ def decode(loc: torch.Tensor, priors: torch.Tensor)-> torch.Tensor:
 
     variances = [0.1, 0.2]
 
-    boxes = torch.cat((
-        priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
-        priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1])), 1)
+    boxes = torch.cat(
+        (
+            priors[:, :2] + loc[:, :2] * variances[0] * priors[:, 2:],
+            priors[:, 2:] * torch.exp(loc[:, 2:] * variances[1]),
+        ),
+        1,
+    )
     boxes[:, :2] -= boxes[:, 2:] / 2
     boxes[:, 2:] += boxes[:, :2]
 
     return boxes
 
 
-def detect(confidence_single_image, decoded_boxes, masks_single_image, confidence_threshold, nms_threshold, max_num_detections, top_k):
-    """ Perform nms for only the max scoring class that isn't background (class 0) """
+def detect(
+    confidence_single_image: torch.Tensor,
+    decoded_boxes: torch.Tensor,
+    masks_single_image: torch.Tensor,
+    confidence_threshold: float,
+    nms_threshold: float,
+    max_num_detections: int,
+    top_k: int,
+) -> Dict[str, torch.Tensor]:
+    """
+    Ported from
+    https://github.com/neuralmagic/yolact/blob/master/layers/functions/detection.py
 
-    confidence_single_image = torch.from_numpy(confidence_single_image).cpu()
-    masks_single_image = torch.from_numpy(masks_single_image).cpu()
+    Perform nms for only the max scoring class that isn't background (class 0)
+    """
 
     conf_preds = confidence_single_image.T
     cur_scores = conf_preds[1:, :]
@@ -284,51 +345,54 @@ def detect(confidence_single_image, decoded_boxes, masks_single_image, confidenc
     if scores.size(1) == 0:
         return None
 
+    boxes, masks, classes, scores = fast_nms(
+        boxes,
+        masks,
+        scores,
+        max_num_detections,
+        nms_threshold,
+        top_k,
+    )
 
-    boxes, masks, classes, scores = fast_nms(boxes, masks, scores, confidence_threshold, max_num_detections, nms_threshold, top_k)
-
-    return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
+    return {"box": boxes, "mask": masks, "class": classes, "score": scores}
 
 
-def postprocess(dets, crop_masks=True, score_threshold=0):
+def postprocess(
+    dets: Dict[str, torch.Tensor], crop_masks: bool = True, score_threshold: float = 0
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
+    Ported from
+    https://github.com/neuralmagic/yolact/blob/master/layers/output_utils.py
+
     Postprocesses the output of Yolact on testing mode into a format that makes sense,
     accounting for all the possible configuration settings.
     Args:
-        - det_output: The lost of dicts that Detect outputs.
-        - w: The real with of the image.
-        - h: The real height of the image.
-        - batch_idx: If you have multiple images for this batch, the image's index in the batch.
-        - interpolation_mode: Can be 'nearest' | 'area' | 'bilinear' (see torch.nn.functional.interpolate)
+        - dets: The lost of dicts that Detect outputs.
+
     Returns 4 torch Tensors (in the following order):
         - classes [num_det]: The class idx for each detection.
         - scores  [num_det]: The confidence score for each detection.
-        - boxes   [num_det, 4]: The bounding box for each detection in absolute point form.
+        - boxes   [num_det, 4]: The bounding box for each detection
+            in absolute point form.
         - masks   [num_det, h, w]: Full image masks for each detection.
     """
 
-
     if score_threshold > 0:
-        keep = dets['score'] > score_threshold
+        keep = dets["score"] > score_threshold
 
         for k in dets:
-            if k != 'protos':
+            if k != "protos":
                 dets[k] = dets[k][keep]
 
-
-    # Actually extract everything from dets now
-    classes = dets['class']
-    boxes = dets['box']
-    scores = dets['score']
-    masks = dets['mask']
-    proto_data = dets['protos']
-
-
+    classes = dets["class"]
+    boxes = dets["box"]
+    scores = dets["score"]
+    masks = dets["mask"]
+    proto_data = dets["protos"]
 
     masks = proto_data @ masks.t()
     masks = torch.sigmoid(masks)
 
-    # Crop masks before upsampling because you know why
     if crop_masks:
         masks = crop(masks, boxes)
 

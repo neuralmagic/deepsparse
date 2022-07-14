@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-
 import copy
 from typing import Optional, Tuple
 
@@ -21,10 +19,10 @@ import numpy
 import cv2
 from deepsparse.yolact.schemas import YOLACTOutputSchema
 from deepsparse.yolo.utils.utils import _get_color, _plot_fps
-from deepsparse.yolact.utils.utils import sanitize_coordinates_numpy
 
 
 __all__ = ["annotate_image"]
+
 
 def annotate_image(
     image: numpy.ndarray,
@@ -178,6 +176,28 @@ def _get_text_size(
     text_height += text_baseline
     return text_width, text_height
 
+
+def _sanitize_coordinates(
+    _x1: numpy.ndarray, _x2: numpy.ndarray, img_size: int, padding: int = 0
+) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    """
+    This is numpy-based version of the torch.jit.script() `sanitize_coordinates`
+    function; used only for annotation, not inference.
+    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+    Sanitizes the input coordinates so that
+    x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
+    Also converts from relative to absolute coordinates.
+    """
+    _x1 *= img_size
+    _x2 *= img_size
+    x1 = numpy.minimum(_x1, _x2)
+    x2 = numpy.maximum(_x1, _x2)
+    numpy.clip(x1 - padding, a_min=0, a_max=None, out=x1)
+    numpy.clip(x2 + padding, a_min=None, a_max=img_size, out=x2)
+
+    return x1, x2
+
+
 def _resize_to_fit_img(
     original_image: numpy.ndarray, masks: numpy.ndarray, boxes: numpy.ndarray
 ) -> Tuple[numpy.ndarray, numpy.ndarray]:
@@ -196,8 +216,8 @@ def _resize_to_fit_img(
     # Reshape the bounding boxes
     boxes = numpy.stack(boxes)
 
-    boxes[:, 0], boxes[:, 2] = sanitize_coordinates_numpy(boxes[:, 0], boxes[:, 2], w)
-    boxes[:, 1], boxes[:, 3] = sanitize_coordinates_numpy(boxes[:, 1], boxes[:, 3], h)
+    boxes[:, 0], boxes[:, 2] = _sanitize_coordinates(boxes[:, 0], boxes[:, 2], w)
+    boxes[:, 1], boxes[:, 3] = _sanitize_coordinates(boxes[:, 1], boxes[:, 3], h)
     boxes = boxes.astype(numpy.int64)
 
     return masks, boxes
