@@ -17,7 +17,7 @@ import threading
 import time
 from typing import Dict, List
 
-import numpy as np
+import numpy
 
 from deepsparse import Engine
 
@@ -25,7 +25,7 @@ from deepsparse import Engine
 __all__ = ["model_stream_benchmark"]
 
 
-def iteration(model: Engine, input: List[np.ndarray]):
+def iteration(model: Engine, input: List[numpy.ndarray]):
     start = time.time()
     output = model.run(input, val_inp=False)
     end = time.time()
@@ -34,7 +34,7 @@ def iteration(model: Engine, input: List[np.ndarray]):
 
 def singlestream_benchmark(
     model: Engine,
-    input_list: List[np.ndarray],
+    input_list: List[numpy.ndarray],
     seconds_to_run: float,
 ) -> List[float]:
     batch_times = []
@@ -51,7 +51,7 @@ class EngineExecutorThread(threading.Thread):
     def __init__(
         self,
         model: Engine,
-        input_list: List[np.ndarray],
+        input_list: List[numpy.ndarray],
         time_queue: queue.Queue,
         max_time: float,
     ):
@@ -69,7 +69,7 @@ class EngineExecutorThread(threading.Thread):
 
 def multistream_benchmark(
     model: Engine,
-    input_list: List[np.ndarray],
+    input_list: List[numpy.ndarray],
     seconds_to_run: float,
     num_streams: int,
 ) -> List[float]:
@@ -91,7 +91,7 @@ def multistream_benchmark(
 
 def model_stream_benchmark(
     model: Engine,
-    input_list: List[np.ndarray],
+    input_list: List[numpy.ndarray],
     scenario: str,
     seconds_to_run: float,
     seconds_to_warmup: float,
@@ -138,7 +138,7 @@ def model_stream_benchmark(
     items_per_sec = (model.batch_size * len(batch_times)) / total_time_executing
 
     percentiles = [25.0, 50.0, 75.0, 90.0, 95.0, 99.0, 99.9]
-    buckets = np.percentile(batch_times_ms, percentiles).tolist()
+    buckets = numpy.percentile(batch_times_ms, percentiles).tolist()
     percentiles_dict = {
         "{:2.1f}%".format(key): value for key, value in zip(percentiles, buckets)
     }
@@ -147,9 +147,9 @@ def model_stream_benchmark(
         "items_per_sec": items_per_sec,
         "seconds_ran": total_time_executing,
         "iterations": len(batch_times_ms),
-        "median": np.median(batch_times_ms),
-        "mean": np.mean(batch_times_ms),
-        "std": np.std(batch_times_ms),
+        "median": numpy.median(batch_times_ms),
+        "mean": numpy.mean(batch_times_ms),
+        "std": numpy.std(batch_times_ms),
         **percentiles_dict,
     }
     return benchmark_dict
