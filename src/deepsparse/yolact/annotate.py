@@ -211,7 +211,7 @@ def main(
     prof.enable()
     for iteration, (input_image, source_image) in enumerate(loader):
         # annotate
-        if iteration > 200:
+        if iteration > 300:
             continue
         annotated_image, fps = annotate(
             pipeline=yolact_pipeline,
