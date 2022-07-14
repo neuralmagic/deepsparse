@@ -101,7 +101,7 @@ class YOLACTOutputSchema(BaseModel):
     boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[List[Optional[numpy.ndarray]]] = Field(
+    masks: List[Optional[numpy.ndarray]] = Field(
         description="List of masks, one for each prediction"
     )
 

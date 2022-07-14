@@ -17,6 +17,8 @@ from typing import Optional, Tuple
 import numpy
 
 import cv2
+import torch
+import torch.nn.functional as F
 from deepsparse.yolact.schemas import YOLACTOutputSchema
 from deepsparse.yolo.utils.utils import _get_color, _plot_fps
 
@@ -62,7 +64,7 @@ def annotate_image(
     classes = prediction.classes[0]
     scores = prediction.scores[0]
 
-    if any(x[0] is None for x in [masks, boxes, classes, scores]):
+    if any(x[0] is None for x in [boxes, classes, scores]):
         # no detections found
         return image
 
@@ -103,13 +105,16 @@ def annotate_image(
 
 
 def _put_mask(
-    image: numpy.ndarray, mask: numpy.ndarray, color: Tuple[int, int, int]
+    image: numpy.ndarray, mask: torch.Tensor, color: Tuple[int, int, int]
 ) -> numpy.ndarray:
-    img_with_non_transparent_masks = numpy.where(
-        mask[..., None], numpy.array(color, dtype="uint8"), image
+
+    img_with_mask = torch.where(
+        mask[..., None].type(torch.uint8),
+        torch.from_numpy(numpy.array(color)).cpu().type(torch.uint8),
+        torch.from_numpy(image).cpu(),
     )
     img_with_non_transparent_masks = cv2.addWeighted(
-        image, 0.3, img_with_non_transparent_masks, 0.7, 0
+        image, 0.3, img_with_mask.numpy(), 0.7, 0
     )
     return img_with_non_transparent_masks
 
@@ -177,6 +182,30 @@ def _get_text_size(
     return text_width, text_height
 
 
+def _sanitize_coordinates(
+    _x1: numpy.ndarray, _x2: numpy.ndarray, img_size: int, padding: int = 0
+) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    """
+    This is numpy-based version of the torch.jit.script()
+    `sanitize_coordinates` function.
+    Used only for annotation, not the inference pipeline.
+
+    Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
+
+    Sanitizes the input coordinates so that
+    x1 < x2, x1 != x2, x1 >= 0, and x2 <= image_size.
+    Also converts from relative to absolute coordinates.
+    """
+    _x1 *= img_size
+    _x2 *= img_size
+    x1 = numpy.minimum(_x1, _x2)
+    x2 = numpy.maximum(_x1, _x2)
+    numpy.clip(x1 - padding, a_min=0, a_max=None, out=x1)
+    numpy.clip(x2 + padding, a_min=None, a_max=img_size, out=x2)
+
+    return x1, x2
+
+
 def _resize_to_fit_img(
     original_image: numpy.ndarray, masks: numpy.ndarray, boxes: numpy.ndarray
 ) -> Tuple[numpy.ndarray, numpy.ndarray]:
@@ -185,19 +214,21 @@ def _resize_to_fit_img(
     h, w, _ = original_image.shape
 
     # Resize the masks
-    masks = numpy.stack(
-        [cv2.resize(mask, (w, h), interpolation=cv2.INTER_LINEAR) for mask in masks]
-    )
+    masks = F.interpolate(
+        torch.from_numpy(masks).cpu().unsqueeze(0),
+        (h, w),
+        mode="bilinear",
+        align_corners=False,
+    ).squeeze(0)
 
     # Binarize the masks
-    masks = (masks > 0.5).astype(numpy.int8)
+    masks.gt_(0.5)
 
     # Reshape the bounding boxes
     boxes = numpy.stack(boxes)
-    from deepsparse.yolact.utils import sanitize_coordinates
 
-    boxes[:, 0], boxes[:, 2] = sanitize_coordinates(boxes[:, 0], boxes[:, 2], w)
-    boxes[:, 1], boxes[:, 3] = sanitize_coordinates(boxes[:, 1], boxes[:, 3], h)
+    boxes[:, 0], boxes[:, 2] = _sanitize_coordinates(boxes[:, 0], boxes[:, 2], w)
+    boxes[:, 1], boxes[:, 3] = _sanitize_coordinates(boxes[:, 1], boxes[:, 3], h)
     boxes = boxes.astype(numpy.int64)
 
     return masks, boxes

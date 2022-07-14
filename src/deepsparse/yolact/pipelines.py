@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 
+import torch
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
@@ -164,7 +165,14 @@ class YOLACTPipeline(Pipeline):
             format of this pipeline
         """
         boxes, confidence, masks, priors, protos = engine_outputs
-        batch_size, num_priors, _ = boxes.shape
+
+        boxes = torch.from_numpy(boxes).cpu()
+        confidence = torch.from_numpy(confidence).cpu()
+        masks = torch.from_numpy(masks).cpu()
+        priors = torch.from_numpy(priors).cpu()
+        protos = torch.from_numpy(protos).cpu()
+
+        batch_size, num_priors, _ = boxes.size()
 
         # Preprocess every image in the batch individually
         batch_classes, batch_scores, batch_boxes, batch_masks = [], [], [], []
@@ -174,7 +182,9 @@ class YOLACTPipeline(Pipeline):
             masks_single_image,
             confidence_single_image,
         ) in enumerate(zip(boxes, masks, confidence)):
+
             decoded_boxes = decode(boxes_single_image, priors)
+
             results = detect(
                 confidence_single_image,
                 decoded_boxes,
@@ -189,10 +199,15 @@ class YOLACTPipeline(Pipeline):
 
             if results:
                 classes, scores, boxes, masks = postprocess(
-                    results,
+                    dets=results,
                     crop_masks=True,
                     score_threshold=kwargs["score_threshold"],
                 )
+
+                classes = classes.numpy()
+                scores = scores.numpy()
+                boxes = boxes.numpy()
+                masks = masks.numpy()
 
                 # Choose the best k detections (taking into account all the classes)
                 idx = numpy.argsort(scores)[::-1][: self.top_k]
@@ -204,13 +219,13 @@ class YOLACTPipeline(Pipeline):
                 )
                 batch_scores.append(scores[idx].tolist())
                 batch_boxes.append(boxes[idx].tolist())
-                batch_masks.append([mask.astype(numpy.float32) for mask in masks[idx]])
+                batch_masks.append(masks[idx])
 
             else:
                 batch_classes.append([None])
                 batch_scores.append([None])
                 batch_boxes.append([None])
-                batch_masks.append([None])
+                batch_masks.append(None)
 
         return YOLACTOutputSchema(
             classes=batch_classes,
