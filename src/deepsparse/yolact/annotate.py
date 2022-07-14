@@ -77,6 +77,8 @@ from deepsparse.utils import (
 )
 from deepsparse.yolact.utils import annotate_image
 from deepsparse.yolo.utils.cli_helpers import create_dir_callback
+import cProfile as profile
+import pstats
 
 
 yolact_v5_default_stub = (
@@ -204,11 +206,14 @@ def main(
         engine_type=engine,
         num_cores=num_cores,
     )
-
+    all_fps = []
+    prof = profile.Profile()
+    prof.enable()
     for iteration, (input_image, source_image) in enumerate(loader):
-
         # annotate
-        annotated_image = annotate(
+        if iteration > 200:
+            continue
+        annotated_image, fps = annotate(
             pipeline=yolact_pipeline,
             annotation_func=annotate_image,
             image=input_image,
@@ -216,19 +221,26 @@ def main(
             calc_fps=is_video,
             original_image=source_image,
         )
-
+        all_fps.append(fps)
         if is_webcam:
             cv2.imshow("annotated", annotated_image)
             cv2.waitKey(1)
 
         # save
         if saver:
-            saver.save_frame(annotated_image)
+            pass
+            #saver.save_frame(annotated_image)
 
     if saver:
-        saver.close()
-
+        pass
+        #saver.close()
+    prof.disable()
     _LOGGER.info(f"Results saved to {save_dir}")
+    stats = pstats.Stats(prof).sort_stats("cumtime")
+    import numpy as np
+    print('FPS: ', np.mean(all_fps))
+    stats.print_stats(20)
+    prof.dump_stats('log.prof')
 
 
 if __name__ == "__main__":
