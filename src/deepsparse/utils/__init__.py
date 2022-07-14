@@ -17,3 +17,4 @@
 from .annotate import *
 from .data import *
 from .onnx import *
+from .schema_helpers import *
