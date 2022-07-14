@@ -327,9 +327,18 @@ def truncate_onnx_model(
     graph_input_names = [input.name for input in model.graph.input]
 
     # use extractor to create and write subgraph
+    original_num_nodes = len(model.graph.node)
     extractor = Extractor(model)
     extracted_model = extractor.extract_model(
         input_names=graph_input_names, output_names=graph_output_names
     )
+    extracted_num_nodes = len(extracted_model.graph.node)
+    _LOGGER.info(
+        f"Truncating model graph to {final_node_names}. "
+        f"Removed {original_num_nodes - extracted_num_nodes} nodes, "
+        f"{extracted_num_nodes} remaining"
+    )
+
+    # save and check model
     onnx.save(extracted_model, output_filepath)
     onnx.checker.check_model(output_filepath)
