@@ -31,39 +31,21 @@
 Pipeline implementation and pydantic models for Haystack pipeline. Supports a
 sample of haystack nodes meant to be used DeepSparseEmbeddingRetriever
 """
-from enum import Enum
+import importlib
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
-from haystack.document_stores import (
-    ElasticsearchDocumentStore as ElasticsearchDocumentStoreModule,
-)
-from haystack.document_stores import FAISSDocumentStore as FAISSDocumentStoreModule
-from haystack.document_stores import (
-    InMemoryDocumentStore as InMemoryDocumentStoreModule,
-)
-from haystack.nodes import DensePassageRetriever as DensePassageRetrieverModule
-from haystack.nodes import EmbeddingRetriever as EmbeddingRetrieverModule
-from haystack.pipelines import DocumentSearchPipeline as DocumentSearchPipelineModule
 from haystack.schema import Document
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
 from deepsparse.engine import Context, Scheduler
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
-from deepsparse.transformers.haystack import (
-    DeepSparseDensePassageRetriever as DeepSparseDensePassageRetrieverModule,
-)
-from deepsparse.transformers.haystack import (
-    DeepSparseEmbeddingRetriever as DeepSparseEmbeddingRetrieverModule,
-)
 
 
 __all__ = [
     "HaystackPipelineInput",
     "HaystackPipelineOutput",
-    "DocumentStoreType",
-    "RetrieverType",
     "HaystackPipelineConfig",
     "HaystackPipeline",
 ]
@@ -104,94 +86,34 @@ class HaystackPipelineOutput(BaseModel):
     )
 
 
-class DocumentStoreType(str, Enum):
-    """
-    Enum containing all supported haystack document stores
-    """
-
-    InMemoryDocumentStore = "InMemoryDocumentStore"
-    ElasticsearchDocumentStore = "ElasticsearchDocumentStore"
-    FAISSDocumentStore = "FAISSDocumentStore"
-
-    @property
-    def constructor(self) -> Type[Any]:
-        if self.value == DocumentStoreType.InMemoryDocumentStore:
-            return InMemoryDocumentStoreModule
-        if self.value == DocumentStoreType.ElasticsearchDocumentStore:
-            return ElasticsearchDocumentStoreModule
-        if self.value == DocumentStoreType.FAISSDocumentStore:
-            return FAISSDocumentStoreModule
-        else:
-            raise ValueError(f"Unknown enum value {self.value}")
-
-
-class RetrieverType(str, Enum):
-    """
-    Enum containing all supported haystack retrievers
-    """
-
-    EmbeddingRetriever = "EmbeddingRetriever"
-    DeepSparseEmbeddingRetriever = "DeepSparseEmbeddingRetriever"
-    DensePassageRetriever = "DensePassageRetriever"
-    DeepSparseDensePassageRetriever = "DeepSparseDensePassageRetriever"
-
-    @property
-    def constructor(self) -> Type[Any]:
-        if self.value == RetrieverType.EmbeddingRetriever:
-            return EmbeddingRetrieverModule
-        if self.value == RetrieverType.DeepSparseEmbeddingRetriever:
-            return DeepSparseEmbeddingRetrieverModule
-        if self.value == RetrieverType.DensePassageRetriever:
-            return DensePassageRetrieverModule
-        if self.value == RetrieverType.DeepSparseDensePassageRetriever:
-            return DeepSparseDensePassageRetrieverModule
-        else:
-            raise ValueError(f"Unknown enum value {self.value}")
-
-
-class PipelineType(str, Enum):
-    """
-    Enum containing all supported Haystack pipelines
-    """
-
-    DocumentSearchPipeline = "DocumentSearchPipeline"
-
-    @property
-    def constructor(self) -> Type[Any]:
-        if self.value == PipelineType.DocumentSearchPipeline:
-            return DocumentSearchPipelineModule
-        else:
-            raise ValueError(f"Unknown enum value {self.value}")
-
-
 class HaystackPipelineConfig(BaseModel):
     """
     Schema specifying HaystackPipeline config. Allows for specifying which
     haystack nodes to use and what their arguments should be
     """
 
-    document_store: DocumentStoreType = Field(
+    document_store: str = Field(
         description="Name of haystack document store to use. "
         "Default ElasticsearchDocumentStore",
-        default=DocumentStoreType.FAISSDocumentStore,
+        default="InMemoryDocumentStore",
     )
     document_store_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing document_store",
         default={},
     )
-    retriever: RetrieverType = Field(
+    retriever: str = Field(
         description="Name of document retriever to use. Default "
         "DeepSparseEmbeddingRetriever (recommended)",
-        default=RetrieverType.DeepSparseEmbeddingRetriever,
+        default="DeepSparseEmbeddingRetriever",
     )
     retriever_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing retriever",
         default={},
     )
-    haystack_pipeline: PipelineType = Field(
+    haystack_pipeline: str = Field(
         description="Name of Haystack pipeline to use. Default "
         "DocumentSearchPipeline",
-        default=PipelineType.DocumentSearchPipeline,
+        default="DocumentSearchPipeline",
     )
     haystack_pipeline_args: Dict[str, Any] = Field(
         description="Keyword arguments for initializing haystack_pipeline",
@@ -426,25 +348,29 @@ class HaystackPipeline(Pipeline):
         of this pipeline
         :return: None
         """
-        # merge retriever_args
-        if self._config.retriever in [
-            RetrieverType.DeepSparseEmbeddingRetriever,
-            RetrieverType.DeepSparseDensePassageRetriever,
-        ]:
+        # intialize document store from haystack
+        DocumentStoreModule = importlib.import_module(".document_stores", "haystack")
+        DocumentStoreClass = getattr(DocumentStoreModule, self._config.document_store)
+        self._document_store = DocumentStoreClass(**self._config.document_store_args)
+
+        # try finding in deepsparse.transformers.haystack, merge args if necessary
+        RetrieverModule = importlib.import_module(
+            ".haystack", "deepsparse.transformers"
+        )
+        if hasattr(RetrieverModule, self._config.retriever):
             retriever_args = self._merge_retriever_args(
                 self._config.retriever_args, init_retriever_kwargs
             )
         else:
+            RetrieverModule = importlib.import_module(".nodes", "haystack")
             retriever_args = self._config.retriever_args
+        RetrieverClass = getattr(RetrieverModule, self._config.retriever)
+        self._retriever = RetrieverClass(self._document_store, **retriever_args)
 
-        # intialize haystack nodes
-        self._document_store = self._config.document_store.constructor(
-            **self._config.document_store_args
-        )
-        self._retriever = self._config.retriever.constructor(
-            self._document_store, **retriever_args
-        )
-        self._haystack_pipeline = self._config.haystack_pipeline.constructor(
+        # pipeline from haystack
+        PipelineModule = importlib.import_module(".pipelines", "haystack")
+        PipelineClass = getattr(PipelineModule, self._config.haystack_pipeline)
+        self._haystack_pipeline = PipelineClass(
             self._retriever, **self._config.haystack_pipeline_args
         )
 
