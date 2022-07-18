@@ -16,7 +16,7 @@
 Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
-
+import concurrent.futures
 import os
 from abc import ABC, abstractmethod
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -477,6 +477,20 @@ class Pipeline(ABC):
         """
         return self._engine_type
 
+    @property
+    def in_dynamic_batch_mode(self) -> bool:
+        """
+        :return: True if pipeline should be run in dynamic batch mode else
+            False
+        """
+        return (
+            self._batch_size is None
+            and self._threadpool
+            and issubclass(self.input_schema, Splittable)
+            and issubclass(self.output_schema, Joinable)
+        )
+
+
     def to_config(self) -> "PipelineConfig":
         """
         :return: PipelineConfig that can be used to reload this object
@@ -538,17 +552,8 @@ class Pipeline(ABC):
         """
         return self.engine(engine_inputs)
 
-    def _run(self, *args, **kwargs):
-        run_with_dynamic_batch = (
-            self._batch_size is None
-            and self._threadpool
-            and isinstance(Splittable, self.input_schema)
-            and isinstance(Joinable, self.output_schema)
-        )
-        pipeline_outputs = self._run_in_one_thread(args, kwargs)
-        return pipeline_outputs
 
-    def _run_in_one_thread(self, *args, **kwargs):
+    def _run(self, *args, **kwargs):
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
@@ -562,12 +567,29 @@ class Pipeline(ABC):
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
         # run pipeline
+        if self.in_dynamic_batch_mode:
+            return self._run_with_dynamic_batch(pipeline_inputs)
+
+        pipeline_outputs = self._dummy(pipeline_inputs)
+        return pipeline_outputs
+
+    def _run_with_dynamic_batch(self, pipeline_inputs):
+        pipeline_inputs = pipeline_inputs.split()
+        futures = [
+            self._threadpool.submit(self._dummy, _input)
+            for _input in pipeline_inputs
+        ]
+        # wait for all inferences to complete before joining outputs
+        concurrent.futures.wait(futures)
+        outputs = [future.result() for future in futures]
+        return self.output_schema.join(outputs)
+
+    def _dummy(self, pipeline_inputs):
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
-
         engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
@@ -579,7 +601,6 @@ class Pipeline(ABC):
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
         return pipeline_outputs
-
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
