@@ -548,31 +548,7 @@ class Pipeline(ABC):
         pipeline_outputs = self._run_in_one_thread(args, kwargs)
         return pipeline_outputs
 
-    def _run_with_dynamic_batch(self, *args, **kwargs):
-
-        for
-            engine_inputs, postprocess_kwargs = self._threadpool.submit(
-                self.preprocess_step, args, kwargs)
-
     def _run_in_one_thread(self, *args, **kwargs):
-        engine_inputs, postprocess_kwargs = self.preprocess_step(args, kwargs)
-        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
-        pipeline_outputs = self.postprocess_step(engine_outputs, postprocess_kwargs)
-        return pipeline_outputs
-
-    def postprocess_step(self, engine_outputs, postprocess_kwargs):
-        pipeline_outputs = self.process_engine_outputs(
-            engine_outputs, **postprocess_kwargs
-        )
-        # validate outputs format
-        if not isinstance(pipeline_outputs, self.output_schema):
-            raise ValueError(
-                f"Outputs of {self.__class__} must be instances of "
-                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
-            )
-        return pipeline_outputs
-
-    def preprocess_step(self, args, kwargs):
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
@@ -591,7 +567,19 @@ class Pipeline(ABC):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
-        return engine_inputs, postprocess_kwargs
+
+        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
+        pipeline_outputs = self.process_engine_outputs(
+            engine_outputs, **postprocess_kwargs
+        )
+        # validate outputs format
+        if not isinstance(pipeline_outputs, self.output_schema):
+            raise ValueError(
+                f"Outputs of {self.__class__} must be instances of "
+                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
+            )
+        return pipeline_outputs
+
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
