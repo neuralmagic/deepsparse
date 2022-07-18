@@ -71,7 +71,7 @@ class YOLACTPipeline(Pipeline):
     def __init__(
         self,
         *,
-        class_names: Optional[Union[str, Dict[str, str]]] = None,
+        class_names: Optional[Union[str, Dict[str, str], List[str]]] = None,
         image_size: Union[int, Tuple[int, int]] = (550, 550),
         top_k: int = 50,
         **kwargs,
