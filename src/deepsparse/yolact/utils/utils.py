@@ -141,7 +141,7 @@ def sanitize_coordinates(
     return x1, x2
 
 
-# @torch.jit.script
+@torch.jit.script
 def crop(masks: torch.Tensor, boxes: torch.Tensor, padding: int = 1) -> torch.Tensor:
     """
     Ported from https://github.com/neuralmagic/yolact/blob/master/layers/box_utils.py
