@@ -104,8 +104,7 @@ class TextClassificationInput(BaseModel, Splittable):
             raise NotImplementedError
 
 
-
-class TextClassificationOutput(BaseModel):
+class TextClassificationOutput(BaseModel, Joinable):
     """
     Schema for text_classification pipeline output. Values are in batch order
     """
@@ -116,6 +115,16 @@ class TextClassificationOutput(BaseModel):
     scores: List[Union[float, List[float]]] = Field(
         description="The corresponding probability for each label in the batch"
     )
+
+    @staticmethod
+    def join(outputs: List["TextClassificationOutput"]) -> "TextClassificationOutput":
+        labels = list()
+        scores = list()
+        for output in outputs:
+            labels.append(output.labels)
+            scores.append(output.scores)
+
+        return TextClassificationOutput(labels=labels, scores=scores, )
 
 
 @Pipeline.register(

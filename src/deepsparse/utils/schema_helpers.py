@@ -50,7 +50,7 @@ class Joinable(ABC):
     A contract that ensures multiple objects of the implementing subclass can be
     combined into one object representing a bigger batch size
     """
-
+    @staticmethod
     @abstractmethod
     def join(self, *args, **kwargs) -> Any:
         """
