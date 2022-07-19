@@ -36,7 +36,7 @@ tasks
 
 from concurrent.futures import wait
 from enum import Enum
-from typing import List, Type, Union
+from typing import List, Optional, Type, Union
 
 import numpy
 import tqdm
@@ -146,6 +146,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     :param emb_extraction_layer: transformer layer number from which the embeddings
         will be extracted. If None, leave the model unchanged. Default is -1
         (last layer)
+    :param final_node_name: Name of last ONNX node in model to draw embeddings from.
+        Overrides emb_extraction_layer. Default None
     :param model_size: size of transformer model (size of hidden layer per token
         if the model is cut). Default is 768
     :param extraction_strategy: method of pooling embedding values. Currently
@@ -166,6 +168,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         emb_extraction_layer: Union[int, None] = -1,
         model_size: int = 768,
         extraction_strategy: ExtractionStrategy = "per_token",
+        final_node_name: Optional[str] = None,
         progress_bar: bool = False,
         return_numpy: bool = True,
         **kwargs,
@@ -179,6 +182,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         self._emb_extraction_layer = emb_extraction_layer
         self._model_size = model_size
         self._extraction_strategy = extraction_strategy
+        self._final_node_name = final_node_name
         self._show_progress_bar = progress_bar
         self._return_numpy = return_numpy
 
@@ -214,7 +218,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         onnx_path = super().setup_onnx_file_path()
 
-        if self._emb_extraction_layer is not None:
+        if self._emb_extraction_layer is not None or self._final_node_name is not None:
             (
                 onnx_path,
                 self.onnx_output_names,
@@ -223,6 +227,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 onnx_path,
                 emb_extraction_layer=self._emb_extraction_layer,
                 hidden_layer_size=self._model_size,
+                final_node_name=self._final_node_name,
             )
         else:
             _LOGGER.info("Skipping model truncation")
@@ -367,11 +372,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         for engine_output, pad_mask, cls_mask in zip(
             engine_outputs, pad_masks, cls_masks
         ):
-            if self._emb_extraction_layer is not None:
-                engine_output = numpy.reshape(
-                    engine_output, (self.sequence_length, self._model_size)
-                )
-
             # extraction strategy
             if self._extraction_strategy == ExtractionStrategy.per_token:
                 embedding = engine_output
