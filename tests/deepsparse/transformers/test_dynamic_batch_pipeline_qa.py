@@ -16,14 +16,14 @@ class TestDynamicBatchPipeline:
         yield Pipeline.create(
             task=task,
             batch_size=None,
-            threadpool=threadpool,
+            executor=threadpool,
         )
 
     def static_batch_pipeline(self, task, threadpool, batch_size=1):
         return Pipeline.create(
             task=task,
             batch_size=batch_size,
-            threadpool=threadpool,
+            executor=threadpool,
         )
 
     def test_dynamic_batch_threaded_pipeline_creation(self, dynamic_batch_pipeline):
@@ -34,7 +34,7 @@ class TestDynamicBatchPipeline:
         self,
         task,
     ):
-        with pytest.raises(ValueError) as _value_error:
+        with pytest.raises(ValueError) as _value_error: # noqa: F841
             Pipeline.create(
                 task=task,
                 batch_size=None,
@@ -65,7 +65,7 @@ class TestDynamicBatchPipeline:
         static_batch_threaded_pipeline = self.static_batch_pipeline(
             task=task,
             batch_size=batch_size,
-            threadpool=threadpool,
+            executor=threadpool,
         )
         static_outputs = static_batch_threaded_pipeline(**inputs).result()
         dynamic_outputs = dynamic_batch_pipeline(**inputs).result()

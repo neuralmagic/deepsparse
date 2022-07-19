@@ -42,7 +42,8 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.utils import Splittable, Joinable
+from deepsparse.utils import Joinable, Splittable
+
 
 __all__ = [
     "TextClassificationInput",
@@ -58,7 +59,7 @@ class TextClassificationInput(BaseModel, Splittable):
 
     sequences: Union[List[List[str]], List[str], str] = Field(
         description="A string or List of strings representing input to"
-                    "text_classification task"
+        "text_classification task"
     )
 
     @staticmethod
@@ -69,9 +70,9 @@ class TextClassificationInput(BaseModel, Splittable):
         Utility method to return a Dict representing sample inputs of given batch
         size for current Schema
         """
-        assert isinstance(batch_size, int) and batch_size > 0, (
-            "batch size must be greater than 1"
-        )
+        assert (
+            isinstance(batch_size, int) and batch_size > 0
+        ), "batch size must be greater than 1"
         _inputs = ["I am Batman" for _ in range(batch_size)]
         return {"sequences": _inputs}
 
@@ -89,16 +90,15 @@ class TextClassificationInput(BaseModel, Splittable):
         if isinstance(sequences, str):
             yield self
 
-        elif isinstance(sequences, list) and len(sequences) and isinstance(sequences[0],
-                                                                           str):
+        elif (
+            isinstance(sequences, list)
+            and len(sequences)
+            and isinstance(sequences[0], str)
+        ):
             # case 2: List[str] -> multi-batches of size 1 Or batch-size 1 multi-inputs
 
             for sequence in sequences:
-                yield TextClassificationInput(
-                    **{
-                        "sequences": sequence
-                    }
-                )
+                yield TextClassificationInput(**{"sequences": sequence})
         else:
             # TODO: complete logic for List[List[str]]]
             raise NotImplementedError
@@ -124,7 +124,10 @@ class TextClassificationOutput(BaseModel, Joinable):
             labels.append(output.labels)
             scores.append(output.scores)
 
-        return TextClassificationOutput(labels=labels, scores=scores, )
+        return TextClassificationOutput(
+            labels=labels,
+            scores=scores,
+        )
 
 
 @Pipeline.register(
@@ -290,8 +293,8 @@ class TextClassificationPipeline(TransformersPipeline):
         else:
             # return all scores and labels for each item in batch
             labels = [
-                         [self.config.id2label[idx] for idx in range(scores.shape[1])]
-                     ] * len(scores)
+                [self.config.id2label[idx] for idx in range(scores.shape[1])]
+            ] * len(scores)
             label_scores = [score.reshape(-1).tolist() for score in scores]
 
         return self.output_schema(
