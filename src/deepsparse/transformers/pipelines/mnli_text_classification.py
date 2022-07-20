@@ -29,7 +29,7 @@
 # limitations under the License.
 
 """
-Helper functions and pydantic models for zero-shot text classification task
+Pipeline implementation and pydantic models for zero-shot text classification task
 with mnli models
 """
 
@@ -43,8 +43,8 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 
 from deepsparse.engine import Context
 from deepsparse.transformers.pipelines.zero_shot_text_classification import (
-    ZeroShotTextClassificationImplementation,
-    ZeroShotTextClassificationInputImplementation,
+    ZeroShotTextClassificationInputBase,
+    ZeroShotTextClassificationPipelineBase,
 )
 from deepsparse.utils import numpy_softmax
 
@@ -78,7 +78,7 @@ class MnliTextClassificationConfig(BaseModel):
     )
 
 
-class MnliTextClassificationInput(ZeroShotTextClassificationInputImplementation):
+class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
     """
     Schema for inputs to zero_shot_text_classification pipelines
     Each sequence and each candidate label must be paired and passed through
@@ -103,7 +103,7 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputImplementation)
     )
 
 
-class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
+class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
     def __init__(
         self,
         model_path: str,
@@ -156,14 +156,14 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
         super().__init__(model_path=model_path, **kwargs)
 
     @property
-    def config_schema(self) -> Type[BaseModel]:
+    def config_schema(self) -> Type[MnliTextClassificationConfig]:
         """
         Config schema the model_config argument must comply to
         """
         return MnliTextClassificationConfig
 
     @property
-    def input_schema(self) -> Type[BaseModel]:
+    def input_schema(self) -> Type[MnliTextClassificationInput]:
         """
         Input schema inputs using the mnli model scheme must comply to
         """
@@ -179,7 +179,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationImplementation):
             can be directly passed into the forward pass of the pipeline engine
         """
         sequences = inputs.sequences
-        labels = self._labels or inputs.labels
+        labels = self.parse_labels(self._labels or inputs.labels)
         hypothesis_template = (
             inputs.hypothesis_template
             if inputs.hypothesis_template is not None

@@ -30,13 +30,31 @@
 
 
 """
-Pipeline implementation and pydantic models for zero-shot text classification
-transformers tasks
+Bouncer class and pydantic models for zero-shot text classification transformers tasks
+
+ZeroShotTextClassificationPipeline acts as a bouncer class, where instead of returning
+an instance of itself, the ZeroShotTextClassificationPipeline returns an instance of
+a pipeline which implements zero shot text classification. Which type of pipeline
+is returned is specified by the model_scheme argument.
+
+example
+```
+zero_shot_text_classification_pipeline = ZeroShotTextClassificationPipeline(
+    model_scheme="mnli"
+)
+assert isinstance(zero_shot_text_classification_pipeline,
+                  MnliTextClassificationPipeline
+)
+```
+
+Pipeline implementations inherit from ZeroShotTextClassificationPipelineBase and
+their inputs inherit from ZeroShotTextClassificationInputBase to ensure some
+standards across implementations.
 """
 
 
 from enum import Enum
-from typing import Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel, Field
 
@@ -44,11 +62,16 @@ from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
+if TYPE_CHECKING:
+    from deepsparse.transformers.pipelines.mnli_text_classification import (  # noqa: F401, E501
+        MnliTextClassificationConfig,
+    )
+
 __all__ = [
     "ZeroShotTextClassificationPipeline",
-    "ZeroShotTextClassificationInputImplementation",
+    "ZeroShotTextClassificationInputBase",
     "ZeroShotTextClassificationOutput",
-    "ZeroShotTextClassificationImplementation",
+    "ZeroShotTextClassificationPipelineBase",
     "ModelSchemes",
 ]
 
@@ -80,7 +103,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     meant for this task.
 
     This class upon construction returns an instance of a child Pipeline which
-    inherits from ZeroShotTextClassificationImplementation. Which type of Pipeline
+    inherits from ZeroShotTextClassificationPipelineBase. Which type of Pipeline
     is returned depends on the value of the passed model_scheme argument.
 
     example dynamic labels:
@@ -178,7 +201,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
             )
 
 
-class ZeroShotTextClassificationInputImplementation(BaseModel):
+class ZeroShotTextClassificationInputBase(BaseModel):
     """
     Schema for inputs to zero_shot_text_classification pipelines
     Each sequence and each candidate label must be paired and passed through
@@ -208,7 +231,7 @@ class ZeroShotTextClassificationOutput(BaseModel):
     )
 
 
-class ZeroShotTextClassificationImplementation(TransformersPipeline):
+class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
     """
     Base class for implementing zero shot text classification. Implementations of
     zero shot text classification inherit from this class.
@@ -244,45 +267,12 @@ class ZeroShotTextClassificationImplementation(TransformersPipeline):
     ):
         super().__init__(**kwargs)
 
-    def parse_config(
-        self, model_scheme_config: Optional[Union[BaseModel, Dict]]
-    ) -> Type[BaseModel]:
-        """
-        :param model_scheme_config: optional config arguments specified by user
-        :return: instance of config pydantic model for this pipeline's model scheme
-        """
-        model_scheme_config = model_scheme_config if model_scheme_config else {}
-
-        if isinstance(model_scheme_config, self.config_schema):
-            return model_scheme_config
-
-        elif isinstance(model_scheme_config, dict):
-            return self.config_schema(**model_scheme_config)
-
-        else:
-            raise ValueError(
-                f"pipeline {self.__class__} only supports either only a "
-                f"{self.config_schema} object a dict of keywords used to construct "
-                f"one. Found {model_scheme_config} instead"
-            )
-
     @property
-    def output_schema(self) -> Type[BaseModel]:
+    def output_schema(self) -> Type[ZeroShotTextClassificationOutput]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
         return ZeroShotTextClassificationOutput
-
-    def parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
-        """
-        If given a string of comma separated labels, parses values into a list
-
-        :param labels: A string of comma separated labels or a list of labels
-        :return: a list of labels, parsed if originally in string form
-        """
-        if isinstance(labels, str):
-            labels = [label.strip() for label in labels.split(",") if label.strip()]
-        return labels
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """
@@ -332,3 +322,36 @@ class ZeroShotTextClassificationImplementation(TransformersPipeline):
             if pipeline.sequence_length > current_seq_len:
                 return pipeline
         return pipelines[-1]
+
+    def parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
+        """
+        If given a string of comma separated labels, parses values into a list
+
+        :param labels: A string of comma separated labels or a list of labels
+        :return: a list of labels, parsed if originally in string form
+        """
+        if isinstance(labels, str):
+            labels = [label.strip() for label in labels.split(",") if label.strip()]
+        return labels
+
+    def parse_config(
+        self, model_scheme_config: Optional[Union["MnliTextClassificationConfig", Dict]]
+    ) -> Type["MnliTextClassificationConfig"]:
+        """
+        :param model_scheme_config: optional config arguments specified by user
+        :return: instance of config pydantic model for this pipeline's model scheme
+        """
+        model_scheme_config = model_scheme_config if model_scheme_config else {}
+
+        if isinstance(model_scheme_config, self.config_schema):
+            return model_scheme_config
+
+        elif isinstance(model_scheme_config, dict):
+            return self.config_schema(**model_scheme_config)
+
+        else:
+            raise ValueError(
+                f"pipeline {self.__class__} only supports either only a "
+                f"{self.config_schema} object a dict of keywords used to construct "
+                f"one. Found {model_scheme_config} instead"
+            )

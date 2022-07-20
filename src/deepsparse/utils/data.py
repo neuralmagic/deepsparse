@@ -157,8 +157,8 @@ def numpy_softmax(x: numpy.ndarray, axis: int = 0):
     :param axis: axis across which to perform softmax
     :return: x with values across axis softmaxed
     """
-    max = numpy.max(x, axis=axis, keepdims=True)
-    e_x = numpy.exp(x - max)
-    sum = numpy.sum(e_x, axis=axis, keepdims=True)
-    f_x = e_x / sum
-    return f_x
+    x_max = numpy.max(x, axis=axis, keepdims=True)
+    e_x = numpy.exp(x - x_max)
+    e_x_sum = numpy.sum(e_x, axis=axis, keepdims=True)
+    softmax_x = e_x / e_x_sum
+    return softmax_x
