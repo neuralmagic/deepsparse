@@ -29,7 +29,15 @@ def executor():
     yield ThreadPoolExecutor()
 
 
-@pytest.mark.parametrize("task", ["text_classification"], scope="class")
+supported_tasks = [
+    # "text_classification",
+    # "token_classification",
+    # "yolo",
+    "image_classification",
+]
+
+
+@pytest.mark.parametrize("task", supported_tasks, scope="class")
 class TestDynamicBatchPipeline:
     @pytest.fixture()
     def dynamic_batch_pipeline(self, task, executor):
@@ -47,7 +55,13 @@ class TestDynamicBatchPipeline:
         # Will fail if fixture request fails
         pass
 
-    @pytest.mark.parametrize("batch_size", [1, 5, 10])
+    @pytest.mark.parametrize(
+        "batch_size", [
+            # 1,
+            5,
+            # 10,
+        ]
+    )
     def test_execution_with_multiple_batch_sizes(
         self,
         batch_size,
@@ -78,7 +92,12 @@ class TestDynamicBatchPipeline:
 
         assert type(output) == dynamic_batch_pipeline.output_schema
 
-    @pytest.mark.parametrize("batch_size", [10])
+    @pytest.mark.parametrize(
+        "batch_size", [
+            1,
+            2,
+            10,
+        ])
     def test_order_retention_against_static_batch(
         self, task, executor, batch_size, dynamic_batch_pipeline
     ):

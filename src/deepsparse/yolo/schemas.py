@@ -16,12 +16,12 @@
 """
 Input/Output Schemas for Image Segmentation with YOLO
 """
-
 from collections import namedtuple
-from typing import Any, List, Union
+from pathlib import Path
+from typing import Any, Dict, Generator, Iterable, List, Union
 
 from pydantic import BaseModel, Field
-
+from deepsparse.utils import Splittable, Joinable
 
 __all__ = [
     "YOLOOutput",
@@ -33,7 +33,7 @@ _YOLOImageOutput = namedtuple(
 )
 
 
-class YOLOInput(BaseModel):
+class YOLOInput(BaseModel, Splittable):
     """
     Input model for image classification
     """
@@ -67,8 +67,59 @@ class YOLOInput(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    @staticmethod
+    def create_test_inputs(
+        batch_size: int = 1,
+    ) -> Dict[str, Union[Union[List[str], str, List[Any]]]]:
+        """
+        Create and return a test input for this schema
 
-class YOLOOutput(BaseModel):
+        :param batch_size: The batch_size of inputs to return
+        :return: A dict representing inputs for Yolo pipeline
+        """
+
+        sample_image_path = Path(__file__).parents[0] / "sample_images" / "basilica.jpg"
+        sample_image_abs_path = str(sample_image_path.absolute())
+
+        images = [sample_image_abs_path for _ in range(batch_size)]
+        return {
+            "images": images
+        }
+
+    def split(self) -> Generator["YOLOInput", None, None]:
+        """
+        Split a current `YOLOInput` object with a batch size b, into a
+        generator of b smaller objects with batch size 1, the returned
+        object can be iterated on.
+
+        :return: A Generator of smaller `YOLOInput` objects each
+            representing an input of batch-size 1
+        """
+
+        images = self.images
+
+        # case 1: do nothing if single input of batch_size 1
+        if isinstance(images, str):
+            yield self
+
+        elif (
+            isinstance(images, list)
+            and len(images)
+            and isinstance(images[0], str)
+        ):
+            # case 2: List[str, Any] -> multiple images of size 1
+            for image in images:
+                yield YOLOInput(
+                    **{
+                        "images": image,
+                    }
+                )
+
+        else:
+            raise ValueError(f"Could not breakdown {self} into smaller batches")
+
+
+class YOLOOutput(BaseModel, Joinable):
     """
     Output model for image classification
     """
@@ -98,3 +149,32 @@ class YOLOOutput(BaseModel):
     def __iter__(self):
         for index in range(len(self.predictions)):
             yield self[index]
+
+    @staticmethod
+    def join(
+        outputs: Iterable["YOLOOutput"],
+    ) -> "YOLOOutput":
+        """
+        Takes in ab Iterable of `YOLOOutput` objects and combines
+        them into one object representing a bigger batch size
+
+        :return: A new `YOLOOutput` object that represents a bigger batch
+        """
+        predictions = list()
+        boxes = list()
+        scores = list()
+        labels = list()
+
+        for yolo_output in outputs:
+            for image_output in yolo_output:
+                predictions.append(image_output.predictions)
+                boxes.append(image_output.boxes)
+                scores.append(image_output.scores)
+                labels.append(image_output.labels)
+
+        return YOLOOutput(
+            predictions=predictions,
+            boxes=boxes,
+            scores=scores,
+            labels=labels,
+        )
