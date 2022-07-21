@@ -20,7 +20,7 @@ inference engine and include pre/postprocessing
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
+from deepsparse.utils.onnx import model_to_path
 
 
 __all__ = [
@@ -563,6 +564,71 @@ class Pipeline(ABC):
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
                 f"{SUPPORTED_PIPELINE_ENGINES}"
             )
+
+
+class FunctionPipeline(Pipeline):
+    """
+    A utility class provided to make specifying custom pipelines easier.
+    Instead of creating a subclass of Pipeline, you can instantiate this directly
+    by passing in functions to call for pre and post processing.
+
+    For example, YOLO pipline could be specified as:
+    ```python
+    def yolo_preprocess(inputs: YOLOInput) -> List[np.ndarray]:
+        ...
+
+    def yolo_postprocess(engine_outputs: List[np.ndarray]) -> YOLOOutput:
+        ...
+
+    yolo = FunctionalPipeline(
+        model_path="...",
+        input_schema=YOLOInput,
+        output_schema=YOLOOutput,
+        process_inputs_fn=yolo_preprocess,
+        process_outputs_fn=yolo_postprocess,
+    )
+    ```
+    """
+
+    def __init__(
+        self,
+        model_path: str,
+        input_schema: Type[BaseModel],
+        output_schema: Type[BaseModel],
+        process_inputs_fn: Callable[
+            [BaseModel],
+            Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]],
+        ],
+        process_outputs_fn: Callable[[List[numpy.ndarray]], BaseModel],
+        *args,
+        **kwargs,
+    ):
+        self._input_schema = input_schema
+        self._output_schema = output_schema
+        self._process_inputs_fn = process_inputs_fn
+        self._process_outputs_fn = process_outputs_fn
+        super().__init__(model_path, *args, **kwargs)
+
+    def setup_onnx_file_path(self) -> str:
+        return model_to_path(self.model_path)
+
+    @property
+    def input_schema(self) -> Type[BaseModel]:
+        return self._input_schema
+
+    @property
+    def output_schema(self) -> Type[BaseModel]:
+        return self._output_schema
+
+    def process_inputs(
+        self, inputs: BaseModel
+    ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
+        return self._process_inputs_fn(inputs)
+
+    def process_engine_outputs(
+        self, engine_outputs: List[numpy.ndarray], **kwargs
+    ) -> BaseModel:
+        return self._process_outputs_fn(engine_outputs, **kwargs)
 
 
 class PipelineConfig(BaseModel):
