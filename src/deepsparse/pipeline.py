@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.tasks import SupportedTasks
+from deepsparse.utils import Joinable, Splittable
 
 
 __all__ = [
@@ -46,8 +47,6 @@ __all__ = [
     "Bucketable",
     "BucketingPipeline",
 ]
-
-from deepsparse.utils import Joinable, Splittable
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
