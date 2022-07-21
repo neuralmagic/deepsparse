@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from typing import OrderedDict
+
 import numpy as np
 
 import pytest
-import torch
 from deepsparse.image_classification import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
