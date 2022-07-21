@@ -808,7 +808,7 @@ class Bucketable(ABC):
 def _initialize_executor_and_workers(
     batch_size: Optional[int],
     workers_or_executor: Optional[Union[int, bool, ThreadPoolExecutor]],
-):
+) -> Tuple[Optional[ThreadPoolExecutor], int]:
     if isinstance(workers_or_executor, ThreadPoolExecutor):
         num_async_workers = workers_or_executor._max_workers  # noqa
         executor = workers_or_executor
