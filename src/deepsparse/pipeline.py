@@ -166,8 +166,8 @@ class Pipeline(ABC):
                 )
 
         self._engine_args = dict(
-            batch_size=self._batch_size or 1,  # batch_size should be 1 for
-            num_cores=num_cores,  # dynamic batch
+            batch_size=self._batch_size or 1,  # engine should be initialized with a
+            num_cores=num_cores,  # batch_size 1 for dynamic batch mode
             input_shapes=input_shapes,
         )
         if engine_type.lower() == DEEPSPARSE_ENGINE:
@@ -187,6 +187,7 @@ class Pipeline(ABC):
             # Blocking call in Dynamic Batch Mode
             return executor.submit(self._run, *args, **kwargs).result()
 
+        # Non-Blocking call in async mode
         return (
             executor.submit(self._run, *args, **kwargs)
             if executor
@@ -569,6 +570,7 @@ class Pipeline(ABC):
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
+
         # parse inputs into input_schema schema if necessary
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_schema):
@@ -576,6 +578,7 @@ class Pipeline(ABC):
                 f"Unable to parse {self.__class__} inputs into a "
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
+
         # run pipeline
         if self.in_dynamic_batch_mode():
             return self._run_with_dynamic_batch(pipeline_inputs)
@@ -600,16 +603,19 @@ class Pipeline(ABC):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
+
         engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
+
         # validate outputs format
         if not isinstance(pipeline_outputs, self.output_schema):
             raise ValueError(
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
+
         return pipeline_outputs
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:

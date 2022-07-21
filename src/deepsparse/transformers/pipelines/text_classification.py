@@ -34,6 +34,7 @@ Pipeline implementation and pydantic models for text classification transformers
 tasks
 """
 
+
 from typing import Dict, Generator, Iterable, List, Type, Union
 
 import numpy
