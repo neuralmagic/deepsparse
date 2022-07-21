@@ -41,8 +41,8 @@ from transformers.file_utils import ExplicitEnum
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
+from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.utils import Joinable, Splittable
 
 
 __all__ = [
@@ -96,7 +96,7 @@ class TokenClassificationInput(BaseModel, Splittable):
         :param batch_size: The batch_size of inputs to return
         :return: A dict representing inputs for text calssification pipelinbe
         """
-        inputs = ["That's it for me" for _ in range(batch_size)]
+        inputs = ["U.N. official Ekeus heads for Baghdad" for _ in range(batch_size)]
         return {"inputs": inputs}
 
     def split(self) -> Generator["TokenClassificationInput", None, None]:
@@ -178,12 +178,9 @@ class TokenClassificationOutput(BaseModel, Joinable):
 
         :return: A new `TokenClassificationOutput` object that represents a bigger batch
         """
-        predictions = list()
-
-        for output in outputs:
-            curr_pred = output.predictions
-            for prediction in curr_pred:
-                predictions.append(prediction)
+        predictions = [
+            prediction for output in outputs for prediction in output.predictions
+        ]
 
         return TokenClassificationOutput(
             predictions=predictions,

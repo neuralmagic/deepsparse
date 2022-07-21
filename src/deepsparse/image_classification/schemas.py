@@ -21,7 +21,7 @@ from typing import Any, Dict, Generator, Iterable, List, Union
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse.utils import Joinable, Splittable
+from deepsparse.pipelines import Joinable, Splittable
 
 
 __all__ = [
@@ -94,7 +94,6 @@ class ImageClassificationInput(BaseModel, Splittable):
                 yield ImageClassificationInput(
                     images=image,
                 )
-
         else:
             raise ValueError(f"Could not breakdown {self} into smaller batches")
 
@@ -121,6 +120,9 @@ class ImageClassificationOutput(BaseModel, Joinable):
 
         :return: A new `YOLOOutput` object that represents a bigger batch
         """
+        if len(outputs) == 1:
+            return outputs[0]
+
         scores = list()
         labels = list()
 

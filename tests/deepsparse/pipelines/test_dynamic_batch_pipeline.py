@@ -15,6 +15,8 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 
+import numpy
+
 import pytest
 from deepsparse import Pipeline
 
@@ -35,6 +37,22 @@ supported_tasks = [
     "yolo",
     "image_classification",
 ]
+
+
+def compare(expected, actual):
+    assert type(expected) == type(actual)
+
+    if isinstance(expected, (list, float, numpy.ndarray)):
+        expected_np = numpy.asarray(expected)
+        actual_np = numpy.asarray(actual)
+        assert numpy.allclose(expected_np, actual_np, rtol=1e-3)
+    elif isinstance(expected, dict):
+        assert list(expected.keys()).sort() == list(actual.keys()).sort()
+        for key, exp_value in expected.items():
+            assert compare(exp_value, actual[key])
+    else:
+        assert expected == actual
+    return True
 
 
 @pytest.mark.parametrize("task", supported_tasks, scope="class")
@@ -73,6 +91,7 @@ class TestDynamicBatchPipeline:
         )
         outputs = dynamic_batch_pipeline(**inputs)
         assert outputs
+        assert type(outputs) == dynamic_batch_pipeline.output_schema
 
     @pytest.mark.parametrize("batch_size", [10])
     def test_pipeline_call_is_blocking(
@@ -88,8 +107,6 @@ class TestDynamicBatchPipeline:
             "Expected dynamic batch pipeline to be blocking but got"
             "got a concurrent.futures.Future object instead"
         )
-
-        assert type(output) == dynamic_batch_pipeline.output_schema
 
     @pytest.mark.parametrize(
         "batch_size",
@@ -114,6 +131,8 @@ class TestDynamicBatchPipeline:
         )
         static_outputs = static_batch_threaded_pipeline(**inputs).result()
         dynamic_outputs = dynamic_batch_pipeline(**inputs)
+        expected_dict = static_outputs.dict()
+        actual_dict = dynamic_outputs.dict()
 
         # Check that order is maintained
-        assert static_outputs == dynamic_outputs
+        assert static_outputs == dynamic_outputs or compare(expected_dict, actual_dict)

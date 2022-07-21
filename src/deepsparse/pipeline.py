@@ -18,8 +18,8 @@ inference engine and include pre/postprocessing
 """
 import concurrent.futures
 import os
-import warnings
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
@@ -29,8 +29,8 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
+from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.tasks import SupportedTasks
-from deepsparse.utils import Joinable, Splittable
 
 
 __all__ = [
@@ -52,6 +52,7 @@ __all__ = [
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
+_NOT_PRESENT_FLAG = namedtuple("_NOT_PRESENT_FLAG", "")()
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
 _REGISTERED_PIPELINES = {}
@@ -122,13 +123,12 @@ class Pipeline(ABC):
         other runtime information that will be used across instances of the
         MultiModelEngine to provide optimal performance when running multiple
         models concurrently
-    :param executor: A optional ThreadPoolExecutor() object, if given the
+    :param executor: An optional ThreadPoolExecutor() object, if provided the
         pipeline executes inference requests in a non-blocking manner and returns
         a Future object, call Future.result() on returned object to get the result.
         Can also accept an int number of workers, a ThreadPoolExecutor object is
-        auto-initialized with the specified integer in that case; if True a
-        ThreadPoolExecutor is initialized with min(32, (os.cpu_count() or 1) + 4)
-        max workers. False and None represent synchronous execution
+        auto-initialized with the specified integer in that case; None represents
+        synchronous execution
     """
 
     def __init__(
@@ -141,7 +141,7 @@ class Pipeline(ABC):
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
         context: Optional[Context] = None,
-        executor: Optional[Union[ThreadPoolExecutor, int, bool]] = None,
+        executor: Optional[Union[ThreadPoolExecutor, int]] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -165,8 +165,8 @@ class Pipeline(ABC):
                 )
 
         self._engine_args = dict(
-            batch_size=self._batch_size or 1,  # engine should be initialized with a
-            num_cores=num_cores,  # batch_size 1 for dynamic batch mode
+            batch_size=self._batch_size or 1,  # bs=1 for dynamic batch
+            num_cores=num_cores,
             input_shapes=input_shapes,
         )
         if engine_type.lower() == DEEPSPARSE_ENGINE:
@@ -176,30 +176,28 @@ class Pipeline(ABC):
         self.engine = self._initialize_engine()
 
     def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
-        executor = kwargs.get("executor")
-        if executor is not None:
-            kwargs.pop("executor")
-        else:
+        executor = kwargs.get("executor", _NOT_PRESENT_FLAG)
+
+        if executor is None:
+            # do not use threading
+            return self._run(*args, **kwargs)
+
+        if executor is _NOT_PRESENT_FLAG:
+            # use executor created during initialization
             executor = self.executor
+        else:
+            # use passed in executor
+            executor = kwargs.pop("executor")
 
-        if self.in_dynamic_batch_mode():
-            # Blocking call in Dynamic Batch Mode
-            return executor.submit(self._run, *args, **kwargs).result()
+        # if self.use_dynamic_batch():
+        #     # Blocking call in Dynamic Batch Mode
+        #     return executor.submit(self._run, *args, **kwargs).result()
 
-        # Non-Blocking call in async mode
         return (
-            executor.submit(self._run, *args, **kwargs)
-            if executor
-            else self._run(*args, **kwargs)
+            executor.submit(self._run, *args, **kwargs)  # Non-Blocking call
+            if executor and not self.use_dynamic_batch()
+            else self._run(*args, **kwargs)  # Blocking call
         )
-
-    @property
-    def num_async_workers(self) -> int:
-        """
-        :return: Number of threads of execution used for inference, returns 1
-            when multiple workers not specified
-        """
-        return self.num_async_workers
 
     @staticmethod
     def create(
@@ -490,7 +488,7 @@ class Pipeline(ABC):
         """
         return self._engine_type
 
-    def in_dynamic_batch_mode(self) -> bool:
+    def use_dynamic_batch(self) -> bool:
         """
         :return: True if pipeline should be run in dynamic batch mode else
             False
@@ -579,7 +577,7 @@ class Pipeline(ABC):
             )
 
         # run pipeline
-        if self.in_dynamic_batch_mode():
+        if self.use_dynamic_batch():
             return self._run_with_dynamic_batch(pipeline_inputs)
 
         pipeline_outputs = self._run_with_static_batch(pipeline_inputs)
@@ -806,7 +804,7 @@ class Bucketable(ABC):
 
 def _initialize_executor_and_workers(
     batch_size: Optional[int],
-    workers_or_executor: Optional[Union[int, bool, ThreadPoolExecutor]],
+    workers_or_executor: Optional[Union[int, ThreadPoolExecutor]],
 ) -> Tuple[Optional[ThreadPoolExecutor], int]:
     if isinstance(workers_or_executor, ThreadPoolExecutor):
         num_async_workers = workers_or_executor._max_workers  # noqa
@@ -814,17 +812,12 @@ def _initialize_executor_and_workers(
     elif isinstance(workers_or_executor, int):
         num_async_workers = max(1, workers_or_executor)
         executor = ThreadPoolExecutor(max_workers=num_async_workers)
-    elif isinstance(workers_or_executor, bool):
-        executor = ThreadPoolExecutor() if workers_or_executor else None
-        num_async_workers = executor._max_workers if workers_or_executor else 1  # noqa
-    elif workers_or_executor is None:
-        executor = None if batch_size else ThreadPoolExecutor()
-        num_async_workers = executor._max_workers if batch_size is None else 1  # noqa
-    else:
-        warnings.warn(
-            "Expected an int, bool or ThreadPoolExecutor to run in async mode"
+    elif workers_or_executor is not None:
+        raise ValueError(
+            "Expected an int or ThreadPoolExecutor to run in async mode"
             f" but got {workers_or_executor} of type {type(workers_or_executor)}"
         )
+    else:
         executor = None
         num_async_workers = 1
 

@@ -15,6 +15,7 @@
 from abc import ABC, abstractmethod
 from typing import Generator
 
+
 __all__ = [
     "Splittable",
     "Joinable",
@@ -54,7 +55,7 @@ class Joinable(ABC):
 
     @staticmethod
     @abstractmethod
-    def join(self, *args, **kwargs) -> "BaseModel": # noqa: F821
+    def join(self, *args, **kwargs) -> "BaseModel":  # noqa: F821
         """
         Utility abstract method that subclasses must implement, the goal of
         this function is to take in an Iterable of subclass objects and combine

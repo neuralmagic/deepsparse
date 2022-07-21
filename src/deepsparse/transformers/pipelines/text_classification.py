@@ -42,8 +42,8 @@ from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
+from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.utils import Joinable, Splittable
 
 
 __all__ = [
@@ -102,7 +102,9 @@ class TextClassificationInput(BaseModel, Splittable):
             # case 3: List[List[str]] -> Each List[str] is a multi-input batch of
             # size 1
             for sequence in sequences:
-                yield TextClassificationInput(sequences=sequence)
+                yield TextClassificationInput(
+                    sequences=sequence,
+                )
         else:
             raise ValueError(f"Could not breakdown {self} into smaller batches")
 

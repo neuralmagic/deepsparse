@@ -22,7 +22,7 @@ from typing import Any, Dict, Generator, Iterable, List, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse.utils import Joinable, Splittable
+from deepsparse.pipelines import Joinable, Splittable
 
 
 __all__ = [
