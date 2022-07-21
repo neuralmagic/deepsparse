@@ -15,8 +15,6 @@
 from typing import OrderedDict
 
 import numpy
-from PIL import Image
-from torchvision import transforms
 
 import pytest
 from deepsparse.image_classification import (
@@ -26,8 +24,14 @@ from deepsparse.image_classification import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
+from deepsparse.pipelines import FunctionPipeline
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy_list
+
+
+# NOTE: these need to be placed after the other imports bc of a dependency chain issue
+from PIL import Image  # isort:skip
+from torchvision import transforms  # isort:skip
 
 
 @pytest.mark.parametrize(
@@ -82,7 +86,9 @@ def test_function_pipeline_as_image_classifier(zoo_stub, image_size):
         process_inputs_fn=preprocess,
         process_outputs_fn=postprocess,
     )
+    assert isinstance(pipeline, FunctionPipeline)
 
+    # load model & data
     zoo_model = Zoo.load_model_from_stub(zoo_stub)
     data_originals_path = zoo_model.data_originals.downloaded_path()
     sample = load_numpy_list(data_originals_path)[0]
@@ -90,6 +96,8 @@ def test_function_pipeline_as_image_classifier(zoo_stub, image_size):
     assert len(sample) == 1
     image_raw = list(sample.values())[0]
     assert isinstance(image_raw, numpy.ndarray)
+
+    # actually run the pipeline
     input = ImageClassificationInput(images=[image_raw])
     output = pipeline(input)
     assert isinstance(output, ImageClassificationOutput)

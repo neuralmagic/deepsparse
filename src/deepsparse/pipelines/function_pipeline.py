@@ -79,22 +79,40 @@ class FunctionPipeline(Pipeline):
         super().__init__(model_path, *args, **kwargs)
 
     def setup_onnx_file_path(self) -> str:
+        """
+        :return: output from `model_to_path` using the `model_path`
+            from the constructor
+        """
         return model_to_path(self.model_path)
 
     @property
     def input_schema(self) -> Type[BaseModel]:
+        """
+        :return: The `input_schema` from the constructor.
+        """
         return self._input_schema
 
     @property
     def output_schema(self) -> Type[BaseModel]:
+        """
+        :return: The `output_schema` from the constructor.
+        """
         return self._output_schema
 
     def process_inputs(
         self, inputs: BaseModel
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
+        """
+        :return: The output from calling `process_inputs_fn` from the constructor
+            on the `inputs`.
+        """
         return self._process_inputs_fn(inputs)
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
     ) -> BaseModel:
+        """
+        :return: The output from calling `process_outputs_fn` from the constructor
+            on the `engine_outputs`.
+        """
         return self._process_outputs_fn(engine_outputs, **kwargs)
