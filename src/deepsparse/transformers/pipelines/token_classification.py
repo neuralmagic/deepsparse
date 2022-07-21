@@ -76,6 +76,14 @@ class TokenClassificationInput(BaseModel):
             "a token_classification task"
         )
     )
+    is_split_into_words: bool = Field(
+        default=False,
+        description=(
+            "True if the input is a batch size 1 list of strings representing. "
+            "individual word tokens. Currently only supports batch size 1. "
+            "Default is False"
+        ),
+    )
 
 
 class TokenClassificationResult(BaseModel):
@@ -155,7 +163,9 @@ class TokenClassificationPipeline(TransformersPipeline):
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
     :param sequence_length: sequence length to compile model and tokenizer for.
-        Default is 128
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
         include 'none', 'simple', 'first', 'average', and 'max'. Default is None
     :param ignore_labels: list of label names to ignore in output. Default is
@@ -245,6 +255,9 @@ class TokenClassificationPipeline(TransformersPipeline):
             and dictionary containing offset mappings and special tokens mask to
             be used during postprocessing
         """
+        if inputs.is_split_into_words and self.engine.batch_size != 1:
+            raise ValueError("is_split_into_words=True only supported for batch size 1")
+
         tokens = self.tokenizer(
             inputs.inputs,
             return_tensors="np",
@@ -252,6 +265,7 @@ class TokenClassificationPipeline(TransformersPipeline):
             padding=PaddingStrategy.MAX_LENGTH.value,
             return_special_tokens_mask=True,
             return_offsets_mapping=self.tokenizer.is_fast,
+            is_split_into_words=inputs.is_split_into_words,
         )
 
         offset_mapping = (
@@ -260,11 +274,29 @@ class TokenClassificationPipeline(TransformersPipeline):
             else [None] * len(inputs.inputs)
         )
         special_tokens_mask = tokens.pop("special_tokens_mask")
+
+        word_start_mask = None
+        if inputs.is_split_into_words:
+            # create mask for word in the split words where values are True
+            # if they are the start of a tokenized word
+            word_start_mask = []
+            word_ids = tokens.word_ids(batch_index=0)
+            previous_id = None
+            for word_id in word_ids:
+                if word_id is None:
+                    continue
+                if word_id != previous_id:
+                    word_start_mask.append(True)
+                    previous_id = word_id
+                else:
+                    word_start_mask.append(False)
+
         postprocessing_kwargs = dict(
             inputs=inputs,
             tokens=tokens,
             offset_mapping=offset_mapping,
             special_tokens_mask=special_tokens_mask,
+            word_start_mask=word_start_mask,
         )
 
         return self.tokens_to_engine_input(tokens), postprocessing_kwargs
@@ -284,6 +316,7 @@ class TokenClassificationPipeline(TransformersPipeline):
         tokens = kwargs["tokens"]
         offset_mapping = kwargs["offset_mapping"]
         special_tokens_mask = kwargs["special_tokens_mask"]
+        word_start_mask = kwargs["word_start_mask"]
 
         predictions = []  # type: List[List[TokenClassificationResult]]
 
@@ -293,6 +326,7 @@ class TokenClassificationPipeline(TransformersPipeline):
             scores = numpy.exp(current_entities) / numpy.exp(current_entities).sum(
                 -1, keepdims=True
             )
+
             pre_entities = self._gather_pre_entities(
                 inputs.inputs[entities_index],
                 input_ids,
@@ -303,9 +337,11 @@ class TokenClassificationPipeline(TransformersPipeline):
             grouped_entities = self._aggregate(pre_entities)
             # Filter anything that is in self.ignore_labels
             current_results = []  # type: List[TokenClassificationResult]
-            for entity in grouped_entities:
-                if entity.get("entity") in self.ignore_labels or (
-                    entity.get("entity_group") in self.ignore_labels
+            for entity_idx, entity in enumerate(grouped_entities):
+                if (
+                    entity.get("entity") in self.ignore_labels
+                    or (entity.get("entity_group") in self.ignore_labels)
+                    or (word_start_mask and not word_start_mask[entity_idx])
                 ):
                     continue
                 if entity.get("entity_group"):
