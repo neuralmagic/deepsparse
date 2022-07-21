@@ -174,15 +174,15 @@ class Pipeline(ABC):
         self.engine = self._initialize_engine()
 
     def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
-        _DEFAULT_KEY_VAL = ("_DEFAULT",)
+        _default_key_val = ("_DEFAULT",)
 
-        executor = kwargs.get("executor", _DEFAULT_KEY_VAL)
+        executor = kwargs.get("executor", _default_key_val)
 
         if executor is None:
             # do not use threading
             return self._run(*args, **kwargs)
 
-        if executor is _DEFAULT_KEY_VAL:  # do not use ==
+        if executor is _default_key_val:  # do not use ==
             # use executor created during initialization
             executor = self.executor
         else:
