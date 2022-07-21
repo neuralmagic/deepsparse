@@ -28,7 +28,7 @@ def pipeline():
 
 
 @pytest.fixture()
-def threadpool():
+def executor():
     """
     Auto-del fixture for yielding a ThreadPoolExecutor
     """
@@ -40,7 +40,7 @@ def threaded_pipeline(threadpool):
     """
     Auto-del fixture for Threaded Pipeline
     """
-    yield Pipeline.create(task="question-answering", threadpool=threadpool)
+    yield Pipeline.create(task="question-answering", executor=threadpool)
 
 
 @pytest.fixture()

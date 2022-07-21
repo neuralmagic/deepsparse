@@ -142,7 +142,7 @@ class Pipeline(ABC):
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
         context: Optional[Context] = None,
-        executor: Optional[ThreadPoolExecutor, int, bool] = None,
+        executor: Optional[Union[ThreadPoolExecutor, int, bool]] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -583,7 +583,7 @@ class Pipeline(ABC):
         pipeline_outputs = self._run_with_static_batch(pipeline_inputs)
         return pipeline_outputs
 
-    def _run_with_dynamic_batch(self, pipeline_inputs):
+    def _run_with_dynamic_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
         pipeline_inputs = pipeline_inputs.split()
         futures = [
             self.executor.submit(self._run_with_static_batch, _input)
@@ -594,7 +594,7 @@ class Pipeline(ABC):
         outputs = [future.result() for future in futures]
         return self.output_schema.join(outputs)
 
-    def _run_with_static_batch(self, pipeline_inputs):
+    def _run_with_static_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
@@ -801,7 +801,7 @@ class Bucketable(ABC):
 
 def _initialize_executor_and_workers(
     batch_size: Optional[int],
-    workers_or_executor: Optional[int, bool, ThreadPoolExecutor],
+    workers_or_executor: Optional[Union[int, bool, ThreadPoolExecutor]],
 ):
     if isinstance(workers_or_executor, ThreadPoolExecutor):
         num_async_workers = workers_or_executor._max_workers  # noqa
@@ -814,9 +814,7 @@ def _initialize_executor_and_workers(
         num_async_workers = executor._max_workers if workers_or_executor else 1  # noqa
     elif workers_or_executor is None:
         executor = None if batch_size else ThreadPoolExecutor()
-        num_async_workers = (
-            executor._max_workers if batch_size is not None else 1  # noqa
-        )
+        num_async_workers = executor._max_workers if batch_size is None else 1  # noqa
     else:
         warnings.warn(
             "Expected an int, bool or ThreadPoolExecutor to run in async mode"

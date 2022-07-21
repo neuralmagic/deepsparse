@@ -34,7 +34,7 @@ Pipeline implementation and pydantic models for text classification transformers
 tasks
 """
 
-from typing import Any, Dict, List, Type, Union
+from typing import Dict, Generator, Iterable, List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -63,7 +63,7 @@ class TextClassificationInput(BaseModel, Splittable):
     )
 
     @staticmethod
-    def create_sample_inputs(
+    def create_test_inputs(
         batch_size: int = 1,
     ) -> Dict[str, Union[List[List[str]], List[str], str]]:
         """
@@ -76,32 +76,35 @@ class TextClassificationInput(BaseModel, Splittable):
         _inputs = ["I am Batman" for _ in range(batch_size)]
         return {"sequences": _inputs}
 
-    def split(self) -> List[Any]:
+    def split(self) -> Generator["TextClassificationInput", None, None]:
         """
-        TODO: Fill docstring
-        :param _input:
-        :return:
+        Split a current `TextClassificationInput` object with a batch size b, into a
+        generator of b smaller objects with batch size 1, the returned
+        object can be iterated on.
+
+        :return: A Generator of smaller `TextClassificationInput` objects each
+            representing an input of batch-size 1
         """
 
         sequences = self.sequences
 
         # case 1: do nothing if single input of batch_size 1
-
         if isinstance(sequences, str):
             yield self
 
         elif (
             isinstance(sequences, list)
             and len(sequences)
-            and isinstance(sequences[0], str)
+            and isinstance(sequences[0], (str, list))
         ):
             # case 2: List[str] -> multi-batches of size 1 Or batch-size 1 multi-inputs
-
+            # case 3: List[List[str]] -> Each List[str] is a multi-input batch of
+            # size 1
             for sequence in sequences:
                 yield TextClassificationInput(**{"sequences": sequence})
+
         else:
-            # TODO: complete logic for List[List[str]]]
-            raise NotImplementedError
+            raise ValueError(f"Could not breakdown {self} into smaller batches")
 
 
 class TextClassificationOutput(BaseModel, Joinable):
@@ -117,12 +120,20 @@ class TextClassificationOutput(BaseModel, Joinable):
     )
 
     @staticmethod
-    def join(outputs: List["TextClassificationOutput"]) -> "TextClassificationOutput":
+    def join(
+        outputs: Iterable["TextClassificationOutput"],
+    ) -> "TextClassificationOutput":
+        """
+        Takes in ab Iterable of `TextClassificationOutput` objects and combines
+        them into one object representing a bigger batch size
+
+        :return: A new `TextClassificationOutput` object that represents a bigger batch
+        """
         labels = list()
         scores = list()
         for output in outputs:
-            labels.append(output.labels)
-            scores.append(output.scores)
+            labels.extend(output.labels)
+            scores.extend(output.scores)
 
         return TextClassificationOutput(
             labels=labels,

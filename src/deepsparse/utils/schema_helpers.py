@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, List
+from typing import Generator
 
 __all__ = [
     "Splittable",
@@ -29,20 +29,21 @@ class Splittable(ABC):
     """
 
     @abstractmethod
-    def split(self, *args, **kwargs) -> List[Any]:
+    def split(
+        self,
+        *args,
+        **kwargs,
+    ) -> Generator["BaseModel", None, None]:  # noqa: F821
         """
         Utility abstract method that subclasses must implement, the goal of
         this function is to split a Schema object with a batch size b, into a
-        List of b smaller Schema objects with batch size 1
+        generator of b smaller Schema objects with batch size 1, the returned
+        object can be iterated on.
 
-        :return: A List of smaller objects each representing an input of
+        :return: A Generator of smaller objects each representing an input of
             batch-size 1
         """
         raise NotImplementedError
-
-    def __iter__(self):
-        for _input in self.split():
-            yield _input
 
 
 class Joinable(ABC):
@@ -50,9 +51,10 @@ class Joinable(ABC):
     A contract that ensures multiple objects of the implementing subclass can be
     combined into one object representing a bigger batch size
     """
+
     @staticmethod
     @abstractmethod
-    def join(self, *args, **kwargs) -> Any:
+    def join(self, *args, **kwargs) -> "BaseModel": # noqa: F821
         """
         Utility abstract method that subclasses must implement, the goal of
         this function is to take in an Iterable of subclass objects and combine
