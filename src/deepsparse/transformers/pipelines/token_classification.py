@@ -119,8 +119,7 @@ class TokenClassificationInput(BaseModel, Splittable):
             # case 2: List[str] -> multi-batches of size 1 Or batch-size 1 multi-inputs
             for input_ in inputs:
                 yield TokenClassificationInput(
-                    inputs=input_,
-                    is_split_into_words=self.is_split_into_words,
+                    inputs=input_, is_split_into_words=self.is_split_into_words
                 )
 
         else:
@@ -182,9 +181,7 @@ class TokenClassificationOutput(BaseModel, Joinable):
             prediction for output in outputs for prediction in output.predictions
         ]
 
-        return TokenClassificationOutput(
-            predictions=predictions,
-        )
+        return TokenClassificationOutput(predictions=predictions)
 
 
 @Pipeline.register(

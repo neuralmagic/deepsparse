@@ -91,9 +91,7 @@ class ImageClassificationInput(BaseModel, Splittable):
         elif isinstance(images, list) and len(images) and isinstance(images[0], str):
             # case 2: List[str] -> multiple images of size 1
             for image in images:
-                yield ImageClassificationInput(
-                    images=image,
-                )
+                yield ImageClassificationInput(images=image)
         else:
             raise ValueError(f"Could not breakdown {self} into smaller batches")
 
@@ -130,7 +128,4 @@ class ImageClassificationOutput(BaseModel, Joinable):
             labels.append(output.labels)
             scores.append(output.scores)
 
-        return ImageClassificationOutput(
-            scores=scores,
-            labels=labels,
-        )
+        return ImageClassificationOutput(scores=scores, labels=labels)

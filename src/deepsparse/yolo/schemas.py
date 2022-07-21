@@ -14,8 +14,9 @@
 
 
 """
-Input/Output Schemas for Image Segmentation with YOLO
+Input/Output Schemas for Object Detection with YOLO
 """
+
 from collections import namedtuple
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Union
@@ -105,9 +106,7 @@ class YOLOInput(BaseModel, Splittable):
         elif isinstance(images, list) and len(images) and isinstance(images[0], str):
             # case 2: List[str, Any] -> multiple images of size 1
             for image in images:
-                yield YOLOInput(
-                    images=image,
-                )
+                yield YOLOInput(images=image)
 
         else:
             raise ValueError(f"Could not breakdown {self} into smaller batches")
@@ -167,8 +166,5 @@ class YOLOOutput(BaseModel, Joinable):
                 labels.append(image_output.labels)
 
         return YOLOOutput(
-            predictions=predictions,
-            boxes=boxes,
-            scores=scores,
-            labels=labels,
+            predictions=predictions, boxes=boxes, scores=scores, labels=labels
         )

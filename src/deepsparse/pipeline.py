@@ -19,7 +19,6 @@ inference engine and include pre/postprocessing
 import concurrent.futures
 import os
 from abc import ABC, abstractmethod
-from collections import namedtuple
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
@@ -52,7 +51,6 @@ __all__ = [
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
-_NOT_PRESENT_FLAG = namedtuple("_NOT_PRESENT_FLAG", "")()
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
 _REGISTERED_PIPELINES = {}
@@ -176,22 +174,20 @@ class Pipeline(ABC):
         self.engine = self._initialize_engine()
 
     def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
-        executor = kwargs.get("executor", _NOT_PRESENT_FLAG)
+        _DEFAULT_KEY_VAL = ("_DEFAULT",)
+
+        executor = kwargs.get("executor", _DEFAULT_KEY_VAL)
 
         if executor is None:
             # do not use threading
             return self._run(*args, **kwargs)
 
-        if executor is _NOT_PRESENT_FLAG:
+        if executor is _DEFAULT_KEY_VAL:  # do not use ==
             # use executor created during initialization
             executor = self.executor
         else:
             # use passed in executor
             executor = kwargs.pop("executor")
-
-        # if self.use_dynamic_batch():
-        #     # Blocking call in Dynamic Batch Mode
-        #     return executor.submit(self._run, *args, **kwargs).result()
 
         return (
             executor.submit(self._run, *args, **kwargs)  # Non-Blocking call
