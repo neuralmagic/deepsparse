@@ -310,8 +310,8 @@ def truncate_onnx_model(
     if len(final_nodes) != len(final_node_names):
         raise ValueError("Could not find final node names in model graph")
 
-    for i, (final_node, graph_output_name, graph_output_shape) in enumerate(
-        zip(final_nodes, graph_output_names, graph_output_shapes)
+    for final_node, graph_output_name, graph_output_shape in zip(
+        final_nodes, graph_output_names, graph_output_shapes
     ):
         # write each node's output to new output
         [final_node.output.pop() for _ in final_node.output]

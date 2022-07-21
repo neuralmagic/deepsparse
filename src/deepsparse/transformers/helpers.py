@@ -36,6 +36,7 @@ __all__ = [
     "get_onnx_path_and_configs",
     "overwrite_transformer_onnx_model_inputs",
     "fix_numpy_types",
+    "get_transformer_layer_init_names",
     "truncate_transformer_onnx_model",
 ]
 
@@ -201,11 +202,46 @@ def fix_numpy_types(func):
     return _wrapper
 
 
+def get_transformer_layer_init_names(model: ModelProto) -> List[str]:
+    """
+    Attempts to find the names of the initializers corresponding to the last nodes
+    in a bert or distillbert layer. Throws RuntimeError if cannot find initializer
+    names matching the expected formats.
+
+    :param model: model containing bert or distilbert layers
+    :return: a list of initializer names belonging to nodes at the end of the
+        transformer layer
+    """
+    bert_layer_pattern = re.compile(
+        r"bert\.encoder\.layer\.\d+\.output\.LayerNorm\.bias"
+    )
+    distillbert_layer_pattern = re.compile(
+        r"distilbert.transformer.layer.\d+\.output_layer_norm.bias"
+    )
+
+    layer_init_names = [
+        initializer.name
+        for initializer in model.graph.initializer
+        if bert_layer_pattern.match(initializer.name)
+        or distillbert_layer_pattern.match(initializer.name)
+    ]
+    if len(layer_init_names) <= 0:
+        raise RuntimeError(
+            "Unable to find bert layers within onnx graph using initializer "
+            "name matching"
+        )
+
+    return sorted(
+        layer_init_names,
+        key=lambda name: int(re.findall("[0-9]+", name)[0]),
+        reverse=False,
+    )
+
+
 def truncate_transformer_onnx_model(
     model_path: str,
-    emb_extraction_layer: int = -1,
+    emb_extraction_layer: Union[int, str] = -1,
     hidden_layer_size: Optional[int] = None,
-    final_node_name: Optional[str] = None,
     output_name: str = "embedding",
     output_path: Optional[str] = None,
 ) -> Tuple[str, List[str], Union[NamedTemporaryFile, None]]:
@@ -214,11 +250,11 @@ def truncate_transformer_onnx_model(
     Saves cut model to output_path or temporary file
 
     :param model_path: path of onnx file to be cut
-    :param emb_extraction_layer: last bert layer to include.
+    :param emb_extraction_layer: if an int, last bert layer to include. If a
+        string, then the name of the last node in the truncated graph.
         default -1 (last layer)
     :param hidden_layer_size: guess for the number of embedded values per token
         in provided model. Used by deepsparse engine to optimize memory allocation
-    :param final_node_name: name of last computed node in graph
     :param output_name: name of graph output, default "embedding"
     :param output_path: path to write resulting onnx file. If not provided,
         will create a temporary file path that will be destroyed on program end
@@ -228,50 +264,24 @@ def truncate_transformer_onnx_model(
         output names, and None
     """
 
-    def _check_initializer_names(model: ModelProto) -> Union[str, None]:
-        bert_layer_pattern = re.compile(
-            r"bert\.encoder\.layer\.\d+\.output\.LayerNorm\.bias"
-        )
-        distillbert_layer_pattern = re.compile(
-            r"distilbert.transformer.layer.\d+\.output_layer_norm.bias"
-        )
-
-        layer_init_names = [
-            initializer.name
-            for initializer in model.graph.initializer
-            if bert_layer_pattern.match(initializer.name)
-            or distillbert_layer_pattern.match(initializer.name)
-        ]
-        if len(layer_init_names) <= 0:
-            raise RuntimeError(
-                "Unable to find bert layers within onnx graph using initializer "
-                "name matching"
-            )
-
-        final_node_initializer_name = sorted(
-            layer_init_names,
-            key=lambda name: int(re.findall("[0-9]+", name)[0]),
-            reverse=False,
-        )[emb_extraction_layer]
-
-        return [
-            node.name
-            for node in model.graph.node
-            if final_node_initializer_name in node.input
-        ][0]
-
     # determine where to cut the model
+    final_node_name = (
+        emb_extraction_layer if isinstance(emb_extraction_layer, str) else None
+    )
     if final_node_name is None:
         model = onnx.load(model_path)
 
         # try to match bert layers by initializer names
         try:
-            final_node_name = _check_initializer_names(model)
+            layer_init_names_sorted = get_transformer_layer_init_names(model)
+            final_node_initializer_name = layer_init_names_sorted[emb_extraction_layer]
+            final_node_name = [
+                node.name
+                for node in model.graph.node
+                if final_node_initializer_name in node.input
+            ][0]
         except Exception as exception:
-            _LOGGER.info(f"Failed to truncate transformer: {exception}")
-
-        if final_node_name is None:
-            raise RuntimeError("Failed to truncate transformer model")
+            raise RuntimeError(f"Failed to truncate transformer: {exception}")
 
     # create temporary file if necessary
     if output_path is None:

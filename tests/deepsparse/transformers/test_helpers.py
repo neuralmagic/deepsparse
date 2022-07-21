@@ -15,7 +15,10 @@
 import onnx
 
 import pytest
-from deepsparse.transformers.helpers import truncate_transformer_onnx_model
+from deepsparse.transformers.helpers import (
+    get_transformer_layer_init_names,
+    truncate_transformer_onnx_model,
+)
 from sparsezoo import Zoo
 
 
@@ -64,17 +67,82 @@ def get_onnx_final_node():
 
 
 @pytest.mark.parametrize(
+    "model_name,expected_init_names",
+    [
+        (
+            "bert",
+            [
+                "bert.encoder.layer.0.output.LayerNorm.bias",
+                "bert.encoder.layer.1.output.LayerNorm.bias",
+                "bert.encoder.layer.2.output.LayerNorm.bias",
+                "bert.encoder.layer.3.output.LayerNorm.bias",
+                "bert.encoder.layer.4.output.LayerNorm.bias",
+                "bert.encoder.layer.5.output.LayerNorm.bias",
+                "bert.encoder.layer.6.output.LayerNorm.bias",
+                "bert.encoder.layer.7.output.LayerNorm.bias",
+                "bert.encoder.layer.8.output.LayerNorm.bias",
+                "bert.encoder.layer.9.output.LayerNorm.bias",
+                "bert.encoder.layer.10.output.LayerNorm.bias",
+                "bert.encoder.layer.11.output.LayerNorm.bias",
+            ],
+        ),
+        (
+            "distilbert",
+            [
+                "distilbert.transformer.layer.0.output_layer_norm.bias",
+                "distilbert.transformer.layer.1.output_layer_norm.bias",
+                "distilbert.transformer.layer.2.output_layer_norm.bias",
+                "distilbert.transformer.layer.3.output_layer_norm.bias",
+                "distilbert.transformer.layer.4.output_layer_norm.bias",
+                "distilbert.transformer.layer.5.output_layer_norm.bias",
+            ],
+        ),
+        (
+            "obert",
+            [
+                "bert.encoder.layer.0.output.LayerNorm.bias",
+                "bert.encoder.layer.1.output.LayerNorm.bias",
+                "bert.encoder.layer.2.output.LayerNorm.bias",
+                "bert.encoder.layer.3.output.LayerNorm.bias",
+                "bert.encoder.layer.4.output.LayerNorm.bias",
+                "bert.encoder.layer.5.output.LayerNorm.bias",
+                "bert.encoder.layer.6.output.LayerNorm.bias",
+                "bert.encoder.layer.7.output.LayerNorm.bias",
+                "bert.encoder.layer.8.output.LayerNorm.bias",
+                "bert.encoder.layer.9.output.LayerNorm.bias",
+                "bert.encoder.layer.10.output.LayerNorm.bias",
+                "bert.encoder.layer.11.output.LayerNorm.bias",
+            ],
+        ),
+    ],
+)
+def test_get_transformer_layer_init_names(
+    model_name,
+    expected_init_names,
+    get_model_onnx_path,
+):
+    model_onnx_path = get_model_onnx_path(model_name)
+    model = onnx.load(model_onnx_path)
+
+    init_names = get_transformer_layer_init_names(model)
+    assert init_names == expected_init_names
+
+
+@pytest.mark.parametrize(
     "model_name,emb_extraction_layer,expected_final_node_name",
     [
         ("bert", -1, "Add_2544"),
         ("bert", 5, "Add_1296"),
         ("bert", 0, "Add_256"),
+        ("bert", "Add_256", "Add_256"),
         ("distilbert", -1, "Add_515"),
         ("distilbert", 2, "Add_269"),
         ("distilbert", 0, "Add_105"),
+        ("distilbert", "Add_105", "Add_105"),
         ("obert", -1, "Add_1158"),
         ("obert", 5, "Add_594"),
         ("obert", 0, "Add_124"),
+        ("obert", "Add_124", "Add_124"),
     ],
 )
 def test_truncate_transformer_onnx_model(
@@ -91,7 +159,6 @@ def test_truncate_transformer_onnx_model(
         model_path=model_onnx_path,
         emb_extraction_layer=emb_extraction_layer,
         hidden_layer_size=None,
-        final_node_name=None,
         output_name=output_name,
         output_path=None,
     )

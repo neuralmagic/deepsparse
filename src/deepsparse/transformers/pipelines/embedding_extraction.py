@@ -34,12 +34,10 @@ tasks
 """
 
 
-from concurrent.futures import wait
 from enum import Enum
-from typing import List, Optional, Type, Union
+from typing import List, Type, Union
 
 import numpy
-import tqdm
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
@@ -143,19 +141,15 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         If a list of lengths is provided, then for each length, a model and
         tokenizer will be compiled capable of handling that sequence length
         (also known as a bucket). Default is 128
-    :param emb_extraction_layer: transformer layer number from which the embeddings
-        will be extracted. If None, leave the model unchanged. Default is -1
-        (last layer)
-    :param final_node_name: Name of last ONNX node in model to draw embeddings from.
-        Overrides emb_extraction_layer. Default None
+    :param emb_extraction_layer: if an int, the transformer layer number from
+        which the embeddings will be extracted. If a string, the name of last
+        ONNX node in model to draw embeddings from. If None, leave the model
+        unchanged. Default is -1 (last transformer layer before prediction head)
     :param model_size: size of transformer model (size of hidden layer per token
         if the model is cut). Default is 768
     :param extraction_strategy: method of pooling embedding values. Currently
         supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
         Default is 'per_token'
-    :param show_progress_bar: token index(es) to extract from the embedding. Can
-        either be an integer representing the CLS token index, or a list of indexes
-        to extract. Default is 0
     :param return_numpy: return embeddings a list of numpy arrays, list of lists
         of floats otherwise. Default is True
     :param context: context for engine. If None, then the engine will be initialized
@@ -165,28 +159,16 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        emb_extraction_layer: Union[int, None] = -1,
+        emb_extraction_layer: Union[int, str, None] = -1,
         model_size: int = 768,
         extraction_strategy: ExtractionStrategy = "per_token",
-        final_node_name: Optional[str] = None,
-        progress_bar: bool = False,
         return_numpy: bool = True,
         **kwargs,
     ):
-        if kwargs.get("batch_size") and kwargs["batch_size"] > 1:
-            raise ValueError(
-                f"{self.__class__.__name__} currently only supports batch size 1, "
-                f"batch size set to {kwargs['batch_size']}"
-            )
-
         self._emb_extraction_layer = emb_extraction_layer
         self._model_size = model_size
         self._extraction_strategy = extraction_strategy
-        self._final_node_name = final_node_name
-        self._show_progress_bar = progress_bar
         self._return_numpy = return_numpy
-
-        self._thread_pool = None
 
         if self._extraction_strategy not in ExtractionStrategy.to_list():
             raise ValueError(
@@ -218,7 +200,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         onnx_path = super().setup_onnx_file_path()
 
-        if self._emb_extraction_layer is not None or self._final_node_name is not None:
+        if self._emb_extraction_layer is not None:
             (
                 onnx_path,
                 self.onnx_output_names,
@@ -227,7 +209,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 onnx_path,
                 emb_extraction_layer=self._emb_extraction_layer,
                 hidden_layer_size=self._model_size,
-                final_node_name=self._final_node_name,
             )
         else:
             _LOGGER.info("Skipping model truncation")
@@ -291,66 +272,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             "cls_masks": cls_masks,
         }
 
-    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
-        """
-        Handles multithreaded engine inference
-
-        :param engine_inputs: list of numpy inputs to Pipeline engine forward pass
-        :return: result of forward pass to Pipeline engine
-        """
-
-        def _engine_forward(batch_origin: int) -> List[numpy.ndarray]:
-            # run engine
-            engine_input = engine_inputs_numpy[
-                :, batch_origin : batch_origin + self._batch_size, :
-            ]
-            engine_input = [model_input for model_input in engine_input]
-            engine_output = self.engine(engine_input)
-
-            # save results
-            engine_outputs[
-                batch_origin : batch_origin + self._batch_size
-            ] = engine_output[0]
-
-            # update tqdm
-            if progress:
-                progress.update(1)
-
-        engine_inputs_numpy = numpy.array(engine_inputs)
-
-        if engine_inputs_numpy.shape[1] % self._batch_size != 0:
-            raise ValueError(
-                f"number of engine inputs {engine_inputs_numpy.shape[1]} must "
-                f"be divisible by batch_size {self._batch_size}"
-            )
-
-        engine_outputs = [None for _ in range(engine_inputs_numpy.shape[1])]
-
-        num_batches = engine_inputs_numpy.shape[1] // self._batch_size
-        progress = (
-            tqdm.tqdm(desc="Inferencing Samples", total=num_batches)
-            if self._show_progress_bar
-            else None
-        )
-
-        if self._thread_pool is not None:
-            futures = [
-                self._thread_pool.submit(_engine_forward, batch_origin)
-                for batch_origin in range(
-                    0, engine_inputs_numpy.shape[1], self._batch_size
-                )
-            ]
-            wait(futures)
-        else:
-            [
-                _engine_forward(batch_origin)
-                for batch_origin in range(
-                    0, engine_inputs_numpy.shape[1], self._batch_size
-                )
-            ]
-
-        return engine_outputs
-
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
@@ -367,6 +288,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
+        if isinstance(engine_outputs, list):
+            engine_outputs = engine_outputs[0]
+
         embeddings = []
         assert len(engine_outputs) == len(pad_masks) == len(cls_masks)
         for engine_output, pad_mask, cls_mask in zip(
@@ -398,21 +322,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
         return self.output_schema(embeddings=embeddings)
 
-    def _remove_1d_mask(
-        self, array: numpy.ndarray, mask: numpy.ndarray
-    ) -> numpy.ndarray:
-        """
-        Helper function to mask out values from a 1 dimensional mask
-
-        :param array: array containing values to be masked out
-        :param mask: 1 dimensional mask
-        :return: numpy masked array
-        """
-        array_masked = numpy.ma.masked_array(array)
-        array_masked[mask] = numpy.ma.masked
-
-        return array_masked
-
     @staticmethod
     def route_input_to_bucket(
         *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
@@ -436,3 +345,16 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             if pipeline.sequence_length > current_seq_len:
                 return pipeline
         return pipelines[-1]
+
+    def _remove_1d_mask(
+        self, array: numpy.ndarray, mask: numpy.ndarray
+    ) -> numpy.ndarray:
+        # Helper function to mask out values from a 1 dimensional mask
+
+        # :param array: array containing values to be masked out
+        # :param mask: 1 dimensional mask
+        # :return: numpy masked array
+        array_masked = numpy.ma.masked_array(array)
+        array_masked[mask] = numpy.ma.masked
+
+        return array_masked

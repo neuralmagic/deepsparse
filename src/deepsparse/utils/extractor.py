@@ -14,6 +14,8 @@
 
 """
 Adapation of Extractor from onnx.utils and make_model from onnx.helper
+ported to deepsparse to allow for backwards compatibility between ONNX versions
+
 https://github.com/onnx/onnx/blob/main/onnx/utils.py
 https://github.com/onnx/onnx/blob/main/onnx/helper.py
 """

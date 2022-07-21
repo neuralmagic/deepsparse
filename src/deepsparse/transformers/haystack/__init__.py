@@ -17,6 +17,8 @@ deepset-ai/haystack
 """
 
 # flake8: noqa
+# isort: skip_file
+
 
 import logging as _logging
 import os as _os
@@ -125,4 +127,4 @@ _check_haystack_install()
 
 from .nodes import *
 from .pipeline import *
-from .utils import *
+from .helpers import *

@@ -39,8 +39,15 @@ from haystack.schema import Document
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
-from deepsparse.engine import Context, Scheduler
-from deepsparse.pipeline import DEEPSPARSE_ENGINE
+from deepsparse.transformers import haystack as DeepSparseHaystack
+
+
+# because Haystack implements submodules as members of the Haystack module
+# which are not initialized unless the Haystack module is initialized,
+# these submodules must be imported using importlib
+DocumentStoreHaystack = importlib.import_module(".document_stores", "haystack")
+RetrieverHaystack = importlib.import_module(".nodes", "haystack")
+PipelineHaystack = importlib.import_module(".pipelines", "haystack")
 
 
 __all__ = [
@@ -220,7 +227,7 @@ class HaystackPipeline(Pipeline):
         directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
+    :param batch_size: batch size to use for retriever inference
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -246,99 +253,20 @@ class HaystackPipeline(Pipeline):
     def __init__(
         self,
         *,
-        engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: int = 1,
-        num_cores: Optional[int] = None,
-        scheduler: Optional[Scheduler] = None,
-        input_shapes: List[List[int]] = None,
-        alias: Optional[str] = None,
-        context: Optional[Context] = None,
-        sequence_length: Optional[int] = None,
-        docs: Optional[List[Dict]] = None,
         config: Optional[Union[HaystackPipelineConfig, Dict[str, Any]]] = None,
+        docs: Optional[List[Dict]] = None,
         **retriever_kwargs,
     ):
-        # transformer pipeline members
-        self._sequence_length = sequence_length or 128
-        self.config = None
-        self.tokenizer = None
-        self.onnx_input_names = None
-        self._temp_model_directory = None
-
-        # pipeline members
-        self._model_path_orig = None
-        self._model_path = None
-        self._engine_type = engine_type
-        self._batch_size = batch_size
-        self._alias = alias
-
-        if retriever_kwargs.get("batch_size") and retriever_kwargs["batch_size"] != 1:
-            raise ValueError(
-                f"{self.__class__.__name__} currently only supports batch size 1, "
-                f"batch size set to {retriever_kwargs['batch_size']}"
-            )
-
         # pass arguments to retriever (which then passes to extraction pipeline)
-        retriever_kwargs["engine_type"] = engine_type
-        retriever_kwargs["batch_size"] = batch_size
-        retriever_kwargs["num_cores"] = num_cores
-        retriever_kwargs["scheduler"] = scheduler
-        retriever_kwargs["input_shapes"] = input_shapes
-        retriever_kwargs["alias"] = alias
-        retriever_kwargs["context"] = context
-        retriever_kwargs["sequence_length"] = self._sequence_length
         self._config = self._parse_config(config)
 
+        self._document_store = None
+        self._retriever = None
+        self._haystack_pipeline = None
         self.initialize_pipeline(retriever_kwargs)
+
         if docs is not None:
             self.write_documents(docs, overwrite=True)
-
-    def _merge_retriever_args(
-        self,
-        config_retriever_args: Dict[str, Any],
-        init_retriever_kwargs: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """
-        Merges retriever args given in config with args given at
-        HaystackPipeline initialization. Raises errors for conflicts
-
-        :param config_retriever_args: arguments given in config
-        :param init_retriever_kwargs: retriever arguments given at
-            HaystackPipeline initialization
-        :return: merged arguments from both inputs
-        """
-        # check for conflicting arguments
-        for key in init_retriever_kwargs.keys():
-            if key in config_retriever_args.keys():
-                raise ValueError(
-                    f"Found {key} in both HaystackPipeline arguments and config "
-                    "retriever_args. Specify only one"
-                )
-
-        # merge
-        merged_args = {}
-        merged_args.update(config_retriever_args)
-        merged_args.update(init_retriever_kwargs)
-
-        # rename pipeline arguments to fit retriever arguments
-        if "extraction_strategy" in merged_args:
-            if "pooling_strategy" in merged_args:
-                raise ValueError(
-                    "Found both extraction_strategy and pooling_strategy in "
-                    "arguments. Specify only one"
-                )
-            merged_args["pooling_strategy"] = merged_args["extraction_strategy"]
-            del merged_args["extraction_strategy"]
-        if "sequence_length" in merged_args:
-            if "max_seq_len" in merged_args:
-                raise ValueError(
-                    "Found both sequence_length and max_seq_len in "
-                    "arguments. Specify only one"
-                )
-            merged_args["max_seq_len"] = merged_args["sequence_length"]
-            del merged_args["sequence_length"]
-
-        return merged_args
 
     def initialize_pipeline(self, init_retriever_kwargs: Dict[str, Any]) -> None:
         """
@@ -349,27 +277,31 @@ class HaystackPipeline(Pipeline):
         :return: None
         """
         # intialize document store from haystack
-        DocumentStoreModule = importlib.import_module(".document_stores", "haystack")
-        DocumentStoreClass = getattr(DocumentStoreModule, self._config.document_store)
+        DocumentStoreClass = getattr(DocumentStoreHaystack, self._config.document_store)
         self._document_store = DocumentStoreClass(**self._config.document_store_args)
 
-        # try finding in deepsparse.transformers.haystack, merge args if necessary
-        RetrieverModule = importlib.import_module(
-            ".haystack", "deepsparse.transformers"
-        )
-        if hasattr(RetrieverModule, self._config.retriever):
+        # find retriever class, merge args if necessary
+        if hasattr(RetrieverHaystack, self._config.retriever):
+            RetrieverClass = getattr(RetrieverHaystack, self._config.retriever)
+
+            # manually merge batch size argument passed to HaystackPipeline
+            retriever_args = self._config.retriever_args.copy()
+            if init_retriever_kwargs.get("batch_size") is not None:
+                retriever_args["HaystackPipeline().batch_size"] = init_retriever_kwargs[
+                    "batch_size"
+                ]
+                retriever_args = self._rename_arg_with_check(
+                    retriever_args, "HaystackPipeline().batch_size", "batch_size"
+                )
+        else:
+            RetrieverClass = getattr(DeepSparseHaystack, self._config.retriever)
             retriever_args = self._merge_retriever_args(
                 self._config.retriever_args, init_retriever_kwargs
             )
-        else:
-            RetrieverModule = importlib.import_module(".nodes", "haystack")
-            retriever_args = self._config.retriever_args
-        RetrieverClass = getattr(RetrieverModule, self._config.retriever)
         self._retriever = RetrieverClass(self._document_store, **retriever_args)
 
         # pipeline from haystack
-        PipelineModule = importlib.import_module(".pipelines", "haystack")
-        PipelineClass = getattr(PipelineModule, self._config.haystack_pipeline)
+        PipelineClass = getattr(PipelineHaystack, self._config.haystack_pipeline)
         self._haystack_pipeline = PipelineClass(
             self._retriever, **self._config.haystack_pipeline_args
         )
@@ -388,31 +320,6 @@ class HaystackPipeline(Pipeline):
             self._document_store.delete_documents()
         self._document_store.write_documents(docs)
         self._document_store.update_embeddings(self._retriever)
-
-    def _parse_config(
-        self,
-        config: Optional[Union[HaystackPipelineConfig, dict]],
-    ) -> BaseModel:
-        """
-        :param config: instance of config_schema or dictionary of config values
-        :return: instance of config_schema
-        """
-        config = config if config else self.config_schema()
-
-        if isinstance(config, self.config_schema):
-            pass
-
-        elif isinstance(config, dict):
-            config = self.config_schema(**config)
-
-        else:
-            raise ValueError(
-                f"pipeline {self.__class__} only supports either only a "
-                f"{self.config_schema} object a dict of keywords used to "
-                f"construct one. Found {config} instead"
-            )
-
-        return config
 
     def __call__(self, *args, **kwargs) -> BaseModel:
         """
@@ -515,3 +422,81 @@ class HaystackPipeline(Pipeline):
         inputs: BaseModel,
     ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
         raise NotImplementedError()
+
+    def _parse_config(
+        self,
+        config: Optional[Union[HaystackPipelineConfig, dict]],
+    ) -> BaseModel:
+        # :param config: instance of config_schema or dictionary of config values
+        # :return: instance of config_schema
+        config = config if config else self.config_schema()
+
+        if isinstance(config, self.config_schema):
+            pass
+
+        elif isinstance(config, dict):
+            config = self.config_schema(**config)
+
+        else:
+            raise ValueError(
+                f"pipeline {self.__class__} only supports either only a "
+                f"{self.config_schema} object a dict of keywords used to "
+                f"construct one. Found {config} instead"
+            )
+
+        return config
+
+    def _rename_arg_with_check(
+        self, arguments_dict: Dict[str, Any], old_arg_name: str, new_arg_name: str
+    ) -> Dict[str, Any]:
+        # :param arguments_dict: dictionary containing arguments to be renamed
+        # :param old_arg_name: name of argument to be renamed
+        # :param new_arg_name: new name of the argument
+        # :return: arguments_dict with new updated name
+        arguments_dict_copy = arguments_dict.copy()
+        if old_arg_name in arguments_dict_copy:
+            if new_arg_name in arguments_dict_copy:
+                raise ValueError(
+                    f"Found both {old_arg_name} and {new_arg_name} in arguments. "
+                    "Specify only one"
+                )
+            arguments_dict_copy[new_arg_name] = arguments_dict_copy[old_arg_name]
+            del arguments_dict_copy[old_arg_name]
+
+        return arguments_dict_copy
+
+    def _merge_retriever_args(
+        self,
+        config_retriever_args: Dict[str, Any],
+        init_retriever_kwargs: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        # Merges retriever args given in config with args given at
+        # HaystackPipeline initialization. Raises errors for conflicts
+
+        # :param config_retriever_args: arguments given in config
+        # :param init_retriever_kwargs: retriever arguments given at
+        #     HaystackPipeline initialization
+        # :return: merged arguments from both inputs
+
+        # check for conflicting arguments
+        for key in init_retriever_kwargs.keys():
+            if key in config_retriever_args.keys():
+                raise ValueError(
+                    f"Found {key} in both HaystackPipeline arguments and config "
+                    "retriever_args. Specify only one"
+                )
+
+        # merge
+        merged_args = {}
+        merged_args.update(config_retriever_args)
+        merged_args.update(init_retriever_kwargs)
+
+        # rename pipeline arguments to fit retriever arguments
+        merged_args = self._rename_arg_with_check(
+            merged_args, "extraction_strategy", "pooling_strategy"
+        )
+        merged_args = self._rename_arg_with_check(
+            merged_args, "sequence_length", "max_seq_len"
+        )
+
+        return merged_args
