@@ -21,7 +21,9 @@ from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Union
 
 from pydantic import BaseModel, Field
-from deepsparse.utils import Splittable, Joinable
+
+from deepsparse.utils import Joinable, Splittable
+
 
 __all__ = [
     "YOLOOutput",
@@ -35,7 +37,7 @@ _YOLOImageOutput = namedtuple(
 
 class YOLOInput(BaseModel, Splittable):
     """
-    Input model for image classification
+    Input model for object detection
     """
 
     images: Union[str, List[str], List[Any]] = Field(
@@ -82,9 +84,7 @@ class YOLOInput(BaseModel, Splittable):
         sample_image_abs_path = str(sample_image_path.absolute())
 
         images = [sample_image_abs_path for _ in range(batch_size)]
-        return {
-            "images": images
-        }
+        return {"images": images}
 
     def split(self) -> Generator["YOLOInput", None, None]:
         """
@@ -102,11 +102,7 @@ class YOLOInput(BaseModel, Splittable):
         if isinstance(images, str):
             yield self
 
-        elif (
-            isinstance(images, list)
-            and len(images)
-            and isinstance(images[0], str)
-        ):
+        elif isinstance(images, list) and len(images) and isinstance(images[0], str):
             # case 2: List[str, Any] -> multiple images of size 1
             for image in images:
                 yield YOLOInput(
@@ -121,7 +117,7 @@ class YOLOInput(BaseModel, Splittable):
 
 class YOLOOutput(BaseModel, Joinable):
     """
-    Output model for image classification
+    Output model for object detection
     """
 
     predictions: List[List[List[float]]] = Field(description="List of predictions")

@@ -30,9 +30,9 @@ def executor():
 
 
 supported_tasks = [
-    # "text_classification",
-    # "token_classification",
-    # "yolo",
+    "text_classification",
+    "token_classification",
+    "yolo",
     "image_classification",
 ]
 
@@ -56,11 +56,12 @@ class TestDynamicBatchPipeline:
         pass
 
     @pytest.mark.parametrize(
-        "batch_size", [
+        "batch_size",
+        [
             # 1,
             5,
             # 10,
-        ]
+        ],
     )
     def test_execution_with_multiple_batch_sizes(
         self,
@@ -93,11 +94,13 @@ class TestDynamicBatchPipeline:
         assert type(output) == dynamic_batch_pipeline.output_schema
 
     @pytest.mark.parametrize(
-        "batch_size", [
+        "batch_size",
+        [
             1,
             2,
             10,
-        ])
+        ],
+    )
     def test_order_retention_against_static_batch(
         self, task, executor, batch_size, dynamic_batch_pipeline
     ):
