@@ -20,7 +20,9 @@ from typing import Any, Dict, Generator, Iterable, List, Union
 
 import numpy
 from pydantic import BaseModel, Field
-from deepsparse.utils import Splittable, Joinable
+
+from deepsparse.utils import Joinable, Splittable
+
 
 __all__ = [
     "ImageClassificationInput",
@@ -53,7 +55,6 @@ class ImageClassificationInput(BaseModel, Splittable):
             )
         return cls(images=files)
 
-
     @staticmethod
     def create_test_inputs(
         batch_size: int = 1,
@@ -69,9 +70,7 @@ class ImageClassificationInput(BaseModel, Splittable):
         sample_image_abs_path = str(sample_image_path.absolute())
 
         images = [sample_image_abs_path for _ in range(batch_size)]
-        return {
-            "images": images
-        }
+        return {"images": images}
 
     def split(self) -> Generator["ImageClassificationInput", None, None]:
         """
@@ -89,17 +88,11 @@ class ImageClassificationInput(BaseModel, Splittable):
         if isinstance(images, str):
             yield self
 
-        elif (
-            isinstance(images, list)
-            and len(images)
-            and isinstance(images[0], str)
-        ):
+        elif isinstance(images, list) and len(images) and isinstance(images[0], str):
             # case 2: List[str] -> multiple images of size 1
             for image in images:
                 yield ImageClassificationInput(
-                    **{
-                        "images": image,
-                    }
+                    images=image,
                 )
 
         else:
@@ -136,8 +129,6 @@ class ImageClassificationOutput(BaseModel, Joinable):
             scores.append(output.scores)
 
         return ImageClassificationOutput(
-            **{
-                "scores": scores,
-                "labels": labels,
-            }
+            scores=scores,
+            labels=labels,
         )

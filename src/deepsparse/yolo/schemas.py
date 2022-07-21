@@ -106,9 +106,7 @@ class YOLOInput(BaseModel, Splittable):
             # case 2: List[str, Any] -> multiple images of size 1
             for image in images:
                 yield YOLOInput(
-                    **{
-                        "images": image,
-                    }
+                    images=image,
                 )
 
         else:

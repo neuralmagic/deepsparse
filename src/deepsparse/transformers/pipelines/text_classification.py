@@ -102,8 +102,7 @@ class TextClassificationInput(BaseModel, Splittable):
             # case 3: List[List[str]] -> Each List[str] is a multi-input batch of
             # size 1
             for sequence in sequences:
-                yield TextClassificationInput(**{"sequences": sequence})
-
+                yield TextClassificationInput(sequences=sequence)
         else:
             raise ValueError(f"Could not breakdown {self} into smaller batches")
 

@@ -42,7 +42,8 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.utils import Splittable, Joinable
+from deepsparse.utils import Joinable, Splittable
+
 
 __all__ = [
     "AggregationStrategy",
@@ -96,9 +97,7 @@ class TokenClassificationInput(BaseModel, Splittable):
         :return: A dict representing inputs for text calssification pipelinbe
         """
         inputs = ["That's it for me" for _ in range(batch_size)]
-        return {
-            "inputs": inputs
-        }
+        return {"inputs": inputs}
 
     def split(self) -> Generator["TokenClassificationInput", None, None]:
         """
@@ -116,18 +115,12 @@ class TokenClassificationInput(BaseModel, Splittable):
         if isinstance(inputs, str):
             yield self
 
-        elif (
-            isinstance(inputs, list)
-            and len(inputs)
-            and isinstance(inputs[0], str)
-        ):
+        elif isinstance(inputs, list) and len(inputs) and isinstance(inputs[0], str):
             # case 2: List[str] -> multi-batches of size 1 Or batch-size 1 multi-inputs
             for input_ in inputs:
                 yield TokenClassificationInput(
-                    **{
-                        "inputs": input_,
-                        "is_split_into_words": self.is_split_into_words,
-                    }
+                    inputs=input_,
+                    is_split_into_words=self.is_split_into_words,
                 )
 
         else:

@@ -58,9 +58,9 @@ class TestDynamicBatchPipeline:
     @pytest.mark.parametrize(
         "batch_size",
         [
-            # 1,
+            1,
             5,
-            # 10,
+            10,
         ],
     )
     def test_execution_with_multiple_batch_sizes(
@@ -71,9 +71,7 @@ class TestDynamicBatchPipeline:
         inputs = dynamic_batch_pipeline.input_schema.create_test_inputs(
             batch_size=batch_size,
         )
-
         outputs = dynamic_batch_pipeline(**inputs)
-
         assert outputs
 
     @pytest.mark.parametrize("batch_size", [10])
