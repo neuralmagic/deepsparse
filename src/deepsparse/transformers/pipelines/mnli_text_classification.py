@@ -34,7 +34,6 @@ with mnli models
 """
 
 
-from concurrent.futures import ThreadPoolExecutor, wait
 from typing import List, Optional, Type, Union
 
 import numpy
@@ -108,50 +107,12 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         self,
         model_path: str,
         model_config: Optional[Union[MnliTextClassificationConfig, dict]] = None,
-        num_sequences: int = 1,
         labels: Optional[List] = None,
-        batch_size: Optional[int] = None,
         context: Optional[Context] = None,
         **kwargs,
     ):
-        self._num_sequences = num_sequences
         self._config = self.parse_config(model_config)
         self._labels = self.parse_labels(labels)
-
-        if batch_size is not None and batch_size != num_sequences:
-            raise ValueError(
-                f"This pipeline requires that batch_size {batch_size} match "
-                f"num_sequences {num_sequences} when no static labels are "
-                f"provided"
-            )
-
-        # if dynamic labels
-        if self._labels is None:
-            if context is None:
-                # num_streams is arbitrarily chosen to be any value >= 2
-                context = Context(num_cores=None, num_streams=2)
-                kwargs.update({"context": context})
-
-            self._thread_pool = ThreadPoolExecutor(
-                max_workers=context.num_streams or 2,
-                thread_name_prefix="deepsparse.pipelines.zero_shot_text_classifier",
-            )
-
-            kwargs.update({"batch_size": num_sequences})
-
-        # if static labels
-        else:
-            self._thread_pool = None
-            if batch_size is not None and batch_size != num_sequences * len(
-                self._labels
-            ):
-                raise ValueError(
-                    f"This pipeline requires that batch_size {batch_size} match "
-                    f"num_sequences times the number labels "
-                    f"{num_sequences * len(self._labels)} when static labels are "
-                    f"provided"
-                )
-            kwargs.update({"batch_size": num_sequences * len(self._labels)})
 
         super().__init__(model_path=model_path, **kwargs)
 
@@ -207,19 +168,12 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
                 "must provide only one"
             )
 
-        # check for incorrect number of sequences
-        num_sequences = (
-            1 if isinstance(inputs.sequences, str) else len(inputs.sequences)
-        )
-        if num_sequences != self._num_sequences:
+        # check for correct size
+        # skip check if is_dynamic_batch_mode when dynamic batch is implemented
+        if self._batch_size != len(labels) * len(sequences):
             raise ValueError(
-                f"number of sequences {num_sequences} must match the number of "
-                f"sequences the pipeline was instantiated with {self._num_sequences}"
-            )
-
-        if len(labels) == 0 or len(sequences) == 0:
-            raise ValueError(
-                "You must include at least one label and at least one sequence."
+                f"If static labels are provided, then batch_size {self._batch_size} "
+                f"must match num_labels * num_sequences {len(labels) * len(sequences)}"
             )
 
         # check for invalid hypothesis template
@@ -248,63 +202,29 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
 
         postprocessing_kwargs = dict(
             sequences=sequences,
-            labels=labels,
+            candidate_labels=labels,
             multi_class=multi_class,
         )
 
         return self.tokens_to_engine_input(tokens), postprocessing_kwargs
 
-    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
-        """
-        :param engine_inputs: list of numpy inputs to Pipeline engine forward pass
-        :return: result of forward pass to Pipeline engine
-        """
-        # engine_inputs.shape: [transformer_inputs (3), num_labels * num_seqs, seq_len]
-        # execute in parallel threads (dynamic labels) or as one batch (static labels)
-        if self._thread_pool is not None:
-
-            def _engine_forward(batch_index: int, batch_origin: int):
-                labelwise_inputs = engine_inputs_numpy[
-                    :, batch_origin : batch_origin + self._batch_size, :
-                ]
-                labelwise_inputs = [
-                    labelwise_input for labelwise_input in labelwise_inputs
-                ]
-                engine_output = self.engine(labelwise_inputs)
-                engine_outputs[batch_index] = engine_output
-
-            engine_inputs_numpy = numpy.array(engine_inputs)
-            engine_outputs = [
-                None for _ in range(engine_inputs_numpy.shape[1] // self._batch_size)
-            ]
-
-            futures = [
-                self._thread_pool.submit(_engine_forward, batch_index, batch_origin)
-                for batch_index, batch_origin in enumerate(
-                    range(0, engine_inputs_numpy.shape[1], self._batch_size)
-                )
-            ]
-            wait(futures)
-        else:
-            engine_outputs = self.engine(engine_inputs)
-
-        return engine_outputs
-
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
-        **kwargs,
+        sequences: Union[str, List[str]],
+        candidate_labels: List[str],
+        multi_class: bool,
     ) -> BaseModel:
         """
         :param engine_outputs: list of numpy arrays that are the output of the mnli
             engine forward pass
+        :param sequences: original sequences passed to inference
+        :param candidate_labels: labels to match scores with
+        :param multi_class: if True, calculate each class score independently from
+            one another
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        sequences = kwargs["sequences"]
-        candidate_labels = kwargs["labels"]
-        multi_class = kwargs["multi_class"]
-
         # reshape sequences
         num_sequences = 1 if isinstance(sequences, str) else len(sequences)
         reshaped_outputs = numpy.reshape(

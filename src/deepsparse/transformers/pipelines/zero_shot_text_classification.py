@@ -110,7 +110,6 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
-        num_sequences=1,
         model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
@@ -129,7 +128,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
-        num_sequences=1,
+        batch_size=3,
         model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
@@ -164,10 +163,6 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
@@ -175,7 +170,6 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         Default is "mnli"
     :param model_config: config object specific to the model_scheme of this model
         or a dict of config keyword arguments
-    :param num_sequences: the number of sequences to handle per batch.
     :param labels: static list of labels to perform text classification with. Can
         also be provided at inference time
     :param context: context for engine. If None, then the engine will be initialized
