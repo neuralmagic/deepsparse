@@ -93,7 +93,11 @@ class SupportedTasks:
 
     @classmethod
     def check_register_task(cls, task: str):
-        if cls.is_nlp(task):
+        if task == "custom":
+            # custom task, register the FunctionPipeline
+            import deepsparse.pipelines  # noqa: F401
+
+        elif cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register
             import deepsparse.transformers.pipelines  # noqa: F401
 
@@ -145,7 +149,7 @@ class SupportedTasks:
 
     @classmethod
     def task_names(cls):
-        task_names = []
+        task_names = ["custom"]
         for task_category in cls.all_task_categories:
             for task in task_category:
                 unique_aliases = (
