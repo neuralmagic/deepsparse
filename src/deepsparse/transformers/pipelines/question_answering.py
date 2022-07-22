@@ -511,6 +511,11 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         )
 
         current_seq_len = len(tokens)
+        if not TransformersPipeline._buckets_are_sorted_by_sequence_length(
+            buckets=pipelines
+        ):
+            pipelines.sort(key=lambda pipe: pipe.sequence_length)
+
         for pipeline in pipelines:
             if pipeline.sequence_length > current_seq_len:
                 return pipeline

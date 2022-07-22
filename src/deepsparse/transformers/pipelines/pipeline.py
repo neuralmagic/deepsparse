@@ -156,6 +156,15 @@ class TransformersPipeline(Pipeline, Bucketable):
 
         return pipelines
 
+    @staticmethod
+    def _buckets_are_sorted_by_sequence_length(buckets: List["TransformersPipeline"]):
+        for idx in range(len(buckets) - 1):
+            curr_seq_len = buckets[idx].sequence_length
+            next_seq_len = buckets[idx + 1].sequence_length
+            if curr_seq_len > next_seq_len:
+                return False
+        return True
+
 
 def pipeline(
     task: str,
