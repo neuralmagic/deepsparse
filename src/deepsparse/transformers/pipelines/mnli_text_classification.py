@@ -34,7 +34,7 @@ with mnli models
 """
 
 
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, Union, Generator
 
 import numpy
 from pydantic import BaseModel, Field
@@ -56,7 +56,7 @@ __all__ = [
 ]
 
 
-class MnliTextClassificationConfig(BaseModel, Splittable):
+class MnliTextClassificationConfig(BaseModel):
     """
     Schema for configuration options when running zero shot with mnli
     """
@@ -78,7 +78,7 @@ class MnliTextClassificationConfig(BaseModel, Splittable):
     )
 
 
-class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
+class MnliTextClassificationInput(ZeroShotTextClassificationInputBase, Splittable):
     """
     Schema for inputs to zero_shot_text_classification pipelines
     Each sequence and each candidate label must be paired and passed through
@@ -102,7 +102,8 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
         default=None,
     )
 
-    def split(pipeline_labels: List[str], parse_labels_fn: Callable TODO) -> Generator["MnliTextClassificationInput", None, None]:
+    # TODO typehint, docstring
+    def split(pipeline_labels: List[str], parse_labels_fn) -> Generator["MnliTextClassificationInput", None, None]:
         if pipeline_labels is not None and labels is not None:
             raise ValueError(
                 "TODO"
@@ -131,14 +132,49 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         self,
         model_path: str,
         model_config: Optional[Union[MnliTextClassificationConfig, dict]] = None,
+        num_sequences: Optional[int] = None,
         labels: Optional[List] = None,
         context: Optional[Context] = None,
         **kwargs,
     ):
+        self._num_sequences = num_sequences
         self._config = self.parse_config(model_config)
         self._labels = self.parse_labels(labels)
 
+        # if dynamic labels
+        if self._labels is None:
+            if num_sequences is not None:
+                raise ValueError(
+                    "num_sequences is not used when no static labels are provided"
+                )
+            if kwargs.get("batch_size") and kwargs.get("batch_size") != 1:
+                raise ValueError(
+                    "batch size must be set to 1 when no static labels are provided"
+                )
+            kwargs.update({"batch_size": None})
+            kwargs.update({"executor": 2})
+
+        # if static labels
+        else:
+            if num_sequences is None:
+                raise ValueError(
+                    "must provided num_sequences if static labels are provided"
+                )
+            kwargs.update({"batch_size": num_sequences * len(self._labels)})
+
         super().__init__(model_path=model_path, **kwargs)
+
+    # TODO: type hint, move down, rename when publicized
+    def _run_with_dynamic_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
+        pipeline_inputs = pipeline_inputs.split()
+        futures = [
+            self.executor.submit(self._run_with_static_batch, _input)
+            for _input in pipeline_inputs
+        ]
+        # wait for all inferences to complete before joining outputs
+        concurrent.futures.wait(futures)
+        outputs = [future.result() for future in futures]
+        return self.output_schema.join(outputs)
 
     @property
     def config_schema(self) -> Type[MnliTextClassificationConfig]:
@@ -194,7 +230,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
 
         # check for correct size
         # skip check if is_dynamic_batch_mode when dynamic batch is implemented
-        if self._batch_size != len(labels) * len(sequences):
+        if not self.use_dynamic_batch() and self._batch_size != len(labels) * len(sequences):
             raise ValueError(
                 f"If static labels are provided, then batch_size {self._batch_size} "
                 f"must match num_labels * num_sequences {len(labels) * len(sequences)}"

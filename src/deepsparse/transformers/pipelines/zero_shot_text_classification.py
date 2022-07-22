@@ -54,7 +54,7 @@ standards across implementations.
 
 
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union, Iterable
 
 from pydantic import BaseModel, Field
 
