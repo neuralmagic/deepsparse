@@ -47,7 +47,6 @@ __all__ = [
     "BucketingPipeline",
 ]
 
-
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
@@ -561,6 +560,11 @@ class Pipeline(ABC):
 
         # parse inputs into input_schema schema if necessary
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
+        if isinstance(pipeline_inputs, tuple):
+            pipeline_inputs, split_kwargs = pipeline_inputs
+        else:
+            split_kwargs = {}
+
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
@@ -569,13 +573,21 @@ class Pipeline(ABC):
 
         # run pipeline
         if self.use_dynamic_batch():
-            return self._run_with_dynamic_batch(pipeline_inputs)
+            return self._run_with_dynamic_batch(pipeline_inputs, split_kwargs)
 
         pipeline_outputs = self._run_with_static_batch(pipeline_inputs)
         return pipeline_outputs
 
-    def _run_with_dynamic_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
-        pipeline_inputs = pipeline_inputs.split()
+    def _run_with_dynamic_batch(
+        self,
+        pipeline_inputs: BaseModel,
+        split_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> BaseModel:
+
+        if split_kwargs is None:
+            split_kwargs = {}
+
+        pipeline_inputs = pipeline_inputs.split(**split_kwargs)
         futures = [
             self.executor.submit(self._run_with_static_batch, _input)
             for _input in pipeline_inputs

@@ -86,19 +86,6 @@ class TokenClassificationInput(BaseModel, Splittable):
         ),
     )
 
-    @staticmethod
-    def create_test_inputs(
-        batch_size: int = 1,
-    ) -> Dict[str, Union[Union[List[str], str]]]:
-        """
-        Create and return a dummy test input for this schema
-
-        :param batch_size: The batch_size of inputs to return
-        :return: A dict representing inputs for text calssification pipelinbe
-        """
-        inputs = ["U.N. official Ekeus heads for Baghdad" for _ in range(batch_size)]
-        return {"inputs": inputs}
-
     def split(self) -> Generator["TokenClassificationInput", None, None]:
         """
         Split a current `TokenClassificationInput` object with a batch size b, into a

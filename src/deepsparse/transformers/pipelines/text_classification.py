@@ -35,7 +35,7 @@ tasks
 """
 
 
-from typing import Dict, Generator, Iterable, List, Type, Union
+from typing import Generator, Iterable, List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -62,20 +62,6 @@ class TextClassificationInput(BaseModel, Splittable):
         description="A string or List of strings representing input to"
         "text_classification task"
     )
-
-    @staticmethod
-    def create_test_inputs(
-        batch_size: int = 1,
-    ) -> Dict[str, Union[List[List[str]], List[str], str]]:
-        """
-        Utility method to return a Dict representing sample inputs of given batch
-        size for current Schema
-        """
-        assert (
-            isinstance(batch_size, int) and batch_size > 0
-        ), "batch size must be greater than 1"
-        _inputs = ["I am Batman" for _ in range(batch_size)]
-        return {"sequences": _inputs}
 
     def split(self) -> Generator["TextClassificationInput", None, None]:
         """
