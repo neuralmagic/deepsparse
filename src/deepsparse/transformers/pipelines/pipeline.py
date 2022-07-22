@@ -142,6 +142,10 @@ class TransformersPipeline(Pipeline, Bucketable):
 
     @staticmethod
     def should_bucket(*args, **kwargs) -> bool:
+        """
+        :returns: True if kwargs contain sequence_length and it's a list else
+            False
+        """
         sequence_length = kwargs.get("sequence_length", 128)
         return isinstance(sequence_length, list)
 
@@ -149,6 +153,16 @@ class TransformersPipeline(Pipeline, Bucketable):
     def create_pipeline_buckets(
         *args, sequence_length: List[int], **kwargs
     ) -> List[Pipeline]:
+        """
+        Create and return a list of Pipeline objects representing different
+        buckets
+
+        :param args: args for pipeline creation
+        :param sequence_length: a List of sequence lengths to initialize buckets
+            for
+        :param kwargs: keyword args for pipeline creation
+        :return: A List[Pipeline] objects representing different buckets
+        """
         pipelines = []
         for seq_len in sorted(sequence_length):
             curr_pipeline = Pipeline.create(*args, sequence_length=seq_len, **kwargs)
@@ -157,7 +171,11 @@ class TransformersPipeline(Pipeline, Bucketable):
         return pipelines
 
     @staticmethod
-    def _buckets_are_sorted_by_sequence_length(buckets: List["TransformersPipeline"]):
+    def buckets_are_sorted_by_sequence_length(buckets: List["TransformersPipeline"]):
+        """
+        :param buckets: A List of Pipeline objects representing different buckets
+        :return: True if buckets sorted by sequence length else False
+        """
         for idx in range(len(buckets) - 1):
             curr_seq_len = buckets[idx].sequence_length
             next_seq_len = buckets[idx + 1].sequence_length

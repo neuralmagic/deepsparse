@@ -371,7 +371,7 @@ class TokenClassificationPipeline(TransformersPipeline):
             truncation=False,
         )
         current_seq_len = len(tokens)
-        if not TransformersPipeline._buckets_are_sorted_by_sequence_length(
+        if not TransformersPipeline.buckets_are_sorted_by_sequence_length(
             buckets=pipelines
         ):
             pipelines.sort(key=lambda pipe: pipe.sequence_length)
