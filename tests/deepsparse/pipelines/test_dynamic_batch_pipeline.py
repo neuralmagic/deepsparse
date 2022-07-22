@@ -144,3 +144,20 @@ class TestDynamicBatchPipeline:
         assert static_batch_outputs == dynamic_batch_outputs or compare(
             expected_dict, actual_dict
         )
+
+
+@pytest.mark.parametrize("task", _SUPPORTED_TASKS)
+def test_dynamic_pipeline_object_accepts_mutiple_batch_size(
+    task,
+    executor,
+):
+    pipeline = Pipeline.create(
+        task=task,
+        batch_size=None,
+        executor=executor,
+    )
+
+    for batch_size in _BATCH_SIZES:
+        inputs = create_test_inputs(task=task, batch_size=batch_size)
+        outputs = pipeline(**inputs)
+        assert outputs and isinstance(outputs, pipeline.output_schema)
