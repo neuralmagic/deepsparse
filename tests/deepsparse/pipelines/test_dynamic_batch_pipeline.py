@@ -19,8 +19,9 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy
 
 import pytest
-from data_helpers import create_test_inputs
 from deepsparse import Pipeline
+
+from .data_helpers import create_test_inputs
 
 
 @pytest.fixture()
@@ -33,20 +34,20 @@ def executor():
     yield ThreadPoolExecutor()
 
 
-supported_tasks = [
+_SUPPORTED_TASKS = [
     "text_classification",
     "token_classification",
     "yolo",
     "image_classification",
 ]
 
-batch_sizes = [
+_BATCH_SIZES = [
     1,
     2,
     10,
 ]
 
-tasks_batch_size_pairs = list(itertools.product(supported_tasks, batch_sizes))
+_TASKS_BATCH_SIZE_PAIRS = list(itertools.product(_SUPPORTED_TASKS, _BATCH_SIZES))
 
 
 def compare(expected, actual):
@@ -65,7 +66,7 @@ def compare(expected, actual):
     return True
 
 
-@pytest.mark.parametrize("task, batch_size", tasks_batch_size_pairs, scope="class")
+@pytest.mark.parametrize("task, batch_size", _TASKS_BATCH_SIZE_PAIRS, scope="class")
 class TestDynamicBatchPipeline:
     @pytest.fixture()
     def dynamic_batch_pipeline(self, task, executor):
@@ -117,8 +118,7 @@ class TestDynamicBatchPipeline:
             yield results
 
     def test_pipeline_creation(self, batch_size, dynamic_batch_pipeline):
-        # Will fail if fixture request fails
-        pass
+        assert dynamic_batch_pipeline.use_dynamic_batch()
 
     def test_execution_and_output(
         self,
@@ -130,7 +130,7 @@ class TestDynamicBatchPipeline:
             "Expected dynamic batch pipeline to be blocking but got"
             "got a concurrent.futures.Future object instead"
         )
-        assert type(dynamic_batch_outputs) == dynamic_batch_pipeline.output_schema
+        assert isinstance(dynamic_batch_outputs, dynamic_batch_pipeline.output_schema)
 
     def test_order_retention_against_static_batch(
         self,

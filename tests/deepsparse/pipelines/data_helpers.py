@@ -16,6 +16,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Union
 
 
+__all__ = ["create_test_inputs"]
+
+
 def text_classification(
     batch_size: int = 1,
 ) -> Dict[str, Union[List[List[str]], List[str], str]]:
@@ -28,8 +31,10 @@ def text_classification(
     assert (
         isinstance(batch_size, int) and batch_size > 0
     ), "batch size must be greater than 1"
-    _inputs = ["I am Batman" for _ in range(batch_size)]
-    return {"sequences": _inputs}
+
+    inputs_db = {1: "Dogs are nice", 0: "I am Batman"}
+    inputs = [inputs_db[_ % 2] for _ in range(batch_size)]
+    return {"sequences": inputs}
 
 
 def token_classification(
@@ -41,7 +46,12 @@ def token_classification(
     :param batch_size: The batch_size of inputs to return
     :return: A dict representing inputs for token classification
     """
-    inputs = ["U.N. official Ekeus heads for Baghdad" for _ in range(batch_size)]
+    inputs_db = {
+        1: "U.N. official Ekeus heads for Baghdad",
+        0: "WHO stands for World Health Organisation",
+    }
+
+    inputs = [inputs_db[_ % 2] for _ in range(batch_size)]
     return {"inputs": inputs}
 
 
@@ -55,10 +65,17 @@ def computer_vision(
     :return: A dict representing inputs for CV based tasks
     """
 
-    sample_image_path = Path(__file__).parents[0] / "sample_images" / "basilica.jpg"
-    sample_image_abs_path = str(sample_image_path.absolute())
+    image_dir = Path(__file__).parents[0] / "sample_images"
 
-    images = [sample_image_abs_path for _ in range(batch_size)]
+    basilica_img_rel_path = image_dir / "basilica.jpg"
+    buddy_img_rel_path = image_dir / "buddy.jpeg"
+
+    basilica_image_abs_path = str(basilica_img_rel_path.absolute())
+    buddy_image_abs_path = str(buddy_img_rel_path.absolute())
+
+    inputs_db = {1: basilica_image_abs_path, 0: buddy_image_abs_path}
+
+    images = [inputs_db[_ % 2] for _ in range(batch_size)]
     return {"images": images}
 
 
@@ -74,6 +91,6 @@ def create_test_inputs(task, batch_size: int = 1):
         "text_classification": text_classification,
         "token_classification": token_classification,
         "yolo": computer_vision,
-        "computer_vision": computer_vision,
+        "image_classification": computer_vision,
     }
     return dispatcher[task](batch_size=batch_size)

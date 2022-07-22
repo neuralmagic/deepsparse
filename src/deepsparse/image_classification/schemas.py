@@ -66,10 +66,10 @@ class ImageClassificationInput(BaseModel, Splittable):
 
         images = self.images
 
-        is_batch_size_1 = isinstance(images, str) or (
+        is_batch_size_one = isinstance(images, str) or (
             isinstance(images, numpy.ndarray) and images.ndim == 3
         )
-        if is_batch_size_1:
+        if is_batch_size_one:
             # case 1: str, numpy.ndarray(3D)
             yield self
 
