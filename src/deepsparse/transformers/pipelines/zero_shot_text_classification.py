@@ -128,7 +128,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
-        batch_size=3,
+        num_sequences=1,
         model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
@@ -170,6 +170,7 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         Default is "mnli"
     :param model_config: config object specific to the model_scheme of this model
         or a dict of config keyword arguments
+    :param num_sequences: the number of sequences to handle per batch.
     :param labels: static list of labels to perform text classification with. Can
         also be provided at inference time
     :param context: context for engine. If None, then the engine will be initialized

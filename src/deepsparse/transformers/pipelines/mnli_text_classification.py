@@ -107,12 +107,39 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         self,
         model_path: str,
         model_config: Optional[Union[MnliTextClassificationConfig, dict]] = None,
+        num_sequences: int = 1,
         labels: Optional[List] = None,
         context: Optional[Context] = None,
         **kwargs,
     ):
+        self._num_sequences = num_sequences
         self._config = self.parse_config(model_config)
         self._labels = self.parse_labels(labels)
+
+        if self._labels is None:
+            if num_sequences != 1:
+                raise ValueError(
+                    "This pipeline requires that num_sequences be set to 1 when "
+                    "no labels are provided"
+                )
+            if kwargs.get("batch_size") and kwargs.get("batch_size") != 1:
+                raise ValueError(
+                    "This pipeline requires that batch_size be set to 1 when no "
+                    "labels are provided"
+                )
+            kwargs.update({"batch_size": num_sequences})
+        else:
+            if kwargs.get("batch_size") and kwargs.get(
+                "batch_size"
+            ) != num_sequences * len(self._labels):
+                raise ValueError(
+                    "This pipeline requires that batch_size "
+                    f"{kwargs.get('batch_size')} match "
+                    "num_sequences times the number labels "
+                    f"{num_sequences * len(self._labels)} when static labels are "
+                    f"provided"
+                )
+            kwargs.update({"batch_size": num_sequences * len(self._labels)})
 
         super().__init__(model_path=model_path, **kwargs)
 
@@ -170,7 +197,9 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
 
         # check for correct size
         # skip check if is_dynamic_batch_mode when dynamic batch is implemented
-        if self._batch_size != len(labels) * len(sequences):
+        if self._labels is not None and self._batch_size != len(labels) * len(
+            sequences
+        ):
             raise ValueError(
                 f"If static labels are provided, then batch_size {self._batch_size} "
                 f"must match num_labels * num_sequences {len(labels) * len(sequences)}"
@@ -207,6 +236,23 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         )
 
         return self.tokens_to_engine_input(tokens), postprocessing_kwargs
+
+    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        """
+        :param engine_inputs: list of numpy inputs to Pipeline engine forward pass
+        :return: result of forward pass to Pipeline engine
+        """
+        engine_inputs_numpy = numpy.array(engine_inputs)
+        if self._labels is None:
+            engine_outputs = []
+            for sample_i in range(engine_inputs_numpy.shape[1]):
+                engine_input = engine_inputs_numpy[:, sample_i : (sample_i + 1), :]
+                engine_input = [input for input in engine_input]
+                engine_output = self.engine(engine_input)
+                engine_outputs.append(engine_output)
+            return engine_outputs
+        else:
+            return self.engine(engine_inputs)
 
     def process_engine_outputs(
         self,
