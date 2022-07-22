@@ -60,6 +60,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
+from deepsparse.pipelines import Joinable
 
 
 if TYPE_CHECKING:
@@ -208,7 +209,7 @@ class ZeroShotTextClassificationInputBase(BaseModel):
     )
 
 
-class ZeroShotTextClassificationOutput(BaseModel):
+class ZeroShotTextClassificationOutput(BaseModel, Joinable):
     """
     Schema for zero_shot_text_classification pipeline output. Values are in batch order
     """
@@ -223,6 +224,30 @@ class ZeroShotTextClassificationOutput(BaseModel):
     scores: Union[List[List[float]], List[float]] = Field(
         description="The corresponding probability for each label in the batch"
     )
+
+    @staticmethod
+    def join(
+        outputs: Iterable["ZeroShotTextClassificationOutput"],
+    ) -> "TextClassificationOutput":
+        """
+        Takes in ab Iterable of `TextClassificationOutput` objects and combines
+        them into one object representing a bigger batch size
+        :return: A new `TextClassificationOutput` object that represents a bigger batch
+        """
+
+        sequences = list()
+        labels = list()
+        scores = list()
+        for output in outputs:
+            sequences.extend(output.sequences)
+            labels.extend(output.labels)
+            scores.extend(output.scores)
+
+        return ZeroShotTextClassificationOutput(
+            sequences=sequences,
+            labels=labels,
+            scores=scores,
+        )
 
 
 class ZeroShotTextClassificationPipelineBase(TransformersPipeline):

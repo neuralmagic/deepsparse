@@ -45,6 +45,7 @@ from deepsparse.transformers.pipelines.zero_shot_text_classification import (
     ZeroShotTextClassificationInputBase,
     ZeroShotTextClassificationPipelineBase,
 )
+from deepsparse.pipelines import Splittable
 from deepsparse.utils import numpy_softmax
 
 
@@ -55,7 +56,7 @@ __all__ = [
 ]
 
 
-class MnliTextClassificationConfig(BaseModel):
+class MnliTextClassificationConfig(BaseModel, Splittable):
     """
     Schema for configuration options when running zero shot with mnli
     """
@@ -100,6 +101,29 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
         "If provided, overrides the multi_class value in the config.",
         default=None,
     )
+
+    def split(pipeline_labels: List[str], parse_labels_fn: Callable TODO) -> Generator["MnliTextClassificationInput", None, None]:
+        if pipeline_labels is not None and labels is not None:
+            raise ValueError(
+                "TODO"
+            )
+
+        sequences = self.sequences
+        labels = pipeline_labels or parse_labels_fn(self.labels)
+        hypothesis_template = self.hypothesis_template
+        multi_class = self.multi_class
+
+        if isinstance(sequences, str):
+            sequences = [sequences]
+
+        for sequence in sequences:
+            for label in labels:
+                yield MnliTextClassificationInput(
+                    sequences=sequence,
+                    labels=label,
+                    hypothesis_template=self.hypothesis_template,
+                    multi_class=self.multi_class,
+                )
 
 
 class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
