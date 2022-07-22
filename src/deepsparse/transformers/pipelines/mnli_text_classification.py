@@ -106,6 +106,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
     def __init__(
         self,
         model_path: str,
+        batch_size: int = 1,
         model_config: Optional[Union[MnliTextClassificationConfig, dict]] = None,
         labels: Optional[List] = None,
         context: Optional[Context] = None,
@@ -114,6 +115,18 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         self._config = self.parse_config(model_config)
         self._labels = self.parse_labels(labels)
 
+        if self._labels and batch_size % len(self._labels) != 0:
+            raise ValueError(
+                f"if static labels are provided then batch_size {batch_size} must "
+                f"be divisible by the number of labels {len(self._labels)}"
+            )
+
+        if not self._labels and batch_size != 1:
+            raise ValueError(
+                "if no static labels are provided then batch_size must be set to 1"
+            )
+
+        kwargs.update({"batch_size": batch_size})
         super().__init__(model_path=model_path, **kwargs)
 
     @property
@@ -168,12 +181,12 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
                 "must provide only one"
             )
 
-        # check for correct size
-        # skip check if is_dynamic_batch_mode when dynamic batch is implemented
-        if self._batch_size != len(labels) * len(sequences):
+        # check for correct size if static labels
+        if self._labels and len(sequences) != self._batch_size // len(self._labels):
             raise ValueError(
-                f"If static labels are provided, then batch_size {self._batch_size} "
-                f"must match num_labels * num_sequences {len(labels) * len(sequences)}"
+                "If static labels are provided, then the number of sequences "
+                f"{len(sequences)} must match batch_size divided by the number of "
+                f"labels {self._batch_size // len(self._labels)}"
             )
 
         # check for invalid hypothesis template
@@ -207,6 +220,23 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         )
 
         return self.tokens_to_engine_input(tokens), postprocessing_kwargs
+
+    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        """
+        :param engine_inputs: list of numpy inputs to Pipeline engine forward pass
+        :return: result of forward pass to Pipeline engine
+        """
+        engine_inputs_numpy = numpy.array(engine_inputs)
+        if self._labels is None:
+            engine_outputs = []
+            for sample_i in range(engine_inputs_numpy.shape[1]):
+                engine_input = engine_inputs_numpy[:, sample_i : (sample_i + 1), :]
+                engine_input = [input for input in engine_input]
+                engine_output = self.engine(engine_input)
+                engine_outputs.append(engine_output)
+            return engine_outputs
+        else:
+            return self.engine(engine_inputs)
 
     def process_engine_outputs(
         self,

@@ -155,6 +155,8 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         loaded from huggingface transformers using the `default_model_name` key
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: if static labels are given, then batch_size must be
+        num_sequences * num_labels. Otherwise, batch_size must be 1. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
