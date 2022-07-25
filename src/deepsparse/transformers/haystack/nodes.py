@@ -63,7 +63,8 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         ONNX node in model to draw embeddings from. If None, leave the model
         unchanged. Default is -1 (last transformer layer before prediction head)
     :param top_k: how many documents to return per query
-    :param progress_bar: if true displays progress bar during embedding
+    :param progress_bar: if true displays progress bar during embedding.
+        Not supported by DeepSparse retriever nodes. Default is False
     :param scale_score: whether to scale the similarity score to the unit interval
         (range of [0,1]). If true (default) similarity scores (e.g. cosine or
         dot_product) which naturally have a different value range will be scaled
@@ -86,7 +87,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         pooling_strategy: str = "reduce_mean",
         emb_extraction_layer: Union[int, str, None] = -1,
         top_k: int = 10,
-        progress_bar: bool = True,
+        progress_bar: bool = False,
         scale_score: bool = True,
         embed_meta_fields: List[str] = [],
         **kwargs,
@@ -105,6 +106,11 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         self.embed_meta_fields = embed_meta_fields
 
         _LOGGER.info(f"Init retriever using embeddings of model at {model_path}")
+        if self.progress_bar:
+            _LOGGER.warn(
+                "DeepSparseEmbeddingRetriever does not support progress bar, set "
+                "progress_bar to False"
+            )
 
         self.embedding_encoder = DeepSparseEmbeddingEncoder(self, kwargs)
 
@@ -157,8 +163,8 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param top_k: how many documents to return per query. Default is 10
     :param embed_title: True if titles should be embedded into the passage.
         Default is False
-    :param progress_bar: if true displays progress bar during embedding. Default
-        is True
+    :param progress_bar: if true displays progress bar during embedding.
+        Not supported by DeepSparse retriever nodes. Default is False
     :param scale_score: whether to scale the similarity score to the unit interval
         (range of [0,1]). If true (default) similarity scores (e.g. cosine or
         dot_product) which naturally have a different value range will be scaled
@@ -182,7 +188,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         pooling_strategy: str = "cls_token",
         top_k: int = 10,
         embed_title: bool = False,
-        progress_bar: bool = True,
+        progress_bar: bool = False,
         scale_score: bool = True,
         context: Optional[Context] = None,
         **pipeline_kwargs,
@@ -199,6 +205,12 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         self.context = context
         self.use_gpu = False
         self.devices = ["cpu"]
+
+        if self.progress_bar:
+            _LOGGER.warn(
+                "DeepSparseDensePassageRetriever does not support progress bar, set "
+                "progress_bar to False"
+            )
 
         if "model_path" in pipeline_kwargs:
             del pipeline_kwargs["model_path"]  # ignore model_path argument
@@ -315,6 +327,12 @@ class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = retriever.batch_size
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
+
+        if self.show_progress_bar:
+            _LOGGER.warn(
+                "DeepSparseEmbeddingEncoder does not support progress bar, set "
+                "retriever progress_bar to False"
+            )
         if document_store.similarity != "cosine":
             _LOGGER.warning(
                 f"You are using document store embeddings with the "
