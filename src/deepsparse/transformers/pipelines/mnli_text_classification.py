@@ -121,6 +121,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
                 f"be divisible by the number of labels {len(self._labels)}"
             )
 
+        # will add support for batch_size == None when dynamic batch lands
         if not self._labels and batch_size != 1:
             raise ValueError(
                 "if no static labels are provided then batch_size must be set to 1"
