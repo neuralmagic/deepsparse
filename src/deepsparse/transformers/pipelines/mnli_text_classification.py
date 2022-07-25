@@ -40,7 +40,6 @@ import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-from deepsparse.engine import Context
 from deepsparse.transformers.pipelines.zero_shot_text_classification import (
     ZeroShotTextClassificationInputBase,
     ZeroShotTextClassificationPipelineBase,
@@ -214,7 +213,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         )
 
         postprocessing_kwargs = dict(
-            sequences=sequences,
+            sequences=inputs.sequences,  # do not include list wrapping
             candidate_labels=labels,
             multi_class=multi_class,
         )
@@ -272,13 +271,18 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
             probabilities = numpy_softmax(entailment_contradiction_logits, axis=2)
             scores = probabilities[:, :, 0]
 
-        # negate scores to perform reversed sort
-        sorted_indexes = numpy.argsort(-1 * scores, axis=1)
+        # perform reversed sort
+        sorted_indexes = list(reversed(numpy.argsort(scores, axis=1)))
         labels = [
             numpy.array(candidate_labels)[sorted_indexes[i]].tolist()
             for i in range(num_sequences)
         ]
         label_scores = numpy.take_along_axis(scores, sorted_indexes, axis=1).tolist()
+
+        # reduce dims if passed a string, not a list of strings
+        if isinstance(sequences, str):
+            labels = labels[0]
+            label_scores = label_scores[0]
 
         return self.output_schema(
             sequences=sequences,
