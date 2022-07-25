@@ -8,6 +8,7 @@ You can access the already built image detailed at https://github.com/orgs/neura
 
 ```bash
 docker pull ghcr.io/neuralmagic/deepsparse:1.0.2-debian11
+docker tag ghcr.io/neuralmagic/deepsparse:1.0.2-debian11 deepsparse_docker
 ```
 
 ## Extend
