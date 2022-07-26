@@ -243,7 +243,7 @@ def sst2_zero_shot_eval(args):
         model_config={"hypothesis_template": "The sentiment of this text is {}",
                       "multi_class": True},
         #model_path=args.onnx_filepath,
-        model_path="zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/mnli/pruned90-none",
+        model_path="zoo:nlp/text_classification/bert-large/pytorch/huggingface/mnli/pruned80_quant-none-vnni",
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -251,7 +251,7 @@ def sst2_zero_shot_eval(args):
     )
     """
 
-    text_classify = Pipeline("zero-shot-classification", model="./downloads/f94ff44e-7468-4837-b2fa-7b050ac81013/pytorch")
+    text_classify = Pipeline("zero-shot-classification", model="/home/kyle/downloads/3b681313-3ef1-4865-81a9-ace5ae7cc6e0/pytorch")
     #print(f"Engine info: {text_classify.engine}")
 
     label_map = {"positive": 1, "negative": 0}
