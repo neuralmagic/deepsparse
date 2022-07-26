@@ -20,7 +20,6 @@ Input/Output Schemas for Object Detection with YOLO
 from collections import namedtuple
 from typing import Any, Generator, Iterable, List, Union
 
-import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
@@ -54,9 +53,9 @@ class YOLOInput(BaseModel, Splittable):
     )
 
     @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "YOLOInput":
+    def from_files(cls, files: Iterable[TextIO], **kwargs) -> "YOLOInput":
         """
-        :param files: list of file paths to create YOLOInput from
+        :param files: Iterable of file pointers to create YOLOInput from
         :param kwargs: extra keyword args to pass to YOLOInput constructor
         :return: YOLOInput constructed from files
         """
