@@ -45,7 +45,7 @@ class ImageClassificationInput(BaseModel, Splittable):
     @classmethod
     def from_files(cls, files: List[str], **kwargs) -> "ImageClassificationInput":
         """
-        :param files: list of file pointers to create ImageClassificationInput from
+        :param files: Iterable of file pointers to create ImageClassificationInput from
         :return: ImageClassificationInput constructed from files
         """
         if kwargs:
