@@ -271,8 +271,8 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
             probabilities = numpy_softmax(entailment_contradiction_logits, axis=2)
             scores = probabilities[:, :, 0]
 
-        # perform reversed sort
-        sorted_indexes = list(reversed(numpy.argsort(scores, axis=1)))
+        # negate scores to perform reversed sort
+        sorted_indexes = numpy.argsort(scores * -1, axis=1)
         labels = [
             numpy.array(candidate_labels)[sorted_indexes[i]].tolist()
             for i in range(num_sequences)
