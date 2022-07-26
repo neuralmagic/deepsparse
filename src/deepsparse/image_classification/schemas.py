@@ -18,6 +18,7 @@ Input/Output Schemas for Image Classification.
 from typing import Any, Generator, Iterable, List, Union
 
 import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
@@ -52,7 +53,8 @@ class ImageClassificationInput(BaseModel, Splittable):
                 f"{cls.__name__} does not support additional arguments "
                 f"{list(kwargs.keys())}"
             )
-        return cls(images=files)
+        images = [Image.open(file) for file in files]
+        return cls(images=images)
 
     def split(self) -> Generator["ImageClassificationInput", None, None]:
         """

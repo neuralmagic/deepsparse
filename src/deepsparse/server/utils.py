@@ -19,11 +19,10 @@ Utilities for serving models in the DeepSparse server
 from typing import Any
 
 import numpy
-import tempfile
+
 
 __all__ = [
     "serializable_response",
-    "create_tempfile"
 ]
 
 
@@ -48,18 +47,3 @@ def serializable_response(data: Any) -> Any:
             data[index] = serializable_response(data[index])
 
     return data
-
-
-def create_tempfile(contents: Any) -> str:
-    """
-    Utility function to write contents into a tempfile.NamedTemporaryFile() and
-    return its file descriptor
-
-    :post-cond: A NamedTemporaryFile will be written to Disk
-    :param contents: The contents to write to a temporary file
-    :return: The file descriptor to a tempfile.NamedTemporaryFile() with
-        contents
-    """
-    f = tempfile.NamedTemporaryFile(delete=False)
-    f.write(contents)
-    return f
