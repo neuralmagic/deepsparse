@@ -20,6 +20,7 @@ Input/Output Schemas for Object Detection with YOLO
 from collections import namedtuple
 from typing import Any, Generator, Iterable, List, Union
 
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
@@ -64,7 +65,8 @@ class YOLOInput(BaseModel, Splittable):
                 f"argument 'images' cannot be specified in {cls.__name__} when "
                 "constructing from file(s)"
             )
-        return cls(images=files, **kwargs)
+        images = [Image.open(file) for file in files]
+        return cls(images=images, **kwargs)
 
     class Config:
         arbitrary_types_allowed = True
