@@ -21,7 +21,7 @@ Command help:
 usage: eval_downstream.py [-h] [-d {squad,mnli,qqp,sst2}] [-c NUM_CORES]
                           [-e {deepsparse,onnxruntime}]
                           [--max-sequence-length MAX_SEQUENCE_LENGTH]
-                          [--max-samples MAX_SAMPLES]
+                          [--max-samples MAX_SAMPLES] [--zero-shot BOOL]
                           onnx_filepath
 
 Evaluate a BERT ONNX model on a downstream dataset
@@ -40,11 +40,14 @@ optional arguments:
                         Inference engine backend to run eval on. Choices are
                         'deepsparse', 'onnxruntime'. Default is 'deepsparse'
   --max-sequence-length MAX_SEQUENCE_LENGTH
-                        the max sequence length for model inputs. Default is
+                        The max sequence length for model inputs. Default is
                         384
   --max-samples MAX_SAMPLES
-                        the max number of samples to evaluate. Default is None
+                        The max number of samples to evaluate. Default is None
                         or all samples
+  --zero-shot BOOL
+                        Whether to run the dataset with a zero shot pipeline.
+                        Currently supports sst2. Default is False
 
 ##########
 Example command for evaluating a sparse BERT QA model from sparsezoo:
@@ -61,6 +64,7 @@ from pstats import Stats
 from tqdm.auto import tqdm
 
 from deepsparse import Pipeline
+#from transformers import pipeline as Pipeline # bookmark
 
 
 from datasets import load_dataset, load_metric  # isort: skip
@@ -224,6 +228,53 @@ def sst2_eval(args):
 
     return sst2_metrics
 
+# bookmark
+def sst2_zero_shot_eval(args):
+    # load sst2 validation dataset and eval tool
+    sst2 = load_dataset("glue", "sst2")["validation"]
+    sst2_metrics = load_metric("glue", "sst2")
+
+    # load pipeline
+    #"""
+    text_classify = Pipeline.create(
+        task="zero_shot_text_classification",
+        batch_size=2,
+        model_scheme="mnli",
+        model_config={"hypothesis_template": "The sentiment of this text is {}",
+                      "multi_class": True},
+        #model_path=args.onnx_filepath,
+        model_path="zoo:nlp/text_classification/bert-base/pytorch/huggingface/mnli/base-none",
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+        labels=["positive", "negative"]
+    )
+    #"""
+
+    #text_classify = Pipeline("zero-shot-classification")
+    #print(f"Engine info: {text_classify.engine}")
+
+    label_map = {"positive": 1, "negative": 0}
+
+    for idx, sample in _enumerate_progress(sst2, args.max_samples):
+        pred = text_classify(
+            sequences=sample["sentence"],
+            candidate_labels=["positive", "negative"],
+            hypothesis_template="The sentiment of this text is {}",
+            multi_class=True,
+        )
+
+        sst2_metrics.add_batch(
+            predictions=[label_map.get(pred.labels[0])],
+            #predictions=[label_map.get(pred["labels"][0])],
+            references=[sample["label"]],
+        )
+
+        if args.max_samples and idx >= args.max_samples:
+            break
+
+    return sst2_metrics
+
 
 def conll2003_eval(args):
     # load qqp validation dataset and eval tool
@@ -295,6 +346,7 @@ SUPPORTED_DATASETS = {
     "mnli": mnli_eval,
     "qqp": qqp_eval,
     "sst2": sst2_eval,
+    "sst2_zero_shot": sst2_zero_shot_eval,
     "conll2003": conll2003_eval,
 }
 
@@ -396,12 +448,21 @@ def parse_args():
         type=int,
         default=20,
     )
+    parser.add_argument(
+        "--zero-shot",
+        help="Whether to run the dataset with a zero shot pipeline. Currently "
+        "supports sst2. Default is False",
+        type=bool,
+        default=False,
+    )
 
     return parser.parse_args()
 
 
 def _main(args):
     dataset = args.dataset.lower()
+    if args.zero_shot:
+        dataset += "_zero_shot"
 
     if dataset not in SUPPORTED_DATASETS:
         raise KeyError(
