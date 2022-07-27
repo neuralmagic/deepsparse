@@ -16,7 +16,7 @@
 Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
-
+import concurrent.futures
 import os
 from abc import ABC, abstractmethod
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
+from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.tasks import SupportedTasks
 
 
@@ -104,7 +105,8 @@ class Pipeline(ABC):
     :param model_path: path on local system or SparseZoo stub to load the model from
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
+    :param batch_size: static batch size to use for inference. None represents
+        dynamic batch mode (Pipeline will accept any batch size). Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -118,35 +120,38 @@ class Pipeline(ABC):
         other runtime information that will be used across instances of the
         MultiModelEngine to provide optimal performance when running multiple
         models concurrently
-    :param threadpool: An optional ThreadPoolExecutor() object, if given the
+    :param executor: An optional ThreadPoolExecutor() object, if provided the
         pipeline executes inference requests in a non-blocking manner and returns
-        a Future object, call Future.result() on returned object to get the result
+        a Future object, call Future.result() on returned object to get the result.
+        Can also accept an int number of workers, a ThreadPoolExecutor object is
+        auto-initialized with the specified integer in that case; None represents
+        synchronous execution
     """
 
     def __init__(
         self,
         model_path: str,
         engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: int = 1,
+        batch_size: Optional[int] = 1,
         num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         alias: Optional[str] = None,
         context: Optional[Context] = None,
-        threadpool: Optional[ThreadPoolExecutor] = None,
+        executor: Optional[Union[ThreadPoolExecutor, int]] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
         self._engine_type = engine_type
         self._alias = alias
         self.context = context
-        self._threadpool = threadpool
+        self._batch_size = batch_size
 
-        if self._threadpool and not isinstance(self._threadpool, ThreadPoolExecutor):
-            raise ValueError(
-                f"Expected a ThreadPoolExecutor object to submit jobs"
-                f"asynchronously but got {self._threadpool} instead"
-            )
+        self.executor, self._num_async_workers = _initialize_executor_and_workers(
+            batch_size=batch_size,
+            workers_or_executor=executor,
+        )
+
         if self.context is not None:
             num_cores = num_cores or self.context.num_cores
             if self.context.num_cores != num_cores:
@@ -157,7 +162,7 @@ class Pipeline(ABC):
                 )
 
         self._engine_args = dict(
-            batch_size=batch_size,
+            batch_size=self._batch_size or 1,  # bs=1 for dynamic batch
             num_cores=num_cores,
             input_shapes=input_shapes,
         )
@@ -167,11 +172,22 @@ class Pipeline(ABC):
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
 
-    def __call__(self, threadpool=None, *args, **kwargs) -> Union[BaseModel, Future]:
-        threadpool = threadpool or self._threadpool
-        if threadpool:
-            return threadpool.submit(self._run, *args, **kwargs)
-        return self._run(*args, **kwargs)
+    def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
+        _default_key_val = ("_DEFAULT",)
+        executor = kwargs.get("executor", _default_key_val)
+
+        if executor is _default_key_val:  # do not use ==
+            # use executor created during initialization
+            executor = self.executor
+        else:
+            # use passed in executor
+            executor = kwargs.pop("executor")
+
+        return (
+            executor.submit(self._run, *args, **kwargs)  # Non-Blocking call
+            if executor and not self.use_dynamic_batch()
+            else self._run(*args, **kwargs)  # Blocking call
+        )
 
     @staticmethod
     def create(
@@ -462,6 +478,18 @@ class Pipeline(ABC):
         """
         return self._engine_type
 
+    def use_dynamic_batch(self) -> bool:
+        """
+        :return: True if pipeline should be run in dynamic batch mode else
+            False
+        """
+        return (
+            self._batch_size is None
+            and self.executor
+            and issubclass(self.input_schema, Splittable)
+            and issubclass(self.output_schema, Joinable)
+        )
+
     def to_config(self) -> "PipelineConfig":
         """
         :return: PipelineConfig that can be used to reload this object
@@ -532,6 +560,11 @@ class Pipeline(ABC):
 
         # parse inputs into input_schema schema if necessary
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
+        if isinstance(pipeline_inputs, tuple):
+            pipeline_inputs, split_kwargs = pipeline_inputs
+        else:
+            split_kwargs = {}
+
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
@@ -539,8 +572,33 @@ class Pipeline(ABC):
             )
 
         # run pipeline
-        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
+        if self.use_dynamic_batch():
+            return self._run_with_dynamic_batch(pipeline_inputs, split_kwargs)
 
+        pipeline_outputs = self._run_with_static_batch(pipeline_inputs)
+        return pipeline_outputs
+
+    def _run_with_dynamic_batch(
+        self,
+        pipeline_inputs: BaseModel,
+        split_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> BaseModel:
+
+        if split_kwargs is None:
+            split_kwargs = {}
+
+        pipeline_inputs = pipeline_inputs.split(**split_kwargs)
+        futures = [
+            self.executor.submit(self._run_with_static_batch, _input)
+            for _input in pipeline_inputs
+        ]
+        # wait for all inferences to complete before joining outputs
+        concurrent.futures.wait(futures)
+        outputs = [future.result() for future in futures]
+        return self.output_schema.join(outputs)
+
+    def _run_with_static_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
+        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
@@ -745,6 +803,34 @@ class Bucketable(ABC):
         :return: The correct Pipeline object (or Bucket) to route input to
         """
         pass
+
+
+def _initialize_executor_and_workers(
+    batch_size: Optional[int],
+    workers_or_executor: Optional[Union[int, ThreadPoolExecutor]],
+) -> Tuple[Optional[ThreadPoolExecutor], int]:
+    if isinstance(workers_or_executor, ThreadPoolExecutor):
+        num_async_workers = workers_or_executor._max_workers  # noqa
+        executor = workers_or_executor
+    elif isinstance(workers_or_executor, int):
+        num_async_workers = max(1, workers_or_executor)
+        executor = ThreadPoolExecutor(max_workers=num_async_workers)
+    elif workers_or_executor is not None:
+        raise ValueError(
+            "Expected an int or ThreadPoolExecutor to run in async mode"
+            f" but got {workers_or_executor} of type {type(workers_or_executor)}"
+        )
+    else:
+        executor = None
+        num_async_workers = 1
+
+    if batch_size is None and executor is None:
+        raise ValueError(
+            "Must have an ThreadPoolExecutor for running in dynamic batch mode "
+            f"but got {None}"
+        )
+
+    return executor, num_async_workers
 
 
 def question_answering_pipeline(*args, **kwargs) -> "Pipeline":

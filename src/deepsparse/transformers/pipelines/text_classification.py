@@ -35,13 +35,14 @@ tasks
 """
 
 
-from typing import List, Type, Union
+from typing import Generator, Iterable, List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
+from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -52,7 +53,7 @@ __all__ = [
 ]
 
 
-class TextClassificationInput(BaseModel):
+class TextClassificationInput(BaseModel, Splittable):
     """
     Schema for inputs to text_classification pipelines
     """
@@ -62,8 +63,37 @@ class TextClassificationInput(BaseModel):
         "text_classification task"
     )
 
+    def split(self) -> Generator["TextClassificationInput", None, None]:
+        """
+        Split a current `TextClassificationInput` object with a batch size b, into a
+        generator of b smaller objects with batch size 1, the returned
+        object can be iterated on.
 
-class TextClassificationOutput(BaseModel):
+        :return: A Generator of smaller `TextClassificationInput` objects each
+            representing an input of batch-size 1
+        """
+
+        sequences = self.sequences
+
+        # case 1: do nothing if single input of batch_size 1
+        if isinstance(sequences, str):
+            yield self
+
+        elif (
+            isinstance(sequences, list)
+            and len(sequences)
+            and isinstance(sequences[0], (str, list))
+        ):
+            # case 2: List[str] -> multi-batches of size 1 Or batch-size 1 multi-inputs
+            # case 3: List[List[str]] -> Each List[str] is a multi-input batch of
+            # size 1
+            for sequence in sequences:
+                yield TextClassificationInput(sequences=sequence)
+        else:
+            raise ValueError(f"Could not breakdown {self} into smaller batches")
+
+
+class TextClassificationOutput(BaseModel, Joinable):
     """
     Schema for text_classification pipeline output. Values are in batch order
     """
@@ -74,6 +104,24 @@ class TextClassificationOutput(BaseModel):
     scores: List[Union[float, List[float]]] = Field(
         description="The corresponding probability for each label in the batch"
     )
+
+    @staticmethod
+    def join(
+        outputs: Iterable["TextClassificationOutput"],
+    ) -> "TextClassificationOutput":
+        """
+        Takes in ab Iterable of `TextClassificationOutput` objects and combines
+        them into one object representing a bigger batch size
+
+        :return: A new `TextClassificationOutput` object that represents a bigger batch
+        """
+        labels = list()
+        scores = list()
+        for output in outputs:
+            labels.extend(output.labels)
+            scores.extend(output.scores)
+
+        return TextClassificationOutput(labels=labels, scores=scores)
 
 
 @Pipeline.register(

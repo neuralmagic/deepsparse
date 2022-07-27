@@ -28,7 +28,7 @@ def pipeline():
 
 
 @pytest.fixture()
-def threadpool():
+def executor():
     """
     Auto-del fixture for yielding a ThreadPoolExecutor
     """
@@ -36,11 +36,11 @@ def threadpool():
 
 
 @pytest.fixture()
-def threaded_pipeline(threadpool):
+def threaded_pipeline(executor):
     """
     Auto-del fixture for Threaded Pipeline
     """
-    yield Pipeline.create(task="question-answering", threadpool=threadpool)
+    yield Pipeline.create(task="question-answering", executor=executor)
 
 
 @pytest.fixture()
@@ -103,21 +103,21 @@ def test_async_pipeline_results_in_correct_schema(
 def test_passing_threadpool_during_pipeline_call_returns_a_future(
     pipeline,
     qa_input,
-    threadpool,
+    executor,
 ):
-    return_value = pipeline(**qa_input, threadpool=threadpool)
+    return_value = pipeline(**qa_input, executor=executor)
     assert isinstance(
         return_value, Future
-    ), "Sync Pipeline must return a Future when a threadpool is passed during call"
+    ), "Sync Pipeline must return a Future when a executor is passed during call"
 
 
 def test_passing_threadpool_during_pipeline_call_results_in_correct_schema(
     pipeline,
     qa_input,
-    threadpool,
+    executor,
 ):
     sync_result = pipeline(**qa_input)
-    async_result = pipeline(**qa_input, threadpool=threadpool).result()
+    async_result = pipeline(**qa_input, executor=executor).result()
 
     assert type(sync_result) == type(
         async_result
