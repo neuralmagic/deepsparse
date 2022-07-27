@@ -66,6 +66,7 @@ from tqdm.auto import tqdm
 
 from deepsparse import Pipeline
 
+
 from datasets import load_dataset, load_metric  # isort: skip
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -238,13 +239,15 @@ def sst2_zero_shot_eval(args):
         task="zero_shot_text_classification",
         batch_size=2,
         model_scheme="mnli",
-        model_config={"hypothesis_template": "The sentiment of this text is {}",
-                      "multi_class": True},
+        model_config={
+            "hypothesis_template": "The sentiment of this text is {}",
+            "multi_class": True,
+        },
         model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
-        labels=["positive", "negative"]
+        labels=["positive", "negative"],
     )
     print(f"Engine info: {text_classify.engine}")
 
