@@ -286,15 +286,14 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
             )
 
         if args:
-            if len(args) == 1:
-                if isinstance(args[0], self.input_schema):
-                    return args[0]
-                if isinstance(args[0], str):
-                    return self.input_schema(sequences=args[0])
+            if len(args) == 1 and isinstance(args[0], self.input_schema):
+                input = args[0]
             else:
-                return self.input_schema(sequences=args)
+                input = self.input_schema(*args)
+        else:
+            input = self.input_schema(**kwargs)
 
-        return self.input_schema(**kwargs)
+        return input
 
     @staticmethod
     def route_input_to_bucket(
