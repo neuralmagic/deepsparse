@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
+from deepsparse.cpu import cpu_details
 from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.tasks import SupportedTasks
 
@@ -125,7 +126,9 @@ class Pipeline(ABC):
         a Future object, call Future.result() on returned object to get the result.
         Can also accept an int number of workers, a ThreadPoolExecutor object is
         auto-initialized with the specified integer in that case; None represents
-        synchronous execution
+        synchronous execution - if running in dynamic batch mode a default
+        ThreadPoolExecutor with default workers equal to the number of available
+        cores / 2
     """
 
     def __init__(
@@ -814,6 +817,11 @@ def _initialize_executor_and_workers(
         executor = workers_or_executor
     elif isinstance(workers_or_executor, int):
         num_async_workers = max(1, workers_or_executor)
+        executor = ThreadPoolExecutor(max_workers=num_async_workers)
+    elif batch_size is None and workers_or_executor is None:
+        # default num workers to num available cores / 2
+        num_cpu_cores_avaailable = cpu_details()[0]
+        num_async_workers = max(1, num_cpu_cores_avaailable // 2)
         executor = ThreadPoolExecutor(max_workers=num_async_workers)
     elif workers_or_executor is not None:
         raise ValueError(
