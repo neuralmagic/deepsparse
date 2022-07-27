@@ -119,9 +119,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     candidate_labels = ["Europe", "public health", "politics"]
     zero_shot_text_classifier(sequences=sequence_to_classify, labels=candidate_labels)
     >>> ZeroShotTextClassificationOutput(
-        sequences=['Who are you voting for in 2020?'],
-        labels=[['politics', 'public health', 'Europe']],
-        scores=[[0.9073666334152222, 0.046810582280159, 0.04582275450229645]])
+        sequences='Who are you voting for in 2020?',
+        labels=['politics', 'public health', 'Europe'],
+        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
     ```
 
     example static labels:
@@ -138,9 +138,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     sequence_to_classify = "Who are you voting for in 2020?"
     zero_shot_text_classifier(sequences=sequence_to_classify)
     >>> ZeroShotTextClassificationOutput(
-        sequences=['Who are you voting for in 2020?'],
-        labels=[['politics', 'public health', 'Europe']],
-        scores=[[0.9073666334152222, 0.046810582280159, 0.04582275450229645]])
+        sequences='Who are you voting for in 2020?',
+        labels=['politics', 'public health', 'Europe'],
+        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
     ```
 
     Note that labels must either be provided during pipeline instantiation via
@@ -286,14 +286,15 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
             )
 
         if args:
-            if len(args) == 1 and isinstance(args[0], self.input_schema):
-                input = args[0]
+            if len(args) == 1:
+                # passed input_schema schema directly
+                if isinstance(args[0], self.input_schema):
+                    return args[0]
+                return self.input_schema(sequences=args[0])
             else:
-                input = self.input_schema(*args)
-        else:
-            input = self.input_schema(**kwargs)
+                return self.input_schema(sequences=args)
 
-        return input
+        return self.input_schema(**kwargs)
 
     @staticmethod
     def route_input_to_bucket(
