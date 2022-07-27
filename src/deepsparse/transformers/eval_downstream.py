@@ -47,7 +47,8 @@ optional arguments:
                         or all samples
   --zero-shot BOOL
                         Whether to run the dataset with a zero shot pipeline.
-                        Currently supports sst2. Default is False
+                        Currently supports zero shot pipelines for sst2.
+                        Default is False
 
 ##########
 Example command for evaluating a sparse BERT QA model from sparsezoo:
@@ -64,8 +65,6 @@ from pstats import Stats
 from tqdm.auto import tqdm
 
 from deepsparse import Pipeline
-#from transformers import pipeline as Pipeline # bookmark
-
 
 from datasets import load_dataset, load_metric  # isort: skip
 
@@ -228,46 +227,36 @@ def sst2_eval(args):
 
     return sst2_metrics
 
-# bookmark
+
 def sst2_zero_shot_eval(args):
     # load sst2 validation dataset and eval tool
     sst2 = load_dataset("glue", "sst2")["validation"]
     sst2_metrics = load_metric("glue", "sst2")
 
     # load pipeline
-    #"""
     text_classify = Pipeline.create(
         task="zero_shot_text_classification",
         batch_size=2,
         model_scheme="mnli",
         model_config={"hypothesis_template": "The sentiment of this text is {}",
                       "multi_class": True},
-        #model_path=args.onnx_filepath,
-        model_path="zoo:nlp/text_classification/bert-base/pytorch/huggingface/mnli/12layer_pruned90-none",
+        model_path=args.onnx_filepath,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
         labels=["positive", "negative"]
     )
-    #"""
-
-    #text_classify = Pipeline("zero-shot-classification", model="./downloads/4422c5be-f1bf-4659-a28f-06acb18c6308/pytorch")
-    #print(f"Engine info: {text_classify.engine}")
+    print(f"Engine info: {text_classify.engine}")
 
     label_map = {"positive": 1, "negative": 0}
 
     for idx, sample in _enumerate_progress(sst2, args.max_samples):
         pred = text_classify(
-            sequences=sample["sentence"],
-            candidate_labels=["positive", "negative"],
-            hypothesis_template="The sentiment of this text is {}",
-            #multi_label=True,
-            multi_class=True,
+            sample["sentence"],
         )
 
         sst2_metrics.add_batch(
             predictions=[label_map.get(pred.labels[0])],
-            #predictions=[label_map.get(pred["labels"][0])],
             references=[sample["label"]],
         )
 

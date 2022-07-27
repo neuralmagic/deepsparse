@@ -742,7 +742,7 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     meant for this task.
 
     This class upon construction returns an instance of a child Pipeline which
-    inherits from ZeroShotTextClassificationImplementation. Which type of Pipeline
+    inherits from ZeroShotTextClassificationPipelineBase. Which type of Pipeline
     is returned depends on the value of the passed model_scheme argument.
 
     example dynamic labels:
@@ -756,10 +756,11 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
 
     sequence_to_classify = "Who are you voting for in 2020?"
     candidate_labels = ["Europe", "public health", "politics"]
-    zero_shot_text_classifier(sequence_to_classify, candidate_labels)
-    >>> sequences=['Who are you voting for in 2020?']
-        labels=[['politics', 'Europe', 'public health']]
-        scores=[[0.7635, 0.1357, 0.1007]]
+    zero_shot_text_classifier(sequences=sequence_to_classify, labels=candidate_labels)
+    >>> ZeroShotTextClassificationOutput(
+        sequences='Who are you voting for in 2020?',
+        labels=['politics', 'public health', 'Europe'],
+        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
     ```
 
     example static labels:
@@ -768,15 +769,17 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         task="zero_shot_text_classification",
         batch_size=3,
         model_scheme="mnli",
+        model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
         labels=["politics", "Europe", "public health"]
     )
 
     sequence_to_classify = "Who are you voting for in 2020?"
-    zero_shot_text_classifier(sequence_to_classify)
-    >>> sequences=['Who are you voting for in 2020?']
-        labels=[['politics', 'Europe', 'public health']]
-        scores=[[0.7635, 0.1357, 0.1007]]
+    zero_shot_text_classifier(sequences=sequence_to_classify)
+    >>> ZeroShotTextClassificationOutput(
+        sequences='Who are you voting for in 2020?',
+        labels=['politics', 'public health', 'Europe'],
+        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
     ```
 
     Note that labels must either be provided during pipeline instantiation via
@@ -801,10 +804,6 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
