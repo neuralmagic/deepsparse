@@ -63,8 +63,8 @@ from pstats import Stats
 
 from tqdm.auto import tqdm
 
-#from deepsparse import Pipeline
-from transformers import pipeline as Pipeline # bookmark
+from deepsparse import Pipeline
+#from transformers import pipeline as Pipeline # bookmark
 
 
 from datasets import load_dataset, load_metric  # isort: skip
@@ -235,7 +235,7 @@ def sst2_zero_shot_eval(args):
     sst2_metrics = load_metric("glue", "sst2")
 
     # load pipeline
-    """
+    #"""
     text_classify = Pipeline.create(
         task="zero_shot_text_classification",
         batch_size=2,
@@ -243,15 +243,15 @@ def sst2_zero_shot_eval(args):
         model_config={"hypothesis_template": "The sentiment of this text is {}",
                       "multi_class": True},
         #model_path=args.onnx_filepath,
-        model_path="zoo:nlp/text_classification/bert-large/pytorch/huggingface/mnli/pruned80_quant-none-vnni",
+        model_path="zoo:nlp/text_classification/bert-base/pytorch/huggingface/mnli/12layer_pruned90-none",
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
         labels=["positive", "negative"]
     )
-    """
+    #"""
 
-    text_classify = Pipeline("zero-shot-classification", model="/home/kyle/downloads/3b681313-3ef1-4865-81a9-ace5ae7cc6e0/pytorch")
+    #text_classify = Pipeline("zero-shot-classification", model="./downloads/4422c5be-f1bf-4659-a28f-06acb18c6308/pytorch")
     #print(f"Engine info: {text_classify.engine}")
 
     label_map = {"positive": 1, "negative": 0}
@@ -261,13 +261,13 @@ def sst2_zero_shot_eval(args):
             sequences=sample["sentence"],
             candidate_labels=["positive", "negative"],
             hypothesis_template="The sentiment of this text is {}",
-            multi_label=True,
-            #multi_class=True,
+            #multi_label=True,
+            multi_class=True,
         )
 
         sst2_metrics.add_batch(
-            #predictions=[label_map.get(pred.labels[0])],
-            predictions=[label_map.get(pred["labels"][0])],
+            predictions=[label_map.get(pred.labels[0])],
+            #predictions=[label_map.get(pred["labels"][0])],
             references=[sample["label"]],
         )
 
