@@ -37,7 +37,7 @@ import cv2
 import torch
 from sparseml.onnx.utils import get_tensor_dim_shape, set_tensor_dim_shape
 from sparseml.utils import create_dirs
-from sparsezoo import Zoo
+from sparsezoo import Model
 
 
 __all__ = [
@@ -543,8 +543,8 @@ def download_model_if_stub(path: str) -> str:
         original path if it's not a SparseZoo Stub
     """
     if path.startswith("zoo"):
-        model = Zoo.load_model_from_stub(path)
-        downloaded_path = model.onnx_file.downloaded_path()
+        model = Model(path)
+        downloaded_path = model.onnx_model.path
         print(f"model with stub {path} downloaded to {downloaded_path}")
         return downloaded_path
     return path
@@ -559,11 +559,8 @@ def download_pytorch_model_if_stub(path: str) -> str:
     :return: filepath to the .pt model
     """
     if path.startswith("zoo"):
-        model = Zoo.load_model_from_stub(path)
-        downloaded_pt_path = None
-        for file in model.framework_files:
-            if file.file_type_framework and file.display_name == "model.pt":
-                downloaded_pt_path = file.downloaded_path()
+        model = Model(path)
+        downloaded_pt_path = model.deployment.deafult.get_file("model.pt")
         if downloaded_pt_path is None:
             raise ValueError(
                 f"model with stub {path} has no 'model.pt' associated for PyTorch"
