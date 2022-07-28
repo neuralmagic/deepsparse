@@ -129,7 +129,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [6, 7, 8, 9]
+    supported_minor = [6, 7, 8, 9, 10]
 
     if (
         sys.version_info[0] != supported_major
@@ -249,7 +249,7 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.6, <3.10",
+    python_requires=">=3.6, <3.11",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
