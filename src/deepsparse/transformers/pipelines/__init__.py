@@ -20,3 +20,4 @@ from .question_answering import *
 from .text_classification import *
 from .token_classification import *
 from .zero_shot_text_classification import *
+from .embedding_extraction import *

@@ -16,10 +16,12 @@ import contextlib
 import logging
 import os
 import tempfile
-from typing import List, Union
+from typing import List, Optional, Union
 
 import numpy
 import onnx
+
+from deepsparse.utils.extractor import Extractor
 
 
 try:
@@ -44,6 +46,7 @@ __all__ = [
     "generate_random_inputs",
     "override_onnx_batch_size",
     "override_onnx_input_shapes",
+    "truncate_onnx_model",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -264,3 +267,78 @@ def override_onnx_input_shapes(
     finally:
         os.unlink(shaped_model.name)
         shaped_model.close()
+
+
+def truncate_onnx_model(
+    onnx_filepath: str,
+    output_filepath: str,
+    final_node_names: List[str],
+    graph_output_names: List[str],
+    graph_output_shapes: Optional[List[List[int]]] = None,
+) -> None:
+    """
+    :param onnx_filepath: file path to onnx model
+    :param output_filepath: file path to save new onnx model
+    :param final_node_names: list of node names whose outputs will become the
+        outputs of the graph
+    :param graph_output_names: list of names to call the graph outputs. Names
+        correspond with the outputs specified in final_node_names
+    :param graph_output_types: list of numpy dtypes
+    :param graph_output_shapes: list of shapes for each output. If not provided,
+        defaults to [None] for each output and leads to slight performance loss
+    :return: None
+    """
+    if graph_output_shapes is None:
+        graph_output_shapes = [[None]] * len(final_node_names)
+
+    if len(final_node_names) != len(graph_output_names) != len(graph_output_shapes):
+        raise ValueError(
+            f"length of final_node_names {len(final_node_names)}, "
+            f"graph_output_names {len(graph_output_names)}, and "
+            f"graph_output_shapes {len(graph_output_shapes)} must all match"
+        )
+
+    if len(set(final_node_names)) != len(final_node_names):
+        raise ValueError("final_node_names must not contain duplicate names")
+
+    if len(set(graph_output_names)) != len(graph_output_names):
+        raise ValueError("graph_output_names must not contain duplicate names")
+
+    model = onnx.load(onnx_filepath)
+    final_nodes = [node for node in model.graph.node if node.name in final_node_names]
+
+    if len(final_nodes) != len(final_node_names):
+        raise ValueError("Could not find final node names in model graph")
+
+    for final_node, graph_output_name, graph_output_shape in zip(
+        final_nodes, graph_output_names, graph_output_shapes
+    ):
+        # write each node's output to new output
+        [final_node.output.pop() for _ in final_node.output]
+        final_node.output.append(graph_output_name)
+
+        # write graph output. TODO: use ort to find real shapes and types
+        output_value_info = onnx.helper.make_tensor_value_info(
+            graph_output_name, onnx.TensorProto.UNDEFINED, graph_output_shape
+        )
+        model.graph.output.append(output_value_info)
+
+    # collect graph inputs
+    graph_input_names = [input.name for input in model.graph.input]
+
+    # use extractor to create and write subgraph
+    original_num_nodes = len(model.graph.node)
+    extractor = Extractor(model)
+    extracted_model = extractor.extract_model(
+        input_names=graph_input_names, output_names=graph_output_names
+    )
+    extracted_num_nodes = len(extracted_model.graph.node)
+    _LOGGER.info(
+        f"Truncating model graph to {final_node_names}. "
+        f"Removed {original_num_nodes - extracted_num_nodes} nodes, "
+        f"{extracted_num_nodes} remaining"
+    )
+
+    # save and check model
+    onnx.save(extracted_model, output_filepath)
+    onnx.checker.check_model(output_filepath)
