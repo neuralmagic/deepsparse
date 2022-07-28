@@ -111,7 +111,7 @@ class SupportedTasks:
 
     @classmethod
     def check_register_task(cls, task: str):
-        if task.startswith("custom"):
+        if task == "custom":
             # custom task, register the CustomPipeline
             import deepsparse.pipelines.custom_pipeline  # noqa: F401
 

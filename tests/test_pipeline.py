@@ -24,7 +24,7 @@ from deepsparse.image_classification import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
-from deepsparse.pipelines import CustomTaskPipeline
+from deepsparse.pipelines.custom_pipeline import CustomTaskPipeline
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy_list
 
@@ -45,12 +45,8 @@ from torchvision import transforms  # isort:skip
     ],
 )
 def test_custom_pipeline_task_names(task_name):
-    in_schema = ImageClassificationInput
-    out_schema = ImageClassificationOutput
-    pipeline = Pipeline.create(
-        task_name, "", input_schema=in_schema, output_schema=out_schema
-    )
-    assert isinstance(pipeline, CustomTaskPipeline)
+    cls = Pipeline.get_task_constructor(task_name)
+    assert cls == CustomTaskPipeline
 
 
 def test_custom_pipeline_validation():

@@ -195,6 +195,30 @@ class Pipeline(ABC):
         )
 
     @staticmethod
+    def get_task_constructor(task: str) -> Type["Pipeline"]:
+        task = task.lower().replace("-", "_")
+
+        # support any task that has "custom" at the beginning via the "custom" task
+        if task.startswith("custom"):
+            task = "custom"
+
+        # extra step to register pipelines for a given task domain
+        # for cases where imports should only happen once a user specifies
+        # that domain is to be used. (ie deepsparse.transformers will auto
+        # install extra packages so should only import and register once a
+        # transformers task is specified)
+        SupportedTasks.check_register_task(task)
+
+        if task not in _REGISTERED_PIPELINES:
+            raise ValueError(
+                f"Unknown Pipeline task {task}. Pipeline tasks should be "
+                "must be declared with the Pipeline.register decorator. Currently "
+                f"registered pipelines: {list(_REGISTERED_PIPELINES.keys())}"
+            )
+
+        return _REGISTERED_PIPELINES[task]
+
+    @staticmethod
     def create(
         task: str,
         model_path: str = None,
@@ -231,23 +255,7 @@ class Pipeline(ABC):
             implementation
         :return: pipeline object initialized for the given task
         """
-        task = task.lower().replace("-", "_")
-
-        # extra step to register pipelines for a given task domain
-        # for cases where imports should only happen once a user specifies
-        # that domain is to be used. (ie deepsparse.transformers will auto
-        # install extra packages so should only import and register once a
-        # transformers task is specified)
-        SupportedTasks.check_register_task(task)
-
-        if task not in _REGISTERED_PIPELINES:
-            raise ValueError(
-                f"Unknown Pipeline task {task}. Pipeline tasks should be "
-                "must be declared with the Pipeline.register decorator. Currently "
-                f"registered pipelines: {list(_REGISTERED_PIPELINES.keys())}"
-            )
-
-        pipeline_constructor = _REGISTERED_PIPELINES[task]
+        pipeline_constructor = Pipeline.get_task_constructor(task)
 
         if (
             model_path is None
