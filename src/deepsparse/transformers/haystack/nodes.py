@@ -105,6 +105,9 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         self.scale_score = scale_score
         self.embed_meta_fields = embed_meta_fields
 
+        if self.batch_size != 1:
+            raise ValueError("DeepSparseEmbeddingRetriever only supports batch_size 1")
+
         _LOGGER.info(f"Init retriever using embeddings of model at {model_path}")
         if self.progress_bar:
             _LOGGER.warn(
@@ -212,6 +215,11 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
                 "progress_bar to False"
             )
 
+        if self.batch_size != 1:
+            raise ValueError(
+                "DeepSparseDensePassageRetriever only supports batch_size 1"
+            )
+
         if "model_path" in pipeline_kwargs:
             del pipeline_kwargs["model_path"]  # ignore model_path argument
         if "max_seq_len" in pipeline_kwargs:
@@ -281,7 +289,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         :param texts: list of query strings to embed
         :return: list of embeddings for each query
         """
-        return self.query_pipeline(texts).embeddings
+        return [self.query_pipeline([text]).embeddings[0] for text in texts]
 
     def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
         """
@@ -289,7 +297,10 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         :return: list of embeddings for each document
         """
         passage_inputs = [doc.content for doc in docs]
-        return self.passage_pipeline(passage_inputs).embeddings
+        return [
+            self.passage_pipeline([passage_input]).embeddings[0]
+            for passage_input in passage_inputs
+        ]
 
     def _get_predictions(*args, **kwargs):
         raise NotImplementedError()
@@ -328,6 +339,9 @@ class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
 
+        if self.batch_size != 1:
+            raise ValueError("DeepSparseEmbeddingEncoder only supports batch_size 1")
+
         if self.show_progress_bar:
             _LOGGER.warn(
                 "DeepSparseEmbeddingEncoder does not support progress bar, set "
@@ -347,8 +361,9 @@ class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param texts: list of strings to embed
         :return: list of embeddings for each string
         """
-        model_output = self.embedding_pipeline(texts)
-        embeddings = [numpy.array(embedding) for embedding in model_output.embeddings]
+        embeddings = [
+            numpy.array(self.embedding_pipeline([text]).embeddings[0]) for text in texts
+        ]
         return embeddings
 
     def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
