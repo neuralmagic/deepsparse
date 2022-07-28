@@ -54,13 +54,12 @@ standards across implementations.
 
 
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union, Iterable
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.pipelines import Joinable
 
 
 if TYPE_CHECKING:
@@ -120,9 +119,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     candidate_labels = ["Europe", "public health", "politics"]
     zero_shot_text_classifier(sequences=sequence_to_classify, labels=candidate_labels)
     >>> ZeroShotTextClassificationOutput(
-        sequences=['Who are you voting for in 2020?'],
-        labels=[['politics', 'public health', 'Europe']],
-        scores=[[0.9073666334152222, 0.046810582280159, 0.04582275450229645]])
+        sequences='Who are you voting for in 2020?',
+        labels=['politics', 'public health', 'Europe'],
+        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
     ```
 
     example static labels:
@@ -139,9 +138,9 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     sequence_to_classify = "Who are you voting for in 2020?"
     zero_shot_text_classifier(sequences=sequence_to_classify)
     >>> ZeroShotTextClassificationOutput(
-        sequences=['Who are you voting for in 2020?'],
-        labels=[['politics', 'public health', 'Europe']],
-        scores=[[0.9073666334152222, 0.046810582280159, 0.04582275450229645]])
+        sequences='Who are you voting for in 2020?',
+        labels=['politics', 'public health', 'Europe'],
+        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
     ```
 
     Note that labels must either be provided during pipeline instantiation via
@@ -156,6 +155,8 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         loaded from huggingface transformers using the `default_model_name` key
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: if static labels are given, then batch_size must be
+        num_sequences * num_labels. Otherwise, batch_size must be 1. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -209,7 +210,7 @@ class ZeroShotTextClassificationInputBase(BaseModel):
     )
 
 
-class ZeroShotTextClassificationOutput(BaseModel, Joinable):
+class ZeroShotTextClassificationOutput(BaseModel):
     """
     Schema for zero_shot_text_classification pipeline output. Values are in batch order
     """
@@ -224,30 +225,6 @@ class ZeroShotTextClassificationOutput(BaseModel, Joinable):
     scores: Union[List[List[float]], List[float]] = Field(
         description="The corresponding probability for each label in the batch"
     )
-
-    @staticmethod
-    def join(
-        outputs: Iterable["ZeroShotTextClassificationOutput"],
-    ) -> "TextClassificationOutput":
-        """
-        Takes in ab Iterable of `TextClassificationOutput` objects and combines
-        them into one object representing a bigger batch size
-        :return: A new `TextClassificationOutput` object that represents a bigger batch
-        """
-
-        sequences = list()
-        labels = list()
-        scores = list()
-        for output in outputs:
-            sequences.extend(output.sequences)
-            labels.extend(output.labels)
-            scores.extend(output.scores)
-
-        return ZeroShotTextClassificationOutput(
-            sequences=sequences,
-            labels=labels,
-            scores=scores,
-        )
 
 
 class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
@@ -280,12 +257,6 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
         with 2 streams to make use of parallel inference of labels
     """
 
-    def __init__(
-        self,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
     @property
     def output_schema(self) -> Type[ZeroShotTextClassificationOutput]:
         """
@@ -309,14 +280,15 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
             )
 
         if args:
-            if len(args) == 1 and isinstance(args[0], self.input_schema):
-                input = args[0]
+            if len(args) == 1:
+                # passed input_schema schema directly
+                if isinstance(args[0], self.input_schema):
+                    return args[0]
+                return self.input_schema(sequences=args[0])
             else:
-                input = self.input_schema(*args)
-        else:
-            input = self.input_schema(**kwargs)
+                return self.input_schema(sequences=args)
 
-        return input
+        return self.input_schema(**kwargs)
 
     @staticmethod
     def route_input_to_bucket(

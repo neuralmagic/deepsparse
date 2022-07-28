@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
+from deepsparse.cpu import cpu_details
 from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.tasks import SupportedTasks
 
@@ -127,7 +128,9 @@ class Pipeline(ABC):
         a Future object, call Future.result() on returned object to get the result.
         Can also accept an int number of workers, a ThreadPoolExecutor object is
         auto-initialized with the specified integer in that case; None represents
-        synchronous execution
+        synchronous execution - if running in dynamic batch mode a default
+        ThreadPoolExecutor with default workers equal to the number of available
+        cores / 2
     """
 
     def __init__(
@@ -336,7 +339,7 @@ class Pipeline(ABC):
         def _register_pipeline_tasks_decorator(pipeline_class: Pipeline):
             if not issubclass(pipeline_class, cls):
                 raise RuntimeError(
-                    f"Attempting to register pipeline pipeline_class. "
+                    f"Attempting to register pipeline {pipeline_class}. "
                     f"Registered pipelines must inherit from {cls}"
                 )
             for task_name in task_names:
@@ -566,6 +569,11 @@ class Pipeline(ABC):
 
         # parse inputs into input_schema schema if necessary
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
+        if isinstance(pipeline_inputs, tuple):
+            pipeline_inputs, split_kwargs = pipeline_inputs
+        else:
+            split_kwargs = {}
+
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
@@ -574,13 +582,21 @@ class Pipeline(ABC):
 
         # run pipeline
         if self.use_dynamic_batch():
-            return self._run_with_dynamic_batch(pipeline_inputs)
+            return self._run_with_dynamic_batch(pipeline_inputs, split_kwargs)
 
         pipeline_outputs = self._run_with_static_batch(pipeline_inputs)
         return pipeline_outputs
 
-    def _run_with_dynamic_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
-        pipeline_inputs = pipeline_inputs.split()
+    def _run_with_dynamic_batch(
+        self,
+        pipeline_inputs: BaseModel,
+        split_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> BaseModel:
+
+        if split_kwargs is None:
+            split_kwargs = {}
+
+        pipeline_inputs = pipeline_inputs.split(**split_kwargs)
         futures = [
             self.executor.submit(self._run_with_static_batch, _input)
             for _input in pipeline_inputs
@@ -879,6 +895,39 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
 
+def _initialize_executor_and_workers(
+    batch_size: Optional[int],
+    workers_or_executor: Optional[Union[int, ThreadPoolExecutor]],
+) -> Tuple[Optional[ThreadPoolExecutor], int]:
+    if isinstance(workers_or_executor, ThreadPoolExecutor):
+        num_async_workers = workers_or_executor._max_workers  # noqa
+        executor = workers_or_executor
+    elif isinstance(workers_or_executor, int):
+        num_async_workers = max(1, workers_or_executor)
+        executor = ThreadPoolExecutor(max_workers=num_async_workers)
+    elif batch_size is None and workers_or_executor is None:
+        # default num workers to num available cores / 2
+        num_cpu_cores_avaailable = cpu_details()[0]
+        num_async_workers = max(1, num_cpu_cores_avaailable // 2)
+        executor = ThreadPoolExecutor(max_workers=num_async_workers)
+    elif workers_or_executor is not None:
+        raise ValueError(
+            "Expected an int or ThreadPoolExecutor to run in async mode"
+            f" but got {workers_or_executor} of type {type(workers_or_executor)}"
+        )
+    else:
+        executor = None
+        num_async_workers = 1
+
+    if batch_size is None and executor is None:
+        raise ValueError(
+            "Must have an ThreadPoolExecutor for running in dynamic batch mode "
+            f"but got {None}"
+        )
+
+    return executor, num_async_workers
+
+
 def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
     """
     transformers question_answering pipeline
@@ -1112,29 +1161,261 @@ def yolo_pipeline(*args, **kwargs) -> "Pipeline":
     """
     return Pipeline.create("yolo", *args, **kwargs)
 
-def _initialize_executor_and_workers(
-    batch_size: Optional[int],
-    workers_or_executor: Optional[Union[int, ThreadPoolExecutor]],
-) -> Tuple[Optional[ThreadPoolExecutor], int]:
-    if isinstance(workers_or_executor, ThreadPoolExecutor):
-        num_async_workers = workers_or_executor._max_workers  # noqa
-        executor = workers_or_executor
-    elif isinstance(workers_or_executor, int):
-        num_async_workers = max(1, workers_or_executor)
-        executor = ThreadPoolExecutor(max_workers=num_async_workers)
-    elif workers_or_executor is not None:
-        raise ValueError(
-            "Expected an int or ThreadPoolExecutor to run in async mode"
-            f" but got {workers_or_executor} of type {type(workers_or_executor)}"
-        )
-    else:
-        executor = None
-        num_async_workers = 1
 
-    if batch_size is None and executor is None:
-        raise ValueError(
-            "Must have an ThreadPoolExecutor for running in dynamic batch mode "
-            f"but got {None}"
-        )
+def haystack_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Neural Magic pipeline for running Haystack DocumentSearchPipeline.
+    Supports selected Haystack Nodes as well as Haystack nodes integrated
+    with the Neural Magic DeepSparse Engine
 
-    return executor, num_async_workers
+    example embedding model instantiation:
+    ```python
+    haystack_pipeline = Pipeline.create(
+        task="information_retrieval_haystack",
+        model_path="masked_language_modeling_model_dir/",
+        config={
+            "document_store": "InMemoryDocumentStore",
+            "document_store_args": {
+                "similarity": "cosine",
+                "use_gpu": False,
+            },
+            "retriever": "DeepSparseEmbeddingRetriever",
+            "retriever_args": {
+                "extraction_strategy": "reduce_mean"
+            }
+        },
+    )
+    ```
+
+    example deepsparse biencoder instantiation
+    ```python
+    haystack_pipeline = Pipeline.create(
+        task="information_retrieval_haystack",
+        config={
+            "document_store": "InMemoryDocumentStore",
+            "document_store_args": {
+                "similarity": "cosine",
+                "use_gpu": False,
+            },
+            "retriever": "DeepSparseDensePassageRetriever",
+            "retriever_args": {
+                "query_model_path": "./query_model",
+                "passage_model_path": "./passage_model"
+            }
+        },
+    )
+    ```
+
+    writing documents:
+    ```python
+    haystack_pipeline.write_documents([
+        {
+            "title": "Claude Shannon",
+            "content": "Claude Elwood Shannon was an American mathematician, "
+            "electrical engineer, and cryptographer known as a father of "
+            "information theory. He was a 21-year-old master's degree student at "
+            "the Massachusetts Institute of Technology (MIT)."
+        },
+        {
+            "title": "Vincent van Gogh",
+            "content": "Van Gogh was born into an upper-middle-class family. "
+            "As a child he was serious, quiet and thoughtful. He began drawing "
+            "at an early age and as a young man worked as an art dealer."
+        },
+        {
+            "title": "Stevie Wonder",
+            "content": "Stevland Hardaway Morris, known professionally as "
+            "Stevie Wonder, is an American singer and musician, who is "
+            "credited as a pioneer and influence by musicians across a range "
+            "of genres."
+        }
+    ])
+    ```
+
+    example queries:
+    ```python
+    from deepsparse.transformers.haystack import print_pipeline_documents
+    pipeline_outputs = haystack_pipeline(
+        queries="who invented information theory",
+        params={"Retriever": {"top_k": 4}}
+    )
+    print_pipeline_documents(pipeline_outputs)
+
+    pipeline_outputs = haystack_pipeline(
+        queries=[
+            "famous artists",
+            "What is Stevie Wonder's real name?"
+        ],
+        params={"Retriever": {"top_k": 4}}
+    )
+    print_pipeline_documents(pipeline_outputs)
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param docs: list of documents to be written to document_store. Can also
+        be written after instantiation with write_documents method.
+        Default is None
+    :param config: dictionary or instance of HaystackPipelineConfig. Used to
+        specify Haystack node arguments
+    :param retriever_kwargs: keyword arguments to be passed to retriever. If
+        the retriever is a deepsparse retriever, then these arguments will also
+        be passed to the EmbeddingExtractionPipeline of the retriever
+    """
+    return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
+
+
+def embedding_extraction_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    embedding extraction pipeline for extracting intermediate layer embeddings
+    from transformer models
+
+    example instantiation:
+    ```python
+    embedding_extraction_pipeline = Pipeline.create(
+        task="embedding_extraction",
+        model_path="masked_language_modeling_model_dir/",
+    )
+    results = embedding_extraction_pipeline(
+        [
+            "the warriors have won the nba finals"
+            "the warriors are the greatest basketball team ever"
+        ]
+    )
+    emb_1, emb_2 = results.embeddings
+    # (expect emb_1 and emb_2 to have high cosine similiarity)
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param emb_extraction_layer: if an int, the transformer layer number from
+        which the embeddings will be extracted. If a string, the name of last
+        ONNX node in model to draw embeddings from. If None, leave the model
+        unchanged. Default is -1 (last transformer layer before prediction head)
+    :param model_size: size of transformer model (size of hidden layer per token
+        if the model is cut). Default is 768
+    :param extraction_strategy: method of pooling embedding values. Currently
+        supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
+        Default is 'per_token'
+    :param return_numpy: return embeddings a list of numpy arrays, list of lists
+        of floats otherwise. Default is True
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels. Default is None
+    """
+    return Pipeline.create("embedding_extraction", *args, **kwargs)
+
+
+def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Transformers zero shot text classification pipeline. This pipeline allows for
+    text classification using models which were trained on datasets not originally
+    meant for this task.
+
+    This class upon construction returns an instance of a child Pipeline which
+    inherits from ZeroShotTextClassificationPipelineBase. Which type of Pipeline
+    is returned depends on the value of the passed model_scheme argument.
+
+    example dynamic labels:
+    ```python
+    zero_shot_text_classifier = Pipeline.create(
+        task="zero_shot_text_classification",
+        model_scheme="mnli",
+        model_config={"hypothesis_template": "This text is related to {}"},
+        model_path="mnli_model_dir/",
+    )
+
+    sequence_to_classify = "Who are you voting for in 2020?"
+    candidate_labels = ["Europe", "public health", "politics"]
+    zero_shot_text_classifier(sequences=sequence_to_classify, labels=candidate_labels)
+    >>> ZeroShotTextClassificationOutput(
+        sequences='Who are you voting for in 2020?',
+        labels=['politics', 'public health', 'Europe'],
+        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
+    ```
+
+    example static labels:
+    ```python
+    zero_shot_text_classifier = Pipeline.create(
+        task="zero_shot_text_classification",
+        batch_size=3,
+        model_scheme="mnli",
+        model_config={"hypothesis_template": "This text is related to {}"},
+        model_path="mnli_model_dir/",
+        labels=["politics", "Europe", "public health"]
+    )
+
+    sequence_to_classify = "Who are you voting for in 2020?"
+    zero_shot_text_classifier(sequences=sequence_to_classify)
+    >>> ZeroShotTextClassificationOutput(
+        sequences='Who are you voting for in 2020?',
+        labels=['politics', 'public health', 'Europe'],
+        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
+    ```
+
+    Note that labels must either be provided during pipeline instantiation via
+    the constructor, at inference time, but not both.
+
+    Note that if a hypothesis_template is provided at inference time, then it
+    will override the value provided during model instantiation
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: if static labels are given, then batch_size must be
+        num_sequences * num_labels. Otherwise, batch_size must be 1. Default is 1
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param default_model_name: huggingface transformers model name to use to
+        load a tokenizer and model config when none are provided in the `model_path`.
+        Default is "bert-base-uncased"
+    :param model_scheme: training scheme used to train the model used for zero shot.
+        Default is "mnli"
+    :param model_config: config object specific to the model_scheme of this model
+        or a dict of config keyword arguments
+    :param labels: static list of labels to perform text classification with. Can
+        also be provided at inference time
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels
+    """
+    return Pipeline.create("zero_shot_text_classification", *args, **kwargs)

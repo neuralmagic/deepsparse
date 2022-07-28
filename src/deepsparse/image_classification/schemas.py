@@ -15,8 +15,7 @@
 """
 Input/Output Schemas for Image Classification.
 """
-from pathlib import Path
-from typing import Any, Dict, Generator, Iterable, List, Union
+from typing import Any, Generator, Iterable, List, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -55,23 +54,6 @@ class ImageClassificationInput(BaseModel, Splittable):
             )
         return cls(images=files)
 
-    @staticmethod
-    def create_test_inputs(
-        batch_size: int = 1,
-    ) -> Dict[str, Union[Union[List[str], str, List[Any]]]]:
-        """
-        Create and return a test input for this schema
-
-        :param batch_size: The batch_size of inputs to return
-        :return: A dict representing inputs for Image Classification pipeline
-        """
-
-        sample_image_path = Path(__file__).parents[0] / "sample_images" / "basilica.jpg"
-        sample_image_abs_path = str(sample_image_path.absolute())
-
-        images = [sample_image_abs_path for _ in range(batch_size)]
-        return {"images": images}
-
     def split(self) -> Generator["ImageClassificationInput", None, None]:
         """
         Split a current `ImageClassificationInput` object with a batch size b, into a
@@ -84,16 +66,20 @@ class ImageClassificationInput(BaseModel, Splittable):
 
         images = self.images
 
-        # case 1: do nothing if single input of batch_size 1
-        if isinstance(images, str):
+        is_batch_size_one = isinstance(images, str) or (
+            isinstance(images, numpy.ndarray) and images.ndim == 3
+        )
+        if is_batch_size_one:
+            # case 1: str, numpy.ndarray(3D)
             yield self
 
-        elif isinstance(images, list) and len(images) and isinstance(images[0], str):
-            # case 2: List[str] -> multiple images of size 1
+        elif isinstance(images, numpy.ndarray) and images.ndim != 4:
+            raise ValueError(f"Could not breakdown {self} into smaller batches")
+
+        else:
+            # case 2: List[str, Any], numpy.ndarray(4D) -> multiple images of size 1
             for image in images:
                 yield ImageClassificationInput(images=image)
-        else:
-            raise ValueError(f"Could not breakdown {self} into smaller batches")
 
 
 class ImageClassificationOutput(BaseModel, Joinable):
@@ -113,10 +99,10 @@ class ImageClassificationOutput(BaseModel, Joinable):
         outputs: Iterable["ImageClassificationOutput"],
     ) -> "ImageClassificationOutput":
         """
-        Takes in ab Iterable of `YOLOOutput` objects and combines
+        Takes in ab Iterable of `ImageClassificationOutput` objects and combines
         them into one object representing a bigger batch size
 
-        :return: A new `YOLOOutput` object that represents a bigger batch
+        :return: A new `ImageClassificationOutput` object that represents a bigger batch
         """
         if len(outputs) == 1:
             return outputs[0]

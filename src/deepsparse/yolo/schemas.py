@@ -18,9 +18,9 @@ Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from pathlib import Path
-from typing import Any, Dict, Generator, Iterable, List, Union
+from typing import Any, Generator, Iterable, List, Union
 
+import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
@@ -42,7 +42,7 @@ class YOLOInput(BaseModel, Splittable):
     """
 
     images: Union[str, List[str], List[Any]] = Field(
-        description="List of Images to process"
+        description="List of images to process"
     )
     iou_thres: float = Field(
         default=0.25,
@@ -70,23 +70,6 @@ class YOLOInput(BaseModel, Splittable):
     class Config:
         arbitrary_types_allowed = True
 
-    @staticmethod
-    def create_test_inputs(
-        batch_size: int = 1,
-    ) -> Dict[str, Union[Union[List[str], str, List[Any]]]]:
-        """
-        Create and return a test input for this schema
-
-        :param batch_size: The batch_size of inputs to return
-        :return: A dict representing inputs for Yolo pipeline
-        """
-
-        sample_image_path = Path(__file__).parents[0] / "sample_images" / "basilica.jpg"
-        sample_image_abs_path = str(sample_image_path.absolute())
-
-        images = [sample_image_abs_path for _ in range(batch_size)]
-        return {"images": images}
-
     def split(self) -> Generator["YOLOInput", None, None]:
         """
         Split a current `YOLOInput` object with a batch size b, into a
@@ -99,17 +82,20 @@ class YOLOInput(BaseModel, Splittable):
 
         images = self.images
 
-        # case 1: do nothing if single input of batch_size 1
-        if isinstance(images, str):
+        is_batch_size_1 = isinstance(images, str) or (
+            isinstance(images, numpy.ndarray) and images.ndim == 3
+        )
+        if is_batch_size_1:
+            # case 1: str, numpy.ndarray(3D)
             yield self
 
-        elif isinstance(images, list) and len(images) and isinstance(images[0], str):
-            # case 2: List[str, Any] -> multiple images of size 1
-            for image in images:
-                yield YOLOInput(images=image)
+        elif isinstance(images, numpy.ndarray) and images.ndim != 4:
+            raise ValueError(f"Could not breakdown {self} into smaller batches")
 
         else:
-            raise ValueError(f"Could not breakdown {self} into smaller batches")
+            # case 2: List[str, Any], numpy.ndarray(4D) -> multiple images of size 1
+            for image in images:
+                yield YOLOInput(images=image)
 
 
 class YOLOOutput(BaseModel, Joinable):

@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import concurrent.futures
+import itertools
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy
 
 import pytest
 from deepsparse import Pipeline
+
+from .data_helpers import create_test_inputs
 
 
 @pytest.fixture()
@@ -31,12 +34,20 @@ def executor():
     yield ThreadPoolExecutor()
 
 
-supported_tasks = [
+_SUPPORTED_TASKS = [
     "text_classification",
     "token_classification",
     "yolo",
     "image_classification",
 ]
+
+_BATCH_SIZES = [
+    1,
+    2,
+    10,
+]
+
+_TASKS_BATCH_SIZE_PAIRS = list(itertools.product(_SUPPORTED_TASKS, _BATCH_SIZES))
 
 
 def compare(expected, actual):
@@ -55,7 +66,7 @@ def compare(expected, actual):
     return True
 
 
-@pytest.mark.parametrize("task", supported_tasks, scope="class")
+@pytest.mark.parametrize("task, batch_size", _TASKS_BATCH_SIZE_PAIRS, scope="class")
 class TestDynamicBatchPipeline:
     @pytest.fixture()
     def dynamic_batch_pipeline(self, task, executor):
@@ -69,70 +80,84 @@ class TestDynamicBatchPipeline:
             executor=executor,
         )
 
-    def test_pipeline_creation(self, dynamic_batch_pipeline):
-        # Will fail if fixture request fails
-        pass
-
-    @pytest.mark.parametrize(
-        "batch_size",
-        [
-            1,
-            5,
-            10,
-        ],
-    )
-    def test_execution_with_multiple_batch_sizes(
-        self,
-        batch_size,
-        dynamic_batch_pipeline,
-    ):
-        inputs = dynamic_batch_pipeline.input_schema.create_test_inputs(
-            batch_size=batch_size,
-        )
-        outputs = dynamic_batch_pipeline(**inputs)
-        assert outputs
-        assert type(outputs) == dynamic_batch_pipeline.output_schema
-
-    @pytest.mark.parametrize("batch_size", [10])
-    def test_pipeline_call_is_blocking(
-        self,
-        dynamic_batch_pipeline,
-        batch_size,
-    ):
-        inputs = dynamic_batch_pipeline.input_schema.create_test_inputs(
-            batch_size=batch_size,
-        )
-        output = dynamic_batch_pipeline(**inputs)
-        assert not isinstance(output, concurrent.futures.Future), (
-            "Expected dynamic batch pipeline to be blocking but got"
-            "got a concurrent.futures.Future object instead"
-        )
-
-    @pytest.mark.parametrize(
-        "batch_size",
-        [
-            1,
-            2,
-            10,
-        ],
-    )
-    def test_order_retention_against_static_batch(
-        self, task, executor, batch_size, dynamic_batch_pipeline
-    ):
-        inputs = Pipeline.create(
-            task=task,
-        ).input_schema.create_test_inputs(batch_size)
-
-        # Run each sample through its own pipeline
-        static_batch_threaded_pipeline = Pipeline.create(
+    @pytest.fixture()
+    def static_batch_pipeline(self, task, executor, batch_size):
+        """
+        An auto-delete fixture to yield a Static Batch Pipeline
+        """
+        assert batch_size is not None
+        yield Pipeline.create(
             task=task,
             batch_size=batch_size,
             executor=executor,
         )
-        static_outputs = static_batch_threaded_pipeline(**inputs).result()
-        dynamic_outputs = dynamic_batch_pipeline(**inputs)
-        expected_dict = static_outputs.dict()
-        actual_dict = dynamic_outputs.dict()
+
+    @pytest.fixture()
+    def inputs(self, task, batch_size):
+        """
+        An auto-delete fixture to get task inputs
+        """
+        yield create_test_inputs(task=task, batch_size=batch_size)
+
+    @pytest.fixture()
+    def dynamic_batch_outputs(self, inputs, dynamic_batch_pipeline):
+        """
+        An auto-delete fixture to yield output from dynamic batch pipline
+        """
+        yield dynamic_batch_pipeline(**inputs)
+
+    @pytest.fixture()
+    def static_batch_outputs(self, inputs, static_batch_pipeline):
+        """
+        An auto-delete fixture to yield output from dynamic batch pipline
+        """
+        results = static_batch_pipeline(**inputs)
+        if isinstance(results, concurrent.futures.Future):
+            yield results.result()
+        else:
+            yield results
+
+    def test_pipeline_creation(self, batch_size, dynamic_batch_pipeline):
+        assert dynamic_batch_pipeline.use_dynamic_batch()
+
+    def test_execution_and_output(
+        self,
+        dynamic_batch_outputs,
+        dynamic_batch_pipeline,
+    ):
+        assert dynamic_batch_outputs
+        assert not isinstance(dynamic_batch_outputs, concurrent.futures.Future), (
+            "Expected dynamic batch pipeline to be blocking but got"
+            "got a concurrent.futures.Future object instead"
+        )
+        assert isinstance(dynamic_batch_outputs, dynamic_batch_pipeline.output_schema)
+
+    def test_order_retention_against_static_batch(
+        self,
+        static_batch_outputs,
+        dynamic_batch_outputs,
+    ):
+        expected_dict = static_batch_outputs.dict()
+        actual_dict = dynamic_batch_outputs.dict()
 
         # Check that order is maintained
-        assert static_outputs == dynamic_outputs or compare(expected_dict, actual_dict)
+        assert static_batch_outputs == dynamic_batch_outputs or compare(
+            expected_dict, actual_dict
+        )
+
+
+@pytest.mark.parametrize("task", _SUPPORTED_TASKS)
+def test_dynamic_pipeline_object_accepts_mutiple_batch_size(
+    task,
+    executor,
+):
+    pipeline = Pipeline.create(
+        task=task,
+        batch_size=None,
+        executor=executor,
+    )
+
+    for batch_size in _BATCH_SIZES:
+        inputs = create_test_inputs(task=task, batch_size=batch_size)
+        outputs = pipeline(**inputs)
+        assert outputs and isinstance(outputs, pipeline.output_schema)

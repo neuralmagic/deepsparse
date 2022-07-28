@@ -35,7 +35,7 @@ tasks
 """
 
 
-from typing import Dict, Generator, Iterable, List, Type, Union
+from typing import Generator, Iterable, List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -62,20 +62,6 @@ class TextClassificationInput(BaseModel, Splittable):
         description="A string or List of strings representing input to"
         "text_classification task"
     )
-
-    @staticmethod
-    def create_test_inputs(
-        batch_size: int = 1,
-    ) -> Dict[str, Union[List[List[str]], List[str], str]]:
-        """
-        Utility method to return a Dict representing sample inputs of given batch
-        size for current Schema
-        """
-        assert (
-            isinstance(batch_size, int) and batch_size > 0
-        ), "batch size must be greater than 1"
-        _inputs = ["I am Batman" for _ in range(batch_size)]
-        return {"sequences": _inputs}
 
     def split(self) -> Generator["TextClassificationInput", None, None]:
         """
@@ -319,31 +305,13 @@ class TextClassificationPipeline(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        current_seq_len = TextClassificationPipeline._get_current_sequence_length(
-            input_schema
+        tokenizer = pipelines[0].tokenizer
+        tokens = tokenizer(
+            input_schema.sequences,
+            add_special_tokens=True,
+            return_tensors="np",
+            padding=False,
+            truncation=False,
         )
-
-        for pipeline in pipelines:
-            if pipeline.sequence_length > current_seq_len:
-                return pipeline
-        return pipelines[-1]
-
-    @staticmethod
-    def _get_current_sequence_length(input_schema):
-        if isinstance(input_schema.inputs, str):
-            current_seq_len = len(input_schema.sequences.split())
-        elif isinstance(input_schema.inputs, list):
-            current_seq_len = float("-inf")
-            for _input in input_schema.sequences:
-                if isinstance(_input, str):
-                    current_seq_len = max(len(_input.split()), current_seq_len)
-                elif isinstance(_input, list):
-                    current_seq_len = max(
-                        *(len(__input.split()) for __input in _input), current_seq_len
-                    )
-        else:
-            raise ValueError(
-                "Expected a str or List[str] or List[List[str]] as input but got "
-                f"{type(input_schema.sequences)}"
-            )
-        return max(current_seq_len, 0)
+        input_seq_len = len(tokens)
+        return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
