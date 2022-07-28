@@ -22,7 +22,7 @@ from deepsparse.utils.onnx import model_to_path
 
 
 @Pipeline.register(task="custom")
-class FunctionPipeline(Pipeline):
+class CustomPipeline(Pipeline):
     """
     A utility class provided to make specifying custom pipelines easier.
     Instead of creating a subclass of Pipeline, you can instantiate this directly
@@ -36,7 +36,7 @@ class FunctionPipeline(Pipeline):
     def yolo_postprocess(engine_outputs: List[np.ndarray]) -> YOLOOutput:
         ...
 
-    yolo = FunctionPipeline(
+    yolo = CustomPipeline(
         model_path="...",
         input_schema=YOLOInput,
         output_schema=YOLOOutput,
@@ -72,6 +72,14 @@ class FunctionPipeline(Pipeline):
         *args,
         **kwargs,
     ):
+        if input_schema is None or not issubclass(input_schema, BaseModel):
+            raise ValueError(
+                f"input_schema must subclass BaseModel. Found {input_schema}"
+            )
+        if output_schema is None or not issubclass(output_schema, BaseModel):
+            raise ValueError(
+                f"output_schema must subclass BaseModel. Found {output_schema}"
+            )
         self._input_schema = input_schema
         self._output_schema = output_schema
         self._process_inputs_fn = process_inputs_fn

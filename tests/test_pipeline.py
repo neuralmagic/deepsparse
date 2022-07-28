@@ -24,7 +24,7 @@ from deepsparse.image_classification import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
-from deepsparse.pipelines import FunctionPipeline
+from deepsparse.pipelines import CustomPipeline
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy_list
 
@@ -32,6 +32,32 @@ from sparsezoo.utils import load_numpy_list
 # NOTE: these need to be placed after the other imports bc of a dependency chain issue
 from PIL import Image  # isort:skip
 from torchvision import transforms  # isort:skip
+
+
+def test_custom_pipeline_validation():
+    with pytest.raises(
+        ValueError, match="input_schema must subclass BaseModel. Found None"
+    ):
+        Pipeline.create(
+            "custom",
+            "",
+            input_schema=None,
+            output_schema=ImageClassificationOutput,
+            process_inputs_fn=None,
+            process_outputs_fn=None,
+        )
+
+    with pytest.raises(
+        ValueError, match="output_schema must subclass BaseModel. Found None"
+    ):
+        Pipeline.create(
+            "custom",
+            "",
+            input_schema=ImageClassificationInput,
+            output_schema=None,
+            process_inputs_fn=None,
+            process_outputs_fn=None,
+        )
 
 
 @pytest.mark.parametrize(
@@ -44,7 +70,7 @@ from torchvision import transforms  # isort:skip
         )
     ],
 )
-def test_function_pipeline_as_image_classifier(zoo_stub, image_size):
+def test_custom_pipeline_as_image_classifier(zoo_stub, image_size):
     non_rand_resize_scale = 256.0 / 224.0  # standard used
     standard_imagenet_transforms = transforms.Compose(
         [
@@ -86,7 +112,7 @@ def test_function_pipeline_as_image_classifier(zoo_stub, image_size):
         process_inputs_fn=preprocess,
         process_outputs_fn=postprocess,
     )
-    assert isinstance(pipeline, FunctionPipeline)
+    assert isinstance(pipeline, CustomPipeline)
 
     # load model & data
     zoo_model = Zoo.load_model_from_stub(zoo_stub)

@@ -15,4 +15,4 @@
 # flake8: noqa
 # isort: skip_file
 
-from .function_pipeline import FunctionPipeline
+from .custom_pipeline import CustomPipeline
