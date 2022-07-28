@@ -100,6 +100,7 @@ SUPPORTED_TASKS = [
     "text_classification",
     "token_classification",
     "ner",
+    "zero_shot_text_classification",
 ]
 
 

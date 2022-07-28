@@ -137,7 +137,7 @@ class VideoLoader:
         self._vid.release()
 
     def __len__(self):
-        return len(self._total_frames)
+        return self._total_frames
 
     @property
     def original_fps(self) -> float:

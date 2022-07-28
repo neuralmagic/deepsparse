@@ -23,4 +23,6 @@ https://www.neuralmagic.com/legal
 
 Package dependencies are defined in the Python setup.py file in this repository's top-level directory and have their own Apache-compatible licenses and terms.
 
+ONNX License https://github.com/onnx/onnx/blob/main/LICENSE
+
 Other external dependencies, if referenced in this repository's various subdirectories, are subject to their associated licenses and terms.

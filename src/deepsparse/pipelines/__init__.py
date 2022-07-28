@@ -1,3 +1,6 @@
+# flake8: noqa
+# isort: skip_file
+
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-# isort: skip_file
-
 from .custom_pipeline import CustomPipeline
+from .schema_helpers import *

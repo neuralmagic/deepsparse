@@ -11,13 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# flake8: noqa
-# isort: skip_file
-
-from .pipeline import *
-from .question_answering import *
-from .text_classification import *
-from .token_classification import *
-from .zero_shot_text_classification import *
-from .embedding_extraction import *
