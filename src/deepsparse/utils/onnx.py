@@ -145,7 +145,7 @@ def get_input_names(onnx_filepath: str) -> List[str]:
     :param onnx_filepath: File path to ONNX model
     :return: List of string names
     """
-    return [input.name for input in get_external_inputs(onnx_filepath)]
+    return [input_.name for input_ in get_external_inputs(onnx_filepath)]
 
 
 def get_output_names(onnx_filepath: str) -> List[str]:
