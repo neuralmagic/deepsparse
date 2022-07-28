@@ -257,12 +257,6 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
         with 2 streams to make use of parallel inference of labels
     """
 
-    def __init__(
-        self,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
     @property
     def output_schema(self) -> Type[ZeroShotTextClassificationOutput]:
         """
