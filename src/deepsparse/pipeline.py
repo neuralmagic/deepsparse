@@ -1080,6 +1080,179 @@ def yolo_pipeline(*args, **kwargs) -> "Pipeline":
     return Pipeline.create("yolo", *args, **kwargs)
 
 
+def haystack_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Neural Magic pipeline for running Haystack DocumentSearchPipeline.
+    Supports selected Haystack Nodes as well as Haystack nodes integrated
+    with the Neural Magic DeepSparse Engine
+
+    example embedding model instantiation:
+    ```python
+    haystack_pipeline = Pipeline.create(
+        task="information_retrieval_haystack",
+        model_path="masked_language_modeling_model_dir/",
+        config={
+            "document_store": "InMemoryDocumentStore",
+            "document_store_args": {
+                "similarity": "cosine",
+                "use_gpu": False,
+            },
+            "retriever": "DeepSparseEmbeddingRetriever",
+            "retriever_args": {
+                "extraction_strategy": "reduce_mean"
+            }
+        },
+    )
+    ```
+
+    example deepsparse biencoder instantiation
+    ```python
+    haystack_pipeline = Pipeline.create(
+        task="information_retrieval_haystack",
+        config={
+            "document_store": "InMemoryDocumentStore",
+            "document_store_args": {
+                "similarity": "cosine",
+                "use_gpu": False,
+            },
+            "retriever": "DeepSparseDensePassageRetriever",
+            "retriever_args": {
+                "query_model_path": "./query_model",
+                "passage_model_path": "./passage_model"
+            }
+        },
+    )
+    ```
+
+    writing documents:
+    ```python
+    haystack_pipeline.write_documents([
+        {
+            "title": "Claude Shannon",
+            "content": "Claude Elwood Shannon was an American mathematician, "
+            "electrical engineer, and cryptographer known as a father of "
+            "information theory. He was a 21-year-old master's degree student at "
+            "the Massachusetts Institute of Technology (MIT)."
+        },
+        {
+            "title": "Vincent van Gogh",
+            "content": "Van Gogh was born into an upper-middle-class family. "
+            "As a child he was serious, quiet and thoughtful. He began drawing "
+            "at an early age and as a young man worked as an art dealer."
+        },
+        {
+            "title": "Stevie Wonder",
+            "content": "Stevland Hardaway Morris, known professionally as "
+            "Stevie Wonder, is an American singer and musician, who is "
+            "credited as a pioneer and influence by musicians across a range "
+            "of genres."
+        }
+    ])
+    ```
+
+    example queries:
+    ```python
+    from deepsparse.transformers.haystack import print_pipeline_documents
+    pipeline_outputs = haystack_pipeline(
+        queries="who invented information theory",
+        params={"Retriever": {"top_k": 4}}
+    )
+    print_pipeline_documents(pipeline_outputs)
+
+    pipeline_outputs = haystack_pipeline(
+        queries=[
+            "famous artists",
+            "What is Stevie Wonder's real name?"
+        ],
+        params={"Retriever": {"top_k": 4}}
+    )
+    print_pipeline_documents(pipeline_outputs)
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param docs: list of documents to be written to document_store. Can also
+        be written after instantiation with write_documents method.
+        Default is None
+    :param config: dictionary or instance of HaystackPipelineConfig. Used to
+        specify Haystack node arguments
+    :param retriever_kwargs: keyword arguments to be passed to retriever. If
+        the retriever is a deepsparse retriever, then these arguments will also
+        be passed to the EmbeddingExtractionPipeline of the retriever
+    """
+    return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
+
+
+def embedding_extraction_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    embedding extraction pipeline for extracting intermediate layer embeddings
+    from transformer models
+
+    example instantiation:
+    ```python
+    embedding_extraction_pipeline = Pipeline.create(
+        task="embedding_extraction",
+        model_path="masked_language_modeling_model_dir/",
+    )
+    results = embedding_extraction_pipeline(
+        [
+            "the warriors have won the nba finals"
+            "the warriors are the greatest basketball team ever"
+        ]
+    )
+    emb_1, emb_2 = results.embeddings
+    # (expect emb_1 and emb_2 to have high cosine similiarity)
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param emb_extraction_layer: if an int, the transformer layer number from
+        which the embeddings will be extracted. If a string, the name of last
+        ONNX node in model to draw embeddings from. If None, leave the model
+        unchanged. Default is -1 (last transformer layer before prediction head)
+    :param model_size: size of transformer model (size of hidden layer per token
+        if the model is cut). Default is 768
+    :param extraction_strategy: method of pooling embedding values. Currently
+        supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
+        Default is 'per_token'
+    :param return_numpy: return embeddings a list of numpy arrays, list of lists
+        of floats otherwise. Default is True
+    :param context: context for engine. If None, then the engine will be initialized
+        with 2 streams to make use of parallel inference of labels. Default is None
+    """
+    return Pipeline.create("embedding_extraction", *args, **kwargs)
+
+
 def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     Transformers zero shot text classification pipeline. This pipeline allows for
@@ -1133,14 +1306,16 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     Note that if a hypothesis_template is provided at inference time, then it
     will override the value provided during model instantiation
 
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
     :param batch_size: if static labels are given, then batch_size must be
         num_sequences * num_labels. Otherwise, batch_size must be 1. Default is 1
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
