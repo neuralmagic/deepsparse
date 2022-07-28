@@ -24,7 +24,8 @@ from deepsparse.utils import (
     override_onnx_batch_size,
     override_onnx_input_shapes,
 )
-from sparsezoo.objects import File, Model
+# TODO: Import changed(.objects removed) to allow testing, check usages
+from sparsezoo import File, Model
 
 
 try:
