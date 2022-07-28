@@ -87,7 +87,7 @@ class YOLACTPipeline(Pipeline):
         if isinstance(class_names, str):
             if class_names.endswith(".json"):
                 class_names = json.load(open(class_names))
-            elif class_names == "coco":
+            elif class_names.lower() == "coco":
                 class_names = COCO_CLASSES
             else:
                 raise ValueError(f"Unknown class_names: {class_names}")
