@@ -196,6 +196,16 @@ class Pipeline(ABC):
 
     @staticmethod
     def get_task_constructor(task: str) -> Type["Pipeline"]:
+        """
+        This function retrieves the class previously registered via `Pipeline.register`
+        for `task`.
+
+        If `task` starts with "custom", then it is mapped to the "custom" task.
+
+        :param task: The task name to get the constructor for
+        :return: The class registered to `task`
+        :raises ValueError: if `task` was not registered via `Pipeline.register`.
+        """
         task = task.lower().replace("-", "_")
 
         # support any task that has "custom" at the beginning via the "custom" task
@@ -232,7 +242,8 @@ class Pipeline(ABC):
         **kwargs,
     ) -> "Pipeline":
         """
-        :param task: name of task to create a pipeline for
+        :param task: name of task to create a pipeline for. Use "custom" for
+            custom tasks. See `CustomTaskPipeline`.
         :param model_path: path on local system or SparseZoo stub to load the model
             from. Some tasks may have a default model path
         :param engine_type: inference engine to use. Currently supported values
