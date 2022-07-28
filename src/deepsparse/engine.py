@@ -29,17 +29,6 @@ from deepsparse.utils import model_to_path, override_onnx_input_shapes
 
 
 try:
-    from sparsezoo import Zoo
-    from sparsezoo.objects import File, Model
-
-    sparsezoo_import_error = None
-except Exception as sparsezoo_err:
-    Zoo = None
-    Model = object
-    File = object
-    sparsezoo_import_error = sparsezoo_err
-
-try:
     # flake8: noqa
     from deepsparse.cpu import cpu_architecture
     from deepsparse.lib import init_deepsparse_lib
@@ -177,7 +166,7 @@ class Engine(object):
 
     def __init__(
         self,
-        model: Union[str, Model, File],
+        model: Union[str, "Model", "File"],
         batch_size: int,
         num_cores: int = None,
         num_streams: int = None,
@@ -615,13 +604,13 @@ class MultiModelEngine(Engine):
         object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the engine
     :param context: See above. This object should be constructed with the desired number of
-        cores and passed into each instance of the MultiModelEngine.
+        cores and passed into each instance of the Multi"Model"Engine.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     """
 
     def __init__(
         self,
-        model: Union[str, Model, File],
+        model: Union[str, "Model", "File"],
         batch_size: int,
         context: Context,
         input_shapes: List[List[int]] = None,
@@ -659,7 +648,7 @@ class MultiModelEngine(Engine):
 
 
 def compile_model(
-    model: Union[str, Model, File],
+    model: Union[str, "Model", "File"],
     batch_size: int = 1,
     num_cores: int = None,
     num_streams: int = None,
@@ -697,7 +686,7 @@ def compile_model(
 
 
 def benchmark_model(
-    model: Union[str, Model, File],
+    model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
     batch_size: int = 1,
     num_cores: int = None,
@@ -764,7 +753,7 @@ def benchmark_model(
 
 
 def analyze_model(
-    model: Union[str, Model, File],
+    model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
     batch_size: int = 1,
     num_cores: int = None,
@@ -779,7 +768,7 @@ def analyze_model(
     """
     Function to analyze a model's performance in the DeepSparse Engine.
     The model must be defined in an ONNX graph and stored in a local file.
-    Gives defaults of batch_size == 1 and num_cores == None
+    Gives default batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
     Note 1: Analysis is currently only supported on a single socket.
