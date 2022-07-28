@@ -35,7 +35,7 @@ auto_pip_install(
         "farm-haystack[all]",
         version="==1.4.0",
         import_name="haystack",
-        requirements=[f"-r {_HAYSTACK_REQS_PATH}"],
+        requirements=["-r", _HAYSTACK_REQS_PATH],
     ),
 )
 

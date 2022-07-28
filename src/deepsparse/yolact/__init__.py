@@ -17,8 +17,8 @@ from deepsparse.auto_install import auto_pip_install, Dependency
 
 auto_pip_install(
     __qualname__,
-    Dependency("torchvision", version=">=0.3.0,<=0.10.1", necessary=True),
-    Dependency("opencv-python", necessary=True, import_name="cv2"),
+    Dependency("torchvision", version=">=0.3.0,<=0.10.1"),
+    Dependency("opencv-python", import_name="cv2"),
 )
 
 

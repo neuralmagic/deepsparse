@@ -11,17 +11,39 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["auto_pip_install", "Dependency", "CheckAttrNotFoundError"]
 
 
-def auto_pip_install(requirer: str, *dependencies: "Dependency"):
+def auto_pip_install(
+    requirer: str,
+    *dependencies: "Dependency",
+    optional_dependencies: Optional[List["Dependency"]] = None,
+):
+    """
+    Install `dependencies` if they aren't already installed.
+    :param requirer: The module that is calling the function - use `__qualname__`.
+    :param dependencies: list of required dependencies to install
+    :param optional_dependencies: dependencies that are optional to install
+    """
     for dependency in dependencies:
-        _maybe_pip_install(requirer, dependency)
+        _maybe_pip_install(requirer, dependency, error_on_fail=True)
+
+    if optional_dependencies is not None:
+        for dependency in optional_dependencies:
+            _maybe_pip_install(requirer, dependency, error_on_fail=False)
 
 
-def _maybe_pip_install(requirer: str, dependency: "Dependency"):
+def _maybe_pip_install(requirer: str, dependency: "Dependency", *, error_on_fail: bool):
+    """
+    Install `dependency` using pip. Skips install if environment variable
+    `NM_NO_AUTOINSTALL` exists.
+
+    :param requirer: Module that requires the install
+    :param dependency: the thing to install
+    :param error_on_fail: Whether to raise error or warn if install fails.
+    :return: None
+    """
     if _get_import_error(dependency) is None:
         _LOGGER.debug(f"{dependency} already installed")
         return
 
-    # skip if user has NM_NO_AUTOINSTALL set - warn either way
     if os.getenv("NM_NO_AUTOINSTALL", False):
         _LOGGER.warning(
             f"{dependency} not installed."
@@ -29,17 +51,16 @@ def _maybe_pip_install(requirer: str, dependency: "Dependency"):
         )
         return
 
-    if dependency.necessary:
+    if error_on_fail:
         _LOGGER.warning(
             f"{dependency} not installed - auto installing via pip."
             "Set environment variable NM_NO_AUTOINSTALL to disable"
         )
 
     # get packages to installed & any dependencies of this package
-    packages = " ".join([dependency.package_name] + dependency.requirements)
-
-    _LOGGER.debug(f"Running `pip install {packages}`")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", packages])
+    packages = dependency.packages
+    _LOGGER.debug(f"Running `pip install {' '.join(packages)}`")
+    subprocess.check_call([sys.executable, "-m", "pip", "install"] + packages)
 
     # get the error if we try to import again - if None then it is successful
     import_error = _get_import_error(dependency)
@@ -52,7 +73,7 @@ def _maybe_pip_install(requirer: str, dependency: "Dependency"):
         f"Unable to import or install {dependency} (a requirement of {requirer})."
         f"Failed with exception: {import_error}"
     )
-    if dependency.necessary:
+    if error_on_fail:
         _LOGGER.error(msg)
         raise ValueError(msg)
     else:
@@ -67,12 +88,12 @@ def _get_import_error(dep: "Dependency") -> Optional[ImportError]:
     :return: The error if there is any.
     """
     try:
-        mod = importlib.import_module(dep.import_name or dep.name)
+        mod = importlib.import_module(dep.import_name)
         if dep.check_attr is not None and not hasattr(mod, dep.check_attr):
             return CheckAttrNotFoundError(
                 f"Unabled to find `{dep.check_attr}` in {dep.import_name}."
                 "The wrong version may be installed. Please install using:"
-                f"`pip install {dep.package_name}`"
+                f"`pip install {' '.join(dep.packages)}`"
             )
         return None
     except ImportError as err:
@@ -80,29 +101,31 @@ def _get_import_error(dep: "Dependency") -> Optional[ImportError]:
 
 
 class Dependency:
+    """
+    Represents a dependency that would usually go in a requirements.txt or setup.py
+    file.
+
+    :param name: The name to use with `pip install`, can be a url to a .whl
+    :param version: Optional appended to `name`. E.g. `==1.2.3` or `>=1.0,<2.0`.
+    :param import_name: The name to use when importing
+    :param requirements: Optional packages or commands to pass to
+    """
+
     def __init__(
         self,
         name: str,
         *,
         version: Optional[str] = None,
-        necessary: bool = True,
         import_name: Optional[str] = None,
         requirements: Optional[List[str]] = None,
         check_attr: Optional[str] = None,
     ) -> None:
-        self.name = name
-        self.version = version
-        self.necessary = necessary
-        self.error_on_bad_install = necessary
-        self.import_name = import_name
+        self.package_name = name
+        if version is not None:
+            self.package_name += version
+        self.import_name = import_name or name
+        self.packages = [self.package_name] + (requirements or [])
         self.check_attr = check_attr
-        self.requirements = requirements
-
-    @property
-    def package_name(self) -> str:
-        if self.version is None:
-            return self.name
-        return f"{self.name}{self.version}"
 
     def __str__(self) -> str:
         return self.package_name

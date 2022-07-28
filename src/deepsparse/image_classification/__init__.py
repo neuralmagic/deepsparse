@@ -17,8 +17,10 @@ from deepsparse.auto_install import auto_pip_install, Dependency
 
 auto_pip_install(
     __qualname__,
-    Dependency("torchvision", version=">=0.3.0,<=0.10.1", necessary=True),
-    Dependency("click", version="<8.1", necessary=False),
+    Dependency("torchvision", version=">=0.3.0,<=0.10.1"),
+    optional_dependencies=[
+        Dependency("click", version="<8.1"),
+    ],
 )
 
 
