@@ -57,17 +57,18 @@ This creates `model.onnx` file, in the parent directory of your `model_path`
 Alternatively, you can skip the process of onnx model export by downloading all the required model data directly from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/).
 Example:
 ```python
-from sparsezoo import Zoo
+from sparsezoo import Model
 
 # you can lookup an appropriate model stub here: https://sparsezoo.neuralmagic.com/
 model_stub = "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none"
+model = Model(model_stub)
 
 # directly download the model data to your local directory
-model = Zoo.download_model_from_stub(model_stub)
+model_path = model.path
 
 # the onnx model file is there, ready for deployment
 import os 
-os.path.isfile(os.path.join(model.dir_path, "model.onnx"))
+os.path.isfile(model.onnx_model.path)
 >>>True
 ```
 

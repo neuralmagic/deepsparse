@@ -35,6 +35,7 @@ from .pipeline import *
 from .version import __version__, is_release
 
 try:
+    # TODO: SparseZoo.package is missing in the #179
     from sparsezoo.package import check_package_version as _check_package_version
 
     _check_package_version(
