@@ -64,7 +64,7 @@ Examples:
 4) deepsparse.instance_segmentation.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 import click
 

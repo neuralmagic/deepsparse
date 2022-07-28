@@ -49,7 +49,7 @@ class YOLACTPipeline(Pipeline):
 
     :param model_path: path on local system or SparseZoo stub to load the model from
     :param engine_type: inference engine to use. Currently, supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+        `deepsparse` and `onnxruntime`. Default is `deepsparse`
     :param batch_size: static batch size to use for inference. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
