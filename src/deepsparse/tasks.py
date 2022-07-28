@@ -74,6 +74,7 @@ class SupportedTasks:
             "question_answering",
             "text_classification",
             "token_classification",
+            "zero_shot_text_classification",
             "embedding_extraction",
         ],
     )(
@@ -82,6 +83,7 @@ class SupportedTasks:
             "text_classification", ["glue", "sentiment_analysis"]
         ),
         token_classification=AliasedTask("token_classification", ["ner"]),
+        zero_shot_text_classification=AliasedTask("zero_shot_text_classification", []),
         embedding_extraction=AliasedTask("embedding_extraction", []),
     )
 
