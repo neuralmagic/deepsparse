@@ -334,7 +334,7 @@ class Pipeline(ABC):
         def _register_pipeline_tasks_decorator(pipeline_class: Pipeline):
             if not issubclass(pipeline_class, cls):
                 raise RuntimeError(
-                    f"Attempting to register pipeline pipeline_class. "
+                    f"Attempting to register pipeline {pipeline_class}. "
                     f"Registered pipelines must inherit from {cls}"
                 )
             for task_name in task_names:
