@@ -230,19 +230,15 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 f" {len(args)} args and {len(kwargs)} kwargs"
             )
 
-        if args:
-            if isinstance(args, str):
-                return self.input_schema(inputs=[args[0]])
-
-            if len(args) == 1:
-                if isinstance(args[0], self.input_schema):
-                    return args[0]
-                else:
-                    return self.input_schema(inputs=args[0])
-            else:
-                return self.input_schema(inputs=args)
-        else:
+        if not args:
             return self.input_schema(**kwargs)
+        if isinstance(args, str):
+            return self.input_schema(inputs=[args[0]])
+        if len(args) != 1:
+            return self.input_schema(inputs=args)
+        if isinstance(args[0], self.input_schema):
+            return args[0]
+        return self.input_schema(inputs=args[0])
 
     def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
         """
