@@ -48,7 +48,7 @@ binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 _deps = [
     "numpy>=1.16.3",
-    "onnx>=1.5.0,<=1.10.1",
+    "onnx>=1.5.0,<=1.12.0",
     "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
@@ -73,7 +73,7 @@ _dev_deps = [
     "pytest>=6.0.0",
     "sphinx-multiversion==0.2.4",
     "sphinx-rtd-theme",
-    "onnxruntime>=1.4.0,<1.9.0",
+    "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
 ]
