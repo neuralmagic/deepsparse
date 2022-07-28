@@ -42,7 +42,7 @@ class YOLOInput(BaseModel, Splittable):
     """
 
     images: Union[str, List[str], List[Any]] = Field(
-        description="List of Images to process"
+        description="List of images to process"
     )
     iou_thres: float = Field(
         default=0.25,

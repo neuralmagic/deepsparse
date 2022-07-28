@@ -13,16 +13,15 @@
 # limitations under the License.
 
 """
-Usage: deepsparse.object_detection.annotate [OPTIONS]
+Usage: deepsparse.instance_segmentation.annotate [OPTIONS]
 
-  Annotation Script for YOLO with DeepSparse
+  Annotation Script for YOLACT with DeepSparse
 
 Options:
   --model_filepath, --model-filepath TEXT
                                   Path/SparseZoo stub to the model file to be
-                                  used for annotation  [default: zoo:cv/detect
-                                  ion/yolov5-s/pytorch/ultralytics/coco/pruned
-                                  -aggressive_96]
+                                  used for annotation  [default: zoo:cv/segmentation/
+                                  yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none]
   --source TEXT                   File path to an image or directory of image
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
@@ -32,7 +31,7 @@ Options:
                                   'torch'. Default is 'deepsparse'
   --image_shape, --image_shape INTEGER
                                   Image shape to use for inference, must be
-                                  two integers  [default: 640, 640]
+                                  two integers  [default: 550, 550]
   --num_cores, --num-cores INTEGER
                                   The number of physical cores to run the
                                   annotations with, defaults to using all
@@ -59,13 +58,13 @@ Options:
 #######
 Examples:
 
-1) deepsparse.object_detection.annotate --source PATH/TO/IMAGE.jpg
-2) deepsparse.object_detection.annotate --source PATH/TO/VIDEO.mp4
-3) deepsparse.object_detection.annotate --source 0
-4) deepsparse.object_detection.annotate --source PATH/TO/IMAGE_DIR
+1) deepsparse.instance_segmentation.annotate --source PATH/TO/IMAGE.jpg
+2) deepsparse.instance_segmentation.annotate --source PATH/TO/VIDEO.mp4
+3) deepsparse.instance_segmentation.annotate --source 0
+4) deepsparse.instance_segmentation.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 import click
 
@@ -76,12 +75,12 @@ from deepsparse.utils import (
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
-from deepsparse.yolo.utils import annotate_image
+from deepsparse.yolact.utils import annotate_image
 from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
 
-yolo_v5_default_stub = (
-    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96"
+yolact_v5_default_stub = (
+    "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
 )
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -96,7 +95,7 @@ _LOGGER = logging.getLogger(__name__)
     "--model_filepath",
     "--model-filepath",
     type=str,
-    default=yolo_v5_default_stub,
+    default=yolact_v5_default_stub,
     help="Path/SparseZoo stub to the model file to be used for annotation",
     show_default=True,
 )
@@ -119,7 +118,7 @@ _LOGGER = logging.getLogger(__name__)
     "--image-shape",
     type=int,
     nargs=2,
-    default=(640, 640),
+    default=(550, 550),
     help="Image shape to use for inference, must be two integers",
     show_default=True,
 )
@@ -173,7 +172,7 @@ def main(
     model_filepath: str,
     source: str,
     engine: str,
-    image_shape: tuple,
+    image_shape: Tuple[int, int],
     num_cores: Optional[int],
     save_dir: str,
     name: Optional[str],
@@ -181,7 +180,7 @@ def main(
     no_save: bool,
 ) -> None:
     """
-    Annotation Script for YOLO with DeepSparse
+    Annotation Script for YOLACT with DeepSparse
     """
     save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
@@ -198,8 +197,8 @@ def main(
     )
 
     is_webcam = source.isnumeric()
-    yolo_pipeline = Pipeline.create(
-        task="yolo",
+    yolact_pipeline = Pipeline.create(
+        task="yolact",
         model_path=model_filepath,
         class_names="coco",
         engine_type=engine,
@@ -210,13 +209,12 @@ def main(
 
         # annotate
         annotated_image = annotate(
-            pipeline=yolo_pipeline,
+            pipeline=yolact_pipeline,
             annotation_func=annotate_image,
             image=input_image,
             target_fps=target_fps,
             calc_fps=is_video,
             original_image=source_image,
-            model_input_size=image_shape,
         )
 
         if is_webcam:
