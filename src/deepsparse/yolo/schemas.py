@@ -14,13 +14,16 @@
 
 
 """
-Input/Output Schemas for Image Segmentation with YOLO
+Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from typing import Any, List, Union
+from typing import Any, Generator, Iterable, List, Union
 
+import numpy
 from pydantic import BaseModel, Field
+
+from deepsparse.pipelines import Joinable, Splittable
 
 
 __all__ = [
@@ -33,13 +36,13 @@ _YOLOImageOutput = namedtuple(
 )
 
 
-class YOLOInput(BaseModel):
+class YOLOInput(BaseModel, Splittable):
     """
-    Input model for image classification
+    Input model for object detection
     """
 
     images: Union[str, List[str], List[Any]] = Field(
-        description="List of Images to process"
+        description="List of images to process"
     )
     iou_thres: float = Field(
         default=0.25,
@@ -67,10 +70,37 @@ class YOLOInput(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def split(self) -> Generator["YOLOInput", None, None]:
+        """
+        Split a current `YOLOInput` object with a batch size b, into a
+        generator of b smaller objects with batch size 1, the returned
+        object can be iterated on.
 
-class YOLOOutput(BaseModel):
+        :return: A Generator of smaller `YOLOInput` objects each
+            representing an input of batch-size 1
+        """
+
+        images = self.images
+
+        is_batch_size_1 = isinstance(images, str) or (
+            isinstance(images, numpy.ndarray) and images.ndim == 3
+        )
+        if is_batch_size_1:
+            # case 1: str, numpy.ndarray(3D)
+            yield self
+
+        elif isinstance(images, numpy.ndarray) and images.ndim != 4:
+            raise ValueError(f"Could not breakdown {self} into smaller batches")
+
+        else:
+            # case 2: List[str, Any], numpy.ndarray(4D) -> multiple images of size 1
+            for image in images:
+                yield YOLOInput(images=image)
+
+
+class YOLOOutput(BaseModel, Joinable):
     """
-    Output model for image classification
+    Output model for object detection
     """
 
     predictions: List[List[List[float]]] = Field(description="List of predictions")
@@ -98,3 +128,29 @@ class YOLOOutput(BaseModel):
     def __iter__(self):
         for index in range(len(self.predictions)):
             yield self[index]
+
+    @staticmethod
+    def join(
+        outputs: Iterable["YOLOOutput"],
+    ) -> "YOLOOutput":
+        """
+        Takes in ab Iterable of `YOLOOutput` objects and combines
+        them into one object representing a bigger batch size
+
+        :return: A new `YOLOOutput` object that represents a bigger batch
+        """
+        predictions = list()
+        boxes = list()
+        scores = list()
+        labels = list()
+
+        for yolo_output in outputs:
+            for image_output in yolo_output:
+                predictions.append(image_output.predictions)
+                boxes.append(image_output.boxes)
+                scores.append(image_output.scores)
+                labels.append(image_output.labels)
+
+        return YOLOOutput(
+            predictions=predictions, boxes=boxes, scores=scores, labels=labels
+        )

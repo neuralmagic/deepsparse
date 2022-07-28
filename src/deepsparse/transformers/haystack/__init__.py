@@ -80,8 +80,8 @@ def _install_haystack_and_deps():
             "Unable to install and import haystack dependencies. Check "
             "that haystack is installed, if not, install via "
             "`pip install "
-            f"farm-haystack{_HAYSTACK_EXTRAS}=={_HAYSTACK_PREFERRED_VERSION}` "
-            f"--no-dependencies -r {_HAYSTACK_REQS_PATH}"
+            f"farm-haystack{_HAYSTACK_EXTRAS}=={_HAYSTACK_PREFERRED_VERSION} "
+            f"--no-dependencies -r {_HAYSTACK_REQS_PATH}`"
         )
 
 
@@ -118,8 +118,8 @@ def _check_haystack_install():
         _LOGGER.warning(
             "haystack may not be installed. it can be installed via "
             "`pip install "
-            f"farm-haystack{_HAYSTACK_EXTRAS}=={_HAYSTACK_PREFERRED_VERSION}` "
-            f"--no-dependencies -r {_HAYSTACK_REQS_PATH}"
+            f"farm-haystack{_HAYSTACK_EXTRAS}=={_HAYSTACK_PREFERRED_VERSION} "
+            f"--no-dependencies -r {_HAYSTACK_REQS_PATH}`"
         )
 
 
