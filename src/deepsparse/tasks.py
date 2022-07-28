@@ -111,9 +111,9 @@ class SupportedTasks:
 
     @classmethod
     def check_register_task(cls, task: str):
-        if task == "custom":
-            # custom task, register the FunctionPipeline
-            import deepsparse.pipelines  # noqa: F401
+        if task.startswith("custom"):
+            # custom task, register the CustomPipeline
+            import deepsparse.pipelines.custom_pipeline  # noqa: F401
 
         elif cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register

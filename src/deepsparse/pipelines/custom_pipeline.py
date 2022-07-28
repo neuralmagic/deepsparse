@@ -22,7 +22,7 @@ from deepsparse.utils.onnx import model_to_path
 
 
 @Pipeline.register(task="custom")
-class CustomPipeline(Pipeline):
+class CustomTaskPipeline(Pipeline):
     """
     A utility class provided to make specifying custom pipelines easier.
     Instead of creating a subclass of Pipeline, you can instantiate this directly

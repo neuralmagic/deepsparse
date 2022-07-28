@@ -24,7 +24,7 @@ from deepsparse.image_classification import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
-from deepsparse.pipelines import CustomPipeline
+from deepsparse.pipelines import CustomTaskPipeline
 from sparsezoo import Zoo
 from sparsezoo.utils import load_numpy_list
 
@@ -32,6 +32,25 @@ from sparsezoo.utils import load_numpy_list
 # NOTE: these need to be placed after the other imports bc of a dependency chain issue
 from PIL import Image  # isort:skip
 from torchvision import transforms  # isort:skip
+
+
+@pytest.mark.parametrize(
+    "task_name",
+    [
+        "custom",
+        "customtask",
+        "custom_task",
+        "custom-task",
+        "custom-image-classification",
+    ],
+)
+def test_custom_pipeline_task_names(task_name):
+    in_schema = ImageClassificationInput
+    out_schema = ImageClassificationOutput
+    pipeline = Pipeline.create(
+        task_name, "", input_schema=in_schema, output_schema=out_schema
+    )
+    assert isinstance(pipeline, CustomTaskPipeline)
 
 
 def test_custom_pipeline_validation():
@@ -112,7 +131,7 @@ def test_custom_pipeline_as_image_classifier(zoo_stub, image_size):
         process_inputs_fn=preprocess,
         process_outputs_fn=postprocess,
     )
-    assert isinstance(pipeline, CustomPipeline)
+    assert isinstance(pipeline, CustomTaskPipeline)
 
     # load model & data
     zoo_model = Zoo.load_model_from_stub(zoo_stub)

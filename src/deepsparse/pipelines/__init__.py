@@ -15,5 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .custom_pipeline import CustomPipeline
+from .custom_pipeline import CustomTaskPipeline
 from .schema_helpers import *
