@@ -106,7 +106,7 @@ def _check_transformers_install():
         import transformers as _transformers
 
         assert _transformers.NM_INTEGRATED
-    except Exception:
+    except (AssertionError, ImportError) as e:
         _LOGGER.warning(
             "the neuralmagic fork of transformers may not be installed. it can be "
             "installed via "
