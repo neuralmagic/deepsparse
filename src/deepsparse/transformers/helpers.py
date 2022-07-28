@@ -103,8 +103,8 @@ def get_onnx_path_and_configs(
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
         onnx_path = zoo_model.onnx_model.path
-        config_path = zoo_model.deployment.get_file(_MODEL_DIR_CONFIG_NAME).path
-        tokenizer_path = zoo_model.deployment.get_file(_MODEL_DIR_TOKENIZER_NAME).path
+        config_path = zoo_model.training.get_file(_MODEL_DIR_CONFIG_NAME).path
+        tokenizer_path = zoo_model.training.get_file(_MODEL_DIR_TOKENIZER_NAME).path
 
     else:
         raise_value_error = True
