@@ -405,20 +405,16 @@ class TokenClassificationPipeline(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        if isinstance(input_schema.inputs, str):
-            current_seq_len = len(input_schema.inputs.split())
-        elif isinstance(input_schema.inputs, list):
-            current_seq_len = max(len(_input.split()) for _input in input_schema.inputs)
-        else:
-            raise ValueError(
-                "Expected a str or List[str] as input but got "
-                f"{type(input_schema.inputs)}"
-            )
-
-        for pipeline in pipelines:
-            if pipeline.sequence_length > current_seq_len:
-                return pipeline
-        return pipelines[-1]
+        tokenizer = pipelines[0].tokenizer
+        tokens = tokenizer(
+            input_schema.inputs,
+            add_special_tokens=True,
+            return_tensors="np",
+            padding=False,
+            truncation=False,
+        )
+        input_seq_len = len(tokens)
+        return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     # utilities below adapted from transformers
 
