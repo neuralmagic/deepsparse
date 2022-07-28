@@ -95,8 +95,11 @@ class SupportedTasks:
     yolo = namedtuple("yolo", ["yolo"])(
         yolo=AliasedTask("yolo", ["yolo"]),
     )
+    yolact = namedtuple("yolact", ["yolact"])(
+        yolact=AliasedTask("yolact", ["yolact"]),
+    )
 
-    all_task_categories = [nlp, image_classification, yolo]
+    all_task_categories = [nlp, image_classification, yolo, yolact]
 
     @classmethod
     def check_register_task(cls, task: str):
@@ -108,6 +111,10 @@ class SupportedTasks:
             # trigger image classification pipelines to
             # register with Pipeline.register
             import deepsparse.image_classification.pipelines  # noqa: F401
+
+        elif cls.is_yolact(task):
+            # trigger yolo pipelines to register with Pipeline.register
+            import deepsparse.yolact.pipelines  # noqa: F401
 
         elif cls.is_yolo(task):
             # trigger yolo pipelines to register with Pipeline.register
@@ -150,6 +157,15 @@ class SupportedTasks:
         :return: True if it is an segmentation task using YOLO, False otherwise
         """
         return cls.yolo.yolo.matches(task)
+
+    @classmethod
+    def is_yolact(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is an image
+            segmentation task using YOLO
+        :return: True if it is an segmentation task using YOLO, False otherwise
+        """
+        return cls.yolact.yolact.matches(task)
 
     @classmethod
     def task_names(cls):
