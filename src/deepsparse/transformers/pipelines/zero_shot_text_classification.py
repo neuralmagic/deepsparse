@@ -54,11 +54,12 @@ standards across implementations.
 
 
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union, Iterable
 
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
+from deepsparse.pipelines import Joinable
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -210,7 +211,7 @@ class ZeroShotTextClassificationInputBase(BaseModel):
     )
 
 
-class ZeroShotTextClassificationOutput(BaseModel):
+class ZeroShotTextClassificationOutput(BaseModel, Joinable):
     """
     Schema for zero_shot_text_classification pipeline output. Values are in batch order
     """
@@ -225,6 +226,30 @@ class ZeroShotTextClassificationOutput(BaseModel):
     scores: Union[List[List[float]], List[float]] = Field(
         description="The corresponding probability for each label in the batch"
     )
+
+    @staticmethod
+    def join(
+        outputs: Iterable["ZeroShotTextClassificationOutput"],
+    ) -> "TextClassificationOutput":
+        """
+        Takes in ab Iterable of `TextClassificationOutput` objects and combines
+        them into one object representing a bigger batch size
+        :return: A new `TextClassificationOutput` object that represents a bigger batch
+        """
+
+        sequences = list()
+        labels = list()
+        scores = list()
+        for output in outputs:
+            sequences.extend(output.sequences)
+            labels.extend(output.labels)
+            scores.extend(output.scores)
+
+        return ZeroShotTextClassificationOutput(
+            sequences=sequences,
+            labels=labels,
+            scores=scores,
+        )
 
 
 class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
@@ -313,17 +338,6 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
             if pipeline.sequence_length > current_seq_len:
                 return pipeline
         return pipelines[-1]
-
-    def parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
-        """
-        If given a string of comma separated labels, parses values into a list
-
-        :param labels: A string of comma separated labels or a list of labels
-        :return: a list of labels, parsed if originally in string form
-        """
-        if isinstance(labels, str):
-            labels = [label.strip() for label in labels.split(",") if label.strip()]
-        return labels
 
     def parse_config(
         self, model_scheme_config: Optional[Union["MnliTextClassificationConfig", Dict]]

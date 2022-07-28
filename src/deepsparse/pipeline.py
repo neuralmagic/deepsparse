@@ -592,7 +592,6 @@ class Pipeline(ABC):
         pipeline_inputs: BaseModel,
         split_kwargs: Optional[Dict[str, Any]] = None,
     ) -> BaseModel:
-
         if split_kwargs is None:
             split_kwargs = {}
 
@@ -601,12 +600,14 @@ class Pipeline(ABC):
             self.executor.submit(self._run_with_static_batch, _input)
             for _input in pipeline_inputs
         ]
+        #outputs = [self._run_with_static_batch(_input) for _input in pipeline_inputs]
         # wait for all inferences to complete before joining outputs
         concurrent.futures.wait(futures)
         outputs = [future.result() for future in futures]
         return self.output_schema.join(outputs)
 
     def _run_with_static_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
+        print("_run_with_static_batch")
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
@@ -812,88 +813,6 @@ class Bucketable(ABC):
         :return: The correct Pipeline object (or Bucket) to route input to
         """
         pass
-
-def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
-    """
-    Transformers zero shot text classification pipeline. This pipeline allows for
-    text classification using models which were trained on datasets not originally
-    meant for this task.
-
-    This class upon construction returns an instance of a child Pipeline which
-    inherits from ZeroShotTextClassificationImplementation. Which type of Pipeline
-    is returned depends on the value of the passed model_scheme argument.
-
-    example dynamic labels:
-    ```python
-    zero_shot_text_classifier = Pipeline.create(
-        task="zero_shot_text_classification",
-        model_scheme="mnli",
-        model_config={"hypothesis_template": "This text is related to {}"},
-        model_path="mnli_model_dir/",
-    )
-
-    sequence_to_classify = "Who are you voting for in 2020?"
-    candidate_labels = ["Europe", "public health", "politics"]
-    zero_shot_text_classifier(sequence_to_classify, candidate_labels)
-    >>> sequences=['Who are you voting for in 2020?']
-        labels=[['politics', 'Europe', 'public health']]
-        scores=[[0.7635, 0.1357, 0.1007]]
-    ```
-
-    example static labels:
-    ```python
-    zero_shot_text_classifier = Pipeline.create(
-        task="zero_shot_text_classification",
-        batch_size=3,
-        model_scheme="mnli",
-        model_path="mnli_model_dir/",
-        labels=["politics", "Europe", "public health"]
-    )
-
-    sequence_to_classify = "Who are you voting for in 2020?"
-    zero_shot_text_classifier(sequence_to_classify)
-    >>> sequences=['Who are you voting for in 2020?']
-        labels=[['politics', 'Europe', 'public health']]
-        scores=[[0.7635, 0.1357, 0.1007]]
-    ```
-
-    Note that labels must either be provided during pipeline instantiation via
-    the constructor, at inference time, but not both.
-
-    Note that if a hypothesis_template is provided at inference time, then it
-    will override the value provided during model instantiation
-
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param default_model_name: huggingface transformers model name to use to
-        load a tokenizer and model config when none are provided in the `model_path`.
-        Default is "bert-base-uncased"
-    :param model_scheme: training scheme used to train the model used for zero shot.
-        Default is "mnli"
-    :param model_config: config object specific to the model_scheme of this model
-        or a dict of config keyword arguments
-    :param labels: static list of labels to perform text classification with. Can
-        also be provided at inference time
-    :param context: context for engine. If None, then the engine will be initialized
-        with 2 streams to make use of parallel inference of labels
-    """
-    return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
 
 def _initialize_executor_and_workers(
     batch_size: Optional[int],
