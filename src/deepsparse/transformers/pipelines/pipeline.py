@@ -143,8 +143,7 @@ class TransformersPipeline(Pipeline, Bucketable):
     @staticmethod
     def should_bucket(*args, **kwargs) -> bool:
         """
-        :returns: True if kwargs contain sequence_length and it's a list else
-            False
+        :returns: True if kwargs contain sequence_length as a list; otherwise False
         """
         sequence_length = kwargs.get("sequence_length", 128)
         return isinstance(sequence_length, list)
@@ -171,17 +170,30 @@ class TransformersPipeline(Pipeline, Bucketable):
         return pipelines
 
     @staticmethod
-    def buckets_are_sorted_by_sequence_length(buckets: List["TransformersPipeline"]):
+    def select_bucket_by_seq_len(
+        input_seq_len: int, buckets: List["TransformersPipeline"]
+    ) -> "TransformersPipeline":
         """
+        :param input_seq_len: sequence length to select a bucket for
         :param buckets: A List of Pipeline objects representing different buckets
-        :return: True if buckets sorted by sequence length else False
+        :return: pipeline with the minimal sequence length to fit the input sequence
+            length. If no pipeline fits the input, the pipeline with the largest
+            sequence length is returned
         """
-        for idx in range(len(buckets) - 1):
-            curr_seq_len = buckets[idx].sequence_length
-            next_seq_len = buckets[idx + 1].sequence_length
-            if curr_seq_len > next_seq_len:
-                return False
-        return True
+        # select pipeline with the minimal sequence length to fit the input
+        selected_pipeline = buckets[0]
+        for pipeline in buckets:
+            seq_len = pipeline.sequence_length
+            if input_seq_len <= seq_len < selected_pipeline.sequence_length:
+                selected_pipeline = pipeline
+
+        # if no pipeline fits the input, select the pipeline with maximal length
+        if input_seq_len > selected_pipeline.sequence_length:
+            selected_pipeline = max(
+                buckets, key=lambda pipeline: pipeline.sequence_length
+            )
+
+        return selected_pipeline
 
 
 def pipeline(

@@ -510,16 +510,8 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             truncation=False,
         )
 
-        current_seq_len = len(tokens)
-        if not TransformersPipeline.buckets_are_sorted_by_sequence_length(
-            buckets=pipelines
-        ):
-            pipelines.sort(key=lambda pipe: pipe.sequence_length)
-
-        for pipeline in pipelines:
-            if pipeline.sequence_length > current_seq_len:
-                return pipeline
-        return pipelines[-1]
+        input_seq_len = len(tokens)
+        return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     def _tokenize(self, example: SquadExample, *args):
         # The logic here closely matches the tokenization step performed
