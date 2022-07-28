@@ -170,6 +170,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         self._extraction_strategy = extraction_strategy
         self._return_numpy = return_numpy
 
+        if kwargs.get("batch_size", None) != 1:
+            raise ValueError("EmbeddingExtractionPipeline only supports batch size 1")
+
         if self._extraction_strategy not in ExtractionStrategy.to_list():
             raise ValueError(
                 f"Unsupported extraction_strategy {self._extraction_strategy}"
@@ -272,6 +275,21 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             "cls_masks": cls_masks,
         }
 
+    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        """
+        :param engine_inputs: list of numpy inputs to Pipeline engine forward
+            pass
+        :return: result of forward pass to Pipeline engine
+        """
+        engine_inputs_numpy = numpy.array(engine_inputs)
+        engine_outputs = []
+        for input_i in range(engine_inputs_numpy.shape[1]):
+            engine_output = self.engine(
+                list(engine_inputs_numpy[:, input_i : (input_i + 1), :])
+            )
+            engine_outputs.append(engine_output[0][0])
+        return engine_outputs
+
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
@@ -288,9 +306,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        if isinstance(engine_outputs, list):
-            engine_outputs = engine_outputs[0]
-
         embeddings = []
         assert len(engine_outputs) == len(pad_masks) == len(cls_masks)
         for engine_output, pad_mask, cls_mask in zip(
