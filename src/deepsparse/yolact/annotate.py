@@ -172,7 +172,7 @@ def main(
     model_filepath: str,
     source: str,
     engine: str,
-    image_shape: tuple,
+    image_shape: Tuple[int, int],
     num_cores: Optional[int],
     save_dir: str,
     name: Optional[str],
