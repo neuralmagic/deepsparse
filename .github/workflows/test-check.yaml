@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev]
+        run: pip3 install .[dev] opencv-python
       - name: Run base tests
         run: make test
   cli-smoke-tests:

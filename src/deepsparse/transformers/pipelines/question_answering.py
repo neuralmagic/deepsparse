@@ -501,12 +501,17 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        current_seq_len = len(input_schema.question.split())
+        tokenizer = pipelines[0].tokenizer
+        tokens = tokenizer(
+            " ".join((input_schema.context, input_schema.question)),
+            add_special_tokens=True,
+            return_tensors="np",
+            padding=False,
+            truncation=False,
+        )
 
-        for pipeline in pipelines:
-            if pipeline.sequence_length > current_seq_len:
-                return pipeline
-        return pipelines[-1]
+        input_seq_len = len(tokens)
+        return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     def _tokenize(self, example: SquadExample, *args):
         # The logic here closely matches the tokenization step performed
