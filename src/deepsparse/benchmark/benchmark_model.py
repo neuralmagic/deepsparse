@@ -100,6 +100,7 @@ from typing import Dict
 from deepsparse import Scheduler, __version__, compile_model
 from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
+from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,
@@ -287,6 +288,13 @@ def parse_scenario(scenario: str) -> str:
         return "multistream"
 
 
+def parse_num_cores(num_cores: int):
+    if num_cores == None or num_cores == 0:
+        return cpu_architecture().num_available_physical_cores
+    else:
+        return num_cores
+
+
 def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
     # If model.num_streams is set, and the scenario is either "multi_stream" or
     # "elastic", use the value of num_streams given to us by the model, otherwise
@@ -332,6 +340,8 @@ def benchmark_model(
 
     orig_model_path = model_path
     model_path = model_to_path(model_path)
+    num_cores = parse_num_cores(num_cores)
+    num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     # Compile the ONNX into a runnable model
     if engine == DEEPSPARSE_ENGINE:
@@ -343,7 +353,6 @@ def benchmark_model(
             scheduler=scheduler,
             input_shapes=input_shapes,
         )
-        num_streams = parse_num_streams(model.num_streams, model.num_cores, scenario)
     elif engine == ORT_ENGINE:
         model = ORTEngine(
             model=model_path,
@@ -351,7 +360,6 @@ def benchmark_model(
             num_cores=num_cores,
             input_shapes=input_shapes,
         )
-        num_streams = parse_num_streams(num_streams, model.num_cores, scenario)
     else:
         raise ValueError(f"Invalid engine choice '{engine}'")
     _LOGGER.info(model)
