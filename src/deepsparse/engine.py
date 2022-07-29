@@ -284,7 +284,7 @@ class Engine(object):
         :return: The max count of streams the current instance can handle
            concurrently.
         """
-        return self._num_streams
+        return self._eng_net.num_streams()
 
     @property
     def scheduler(self) -> Scheduler:
