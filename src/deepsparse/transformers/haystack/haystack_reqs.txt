@@ -162,7 +162,6 @@ pexpect==4.8.0
 pickleshare==0.7.5
 Pillow==9.2.0
 pinecone-client==2.0.11
-pkg_resources==0.0.0
 platformdirs==2.5.2
 pluggy==1.0.0
 pooch==1.6.0
