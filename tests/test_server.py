@@ -18,7 +18,6 @@ from typing import Dict, List
 import requests
 
 import pytest
-
 from tests.helpers import predownload_stub, run_command, wait_for_server
 
 

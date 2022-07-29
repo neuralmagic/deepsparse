@@ -17,7 +17,6 @@ from subprocess import Popen
 from typing import List
 
 import pytest
-
 from tests.helpers import delete_file
 
 

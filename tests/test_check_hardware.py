@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import pytest
-
 from tests.helpers import run_command
 
 

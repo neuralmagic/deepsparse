@@ -18,7 +18,6 @@ from typing import Dict, List
 
 import ndjson
 import pytest
-
 from tests.helpers import predownload_stub, run_command
 
 
