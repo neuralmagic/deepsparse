@@ -151,7 +151,7 @@ def parse_args():
         "-ncores",
         "--num_cores",
         type=int,
-        default=None,
+        default=cpu_architecture().num_available_physical_cores,
         help=(
             "The number of physical cores to run the analysis on, "
             "defaults to all physical cores available on the system"
@@ -288,13 +288,6 @@ def parse_scenario(scenario: str) -> str:
         return "multistream"
 
 
-def parse_num_cores(num_cores: int):
-    if num_cores == None or num_cores == 0:
-        return cpu_architecture().num_available_physical_cores
-    else:
-        return num_cores
-
-
 def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
     # If model.num_streams is set, and the scenario is either "multi_stream" or
     # "elastic", use the value of num_streams given to us by the model, otherwise
@@ -340,7 +333,6 @@ def benchmark_model(
 
     orig_model_path = model_path
     model_path = model_to_path(model_path)
-    num_cores = parse_num_cores(num_cores)
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     # Compile the ONNX into a runnable model
