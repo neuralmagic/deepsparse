@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Dict, List, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel
@@ -28,7 +28,14 @@ class CustomTaskPipeline(Pipeline):
     Instead of creating a subclass of Pipeline, you can instantiate this directly
     by passing in functions to call for pre and post processing.
 
-    For example, YOLO pipline could be specified as:
+    The easiest way to use this class is to just pass in the model path, which
+    lets use directly interact with engine inputs/outputs:
+    ```python
+    pipeline = CustomPipeline(model_path="...")
+    ```
+
+    Alternatively, you can pass the pre/post processing functions into
+    the constructor:
     ```python
     def yolo_preprocess(inputs: YOLOInput) -> List[np.ndarray]:
         ...
@@ -47,39 +54,55 @@ class CustomTaskPipeline(Pipeline):
 
     :param model_path: path on local system or SparseZoo stub to load the model from.
         Passed to :class:`Pipeline`.
-    :param input_schema: A pydantic schema that describes the input to
-        `process_inputs_fn`.
-    :param output_schema: A pydantic schema that describes the output from
-        `process_outputs_fn`.
-    :param process_inputs_fn: A callable (function, method, lambda, etc) that maps
-        an `InputSchema` object to a list of numpy arrays that can be directly passed
-        into the forward pass of the pipeline engine.
-    :param process_outputs_fn: A callable (function, method, lambda, etc) that maps
-        the list of numpy arrays that are the output of the engine forward pass
-        into an `OutputSchema` object.
+    :param input_schema: Optional pydantic schema that describes the input to
+        `process_inputs_fn`. If None, then raw data is passed to `process_inputs`.
+    :param output_schema: Optional pydantic schema that describes the output from
+        `process_outputs_fn`. If None, then raw engine outputs are returned from
+        the pipeline.
+    :param process_inputs_fn: Optional callable (function, method, lambda, etc) that
+        mapsan `InputSchema` object to a list of numpy arrays that can be directly
+        passed into the forward pass of the pipeline engine. If `None`, raw data is
+        passed to the engine.
+    :param process_outputs_fn: Optional callable (function, method, lambda, etc) that
+        maps the list of numpy arrays that are the output of the engine forward pass
+        into an `OutputSchema` object. If `None`, engine outputs are directly returned.
     """
 
     def __init__(
         self,
         model_path: str,
-        input_schema: Type[BaseModel],
-        output_schema: Type[BaseModel],
-        process_inputs_fn: Callable[
-            [BaseModel],
-            Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]],
-        ],
-        process_outputs_fn: Callable[[List[numpy.ndarray]], BaseModel],
+        input_schema: Optional[Type[BaseModel]] = None,
+        output_schema: Optional[Type[BaseModel]] = None,
+        process_inputs_fn: Optional[
+            Callable[
+                [BaseModel],
+                Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]],
+            ]
+        ] = None,
+        process_outputs_fn: Optional[Callable[[List[numpy.ndarray]], BaseModel]] = None,
         *args,
         **kwargs,
     ):
-        if input_schema is None or not issubclass(input_schema, BaseModel):
+        if input_schema is None:
+            input_schema = object
+        elif not issubclass(input_schema, BaseModel):
             raise ValueError(
                 f"input_schema must subclass BaseModel. Found {input_schema}"
             )
-        if output_schema is None or not issubclass(output_schema, BaseModel):
+
+        if output_schema is None:
+            output_schema = object
+        elif not issubclass(output_schema, BaseModel):
             raise ValueError(
                 f"output_schema must subclass BaseModel. Found {output_schema}"
             )
+
+        if process_inputs_fn is None:
+            process_inputs_fn = _passthrough
+
+        if process_outputs_fn is None:
+            process_outputs_fn = _passthrough
+
         self._input_schema = input_schema
         self._output_schema = output_schema
         self._process_inputs_fn = process_inputs_fn
@@ -124,3 +147,7 @@ class CustomTaskPipeline(Pipeline):
             on the `engine_outputs`.
         """
         return self._process_outputs_fn(engine_outputs, **kwargs)
+
+
+def _passthrough(x, **kwargs):
+    return x

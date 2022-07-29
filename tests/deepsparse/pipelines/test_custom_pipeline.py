@@ -49,30 +49,45 @@ def test_custom_pipeline_task_names(task_name):
     assert cls == CustomTaskPipeline
 
 
-def test_custom_pipeline_validation():
-    with pytest.raises(
-        ValueError, match="input_schema must subclass BaseModel. Found None"
-    ):
-        Pipeline.create(
-            "custom",
-            "",
-            input_schema=None,
-            output_schema=ImageClassificationOutput,
-            process_inputs_fn=None,
-            process_outputs_fn=None,
-        )
+def test_no_inputs():
+    pipeline = CustomTaskPipeline(
+        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+        "pruned85_quant-none-vnni"
+    )
+    assert pipeline.input_schema == object
+    assert pipeline.output_schema == object
+    assert pipeline.process_inputs(1.2345) == 1.2345
+    assert pipeline.process_engine_outputs([1.2345], asdf=True) == [1.2345]
 
-    with pytest.raises(
-        ValueError, match="output_schema must subclass BaseModel. Found None"
-    ):
-        Pipeline.create(
-            "custom",
-            "",
-            input_schema=ImageClassificationInput,
-            output_schema=None,
-            process_inputs_fn=None,
-            process_outputs_fn=None,
-        )
+
+def test_no_input_call():
+    pipeline = Pipeline.create(
+        task="custom",
+        model_path="zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+        "pruned85_quant-none-vnni",
+    )
+    assert isinstance(pipeline, CustomTaskPipeline)
+
+    # load model & data
+    zoo_model = Zoo.load_model_from_stub(pipeline.model_path)
+    data_originals_path = zoo_model.data_originals.downloaded_path()
+    sample = load_numpy_list(data_originals_path)[0]
+    assert isinstance(sample, OrderedDict)
+    assert len(sample) == 1
+    image_raw = list(sample.values())[0]
+    assert isinstance(image_raw, numpy.ndarray)
+
+    image_raw = image_raw[:224, :224].astype(numpy.float32) / 255
+    image_raw = numpy.expand_dims(numpy.transpose(image_raw, (2, 0, 1)), 0)
+    image_raw = numpy.ascontiguousarray(image_raw)
+    assert image_raw.shape == (1, 3, 224, 224)
+    assert image_raw.dtype == numpy.float32
+
+    # actually run the pipeline
+    output = pipeline([image_raw])
+    assert isinstance(output, list)
+    # NOTE: image classifier outputs 2 arrays per input (logits & softmax)
+    assert len(output) == 2
 
 
 @pytest.mark.parametrize(
