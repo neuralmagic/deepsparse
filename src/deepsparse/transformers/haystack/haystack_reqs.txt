@@ -70,7 +70,6 @@ espnet-tts-frontend==0.0.3
 exceptiongroup==1.0.0rc8
 executing==0.8.3
 faiss-cpu==1.7.2
-farm-haystack==1.6.0
 fast-bss-eval==0.1.3
 fastjsonschema==2.15.3
 filelock==3.7.1
@@ -163,7 +162,6 @@ pexpect==4.8.0
 pickleshare==0.7.5
 Pillow==9.2.0
 pinecone-client==2.0.11
-pkg_resources==0.0.0
 platformdirs==2.5.2
 pluggy==1.0.0
 pooch==1.6.0
