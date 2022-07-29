@@ -233,7 +233,7 @@ class Pipeline(ABC):
         task: str,
         model_path: str = None,
         engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: Optional[int] = None,
+        batch_size: int = 1,
         num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
@@ -281,10 +281,6 @@ class Pipeline(ABC):
                 "provide a model path for pipelines that do not have a default defined"
             )
 
-        # if batch size is not given, use default from pipeline_constructor
-        if batch_size is not None:
-            kwargs["batch_size"] = batch_size
-
         if issubclass(
             pipeline_constructor, Bucketable
         ) and pipeline_constructor.should_bucket(**kwargs):
@@ -308,6 +304,7 @@ class Pipeline(ABC):
         return pipeline_constructor(
             model_path=model_path,
             engine_type=engine_type,
+            batch_size=batch_size,
             num_cores=num_cores,
             scheduler=scheduler,
             input_shapes=input_shapes,
