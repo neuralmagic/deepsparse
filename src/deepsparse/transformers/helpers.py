@@ -69,7 +69,7 @@ def get_onnx_path_and_configs(
 
     config_path = None
     tokenizer_path = None
-    raise_value_error = False
+
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
@@ -103,23 +103,20 @@ def get_onnx_path_and_configs(
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
         onnx_path = zoo_model.onnx_model.path
-        config_path = zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
-        tokenizer_path = zoo_model.deployment.default.get_file(
-            _MODEL_DIR_TOKENIZER_NAME
-        ).path
-
-    else:
-        raise_value_error = True
-
-    if require_configs and (config_path is None or tokenizer_path is None):
+        config_path = _get_file_parent(
+            zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
+        )
+        tokenizer_path = _get_file_parent(
+            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
+        )
+    elif require_configs and (config_path is None or tokenizer_path is None):
         raise RuntimeError(
             f"Unable to find model and tokenizer config for model_path {model_path}. "
             f"model_path must be a directory containing model.onnx, config.json, and "
             f"tokenizer.json files. Found config and tokenizer paths: {config_path}, "
             f"{tokenizer_path}"
         )
-
-    if raise_value_error:
+    else:
         raise ValueError(
             f"model_path {model_path} is not a valid file, directory, or zoo stub"
         )
