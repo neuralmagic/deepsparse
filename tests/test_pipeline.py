@@ -45,7 +45,7 @@ from torchvision import transforms  # isort:skip
     ],
 )
 def test_custom_pipeline_task_names(task_name):
-    cls = Pipeline.get_task_constructor(task_name)
+    cls = Pipeline._get_task_constructor(task_name)
     assert cls == CustomTaskPipeline
 
 

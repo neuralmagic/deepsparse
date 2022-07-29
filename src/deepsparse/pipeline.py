@@ -195,7 +195,7 @@ class Pipeline(ABC):
         )
 
     @staticmethod
-    def get_task_constructor(task: str) -> Type["Pipeline"]:
+    def _get_task_constructor(task: str) -> Type["Pipeline"]:
         """
         This function retrieves the class previously registered via `Pipeline.register`
         for `task`.
@@ -266,7 +266,7 @@ class Pipeline(ABC):
             implementation
         :return: pipeline object initialized for the given task
         """
-        pipeline_constructor = Pipeline.get_task_constructor(task)
+        pipeline_constructor = Pipeline._get_task_constructor(task)
 
         if (
             model_path is None
