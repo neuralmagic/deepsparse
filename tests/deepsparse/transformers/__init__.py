@@ -1,6 +1,3 @@
-# flake8: noqa
-# isort: skip_file
-
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,4 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .schema_helpers import *
+# flake8: noqa
+# NOTE: including here to force auto install to happen
+from deepsparse import transformers as _transformers
+from deepsparse.transformers import haystack as _haystack
