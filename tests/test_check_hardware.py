@@ -14,7 +14,7 @@
 
 import pytest
 
-from .helpers import run_command
+from tests.helpers import run_command
 
 
 @pytest.mark.smoke
