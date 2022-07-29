@@ -18,7 +18,8 @@ from typing import Dict, List
 import requests
 
 import pytest
-from helpers import predownload_stub, run_command, wait_for_server
+
+from .helpers import predownload_stub, run_command, wait_for_server
 
 
 # TODO: Update to either use sparsezoo stubs or pre-download models on-the-fly to test

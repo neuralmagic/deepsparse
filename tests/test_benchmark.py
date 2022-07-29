@@ -15,7 +15,8 @@
 from typing import Dict, List
 
 import pytest
-from helpers import predownload_stub, run_command
+
+from .helpers import predownload_stub, run_command
 
 
 @pytest.mark.smoke

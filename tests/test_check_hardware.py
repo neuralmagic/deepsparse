@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import pytest
-from helpers import run_command
+
+from .helpers import run_command
 
 
 @pytest.mark.smoke
