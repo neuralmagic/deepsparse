@@ -604,7 +604,7 @@ class MultiModelEngine(Engine):
         object that defines the neural network
     :param batch_size: The batch size of the inputs to be used with the engine
     :param context: See above. This object should be constructed with the desired number of
-        cores and passed into each instance of the Multi"Model"Engine.
+        cores and passed into each instance of the MultiModelEngine.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     """
 
