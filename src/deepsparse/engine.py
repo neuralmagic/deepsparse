@@ -593,7 +593,7 @@ class Context(object):
 
     @property
     def num_streams(self):
-        return self._num_streams
+        return self._deepsparse_context.num_streams()
 
     @property
     def scheduler(self):
