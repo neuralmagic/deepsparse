@@ -25,7 +25,7 @@ from deepsparse.image_classification import (
 )
 from deepsparse.pipeline import Pipeline
 from deepsparse.pipelines.custom_pipeline import CustomTaskPipeline
-from sparsezoo import Zoo
+from sparsezoo import Model
 from sparsezoo.utils import load_numpy_list
 
 
@@ -69,8 +69,8 @@ def test_no_input_call():
     assert isinstance(pipeline, CustomTaskPipeline)
 
     # load model & data
-    zoo_model = Zoo.load_model_from_stub(pipeline.model_path)
-    data_originals_path = zoo_model.data_originals.downloaded_path()
+    zoo_model = Model(pipeline.model_path)
+    data_originals_path = zoo_model.sample_originals.path
     sample = load_numpy_list(data_originals_path)[0]
     assert isinstance(sample, OrderedDict)
     assert len(sample) == 1
@@ -145,8 +145,8 @@ def test_custom_pipeline_as_image_classifier(zoo_stub, image_size):
     assert isinstance(pipeline, CustomTaskPipeline)
 
     # load model & data
-    zoo_model = Zoo.load_model_from_stub(zoo_stub)
-    data_originals_path = zoo_model.data_originals.downloaded_path()
+    zoo_model = Model(zoo_stub)
+    data_originals_path = zoo_model.sample_originals.path
     sample = load_numpy_list(data_originals_path)[0]
     assert isinstance(sample, OrderedDict)
     assert len(sample) == 1
