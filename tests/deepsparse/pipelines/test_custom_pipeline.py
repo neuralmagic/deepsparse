@@ -23,13 +23,21 @@ from deepsparse.image_classification import (
 )
 from deepsparse.pipeline import Pipeline
 from deepsparse.pipelines.custom_pipeline import CustomTaskPipeline
-from sparsezoo import Zoo
-from sparsezoo.utils import load_numpy_list
+from deepsparse.utils.onnx import model_to_path
 
 
 # NOTE: these need to be placed after the other imports bc of a dependency chain issue
 from PIL import Image  # isort:skip
 from torchvision import transforms  # isort:skip
+
+
+@pytest.fixture(scope="module")
+def model_path():
+    stub = (
+        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml"
+        "/imagenet/pruned85_quant-none-vnni"
+    )
+    yield model_to_path(stub)
 
 
 @pytest.mark.parametrize(
@@ -47,39 +55,16 @@ def test_custom_pipeline_task_names(task_name):
     assert cls == CustomTaskPipeline
 
 
-def test_no_inputs():
-    pipeline = CustomTaskPipeline(
-        "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-        "pruned85_quant-none-vnni"
-    )
+def test_no_input_call(model_path):
+    pipeline = Pipeline.create(task="custom", model_path=model_path)
+    assert isinstance(pipeline, CustomTaskPipeline)
+
     assert pipeline.input_schema == object
     assert pipeline.output_schema == object
     assert pipeline.process_inputs(1.2345) == 1.2345
     assert pipeline.process_engine_outputs([1.2345], asdf=True) == [1.2345]
 
-
-def test_no_input_call():
-    pipeline = Pipeline.create(
-        task="custom",
-        model_path="zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-        "pruned85_quant-none-vnni",
-    )
-    assert isinstance(pipeline, CustomTaskPipeline)
-
-    # load model & data
-    zoo_model = Zoo.load_model_from_stub(pipeline.model_path)
-    data_originals_path = zoo_model.data_originals.downloaded_path()
-    sample = load_numpy_list(data_originals_path)[0]
-    assert isinstance(sample, dict)
-    assert len(sample) == 1
-    image_raw = list(sample.values())[0]
-    assert isinstance(image_raw, numpy.ndarray)
-
-    image_raw = image_raw[:224, :224].astype(numpy.float32) / 255
-    image_raw = numpy.expand_dims(numpy.transpose(image_raw, (2, 0, 1)), 0)
-    image_raw = numpy.ascontiguousarray(image_raw)
-    assert image_raw.shape == (1, 3, 224, 224)
-    assert image_raw.dtype == numpy.float32
+    image_raw = numpy.random.random(size=(1, 3, 224, 224)).astype(numpy.float32)
 
     # actually run the pipeline
     output = pipeline([image_raw])
@@ -88,17 +73,8 @@ def test_no_input_call():
     assert len(output) == 2
 
 
-@pytest.mark.parametrize(
-    "zoo_stub,image_size",
-    [
-        (
-            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-            "pruned85_quant-none-vnni",
-            224,
-        )
-    ],
-)
-def test_custom_pipeline_as_image_classifier(zoo_stub, image_size):
+def test_custom_pipeline_as_image_classifier(model_path):
+    image_size = 224
     non_rand_resize_scale = 256.0 / 224.0  # standard used
     standard_imagenet_transforms = transforms.Compose(
         [
@@ -134,7 +110,7 @@ def test_custom_pipeline_as_image_classifier(zoo_stub, image_size):
 
     pipeline = Pipeline.create(
         "custom",
-        zoo_stub,
+        model_path,
         input_schema=ImageClassificationInput,
         output_schema=ImageClassificationOutput,
         process_inputs_fn=preprocess,
@@ -143,13 +119,7 @@ def test_custom_pipeline_as_image_classifier(zoo_stub, image_size):
     assert isinstance(pipeline, CustomTaskPipeline)
 
     # load model & data
-    zoo_model = Zoo.load_model_from_stub(zoo_stub)
-    data_originals_path = zoo_model.data_originals.downloaded_path()
-    sample = load_numpy_list(data_originals_path)[0]
-    assert isinstance(sample, dict)
-    assert len(sample) == 1
-    image_raw = list(sample.values())[0]
-    assert isinstance(image_raw, numpy.ndarray)
+    image_raw = (numpy.random.random(size=(224, 224, 3)) * 255).astype(numpy.uint8)
 
     # actually run the pipeline
     input = ImageClassificationInput(images=[image_raw])
