@@ -119,7 +119,8 @@ def mnli_eval(args):
     mnli = load_dataset("glue", "mnli")
     mnli_matched = mnli["validation_matched"]
     mnli_mismatched = mnli["validation_mismatched"]
-    mnli_metrics = load_metric("glue", "mnli")
+    mnli_metrics_matched = load_metric("glue", "mnli")
+    mnli_metrics_mismatched = load_metric("glue", "mnli")
 
     # load pipeline
     text_classify = Pipeline.create(
@@ -138,7 +139,7 @@ def mnli_eval(args):
 
     for idx, sample in _enumerate_progress(mnli_matched, args.max_samples):
         pred = text_classify([[sample["premise"], sample["hypothesis"]]])
-        mnli_metrics.add_batch(
+        mnli_metrics_matched.add_batch(
             predictions=[label_map.get(pred.labels[0])],
             references=[sample["label"]],
         )
@@ -148,7 +149,7 @@ def mnli_eval(args):
 
     for idx, sample in _enumerate_progress(mnli_mismatched, args.max_samples):
         pred = text_classify([[sample["premise"], sample["hypothesis"]]])
-        mnli_metrics.add_batch(
+        mnli_metrics_mismatched.add_batch(
             predictions=[label_map.get(pred.labels[0])],
             references=[sample["label"]],
         )
@@ -156,7 +157,7 @@ def mnli_eval(args):
         if args.max_samples and idx >= args.max_samples:
             break
 
-    return mnli_metrics
+    return mnli_metrics_matched, mnli_metrics_mismatched
 
 
 def qqp_eval(args):
@@ -463,9 +464,17 @@ def _main(args):
             f"available datasets are {list(SUPPORTED_DATASETS.keys())}"
         )
 
-    metrics = SUPPORTED_DATASETS[dataset](args)
+    if dataset == "mnli":
+        mnli_metrics_matched, mnli_metrics_mismatched = mnli_eval(args)
+        mnli_metrics_matched = mnli_metrics_matched.compute()
+        mnli_metrics_mismatched = mnli_metrics_mismatched.compute()
+        mnli_metrics = {k + '_m': v for k, v in mnli_metrics_matched.items()}
+        mnli_metrics.update({k + '_mm': v for k, v in mnli_metrics_mismatched.items()})
+        print(f"\nmnli eval results: {mnli_metrics}")
+    else:
+        metrics = SUPPORTED_DATASETS[dataset](args)
 
-    print(f"\n{dataset} eval results: {metrics.compute()}")
+        print(f"\n{dataset} eval results: {metrics.compute()}")
 
 
 def main():
