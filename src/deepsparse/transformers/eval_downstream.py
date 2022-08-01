@@ -468,8 +468,8 @@ def _main(args):
         mnli_metrics_matched, mnli_metrics_mismatched = mnli_eval(args)
         mnli_metrics_matched = mnli_metrics_matched.compute()
         mnli_metrics_mismatched = mnli_metrics_mismatched.compute()
-        mnli_metrics = {k + '_m': v for k, v in mnli_metrics_matched.items()}
-        mnli_metrics.update({k + '_mm': v for k, v in mnli_metrics_mismatched.items()})
+        mnli_metrics = {k + "_m": v for k, v in mnli_metrics_matched.items()}
+        mnli_metrics.update({k + "_mm": v for k, v in mnli_metrics_mismatched.items()})
         print(f"\nmnli eval results: {mnli_metrics}")
     else:
         metrics = SUPPORTED_DATASETS[dataset](args)
