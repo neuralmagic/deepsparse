@@ -17,7 +17,7 @@ from typing import Generator, Iterable, List, Tuple, Union
 import numpy
 
 from sparseml.utils import load_numpy
-from sparsezoo import Zoo
+from sparsezoo import Model
 from sparsezoo.utils import load_numpy_list
 
 
@@ -128,7 +128,12 @@ def load_data(
     """
 
     if data_path.startswith("zoo:"):
-        data_dir = Zoo.load_model_from_stub(data_path).data_inputs.downloaded_path()
+        sample_inputs = Model(data_path).sample_inputs
+        if sample_inputs is None:
+            raise ValueError(f"Sample inputs not found for this stub {data_path}")
+        if not sample_inputs.files:
+            sample_inputs.unzip()
+        data_dir = sample_inputs.path
     else:
         data_dir = data_path
         data_files = os.listdir(data_dir)

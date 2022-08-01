@@ -15,7 +15,7 @@
 from typing import Dict, List
 
 import pytest
-from helpers import predownload_stub, run_command
+from tests.helpers import predownload_stub, run_command
 
 
 @pytest.mark.smoke
@@ -121,7 +121,7 @@ def test_benchmark(
 )
 def test_benchmark_local(model_stub: str):
     model = predownload_stub(model_stub)
-    onnx_file = model.onnx_file.path
+    onnx_file = model.onnx_model.path
     cmd = ["deepsparse.benchmark", onnx_file]
     print(f"\n==== test_benchmark_local command ====\n{' '.join(cmd)}")
     res = run_command(cmd)

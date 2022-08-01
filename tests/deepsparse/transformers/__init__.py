@@ -13,6 +13,6 @@
 # limitations under the License.
 
 # flake8: noqa
-
-from .ort_engine import *
-from .results import *
+# NOTE: including here to force auto install to happen
+from deepsparse import transformers as _transformers
+from deepsparse.transformers import haystack as _haystack

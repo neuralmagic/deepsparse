@@ -17,7 +17,7 @@ from subprocess import Popen
 from typing import List
 
 import pytest
-from helpers import delete_file
+from tests.helpers import delete_file
 
 
 @pytest.fixture
