@@ -48,7 +48,7 @@ binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 _deps = [
     "numpy>=1.16.3",
-    "onnx>=1.5.0,<=1.10.1",
+    "onnx>=1.5.0,<=1.12.0",
     "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
@@ -73,7 +73,7 @@ _dev_deps = [
     "pytest>=6.0.0",
     "sphinx-multiversion==0.2.4",
     "sphinx-rtd-theme",
-    "onnxruntime>=1.4.0,<1.9.0",
+    "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
 ]
@@ -129,7 +129,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [6, 7, 8, 9]
+    supported_minor = [6, 7, 8, 9, 10]
 
     if (
         sys.version_info[0] != supported_major
@@ -249,11 +249,16 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.6, <3.10",
+    python_requires=">=3.6, <3.11",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
