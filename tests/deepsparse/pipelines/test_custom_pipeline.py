@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import OrderedDict
-
 import numpy
 
 import pytest
@@ -72,7 +70,7 @@ def test_no_input_call():
     zoo_model = Model(pipeline.model_path)
     data_originals_path = zoo_model.sample_originals.path
     sample = load_numpy_list(data_originals_path)[0]
-    assert isinstance(sample, OrderedDict)
+    assert isinstance(sample, dict)
     assert len(sample) == 1
     image_raw = list(sample.values())[0]
     assert isinstance(image_raw, numpy.ndarray)
@@ -148,7 +146,7 @@ def test_custom_pipeline_as_image_classifier(zoo_stub, image_size):
     zoo_model = Model(zoo_stub)
     data_originals_path = zoo_model.sample_originals.path
     sample = load_numpy_list(data_originals_path)[0]
-    assert isinstance(sample, OrderedDict)
+    assert isinstance(sample, dict)
     assert len(sample) == 1
     image_raw = list(sample.values())[0]
     assert isinstance(image_raw, numpy.ndarray)
