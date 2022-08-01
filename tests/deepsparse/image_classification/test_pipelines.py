@@ -21,7 +21,7 @@ from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
 )
-from sparsezoo import Zoo
+from sparsezoo import Model
 from sparsezoo.utils import load_numpy_list
 
 
@@ -53,9 +53,12 @@ def test_image_classification_pipeline_preprocessing(zoo_stub, image_size, num_s
     )
 
     ic_pipeline = Pipeline.create("image_classification", zoo_stub)
-    zoo_model = Zoo.load_model_from_stub(zoo_stub)
-    data_originals_path = zoo_model.data_originals.downloaded_path()
-
+    zoo_model = Model(zoo_stub)
+    data_originals_path = None
+    if zoo_model.sample_originals is not None:
+        if not zoo_model.sample_originals.files:
+            zoo_model.sample_originals.unzip()
+        data_originals_path = zoo_model.sample_originals.path
     for idx, sample in enumerate(load_numpy_list(data_originals_path)):
         image_raw = list(sample.values())[0]
         image_raw = Image.fromarray(image_raw)

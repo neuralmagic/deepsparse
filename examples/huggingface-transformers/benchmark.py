@@ -90,7 +90,7 @@ from tqdm.auto import tqdm
 from deepsparse import compile_model
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.transformers import overwrite_transformer_onnx_model_inputs
-from sparsezoo import Zoo
+from sparsezoo import Model
 from sparsezoo.utils import load_numpy, load_numpy_list
 
 
@@ -253,8 +253,8 @@ def _load_model(args) -> Tuple[Any, List[str]]:
 
     # load model from sparsezoo if necessary
     if args.model_filepath.startswith("zoo:"):
-        zoo_model = Zoo.load_model_from_stub(args.model_filepath)
-        downloaded_path = zoo_model.onnx_file.downloaded_path()
+        zoo_model = Model(args.model_filepath)
+        downloaded_path = zoo_model.onnx_model.path
         print(f"downloaded sparsezoo model {args.model_filepath} to {downloaded_path}")
         args.model_filepath = downloaded_path
 
@@ -291,9 +291,12 @@ def _load_model(args) -> Tuple[Any, List[str]]:
 
 def _load_data(args, input_names) -> List[List[numpy.ndarray]]:
     if args.data_path.startswith("zoo:"):
-        data_dir = Zoo.load_model_from_stub(
-            args.data_path
-        ).data_inputs.downloaded_path()
+        sample_inputs = Model(args.data_path).sample_inputs
+        if sample_inputs is None:
+            raise ValueError(f"sample-inputs not found for {args.data_path}")
+        if not sample_inputs.files:
+            sample_inputs.unzip()
+        data_dir = sample_inputs.path
     else:
         data_dir = args.data_path
         data_files = os.listdir(data_dir)

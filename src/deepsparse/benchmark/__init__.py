@@ -14,5 +14,5 @@
 
 # flake8: noqa
 
-from .ort_engine import ORTEngine
+from .ort_engine import *
 from .results import *

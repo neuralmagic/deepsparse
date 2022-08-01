@@ -86,7 +86,7 @@ from sparseml.onnx.utils import (
     override_model_batch_size,
     set_tensor_dim_shape,
 )
-from sparsezoo import Zoo
+from sparsezoo import Model
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -166,8 +166,8 @@ def fix_onnx_input_shape(
     original_model_path = model_path
     if model_path.startswith("zoo:"):
         # load SparseZoo Model from stub
-        model = Zoo.load_model_from_stub(model_path)
-        model_path = model.onnx_file.downloaded_path()
+        model = Model(model_path)
+        model_path = model.onnx_model.path
         print(f"Downloaded {original_model_path} to {model_path}")
 
     model = onnx.load(model_path)

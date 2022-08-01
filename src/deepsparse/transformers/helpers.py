@@ -29,7 +29,7 @@ from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
 from deepsparse.utils.onnx import truncate_onnx_model
-from sparsezoo import Zoo
+from sparsezoo import Model
 
 
 __all__ = [
@@ -69,6 +69,7 @@ def get_onnx_path_and_configs(
 
     config_path = None
     tokenizer_path = None
+
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
@@ -100,14 +101,14 @@ def get_onnx_path_and_configs(
             tokenizer_path = model_path
 
     elif model_path.startswith("zoo:"):
-        zoo_model = Zoo.load_model_from_stub(model_path)
-        onnx_path = zoo_model.onnx_file.downloaded_path()
-
-        for framework_file in zoo_model.framework_files:
-            if framework_file.display_name == _MODEL_DIR_CONFIG_NAME:
-                config_path = _get_file_parent(framework_file.downloaded_path())
-            if "tokenizer.json" in framework_file.display_name:
-                tokenizer_path = _get_file_parent(framework_file.downloaded_path())
+        zoo_model = Model(model_path)
+        onnx_path = zoo_model.onnx_model.path
+        config_path = _get_file_parent(
+            zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
+        )
+        tokenizer_path = _get_file_parent(
+            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
+        )
     elif require_configs and (config_path is None or tokenizer_path is None):
         raise RuntimeError(
             f"Unable to find model and tokenizer config for model_path {model_path}. "

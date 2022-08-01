@@ -91,7 +91,7 @@ def test_run_inference_qa(
 ):
     if local_model:
         model = predownload_stub(model_path, copy_framework_files=True)
-        model_path = model.dir_path
+        model_path = model.path
 
     cmd = [
         "deepsparse.transformers.run_inference",
@@ -171,7 +171,7 @@ def test_run_inference_sst(
 ):
     if local_model:
         model = predownload_stub(model_path, copy_framework_files=True)
-        model_path = model.dir_path
+        model_path = model.path
 
     cmd = [
         "deepsparse.transformers.run_inference",

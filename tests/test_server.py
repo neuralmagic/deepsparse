@@ -35,6 +35,9 @@ def test_server_help():
         print(f"\n==== test_server_help output ====\n{res.stdout}\n==== ====")
     assert res.returncode == 0
     assert "Usage:" in res.stdout
+    import pdb
+
+    pdb.set_trace()
     assert "error" not in res.stdout.lower()
     assert "fail" not in res.stdout.lower()
 
@@ -82,6 +85,9 @@ def test_server_ner(cleanup: Dict[str, List]):
     output = proc.stdout.read().decode("utf-8")
     print(f"\n==== test_server_ner output ====\n{output}\n==== ====")
     assert returncode == 0
+    import pdb
+
+    pdb.set_trace()
     assert "error" not in output.lower()
     assert "fail" not in output.lower()
 
@@ -202,7 +208,7 @@ def test_server_sst(cleanup: Dict[str, List]):
         "--task",
         "sentiment_analysis",
         "--model_path",
-        model.onnx_file.dir_path,
+        model.path,
     ]
     print(f"\n==== test_server_sst command ====\n{' '.join(cmd)}\n==== ====")
     proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
