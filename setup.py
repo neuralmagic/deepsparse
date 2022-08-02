@@ -46,11 +46,13 @@ _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
+
 def _parse_requirements_file(file_path):
     with open(file_path, "r") as requirements_file:
         lines = requirements_file.read().splitlines()
 
     return [line for line in lines if len(line) > 0 and line[0] != "#"]
+
 
 _deps = [
     "numpy>=1.16.3",
@@ -102,12 +104,17 @@ _yolo_integration_deps = [
 # conflicting versions with NM's deepsparse/transformers
 _haystack_requirements_file_path = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
-    "src", "deepsparse", "transformers", "haystack", "haystack_reqs.txt"
+    "src",
+    "deepsparse",
+    "transformers",
+    "haystack",
+    "haystack_reqs.txt",
 )
-_haystack_integration_deps = (
-    _parse_requirements_file(_haystack_requirements_file_path)
-    + ["farm-haystack[all]==1.4.0"] # install farm-haystack last
-)
+_haystack_integration_deps = _parse_requirements_file(
+    _haystack_requirements_file_path
+) + [
+    "farm-haystack[all]==1.4.0"
+]  # install farm-haystack last
 
 
 def _check_supported_system():
