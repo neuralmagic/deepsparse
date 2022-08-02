@@ -55,7 +55,6 @@ import numpy
 from deepsparse import compile_model, cpu
 from deepsparse.utils import verify_outputs
 from sparsezoo.models import classification
-from sparsezoo.objects import Model
 
 
 CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
@@ -63,7 +62,7 @@ CORES_PER_SOCKET, AVX_TYPE, _ = cpu.cpu_details()
 model_registry = dict(getmembers(classification, isfunction))
 
 
-def fetch_model(model_name: str) -> Model:
+def fetch_model(model_name: str) -> "Model":  # noqa: F821
     if model_name not in model_registry:
         raise Exception(
             f"Could not find model '{model_name}' in classification model registry."
