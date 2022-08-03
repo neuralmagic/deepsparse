@@ -21,6 +21,15 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: "neuralmagic/sparsezoo"
+          path: "sparsezoo"
+          ref: ${{needs.test-setup.outputs.branch}}
+      - name: "⚙️ Install sparsezoo dependencies"
+        run: pip3 install -U pip && pip3 install setuptools sparsezoo/
+      - name: "Clean sparsezoo directory"
+        run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
         run: pip3 install .[dev,haystack] opencv-python
       - name: Run base tests
@@ -29,6 +38,15 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: "neuralmagic/sparsezoo"
+          path: "sparsezoo"
+          ref: ${{needs.test-setup.outputs.branch}}
+      - name: "⚙️ Install sparsezoo dependencies"
+        run: pip3 install -U pip && pip3 install setuptools sparsezoo/
+      - name: "Clean sparsezoo directory"
+        run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
         run: pip3 install .[dev,server,haystack]
       - name: Run CLI smoke tests
@@ -37,6 +55,15 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: "neuralmagic/sparsezoo"
+          path: "sparsezoo"
+          ref: ${{needs.test-setup.outputs.branch}}
+      - name: "⚙️ Install sparsezoo dependencies"
+        run: pip3 install -U pip && pip3 install setuptools sparsezoo/
+      - name: "Clean sparsezoo directory"
+        run: rm -r sparsezoo/
       - name: Install dependencies
         run: pip3 install .[dev,haystack]
       - name: Run examples smoke tests
