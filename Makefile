@@ -21,7 +21,8 @@ ifneq ($(findstring examples,$(TARGETS)),examples)
 	PYTEST_ARGS += --ignore tests/test_examples.py
 endif
 ifeq ($(findstring nobase,$(TARGETS)),nobase)
-	PYTEST_ARGS += --ignore tests/utils/test_data.py \
+	PYTEST_ARGS += --ignore tests/deepsparse \
+	--ignore tests/utils/test_data.py \
 	--ignore tests/test_engine.py \
 	--ignore tests/test_multi_engine.py
 endif
