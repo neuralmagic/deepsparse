@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev] opencv-python
+        run: pip3 install .[dev,haystack] opencv-python
       - name: Run base tests
         run: make test
   cli-smoke-tests:
@@ -30,14 +30,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev,server]
+        run: pip3 install .[dev,server,haystack]
       - name: Run CLI smoke tests
         run: PYTEST_ARGS="-m smoke" make test TARGETS=cli,nobase
-  examples-smoke-tests:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install dependencies
-        run: pip3 install .[dev]
-      - name: Run examples smoke tests
-        run: PYTEST_ARGS="-m smoke" make test TARGETS=examples,nobase
