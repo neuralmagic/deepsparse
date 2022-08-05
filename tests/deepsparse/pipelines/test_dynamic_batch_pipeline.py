@@ -39,8 +39,8 @@ def compare(expected, actual):
     assert type(expected) == type(actual)
 
     if isinstance(expected, (list, float, numpy.ndarray)):
-        expected_np = numpy.asarray(expected)
-        actual_np = numpy.asarray(actual)
+        expected_np = numpy.asarray(expected, dtype=float)
+        actual_np = numpy.asarray(actual, dtype=float)
         assert numpy.allclose(expected_np, actual_np, rtol=1e-3)
     elif isinstance(expected, dict):
         assert list(expected.keys()).sort() == list(actual.keys()).sort()
