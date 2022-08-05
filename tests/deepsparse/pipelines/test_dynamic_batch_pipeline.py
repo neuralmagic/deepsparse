@@ -23,10 +23,10 @@ from .data_helpers import create_test_inputs
 
 
 _SUPPORTED_TASKS = [
-    "text_classification",
-    "token_classification",
-    "yolo",
-    "image_classification",
+    # "text_classification",
+    # "token_classification",
+    # "yolo",
+    # "image_classification",
     "yolact",
 ]
 
@@ -79,4 +79,7 @@ def test_dynamic_is_same_as_static(task):
         actual_dict = dynamic_outputs.dict()
 
         # Check that order is maintained
-        assert static_outputs == dynamic_outputs or compare(expected_dict, actual_dict)
+        try:
+            assert static_outputs == dynamic_outputs
+        except Exception:
+            assert compare(expected_dict, actual_dict)
