@@ -39,6 +39,7 @@ _SUPPORTED_TASKS = [
     "token_classification",
     "yolo",
     "image_classification",
+    "yolact",
 ]
 
 _BATCH_SIZES = [
@@ -141,9 +142,10 @@ class TestDynamicBatchPipeline:
         actual_dict = dynamic_batch_outputs.dict()
 
         # Check that order is maintained
-        assert static_batch_outputs == dynamic_batch_outputs or compare(
-            expected_dict, actual_dict
-        )
+        try:
+            assert static_batch_outputs == dynamic_batch_outputs
+        except Exception:
+            assert compare(expected_dict, actual_dict)
 
 
 @pytest.mark.parametrize("task", _SUPPORTED_TASKS)
