@@ -31,9 +31,7 @@ _SUPPORTED_TASKS = [
 ]
 
 _BATCH_SIZES = [
-    1,
     2,
-    10,
 ]
 
 
