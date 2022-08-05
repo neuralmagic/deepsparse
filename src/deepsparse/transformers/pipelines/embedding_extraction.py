@@ -267,7 +267,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         text = self.tokenizer.encode(
             inputs.inputs,
             add_special_tokens=False,
-            max_length=156,
             truncation=True,
         )
         print(text)
@@ -275,11 +274,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         # https://github.com/texttron/tevatron/blob/b8f33900895930f9886012580e85464a5c1f7e9a/src/tevatron/data.py#L98
         token_ids = self.tokenizer.prepare_for_model(
             text,
-            max_length=156,
             truncation='only_first',
             padding=False,
-            #return_attention_mask=False, # This line is present in training but not encoding: https://github.com/texttron/tevatron/blob/b8f33900895930f9886012580e85464a5c1f7e9a/src/tevatron/data.py#L38
-            #return_token_type_ids=False, # This line is always present
         )
         print(token_ids)
 
@@ -291,7 +287,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         tokens = self.tokenizer.pad(
             token_ids,
             padding="max_length",
-            max_length=156,
             pad_to_multiple_of=None,
             return_tensors="np",
         )
