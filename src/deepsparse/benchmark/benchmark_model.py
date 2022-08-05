@@ -421,17 +421,13 @@ def get_latest_commit_sha_for_path(
 ) -> str:
     """Use git log to fetch the most recent commit sha that impacted the given
     relative path."""
+    args = ["git", "log", "--pretty=format:%H", "--max-count=1"]
     if relative_path:
-        args = [
-            "git",
-            "log",
-            "--pretty=format:%H",
-            "--max-count=1",
+        args += [
             "--",
             relative_path,
         ]
-    else:
-        args = ["git", "log", "--pretty=format:%H", "--max-count=1"]
+
     commit_sha = subprocess.check_output(args, cwd=repo_path).decode("utf-8")
     return commit_sha
 
