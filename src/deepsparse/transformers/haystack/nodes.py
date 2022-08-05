@@ -309,7 +309,8 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             and "title" in doc.meta
             and doc.meta["title"] is not None
             and self.title_separator is not None
-            else doc.content for doc in docs
+            else doc.content
+            for doc in docs
         ]
         return [
             self.passage_pipeline([passage_input]).embeddings[0]
