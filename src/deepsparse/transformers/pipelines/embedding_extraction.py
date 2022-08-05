@@ -248,50 +248,17 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        #if isinstance(inputs.inputs, str):
-        #    inputs.inputs = [inputs.inputs]
+        if isinstance(inputs.inputs, str):
+            inputs.inputs = [inputs.inputs]
 
-        """
+        # tokenization matches https://github.com/texttron/tevatron
         tokens = self.tokenizer(
             inputs.inputs,
-            add_special_tokens=False,
+            add_special_tokens=True,
             padding=PaddingStrategy.MAX_LENGTH.value,
-            truncation=True,
-            return_tensors="np",
-        )
-        """
-        #"""
-        print(inputs.inputs)
-
-        # https://github.com/texttron/tevatron/blob/b8f33900895930f9886012580e85464a5c1f7e9a/src/tevatron/datasets/preprocessor.py#L53
-        text = self.tokenizer.encode(
-            inputs.inputs,
-            add_special_tokens=False,
-            truncation=True,
-        )
-        print(text)
-
-        # https://github.com/texttron/tevatron/blob/b8f33900895930f9886012580e85464a5c1f7e9a/src/tevatron/data.py#L98
-        token_ids = self.tokenizer.prepare_for_model(
-            text,
             truncation='only_first',
-            padding=False,
-        )
-        print(token_ids)
-
-        # batch
-        token_ids = [token_ids]
-
-        # https://github.com/texttron/tevatron/blob/b8f33900895930f9886012580e85464a5c1f7e9a/src/tevatron/driver/encode.py#L77
-        # https://github.com/huggingface/transformers/blob/v4.21.1/src/transformers/data/data_collator.py#L213
-        tokens = self.tokenizer.pad(
-            token_ids,
-            padding="max_length",
-            pad_to_multiple_of=None,
             return_tensors="np",
         )
-        #"""
-        print(tokens)
 
         # mask padding and cls_token
         pad_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
@@ -340,7 +307,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 )
                 embedding = masked_output.max(axis=0)
             if self._extraction_strategy == ExtractionStrategy.cls_token:
-                embedding = engine_output[0]#engine_output[numpy.where(cls_mask)[0][0]]
+                embedding = engine_output[numpy.where(cls_mask)[0][0]]
 
             # flatten
             embedding = embedding.flatten()
