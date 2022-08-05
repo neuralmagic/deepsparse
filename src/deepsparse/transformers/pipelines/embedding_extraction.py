@@ -256,7 +256,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             inputs.inputs,
             add_special_tokens=True,
             padding=PaddingStrategy.MAX_LENGTH.value,
-            truncation='only_first',
+            truncation=True,
             return_tensors="np",
         )
 

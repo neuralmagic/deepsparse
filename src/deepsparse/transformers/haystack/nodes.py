@@ -178,6 +178,9 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param context: context shared between query and passage models. If None
         is provided, then a new context with 4 streams will be created. Default
         is None
+    :param title_separator: character(s) used to passage title with passage content.
+        Titles are first, followed by the separator, then the content. If None, then
+        titles are not included in input sequences. Default is a space character.
     :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
     """
 
@@ -196,6 +199,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         progress_bar: bool = False,
         scale_score: bool = True,
         context: Optional[Context] = None,
+        title_separator: Optional[str] = " ",
         **pipeline_kwargs,
     ):
         super(BaseRetriever).__init__()
@@ -208,6 +212,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         self.top_k = top_k
         self.scale_score = scale_score
         self.context = context
+        self.title_separator = title_separator
         self.use_gpu = False
         self.devices = ["cpu"]
 
@@ -298,7 +303,14 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         :param docs: list of document strings to embed
         :return: list of embeddings for each document
         """
-        passage_inputs = [doc.content for doc in docs]
+        passage_inputs = [
+            f"{doc.meta['title']}{self.title_separator}{doc.content}"
+            if hasattr(doc, "meta")
+            and "title" in doc.meta
+            and doc.meta["title"] is not None
+            and self.title_separator is not None
+            else doc.content for doc in docs
+        ]
         return [
             self.passage_pipeline([passage_input]).embeddings[0]
             for passage_input in passage_inputs
