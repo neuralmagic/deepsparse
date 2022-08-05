@@ -392,13 +392,25 @@ def benchmark_model(
         "benchmark_result": benchmark_result,
     }
 
+    parsed_export_dict = _parse_export_dict_engine_key(export_dict)
+
     # Export results
     if export_path:
         _LOGGER.info("Saving benchmark results to JSON file at {}".format(export_path))
         with open(export_path, "w") as out:
-            json.dump(export_dict, out, indent=2)
+            json.dump(parsed_export_dict, out, indent=2)
 
-    return export_dict
+    return parsed_export_dict
+
+
+def _parse_export_dict_engine_key(payload):
+
+    engine_split = payload["engine"].replace("\n\t", ":").split(":")
+    engine = engine_split[0]
+    payload["engine"] = engine
+    for i in range(2, len(engine_split) - 1, 2):
+        payload[engine_split[i]] = engine_split[i + 1].strip()
+    return payload
 
 
 def main():
