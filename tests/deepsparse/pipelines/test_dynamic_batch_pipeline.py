@@ -23,10 +23,10 @@ from .data_helpers import create_test_inputs
 
 
 _SUPPORTED_TASKS = [
-    # "text_classification",
-    # "token_classification",
-    # "yolo",
-    # "image_classification",
+    "text_classification",
+    "token_classification",
+    "yolo",
+    "image_classification",
     "yolact",
 ]
 
