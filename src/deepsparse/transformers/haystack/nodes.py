@@ -166,8 +166,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param pooling_strategy: strategy for combining embeddings. Default is
         "cls_token"
     :param top_k: how many documents to return per query. Default is 10
-    :param embed_title: True if titles should be embedded into the passage.
-        Default is False
     :param progress_bar: if true displays progress bar during embedding.
         Not supported by DeepSparse retriever nodes. Default is False
     :param scale_score: whether to scale the similarity score to the unit interval
@@ -195,7 +193,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         emb_extraction_layer: Union[int, str, None] = -1,
         pooling_strategy: str = "cls_token",
         top_k: int = 10,
-        embed_title: bool = False,
         progress_bar: bool = False,
         scale_score: bool = True,
         context: Optional[Context] = None,
@@ -206,7 +203,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
 
         self.document_store = document_store
         self.batch_size = batch_size
-        self.embed_title = embed_title
         self.progress_bar = progress_bar
         self.pooling_strategy = pooling_strategy
         self.top_k = top_k
@@ -236,11 +232,11 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
                 "DeepSparseDensePassageRetriever must be initialized with a "
                 "document_store"
             )
-        elif document_store.similarity != "dot_product":
+        elif document_store.similarity != "cosine":
             _LOGGER.warning(
                 "You are using a Dense Passage Retriever model with the "
                 f"{document_store.similarity} function. We recommend you use "
-                "dot_product instead. This can be set when initializing the "
+                "cosine instead. This can be set when initializing the "
                 "DocumentStore"
             )
         if pooling_strategy != "cls_token":
@@ -254,10 +250,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
                 "per_token pooling strategy requires that max_seq_len_query "
                 f"({max_seq_len_query}) match max_seq_len_passage "
                 f"({max_seq_len_passage})"
-            )
-        if embed_title:
-            raise ValueError(
-                "DeepSparseDensePassageRetriever does not support embedding titles"
             )
 
         if self.context is None:
