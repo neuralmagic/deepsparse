@@ -29,17 +29,6 @@ from deepsparse.utils import model_to_path, override_onnx_input_shapes
 
 
 try:
-    from sparsezoo import Zoo
-    from sparsezoo.objects import File, Model
-
-    sparsezoo_import_error = None
-except Exception as sparsezoo_err:
-    Zoo = None
-    Model = object
-    File = object
-    sparsezoo_import_error = sparsezoo_err
-
-try:
     # flake8: noqa
     from deepsparse.cpu import cpu_architecture
     from deepsparse.lib import init_deepsparse_lib
@@ -65,7 +54,11 @@ _LOGGER = logging.getLogger(__name__)
 
 ARCH = cpu_architecture()
 NUM_CORES = ARCH.num_available_physical_cores
-NUM_STREAMS = 0  # Default num-streams. Actual value is scheduler-dependent.
+# Default num-streams. Always 1 when using the single_stream scheduler. Depends on the
+# hardware memory hierarchy when using elastic or multi_stream schedulers. It will
+# typically be one per numa node, but can be higher on computers with multiple L3
+# caches per numa node.
+NUM_STREAMS = 0
 AVX_TYPE = ARCH.isa
 VNNI = ARCH.vnni
 
@@ -177,7 +170,7 @@ class Engine(object):
 
     def __init__(
         self,
-        model: Union[str, Model, File],
+        model: Union[str, "Model", "File"],
         batch_size: int,
         num_cores: int = None,
         num_streams: int = None,
@@ -187,12 +180,12 @@ class Engine(object):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
-        self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = _validate_scheduler(scheduler)
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
+        num_streams = _validate_num_streams(num_streams, self._num_cores)
         if self._input_shapes:
             with override_onnx_input_shapes(
                 self._model_path, self._input_shapes
@@ -201,7 +194,7 @@ class Engine(object):
                     model_path,
                     self._batch_size,
                     self._num_cores,
-                    self._num_streams,
+                    num_streams,
                     self._scheduler.value,
                     None,
                 )
@@ -210,7 +203,7 @@ class Engine(object):
                 self._model_path,
                 self._batch_size,
                 self._num_cores,
-                self._num_streams,
+                num_streams,
                 self._scheduler.value,
                 None,
             )
@@ -284,7 +277,7 @@ class Engine(object):
         :return: The max count of streams the current instance can handle
            concurrently.
         """
-        return self._num_streams
+        return self._eng_net.num_streams()
 
     @property
     def scheduler(self) -> Scheduler:
@@ -577,10 +570,11 @@ class Context(object):
         num_streams: int = None,
     ):
         self._num_cores = _validate_num_cores(num_cores)
-        self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = Scheduler.from_str("elastic")
         self._deepsparse_context = LIB.deepsparse_context(
-            self._num_cores, self._num_streams, self._scheduler.value
+            self._num_cores,
+            _validate_num_streams(num_streams, self._num_cores),
+            self._scheduler.value,
         )
 
     @property
@@ -593,7 +587,7 @@ class Context(object):
 
     @property
     def num_streams(self):
-        return self._num_streams
+        return self._deepsparse_context.num_streams()
 
     @property
     def scheduler(self):
@@ -621,7 +615,7 @@ class MultiModelEngine(Engine):
 
     def __init__(
         self,
-        model: Union[str, Model, File],
+        model: Union[str, "Model", "File"],
         batch_size: int,
         context: Context,
         input_shapes: List[List[int]] = None,
@@ -659,7 +653,7 @@ class MultiModelEngine(Engine):
 
 
 def compile_model(
-    model: Union[str, Model, File],
+    model: Union[str, "Model", "File"],
     batch_size: int = 1,
     num_cores: int = None,
     num_streams: int = None,
@@ -697,7 +691,7 @@ def compile_model(
 
 
 def benchmark_model(
-    model: Union[str, Model, File],
+    model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
     batch_size: int = 1,
     num_cores: int = None,
@@ -764,7 +758,7 @@ def benchmark_model(
 
 
 def analyze_model(
-    model: Union[str, Model, File],
+    model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
     batch_size: int = 1,
     num_cores: int = None,
@@ -779,7 +773,7 @@ def analyze_model(
     """
     Function to analyze a model's performance in the DeepSparse Engine.
     The model must be defined in an ONNX graph and stored in a local file.
-    Gives defaults of batch_size == 1 and num_cores == None
+    Gives default batch_size == 1 and num_cores == None
     (will use all physical cores available on a single socket).
 
     Note 1: Analysis is currently only supported on a single socket.

@@ -15,15 +15,22 @@
 import pytest
 from deepsparse import analyze_model, compile_model
 from deepsparse.utils import verify_outputs
-from sparsezoo.models import classification
-from sparsezoo.objects import Model
+from sparsezoo import Model
 
 
 model_test_registry = {
-    "mobilenet_v1": classification.mobilenet_v1,
-    "mobilenet_v2": classification.mobilenet_v2,
-    "resnet_18": classification.resnet_18,
-    "efficientnet_b0": classification.efficientnet_b0,
+    "mobilenet_v1": (
+        "zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/base-none"
+    ),
+    "mobilenet_v2": (
+        "zoo:cv/classification/mobilenet_v2-1.0/pytorch/sparseml/imagenet/base-none"
+    ),
+    "resnet_18": (
+        "zoo:cv/classification/resnet_v1-18/pytorch/sparseml/imagenet/base-none"
+    ),
+    "efficientnet_b0": (
+        "zoo:cv/classification/efficientnet-b0/pytorch/sparseml/imagenet/base-none"
+    ),
 }
 
 
@@ -46,10 +53,9 @@ class TestEngineParametrized:
         """
         Test the Engine.inference interfaces
         """
-        m = model()
-        batch = m.sample_batch(batch_size=batch_size)
-        inputs = batch["inputs"]
-        outputs = batch["outputs"]
+        m = Model(model)
+
+        inputs, outputs = _get_sample_inputs_outputs(m, batch_size)
 
         print("compile model")
         engine = compile_model(m, batch_size)
@@ -75,10 +81,9 @@ class TestEngineParametrized:
         Test the Engine.benchmark() interface
         """
 
-        m = model()
-        batch = m.sample_batch(batch_size=batch_size)
-        inputs = batch["inputs"]
-        outputs = batch["outputs"]
+        m = Model(model)
+
+        inputs, outputs = _get_sample_inputs_outputs(m, batch_size)
 
         engine = compile_model(m, batch_size)
         results = engine.benchmark(inputs, include_outputs=True)
@@ -88,8 +93,17 @@ class TestEngineParametrized:
 
     def test_analyze(self, model: Model, batch_size: int):
 
-        model = model()
-        inputs = model.data_inputs.sample_batch(batch_size=batch_size)
+        model = Model(model)
+        inputs = model.sample_inputs.sample_batch(batch_size=batch_size)
 
         results = analyze_model(model, inputs, batch_size)
         print(results)
+
+
+def _get_sample_inputs_outputs(model: Model, batch_size: int):
+    batch = model.sample_batch(batch_size=batch_size)
+
+    input_key = next(key for key in batch.keys() if "input" in key)
+    output_key = next(key for key in batch.keys() if "output" in key)
+
+    return batch[input_key], batch[output_key]

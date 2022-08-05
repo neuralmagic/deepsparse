@@ -25,12 +25,10 @@ from deepsparse.utils.extractor import Extractor
 
 
 try:
-    from sparsezoo import Zoo
-    from sparsezoo.objects import File, Model
+    from sparsezoo import File, Model
 
     sparsezoo_import_error = None
 except Exception as sparsezoo_err:
-    Zoo = None
     Model = object
     File = object
     sparsezoo_import_error = sparsezoo_err
@@ -84,7 +82,12 @@ def model_to_path(model: Union[str, Model, File]) -> str:
     """
     Deals with the various forms a model can take. Either an ONNX file,
     a SparseZoo model stub prefixed by 'zoo:', a SparseZoo Model object,
-    or a SparseZoo ONNX File object that defines the neural network
+    or a SparseZoo ONNX File object that defines the neural network. Noting
+    the model will be downloaded automatically if a SparseZoo stub is passed
+
+    :param model: Either a local str path or SparseZoo stub to the model. Can
+        also be a sparsezoo.Model or sparsezoo.File object
+    :returns: The absolute local str path to the model
     """
     if not model:
         raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
@@ -93,14 +96,14 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         # load SparseZoo Model from stub
         if sparsezoo_import_error is not None:
             raise sparsezoo_import_error
-        model = Zoo.load_model_from_stub(model)
+        model = Model(model)
 
     if Model is not object and isinstance(model, Model):
         # default to the main onnx file for the model
-        model = model.onnx_file.downloaded_path()
+        model = model.onnx_model.path
     elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
-        model = model.downloaded_path()
+        model = model.path
 
     if not isinstance(model, str):
         raise ValueError("unsupported type for model: {}".format(type(model)))
@@ -142,7 +145,7 @@ def get_input_names(onnx_filepath: str) -> List[str]:
     :param onnx_filepath: File path to ONNX model
     :return: List of string names
     """
-    return [input.name for input in get_external_inputs(onnx_filepath)]
+    return [input_.name for input_ in get_external_inputs(onnx_filepath)]
 
 
 def get_output_names(onnx_filepath: str) -> List[str]:

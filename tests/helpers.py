@@ -20,7 +20,7 @@ from typing import List
 
 import requests
 
-from sparsezoo import Model, Zoo
+from sparsezoo import Model
 
 
 def delete_file(filename: str):
@@ -61,17 +61,16 @@ def predownload_stub(stub: str, copy_framework_files: bool = False) -> Model:
     `copy_framework_files` is True (default: False), also copy model’s config.json and
     tokenizer.json files from the framework subfolder (e.g. `pytorch`) up into the model
     root folder.
+
     :return: SparseZoo Model object of downloaded model
     """
-    model = Zoo.download_model_from_stub(stub)
+    model = Model(stub)
+    model_path = model.path
     if copy_framework_files:
         # required for `deepsparse.transformers.run_inference` on local model files
-        model_path = model.dir_path
-        framework_path = os.path.join(model_path, model.framework)
-        shutil.copy(
-            os.path.join(framework_path, "config.json"), os.path.join(model_path)
-        )
-        shutil.copy(
-            os.path.join(framework_path, "tokenizer.json"), os.path.join(model_path)
-        )
+        config_path = model.deployment.default.get_file("config.json").path
+        tokenizer_config_path = model.deployment.default.get_file("tokenizer.json").path
+        shutil.copy(config_path, model_path)
+        shutil.copy(tokenizer_config_path, model_path)
+
     return model

@@ -23,7 +23,7 @@ from deepsparse.image_classification import (
 )
 from deepsparse.pipeline import Pipeline
 from deepsparse.pipelines.custom_pipeline import CustomTaskPipeline
-from deepsparse.utils.onnx import model_to_path
+from deepsparse.utils.onnx import model_to_path\
 
 
 # NOTE: these need to be placed after the other imports bc of a dependency chain issue
