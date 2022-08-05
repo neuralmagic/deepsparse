@@ -95,6 +95,7 @@ import argparse
 import json
 import logging
 import os
+import subprocess
 from typing import Dict
 
 from deepsparse import Scheduler, __version__, compile_model
@@ -380,6 +381,7 @@ def benchmark_model(
     export_dict = {
         "engine": str(model),
         "version": __version__,
+        "commit": get_latest_commit_sha_for_path(),
         "orig_model_path": orig_model_path,
         "model_path": model_path,
         "batch_size": batch_size,
@@ -404,13 +406,34 @@ def benchmark_model(
 
 
 def _parse_export_dict_engine_key(payload):
-
+    """Extract metadata from str(Model)"""
     engine_split = payload["engine"].replace("\n\t", ":").split(":")
     engine = engine_split[0]
     payload["engine"] = engine
     for i in range(2, len(engine_split) - 1, 2):
         payload[engine_split[i]] = engine_split[i + 1].strip()
     return payload
+
+
+def get_latest_commit_sha_for_path(
+    relative_path: str = "",
+    repo_path: str = os.getcwd(),
+) -> str:
+    """Use git log to fetch the most recent commit sha that impacted the given
+    relative path."""
+    if relative_path:
+        args = [
+            "git",
+            "log",
+            "--pretty=format:%H",
+            "--max-count=1",
+            "--",
+            relative_path,
+        ]
+    else:
+        args = ["git", "log", "--pretty=format:%H", "--max-count=1"]
+    commit_sha = subprocess.check_output(args, cwd=repo_path).decode("utf-8")
+    return commit_sha
 
 
 def main():
