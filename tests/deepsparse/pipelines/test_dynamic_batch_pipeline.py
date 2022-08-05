@@ -53,7 +53,6 @@ def compare(expected, actual):
     return True
 
 
-
 @pytest.mark.parametrize("task", _SUPPORTED_TASKS)
 def test_dynamic_is_same_as_static(task):
     executor = ThreadPoolExecutor()
