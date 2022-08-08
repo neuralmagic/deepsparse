@@ -92,5 +92,6 @@ def create_test_inputs(task, batch_size: int = 1):
         "token_classification": token_classification,
         "yolo": computer_vision,
         "image_classification": computer_vision,
+        "yolact": computer_vision,
     }
     return dispatcher[task](batch_size=batch_size)
