@@ -24,8 +24,10 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 import numpy
 from tqdm.auto import tqdm
 
+from deepsparse import generated_version
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import model_to_path, override_onnx_input_shapes
+from deepsparse.version import __version__
 
 
 try:
@@ -540,6 +542,8 @@ class Engine(object):
 
     def _properties_dict(self) -> Dict:
         return {
+            "version": __version__,
+            "commit": generated_version.revision,
             "onnx_file_path": self.model_path,
             "batch_size": self.batch_size,
             "num_cores": self.num_cores,
