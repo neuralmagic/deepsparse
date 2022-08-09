@@ -18,9 +18,9 @@ Code related to interfacing with a Neural Network in the DeepSparse Engine using
 
 import logging
 import time
+import warnings
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
-import warnings
 
 import numpy
 from tqdm.auto import tqdm
