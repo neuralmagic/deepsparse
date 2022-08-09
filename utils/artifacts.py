@@ -30,7 +30,7 @@ __all__ = [
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Benchmark ONNX models in the DeepSparse Engine"
+        description="Download binaries for the engine"
     )
 
     parser.add_argument(
