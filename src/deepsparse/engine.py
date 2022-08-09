@@ -20,6 +20,7 @@ import logging
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
+import warnings
 
 import numpy
 from tqdm.auto import tqdm
@@ -141,8 +142,10 @@ def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
         )
 
     if scheduler == Scheduler.elastic:
-        _LOGGER.warn(
-            "Scheduler.elastic is an alias for Scheduler.multistream - will be deprecated in 1.3"
+        warnings.warn(
+            "Scheduler.elastic is an alias for Scheduler.multistream",
+            DeprecationWarning,
+            stacklevel=2,
         )
 
     return scheduler
