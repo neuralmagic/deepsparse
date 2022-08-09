@@ -29,9 +29,7 @@ __all__ = [
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Download binaries for the engine"
-    )
+    parser = argparse.ArgumentParser(description="Download binaries for the engine")
 
     parser.add_argument(
         "package_path",
