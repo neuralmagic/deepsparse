@@ -144,7 +144,7 @@ def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
     if scheduler == Scheduler.elastic:
         warnings.warn(
             "Scheduler.elastic is an alias for Scheduler.multistream",
-            DeprecationWarning,
+            FutureWarning,
             stacklevel=2,
         )
 
