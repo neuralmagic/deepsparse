@@ -244,10 +244,14 @@ class YOLOPipeline(Pipeline):
             batch_scores.append(image_output[:, 4].tolist())
             batch_labels.append(image_output[:, 5].tolist())
             if self.class_names is not None:
-                batch_labels[-1] = [
-                    getattr(self.class_names, str(int(label)))
-                    for label in batch_labels[-1]
+                batch_labels_as_strings = [
+                    str(int(label)) for label in batch_labels[-1]
                 ]
+                batch_class_names = [
+                    self.class_names[label_string]
+                    for label_string in batch_labels_as_strings
+                ]
+                batch_labels[-1] = batch_class_names
 
         return YOLOOutput(
             predictions=batch_predictions,
