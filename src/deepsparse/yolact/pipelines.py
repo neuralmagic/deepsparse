@@ -73,7 +73,7 @@ class YOLACTPipeline(Pipeline):
         *,
         class_names: Optional[Union[str, Dict[str, str], List[str]]] = None,
         image_size: Union[int, Tuple[int, int]] = (550, 550),
-        top_k: int = 50,
+        top_k: int = 200,
         **kwargs,
     ):
 

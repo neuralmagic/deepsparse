@@ -30,7 +30,7 @@ def annotate_image(
     image: numpy.ndarray,
     prediction: YOLACTOutputSchema,
     images_per_sec: Optional[float] = None,
-    score_threshold: float = 0.35,
+    score_threshold: float = 0.2,
 ) -> numpy.ndarray:
     """
     Annotate and return the img with the prediction data
