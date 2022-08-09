@@ -137,6 +137,15 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
                 "as {} where the label should go."
             )
 
+        if self._config.entailment_index == self._config.contradiction_index:
+            raise ValueError("entailment_index must differ from contradiction_index")
+
+        if self._config.entailment_index > 2:
+            raise ValueError("entailment_index must be less than or equal to 2")
+
+        if self._config.contradiction_index > 2:
+            raise ValueError("contradiction_index must be less than or equal to 2")
+
         kwargs.update({"batch_size": batch_size})
         super().__init__(model_path=model_path, **kwargs)
 
