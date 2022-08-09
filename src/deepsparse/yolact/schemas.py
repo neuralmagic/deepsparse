@@ -45,7 +45,7 @@ class YOLACTInputSchema(BaseModel, Splittable):
     )
 
     confidence_threshold: float = Field(
-        default=0.2,
+        default=0.05,
         description="Confidence threshold applied to the raw detection at "
         "`detection` step. If a raw detection's score is lower "
         "than the threshold, it will be automatically discarded",
@@ -56,7 +56,7 @@ class YOLACTInputSchema(BaseModel, Splittable):
         "consider it valid (used in Non-Maximum-Suppression step)",
     )
     top_k_preprocessing: int = Field(
-        default=100,
+        default=200,
         description="The maximal number of best detections (per class) to be "
         "kept after the Non-Maximum-Suppression step",
     )
