@@ -140,6 +140,11 @@ def _validate_scheduler(scheduler: Union[None, str, Scheduler]) -> Scheduler:
             "unsupported type for scheduler: {} ({})".format(scheduler, type(scheduler))
         )
 
+    if scheduler == Scheduler.elastic:
+        _LOGGER.warn(
+            "Scheduler.elastic is an alias for Scheduler.multistream - will be deprecated in 1.3"
+        )
+
     return scheduler
 
 
