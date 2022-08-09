@@ -24,7 +24,6 @@ from deepsparse.utils import (
     override_onnx_batch_size,
     override_onnx_input_shapes,
 )
-from sparsezoo.objects import File, Model
 
 
 try:
@@ -84,7 +83,7 @@ class ORTEngine(object):
 
     def __init__(
         self,
-        model: Union[str, Model, File],
+        model: Union[str, "Model", "File"],
         batch_size: int,
         num_cores: Union[None, int],
         input_shapes: List[List[int]] = None,

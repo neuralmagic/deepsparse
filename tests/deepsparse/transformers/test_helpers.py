@@ -19,7 +19,7 @@ from deepsparse.transformers.helpers import (
     get_transformer_layer_init_names,
     truncate_transformer_onnx_model,
 )
-from sparsezoo import Zoo
+from sparsezoo import Model
 
 
 @pytest.fixture(scope="session")
@@ -44,9 +44,8 @@ def model_stubs():
 def get_model_onnx_path(model_stubs):
     model_onnx_paths = {}
     for model_name, model_stub in model_stubs.items():
-        model = Zoo.load_model_from_stub(model_stub)
-        model.onnx_file.download()
-        onnx_path = model.onnx_file.downloaded_path()
+        model = Model(model_stub)
+        onnx_path = model.onnx_model.path
         model_onnx_paths[model_name] = onnx_path
 
     def _get_model_onnx_path(model_name):

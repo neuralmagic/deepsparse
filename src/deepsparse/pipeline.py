@@ -196,11 +196,45 @@ class Pipeline(ABC):
         )
 
     @staticmethod
+    def _get_task_constructor(task: str) -> Type["Pipeline"]:
+        """
+        This function retrieves the class previously registered via `Pipeline.register`
+        for `task`.
+
+        If `task` starts with "custom", then it is mapped to the "custom" task.
+
+        :param task: The task name to get the constructor for
+        :return: The class registered to `task`
+        :raises ValueError: if `task` was not registered via `Pipeline.register`.
+        """
+        task = task.lower().replace("-", "_")
+
+        # support any task that has "custom" at the beginning via the "custom" task
+        if task.startswith("custom"):
+            task = "custom"
+
+        # extra step to register pipelines for a given task domain
+        # for cases where imports should only happen once a user specifies
+        # that domain is to be used. (ie deepsparse.transformers will auto
+        # install extra packages so should only import and register once a
+        # transformers task is specified)
+        SupportedTasks.check_register_task(task, _REGISTERED_PIPELINES.keys())
+
+        if task not in _REGISTERED_PIPELINES:
+            raise ValueError(
+                f"Unknown Pipeline task {task}. Pipeline tasks should be "
+                "must be declared with the Pipeline.register decorator. Currently "
+                f"registered pipelines: {list(_REGISTERED_PIPELINES.keys())}"
+            )
+
+        return _REGISTERED_PIPELINES[task]
+
+    @staticmethod
     def create(
         task: str,
         model_path: str = None,
         engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: Optional[int] = None,
+        batch_size: int = 1,
         num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
@@ -209,7 +243,8 @@ class Pipeline(ABC):
         **kwargs,
     ) -> "Pipeline":
         """
-        :param task: name of task to create a pipeline for
+        :param task: name of task to create a pipeline for. Use "custom" for
+            custom tasks. See `CustomTaskPipeline`.
         :param model_path: path on local system or SparseZoo stub to load the model
             from. Some tasks may have a default model path
         :param engine_type: inference engine to use. Currently supported values
@@ -232,23 +267,7 @@ class Pipeline(ABC):
             implementation
         :return: pipeline object initialized for the given task
         """
-        task = task.lower().replace("-", "_")
-
-        # extra step to register pipelines for a given task domain
-        # for cases where imports should only happen once a user specifies
-        # that domain is to be used. (ie deepsparse.transformers will auto
-        # install extra packages so should only import and register once a
-        # transformers task is specified)
-        SupportedTasks.check_register_task(task)
-
-        if task not in _REGISTERED_PIPELINES:
-            raise ValueError(
-                f"Unknown Pipeline task {task}. Pipeline tasks should be "
-                "must be declared with the Pipeline.register decorator. Currently "
-                f"registered pipelines: {list(_REGISTERED_PIPELINES.keys())}"
-            )
-
-        pipeline_constructor = _REGISTERED_PIPELINES[task]
+        pipeline_constructor = Pipeline._get_task_constructor(task)
 
         if (
             model_path is None
@@ -262,10 +281,6 @@ class Pipeline(ABC):
                 f"No model_path provided for pipeline {pipeline_constructor}. Must "
                 "provide a model path for pipelines that do not have a default defined"
             )
-
-        # if batch size is not given, use default from pipeline_constructor
-        if batch_size is not None:
-            kwargs["batch_size"] = batch_size
 
         if issubclass(
             pipeline_constructor, Bucketable
@@ -290,6 +305,7 @@ class Pipeline(ABC):
         return pipeline_constructor(
             model_path=model_path,
             engine_type=engine_type,
+            batch_size=batch_size,
             num_cores=num_cores,
             scheduler=scheduler,
             input_shapes=input_shapes,

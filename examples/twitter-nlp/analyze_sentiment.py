@@ -59,7 +59,7 @@ from typing import Dict, List, Optional
 
 import click
 
-from deepsparse.transformers import pipeline
+from deepsparse import Pipeline
 from rich import print
 
 
@@ -80,7 +80,7 @@ def _prep_data(tweets: List[Dict], total_num: int) -> List[str]:
 
 
 def _batched_model_input(tweets: List[str], batch_size: int) -> Optional[List[str]]:
-    if batch_size >= len(tweets):
+    if batch_size > len(tweets):
         return None
 
     batched = tweets[0:batch_size]
@@ -90,7 +90,7 @@ def _batched_model_input(tweets: List[str], batch_size: int) -> Optional[List[st
 
 
 def _classified_positive(sentiment: str):
-    return sentiment == "LABEL_1"
+    return sentiment == "LABEL_1" or sentiment == "positive"
 
 
 def _display_results(batch, sentiments):
@@ -134,7 +134,7 @@ def analyze_tweets_sentiment(
     Analyze the sentiment of the tweets given in the tweets_file and
     print out the results.
     """
-    text_pipeline = pipeline(
+    text_pipeline = Pipeline.create(
         task="text-classification",
         model_path=model_path,
         batch_size=batch_size,
@@ -166,7 +166,7 @@ def analyze_tweets_sentiment(
     )
     print("\n\n\n")
     print("###########################################################################")
-    print(f"Completed analyzing {len(tweets)} tweets for sentiment,")
+    print(f"Completed analyzing {len(tot_sentiments)} tweets for sentiment,")
 
     if num_positive >= num_negative:
         print(

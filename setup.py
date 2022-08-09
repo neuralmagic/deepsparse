@@ -46,9 +46,17 @@ _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
+
+def _parse_requirements_file(file_path):
+    with open(file_path, "r") as requirements_file:
+        lines = requirements_file.read().splitlines()
+
+    return [line for line in lines if len(line) > 0 and line[0] != "#"]
+
+
 _deps = [
     "numpy>=1.16.3",
-    "onnx>=1.5.0,<=1.10.1",
+    "onnx>=1.5.0,<=1.12.0",
     "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
@@ -57,7 +65,7 @@ _deps = [
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
-    "beautifulsoup4==4.9.3",
+    "beautifulsoup4>=4.9.3",
     "black>=20.8b1",
     "flake8>=3.8.3",
     "isort>=5.7.0",
@@ -73,7 +81,7 @@ _dev_deps = [
     "pytest>=6.0.0",
     "sphinx-multiversion==0.2.4",
     "sphinx-rtd-theme",
-    "onnxruntime>=1.4.0,<1.9.0",
+    "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
 ]
@@ -87,11 +95,26 @@ _server_deps = [
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
-
 _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.10.1",
     "opencv-python",
 ]
+
+# haystack dependencies are installed from a requirements file to avoid
+# conflicting versions with NM's deepsparse/transformers
+_haystack_requirements_file_path = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    "src",
+    "deepsparse",
+    "transformers",
+    "haystack",
+    "haystack_reqs.txt",
+)
+_haystack_integration_deps = _parse_requirements_file(
+    _haystack_requirements_file_path
+) + [
+    "farm-haystack[all]==1.4.0"
+]  # install farm-haystack last
 
 
 def _check_supported_system():
@@ -129,7 +152,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [6, 7, 8, 9]
+    supported_minor = [6, 7, 8, 9, 10]
 
     if (
         sys.version_info[0] != supported_major
@@ -196,6 +219,7 @@ def _setup_extras() -> Dict:
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
         "yolo": _yolo_integration_deps,
+        "haystack": _haystack_integration_deps,
     }
 
 
@@ -249,11 +273,16 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.6, <3.10",
+    python_requires=">=3.6, <3.11",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",

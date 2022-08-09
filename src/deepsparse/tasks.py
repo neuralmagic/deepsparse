@@ -17,7 +17,7 @@ Classes and implementations for supported tasks in the DeepSparse pipeline and s
 """
 
 from collections import namedtuple
-from typing import List
+from typing import Iterable, List, Optional
 
 
 __all__ = ["SupportedTasks", "AliasedTask"]
@@ -110,8 +110,19 @@ class SupportedTasks:
     all_task_categories = [nlp, image_classification, yolo, yolact, haystack]
 
     @classmethod
-    def check_register_task(cls, task: str):
-        if cls.is_nlp(task):
+    def check_register_task(
+        cls, task: str, extra_tasks: Optional[Iterable[str]] = None
+    ):
+        """
+        :param task: task name to validate and import dependencies for
+        :param extra_tasks: valid task names that are not included in supported tasks.
+            i.e. tasks registered to Pipeline at runtime
+        """
+        if task == "custom":
+            # custom task, register the CustomPipeline
+            import deepsparse.pipelines.custom_pipeline  # noqa: F401
+
+        elif cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register
             import deepsparse.transformers.pipelines  # noqa: F401
 
@@ -133,10 +144,11 @@ class SupportedTasks:
             # register with Pipeline.register
             import deepsparse.transformers.haystack  # noqa: F401
 
-        else:
+        all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
+        if task not in all_tasks:
             raise ValueError(
                 f"Unknown Pipeline task {task}. Currently supported tasks are "
-                f"{cls.task_names()}"
+                f"{list(all_tasks)}"
             )
 
     @classmethod
@@ -185,7 +197,7 @@ class SupportedTasks:
 
     @classmethod
     def task_names(cls):
-        task_names = []
+        task_names = ["custom"]
         for task_category in cls.all_task_categories:
             for task in task_category:
                 unique_aliases = (
