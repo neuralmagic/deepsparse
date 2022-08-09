@@ -53,10 +53,16 @@ def get_release_and_version(package_path: str) -> Tuple[bool, str, str, str, str
     """
     Load version and release info from deepsparse package
     """
+    # deepsparse/src/deepsparse/version.py always exists, default source of truth
+    version_path = os.path.join(package_path, "version.py")
 
-    version_path = os.path.join(package_path, "generated_version.py")
-    if not os.path.exists(version_path):
-        version_path = os.path.join(package_path, "version.py")
+    # If deepsparse/engine-version.txt exists, use the generated_version
+    engine_version_path = os.path.abspath(
+        os.path.join(package_path, os.pardir, os.pardir, "engine-version.txt")
+    )
+    gen_version_path = os.path.join(package_path, "generated_version.py")
+    if os.path.exists(engine_version_path) and os.path.exists(gen_version_path):
+        version_path = gen_version_path
 
     # exec() cannot set local variables so need to manually
     locals_dict = {}
