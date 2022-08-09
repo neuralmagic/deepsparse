@@ -125,14 +125,17 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
                 "if no static labels are provided then batch_size must be set to 1"
             )
 
-        if self._config.hypothesis_template is not None and self._config.hypothesis_template.format("sample_label") == self._config.hypothesis_template:
+        if (
+            self._config.hypothesis_template is not None
+            and self._config.hypothesis_template.format("sample_label")
+            == self._config.hypothesis_template
+        ):
             raise ValueError(
                 "The provided hypothesis_template "
                 f"`{self._config.hypothesis_template}` was not able to be formatted. "
                 "Make sure the passed template includes formatting syntax such "
                 "as {} where the label should go."
             )
-
 
         kwargs.update({"batch_size": batch_size})
         super().__init__(model_path=model_path, **kwargs)
