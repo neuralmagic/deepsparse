@@ -60,8 +60,6 @@ def preprocess_array(
 
     image = image.transpose(0, 3, 1, 2)
     image /= 255
-    # BGR -> RGB
-    image = image[:, (2, 1, 0), :, :]
     image = numpy.ascontiguousarray(image)
 
     return image
