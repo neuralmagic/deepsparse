@@ -65,7 +65,7 @@ _deps = [
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
-    "beautifulsoup4==4.9.3",
+    "beautifulsoup4>=4.9.3",
     "black>=20.8b1",
     "flake8>=3.8.3",
     "isort>=5.7.0",
