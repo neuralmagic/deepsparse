@@ -241,7 +241,10 @@ class ZeroShotTextClassificationOutput(BaseModel, Joinable):
         labels = list()
         scores = list()
         for output in outputs:
-            sequences.extend(output.sequences)
+            if isinstance(output.sequences, list):
+                sequences.extend(output.sequences)
+            else:
+                sequences.append(output.sequences)
             labels.extend(output.labels)
             scores.extend(output.scores)
 

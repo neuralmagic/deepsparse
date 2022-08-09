@@ -611,19 +611,20 @@ class Pipeline(ABC):
         if split_kwargs is None:
             split_kwargs = {}
 
+        # BOOKMARK
         pipeline_inputs = pipeline_inputs.split(**split_kwargs)
-        futures = [
-            self.executor.submit(self._run_with_static_batch, _input)
-            for _input in pipeline_inputs
-        ]
-        #outputs = [self._run_with_static_batch(_input) for _input in pipeline_inputs]
+        #futures = [
+        #    self.executor.submit(self._run_with_static_batch, _input)
+        #    for _input in pipeline_inputs
+        #]
+        pipeline_inputs = list(pipeline_inputs)
+        outputs = [self._run_with_static_batch(_input) for _input in pipeline_inputs]
         # wait for all inferences to complete before joining outputs
-        concurrent.futures.wait(futures)
-        outputs = [future.result() for future in futures]
+        #concurrent.futures.wait(futures)
+        #outputs = [future.result() for future in futures]
         return self.output_schema.join(outputs)
 
     def _run_with_static_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
-        print("_run_with_static_batch")
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
@@ -634,6 +635,7 @@ class Pipeline(ABC):
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
+        print(pipeline_outputs)
 
         # validate outputs format
         if not isinstance(pipeline_outputs, self.output_schema):

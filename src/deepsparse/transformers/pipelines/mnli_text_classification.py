@@ -120,7 +120,7 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputBase, Splittabl
             for label in labels:
                 yield MnliTextClassificationInput(
                     sequences=sequence,
-                    labels=label,
+                    labels=[label],
                     hypothesis_template=self.hypothesis_template,
                     multi_class=self.multi_class,
                 )
@@ -232,6 +232,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
             sequence_pairs.extend(
                 [[sequence, hypothesis_template.format(label)] for label in labels]
             )
+        print(sequence_pairs)
 
         tokens = self.tokenizer(
             sequence_pairs,
