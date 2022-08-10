@@ -27,7 +27,7 @@ def _auto_install_dependencies():
     dependencies = [
         _Dependency(
             name="torchvision",
-            version=">=0.3.0,<=0.10.1",
+            version=">=0.3.0,<=0.12.0",
             necessary=True,
             import_name=None,
         ),
