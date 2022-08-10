@@ -166,6 +166,9 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param pooling_strategy: strategy for combining embeddings. Default is
         "cls_token"
     :param top_k: how many documents to return per query. Default is 10
+    :param embed_title: True if titles should be embedded into the passage. Raw
+        text input will be the title followed by a space followed by the content.
+        Default is False
     :param progress_bar: if true displays progress bar during embedding.
         Not supported by DeepSparse retriever nodes. Default is False
     :param scale_score: whether to scale the similarity score to the unit interval
@@ -176,9 +179,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param context: context shared between query and passage models. If None
         is provided, then a new context with 4 streams will be created. Default
         is None
-    :param title_separator: character(s) used to passage title with passage content.
-        Titles are first, followed by the separator, then the content. If None, then
-        titles are not included in input sequences. Default is a space character.
     :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
     """
 
@@ -193,10 +193,10 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         emb_extraction_layer: Union[int, str, None] = -1,
         pooling_strategy: str = "cls_token",
         top_k: int = 10,
+        embed_title: bool = False,
         progress_bar: bool = False,
         scale_score: bool = True,
         context: Optional[Context] = None,
-        title_separator: Optional[str] = " ",
         **pipeline_kwargs,
     ):
         super(BaseRetriever).__init__()
@@ -206,9 +206,9 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         self.progress_bar = progress_bar
         self.pooling_strategy = pooling_strategy
         self.top_k = top_k
+        self.embed_title = embed_title
         self.scale_score = scale_score
         self.context = context
-        self.title_separator = title_separator
         self.use_gpu = False
         self.devices = ["cpu"]
 
@@ -288,8 +288,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         :param docs: list of document strings to embed
         :return: list of embeddings for each document
         """
-        passage_inputs = self._documents_to_passage_inputs(docs)
-        print(passage_inputs)
+        passage_inputs = [self._document_to_passage_input(doc) for doc in docs]
 
         return [
             self.passage_pipeline([passage_input]).embeddings[0]
@@ -307,19 +306,19 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             "DeepSparse Engine does not support loading from files"
         )
 
-    def _documents_to_passage_inputs(self, docs: List[Document]) -> List[str]:
+    def _document_to_passage_input(self, document: Document) -> str:
         # Optionally appends title
         #
-        # :param docs: documents to turn into inputs
-        # :return: a list of raw text inputs
-        return [
-            f"{doc.meta['title']}{self.title_separator}{doc.content}"
-            if hasattr(doc, "meta")
-            and doc.meta.get("title", None) is not None
-            and self.title_separator is not None
-            else doc.content
-            for doc in docs
-        ]
+        # :param document: document to turn into raw text input
+        # :return: raw text input of document title and content
+        if (
+            hasattr(document, "meta")
+            and document.meta.get("title", None) is not None
+            and self.embed_title
+        ):
+            return f"{document.meta['title']} {document.content}"
+
+        return document.content
 
     def _get_predictions(*args, **kwargs):
         raise NotImplementedError(
