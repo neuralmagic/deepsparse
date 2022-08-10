@@ -65,7 +65,7 @@ _deps = [
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
-    "beautifulsoup4==4.9.3",
+    "beautifulsoup4>=4.9.3",
     "black>=20.8b1",
     "flake8>=3.8.3",
     "isort>=5.7.0",
@@ -96,7 +96,7 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 _yolo_integration_deps = [
-    "torchvision>=0.3.0,<=0.10.1",
+    "torchvision>=0.3.0,<=0.12.0",
     "opencv-python",
 ]
 

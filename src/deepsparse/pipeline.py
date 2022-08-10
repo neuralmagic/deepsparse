@@ -217,7 +217,7 @@ class Pipeline(ABC):
         # that domain is to be used. (ie deepsparse.transformers will auto
         # install extra packages so should only import and register once a
         # transformers task is specified)
-        SupportedTasks.check_register_task(task)
+        SupportedTasks.check_register_task(task, _REGISTERED_PIPELINES.keys())
 
         if task not in _REGISTERED_PIPELINES:
             raise ValueError(
