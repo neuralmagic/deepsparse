@@ -17,7 +17,9 @@ Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
 import concurrent.futures
+import importlib
 import os
+import sys
 from abc import ABC, abstractmethod
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
@@ -199,17 +201,23 @@ class Pipeline(ABC):
         This function retrieves the class previously registered via `Pipeline.register`
         for `task`.
 
+        If `task` starts with "import:", it is treated as a module to be imported,
+        and retrieves the task via the `TASK` attribute of the imported module.
+
         If `task` starts with "custom", then it is mapped to the "custom" task.
 
         :param task: The task name to get the constructor for
         :return: The class registered to `task`
         :raises ValueError: if `task` was not registered via `Pipeline.register`.
         """
-        task = task.lower().replace("-", "_")
-
-        # support any task that has "custom" at the beginning via the "custom" task
-        if task.startswith("custom"):
+        if task.startswith("import:"):
+            # dynamically import the task from a file
+            task = _dynamic_import_task(module=task.replace("import:", ""))
+        elif task.startswith("custom"):
+            # support any task that has "custom" at the beginning via the "custom" task
             task = "custom"
+        else:
+            task = task.lower().replace("-", "_")
 
         # extra step to register pipelines for a given task domain
         # for cases where imports should only happen once a user specifies
@@ -242,7 +250,7 @@ class Pipeline(ABC):
     ) -> "Pipeline":
         """
         :param task: name of task to create a pipeline for. Use "custom" for
-            custom tasks. See `CustomTaskPipeline`.
+            custom tasks (see `CustomTaskPipeline`).
         :param model_path: path on local system or SparseZoo stub to load the model
             from. Some tasks may have a default model path
         :param engine_type: inference engine to use. Currently supported values
@@ -1352,3 +1360,76 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         with 2 streams to make use of parallel inference of labels
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
+
+
+def _dynamic_import_task(module: str) -> str:
+    """
+    Dynamically imports `module` with importlib, and returns the `TASK`
+    attribute on the module (something like `importlib.import_module(module).TASK`).
+
+    Example contents of `module`:
+    ```python
+    from deepsparse.pipeline import Pipeline
+    from deepsparse.transformers.pipelines.question_answering import (
+        QuestionAnsweringPipeline,
+    )
+
+    TASK = "my_qa_task"
+    Pipeline.register(TASK)(QuestionAnsweringPipeline)
+    ```
+
+    NOTE: this modifies `sys.path`.
+
+    :raises FileNotFoundError: if path does not exist
+    :raises RuntimeError: if the imported module does not contain `TASK`
+    :raises RuntimeError: if the module doesn't register the task
+    :return: The task from the imported module.
+    """
+    parent_dir, module_name = _module_to_dir_and_name(module)
+    if not os.path.exists(os.path.join(parent_dir, module_name + ".py")):
+        raise FileNotFoundError(
+            f"Unable to find file for {module}. "
+            f"Looked for {module_name}.py under {parent_dir if parent_dir else '.'}"
+        )
+
+    # add parent_dir to sys.path so we can import the file as a module
+    sys.path.append(os.curdir)
+    if parent_dir:
+        print(f"Adding {parent_dir} to sys.path")
+        sys.path.append(parent_dir)
+
+    # do the import
+    print(f"Importing '{module_name}'")
+    module = importlib.import_module(module_name)
+
+    if not hasattr(module, "TASK"):
+        raise RuntimeError(
+            "When using --task import:<module>, "
+            "module must set the `TASK` attribute."
+        )
+
+    task = getattr(module, "TASK")
+    print(f"Using task={repr(task)}")
+
+    if task not in _REGISTERED_PIPELINES:
+        raise RuntimeError(
+            "When using --task import:<module>, "
+            "the file must register a pipeline "
+            "using @Pipeline.register(TASK)."
+        )
+
+    return task
+
+
+def _module_to_dir_and_name(module: str) -> Tuple[str, str]:
+    """
+    Examples:
+    - `a` -> `("", "a")`
+    - `a.b` -> `("a", "b")`
+    - `a.b.c` -> `("a/b", "c")`
+
+    :return: module split into directory & name
+    """
+    *dirs, module_name = module.split(".")
+    parent_dir = os.sep.join(dirs)
+    return parent_dir, module_name
