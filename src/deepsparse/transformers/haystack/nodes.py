@@ -232,13 +232,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
                 "DeepSparseDensePassageRetriever must be initialized with a "
                 "document_store"
             )
-        elif document_store.similarity != "cosine":
-            _LOGGER.warning(
-                "You are using a Dense Passage Retriever model with the "
-                f"{document_store.similarity} function. We recommend you use "
-                "cosine instead. This can be set when initializing the "
-                "DocumentStore"
-            )
         if pooling_strategy != "cls_token":
             _LOGGER.warning(
                 "You are using a Dense Passage Retriever model with "
@@ -255,7 +248,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         if self.context is None:
             self.context = Context(
                 num_cores=None, num_streams=4
-            )  # arbitrarily choose 4
+            )  # arbitrarily choose 4, to be replaced with dynamic batch
 
         _LOGGER.info("Creating query pipeline")
         self.query_pipeline = Pipeline.create(
@@ -295,24 +288,13 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         :param docs: list of document strings to embed
         :return: list of embeddings for each document
         """
-        passage_inputs = [
-            f"{doc.meta['title']}{self.title_separator}{doc.content}"
-            if hasattr(doc, "meta")
-            and "title" in doc.meta
-            and doc.meta["title"] is not None
-            and self.title_separator is not None
-            else doc.content
-            for doc in docs
-        ]
+        passage_inputs = self._documents_to_passage_inputs(docs)
+        print(passage_inputs)
+
         return [
             self.passage_pipeline([passage_input]).embeddings[0]
             for passage_input in passage_inputs
         ]
-
-    def _get_predictions(*args, **kwargs):
-        raise NotImplementedError(
-            "This helper function is not used by DeepSparseDensePassageRetriever"
-        )
 
     def train(*args, **kwargs):
         raise NotImplementedError("DeepSparse Engine does not support model training")
@@ -323,6 +305,25 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     def load(*args, **kwargs):
         raise NotImplementedError(
             "DeepSparse Engine does not support loading from files"
+        )
+
+    def _documents_to_passage_inputs(self, docs: List[Document]) -> List[str]:
+        # Optionally appends title
+        #
+        # :param docs: documents to turn into inputs
+        # :return: a list of raw text inputs
+        return [
+            f"{doc.meta['title']}{self.title_separator}{doc.content}"
+            if hasattr(doc, "meta")
+            and doc.meta.get("title", None) is not None
+            and self.title_separator is not None
+            else doc.content
+            for doc in docs
+        ]
+
+    def _get_predictions(*args, **kwargs):
+        raise NotImplementedError(
+            "This helper function is not used by DeepSparseDensePassageRetriever"
         )
 
 
