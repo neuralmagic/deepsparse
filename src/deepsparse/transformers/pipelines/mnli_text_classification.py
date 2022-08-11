@@ -134,7 +134,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
                 "The provided hypothesis_template "
                 f"`{self._config.hypothesis_template}` was not able to be formatted. "
                 "Make sure the passed template includes formatting syntax such "
-                "as {} where the label should go."
+                "as '{}' where the label should go."
             )
 
         if self._config.entailment_index == self._config.contradiction_index:
