@@ -246,9 +246,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
             )
 
         if self.context is None:
-            self.context = Context(
-                num_cores=None, num_streams=4
-            )  # arbitrarily choose 4, to be replaced with dynamic batch
+            self.context = Context()
 
         _LOGGER.info("Creating query pipeline")
         self.query_pipeline = Pipeline.create(
