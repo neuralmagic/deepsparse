@@ -18,8 +18,9 @@ Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from typing import Any, Generator, Iterable, List, Union
+from typing import Any, Generator, Iterable, List, TextIO, Union
 
+import numpy
 from PIL import Image
 from pydantic import BaseModel, Field
 

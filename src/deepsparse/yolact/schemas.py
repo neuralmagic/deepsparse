@@ -17,7 +17,7 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Generator, Iterable, List, Optional, Union
+from typing import Any, Generator, Iterable, List, Optional, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -40,7 +40,7 @@ class YOLACTInputSchema(BaseModel, Splittable):
     Input Model for YOLACT
     """
 
-    images: Union[str, numpy.ndarray, List[Union[str, numpy.ndarray]]] = Field(
+    images: Union[str, List[str], List[Any]] = Field(
         description="List of images to process"
     )
 
@@ -129,7 +129,7 @@ class YOLACTOutputSchema(BaseModel, Joinable):
     boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[Optional[numpy.ndarray]] = Field(
+    masks: List[Optional[List[float]]] = Field(
         description="List of masks, one for each prediction"
     )
 
