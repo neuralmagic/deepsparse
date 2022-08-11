@@ -28,14 +28,7 @@ import deepsparse as _deepsparse
 
 _HAYSTACK_PREFERRED_VERSION = "1.4.0"
 _HAYSTACK_EXTRAS = "[all]"
-_HAYSTACK_REQS_PATH = _os.path.join(
-    *[
-        f"{_deepsparse.__path__[0]}",
-        "transformers",
-        "haystack",
-        "haystack_reqs.txt",
-    ]
-)
+_HAYSTACK_REQS_PATH = _os.path.join(_os.path.dirname(__file__), "haystack_reqs.txt")
 
 
 # check haystack installation
