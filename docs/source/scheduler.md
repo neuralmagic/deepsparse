@@ -34,7 +34,7 @@ If increasing core count doesn't decrease latency, that's a strong indicator tha
 
 _Multi-stream scheduling; requests execute in parallel and may utilize hardware resources better_
 
-Whereas the default scheduler will queue up requests made simultaneously and handle them serially, the multi-stream scheduler allows multiple requests to be run in parallel. The num_streams argument to the Engine/Context classes controls how the multi-streams scheduler partitions up the machine. Each stream maps to a contiguous set of hardware threads. There is no sharing amongst the partitions and it is generally good practice make sure that the num_streams value evenly divides into your number of cores. By default num_streams is set to multiplex requests across L3 caches.
+Whereas the default scheduler will queue up requests made simultaneously and handle them serially, the multi-stream scheduler allows multiple requests to be run in parallel. The num_streams argument to the Engine/Context classes controls how the multi-streams scheduler partitions up the machine. Each stream maps to a contiguous set of hardware threads. By default, only one hyperthread per core is used. There is no sharing amongst the partitions and it is generally good practice make sure that the num_streams value evenly divides into your number of cores. By default num_streams is set to multiplex requests across L3 caches.
 
 Here's an example: Consider a machine with 2 sockets, each with 8 cores. In this case the multi-stream scheduler will create two streams, one per socket by default. The first stream will contain cores 0-7 and the second stream will contain cores 8-15.
 
