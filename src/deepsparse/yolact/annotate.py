@@ -65,6 +65,7 @@ Examples:
 """
 import logging
 from typing import Optional, Tuple
+from tqdm import tqdm
 
 import click
 
@@ -205,7 +206,8 @@ def main(
         num_cores=num_cores,
     )
 
-    for iteration, (input_image, source_image) in enumerate(loader):
+    for iteration, (input_image, source_image) in tqdm(enumerate(loader)):
+
 
         # annotate
         annotated_image = annotate(

@@ -68,28 +68,38 @@ def annotate_image(
         # no detections found
         return image
 
+    classes_to_ignore = ["dining table", "chair", "bird", "carrot", "suitcase", "oven", "microwave", "truck"]
     image_res = copy.copy(image)
-
     masks, boxes = _resize_to_fit_img(image, masks, boxes)
+    filtered_detections = [ [mask, box, class_, score] for (mask, box, class_, score) in zip(masks, boxes, classes, scores)
+                            if score > score_threshold and class_ not in classes_to_ignore]
+    colours = [_get_color(detection[2]) for detection in filtered_detections]
 
-    for box, mask, class_, score in zip(boxes, masks, classes, scores):
-        if score > score_threshold:
-            color = _get_color(class_)
-            left, top, _, _ = box
-            image_res = _put_mask(image=image_res, mask=mask, color=color)
-            image_res = _put_bounding_box(image=image_res, box=box, color=color)
+    for i, det in enumerate(filtered_detections):
+        mask, box, class_, score = det
+        color = colours[i]
+        image_res = _put_mask(image=image_res, mask=mask, color=color)
 
-            annotation_text = f"{class_}: {score:.0%}"
-            text_width, text_height = _get_text_size(annotation_text)
-            image_res = _put_annotation_text(
-                image=image_res,
-                annotation_text=annotation_text,
-                left=left,
-                top=top,
-                color=color,
-                text_width=text_width,
-                text_height=text_height,
-            )
+    for i, det in enumerate(filtered_detections):
+        mask, box, class_, score = det
+        color = colours[i]
+        image_res = _put_bounding_box(image=image_res, box=box, color=color)
+
+    for i, det in enumerate(filtered_detections):
+        mask, box, class_, score = det
+        color = colours[i]
+        left, top, _, _ = box
+        annotation_text = f"{class_}: {score:.0%}"
+        text_width, text_height = _get_text_size(annotation_text)
+        image_res = _put_annotation_text(
+            image=image_res,
+            annotation_text=annotation_text,
+            left=left,
+            top=top,
+            color=color,
+            text_width=text_width,
+            text_height=text_height,
+        )
 
     if images_per_sec is not None:
         image_res = _plot_fps(
