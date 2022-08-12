@@ -96,7 +96,7 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 _yolo_integration_deps = [
-    "torchvision>=0.3.0,<=0.10.1",
+    "torchvision>=0.3.0,<=0.12.0",
     "opencv-python",
 ]
 

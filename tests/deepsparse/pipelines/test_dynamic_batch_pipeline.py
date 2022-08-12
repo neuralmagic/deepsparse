@@ -27,12 +27,11 @@ _SUPPORTED_TASKS = [
     "token_classification",
     "yolo",
     "image_classification",
+    "yolact",
 ]
 
 _BATCH_SIZES = [
-    1,
     2,
-    10,
 ]
 
 
@@ -40,8 +39,8 @@ def compare(expected, actual):
     assert type(expected) == type(actual)
 
     if isinstance(expected, (list, float, numpy.ndarray)):
-        expected_np = numpy.asarray(expected)
-        actual_np = numpy.asarray(actual)
+        expected_np = numpy.asarray(expected, dtype=float)
+        actual_np = numpy.asarray(actual, dtype=float)
         assert numpy.allclose(expected_np, actual_np, rtol=1e-3)
     elif isinstance(expected, dict):
         assert list(expected.keys()).sort() == list(actual.keys()).sort()
@@ -78,4 +77,7 @@ def test_dynamic_is_same_as_static(task):
         actual_dict = dynamic_outputs.dict()
 
         # Check that order is maintained
-        assert static_outputs == dynamic_outputs or compare(expected_dict, actual_dict)
+        try:
+            assert static_outputs == dynamic_outputs
+        except Exception:
+            assert compare(expected_dict, actual_dict)
