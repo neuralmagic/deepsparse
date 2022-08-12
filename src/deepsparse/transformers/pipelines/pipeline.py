@@ -142,6 +142,9 @@ class TransformersPipeline(Pipeline, Bucketable):
 
     @staticmethod
     def should_bucket(*args, **kwargs) -> bool:
+        """
+        :returns: True if kwargs contain sequence_length as a list; otherwise False
+        """
         sequence_length = kwargs.get("sequence_length", 128)
         return isinstance(sequence_length, list)
 
@@ -149,12 +152,48 @@ class TransformersPipeline(Pipeline, Bucketable):
     def create_pipeline_buckets(
         *args, sequence_length: List[int], **kwargs
     ) -> List[Pipeline]:
+        """
+        Create and return a list of Pipeline objects representing different
+        buckets
+
+        :param args: args for pipeline creation
+        :param sequence_length: a List of sequence lengths to initialize buckets
+            for
+        :param kwargs: keyword args for pipeline creation
+        :return: A List[Pipeline] objects representing different buckets
+        """
         pipelines = []
         for seq_len in sorted(sequence_length):
             curr_pipeline = Pipeline.create(*args, sequence_length=seq_len, **kwargs)
             pipelines.append(curr_pipeline)
 
         return pipelines
+
+    @staticmethod
+    def select_bucket_by_seq_len(
+        input_seq_len: int, buckets: List["TransformersPipeline"]
+    ) -> "TransformersPipeline":
+        """
+        :param input_seq_len: sequence length to select a bucket for
+        :param buckets: A List of Pipeline objects representing different buckets
+        :return: pipeline with the minimal sequence length to fit the input sequence
+            length. If no pipeline fits the input, the pipeline with the largest
+            sequence length is returned
+        """
+        # select pipeline with the minimal sequence length to fit the input
+        selected_pipeline = buckets[0]
+        for pipeline in buckets:
+            seq_len = pipeline.sequence_length
+            if input_seq_len <= seq_len < selected_pipeline.sequence_length:
+                selected_pipeline = pipeline
+
+        # if no pipeline fits the input, select the pipeline with maximal length
+        if input_seq_len > selected_pipeline.sequence_length:
+            selected_pipeline = max(
+                buckets, key=lambda pipeline: pipeline.sequence_length
+            )
+
+        return selected_pipeline
 
 
 def pipeline(

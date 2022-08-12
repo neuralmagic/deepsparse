@@ -17,7 +17,7 @@ Classes and implementations for supported tasks in the DeepSparse pipeline and s
 """
 
 from collections import namedtuple
-from typing import List
+from typing import Iterable, List, Optional
 
 
 __all__ = ["SupportedTasks", "AliasedTask"]
@@ -69,13 +69,22 @@ class SupportedTasks:
     """
 
     nlp = namedtuple(
-        "nlp", ["question_answering", "text_classification", "token_classification"]
+        "nlp",
+        [
+            "question_answering",
+            "text_classification",
+            "token_classification",
+            "zero_shot_text_classification",
+            "embedding_extraction",
+        ],
     )(
         question_answering=AliasedTask("question_answering", ["qa"]),
         text_classification=AliasedTask(
             "text_classification", ["glue", "sentiment_analysis"]
         ),
         token_classification=AliasedTask("token_classification", ["ner"]),
+        zero_shot_text_classification=AliasedTask("zero_shot_text_classification", []),
+        embedding_extraction=AliasedTask("embedding_extraction", []),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(
@@ -88,12 +97,32 @@ class SupportedTasks:
     yolo = namedtuple("yolo", ["yolo"])(
         yolo=AliasedTask("yolo", ["yolo"]),
     )
+    yolact = namedtuple("yolact", ["yolact"])(
+        yolact=AliasedTask("yolact", ["yolact"]),
+    )
 
-    all_task_categories = [nlp, image_classification, yolo]
+    haystack = namedtuple("haystack", ["information_retrieval_haystack"])(
+        information_retrieval_haystack=AliasedTask(
+            "information_retrieval_haystack", ["haystack"]
+        ),
+    )
+
+    all_task_categories = [nlp, image_classification, yolo, yolact, haystack]
 
     @classmethod
-    def check_register_task(cls, task: str):
-        if cls.is_nlp(task):
+    def check_register_task(
+        cls, task: str, extra_tasks: Optional[Iterable[str]] = None
+    ):
+        """
+        :param task: task name to validate and import dependencies for
+        :param extra_tasks: valid task names that are not included in supported tasks.
+            i.e. tasks registered to Pipeline at runtime
+        """
+        if task == "custom":
+            # custom task, register the CustomPipeline
+            import deepsparse.pipelines.custom_pipeline  # noqa: F401
+
+        elif cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register
             import deepsparse.transformers.pipelines  # noqa: F401
 
@@ -102,14 +131,24 @@ class SupportedTasks:
             # register with Pipeline.register
             import deepsparse.image_classification.pipelines  # noqa: F401
 
+        elif cls.is_yolact(task):
+            # trigger yolo pipelines to register with Pipeline.register
+            import deepsparse.yolact.pipelines  # noqa: F401
+
         elif cls.is_yolo(task):
             # trigger yolo pipelines to register with Pipeline.register
             import deepsparse.yolo.pipelines  # noqa: F401
 
-        else:
+        elif cls.is_haystack(task):
+            # trigger haystack pipeline as well as transformers pipelines to
+            # register with Pipeline.register
+            import deepsparse.transformers.haystack  # noqa: F401
+
+        all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
+        if task not in all_tasks:
             raise ValueError(
                 f"Unknown Pipeline task {task}. Currently supported tasks are "
-                f"{cls.task_names()}"
+                f"{list(all_tasks)}"
             )
 
     @classmethod
@@ -119,11 +158,7 @@ class SupportedTasks:
             such as question_answering
         :return: True if it is an nlp task, False otherwise
         """
-        return (
-            cls.nlp.question_answering.matches(task)
-            or cls.nlp.text_classification.matches(task)
-            or cls.nlp.token_classification.matches(task)
-        )
+        return any([nlp_task.matches(task) for nlp_task in cls.nlp])
 
     @classmethod
     def is_image_classification(cls, task: str) -> bool:
@@ -132,7 +167,7 @@ class SupportedTasks:
             classification task
         :return: True if it is an image classification task, False otherwise
         """
-        return cls.image_classification.image_classification.matches(task)
+        return any([ic_task.matches(task) for ic_task in cls.image_classification])
 
     @classmethod
     def is_yolo(cls, task: str) -> bool:
@@ -141,11 +176,28 @@ class SupportedTasks:
             segmentation task using YOLO
         :return: True if it is an segmentation task using YOLO, False otherwise
         """
-        return cls.yolo.yolo.matches(task)
+        return any([yolo_task.matches(task) for yolo_task in cls.yolo])
+
+    @classmethod
+    def is_yolact(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is an image
+            segmentation task using YOLO
+        :return: True if it is an segmentation task using YOLO, False otherwise
+        """
+        return any([yolact_task.matches(task) for yolact_task in cls.yolact])
+
+    @classmethod
+    def is_haystack(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a haystack task
+        :return: True if it is a haystack task, False otherwise
+        """
+        return any([haystack_task.matches(task) for haystack_task in cls.haystack])
 
     @classmethod
     def task_names(cls):
-        task_names = []
+        task_names = ["custom"]
         for task_category in cls.all_task_categories:
             for task in task_category:
                 unique_aliases = (

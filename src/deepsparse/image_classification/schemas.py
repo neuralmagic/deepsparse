@@ -15,11 +15,12 @@
 """
 Input/Output Schemas for Image Classification.
 """
-
-from typing import Any, List, Union
+from typing import Any, Generator, Iterable, List, Union
 
 import numpy
 from pydantic import BaseModel, Field
+
+from deepsparse.pipelines import Joinable, Splittable
 
 
 __all__ = [
@@ -28,12 +29,12 @@ __all__ = [
 ]
 
 
-class ImageClassificationInput(BaseModel):
+class ImageClassificationInput(BaseModel, Splittable):
     """
     Input model for image classification
     """
 
-    images: Union[str, List[str], List[Any], numpy.ndarray] = Field(
+    images: Union[str, List[str], List[Any]] = Field(
         description="List of Images to process"
     )
 
@@ -53,8 +54,35 @@ class ImageClassificationInput(BaseModel):
             )
         return cls(images=files)
 
+    def split(self) -> Generator["ImageClassificationInput", None, None]:
+        """
+        Split a current `ImageClassificationInput` object with a batch size b, into a
+        generator of b smaller objects with batch size 1, the returned
+        object can be iterated on.
 
-class ImageClassificationOutput(BaseModel):
+        :return: A Generator of smaller `ImageClassificationInput` objects each
+            representing an input of batch-size 1
+        """
+
+        images = self.images
+
+        is_batch_size_one = isinstance(images, str) or (
+            isinstance(images, numpy.ndarray) and images.ndim == 3
+        )
+        if is_batch_size_one:
+            # case 1: str, numpy.ndarray(3D)
+            yield self
+
+        elif isinstance(images, numpy.ndarray) and images.ndim != 4:
+            raise ValueError(f"Could not breakdown {self} into smaller batches")
+
+        else:
+            # case 2: List[str, Any], numpy.ndarray(4D) -> multiple images of size 1
+            for image in images:
+                yield ImageClassificationInput(images=image)
+
+
+class ImageClassificationOutput(BaseModel, Joinable):
     """
     Output model for image classification
     """
@@ -65,3 +93,25 @@ class ImageClassificationOutput(BaseModel):
     scores: List[Union[float, List[float]]] = Field(
         description="List of scores, one for each prediction"
     )
+
+    @staticmethod
+    def join(
+        outputs: Iterable["ImageClassificationOutput"],
+    ) -> "ImageClassificationOutput":
+        """
+        Takes in ab Iterable of `ImageClassificationOutput` objects and combines
+        them into one object representing a bigger batch size
+
+        :return: A new `ImageClassificationOutput` object that represents a bigger batch
+        """
+        if len(outputs) == 1:
+            return outputs[0]
+
+        scores = list()
+        labels = list()
+
+        for output in outputs:
+            labels.append(output.labels)
+            scores.append(output.scores)
+
+        return ImageClassificationOutput(scores=scores, labels=labels)

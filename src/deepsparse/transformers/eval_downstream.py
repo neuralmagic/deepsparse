@@ -21,7 +21,7 @@ Command help:
 usage: eval_downstream.py [-h] [-d {squad,mnli,qqp,sst2}] [-c NUM_CORES]
                           [-e {deepsparse,onnxruntime}]
                           [--max-sequence-length MAX_SEQUENCE_LENGTH]
-                          [--max-samples MAX_SAMPLES]
+                          [--max-samples MAX_SAMPLES] [--zero-shot BOOL]
                           onnx_filepath
 
 Evaluate a BERT ONNX model on a downstream dataset
@@ -40,11 +40,15 @@ optional arguments:
                         Inference engine backend to run eval on. Choices are
                         'deepsparse', 'onnxruntime'. Default is 'deepsparse'
   --max-sequence-length MAX_SEQUENCE_LENGTH
-                        the max sequence length for model inputs. Default is
+                        The max sequence length for model inputs. Default is
                         384
   --max-samples MAX_SAMPLES
-                        the max number of samples to evaluate. Default is None
+                        The max number of samples to evaluate. Default is None
                         or all samples
+  --zero-shot BOOL
+                        Whether to run the dataset with a zero shot pipeline.
+                        Currently supports zero shot pipelines for sst2.
+                        Default is False
 
 ##########
 Example command for evaluating a sparse BERT QA model from sparsezoo:
@@ -115,7 +119,8 @@ def mnli_eval(args):
     mnli = load_dataset("glue", "mnli")
     mnli_matched = mnli["validation_matched"]
     mnli_mismatched = mnli["validation_mismatched"]
-    mnli_metrics = load_metric("glue", "mnli")
+    mnli_metrics_matched = load_metric("glue", "mnli")
+    mnli_metrics_mismatched = load_metric("glue", "mnli")
 
     # load pipeline
     text_classify = Pipeline.create(
@@ -134,7 +139,7 @@ def mnli_eval(args):
 
     for idx, sample in _enumerate_progress(mnli_matched, args.max_samples):
         pred = text_classify([[sample["premise"], sample["hypothesis"]]])
-        mnli_metrics.add_batch(
+        mnli_metrics_matched.add_batch(
             predictions=[label_map.get(pred.labels[0])],
             references=[sample["label"]],
         )
@@ -144,7 +149,7 @@ def mnli_eval(args):
 
     for idx, sample in _enumerate_progress(mnli_mismatched, args.max_samples):
         pred = text_classify([[sample["premise"], sample["hypothesis"]]])
-        mnli_metrics.add_batch(
+        mnli_metrics_mismatched.add_batch(
             predictions=[label_map.get(pred.labels[0])],
             references=[sample["label"]],
         )
@@ -152,7 +157,7 @@ def mnli_eval(args):
         if args.max_samples and idx >= args.max_samples:
             break
 
-    return mnli_metrics
+    return mnli_metrics_matched, mnli_metrics_mismatched
 
 
 def qqp_eval(args):
@@ -208,6 +213,46 @@ def sst2_eval(args):
         label_map = _get_label2id(text_classify.config_path)
     except KeyError:
         label_map = {"negative": 0, "positive": 1, "LABEL_0": 0, "LABEL_1": 1}
+
+    for idx, sample in _enumerate_progress(sst2, args.max_samples):
+        pred = text_classify(
+            sample["sentence"],
+        )
+
+        sst2_metrics.add_batch(
+            predictions=[label_map.get(pred.labels[0])],
+            references=[sample["label"]],
+        )
+
+        if args.max_samples and idx >= args.max_samples:
+            break
+
+    return sst2_metrics
+
+
+def sst2_zero_shot_eval(args):
+    # load sst2 validation dataset and eval tool
+    sst2 = load_dataset("glue", "sst2")["validation"]
+    sst2_metrics = load_metric("glue", "sst2")
+
+    # load pipeline
+    text_classify = Pipeline.create(
+        task="zero_shot_text_classification",
+        batch_size=2,
+        model_scheme="mnli",
+        model_config={
+            "hypothesis_template": "The sentiment of this text is {}",
+            "multi_class": True,
+        },
+        model_path=args.onnx_filepath,
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+        labels=["positive", "negative"],
+    )
+    print(f"Engine info: {text_classify.engine}")
+
+    label_map = {"positive": 1, "negative": 0}
 
     for idx, sample in _enumerate_progress(sst2, args.max_samples):
         pred = text_classify(
@@ -295,6 +340,7 @@ SUPPORTED_DATASETS = {
     "mnli": mnli_eval,
     "qqp": qqp_eval,
     "sst2": sst2_eval,
+    "sst2_zero_shot": sst2_zero_shot_eval,
     "conll2003": conll2003_eval,
 }
 
@@ -396,12 +442,21 @@ def parse_args():
         type=int,
         default=20,
     )
+    parser.add_argument(
+        "--zero-shot",
+        help="Whether to run the dataset with a zero shot pipeline. Currently "
+        "supports sst2. Default is False",
+        type=bool,
+        default=False,
+    )
 
     return parser.parse_args()
 
 
 def _main(args):
     dataset = args.dataset.lower()
+    if args.zero_shot:
+        dataset += "_zero_shot"
 
     if dataset not in SUPPORTED_DATASETS:
         raise KeyError(
@@ -409,9 +464,17 @@ def _main(args):
             f"available datasets are {list(SUPPORTED_DATASETS.keys())}"
         )
 
-    metrics = SUPPORTED_DATASETS[dataset](args)
+    if dataset == "mnli":
+        mnli_metrics_matched, mnli_metrics_mismatched = mnli_eval(args)
+        mnli_metrics_matched = mnli_metrics_matched.compute()
+        mnli_metrics_mismatched = mnli_metrics_mismatched.compute()
+        mnli_metrics = {k + "_m": v for k, v in mnli_metrics_matched.items()}
+        mnli_metrics.update({k + "_mm": v for k, v in mnli_metrics_mismatched.items()})
+        print(f"\nmnli eval results: {mnli_metrics}")
+    else:
+        metrics = SUPPORTED_DATASETS[dataset](args)
 
-    print(f"\n{dataset} eval results: {metrics.compute()}")
+        print(f"\n{dataset} eval results: {metrics.compute()}")
 
 
 def main():

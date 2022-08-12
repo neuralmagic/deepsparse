@@ -81,7 +81,7 @@ from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
 
 yolo_v5_default_stub = (
-    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/" "pruned-aggressive_96"
+    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96"
 )
 
 DEEPSPARSE_ENGINE = "deepsparse"
