@@ -87,7 +87,7 @@ import click
 
 from deepsparse import Context, Pipeline
 from deepsparse.log import set_logging_level
-from deepsparse.server.asynchronous import execute_async, initialize_aysnc
+from deepsparse.server.asynchronous import execute_async, initialize_async
 from deepsparse.server.config import (
     ServerConfig,
     server_config_from_env,
@@ -213,7 +213,7 @@ def server_app_factory():
     _LOGGER.info("created FastAPI app for inference serving")
 
     config = server_config_from_env()
-    initialize_aysnc(config.workers)
+    initialize_async(config.workers)
     _LOGGER.debug("loaded server config %s", config)
     _add_general_routes(app, config)
 
@@ -239,7 +239,9 @@ def server_app_factory():
     return app
 
 
-@click.command()
+@click.command(
+    context_settings=dict(token_normalize_func=lambda x: x.replace("-", "_"))
+)
 @click.option(
     "--host",
     type=str,
@@ -276,7 +278,7 @@ def server_app_factory():
 )
 @click.option(
     "--task",
-    type=click.Choice(SupportedTasks.task_names()),
+    type=click.Choice(SupportedTasks.task_names(), case_sensitive=False),
     default=None,
     help="The task the model_path is serving.",
 )
