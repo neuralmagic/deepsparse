@@ -25,14 +25,14 @@ from functools import partial
 from typing import Callable, Optional
 
 
-__all__ = ["initialize_aysnc", "check_initialized", "execute_async"]
+__all__ = ["initialize_async", "check_initialized", "execute_async"]
 
 
 _LOOP = None  # type: Optional[asyncio.AbstractEventLoop]
 _THREADPOOL = None  # type: Optional[ThreadPoolExecutor]
 
 
-def initialize_aysnc(max_workers: int = 10):
+def initialize_async(max_workers: int = 10):
     """
     Initialize the async loop and threadpool for the execute_async function
 

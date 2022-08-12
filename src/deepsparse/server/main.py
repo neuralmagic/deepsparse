@@ -87,7 +87,7 @@ import click
 
 from deepsparse import Context, Pipeline
 from deepsparse.log import set_logging_level
-from deepsparse.server.asynchronous import execute_async, initialize_aysnc
+from deepsparse.server.asynchronous import execute_async, initialize_async
 from deepsparse.server.config import (
     ServerConfig,
     server_config_from_env,
@@ -213,7 +213,7 @@ def server_app_factory():
     _LOGGER.info("created FastAPI app for inference serving")
 
     config = server_config_from_env()
-    initialize_aysnc(config.workers)
+    initialize_async(config.workers)
     _LOGGER.debug("loaded server config %s", config)
     _add_general_routes(app, config)
 
