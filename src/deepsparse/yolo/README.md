@@ -35,7 +35,7 @@ After training your model with `SparseML`, locate the `.pt` file for the model y
 ```bash
 sparseml.yolov5.export_onnx \
     --weights path/to/your/model \
-    --dynamic \ #Allows for dynamic input shape
+    --dynamic #Allows for dynamic input shape
 ```
 This creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
 
