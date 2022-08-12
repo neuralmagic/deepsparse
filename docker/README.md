@@ -16,7 +16,6 @@ If you would like to customize the docker image, you can use the pre-built image
 
 ```Dockerfile
 from ghcr.io/neuralmagic/deepsparse:1.0.2-debian11
-
 ...
 ```
 
