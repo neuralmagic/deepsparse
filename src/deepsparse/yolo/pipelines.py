@@ -19,6 +19,11 @@ import numpy
 import onnx
 
 from deepsparse.pipeline import Pipeline
+from deepsparse.pipelines.helpers import (
+    CLASS_MAPPING_KEY_NAME,
+    MODEL_DIR_CONFIG_NAME,
+    MODEL_DIR_ONNX_NAME,
+)
 from deepsparse.utils import model_to_path
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
 from deepsparse.yolo.utils import (
@@ -29,6 +34,7 @@ from deepsparse.yolo.utils import (
     postprocess_nms,
     yolo_onnx_has_postprocessing,
 )
+from sparsezoo import Model
 
 
 try:
@@ -80,7 +86,7 @@ class YOLOPipeline(Pipeline):
         image_size: Union[int, Tuple[int, int], None] = None,
         **kwargs,
     ):
-
+        self.config = None
         self._image_size = image_size
         self._onnx_temp_file = None  # placeholder for potential tmpfile reference
 
@@ -102,6 +108,8 @@ class YOLOPipeline(Pipeline):
             self._class_names = {
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
+        elif self.config and CLASS_MAPPING_KEY_NAME in self.config:
+            self._class_names = self.config[CLASS_MAPPING_KEY_NAME]
         else:
             self._class_names = None
 
@@ -155,7 +163,15 @@ class YOLOPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        model_path = model_to_path(self.model_path)
+        model = Model(self.model_path)
+
+        deployment = model.deployment.default
+
+        config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
+        if config_file:
+            self.config = self._setup_config(config_file.path)
+
+        model_path = model_to_path(deployment.get_file(MODEL_DIR_ONNX_NAME))
         if self._image_size is None:
             self._image_size = get_onnx_expected_image_shape(onnx.load(model_path))
         else:
@@ -259,6 +275,12 @@ class YOLOPipeline(Pipeline):
             scores=batch_scores,
             labels=batch_labels,
         )
+
+    @staticmethod
+    def _setup_config(config_file_path: str) -> Dict[Any, Any]:
+        with open(config_file_path) as json_file:
+            config = json.load(json_file)
+        return config
 
     def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
         # return a numpy batch of images

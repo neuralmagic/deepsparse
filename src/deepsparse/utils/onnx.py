@@ -21,6 +21,7 @@ from typing import List, Optional, Union
 import numpy
 import onnx
 
+from deeepsparse.utils.helpers import MODEL_DIR_ONNX_NAME
 from deepsparse.utils.extractor import Extractor
 
 
@@ -99,8 +100,8 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         model = Model(model)
 
     if Model is not object and isinstance(model, Model):
-        # default to the main onnx file for the model
-        model = model.onnx_model.path
+        # default to the onnx file in the default deployment directory
+        model = model.deployment.default.get_file(MODEL_DIR_ONNX_NAME)
     elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
         model = model.path

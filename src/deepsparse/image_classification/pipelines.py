@@ -16,7 +16,7 @@
 Image classification pipeline
 """
 import json
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
@@ -32,7 +32,13 @@ from deepsparse.image_classification.schemas import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
+from deepsparse.pipelines.helpers import (
+    CLASS_MAPPING_KEY_NAME,
+    MODEL_DIR_CONFIG_NAME,
+    MODEL_DIR_ONNX_NAME,
+)
 from deepsparse.utils import model_to_path
+from sparsezoo import Model
 
 
 __all__ = [
@@ -76,12 +82,16 @@ class ImageClassificationPipeline(Pipeline):
         top_k: int = 1,
         **kwargs,
     ):
+        self.config = None
+
         super().__init__(**kwargs)
 
         if isinstance(class_names, str) and class_names.endswith(".json"):
             self._class_names = json.load(open(class_names))
         elif isinstance(class_names, dict):
             self._class_names = class_names
+        elif self.config and CLASS_MAPPING_KEY_NAME in self.config:
+            self._class_names = self.config[CLASS_MAPPING_KEY_NAME]
         else:
             self._class_names = None
 
@@ -134,8 +144,17 @@ class ImageClassificationPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
+        model = Model(self.model_path)
 
-        return model_to_path(self.model_path)
+        deployment = model.deployment.default
+
+        self.onnx_model_path = model_to_path(deployment.get_file(MODEL_DIR_ONNX_NAME))
+
+        config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
+        if config_file:
+            self.config = self._setup_config(config_file.path)
+
+        return self.onnx_model_path
 
     def process_inputs(self, inputs: ImageClassificationInput) -> List[numpy.ndarray]:
         """
@@ -245,6 +264,12 @@ class ImageClassificationPipeline(Pipeline):
             scores=scores,
             labels=labels,
         )
+
+    @staticmethod
+    def _setup_config(config_file_path: str) -> Dict[Any, Any]:
+        with open(config_file_path) as json_file:
+            config = json.load(json_file)
+        return config
 
     def _infer_image_size(self) -> Tuple[int, ...]:
         """

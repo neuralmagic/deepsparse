@@ -1,6 +1,3 @@
-# flake8: noqa
-# isort: skip_file
-
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,5 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .schema_helpers import *
-from .helpers import *
+MODEL_DIR_ONNX_NAME = "model.onnx"
+MODEL_DIR_CONFIG_NAME = "config.json"
+MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
+CLASS_MAPPING_KEY_NAME = "labels_to_class_mapping"

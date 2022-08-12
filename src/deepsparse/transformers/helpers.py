@@ -42,10 +42,6 @@ __all__ = [
 
 _LOGGER = get_main_logger()
 
-_MODEL_DIR_ONNX_NAME = "model.onnx"
-_MODEL_DIR_CONFIG_NAME = "config.json"
-_MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
-
 
 def get_onnx_path_and_configs(
     model_path: str,
@@ -102,13 +98,14 @@ def get_onnx_path_and_configs(
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
-        onnx_path = zoo_model.onnx_model.path
-        config_path = _get_file_parent(
-            zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
-        )
+
+        deployment = zoo_model.deployment.default
+        onnx_path = deployment.get_file(_MODEL_DIR_ONNX_NAME).path
+        config_path = _get_file_parent(deployment.get_file(_MODEL_DIR_CONFIG_NAME).path)
         tokenizer_path = _get_file_parent(
-            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
+            deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
         )
+
     elif require_configs and (config_path is None or tokenizer_path is None):
         raise RuntimeError(
             f"Unable to find model and tokenizer config for model_path {model_path}. "

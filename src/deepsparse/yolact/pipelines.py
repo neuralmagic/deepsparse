@@ -19,10 +19,16 @@ import numpy
 
 import torch
 from deepsparse import Pipeline
+from deepsparse.pipelines.helpers import (
+    CLASS_MAPPING_KEY_NAME,
+    MODEL_DIR_CONFIG_NAME,
+    MODEL_DIR_ONNX_NAME,
+)
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
 from deepsparse.yolact.utils import decode, detect, postprocess, preprocess_array
 from deepsparse.yolo.utils import COCO_CLASSES
+from sparsezoo import Model
 
 
 try:
@@ -80,6 +86,7 @@ class YOLACTPipeline(Pipeline):
             image_size if isinstance(image_size, Tuple) else (image_size, image_size)
         )
         self.top_k = top_k
+        self.config = None
 
         super().__init__(**kwargs)
 
@@ -97,6 +104,8 @@ class YOLACTPipeline(Pipeline):
             self._class_names = {
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
+        elif self.config and CLASS_MAPPING_KEY_NAME in self.config:
+            self._class_names = self.config[CLASS_MAPPING_KEY_NAME]
         else:
             self._class_names = None
 
@@ -119,6 +128,15 @@ class YOLACTPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
+        model = Model(self.model_path)
+
+        deployment = model.deployment.default
+
+        self.onnx_model_path = model_to_path(deployment.get_file(MODEL_DIR_ONNX_NAME))
+
+        config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
+        if config_file:
+            self.config = self.setup_config(config_file.path)
         return model_to_path(self.model_path)
 
     def process_inputs(
@@ -248,3 +266,9 @@ class YOLACTPipeline(Pipeline):
         :return: pydantic model class that outputs of this pipeline must comply to
         """
         return YOLACTOutputSchema
+
+    @staticmethod
+    def _setup_config(config_file_path: str) -> Dict[Any, Any]:
+        with open(config_file_path) as json_file:
+            config = json.load(json_file)
+        return config
