@@ -48,10 +48,10 @@ Options:
   --log_level TEXT      Sets the logging level. Defaults to info.
   --config_file TEXT    Configuration file containing info on how to serve the
                         desired models.
-  --task TEXT           The task the model_path is serving. For example, one
-                        of: question_answering, text_classification,
-                        token_classification. Ignored if config file is
-                        supplied.
+  --task [custom|question_answering|qa|text_classification|glue|sentiment_analysis|
+  token_classification|ner|zero_shot_text_classification|embedding_extraction|
+  image_classification|yolo|yolact|information_retrieval_haystack|haystack]
+                        The task the model_path is serving.
   --model_path TEXT     The path to a model.onnx file, a model folder
                         containing the model.onnx and supporting files, or a
                         SparseZoo model stub. Ignored if config_file is
@@ -87,13 +87,14 @@ import click
 
 from deepsparse import Context, Pipeline
 from deepsparse.log import set_logging_level
-from deepsparse.server.asynchronous import execute_async, initialize_aysnc
+from deepsparse.server.asynchronous import execute_async, initialize_async
 from deepsparse.server.config import (
     ServerConfig,
     server_config_from_env,
     server_config_to_env,
 )
 from deepsparse.server.utils import serializable_response
+from deepsparse.tasks import SupportedTasks
 from deepsparse.version import version
 
 
@@ -150,8 +151,10 @@ def _add_pipeline_route(
         )
         async def _predict_func(request: input_schema):
             if from_files:
-                files = [file.filename for file in request]
-                request = pipeline.input_schema.from_files(files)
+                request = pipeline.input_schema.from_files(
+                    file.file for file in request
+                )
+
             results = await execute_async(
                 pipeline,
                 request,
@@ -210,7 +213,7 @@ def server_app_factory():
     _LOGGER.info("created FastAPI app for inference serving")
 
     config = server_config_from_env()
-    initialize_aysnc(config.workers)
+    initialize_async(config.workers)
     _LOGGER.debug("loaded server config %s", config)
     _add_general_routes(app, config)
 
@@ -236,7 +239,9 @@ def server_app_factory():
     return app
 
 
-@click.command()
+@click.command(
+    context_settings=dict(token_normalize_func=lambda x: x.replace("-", "_"))
+)
 @click.option(
     "--host",
     type=str,
@@ -273,11 +278,9 @@ def server_app_factory():
 )
 @click.option(
     "--task",
-    type=str,
+    type=click.Choice(SupportedTasks.task_names(), case_sensitive=False),
     default=None,
-    help="The task the model_path is serving. For example, one of: "
-    "question_answering, text_classification, token_classification. "
-    "Ignored if config file is supplied.",
+    help="The task the model_path is serving.",
 )
 @click.option(
     "--model_path",
