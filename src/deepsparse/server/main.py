@@ -239,7 +239,9 @@ def server_app_factory():
     return app
 
 
-@click.command()
+@click.command(
+    context_settings=dict(token_normalize_func=lambda x: x.replace("-", "_"))
+)
 @click.option(
     "--host",
     type=str,
@@ -276,7 +278,7 @@ def server_app_factory():
 )
 @click.option(
     "--task",
-    type=click.Choice(SupportedTasks.task_names()),
+    type=click.Choice(SupportedTasks.task_names(), case_sensitive=False),
     default=None,
     help="The task the model_path is serving.",
 )
