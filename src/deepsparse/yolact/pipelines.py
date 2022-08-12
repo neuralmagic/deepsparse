@@ -16,7 +16,6 @@ import json
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
-from PIL import Image
 
 import torch
 from deepsparse import Pipeline
@@ -139,9 +138,6 @@ class YOLACTPipeline(Pipeline):
 
         if not isinstance(images, list):
             images = [images]
-
-        if isinstance(images[0], Image.Image):
-            images = [numpy.array(image_pil) for image_pil in images]
 
         if isinstance(images[0], str):
             images = [cv2.imread(file_path) for file_path in images]

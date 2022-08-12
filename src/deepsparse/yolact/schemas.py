@@ -20,6 +20,7 @@ from collections import namedtuple
 from typing import Any, Generator, Iterable, List, Optional, Union
 
 import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
@@ -83,7 +84,8 @@ class YOLACTInputSchema(BaseModel, Splittable):
                 f"argument 'images' cannot be specified in {cls.__name__} when "
                 "constructing from file(s)"
             )
-        return cls(images=files, **kwargs)
+        files_numpy = [numpy.array(Image.open(file)) for file in files]
+        return cls(images=files_numpy, **kwargs)
 
     class Config:
         arbitrary_types_allowed = True
