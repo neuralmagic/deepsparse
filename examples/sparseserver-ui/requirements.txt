@@ -1,2 +1,2 @@
 deepsparse[server]>=0.11
-streamlit==1.8.1
+streamlit==1.11.1
