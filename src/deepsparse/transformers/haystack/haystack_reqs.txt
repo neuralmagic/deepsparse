@@ -1,8 +1,8 @@
 # haystack_reqs.py
 #
-# This file lists the desired versions of farm-haystack[all]==1.4.0 dependencies
-# to be used by setup.py when installing with [haystack] extras. This is to prevent
-# farm-haystack from installing versions of dependencies that conflict with NM.
+# This file is used to control which dependencies are installed by
+# deepsparse/transformers/haystack/__init__.py. This is to prevent farm-haystack
+# from installing dependencies that conflict with NM.
 #
 # Lists all dependencies for farm-haystack[all]==1.4.0, excluding the following
 # which conflict with deepsparse dependencies:
