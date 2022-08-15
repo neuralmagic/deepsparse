@@ -43,7 +43,9 @@ class ImageClassificationInput(BaseModel, Splittable):
         arbitrary_types_allowed = True
 
     @classmethod
-    def from_files(cls, files: Iterable[TextIO], **kwargs) -> "ImageClassificationInput":
+    def from_files(
+        cls, files: Iterable[TextIO], **kwargs
+    ) -> "ImageClassificationInput":
         """
         :param files: Iterable of file pointers to create ImageClassificationInput from
         :return: ImageClassificationInput constructed from files
