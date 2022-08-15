@@ -12,14 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import onnx
 
 import pytest
 from deepsparse.transformers.helpers import (
+    get_onnx_path_and_configs,
     get_transformer_layer_init_names,
     truncate_transformer_onnx_model,
 )
 from sparsezoo import Model
+
+
+@pytest.mark.parametrize(
+    "stub",
+    [
+        (
+            "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/"
+            "mnli/pruned80_quant-none-vnni"
+        ),
+    ],
+)
+def test_get_onnx_path_and_configs_from_stub(stub):
+    onnx_path, config_dir, tokenizer_dir = get_onnx_path_and_configs(stub)
+
+    assert onnx_path.endswith("model.onnx")
+    assert os.path.exists(onnx_path)
+
+    config_dir_files = os.listdir(config_dir)
+    assert "config.json" in config_dir_files
+
+    tokenizer_dir_files = os.listdir(tokenizer_dir)
+    assert "tokenizer.json" in tokenizer_dir_files
+    # make assert optional if stubs added for models with no known tokenizer_config
+    assert "tokenizer_config.json" in tokenizer_dir_files
 
 
 @pytest.fixture(scope="session")
