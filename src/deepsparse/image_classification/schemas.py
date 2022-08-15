@@ -34,7 +34,7 @@ class ImageClassificationInput(BaseModel, Splittable):
     Input model for image classification
     """
 
-    images: Union[str, List[str], List[Any], numpy.ndarray] = Field(
+    images: Union[str, List[str], List[Any]] = Field(
         description="List of Images to process"
     )
 
