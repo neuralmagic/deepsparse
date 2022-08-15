@@ -17,10 +17,13 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import List, Optional, Union
+from typing import Any, Generator, Iterable, List, Optional, TextIO, Union
 
 import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
+
+from deepsparse.pipelines import Joinable, Splittable
 
 
 __all__ = [
@@ -33,17 +36,17 @@ _YOLACTImageOutput = namedtuple(
 )
 
 
-class YOLACTInputSchema(BaseModel):
+class YOLACTInputSchema(BaseModel, Splittable):
     """
     Input Model for YOLACT
     """
 
-    images: Union[str, numpy.ndarray, List[Union[str, numpy.ndarray]]] = Field(
+    images: Union[str, List[str], List[Any]] = Field(
         description="List of images to process"
-    )
+    )  # List[Any] to accept List[numpy.ndarray]
 
     confidence_threshold: float = Field(
-        default=0.2,
+        default=0.05,
         description="Confidence threshold applied to the raw detection at "
         "`detection` step. If a raw detection's score is lower "
         "than the threshold, it will be automatically discarded",
@@ -54,7 +57,7 @@ class YOLACTInputSchema(BaseModel):
         "consider it valid (used in Non-Maximum-Suppression step)",
     )
     top_k_preprocessing: int = Field(
-        default=100,
+        default=200,
         description="The maximal number of best detections (per class) to be "
         "kept after the Non-Maximum-Suppression step",
     )
@@ -70,9 +73,11 @@ class YOLACTInputSchema(BaseModel):
     )
 
     @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "YOLACTInputSchema":
+    def from_files(
+        cls, files: Iterable[TextIO], **kwargs
+    ) -> "YOLACTInputSchema":
         """
-        :param files: list of file paths to create YOLOInput from
+        :param files: Iterable of file pointers to create YOLOInput from
         :param kwargs: extra keyword args to pass to YOLOInput constructor
         :return: YOLOInput constructed from files
         """
@@ -81,13 +86,40 @@ class YOLACTInputSchema(BaseModel):
                 f"argument 'images' cannot be specified in {cls.__name__} when "
                 "constructing from file(s)"
             )
-        return cls(images=files, **kwargs)
+        files_numpy = [numpy.array(Image.open(file)) for file in files]
+        return cls(images=files_numpy, **kwargs)
 
     class Config:
         arbitrary_types_allowed = True
 
+    def split(self) -> Generator["YOLACTInputSchema", None, None]:
+        """
+        Split a current `YOLACTInputSchema` object with a batch size b, into a
+        generator of b smaller objects with batch size 1, the returned
+        object can be iterated on.
 
-class YOLACTOutputSchema(BaseModel):
+        :return: A Generator of smaller `YOLACTInputSchema` objects each
+            representing an input of batch-size 1
+        """
+        images = self.images
+
+        is_batch_size_1 = isinstance(images, str) or (
+            isinstance(images, numpy.ndarray) and images.ndim == 3
+        )
+        if is_batch_size_1:
+            # case 1: str, numpy.ndarray(3D)
+            yield self
+
+        elif isinstance(images, numpy.ndarray) and images.ndim != 4:
+            raise ValueError(f"Could not breakdown {self} into smaller batches")
+
+        else:
+            # case 2: List[str, Any], numpy.ndarray(4D) -> multiple images of size 1
+            for image in images:
+                yield YOLACTInputSchema(images=image)
+
+
+class YOLACTOutputSchema(BaseModel, Joinable):
     """
     Output Model for YOLACT
     """
@@ -101,7 +133,7 @@ class YOLACTOutputSchema(BaseModel):
     boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[Optional[numpy.ndarray]] = Field(
+    masks: List[Optional[List[float]]] = Field(
         description="List of masks, one for each prediction"
     )
 
@@ -122,3 +154,28 @@ class YOLACTOutputSchema(BaseModel):
     def __iter__(self):
         for index in range(len(self.classes)):
             yield self[index]
+
+    @staticmethod
+    def join(outputs: Iterable["YOLACTOutputSchema"]) -> "YOLACTOutputSchema":
+        """
+        Takes in ab Iterable of `YOLACTOutputSchema` objects and combines
+        them into one object representing a bigger batch size
+
+        :return: A new `YOLACTOutputSchema` object that represents a bigger batch
+        """
+
+        classes = list()
+        scores = list()
+        boxes = list()
+        masks = list()
+
+        for yolact_output in outputs:
+            for image_output in yolact_output:
+                classes.append(image_output.classes)
+                scores.append(image_output.scores)
+                boxes.append(image_output.boxes)
+                masks.append(image_output.masks)
+
+        return YOLACTOutputSchema(
+            classes=classes, scores=scores, boxes=boxes, masks=masks
+        )
