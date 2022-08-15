@@ -166,7 +166,8 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param pooling_strategy: strategy for combining embeddings. Default is
         "cls_token"
     :param top_k: how many documents to return per query. Default is 10
-    :param embed_title: True if titles should be embedded into the passage.
+    :param embed_title: True if titles should be embedded into the passage. Raw
+        text input will be the title followed by a space followed by the content.
         Default is False
     :param progress_bar: if true displays progress bar during embedding.
         Not supported by DeepSparse retriever nodes. Default is False
@@ -202,10 +203,10 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
 
         self.document_store = document_store
         self.batch_size = batch_size
-        self.embed_title = embed_title
         self.progress_bar = progress_bar
         self.pooling_strategy = pooling_strategy
         self.top_k = top_k
+        self.embed_title = embed_title
         self.scale_score = scale_score
         self.context = context
         self.use_gpu = False
@@ -231,13 +232,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
                 "DeepSparseDensePassageRetriever must be initialized with a "
                 "document_store"
             )
-        elif document_store.similarity != "dot_product":
-            _LOGGER.warning(
-                "You are using a Dense Passage Retriever model with the "
-                f"{document_store.similarity} function. We recommend you use "
-                "dot_product instead. This can be set when initializing the "
-                "DocumentStore"
-            )
         if pooling_strategy != "cls_token":
             _LOGGER.warning(
                 "You are using a Dense Passage Retriever model with "
@@ -250,15 +244,9 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
                 f"({max_seq_len_query}) match max_seq_len_passage "
                 f"({max_seq_len_passage})"
             )
-        if embed_title:
-            raise ValueError(
-                "DeepSparseDensePassageRetriever does not support embedding titles"
-            )
 
         if self.context is None:
-            self.context = Context(
-                num_cores=None, num_streams=4
-            )  # arbitrarily choose 4
+            self.context = Context()
 
         _LOGGER.info("Creating query pipeline")
         self.query_pipeline = Pipeline.create(
@@ -298,16 +286,12 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         :param docs: list of document strings to embed
         :return: list of embeddings for each document
         """
-        passage_inputs = [doc.content for doc in docs]
+        passage_inputs = [self._document_to_passage_input(doc) for doc in docs]
+
         return [
             self.passage_pipeline([passage_input]).embeddings[0]
             for passage_input in passage_inputs
         ]
-
-    def _get_predictions(*args, **kwargs):
-        raise NotImplementedError(
-            "This helper function is not used by DeepSparseDensePassageRetriever"
-        )
 
     def train(*args, **kwargs):
         raise NotImplementedError("DeepSparse Engine does not support model training")
@@ -318,6 +302,25 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     def load(*args, **kwargs):
         raise NotImplementedError(
             "DeepSparse Engine does not support loading from files"
+        )
+
+    def _document_to_passage_input(self, document: Document) -> str:
+        # Optionally appends title
+        #
+        # :param document: document to turn into raw text input
+        # :return: raw text input of document title and content
+        if (
+            hasattr(document, "meta")
+            and document.meta.get("title", None) is not None
+            and self.embed_title
+        ):
+            return f"{document.meta['title']} {document.content}"
+
+        return document.content
+
+    def _get_predictions(*args, **kwargs):
+        raise NotImplementedError(
+            "This helper function is not used by DeepSparseDensePassageRetriever"
         )
 
 
