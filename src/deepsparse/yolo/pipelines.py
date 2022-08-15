@@ -190,8 +190,8 @@ class YOLOPipeline(Pipeline):
 
             if isinstance(image, str):
                 image = cv2.imread(image)
-                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
 
+            image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
             image = self._make_channels_first(image)
             image_batch.append(image)
 

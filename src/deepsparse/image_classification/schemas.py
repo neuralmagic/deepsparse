@@ -53,7 +53,7 @@ class ImageClassificationInput(BaseModel, Splittable):
                 f"{cls.__name__} does not support additional arguments "
                 f"{list(kwargs.keys())}"
             )
-        images = [Image.open(file) for file in files]
+        images = [numpy.asarray(Image.open(file)) for file in files]
         return cls(images=images)
 
     def split(self) -> Generator["ImageClassificationInput", None, None]:

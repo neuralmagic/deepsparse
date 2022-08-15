@@ -66,8 +66,8 @@ class YOLOInput(BaseModel, Splittable):
                 f"argument 'images' cannot be specified in {cls.__name__} when "
                 "constructing from file(s)"
             )
-        images = [Image.open(file) for file in files]
-        return cls(images=images, **kwargs)
+        files_numpy = [numpy.array(Image.open(file)) for file in files]
+        return cls(images=files_numpy, **kwargs)
 
     class Config:
         arbitrary_types_allowed = True
