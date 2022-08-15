@@ -37,7 +37,7 @@ class ImageClassificationInput(BaseModel, Splittable):
 
     images: Union[str, List[str], List[Any]] = Field(
         description="List of Images to process"
-    )
+    )  # List[Any] to accept List[numpy.ndarray]
 
     class Config:
         arbitrary_types_allowed = True

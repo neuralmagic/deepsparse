@@ -44,7 +44,7 @@ class YOLOInput(BaseModel, Splittable):
 
     images: Union[str, List[str], List[Any]] = Field(
         description="List of images to process"
-    )
+    )  # List[Any] to accept List[numpy.ndarray]
     iou_thres: float = Field(
         default=0.25,
         description="minimum IoU overlap threshold for a prediction to be valid",

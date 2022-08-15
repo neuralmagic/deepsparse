@@ -43,7 +43,7 @@ class YOLACTInputSchema(BaseModel, Splittable):
 
     images: Union[str, List[str], List[Any]] = Field(
         description="List of images to process"
-    )
+    )  # List[Any] to accept List[numpy.ndarray]
 
     confidence_threshold: float = Field(
         default=0.05,
