@@ -15,7 +15,7 @@
 """
 Input/Output Schemas for Image Classification.
 """
-from typing import Any, Generator, Iterable, List, Union
+from typing import Any, Generator, Iterable, List, TextIO, Union
 
 import numpy
 from PIL import Image
@@ -43,7 +43,7 @@ class ImageClassificationInput(BaseModel, Splittable):
         arbitrary_types_allowed = True
 
     @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "ImageClassificationInput":
+    def from_files(cls, files: Iterable[TextIO], **kwargs) -> "ImageClassificationInput":
         """
         :param files: Iterable of file pointers to create ImageClassificationInput from
         :return: ImageClassificationInput constructed from files
