@@ -15,3 +15,4 @@
 # flake8: noqa
 # NOTE: including here to force auto install to happen
 from deepsparse import transformers as _transformers
+from deepsparse.transformers import haystack as _haystack
