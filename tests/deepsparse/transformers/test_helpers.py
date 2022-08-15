@@ -130,10 +130,10 @@ def test_get_transformer_layer_init_names(
 @pytest.mark.parametrize(
     "model_name,emb_extraction_layer,expected_final_node_name",
     [
-        ("bert", -1, "Add_2544"),
-        ("bert", 5, "Add_1296"),
-        ("bert", 0, "Add_256"),
-        ("bert", "Add_256", "Add_256"),
+        ("bert", -1, "Add_2616"),
+        ("bert", 5, "Add_1332"),
+        ("bert", 0, "Add_262"),
+        ("bert", "Add_262", "Add_262"),
         ("distilbert", -1, "Add_515"),
         ("distilbert", 2, "Add_269"),
         ("distilbert", 0, "Add_105"),
