@@ -17,9 +17,10 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Generator, Iterable, List, Optional, Union
+from typing import Any, Generator, Iterable, List, Optional, Union
 
 import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
@@ -40,9 +41,9 @@ class YOLACTInputSchema(BaseModel, Splittable):
     Input Model for YOLACT
     """
 
-    images: Union[str, numpy.ndarray, List[Union[str, numpy.ndarray]]] = Field(
+    images: Union[str, List[str], List[Any]] = Field(
         description="List of images to process"
-    )
+    )  # List[Any] to accept List[numpy.ndarray]
 
     confidence_threshold: float = Field(
         default=0.05,
@@ -83,7 +84,8 @@ class YOLACTInputSchema(BaseModel, Splittable):
                 f"argument 'images' cannot be specified in {cls.__name__} when "
                 "constructing from file(s)"
             )
-        return cls(images=files, **kwargs)
+        files_numpy = [numpy.array(Image.open(file)) for file in files]
+        return cls(images=files_numpy, **kwargs)
 
     class Config:
         arbitrary_types_allowed = True
@@ -129,7 +131,7 @@ class YOLACTOutputSchema(BaseModel, Joinable):
     boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[Optional[numpy.ndarray]] = Field(
+    masks: List[Optional[List[float]]] = Field(
         description="List of masks, one for each prediction"
     )
 

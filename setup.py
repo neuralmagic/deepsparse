@@ -77,6 +77,7 @@ _dev_deps = [
     "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
+    "Pillow>=8.3.2",
 ]
 _server_deps = [
     "uvicorn>=0.15.0",

@@ -220,7 +220,7 @@ class YOLACTPipeline(Pipeline):
                 )
                 batch_scores.append(scores[idx].tolist())
                 batch_boxes.append(boxes[idx].tolist())
-                batch_masks.append(masks[idx])
+                batch_masks.append(masks[idx].flatten().tolist())
 
             else:
                 batch_classes.append([None])
