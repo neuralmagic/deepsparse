@@ -45,6 +45,7 @@ _LOGGER = get_main_logger()
 _MODEL_DIR_ONNX_NAME = "model.onnx"
 _MODEL_DIR_CONFIG_NAME = "config.json"
 _MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
+_MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
 
 
 def get_onnx_path_and_configs(
@@ -109,6 +110,11 @@ def get_onnx_path_and_configs(
         tokenizer_path = _get_file_parent(
             zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
         )
+        tokenizer_config_path = zoo_model.deployment.default.get_file(
+            _MODEL_DIR_TOKENIZER_CONFIG_NAME
+        )
+        if tokenizer_config_path is not None:
+            tokenizer_config_path.path  # trigger download of tokenizer_config
     elif require_configs and (config_path is None or tokenizer_path is None):
         raise RuntimeError(
             f"Unable to find model and tokenizer config for model_path {model_path}. "
