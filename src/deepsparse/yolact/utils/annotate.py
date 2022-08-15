@@ -70,7 +70,6 @@ def annotate_image(
 
     image_res = copy.copy(image)
     num_detections = len(boxes)
-    # len(masks) = num_detections * orig_mask_dim * orig_mask_dim
     orig_mask_dim = numpy.sqrt(len(masks) / num_detections)
     if not orig_mask_dim.is_integer():
         raise ValueError("Could not retrieve the original dimensions of the mask.")
