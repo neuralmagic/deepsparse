@@ -5,10 +5,10 @@
 # from installing dependencies that conflict with NM.
 #
 # Lists all dependencies for farm-haystack[all]==1.4.0, excluding the following
-# which conflict with deepsparse dependencies:
-# [transformers, torch]
-# the following version requirements have been updated to match deepsparse versioning
-# [onnx, onnxruntime, numpy, torchvision, tokenizers]
+# which conflict with DeepSparse dependencies:
+# [transformers]
+# the following version requirements have been updated to match DeepSparse versioning
+# [onnx, onnxruntime, numpy, torchvision, tokenizers, torch]
 # you can see their haystack versions as comments in this file
 
 aiohttp==3.8.1
@@ -250,6 +250,7 @@ toml==0.10.2
 tomli==2.0.1
 tomlkit==0.11.1
 #torch==1.12.0
+torch>=1.9.0
 torch-complex==0.4.3
 #torchvision==0.13.0
 torchvision>=0.3.0,<=0.10.1
