@@ -119,7 +119,10 @@ class YOLACTPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        return model_to_path(self.model_path)
+        print("setup onnx file path")
+        local_path = model_to_path(self.model_path)
+        print(local_path)
+        return local_path
 
     def process_inputs(
         self,
@@ -134,6 +137,7 @@ class YOLACTPipeline(Pipeline):
             to pass to process_engine_outputs to facilitate information from the raw
             inputs to postprocessing that may not be included in the engine inputs
         """
+        print("process inputs")
         images = inputs.images
 
         if not isinstance(images, list):
@@ -165,6 +169,7 @@ class YOLACTPipeline(Pipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
+        print("process engine outputs")
         boxes, confidence, masks, priors, protos = engine_outputs
 
         boxes = torch.from_numpy(boxes).cpu()
@@ -228,12 +233,15 @@ class YOLACTPipeline(Pipeline):
                 batch_boxes.append([None])
                 batch_masks.append(None)
 
-        return YOLACTOutputSchema(
+        print("create output schema")
+        output = YOLACTOutputSchema(
             classes=batch_classes,
             scores=batch_scores,
             boxes=batch_boxes,
             masks=batch_masks,
         )
+        print("done creating output schema")
+        return output
 
     @property
     def input_schema(self) -> Type[YOLACTInputSchema]:
