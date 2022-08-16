@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 
@@ -136,8 +136,8 @@ class YOLACTPipeline(Pipeline):
 
         config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
         if config_file:
-            self.config = self.setup_config(config_file.path)
-        return model_to_path(self.model_path)
+            self.config = self._setup_config(config_file.path)
+        return self.onnx_model_path
 
     def process_inputs(
         self,

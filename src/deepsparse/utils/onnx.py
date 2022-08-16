@@ -21,7 +21,7 @@ from typing import List, Optional, Union
 import numpy
 import onnx
 
-from deeepsparse.utils.helpers import MODEL_DIR_ONNX_NAME
+from deepsparse.pipelines.helpers import MODEL_DIR_ONNX_NAME
 from deepsparse.utils.extractor import Extractor
 
 

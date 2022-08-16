@@ -91,7 +91,9 @@ class ImageClassificationPipeline(Pipeline):
         elif isinstance(class_names, dict):
             self._class_names = class_names
         elif self.config and CLASS_MAPPING_KEY_NAME in self.config:
-            self._class_names = self.config[CLASS_MAPPING_KEY_NAME]
+            self._class_names = {
+                int(k): v for k, v in self.config[CLASS_MAPPING_KEY_NAME].items()
+            }
         else:
             self._class_names = None
 

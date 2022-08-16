@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
