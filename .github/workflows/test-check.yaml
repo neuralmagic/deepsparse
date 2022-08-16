@@ -50,4 +50,4 @@ jobs:
       - name: ⚙️ Install dependencies
         run: pip3 install .[dev,server]
       - name: Run CLI smoke tests
-        run: PYTEST_ARGS="-m smoke" make test TARGETS=cli,nobase
+        run: PYTEST_ARGS="-m smoke -s" make test TARGETS=cli,nobase

@@ -53,22 +53,31 @@ def compare(expected, actual):
 
 @pytest.mark.parametrize("task", _SUPPORTED_TASKS)
 def test_dynamic_is_same_as_static(task):
+    print(task)
     executor = ThreadPoolExecutor()
 
     # NOTE: re-use the same dynamic pipeline for different batch sizes
+    print("creating dynamic pipeline")
     dynamic_pipeline = Pipeline.create(task=task, batch_size=None, executor=executor)
+    print("creating dynamic pipeline done")
     assert dynamic_pipeline.use_dynamic_batch()
 
     for batch_size in _BATCH_SIZES:
+        print("creating static pipeline")
         # NOTE: recompile model for each different batch_size
         static_pipeline = Pipeline.create(task=task, batch_size=batch_size)
+        print("creating static pipeline done")
         assert not static_pipeline.use_dynamic_batch()
 
+        print("creating test inputs")
         inputs = create_test_inputs(task=task, batch_size=batch_size)
 
         # run same outputs through both pipelines
+        print("running dynamic pipeline")
         dynamic_outputs = dynamic_pipeline(**inputs)
+        print("running static pipeline")
         static_outputs = static_pipeline(**inputs)
+        print("done")
 
         assert isinstance(dynamic_outputs, dynamic_pipeline.output_schema)
         assert isinstance(static_outputs, static_pipeline.output_schema)
