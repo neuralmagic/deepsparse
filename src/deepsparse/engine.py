@@ -199,6 +199,7 @@ class Engine(object):
                     None,
                 )
         else:
+            print("creating engine")
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
                 self._batch_size,
@@ -207,6 +208,7 @@ class Engine(object):
                 self._scheduler.value,
                 None,
             )
+            print("creating engine done")
 
     def __call__(
         self,
@@ -642,6 +644,7 @@ class MultiModelEngine(Engine):
                     context.value,
                 )
         else:
+            print("compiling engine")
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
                 self._batch_size,
@@ -650,6 +653,7 @@ class MultiModelEngine(Engine):
                 self._scheduler.value,
                 context.value,
             )
+            print("compiling engine done")
 
 
 def compile_model(
