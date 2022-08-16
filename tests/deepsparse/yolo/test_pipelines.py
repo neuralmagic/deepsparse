@@ -34,12 +34,12 @@ from sparsezoo import Model
 @pytest.mark.smoke
 class TestYOLO:
     @pytest.fixture()
-    def setup(self, zoo_stub):
+    def setup(self, zoo_stub, image_size):
 
-        yield zoo_stub
+        yield zoo_stub, image_size
 
     def test_yolact_with_config(self, setup):
-        zoo_stub, _ = setup
+        zoo_stub, image_size = setup
 
         expected_class_name = "dummy_class_name"
 

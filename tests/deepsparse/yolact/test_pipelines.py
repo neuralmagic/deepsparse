@@ -26,7 +26,7 @@ from sparsezoo import Model
     "zoo_stub,image_size",
     [
         (
-            "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none",
+            "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none",  # noqa E501
             550,
         )
     ],
