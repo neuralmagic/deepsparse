@@ -131,9 +131,12 @@ class YOLACTOutputSchema(BaseModel, Joinable):
     boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[Optional[List[float]]] = Field(
-        description="List of masks, one for each prediction"
-    )
+
+    # NOTE: masks is really List[numpy.ndarray], however
+    # 1. FastAPI does not support numpy arrays
+    # 2. List[List[Float]] makes pydantic check every single element of the list,
+    #    which is very slow for masks
+    masks: List[Any] = Field(description="List of masks, one for each prediction")
 
     class Config:
         arbitrary_types_allowed = True
