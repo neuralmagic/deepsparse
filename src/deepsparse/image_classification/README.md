@@ -152,7 +152,7 @@ Making a request:
 import requests
 
 url = 'http://0.0.0.0:5543/predict/from_files'
-path = ['golfish.jpeg', 'golfish.jpeg'] # just put the name of images in here
+path = ['goldfish.jpeg'] # just put the name of images in here
 files = [('request', open(img, 'rb')) for img in path]
 resp = requests.post(url=url, files=files)
 ```

@@ -33,7 +33,6 @@ except ModuleNotFoundError as cv2_import_error:
     cv2 = None
     cv2_error = cv2_import_error
 
-
 __all__ = ["YOLACTPipeline"]
 
 
@@ -151,9 +150,11 @@ class YOLACTPipeline(Pipeline):
             max_num_detections=inputs.max_num_detections,
         )
 
-        return [
+        preprocessed_images = [
             preprocess_array(array, self.image_size) for array in images
-        ], postprocessing_kwargs
+        ]
+        image_batch = numpy.concatenate(preprocessed_images, axis=0)
+        return [image_batch], postprocessing_kwargs
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
@@ -219,7 +220,7 @@ class YOLACTPipeline(Pipeline):
                 )
                 batch_scores.append(scores[idx].tolist())
                 batch_boxes.append(boxes[idx].tolist())
-                batch_masks.append(masks[idx])
+                batch_masks.append(masks[idx].flatten().tolist())
 
             else:
                 batch_classes.append([None])

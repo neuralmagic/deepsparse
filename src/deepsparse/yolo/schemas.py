@@ -18,9 +18,10 @@ Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from typing import Any, Generator, Iterable, List, Union
+from typing import Any, Generator, Iterable, List, TextIO, Union
 
 import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
@@ -43,7 +44,7 @@ class YOLOInput(BaseModel, Splittable):
 
     images: Union[str, List[str], List[Any]] = Field(
         description="List of images to process"
-    )
+    )  # List[Any] to accept List[numpy.ndarray]
     iou_thres: float = Field(
         default=0.25,
         description="minimum IoU overlap threshold for a prediction to be valid",
@@ -54,9 +55,9 @@ class YOLOInput(BaseModel, Splittable):
     )
 
     @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "YOLOInput":
+    def from_files(cls, files: Iterable[TextIO], **kwargs) -> "YOLOInput":
         """
-        :param files: list of file paths to create YOLOInput from
+        :param files: Iterable of file pointers to create YOLOInput from
         :param kwargs: extra keyword args to pass to YOLOInput constructor
         :return: YOLOInput constructed from files
         """
@@ -65,7 +66,8 @@ class YOLOInput(BaseModel, Splittable):
                 f"argument 'images' cannot be specified in {cls.__name__} when "
                 "constructing from file(s)"
             )
-        return cls(images=files, **kwargs)
+        files_numpy = [numpy.array(Image.open(file)) for file in files]
+        return cls(images=files_numpy, **kwargs)
 
     class Config:
         arbitrary_types_allowed = True
