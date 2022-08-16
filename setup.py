@@ -47,13 +47,6 @@ _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 
-def _parse_requirements_file(file_path):
-    with open(file_path, "r") as requirements_file:
-        lines = requirements_file.read().splitlines()
-
-    return [line for line in lines if len(line) > 0 and line[0] != "#"]
-
-
 _deps = [
     "numpy>=1.16.3",
     "onnx>=1.5.0,<=1.12.0",
@@ -84,6 +77,7 @@ _dev_deps = [
     "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
+    "Pillow>=8.3.2",
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
@@ -99,22 +93,6 @@ _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.12.0",
     "opencv-python",
 ]
-
-# haystack dependencies are installed from a requirements file to avoid
-# conflicting versions with NM's deepsparse/transformers
-_haystack_requirements_file_path = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    "src",
-    "deepsparse",
-    "transformers",
-    "haystack",
-    "haystack_reqs.txt",
-)
-_haystack_integration_deps = _parse_requirements_file(
-    _haystack_requirements_file_path
-) + [
-    "farm-haystack[all]==1.4.0"
-]  # install farm-haystack last
 
 
 def _check_supported_system():
@@ -219,7 +197,6 @@ def _setup_extras() -> Dict:
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
         "yolo": _yolo_integration_deps,
-        "haystack": _haystack_integration_deps,
     }
 
 

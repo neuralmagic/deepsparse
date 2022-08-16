@@ -209,6 +209,7 @@ def server_app_factory():
         title="deepsparse.server",
         version=version,
         description="DeepSparse Inference Server",
+        swagger_ui_parameters={"syntaxHighlight": False},
     )
     _LOGGER.info("created FastAPI app for inference serving")
 
