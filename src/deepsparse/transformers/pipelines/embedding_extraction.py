@@ -251,12 +251,13 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         if isinstance(inputs.inputs, str):
             inputs.inputs = [inputs.inputs]
 
+        # tokenization matches https://github.com/texttron/tevatron
         tokens = self.tokenizer(
             inputs.inputs,
             add_special_tokens=True,
-            return_tensors="np",
             padding=PaddingStrategy.MAX_LENGTH.value,
             truncation=TruncationStrategy.LONGEST_FIRST.value,
+            return_tensors="np",
         )
 
         # mask padding and cls_token
