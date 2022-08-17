@@ -19,7 +19,6 @@ Helper functions for working with ONNX exports of transformer models and deepspa
 
 import os
 import re
-from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
 
@@ -106,10 +105,8 @@ def get_onnx_path_and_configs(
 
         deployment = zoo_model.deployment.default
         onnx_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path
-        config_path = _get_file_parent(deployment.get_file(MODEL_DIR_CONFIG_NAME).path)
-        tokenizer_path = _get_file_parent(
-            deployment.default.get_file(MODEL_DIR_TOKENIZER_NAME).path
-        )
+        config_path = deployment.get_file(MODEL_DIR_CONFIG_NAME).path
+        tokenizer_path = deployment.default.get_file(MODEL_DIR_TOKENIZER_NAME).path
 
     elif require_configs and (config_path is None or tokenizer_path is None):
         raise RuntimeError(
@@ -168,10 +165,6 @@ def overwrite_transformer_onnx_model_inputs(
     else:
         onnx.save(model, output_path)
         return input_names
-
-
-def _get_file_parent(file_path: str) -> str:
-    return str(Path(file_path).parent.absolute())
 
 
 def fix_numpy_types(func):

@@ -20,11 +20,10 @@ import onnx
 
 from deepsparse.pipeline import Pipeline
 from deepsparse.pipelines.helpers import (
-    CLASS_MAPPING_KEY_NAME,
+    LABELS_TO_CLASS_MAPPING_NAME,
     MODEL_DIR_CONFIG_NAME,
     MODEL_DIR_ONNX_NAME,
 )
-from deepsparse.utils import model_to_path
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
 from deepsparse.yolo.utils import (
     COCO_CLASSES,
@@ -108,8 +107,8 @@ class YOLOPipeline(Pipeline):
             self._class_names = {
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
-        elif self.config and CLASS_MAPPING_KEY_NAME in self.config:
-            self._class_names = self.config[CLASS_MAPPING_KEY_NAME]
+        elif self.config and LABELS_TO_CLASS_MAPPING_NAME in self.config:
+            self._class_names = self.config[LABELS_TO_CLASS_MAPPING_NAME]
         else:
             self._class_names = None
 
@@ -171,7 +170,7 @@ class YOLOPipeline(Pipeline):
         if config_file:
             self.config = self._setup_config(config_file.path)
 
-        model_path = model_to_path(deployment.get_file(MODEL_DIR_ONNX_NAME))
+        model_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path
         if self._image_size is None:
             self._image_size = get_onnx_expected_image_shape(onnx.load(model_path))
         else:

@@ -20,11 +20,10 @@ import numpy
 import torch
 from deepsparse import Pipeline
 from deepsparse.pipelines.helpers import (
-    CLASS_MAPPING_KEY_NAME,
+    LABELS_TO_CLASS_MAPPING_NAME,
     MODEL_DIR_CONFIG_NAME,
     MODEL_DIR_ONNX_NAME,
 )
-from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
 from deepsparse.yolact.utils import decode, detect, postprocess, preprocess_array
 from deepsparse.yolo.utils import COCO_CLASSES
@@ -104,8 +103,8 @@ class YOLACTPipeline(Pipeline):
             self._class_names = {
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
-        elif self.config and CLASS_MAPPING_KEY_NAME in self.config:
-            self._class_names = self.config[CLASS_MAPPING_KEY_NAME]
+        elif self.config and LABELS_TO_CLASS_MAPPING_NAME in self.config:
+            self._class_names = self.config[LABELS_TO_CLASS_MAPPING_NAME]
         else:
             self._class_names = None
 
@@ -132,7 +131,7 @@ class YOLACTPipeline(Pipeline):
 
         deployment = model.deployment.default
 
-        self.onnx_model_path = model_to_path(deployment.get_file(MODEL_DIR_ONNX_NAME))
+        self.onnx_model_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path
 
         config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
         if config_file:

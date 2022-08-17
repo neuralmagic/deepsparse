@@ -33,11 +33,10 @@ from deepsparse.image_classification.schemas import (
 )
 from deepsparse.pipeline import Pipeline
 from deepsparse.pipelines.helpers import (
-    CLASS_MAPPING_KEY_NAME,
+    LABELS_TO_CLASS_MAPPING_NAME,
     MODEL_DIR_CONFIG_NAME,
     MODEL_DIR_ONNX_NAME,
 )
-from deepsparse.utils import model_to_path
 from sparsezoo import Model
 
 
@@ -90,9 +89,9 @@ class ImageClassificationPipeline(Pipeline):
             self._class_names = json.load(open(class_names))
         elif isinstance(class_names, dict):
             self._class_names = class_names
-        elif self.config and CLASS_MAPPING_KEY_NAME in self.config:
+        elif self.config and LABELS_TO_CLASS_MAPPING_NAME in self.config:
             self._class_names = {
-                int(k): v for k, v in self.config[CLASS_MAPPING_KEY_NAME].items()
+                int(k): v for k, v in self.config[LABELS_TO_CLASS_MAPPING_NAME].items()
             }
         else:
             self._class_names = None
@@ -150,7 +149,7 @@ class ImageClassificationPipeline(Pipeline):
 
         deployment = model.deployment.default
 
-        self.onnx_model_path = model_to_path(deployment.get_file(MODEL_DIR_ONNX_NAME))
+        self.onnx_model_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path
 
         config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
         if config_file:

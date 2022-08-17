@@ -110,5 +110,5 @@ class TestImageClassification:
         pipeline = Pipeline.create("image_classification", zoo_model.path)
         output = pipeline(images=[numpy.random.rand(3, image_size, image_size)])
 
-        assert all([label == expected_class_name for label in output.classes])
+        assert all([label == expected_class_name for label in output.labels])
         shutil.rmtree(dirpath)

@@ -23,23 +23,20 @@ from sparsezoo import Model
 
 
 @pytest.mark.parametrize(
-    "zoo_stub,image_size",
+    "zoo_stub",
     [
-        (
-            "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none",  # noqa E501
-            550,
-        )
+        "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"  # noqa E501
     ],
 )
 @pytest.mark.smoke
 class TestYOLACT:
     @pytest.fixture()
-    def setup(self, zoo_stub, image_size):
+    def setup(self, zoo_stub):
 
-        yield zoo_stub, image_size
+        yield zoo_stub
 
     def test_yolact_with_config(self, setup):
-        zoo_stub, image_size = setup
+        zoo_stub = setup
 
         expected_class_name = "dummy_class_name"
 

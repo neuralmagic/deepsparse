@@ -15,4 +15,4 @@
 MODEL_DIR_ONNX_NAME = "model.onnx"
 MODEL_DIR_CONFIG_NAME = "config.json"
 MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
-CLASS_MAPPING_KEY_NAME = "labels_to_class_mapping"
+LABELS_TO_CLASS_MAPPING_NAME = "labels_to_class_mapping"

@@ -23,23 +23,20 @@ from sparsezoo import Model
 
 
 @pytest.mark.parametrize(
-    "zoo_stub,image_size",
+    "zoo_stub",
     [
-        (
-            "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96",
-            640,
-        )
+        "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98",
     ],
 )
 @pytest.mark.smoke
 class TestYOLO:
     @pytest.fixture()
-    def setup(self, zoo_stub, image_size):
+    def setup(self, zoo_stub):
 
-        yield zoo_stub, image_size
+        yield zoo_stub
 
-    def test_yolact_with_config(self, setup):
-        zoo_stub, image_size = setup
+    def test_yolo_with_config(self, setup):
+        zoo_stub = setup
 
         expected_class_name = "dummy_class_name"
 
