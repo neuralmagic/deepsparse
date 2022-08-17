@@ -17,13 +17,13 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Any, Generator, Iterable, List, Optional, Union
+from typing import Generator, Iterable, List, Optional, Union
 
 import numpy
-from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
+from deepsparse.pipelines.cv import CVSchema
 
 
 __all__ = [
@@ -36,14 +36,10 @@ _YOLACTImageOutput = namedtuple(
 )
 
 
-class YOLACTInputSchema(BaseModel, Splittable):
+class YOLACTInputSchema(CVSchema, Splittable):
     """
     Input Model for YOLACT
     """
-
-    images: Union[str, List[str], List[Any]] = Field(
-        description="List of images to process"
-    )  # List[Any] to accept List[numpy.ndarray]
 
     confidence_threshold: float = Field(
         default=0.05,
@@ -71,21 +67,6 @@ class YOLACTInputSchema(BaseModel, Splittable):
         description="Confidence threshold applied to the raw detection at "
         "`postprocess` step (optional)",
     )
-
-    @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "YOLACTInputSchema":
-        """
-        :param files: list of file paths to create YOLOInput from
-        :param kwargs: extra keyword args to pass to YOLOInput constructor
-        :return: YOLOInput constructed from files
-        """
-        if "images" in kwargs:
-            raise ValueError(
-                f"argument 'images' cannot be specified in {cls.__name__} when "
-                "constructing from file(s)"
-            )
-        files_numpy = [numpy.array(Image.open(file)) for file in files]
-        return cls(images=files_numpy, **kwargs)
 
     class Config:
         arbitrary_types_allowed = True
