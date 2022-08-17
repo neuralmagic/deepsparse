@@ -32,12 +32,13 @@ __all__ = [
 
 class ImageClassificationInput(BaseModel, Splittable):
     """
-    Input model for image classification
+    Input model for image classification, the images can be a str file path,
+    a List of file paths, List of numpy arrays or a single numpy array
     """
 
-    images: Union[str, List[str], List[Any]] = Field(
+    images: Union[str, List[str], List[Any], Any] = Field(
         description="List of Images to process"
-    )  # List[Any] to accept List[numpy.ndarray]
+    )  # List[Any] to accept List[numpy.ndarray], Any to accept numpy.ndarray
 
     class Config:
         arbitrary_types_allowed = True

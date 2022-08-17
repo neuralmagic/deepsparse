@@ -38,12 +38,13 @@ _YOLACTImageOutput = namedtuple(
 
 class YOLACTInputSchema(BaseModel, Splittable):
     """
-    Input Model for YOLACT
+    Input Model for YOLACT, the images can be a str file path,
+    a List of file paths, List of numpy arrays or a single numpy array
     """
 
-    images: Union[str, List[str], List[Any]] = Field(
+    images: Union[str, List[str], List[Any], Any] = Field(
         description="List of images to process"
-    )  # List[Any] to accept List[numpy.ndarray]
+    )  # List[Any] to accept List[numpy.ndarray], Any to accept numpy.ndarray
 
     confidence_threshold: float = Field(
         default=0.05,

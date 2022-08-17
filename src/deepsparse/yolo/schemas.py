@@ -39,12 +39,13 @@ _YOLOImageOutput = namedtuple(
 
 class YOLOInput(BaseModel, Splittable):
     """
-    Input model for object detection
+    Input model for object detection, the images can be a str file path,
+    a List of file paths, List of numpy arrays or a single numpy array
     """
 
-    images: Union[str, List[str], List[Any]] = Field(
+    images: Union[str, List[str], List[Any], Any] = Field(
         description="List of images to process"
-    )  # List[Any] to accept List[numpy.ndarray]
+    )  # List[Any] to accept List[numpy.ndarray], Any to accept numpy.ndarray
     iou_thres: float = Field(
         default=0.25,
         description="minimum IoU overlap threshold for a prediction to be valid",
