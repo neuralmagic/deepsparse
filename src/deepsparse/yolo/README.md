@@ -85,7 +85,7 @@ wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 ```
 
 ```python
-from deepsparse.pipeline import Pipeline
+from deepsparse import Pipeline
 
 model_stub = "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
 images = ["basilica.jpg"]
