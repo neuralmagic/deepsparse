@@ -21,7 +21,9 @@ from typing import Any
 import numpy
 
 
-__all__ = ["serializable_response"]
+__all__ = [
+    "serializable_response",
+]
 
 
 def serializable_response(data: Any) -> Any:
