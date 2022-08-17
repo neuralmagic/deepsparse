@@ -16,11 +16,8 @@ import numpy
 from PIL import Image
 
 import pytest
-from deepsparse.image_classification.schemas import ImageClassificationInput
-from deepsparse.yolact.schemas import YOLACTInputSchema
-from deepsparse.yolo.schemas import YOLOInput
-
-from .data_helpers import computer_vision
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
+from tests.deepsparse.pipelines.data_helpers import computer_vision
 
 
 def _get_images():
@@ -29,13 +26,15 @@ def _get_images():
     return images.get("images")
 
 
+def test_accepts_input():
+    ComputerVisionSchema(images="asdf")
+    ComputerVisionSchema(images=["asdf", "qwer"])
+    ComputerVisionSchema(images=numpy.zeros((1, 2, 3)))
+    ComputerVisionSchema(images=[numpy.zeros((1, 2, 3)), numpy.zeros((1, 2, 3))])
+
+
 @pytest.mark.parametrize(
-    ("schema_cls, image_files"),
-    [
-        (YOLOInput, _get_images()),
-        (YOLACTInputSchema, _get_images()),
-        (ImageClassificationInput, _get_images()),
-    ],
+    "schema_cls, image_files", [(ComputerVisionSchema, _get_images())]
 )
 def test_from_files(schema_cls, image_files):
     image_iters = (open(image, "rb") for image in image_files)
