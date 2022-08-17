@@ -20,3 +20,4 @@ the DeepSparse Engine.
 """
 
 from .main import start_server
+from .pipeline_logger import *
