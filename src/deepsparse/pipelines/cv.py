@@ -15,7 +15,15 @@
 from typing import Any, Iterable, List, TextIO, Union
 
 import numpy
-from PIL import Image
+
+
+try:
+    from PIL import Image
+
+    pil_import_error = None
+except Exception as import_error:
+    Image, pil_import_error = None, import_error
+
 from pydantic import BaseModel, Field
 
 
@@ -49,5 +57,11 @@ class CVSchema(BaseModel):
         :param files: Iterable of file pointers to create ImageClassificationInput from
         :return: ImageClassificationInput constructed from files
         """
+        if pil_import_error is not None:
+            raise ImportError(
+                "PIL is a requirement for Computer Vision pipeline schemas,"
+                f" but was not found. Error:\n{pil_import_error}, "
+                "try `pip install Pillow`"
+            )
         images = [numpy.asarray(Image.open(file)) for file in files]
         return cls(images=images, *args, **kwargs)

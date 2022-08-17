@@ -23,7 +23,8 @@ from typing import Generator, Iterable, List
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse.pipelines import CVSchema, Joinable, Splittable
+from deepsparse.pipelines import Joinable, Splittable
+from deepsparse.pipelines.cv import CVSchema
 
 
 __all__ = [
