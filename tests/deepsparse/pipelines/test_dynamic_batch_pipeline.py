@@ -27,6 +27,7 @@ _SUPPORTED_TASKS = [
     "token_classification",
     "yolo",
     "image_classification",
+    "yolact",
 ]
 
 _BATCH_SIZES = [
@@ -89,3 +90,5 @@ def test_dynamic_is_same_as_static(task):
             assert static_outputs == dynamic_outputs
         except Exception:
             assert compare(expected_dict, actual_dict)
+
+    executor.shutdown(wait=False, cancel_futures=True)
