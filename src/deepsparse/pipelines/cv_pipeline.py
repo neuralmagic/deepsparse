@@ -19,6 +19,11 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 
+__all__ = [
+    "CVSchema",
+]
+
+
 class CVSchema(BaseModel):
     """
     A base CVSchema to accept images, it is recommended to inherit
