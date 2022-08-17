@@ -21,7 +21,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
-from deepsparse.pipelines.cv import CVSchema
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
 __all__ = [
@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 
-class ImageClassificationInput(CVSchema, Splittable):
+class ImageClassificationInput(ComputerVisionSchema, Splittable):
     """
     Input model for image classification
     """

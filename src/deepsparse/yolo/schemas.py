@@ -24,7 +24,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
-from deepsparse.pipelines.cv import CVSchema
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
 __all__ = [
@@ -37,7 +37,7 @@ _YOLOImageOutput = namedtuple(
 )
 
 
-class YOLOInput(CVSchema, Splittable):
+class YOLOInput(ComputerVisionSchema, Splittable):
     """
     Input model for object detection
     """

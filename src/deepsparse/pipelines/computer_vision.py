@@ -28,14 +28,14 @@ from pydantic import BaseModel, Field
 
 
 __all__ = [
-    "CVSchema",
+    "ComputerVisionSchema",
 ]
 
 
-class CVSchema(BaseModel):
+class ComputerVisionSchema(BaseModel):
     """
-    A base CVSchema to accept images, it is recommended to inherit
-    CVSchema for all Computer Vision Based tasks, this Schema provides a
+    A base ComputerVisionSchema to accept images, it is recommended to inherit
+    ComputerVisionSchema for all Computer Vision Based tasks, this Schema provides a
     `from_files` factory method, and also specifies Field types for images
     """
 
