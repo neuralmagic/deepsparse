@@ -15,6 +15,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy
+import os
 
 import pytest
 from deepsparse import Pipeline
@@ -27,7 +28,7 @@ _SUPPORTED_TASKS = [
     "token_classification",
     "yolo",
     "image_classification",
-    # "yolact",
+    "yolact",
 ]
 
 _BATCH_SIZES = [
@@ -53,6 +54,8 @@ def compare(expected, actual):
 
 @pytest.mark.parametrize("task", _SUPPORTED_TASKS)
 def test_dynamic_is_same_as_static(task):
+    os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
+
     print(task)
     executor = ThreadPoolExecutor(max_workers=1)
 
@@ -91,4 +94,4 @@ def test_dynamic_is_same_as_static(task):
         except Exception:
             assert compare(expected_dict, actual_dict)
 
-    executor.shutdown(wait=False, cancel_futures=True)
+    executor.shutdown(wait=False)
