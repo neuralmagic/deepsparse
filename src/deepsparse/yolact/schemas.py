@@ -23,7 +23,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
-from deepsparse.pipelines.cv import CVSchema
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
 __all__ = [
@@ -36,7 +36,7 @@ _YOLACTImageOutput = namedtuple(
 )
 
 
-class YOLACTInputSchema(CVSchema, Splittable):
+class YOLACTInputSchema(ComputerVisionSchema, Splittable):
     """
     Input Model for YOLACT
     """
