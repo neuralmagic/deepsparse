@@ -18,13 +18,12 @@ Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from typing import Any, Generator, Iterable, List, TextIO, Union
+from typing import Generator, Iterable, List
 
 import numpy
-from PIL import Image
 from pydantic import BaseModel, Field
 
-from deepsparse.pipelines import Joinable, Splittable
+from deepsparse.pipelines import CVSchema, Joinable, Splittable
 
 
 __all__ = [
@@ -37,15 +36,11 @@ _YOLOImageOutput = namedtuple(
 )
 
 
-class YOLOInput(BaseModel, Splittable):
+class YOLOInput(CVSchema, Splittable):
     """
-    Input model for object detection, the images can be a str file path,
-    a List of file paths, List of numpy arrays or a single numpy array
+    Input model for object detection
     """
 
-    images: Union[str, List[str], List[Any], Any] = Field(
-        description="List of images to process"
-    )  # List[Any] to accept List[numpy.ndarray], Any to accept numpy.ndarray
     iou_thres: float = Field(
         default=0.25,
         description="minimum IoU overlap threshold for a prediction to be valid",
@@ -54,24 +49,6 @@ class YOLOInput(BaseModel, Splittable):
         default=0.45,
         description="minimum confidence score for a prediction to be valid",
     )
-
-    @classmethod
-    def from_files(cls, files: Iterable[TextIO], **kwargs) -> "YOLOInput":
-        """
-        :param files: Iterable of file pointers to create YOLOInput from
-        :param kwargs: extra keyword args to pass to YOLOInput constructor
-        :return: YOLOInput constructed from files
-        """
-        if "images" in kwargs:
-            raise ValueError(
-                f"argument 'images' cannot be specified in {cls.__name__} when "
-                "constructing from file(s)"
-            )
-        files_numpy = [numpy.array(Image.open(file)) for file in files]
-        return cls(images=files_numpy, **kwargs)
-
-    class Config:
-        arbitrary_types_allowed = True
 
     def split(self) -> Generator["YOLOInput", None, None]:
         """
