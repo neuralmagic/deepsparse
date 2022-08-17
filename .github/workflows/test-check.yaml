@@ -32,8 +32,6 @@ jobs:
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
         run: pip3 install .[dev] opencv-python
-      - name: download yolact
-        run: sparsezoo.download zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none
       - name: Run base tests
         run: PYTEST_ARGS="-s" make test
   cli-smoke-tests:
