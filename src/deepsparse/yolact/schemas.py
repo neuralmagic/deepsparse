@@ -131,9 +131,7 @@ class YOLACTOutputSchema(BaseModel, Joinable):
     boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[Optional[List[float]]] = Field(
-        description="List of masks, one for each prediction"
-    )
+    masks: List[Any] = Field(description="List of masks, one for each prediction")
 
     class Config:
         arbitrary_types_allowed = True
