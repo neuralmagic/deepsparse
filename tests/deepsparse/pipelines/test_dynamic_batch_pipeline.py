@@ -18,16 +18,16 @@ import numpy
 import os
 
 import pytest
-from deepsparse import Pipeline
+from deepsparse import Pipeline, Context
 
 from .data_helpers import create_test_inputs
 
 
 _SUPPORTED_TASKS = [
-    "text_classification",
-    "token_classification",
-    "yolo",
-    "image_classification",
+    # "text_classification",
+    # "token_classification",
+    # "yolo",
+    # "image_classification",
     "yolact",
 ]
 
@@ -55,20 +55,27 @@ def compare(expected, actual):
 @pytest.mark.parametrize("task", _SUPPORTED_TASKS)
 def test_dynamic_is_same_as_static(task):
     os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
+    os.environ["NM_LOGGING_LEVEL"] = "diagnose"
 
     print(task)
     executor = ThreadPoolExecutor(max_workers=1)
 
+    context = Context()
+
     # NOTE: re-use the same dynamic pipeline for different batch sizes
     print("creating dynamic pipeline")
-    dynamic_pipeline = Pipeline.create(task=task, batch_size=None, executor=executor)
+    dynamic_pipeline = Pipeline.create(
+        task=task, batch_size=None, executor=executor, context=context
+    )
     print("creating dynamic pipeline done")
     assert dynamic_pipeline.use_dynamic_batch()
 
     for batch_size in _BATCH_SIZES:
         print("creating static pipeline")
         # NOTE: recompile model for each different batch_size
-        static_pipeline = Pipeline.create(task=task, batch_size=batch_size)
+        static_pipeline = Pipeline.create(
+            task=task, batch_size=batch_size, context=context
+        )
         print("creating static pipeline done")
         assert not static_pipeline.use_dynamic_batch()
 
@@ -95,3 +102,4 @@ def test_dynamic_is_same_as_static(task):
             assert compare(expected_dict, actual_dict)
 
     executor.shutdown(wait=False)
+    del os.environ["NM_LOGGING_LEVEL"]
