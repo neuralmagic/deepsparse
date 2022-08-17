@@ -146,7 +146,7 @@ class ImageClassificationPipeline(Pipeline):
         :return: file path to the ONNX file for the engine to compile
         """
         model = Model(self.model_path)
-
+        model.deployment.download()
         deployment = model.deployment.default
 
         self.onnx_model_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path

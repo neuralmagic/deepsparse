@@ -163,7 +163,7 @@ class YOLOPipeline(Pipeline):
         :return: file path to the ONNX file for the engine to compile
         """
         model = Model(self.model_path)
-
+        model.deployment.download()
         deployment = model.deployment.default
 
         config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
