@@ -61,27 +61,27 @@ class TimingBuilder:
         self._post_process_delta = None
 
     @property
-    def t0(self):
+    def t0(self) -> float:
         return self._t0
 
     @property
-    def t1(self):
+    def t1(self) -> float:
         return self._t1
 
     @property
-    def pre_process_delta(self):
+    def pre_process_delta(self) -> float:
         return self._pre_process_delta
 
     @property
-    def engine_forward_delta(self):
+    def engine_forward_delta(self) -> float:
         return self._engine_forward_delta
 
     @property
-    def post_process_delta(self):
+    def post_process_delta(self) -> float:
         return self._post_process_delta
 
     @t0.setter
-    def t0(self, value):
+    def t0(self, value: float):
         if not self.started:
             raise ValueError(
                 "Attempting to collect time information, "
@@ -98,7 +98,7 @@ class TimingBuilder:
         self._t0 = value
 
     @t1.setter
-    def t1(self, value):
+    def t1(self, value : float):
         if not self.started:
             raise ValueError(
                 "Attempting to collect time information, "
@@ -115,7 +115,7 @@ class TimingBuilder:
         self._t1 = value
 
     @pre_process_delta.setter
-    def pre_process_delta(self, value):
+    def pre_process_delta(self, value: float):
         if self._pre_process_delta is not None:
             raise ValueError(
                 "Attempting to overwrite the active time delta readout. "
@@ -124,7 +124,7 @@ class TimingBuilder:
         self._pre_process_delta = value
 
     @engine_forward_delta.setter
-    def engine_forward_delta(self, value):
+    def engine_forward_delta(self, value: float):
         if self._engine_forward_delta is not None:
             raise ValueError(
                 "Attempting to overwrite the active time delta readout. "
@@ -133,7 +133,7 @@ class TimingBuilder:
         self._engine_forward_delta = value
 
     @post_process_delta.setter
-    def post_process_delta(self, value):
+    def post_process_delta(self, value: float):
         if self._post_process_delta is not None:
             raise ValueError(
                 "Attempting to overwrite the active time delta readout. "
@@ -146,7 +146,7 @@ class TimingBuilder:
             raise ValueError("The TimingBuilder instance has been already started")
         self.started = True
 
-    def build(self):
+    def build(self) -> InferenceTimingSchema:
         inference_timing_summary = InferenceTimingSchema(
             pre_process_delta=self.pre_process_delta,
             engine_forward_delta=self.engine_forward_delta,
