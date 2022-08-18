@@ -98,7 +98,7 @@ class TimingBuilder:
         self._t0 = value
 
     @t1.setter
-    def t1(self, value : float):
+    def t1(self, value: float):
         if not self.started:
             raise ValueError(
                 "Attempting to collect time information, "
