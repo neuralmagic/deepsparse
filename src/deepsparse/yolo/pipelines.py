@@ -192,7 +192,9 @@ class YOLOPipeline(Pipeline):
                 image = cv2.imread(image)
 
             image = self._make_channels_last(image)
-            image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
+            if image.ndim < 4:
+                # Assume a batch is of the correct size already
+                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
             image = self._make_channels_first(image)
             image_batch.append(image)
 
