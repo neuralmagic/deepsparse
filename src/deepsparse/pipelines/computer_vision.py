@@ -51,7 +51,7 @@ class ComputerVisionSchema(BaseModel):
         cls,
         files: Iterable[TextIO],
         *args,
-        _from_server: bool = False,
+        from_server: bool = False,
         **kwargs,
     ) -> BaseModel:
         """
