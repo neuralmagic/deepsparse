@@ -28,7 +28,6 @@ import deepsparse as _deepsparse
 
 _HAYSTACK_PREFERRED_VERSION = "1.4.0"
 _HAYSTACK_EXTRAS = "[all]"
-_HAYSTACK_REQS_PATH = _os.path.join(_os.path.dirname(__file__), "haystack_reqs.txt")
 
 
 # check haystack installation
@@ -60,8 +59,6 @@ def _install_haystack_and_deps():
                 "install",
                 f"farm-haystack{_HAYSTACK_EXTRAS}=={_HAYSTACK_PREFERRED_VERSION}",
                 "--no-dependencies",
-                "-r",
-                _HAYSTACK_REQS_PATH,
             ]
         )
 
@@ -74,7 +71,7 @@ def _install_haystack_and_deps():
             "that haystack is installed, if not, install via "
             "`pip install "
             f"farm-haystack{_HAYSTACK_EXTRAS}=={_HAYSTACK_PREFERRED_VERSION} "
-            f"--no-dependencies -r {_HAYSTACK_REQS_PATH}`"
+            "--no-dependencies`"
         )
 
 
@@ -112,7 +109,7 @@ def _check_haystack_install():
             "haystack may not be installed. it can be installed via "
             "`pip install "
             f"farm-haystack{_HAYSTACK_EXTRAS}=={_HAYSTACK_PREFERRED_VERSION} "
-            f"--no-dependencies -r {_HAYSTACK_REQS_PATH}`"
+            "--no-dependencies`"
         )
 
 
