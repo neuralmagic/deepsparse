@@ -175,8 +175,8 @@ class YOLOPipeline(Pipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        # Noting that if numpy arrays are passed in, we assume they are
-        # already the correct shape
+        # Noting that if a batch of numpy arrays are passed in, we assume they
+        # are already the correct shape
 
         if isinstance(inputs.images, (str, numpy.ndarray)):
             inputs.images = [inputs.images]
@@ -192,7 +192,9 @@ class YOLOPipeline(Pipeline):
                 image = cv2.imread(image)
 
             image = self._make_channels_last(image)
-            image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
+            if image.ndim < 4:
+                # Assume a batch is of the correct size already
+                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
             image = self._make_channels_first(image)
             image_batch.append(image)
 
