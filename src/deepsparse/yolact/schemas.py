@@ -17,9 +17,10 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Generator, Iterable, List, Optional, Union
+from typing import Any, Generator, Iterable, List, Optional, Union
 
 import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
