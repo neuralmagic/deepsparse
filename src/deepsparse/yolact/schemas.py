@@ -68,10 +68,10 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
         description="Confidence threshold applied to the raw detection at "
         "`postprocess` step (optional)",
     )
-    remove_masks_from_output: bool = Field(
-        default=False,
-        description="Controls whether segmentation masks should be removed "
-        "from the pipeline output.",
+    return_masks: bool = Field(
+        default=True,
+        description="Controls whether the pipeline should additionally "
+        "return segmentation masks",
     )
 
     @classmethod
@@ -87,7 +87,9 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
                 "constructing from file(s)"
             )
         files_numpy = [numpy.array(Image.open(file)) for file in files]
-        input_schema = cls(images=files_numpy, **kwargs)
+        input_schema = cls(
+            images=files_numpy, return_masks=not kwargs.get("from_server"), **kwargs
+        )
         return input_schema
 
     class Config:
