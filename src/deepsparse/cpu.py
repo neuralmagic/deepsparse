@@ -60,6 +60,7 @@ class architecture(dict):
         vendor                     - a string name of vendor)
         isa                        - a string containing avx2, avx512 or unknown)
         vnni                       - a boolean indicating VNNI support)
+        bf16                       - a boolean indicating BF16 support)
         num_sockets                - integer number of physical sockets
         available_sockets          - integer number of sockets available for use
         cores_per_socket           - integer number of physical cores per socket

@@ -61,6 +61,7 @@ NUM_CORES = ARCH.num_available_physical_cores
 NUM_STREAMS = 0
 AVX_TYPE = ARCH.isa
 VNNI = ARCH.vnni
+BF16 = ARCH.bf16
 
 LIB = init_deepsparse_lib()
 
@@ -184,6 +185,7 @@ class Engine(object):
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
+        self._cpu_bf16 = BF16
 
         num_streams = _validate_num_streams(num_streams, self._num_cores)
         if self._input_shapes:
@@ -300,6 +302,13 @@ class Engine(object):
         """
         :return: True if vnni support was detected on the cpu, False otherwise.
             VNNI gives performance benefits for quantized networks.
+        """
+        return self._cpu_vnni
+
+    @property
+    def cpu_bf16(self) -> bool:
+        """
+        :return: True if bfloat16 support was detected on the cpu, False otherwise.
         """
         return self._cpu_vnni
 
@@ -547,6 +556,7 @@ class Engine(object):
             "scheduler": self.scheduler,
             "cpu_avx_type": self.cpu_avx_type,
             "cpu_vnni": self.cpu_vnni,
+            "cpu_bf16": self.cpu_bf16,
         }
 
 
@@ -628,6 +638,7 @@ class MultiModelEngine(Engine):
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
+        self._cpu_bf16 = BF16
 
         if self._input_shapes:
             with override_onnx_input_shapes(
