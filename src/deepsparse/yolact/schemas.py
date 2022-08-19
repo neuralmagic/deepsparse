@@ -17,7 +17,7 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Any, Generator, Iterable, List, Optional, Union
+from typing import Any, Generator, Iterable, List, Optional, TextIO, Union
 
 import numpy
 from PIL import Image
