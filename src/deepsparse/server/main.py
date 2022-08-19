@@ -152,7 +152,7 @@ def _add_pipeline_route(
         async def _predict_func(request: input_schema):
             if from_files:
                 request = pipeline.input_schema.from_files(
-                    file.file for file in request
+                    files=[file.file for file in request], remove_masks_from_output=True
                 )
 
             results = await execute_async(

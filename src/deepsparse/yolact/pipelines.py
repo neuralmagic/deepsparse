@@ -148,6 +148,7 @@ class YOLACTPipeline(Pipeline):
             score_threshold=inputs.score_threshold,
             top_k_preprocessing=inputs.top_k_preprocessing,
             max_num_detections=inputs.max_num_detections,
+            remove_masks_from_output=inputs.remove_masks_from_output,
         )
 
         preprocessed_images = [
@@ -232,9 +233,7 @@ class YOLACTPipeline(Pipeline):
             classes=batch_classes,
             scores=batch_scores,
             boxes=batch_boxes,
-            masks=[[None]]
-            if self.input_schema.Config.remove_masks_from_output
-            else batch_masks,
+            masks=[[None]] if kwargs.get("remove_masks_from_output") else batch_masks,
         )
 
     @property

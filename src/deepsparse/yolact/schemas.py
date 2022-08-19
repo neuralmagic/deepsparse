@@ -68,6 +68,11 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
         description="Confidence threshold applied to the raw detection at "
         "`postprocess` step (optional)",
     )
+    remove_masks_from_output: bool = Field(
+        default=False,
+        description="Controls whether segmentation masks should be removed "
+        "from the pipeline output.",
+    )
 
     @classmethod
     def from_files(cls, files: List[str], **kwargs) -> "YOLACTInputSchema":
@@ -83,17 +88,10 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
             )
         files_numpy = [numpy.array(Image.open(file)) for file in files]
         input_schema = cls(images=files_numpy, **kwargs)
-        # segmentation masks for now are too big to send them
-        # over the https server. They are excluded from the
-        # response payload
-        input_schema.Config.remove_masks_from_output = True
         return input_schema
 
     class Config:
         arbitrary_types_allowed = True
-        # control whether output should contain segmentation
-        # masks or not
-        remove_masks_from_output = False
 
     def split(self) -> Generator["YOLACTInputSchema", None, None]:
         """
