@@ -17,13 +17,13 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Any, Generator, Iterable, List, Optional, Union
+from typing import Generator, Iterable, List, Optional, Union
 
 import numpy
-from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
 __all__ = [
@@ -36,14 +36,10 @@ _YOLACTImageOutput = namedtuple(
 )
 
 
-class YOLACTInputSchema(BaseModel, Splittable):
+class YOLACTInputSchema(ComputerVisionSchema, Splittable):
     """
     Input Model for YOLACT
     """
-
-    images: Union[str, List[str], List[Any]] = Field(
-        description="List of images to process"
-    )  # List[Any] to accept List[numpy.ndarray]
 
     confidence_threshold: float = Field(
         default=0.05,
