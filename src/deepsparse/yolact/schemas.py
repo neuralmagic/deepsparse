@@ -91,7 +91,7 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
             # if the input comes through the client-server communication
             # do not return segmentation masks
             images=files_numpy,
-            return_masks=not kwargs.get("from_server"),
+            return_masks=not kwargs.pop("from_server", False),
             **kwargs,
         )
         return input_schema
