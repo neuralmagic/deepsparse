@@ -258,7 +258,7 @@ def cpu_quantization_compatible() -> bool:
     )
 
 
-def cpu_details() -> Tuple[int, str, bool, bool]:
+def cpu_details() -> Tuple[int, str, bool]:
     """
     Detect the CPU details on linux systems
     If any other OS is used, will raise an exception
@@ -267,7 +267,6 @@ def cpu_details() -> Tuple[int, str, bool, bool]:
         - the number of physical cores available on the system
         - detects the vector instruction set available (avx2, avx512)
         - if vnni is available
-        - if bf16 is available
 
     NM_ARCH environment variable can be used to override the avx instruction
     set detection
@@ -277,7 +276,7 @@ def cpu_details() -> Tuple[int, str, bool, bool]:
     """
     arch = cpu_architecture()
 
-    return arch.num_available_physical_cores, arch.isa, arch.vnni, arch.bf16
+    return arch.num_available_physical_cores, arch.isa, arch.vnni
 
 
 def print_hardware_capability():
