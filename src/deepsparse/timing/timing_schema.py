@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class InferenceTimingSchema(BaseModel):
@@ -22,7 +22,18 @@ class InferenceTimingSchema(BaseModel):
     the inference pipeline
     """
 
-    pre_process_delta: float
-    engine_forward_delta: float
-    post_process_delta: float
-    total_inference_delta: float
+    pre_process_delta: float = Field(
+        description="The duration [in seconds] of "
+        "the pre-processing step prior to inference"
+    )
+    engine_forward_delta: float = Field(
+        description="The duration [in seconds] of the " "pure neural network inference"
+    )
+    post_process_delta: float = Field(
+        description="The duration [in seconds] of the "
+        "post-processing step following the inference"
+    )
+    total_inference_delta: float = Field(
+        description="The total duration [in seconds] for "
+        "the inference pipeline, end to end"
+    )

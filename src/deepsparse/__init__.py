@@ -33,6 +33,7 @@ from .cpu import (
 from .engine import *
 from .timing import *
 from .pipeline import *
+from .pipeline_logger import *
 from .version import __version__, is_release
 
 try:
