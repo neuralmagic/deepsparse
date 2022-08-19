@@ -29,6 +29,7 @@ __all__ = [
     "cpu_architecture",
     "cpu_details",
     "cpu_vnni_compatible",
+    "cpu_bf16_compatible",
     "cpu_avx2_compatible",
     "cpu_avx512_compatible",
     "cpu_neon_compatible",
@@ -202,6 +203,13 @@ def cpu_vnni_compatible() -> bool:
     """
     return cpu_architecture().vnni
 
+def cpu_bf16_compatible() -> bool:
+    """
+    :return: True if the current cpu has support for native bfloat16
+        instructions.
+    """
+    return cpu_architecture().bf16
+
 
 def cpu_avx512_compatible() -> bool:
     """
@@ -250,7 +258,7 @@ def cpu_quantization_compatible() -> bool:
     )
 
 
-def cpu_details() -> Tuple[int, str, bool]:
+def cpu_details() -> Tuple[int, str, bool, bool]:
     """
     Detect the CPU details on linux systems
     If any other OS is used, will raise an exception
@@ -259,6 +267,7 @@ def cpu_details() -> Tuple[int, str, bool]:
         - the number of physical cores available on the system
         - detects the vector instruction set available (avx2, avx512)
         - if vnni is available
+        - if bf16 is available
 
     NM_ARCH environment variable can be used to override the avx instruction
     set detection
@@ -268,7 +277,7 @@ def cpu_details() -> Tuple[int, str, bool]:
     """
     arch = cpu_architecture()
 
-    return arch.num_available_physical_cores, arch.isa, arch.vnni
+    return arch.num_available_physical_cores, arch.isa, arch.vnni, arch.bf16
 
 
 def print_hardware_capability():

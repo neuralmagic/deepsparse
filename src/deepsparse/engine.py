@@ -310,7 +310,7 @@ class Engine(object):
         """
         :return: True if bfloat16 support was detected on the cpu, False otherwise.
         """
-        return self._cpu_vnni
+        return self._cpu_bf16
 
     def run(
         self,
