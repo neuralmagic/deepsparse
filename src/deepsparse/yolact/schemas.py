@@ -88,7 +88,11 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
             )
         files_numpy = [numpy.array(Image.open(file)) for file in files]
         input_schema = cls(
-            images=files_numpy, return_masks=not kwargs.get("from_server"), **kwargs
+            # if the input comes through the client-server communication
+            # do not return segmentation masks
+            images=files_numpy,
+            return_masks=not kwargs.get("from_server"),
+            **kwargs,
         )
         return input_schema
 
