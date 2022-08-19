@@ -75,7 +75,7 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
     )
 
     @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "YOLACTInputSchema":
+    def from_files(cls, files: Iterable[TextIO], **kwargs) -> "YOLACTInputSchema":
         """
         :param files: list of file paths to create YOLOInput from
         :param kwargs: extra keyword args to pass to YOLOInput constructor
