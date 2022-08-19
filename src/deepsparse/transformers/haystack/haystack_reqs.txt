@@ -8,7 +8,7 @@
 # which conflict with deepsparse dependencies:
 # [transformers, torch]
 # the following version requirements have been updated to match deepsparse versioning
-# [onnx, onnxruntime, numpy, torchvision, tokenizers]
+# [onnx, onnxruntime, numpy, torchvision]
 # you can see their haystack versions as comments in this file
 
 aiohttp==3.8.1
@@ -244,8 +244,7 @@ threadpoolctl==3.1.0
 tika==1.24
 tinycss2==1.1.1
 tokenize-rt==4.2.1
-#tokenizers==0.12.1
-tokenizers==0.10.3
+tokenizers==0.12.1
 toml==0.10.2
 tomli==2.0.1
 tomlkit==0.11.1
