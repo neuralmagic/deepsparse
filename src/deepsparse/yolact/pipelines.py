@@ -232,7 +232,9 @@ class YOLACTPipeline(Pipeline):
             classes=batch_classes,
             scores=batch_scores,
             boxes=batch_boxes,
-            masks=batch_masks,
+            masks=[[None]]
+            if self.input_schema.Config.remove_masks_from_output
+            else batch_masks,
         )
 
     @property

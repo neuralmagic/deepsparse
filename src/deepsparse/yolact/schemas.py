@@ -85,10 +85,18 @@ class YOLACTInputSchema(BaseModel, Splittable):
                 "constructing from file(s)"
             )
         files_numpy = [numpy.array(Image.open(file)) for file in files]
-        return cls(images=files_numpy, **kwargs)
+        input_schema = cls(images=files_numpy, **kwargs)
+        # segmentation masks for now are too big to send them
+        # over the https server. They are excluded from the
+        # response payload
+        input_schema.Config.remove_masks_from_output = True
+        return input_schema
 
     class Config:
         arbitrary_types_allowed = True
+        # control whether output should contain segmentation
+        # masks or not
+        remove_masks_from_output = False
 
     def split(self) -> Generator["YOLACTInputSchema", None, None]:
         """
