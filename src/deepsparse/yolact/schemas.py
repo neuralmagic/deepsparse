@@ -69,7 +69,7 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
         "`postprocess` step (optional)",
     )
     return_masks: bool = Field(
-        default=True,
+        default=False,
         description="Controls whether the pipeline should additionally "
         "return segmentation masks",
     )
@@ -77,9 +77,9 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
     @classmethod
     def from_files(cls, files: Iterable[TextIO], **kwargs) -> "YOLACTInputSchema":
         """
-        :param files: list of file paths to create YOLOInput from
-        :param kwargs: extra keyword args to pass to YOLOInput constructor
-        :return: YOLOInput constructed from files
+        :param files: Iterable of file pointers to create YOLACTInput from
+        :param kwargs: extra keyword args to pass to YOLACTInput constructor
+        :return: YOLACTInput constructed from files
         """
         if "images" in kwargs:
             raise ValueError(
@@ -123,7 +123,7 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
         else:
             # case 2: List[str, Any], numpy.ndarray(4D) -> multiple images of size 1
             for image in images:
-                yield YOLACTInputSchema(images=image)
+                yield YOLACTInputSchema(images=image, return_masks=self.return_masks)
 
 
 class YOLACTOutputSchema(BaseModel, Joinable):
@@ -140,7 +140,9 @@ class YOLACTOutputSchema(BaseModel, Joinable):
     boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[Any] = Field(description="List of masks, one for each prediction")
+    masks: Optional[List[Any]] = Field(
+        description="List of masks, one for each prediction"
+    )
 
     class Config:
         arbitrary_types_allowed = True
@@ -153,7 +155,7 @@ class YOLACTOutputSchema(BaseModel, Joinable):
             self.classes[index],
             self.scores[index],
             self.boxes[index],
-            self.masks[index],
+            self.masks[index] if self.masks is not None else None,
         )
 
     def __iter__(self):
@@ -179,8 +181,10 @@ class YOLACTOutputSchema(BaseModel, Joinable):
                 classes.append(image_output.classes)
                 scores.append(image_output.scores)
                 boxes.append(image_output.boxes)
-                masks.append(image_output.masks)
+                if image_output.masks is not None:
+                    masks.append(image_output.masks)
 
+        masks = masks if len(masks) == len(classes) else None
         return YOLACTOutputSchema(
             classes=classes, scores=scores, boxes=boxes, masks=masks
         )
