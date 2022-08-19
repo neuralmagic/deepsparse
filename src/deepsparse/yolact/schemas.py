@@ -75,7 +75,9 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
     )
 
     @classmethod
-    def from_files(cls, files: Iterable[TextIO], **kwargs) -> "YOLACTInputSchema":
+    def from_files(
+        cls, files: Iterable[TextIO], *args, from_server: bool = False, **kwargs
+    ) -> "YOLACTInputSchema":
         """
         :param files: Iterable of file pointers to create YOLACTInput from
         :param kwargs: extra keyword args to pass to YOLACTInput constructor
@@ -90,8 +92,9 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
         input_schema = cls(
             # if the input comes through the client-server communication
             # do not return segmentation masks
+            *args,
             images=files_numpy,
-            return_masks=not kwargs.pop("from_server", False),
+            return_masks=not from_server,
             **kwargs,
         )
         return input_schema

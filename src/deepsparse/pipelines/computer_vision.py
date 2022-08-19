@@ -51,6 +51,7 @@ class ComputerVisionSchema(BaseModel):
         cls,
         files: Iterable[TextIO],
         *args,
+        _from_server: bool = False,
         **kwargs,
     ) -> BaseModel:
         """
@@ -64,4 +65,4 @@ class ComputerVisionSchema(BaseModel):
                 "try `pip install Pillow`"
             )
         images = [numpy.asarray(Image.open(file)) for file in files]
-        return cls(images=images, *args, **kwargs)
+        return cls(*args, images=images, **kwargs)
