@@ -69,14 +69,7 @@ def annotate_image(
         return image
 
     image_res = copy.copy(image)
-    num_detections = len(boxes)
-    orig_mask_dim = numpy.sqrt(len(masks) / num_detections)
-    if not orig_mask_dim.is_integer():
-        raise ValueError("Could not retrieve the original dimensions of the mask.")
-    else:
-        masks = numpy.array(masks).reshape(
-            num_detections, int(orig_mask_dim), int(orig_mask_dim)
-        )
+
     masks, boxes = _resize_to_fit_img(image, masks, boxes)
 
     for box, mask, class_, score in zip(boxes, masks, classes, scores):

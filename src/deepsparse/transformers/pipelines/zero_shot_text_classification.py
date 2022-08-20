@@ -204,7 +204,7 @@ class ZeroShotTextClassificationInputBase(BaseModel):
     the model, so the total number of forward passes is num_labels * num_sequences
     """
 
-    sequences: Union[List[List[str]], List[str], str] = Field(
+    sequences: Union[List[str], str] = Field(
         description="A string or List of strings representing input to "
         "zero_shot_text_classification task"
     )

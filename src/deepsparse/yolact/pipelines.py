@@ -148,6 +148,7 @@ class YOLACTPipeline(Pipeline):
             score_threshold=inputs.score_threshold,
             top_k_preprocessing=inputs.top_k_preprocessing,
             max_num_detections=inputs.max_num_detections,
+            return_masks=inputs.return_masks,
         )
 
         preprocessed_images = [
@@ -220,7 +221,7 @@ class YOLACTPipeline(Pipeline):
                 )
                 batch_scores.append(scores[idx].tolist())
                 batch_boxes.append(boxes[idx].tolist())
-                batch_masks.append(masks[idx].flatten().tolist())
+                batch_masks.append(masks[idx])
 
             else:
                 batch_classes.append([None])
@@ -232,7 +233,7 @@ class YOLACTPipeline(Pipeline):
             classes=batch_classes,
             scores=batch_scores,
             boxes=batch_boxes,
-            masks=batch_masks,
+            masks=batch_masks if kwargs.get("return_masks") else None,
         )
 
     @property
