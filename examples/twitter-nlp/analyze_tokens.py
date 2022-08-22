@@ -15,41 +15,44 @@
 # flake8: noqa
 
 """
-Script to analyze the sentiment of a given file of tweets from Twitter
+Script to analyze the tokens of a given file of tweets from Twitter
 in batch processing mode.
 
 ##########
 Command help:
-Usage: analyze_sentiment.py [OPTIONS]
+Usage: analyze_tokens.py [OPTIONS]
 
   Analyze the sentiment of the tweets given in the tweets_file and print out
   the results.
 
 Options:
-  --model_path TEXT       The path to the sentiment analysis model to
-                          load.Either a model.onnx file, a model folder
-                          containing the model.onnx and supporting files, or a
-                          SparseZoo model stub.
-  --tweets_file TEXT      The path to the tweets json txt file to analyze
-                          sentiment for.
-  --batch_size INTEGER    The batch size to process the tweets with. A higher
-                          batch size may increase performance at the expense
-                          of memory resources and individual latency.
-  --total_tweets INTEGER  The total number of tweets to analyze from the
-                          tweets_file.Defaults to None which will run through
-                          all tweets contained in the file.
-  --help                  Show this message and exit.
+  --model_path TEXT               The path to the token classification model to
+                                  load.Either a model.onnx file, a model
+                                  folder containing the model.onnx and
+                                  supporting files, or a SparseZoo model stub.
+  --tweets_file TEXT              The path to the tweets json txt file to
+                                  analyze sentiment for.
+  --batch_size INTEGER            The batch size to process the tweets with. A
+                                  higher batch size may increase performance
+                                  at the expense of memory resources and
+                                  individual latency.
+  --total_tweets INTEGER          The total number of tweets to analyze from
+                                  the tweets_file.Defaults to None which will
+                                  run through all tweets contained in the
+                                  file.
+  --engine [deepsparse|onnxruntime]
+                                  Inference engine to use. Default is
+                                  deepsparse
+  --important_token [MIS|PER|ORG|LOC]
+                                  Which tokens to extract: 'MIS' for
+                                  miscellaneous, 'PER' for people, 'ORG' for
+                                  organizations, 'LOC' for locations
+  --help                          Show this message and exit.
 
 ##########
-Example running a sparse, quantized sentiment analysis model:
-python analyze_sentiment.py
-    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
-    --tweets_file /PATH/TO/OUTPUT/FROM/scrape.py
-
-##########
-Example running a dense, unoptimized sentiment analysis model:
-python analyze_sentiment.py
-    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/base-none"
+Example running a sparse, quantized token classification model:
+python analyze_tokens.py
+    --model_path "zoo:nlp/token_classification/distilbert-none/pytorch/huggingface/conll2003/pruned80_quant-none-vnni"
     --tweets_file /PATH/TO/OUTPUT/FROM/scrape.py
 """
 
@@ -104,11 +107,7 @@ def _batched_model_input(tweets: List[str], batch_size: int) -> Optional[List[st
 
 
 def _extract_important_tokens(tokens: List, important_token: str):
-    # loc_tokens = []
-    # for i, token in enumerate(tokens):
-    #     if "LOC" in token.entity:
-    #         if token.word.startswith("##"):
-
+    # Note: sometimes a PER/LOC/ORG string can start with a MISC token, we currently miss these
     loc_tokens = [token for token in tokens if important_token in token.entity]
 
     loc_words = [token.word for token in loc_tokens]
@@ -140,7 +139,7 @@ def _display_results(batch, batch_pred, important_token: str):
 @click.option(
     "--model_path",
     type=str,
-    help="The path to the sentiment analysis model to load."
+    help="The path to the sentiment analysis model to load. "
     "Either a model.onnx file, a model folder containing the model.onnx "
     "and supporting files, or a SparseZoo model stub.",
 )
@@ -161,20 +160,22 @@ def _display_results(batch, batch_pred, important_token: str):
     "--total_tweets",
     type=int,
     default=None,
-    help="The total number of tweets to analyze from the tweets_file."
+    help="The total number of tweets to analyze from the tweets_file. "
     "Defaults to None which will run through all tweets contained in the file.",
 )
 @click.option(
     "--engine",
     type=click.Choice(["deepsparse", "onnxruntime"]),
     default="deepsparse",
+    help="Inference engine to use. Default is deepsparse",
 )
 @click.option(
     "--important_token",
     type=click.Choice(["MIS", "PER", "ORG", "LOC"]),
     default="LOC",
     help="Which tokens to extract: "
-    "'PER' for people, 'ORG' for organizations, 'LOC' for locations",
+    "'MIS' for miscellaneous, 'PER' for people, "
+    "'ORG' for organizations, 'LOC' for locations",
 )
 def analyze_tweets_sentiment(
     model_path: str,
@@ -185,7 +186,7 @@ def analyze_tweets_sentiment(
     important_token: str,
 ):
     """
-    Analyze the sentiment of the tweets given in the tweets_file and
+    Analyze the tokens of the tweets given in the tweets_file and
     print out the results.
     """
     print("Loading the model for inference...")
@@ -198,7 +199,6 @@ def analyze_tweets_sentiment(
 
     tweets = _load_tweets(tweets_file)
     tweets = _prep_data(tweets, total_tweets)
-    num_tweets = len(tweets)
     tot_tokens = []
     times = []
 
@@ -216,10 +216,11 @@ def analyze_tweets_sentiment(
         tot_tokens.extend(tokens)
         times.append(end - start)
 
+    num_tokens = len([item for sublist in tot_tokens for item in sublist])
     print("\n\n\n")
     print("###########################################################################")
     print(
-        f"Completed analyzing {len(tot_tokens)} tweets for a total of {len([item for sublist in tot_tokens for item in sublist])} tokens extracted."
+        f"Completed analyzing {len(tot_tokens)} tweets for a total of {num_tokens} tokens extracted."
     )
     print(f"This took {sum(times):2f} seconds total")
     print("###########################################################################")

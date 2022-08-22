@@ -27,7 +27,7 @@ Usage: analyze_sentiment.py [OPTIONS]
 
 Options:
   --model_path TEXT       The path to the sentiment analysis model to
-                          load.Either a model.onnx file, a model folder
+                          load. Either a model.onnx file, a model folder
                           containing the model.onnx and supporting files, or a
                           SparseZoo model stub.
   --tweets_file TEXT      The path to the tweets json txt file to analyze
@@ -36,7 +36,7 @@ Options:
                           batch size may increase performance at the expense
                           of memory resources and individual latency.
   --total_tweets INTEGER  The total number of tweets to analyze from the
-                          tweets_file.Defaults to None which will run through
+                          tweets_file. Defaults to None which will run through
                           all tweets contained in the file.
   --help                  Show this message and exit.
 
@@ -54,6 +54,7 @@ python analyze_sentiment.py
 """
 
 import json
+import time
 from itertools import cycle, islice
 from typing import Dict, List, Optional
 
@@ -103,7 +104,7 @@ def _display_results(batch, sentiments):
 @click.option(
     "--model_path",
     type=str,
-    help="The path to the sentiment analysis model to load."
+    help="The path to the sentiment analysis model to load. "
     "Either a model.onnx file, a model folder containing the model.onnx "
     "and supporting files, or a SparseZoo model stub.",
 )
@@ -124,7 +125,7 @@ def _display_results(batch, sentiments):
     "--total_tweets",
     type=int,
     default=None,
-    help="The total number of tweets to analyze from the tweets_file."
+    help="The total number of tweets to analyze from the tweets_file. "
     "Defaults to None which will run through all tweets contained in the file.",
 )
 def analyze_tweets_sentiment(
@@ -134,6 +135,7 @@ def analyze_tweets_sentiment(
     Analyze the sentiment of the tweets given in the tweets_file and
     print out the results.
     """
+    print("Loading the model for inference...")
     text_pipeline = Pipeline.create(
         task="text-classification",
         model_path=model_path,
@@ -142,12 +144,15 @@ def analyze_tweets_sentiment(
     tweets = _load_tweets(tweets_file)
     tweets = _prep_data(tweets, total_tweets)
     tot_sentiments = []
+    times = []
 
     while True:
         batch = _batched_model_input(tweets, batch_size)
         if batch is None:
             break
+        start = time.time()
         sentiments = text_pipeline(batch)
+        end = time.time()
 
         if sentiments.__class__.__name__ == "TextClassificationOutput":
             sentiments: List[str] = sentiments.labels
@@ -157,6 +162,7 @@ def analyze_tweets_sentiment(
 
         _display_results(batch, sentiments)
         tot_sentiments.extend(sentiments)
+        times.append(end - start)
 
     num_positive = sum(
         [1 if _classified_positive(sent) else 0 for sent in tot_sentiments]
@@ -179,6 +185,7 @@ def analyze_tweets_sentiment(
             f"[magenta]General sentiment is negative with "
             f"{100*num_negative/float(len(tot_sentiments)):.0f}% against.[/magenta]"
         )
+    print(f"This took {sum(times):2f} seconds total")
     print("###########################################################################")
 
 
