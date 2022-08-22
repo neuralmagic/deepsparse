@@ -119,8 +119,12 @@ def _validate_num_streams(num_streams: Union[None, int], num_cores: int) -> int:
     if num_streams < 0:
         raise ValueError("num_streams must be greater than 0")
 
-    if num_streams > num_cores:
-        num_streams = num_cores
+    max_num_streams = NUM_CORES
+    if max_num_streams > num_cores:
+        max_num_streams = num_cores
+
+    if num_streams > max_num_streams:
+        num_streams = max_num_streams
         _LOGGER.warn(
             "num_streams exceeds num_cores - capping to {}".format(num_streams)
         )

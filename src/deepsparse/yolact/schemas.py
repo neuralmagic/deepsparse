@@ -17,9 +17,10 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Generator, Iterable, List, Optional, Union
+from typing import Any, Generator, Iterable, List, Optional, TextIO, Union
 
 import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
@@ -67,6 +68,36 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
         description="Confidence threshold applied to the raw detection at "
         "`postprocess` step (optional)",
     )
+    return_masks: bool = Field(
+        default=False,
+        description="Controls whether the pipeline should additionally "
+        "return segmentation masks",
+    )
+
+    @classmethod
+    def from_files(
+        cls, files: Iterable[TextIO], *args, from_server: bool = False, **kwargs
+    ) -> "YOLACTInputSchema":
+        """
+        :param files: Iterable of file pointers to create YOLACTInput from
+        :param kwargs: extra keyword args to pass to YOLACTInput constructor
+        :return: YOLACTInput constructed from files
+        """
+        if "images" in kwargs:
+            raise ValueError(
+                f"argument 'images' cannot be specified in {cls.__name__} when "
+                "constructing from file(s)"
+            )
+        files_numpy = [numpy.array(Image.open(file)) for file in files]
+        input_schema = cls(
+            # if the input comes through the client-server communication
+            # do not return segmentation masks
+            *args,
+            images=files_numpy,
+            return_masks=not from_server,
+            **kwargs,
+        )
+        return input_schema
 
     class Config:
         arbitrary_types_allowed = True
@@ -95,7 +126,7 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
         else:
             # case 2: List[str, Any], numpy.ndarray(4D) -> multiple images of size 1
             for image in images:
-                yield YOLACTInputSchema(images=image)
+                yield YOLACTInputSchema(images=image, return_masks=self.return_masks)
 
 
 class YOLACTOutputSchema(BaseModel, Joinable):
@@ -112,7 +143,7 @@ class YOLACTOutputSchema(BaseModel, Joinable):
     boxes: List[List[Optional[List[float]]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    masks: List[Optional[List[float]]] = Field(
+    masks: Optional[List[Any]] = Field(
         description="List of masks, one for each prediction"
     )
 
@@ -127,7 +158,7 @@ class YOLACTOutputSchema(BaseModel, Joinable):
             self.classes[index],
             self.scores[index],
             self.boxes[index],
-            self.masks[index],
+            self.masks[index] if self.masks is not None else None,
         )
 
     def __iter__(self):
@@ -153,8 +184,10 @@ class YOLACTOutputSchema(BaseModel, Joinable):
                 classes.append(image_output.classes)
                 scores.append(image_output.scores)
                 boxes.append(image_output.boxes)
-                masks.append(image_output.masks)
+                if image_output.masks is not None:
+                    masks.append(image_output.masks)
 
+        masks = masks if len(masks) == len(classes) else None
         return YOLACTOutputSchema(
             classes=classes, scores=scores, boxes=boxes, masks=masks
         )

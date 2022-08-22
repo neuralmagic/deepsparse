@@ -18,7 +18,8 @@ DeepSparse Engine or ONNXRuntime
 
 ##########
 Command help:
-usage: eval_downstream.py [-h] [-d {squad,mnli,qqp,sst2}] [-c NUM_CORES]
+usage: eval_downstream.py [-h] [-d {squad,mnli,qqp,sst2,imdb,conll2003}]
+                          [-c NUM_CORES]
                           [-e {deepsparse,onnxruntime}]
                           [--max-sequence-length MAX_SEQUENCE_LENGTH]
                           [--max-samples MAX_SAMPLES] [--zero-shot BOOL]
@@ -32,7 +33,8 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -d {squad,mnli,qqp,sst2}, --dataset {squad,mnli,qqp,sst2}
+  -d {squad,mnli,qqp,sst2,imdb,conll2003}, --dataset {squad,mnli,qqp,sst2,
+                        imdb,conll2003}
   -c NUM_CORES, --num-cores NUM_CORES
                         The number of physical cores to run the eval on,
                         defaults to all physical cores available on the system
@@ -71,11 +73,6 @@ from datasets import load_dataset, load_metric  # isort: skip
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-
-SQUAD_KEY = "squad"
-MNLI_KEY = "mnli"
-QQP_KEY = "qqp"
-SST2_KEY = "sst2"
 
 
 def squad_eval(args):
@@ -270,6 +267,46 @@ def sst2_zero_shot_eval(args):
     return sst2_metrics
 
 
+def imdb_eval(args):
+    # load IMDB test dataset and eval tool
+    imdb = load_dataset("imdb")
+    if args.val_ratio is not None:
+        _, imdb = _split_train_val(
+            imdb["train"], args.val_ratio, seed=args.val_split_seed
+        )
+    else:
+        imdb = imdb["test"]
+    imdb_metrics = load_metric("accuracy")
+
+    # load pipeline
+    text_classify = Pipeline.create(
+        task="text-classification",
+        model_path=args.onnx_filepath,
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+    )
+    print(f"Engine info: {text_classify.engine}")
+
+    try:
+        label_map = _get_label2id(text_classify.config_path)
+    except KeyError:
+        raise KeyError("label2id not found in model config")
+
+    for idx, sample in _enumerate_progress(imdb, args.max_samples):
+        pred = text_classify([sample["text"]])
+
+        imdb_metrics.add_batch(
+            predictions=[label_map.get(pred.labels[0])],
+            references=[sample["label"]],
+        )
+
+        if args.max_samples and idx >= args.max_samples:
+            break
+
+    return imdb_metrics
+
+
 def conll2003_eval(args):
     # load qqp validation dataset and eval tool
     conll2003 = load_dataset("conll2003")["validation"]
@@ -334,6 +371,16 @@ def _get_label2id(config_file_path):
     return config["label2id"]
 
 
+def _split_train_val(train_dataset, val_ratio, seed=42):
+    # Fixed random seed to make split consistent across runs with the same ratio
+    ds = train_dataset.train_test_split(
+        test_size=val_ratio, stratify_by_column="label", seed=seed
+    )
+    train_ds = ds.pop("train")
+    val_ds = ds.pop("test")
+    return train_ds, val_ds
+
+
 # Register all the supported downstream datasets here
 SUPPORTED_DATASETS = {
     "squad": squad_eval,
@@ -341,6 +388,7 @@ SUPPORTED_DATASETS = {
     "qqp": qqp_eval,
     "sst2": sst2_eval,
     "sst2_zero_shot": sst2_zero_shot_eval,
+    "imdb": imdb_eval,
     "conll2003": conll2003_eval,
 }
 
@@ -361,7 +409,26 @@ def parse_args():
         choices=list(SUPPORTED_DATASETS.keys()),
         required=True,
     )
-
+    parser.add_argument(
+        "-v",
+        "--val_ratio",
+        type=float,
+        default=None,
+        help=(
+            "Ratio between 0.0 and 1.0 representing the proportion "
+            "of the dataset include in the validation set"
+        ),
+    )
+    parser.add_argument(
+        "-s",
+        "--val_split_seed",
+        type=int,
+        default=42,
+        help=(
+            "Random seed used to split the validation set, used with "
+            "the --val_ratio flag. Default to 42."
+        ),
+    )
     parser.add_argument(
         "-c",
         "--num-cores",
