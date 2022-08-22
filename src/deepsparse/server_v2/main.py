@@ -115,24 +115,24 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     add_invocations_endpoint = len(server_config.endpoints) == 1
 
-    for model_config in server_config.endpoints:
-        pipeline_config = _model_config_to_pipeline_config(model_config)
+    for endpoint_config in server_config.endpoints:
+        pipeline_config = _endpoint_config_to_pipeline_config(endpoint_config)
         pipeline_config.kwargs["executor"] = app._deepsparse_pool
 
-        _LOGGER.info(f"Initializing pipeline for '{model_config.name}'")
+        _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
         pipeline = Pipeline.from_config(pipeline_config, context)
 
-        _LOGGER.info(f"Adding endpoints for '{model_config.name}'")
-        _add_model_endpoint(app, model_config, pipeline, add_invocations_endpoint)
+        _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
+        _add_pipeline_endpoint(app, endpoint_config, pipeline, add_invocations_endpoint)
 
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
 
     return app
 
 
-def _add_model_endpoint(
+def _add_pipeline_endpoint(
     app: FastAPI,
-    model_config: EndpointConfig,
+    endpoint_config: EndpointConfig,
     pipeline: Pipeline,
     add_invocations_endpoint: bool = False,
 ):
@@ -141,14 +141,14 @@ def _add_model_endpoint(
 
     pool: ThreadPoolExecutor = app._deepsparse_pool
 
-    @app.post(model_config.endpoint, tags=["predict"], response_model=output_schema)
+    @app.post(endpoint_config.endpoint, tags=["predict"], response_model=output_schema)
     async def _predict_func(request: pipeline.input_schema):
         return await get_running_loop().run_in_executor(pool, pipeline, request)
 
-    _LOGGER.info(f"Added '{model_config.endpoint}' endpoint")
+    _LOGGER.info(f"Added '{endpoint_config.endpoint}' endpoint")
 
     if hasattr(input_schema, "from_files"):
-        file_endpoint = model_config.endpoint + "/files"
+        file_endpoint = endpoint_config.endpoint + "/files"
 
         @app.post(file_endpoint, tags=["predict"], response_model=output_schema)
         async def _predict_from_files_func(request: List[UploadFile]):
@@ -176,7 +176,7 @@ def _get_scheduler(server_config: ServerConfig) -> Scheduler:
     )
 
 
-def _model_config_to_pipeline_config(model: EndpointConfig) -> PipelineConfig:
+def _endpoint_config_to_pipeline_config(model: EndpointConfig) -> PipelineConfig:
     if model.batch_size == 1 and model.accept_multiples_of_batch_size:
         # dynamic batch
         batch_size = None

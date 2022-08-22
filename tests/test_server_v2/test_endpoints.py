@@ -18,12 +18,8 @@ from pydantic import BaseModel
 
 import pytest
 from deepsparse.pipeline import Pipeline
-from deepsparse.server_v2.config import (
-    EndpointConfig,
-    SequenceLengthsConfig,
-    ServerConfig,
-)
-from deepsparse.server_v2.main import _add_model_endpoint, _build_app
+from deepsparse.server_v2.config import EndpointConfig, ServerConfig
+from deepsparse.server_v2.main import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -87,9 +83,9 @@ class TestMockEndpoints:
         def parse(i: TestInput) -> int:
             return int(i.value)
 
-        _add_model_endpoint(
+        _add_pipeline_endpoint(
             app,
-            model_config=Mock(endpoint="/predict/parse_int"),
+            endpoint_config=Mock(endpoint="/predict/parse_int"),
             pipeline=Mock(input_schema=TestInput, output_schema=int, side_effect=parse),
         )
         assert app.routes[-1].path == "/predict/parse_int"
@@ -108,9 +104,9 @@ class TestMockEndpoints:
             def from_files(self, f):
                 ...
 
-        _add_model_endpoint(
+        _add_pipeline_endpoint(
             app,
-            model_config=Mock(endpoint="/predict/parse_int"),
+            endpoint_config=Mock(endpoint="/predict/parse_int"),
             pipeline=Mock(input_schema=TestInput, output_schema=int),
         )
         assert app.routes[-2].path == "/predict/parse_int"
@@ -128,9 +124,9 @@ class TestMockEndpoints:
             def from_files(self, f):
                 ...
 
-        _add_model_endpoint(
+        _add_pipeline_endpoint(
             app,
-            model_config=Mock(endpoint="/predict/parse_int"),
+            endpoint_config=Mock(endpoint="/predict/parse_int"),
             pipeline=Mock(input_schema=TestInput, output_schema=int),
             add_invocations_endpoint=True,
         )

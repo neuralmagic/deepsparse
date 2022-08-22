@@ -21,8 +21,8 @@ from deepsparse.server_v2.config import (
     ServerConfig,
 )
 from deepsparse.server_v2.main import (
+    _endpoint_config_to_pipeline_config,
     _get_scheduler,
-    _model_config_to_pipeline_config,
     _unpack_bucketing,
     _unpack_cv_bucketing,
     _unpack_nlp_bucketing,
@@ -109,28 +109,28 @@ def _model_helper(
     )
 
 
-def test_model_config_to_pipeline_copy_fields():
-    cfg = _model_config_to_pipeline_config(_model_helper(1, True))
+def test_endpoint_config_to_pipeline_copy_fields():
+    cfg = _endpoint_config_to_pipeline_config(_model_helper(1, True))
     assert cfg.task == "question-answering"
     assert cfg.model_path == "zxcv"
 
 
-def test_model_config_to_pipeline_config_dynamic_batch():
-    cfg = _model_config_to_pipeline_config(_model_helper(1, True))
+def test_endpoint_config_to_pipeline_config_dynamic_batch():
+    cfg = _endpoint_config_to_pipeline_config(_model_helper(1, True))
     assert cfg.batch_size is None
 
 
-def test_model_config_to_pipeline_config_static_batch():
-    cfg = _model_config_to_pipeline_config(_model_helper(1, False))
+def test_endpoint_config_to_pipeline_config_static_batch():
+    cfg = _endpoint_config_to_pipeline_config(_model_helper(1, False))
     assert cfg.batch_size == 1
 
-    cfg = _model_config_to_pipeline_config(_model_helper(64, False))
+    cfg = _endpoint_config_to_pipeline_config(_model_helper(64, False))
     assert cfg.batch_size == 64
 
 
-def test_model_config_to_pipeline_config_scheduler():
-    cfg = _model_config_to_pipeline_config(_model_helper(sequence_lengths=[32]))
+def test_endpoint_config_to_pipeline_config_scheduler():
+    cfg = _endpoint_config_to_pipeline_config(_model_helper(sequence_lengths=[32]))
     assert cfg.kwargs == {"sequence_length": 32}
 
-    cfg = _model_config_to_pipeline_config(_model_helper(sequence_lengths=[32, 64]))
+    cfg = _endpoint_config_to_pipeline_config(_model_helper(sequence_lengths=[32, 64]))
     assert cfg.kwargs == {"sequence_length": [32, 64]}
