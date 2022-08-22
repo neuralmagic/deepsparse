@@ -54,14 +54,15 @@ python analyze_sentiment.py
 """
 
 import json
-from itertools import cycle, islice
 import time
+from itertools import cycle, islice
 from typing import Dict, List, Optional
 
 import click
 
 from deepsparse import Pipeline
 from rich import print
+
 
 ner_tag_map = {
     "O": 0,
@@ -176,7 +177,12 @@ def _display_results(batch, batch_pred, important_token: str):
     "'PER' for people, 'ORG' for organizations, 'LOC' for locations",
 )
 def analyze_tweets_sentiment(
-        model_path: str, tweets_file: str, batch_size: int, total_tweets: int, engine: str, important_token: str
+    model_path: str,
+    tweets_file: str,
+    batch_size: int,
+    total_tweets: int,
+    engine: str,
+    important_token: str,
 ):
     """
     Analyze the sentiment of the tweets given in the tweets_file and
