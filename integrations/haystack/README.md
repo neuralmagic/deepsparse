@@ -1,7 +1,7 @@
-# Information Retrieval #
-This feature has three main contributions: A Haystack pipeline, an embedding extraction pipeline, and two classes, DeepSparseEmbeddingRetriever and DeepSparseDensePassageRetriever.
+# Haystack: Information Retrieval #
+The relevant features added as a part of the Haystack information retrieval integration are a [Haystack pipeline](/src/deepsparse/transformers/haystack/pipeline.py), an [embedding extraction pipeline](/src/deepsparse/transformers/pipelines/embedding_extraction.py), and two classes, [DeepSparseEmbeddingRetriever](/src/deepsparse/transformers/haystack/nodes.py) and [DeepSparseDensePassageRetriever](/src/deepsparse/transformers/haystack/nodes.py).
 
-The changes in this PR allow a user to perform information retrieval tasks using the Haystack library as well as integrate sparse Neural Magic nodes into their existing Haystack systems.
+These features allow a user to perform information retrieval tasks using the Haystack library as well as substitute in sparse retrieval nodes into their existing Haystack systems.
 
 ## Installation and Setup ##
 Install `farm-haystack`'s dependencies via deepsparse extras
@@ -9,7 +9,7 @@ Install `farm-haystack`'s dependencies via deepsparse extras
 pip install deepsparse[haystack]
 ```
 
-After this is done, importing any assets from `deepsparse.transformers.haystack` will trigger an auto-installation of Neural Magic's fork of `transformers` as well as `farm-haystack[all]==1.4.0`. These auto-installations can be controlled by setting the environment variables `NM_NO_AUTOINSTALL_TRANSFORMERS` and `NM_NO_AUTOINSTALL_HAYSTACK` respectively.
+After this is done, importing assets from `deepsparse.transformers.haystack` will trigger an auto-installation of Neural Magic's fork of `transformers` as well as `farm-haystack[all]==1.4.0`. These auto-installations can be controlled by setting the environment variables `NM_NO_AUTOINSTALL_TRANSFORMERS` and `NM_NO_AUTOINSTALL_HAYSTACK` respectively.
 
 ## Haystack ##
 [Haystack](https://haystack.deepset.ai/overview/intro) is an open source framework developed by Deepset for building document search systems. The library implements classes that handle operations such as document storage, index search, embedding generation, and document search (formally known as information retrieval).
@@ -40,8 +40,8 @@ retriever = EmbeddingRetriever(
 ```
 ``` python3
 >>> retriever.embed_queries(["How many protons in a hydrogen atom"])[0]
-[-0.5078004   0.06197036 -0.07222114  0.13939737  0.6266508  -0.11016203
-  0.31295514  0.01080389 -0.13592461 -0.37420657... ] # not actual values
+array([-0.00331814, -0.16311326, -0.64788855, -0.35724441, -0.26155273,
+       -0.76656055,  0.35976224, -0.6578757 , -0.15693564, -0.1927543 ])
 ```
 
 Next, write some files to your document store. These documents can be instances of Haystack's `Document` class or dictionaries containing a `content`. Remember to update the documents' embeddings with `document_store.update_embeddings(retriever)`
@@ -86,25 +86,6 @@ retriever = DeepSparseEmbeddingRetriever(
     document_store,
     model_path="zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/3layer_pruned90-none",
 )
-```
-
-## Embedding Extraction Pipeline
-The embedding extraction pipeline is a transformers pipeline that grabs embeddings from an intermediate layer of a passed transformer architecture. This is done with the help of `truncate_transformer_onnx_model`, a function that finds the nodes within the onnx graph that mark the last operation performed by a transformer model layer. The onnx model graph is then truncated that node. The embedding extractor pipeline also implements [pooling methods](https://arxiv.org/abs/1806.09828) which help to reduce the dimensionality of embeddings such as `cls_token`, `reduce_mean` `reduce_max`, and `per_token` (None).
-
-``` python3
-from deepsparse import Pipeline
-
-pipeline = Pipeline.create(
-    "embedding_extraction",
-    model_path="zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/3layer_pruned90-none",
-    emb_extraction_layer=-1,
-    return_numpy=True,
-)
-
-text = "sally sold sea shells by the seashore"
-
-embedding = pipeline(text).embeddings[0]
-print(embedding)
 ```
 
 ## DeepSparse Nodes ##
@@ -258,6 +239,27 @@ Query: Famous artists
                'the wide variety of styles that he helped develop and explore',
     'name': None}
 ```
+
+## Embedding Extraction Pipeline
+The embedding extraction pipeline is a transformers pipeline that supports the implementation of [DeepSparse Nodes](#DeepSparse-Nodes) as well as the [Haystack Pipeline](#Haystack-Pipeline). It can also be instantiated directly to grab embeddings from any onnx model.
+
+``` python3
+from deepsparse import Pipeline
+
+pipeline = Pipeline.create(
+    "embedding_extraction",
+    model_path="zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/3layer_pruned90-none",
+    emb_extraction_layer=-1,
+    return_numpy=True,
+)
+
+text = "sally sold sea shells by the seashore"
+
+embedding = pipeline(text).embeddings[0]
+print(embedding)
+```
+
+This pipeline works by grabbing embeddings from an intermediate layer of a passed transformer architecture. This is done with the help of `truncate_transformer_onnx_model`, a function that finds the nodes within the onnx graph that mark the last operation performed by a transformer model layer. The onnx model graph is then truncated that node. The embedding extractor pipeline also implements [pooling methods](https://arxiv.org/abs/1806.09828) which help to reduce the dimensionality of embeddings such as `cls_token`, `reduce_mean` `reduce_max`, and `per_token` (None).
 
 ## Accuracy Evaluation ##
 The DeepSparse nodes were evaluated using evaluation scripts provided by Tevatron. These results are consistent with those documented in [Dense Passage Retrieval for Open-Domain Question Answering](https://arxiv.org/abs/2004.04906).
