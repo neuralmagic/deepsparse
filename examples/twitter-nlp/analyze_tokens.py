@@ -102,13 +102,13 @@ def _batched_model_input(tweets: List[str], batch_size: int) -> Optional[List[st
     return batched
 
 
-def _extract_locations(tokens: List):
+def _extract_important_tokens(tokens: List, important_token: str):
     # loc_tokens = []
     # for i, token in enumerate(tokens):
     #     if "LOC" in token.entity:
     #         if token.word.startswith("##"):
 
-    loc_tokens = [token for token in tokens if "LOC" in token.entity]
+    loc_tokens = [token for token in tokens if important_token in token.entity]
 
     loc_words = [token.word for token in loc_tokens]
     compressed_loc_words = []
@@ -120,9 +120,9 @@ def _extract_locations(tokens: List):
     return loc_tokens, compressed_loc_words
 
 
-def _display_results(batch, batch_pred):
+def _display_results(batch, batch_pred, important_token: str):
     for text, tokens in zip(batch, batch_pred):
-        loc_tokens, cr_loc_words = _extract_locations(tokens)
+        loc_tokens, cr_loc_words = _extract_important_tokens(tokens, important_token)
 
         print()
         print(text)
@@ -130,7 +130,7 @@ def _display_results(batch, batch_pred):
         if len(cr_loc_words) > 0:
             color = "magenta"
             print(
-                f"Found {len(cr_loc_words)} locations: [{color}]{cr_loc_words}[/{color}]"
+                f"Found {len(cr_loc_words)} important tokens: [{color}]{cr_loc_words}[/{color}]"
             )
             print(loc_tokens)
 
@@ -163,8 +163,20 @@ def _display_results(batch, batch_pred):
     help="The total number of tweets to analyze from the tweets_file."
     "Defaults to None which will run through all tweets contained in the file.",
 )
+@click.option(
+    "--engine",
+    type=click.Choice(["deepsparse", "onnxruntime"]),
+    default="deepsparse",
+)
+@click.option(
+    "--important_token",
+    type=click.Choice(["MIS", "PER", "ORG", "LOC"]),
+    default="LOC",
+    help="Which tokens to extract: "
+    "'PER' for people, 'ORG' for organizations, 'LOC' for locations",
+)
 def analyze_tweets_sentiment(
-    model_path: str, tweets_file: str, batch_size: int, total_tweets: int
+        model_path: str, tweets_file: str, batch_size: int, total_tweets: int, engine: str, important_token: str
 ):
     """
     Analyze the sentiment of the tweets given in the tweets_file and
@@ -175,6 +187,7 @@ def analyze_tweets_sentiment(
         task="token-classification",
         model_path=model_path,
         batch_size=batch_size,
+        engine_type=engine,
     )
 
     tweets = _load_tweets(tweets_file)
@@ -193,7 +206,7 @@ def analyze_tweets_sentiment(
 
         tokens = tokens.predictions
 
-        _display_results(batch, tokens)
+        _display_results(batch, tokens, important_token)
         tot_tokens.extend(tokens)
         times.append(end - start)
 
