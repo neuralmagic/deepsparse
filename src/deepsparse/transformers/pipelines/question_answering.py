@@ -231,18 +231,6 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         """
         return QuestionAnsweringOutput
 
-    def engine_forward(
-        self,
-        engine_inputs: List[List[numpy.ndarray]],
-    ) -> List[List[numpy.ndarray]]:
-        """
-        runs one forward pass for each span of the preprocessed input
-
-        :param engine_inputs: list of multiple inputs to engine forward pass
-        :return: result of each forward pass
-        """
-        return [self.engine(inputs) for inputs in engine_inputs]
-
     def process_inputs(
         self,
         inputs: QuestionAnsweringInput,
@@ -278,9 +266,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             )
 
         # add batch dimension, assuming batch size 1
-        engine_inputs = []
-        for inps in span_engine_inputs:
-            engine_inputs.append([numpy.expand_dims(inp, axis=0) for inp in inps])
+        engine_inputs = list(map(numpy.stack, zip(*span_engine_inputs)))
 
         return engine_inputs, dict(
             span_extra_info=span_extra_info, example=squad_example
@@ -301,17 +287,23 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         example = kwargs["example"]
         num_spans = len(span_extra_info)
 
-        if len(engine_outputs) != num_spans:
+        if len(engine_outputs) != 2:
+            raise ValueError(
+                "`engine_outputs` should be a list with two elements "
+                "[start_logits, end_logits]."
+            )
+
+        all_start_logits, all_end_logits = engine_outputs
+
+        if (
+            all_start_logits.shape[0] != num_spans
+            or all_end_logits.shape[0] != num_spans
+        ):
             raise ValueError(
                 "Engine outputs expected for {num_spans} span(s), "
                 "but found for {len(engine_outputs)}"
             )
 
-        if len(engine_outputs[0]) != 2:
-            raise ValueError(
-                "`engine_outputs` should be a list with two elements "
-                "[start_logits, end_logits]."
-            )
         if self.version_2_with_negative:
             scores_diff_json = collections.OrderedDict()
             null_score_diff_threshold = 0.0
@@ -319,9 +311,8 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         min_null_prediction = None
         prelim_predictions = []
         for span_idx in range(num_spans):
-            start_logits, end_logits = [
-                logits.reshape((logits.size,)) for logits in engine_outputs[span_idx]
-            ]
+            start_logits = all_start_logits[span_idx]
+            end_logits = all_end_logits[span_idx]
 
             # This is what will allow us to map some the positions in our logits to
             # span of texts in the original context.
