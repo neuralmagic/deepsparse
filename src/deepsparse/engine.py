@@ -572,9 +572,10 @@ class Context(object):
         self,
         num_cores: int = None,
         num_streams: int = None,
+        scheduler: Scheduler = Scheduler.elastic,
     ):
         self._num_cores = _validate_num_cores(num_cores)
-        self._scheduler = Scheduler.from_str("elastic")
+        self._scheduler = scheduler
         self._deepsparse_context = LIB.deepsparse_context(
             self._num_cores,
             _validate_num_streams(num_streams, self._num_cores),
@@ -596,6 +597,9 @@ class Context(object):
     @property
     def scheduler(self):
         return self._scheduler
+
+    def __repr__(self) -> str:
+        return f"Context(num_cores={self.num_cores}, num_streams={self.num_streams})"
 
 
 class MultiModelEngine(Engine):

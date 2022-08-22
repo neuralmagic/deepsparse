@@ -177,21 +177,7 @@ class Pipeline(ABC):
         self.engine = self._initialize_engine()
 
     def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
-        _default_key_val = ("_DEFAULT",)
-        executor = kwargs.get("executor", _default_key_val)
-
-        if executor is _default_key_val:  # do not use ==
-            # use executor created during initialization
-            executor = self.executor
-        else:
-            # use passed in executor
-            executor = kwargs.pop("executor")
-
-        return (
-            executor.submit(self._run, *args, **kwargs)  # Non-Blocking call
-            if executor and not self.use_dynamic_batch()
-            else self._run(*args, **kwargs)  # Blocking call
-        )
+        return self._run(*args, **kwargs)
 
     @staticmethod
     def _get_task_constructor(task: str) -> Type["Pipeline"]:
@@ -311,6 +297,17 @@ class Pipeline(ABC):
             context=context,
             **kwargs,
         )
+
+    @classmethod
+    def default_model_for(cls, task: str) -> Optional[str]:
+        """
+        :param task: the name of the task.
+        :return: the default model path associated with `task` if there is one,
+            otherwise `None`.
+        """
+        task_cls = Pipeline._get_task_constructor(task)
+        if hasattr(task_cls, "default_model_path") and task_cls.default_model_path:
+            return task_cls.default_model_path
 
     @classmethod
     def register(
@@ -685,7 +682,7 @@ class PipelineConfig(BaseModel):
             "'deepsparse' and 'onnxruntime'. Default is 'deepsparse'"
         ),
     )
-    batch_size: int = Field(
+    batch_size: Optional[int] = Field(
         default=1,
         description=("static batch size to use for inference. Default is 1"),
     )
@@ -696,10 +693,11 @@ class PipelineConfig(BaseModel):
             "specifies all available cores. Default is None"
         ),
     )
-    scheduler: str = Field(
-        default="async",
+    scheduler: Scheduler = Field(
+        default=Scheduler.single_stream,
         description=(
-            "(deepsparse only) kind of scheduler to execute with. Defaults to async"
+            "(deepsparse only) kind of scheduler to execute with."
+            " Defaults to single_stream"
         ),
     )
     input_shapes: List[List[int]] = Field(
@@ -742,8 +740,8 @@ class BucketingPipeline(object):
         self._pipeline_class = pipelines[0].__class__
         self._validate_pipeline_class()
 
-    def __call__(self, **inputs):
-        parsed_inputs = self._pipelines[-1].parse_inputs(**inputs)
+    def __call__(self, *args, **kwargs):
+        parsed_inputs = self._pipelines[-1].parse_inputs(*args, **kwargs)
         pipeline = self._pipeline_class.route_input_to_bucket(
             input_schema=parsed_inputs,
             pipelines=self._pipelines,
