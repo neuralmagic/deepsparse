@@ -1,0 +1,51 @@
+models:
+  - name: main qa static model
+    endpoint: /predict/static
+    task: question-answering
+    model_path: zoo://asdf
+    
+    # ONLY handle batch size 64
+    batch_size: 64
+    accept_multiples_of_batch_size: False
+
+    # expect sequence length of 32
+    bucketing:
+      sequence_lengths: [32]
+
+    # use 5 cores for this model
+    num_cores: 5
+    num_concurrent_requests: 5
+
+  - name: any batch size model
+    endpoint: /predict/dynamic
+    task: question-answering
+    model_path: zoo://asdf
+    
+    # except any multiple of 1 (ie. any number of items)
+    batch_size: 1
+    accept_multiples_of_batch_size: True
+    
+    # expect sequence length of 32
+    bucketing:
+      sequence_lengths: [32]
+
+    # use 2 cores for this model
+    num_cores: 2
+    num_concurrent_requests: 2
+
+  - name: catch all model
+    endpoint: /predict/any
+    task: question-answering
+    model_path: zoo://asdf
+    
+    # accept any batch size
+    batch_size: 1
+    accept_multiples_of_batch_size: True
+
+    # bucket sequence lengths of up to 256
+    bucketing:
+      sequence_lengths: [32, 64, 128, 256]
+
+    # this one is used less, so 1 core only
+    num_cores: 1
+    num_concurrent_requests: 1

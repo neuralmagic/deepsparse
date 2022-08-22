@@ -18,7 +18,7 @@ inference engine and include pre/postprocessing
 """
 import os
 from abc import ABC, abstractmethod
-from concurrent.futures import Future, ThreadPoolExecutor, wait
+from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -176,7 +176,7 @@ class Pipeline(ABC):
 
         self._batch_size = self._batch_size or 1
 
-    def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
+    def __call__(self, *args, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
@@ -185,14 +185,13 @@ class Pipeline(ABC):
 
         # parse inputs into input_schema
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
-
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
 
-        # each item has .shape[0] == batch_size
+        # batch size of the inputs may be `> self._batch_size` at this point
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
@@ -216,8 +215,6 @@ class Pipeline(ABC):
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
-
-        # validate outputs format
         if not isinstance(pipeline_outputs, self.output_schema):
             raise ValueError(
                 f"Outputs of {self.__class__} must be instances of "
@@ -263,7 +260,11 @@ class Pipeline(ABC):
         # all items should have the same batch size
         total_batch_size = items[0].shape[0]
         assert all(item.shape[0] == total_batch_size for item in items)
-        assert total_batch_size % batch_size == 0
+        if total_batch_size % batch_size != 0:
+            raise RuntimeError(
+                f"batch size of {total_batch_size} passed into pipeline "
+                f"is not divisible by model batch size of {batch_size}"
+            )
 
         batches = []
         for i_batch in range(total_batch_size // batch_size):
