@@ -229,15 +229,44 @@ class Pipeline(ABC):
     def split_engine_inputs(
         self, items: List[numpy.ndarray], batch_size: int
     ) -> List[List[numpy.ndarray]]:
-        """Splits each item into so that `item.shape[0] == batch_size`"""
+        """
+        Splits each item into numpy arrays with the first dimension == `batch_size`.
+
+        For example, if `items` has three numpy arrays with the following
+        shapes: `[(4, 32, 32), (4, 64, 64), (4, 128, 128)]`
+
+        Then with `batch_size==4` the output would be:
+        ```
+        [[(4, 32, 32), (4, 64, 64), (4, 128, 128)]]
+        ```
+
+        Then with `batch_size==2` the output would be:
+        ```
+        [
+            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
+            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
+        ]
+        ```
+
+        Then with `batch_size==1` the output would be:
+        ```
+        [
+            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+        ]
+        ```
+        """
         assert all(isinstance(item, numpy.ndarray) for item in items)
+
         # all items should have the same batch size
         total_batch_size = items[0].shape[0]
         assert all(item.shape[0] == total_batch_size for item in items)
         assert total_batch_size % batch_size == 0
-        num_batches = total_batch_size // batch_size
+
         batches = []
-        for i_batch in range(num_batches):
+        for i_batch in range(total_batch_size // batch_size):
             start = i_batch * batch_size
             batches.append([item[start : start + batch_size] for item in items])
         return batches
@@ -245,7 +274,11 @@ class Pipeline(ABC):
     def join_engine_outputs(
         self, batch_outputs: List[List[numpy.ndarray]]
     ) -> List[numpy.ndarray]:
-        """Joins list of engine outputs together into one list"""
+        """
+        Joins list of engine outputs together into one list using `numpy.concatenate`.
+
+        This is the opposite of `Pipeline.split_engine_inputs`.
+        """
         return list(map(numpy.concatenate, zip(*batch_outputs)))
 
     @staticmethod
