@@ -17,6 +17,9 @@ import time
 from deepsparse.timing.timing_schema import InferenceTimingSchema
 
 
+__all__ = ["TimingBuilder"]
+
+
 class TimingBuilder:
     """
     The goal of the object is to aggregate the durations
