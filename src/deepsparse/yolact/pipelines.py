@@ -157,6 +157,23 @@ class YOLACTPipeline(Pipeline):
         image_batch = numpy.concatenate(preprocessed_images, axis=0)
         return [image_batch], postprocessing_kwargs
 
+    def join_engine_outputs(
+        self, batch_outputs: List[List[numpy.ndarray]]
+    ) -> List[numpy.ndarray]:
+        boxes, confidence, masks, priors, protos = super().join_engine_outputs(
+            batch_outputs
+        )
+
+        # priors never has a batch dimension
+        # so the above step doesn't concat along a batch dimension
+        # reshape into a batch dimension
+        num_priors = boxes.shape[1]
+        batch_priors = numpy.reshape(priors, (-1, num_priors, 4))
+
+        # all the priors should be equal, so only use the first one
+        assert (batch_priors == batch_priors[0]).all()
+        return (boxes, confidence, masks, batch_priors[0], protos)
+
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
     ) -> YOLACTOutputSchema:

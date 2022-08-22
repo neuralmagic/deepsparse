@@ -16,10 +16,9 @@
 Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
-import concurrent.futures
 import os
 from abc import ABC, abstractmethod
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -29,7 +28,6 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.tasks import SupportedTasks
 
 
@@ -176,22 +174,79 @@ class Pipeline(ABC):
         self.onnx_file_path = self.setup_onnx_file_path()
         self.engine = self._initialize_engine()
 
+        self._batch_size = self._batch_size or 1
+
     def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
-        _default_key_val = ("_DEFAULT",)
-        executor = kwargs.get("executor", _default_key_val)
+        if "engine_inputs" in kwargs:
+            raise ValueError(
+                "invalid kwarg engine_inputs. engine inputs determined "
+                f"by {self.__class__.__qualname__}.parse_inputs"
+            )
 
-        if executor is _default_key_val:  # do not use ==
-            # use executor created during initialization
-            executor = self.executor
+        # parse inputs into input_schema
+        pipeline_inputs = self.parse_inputs(*args, **kwargs)
+
+        if not isinstance(pipeline_inputs, self.input_schema):
+            raise RuntimeError(
+                f"Unable to parse {self.__class__} inputs into a "
+                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
+            )
+
+        # each item has .shape[0] == batch_size
+        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
+        if isinstance(engine_inputs, tuple):
+            engine_inputs, postprocess_kwargs = engine_inputs
         else:
-            # use passed in executor
-            executor = kwargs.pop("executor")
+            postprocess_kwargs = {}
 
-        return (
-            executor.submit(self._run, *args, **kwargs)  # Non-Blocking call
-            if executor and not self.use_dynamic_batch()
-            else self._run(*args, **kwargs)  # Blocking call
+        # split inputs into batches of size `self._batch_size`
+        batches = self.split_engine_inputs(engine_inputs, self._batch_size)
+
+        # submit to engine
+        futures = [
+            self.executor.submit(self.engine_forward, batch) for batch in batches
+        ]
+        wait(futures)
+
+        # join together the batches of size `self._batch_size`
+        engine_outputs = self.join_engine_outputs(
+            [future.result() for future in futures]
         )
+
+        pipeline_outputs = self.process_engine_outputs(
+            engine_outputs, **postprocess_kwargs
+        )
+
+        # validate outputs format
+        if not isinstance(pipeline_outputs, self.output_schema):
+            raise ValueError(
+                f"Outputs of {self.__class__} must be instances of "
+                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
+            )
+
+        return pipeline_outputs
+
+    def split_engine_inputs(
+        self, items: List[numpy.ndarray], batch_size: int
+    ) -> List[List[numpy.ndarray]]:
+        """Splits each item into so that `item.shape[0] == batch_size`"""
+        assert all(isinstance(item, numpy.ndarray) for item in items)
+        # all items should have the same batch size
+        total_batch_size = items[0].shape[0]
+        assert all(item.shape[0] == total_batch_size for item in items)
+        assert total_batch_size % batch_size == 0
+        num_batches = total_batch_size // batch_size
+        batches = []
+        for i_batch in range(num_batches):
+            start = i_batch * batch_size
+            batches.append([item[start : start + batch_size] for item in items])
+        return batches
+
+    def join_engine_outputs(
+        self, batch_outputs: List[List[numpy.ndarray]]
+    ) -> List[numpy.ndarray]:
+        """Joins list of engine outputs together into one list"""
+        return list(map(numpy.concatenate, zip(*batch_outputs)))
 
     @staticmethod
     def _get_task_constructor(task: str) -> Type["Pipeline"]:
@@ -501,18 +556,6 @@ class Pipeline(ABC):
         """
         return self._engine_type
 
-    def use_dynamic_batch(self) -> bool:
-        """
-        :return: True if pipeline should be run in dynamic batch mode else
-            False
-        """
-        return (
-            self._batch_size is None
-            and self.executor
-            and issubclass(self.input_schema, Splittable)
-            and issubclass(self.output_schema, Joinable)
-        )
-
     def to_config(self) -> "PipelineConfig":
         """
         :return: PipelineConfig that can be used to reload this object
@@ -573,73 +616,6 @@ class Pipeline(ABC):
         :return: result of forward pass to Pipeline engine
         """
         return self.engine(engine_inputs)
-
-    def _run(self, *args, **kwargs):
-        if "engine_inputs" in kwargs:
-            raise ValueError(
-                "invalid kwarg engine_inputs. engine inputs determined "
-                f"by {self.__class__.__qualname__}.parse_inputs"
-            )
-
-        # parse inputs into input_schema schema if necessary
-        pipeline_inputs = self.parse_inputs(*args, **kwargs)
-        if isinstance(pipeline_inputs, tuple):
-            pipeline_inputs, split_kwargs = pipeline_inputs
-        else:
-            split_kwargs = {}
-
-        if not isinstance(pipeline_inputs, self.input_schema):
-            raise RuntimeError(
-                f"Unable to parse {self.__class__} inputs into a "
-                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
-            )
-
-        # run pipeline
-        if self.use_dynamic_batch():
-            return self._run_with_dynamic_batch(pipeline_inputs, split_kwargs)
-
-        pipeline_outputs = self._run_with_static_batch(pipeline_inputs)
-        return pipeline_outputs
-
-    def _run_with_dynamic_batch(
-        self,
-        pipeline_inputs: BaseModel,
-        split_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> BaseModel:
-
-        if split_kwargs is None:
-            split_kwargs = {}
-
-        pipeline_inputs = pipeline_inputs.split(**split_kwargs)
-        futures = [
-            self.executor.submit(self._run_with_static_batch, _input)
-            for _input in pipeline_inputs
-        ]
-        # wait for all inferences to complete before joining outputs
-        concurrent.futures.wait(futures)
-        outputs = [future.result() for future in futures]
-        return self.output_schema.join(outputs)
-
-    def _run_with_static_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
-        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
-        if isinstance(engine_inputs, tuple):
-            engine_inputs, postprocess_kwargs = engine_inputs
-        else:
-            postprocess_kwargs = {}
-
-        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
-        pipeline_outputs = self.process_engine_outputs(
-            engine_outputs, **postprocess_kwargs
-        )
-
-        # validate outputs format
-        if not isinstance(pipeline_outputs, self.output_schema):
-            raise ValueError(
-                f"Outputs of {self.__class__} must be instances of "
-                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
-            )
-
-        return pipeline_outputs
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
@@ -849,7 +825,7 @@ def _initialize_executor_and_workers(
             f" but got {workers_or_executor} of type {type(workers_or_executor)}"
         )
     else:
-        executor = None
+        executor = ThreadPoolExecutor(max_workers=1)
         num_async_workers = 1
 
     if batch_size is None and executor is None:
