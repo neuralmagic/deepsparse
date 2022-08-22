@@ -15,6 +15,9 @@
 from pydantic import BaseModel
 
 
+__all__ = ["InferenceTimingSchema"]
+
+
 class InferenceTimingSchema(BaseModel):
     """
     Stores the information about time deltas
