@@ -11,17 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
-from typing import Any
+import os
+from typing import Any, Optional
 
-from deepsparse import PipelineLogger
-from prometheus_client import Histogram, start_http_server
+from deepsparse.pipeline_logger import PipelineLogger
+from prometheus_client import (
+    REGISTRY,
+    CollectorRegistry,
+    Histogram,
+    start_http_server,
+    write_to_textfile,
+)
 
 
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
+
+IDENTIFIER = "prometheus"
 
 
 class PrometheusLogger(PipelineLogger):
@@ -30,17 +38,42 @@ class PrometheusLogger(PipelineLogger):
     (https://github.com/prometheus/client_python) to monitor the
     inference pipeline
 
+    :param pipeline_name: The name of the pipeline the
+        logger refers to
     :param port: the port used by the client. Default is 8000
+    :param text_log_save_dir: the directory where the text log files
+        are saved. By default, the python working directory
+    :param text_log_save_freq: the frequency of saving the text log
+        files. E.g. if `text_log_save_freq` = 10, text logs are dumped
+        after every tenth forward pass
+    :param text_log_file_name: the name of the text log file.
+        Default: `prometheus_logs.prom`.
     """
 
-    def __init__(self, port: int = 8000):
+    def __init__(
+        self,
+        pipeline_name: Optional[str] = None,
+        port: int = 8000,
+        text_log_save_dir: str = os.getcwd(),
+        text_log_save_freq: int = 10,
+        text_log_file_name: Optional[str] = None,
+    ):
         self.port = port
+        self.text_log_save_freq = text_log_save_freq
+        self.text_log_file_path = os.path.join(
+            text_log_save_dir, text_log_file_name or f"{IDENTIFIER}_logs.prom"
+        )
         self.setup_client()
+        self._registry = CollectorRegistry()
+        REGISTRY.register(self._registry)
+
         # the data structure responsible for the instrumentation
         # of the metrics
         self.metrics = []
+        # track how many times the logger has been called
+        self.counter = 0
 
-        super().__init__()
+        super().__init__(pipeline_name=pipeline_name, identifier=IDENTIFIER)
 
     def setup_client(self):
         """
@@ -56,7 +89,7 @@ class PrometheusLogger(PipelineLogger):
         Continuously logs the inference pipeline latencies
 
         :param inference_timing: Pydantic model that contains information
-        about time deltas processes within the inference pipeline
+            about time deltas processes within the inference pipeline
         """
         if not self.metrics:
             # will be run on the first digestion of
@@ -68,10 +101,24 @@ class PrometheusLogger(PipelineLogger):
         for metric_name, value_to_log in dict(inference_timing).items():
             self._log_latency(metric_name=metric_name, value_to_log=value_to_log)
 
-        _LOGGER.info("Prometheus client: logged latency metrics")
+        self.counter += 1
+        if self.counter % self.text_log_save_freq:
+            self._export_metrics_to_textfile()
 
     def log_data(self, inputs: Any, outputs: Any):
         raise NotImplementedError()
+
+    def _log_latency(self, metric_name: str, value_to_log: float):
+        """
+        Logs the latency value of a given metric
+
+        :param metric_name: Name of the metric
+        :param value_to_log: Time delta to be logged [in seconds]
+        """
+        histogram = [
+            histogram for histogram in self.metrics if histogram._name == metric_name
+        ][0]
+        histogram.observe(value_to_log)
 
     def _setup_metrics(self, inference_timing: "InferenceTimingSchema"):  # noqa F821
         """
@@ -86,23 +133,22 @@ class PrometheusLogger(PipelineLogger):
         # Histograms track the size and number of events in buckets
         for field_name, field_data in inference_timing.__fields__.items():
             field_description = field_data.field_info.description
-            self.metrics.append(Histogram(field_name, field_description))
+            self.metrics.append(
+                Histogram(field_name, field_description, registry=REGISTRY)
+            )
         _LOGGER.info(
             "Prometheus client: set the metrics to track. "
             f"Tracked metrics: {[metric for metric in self.metrics]}"
         )
 
-    def _log_latency(self, metric_name: str, value_to_log: float):
-        """
-        Logs the latency value of a given metric
+    def _export_metrics_to_textfile(self):
+        write_to_textfile(self.text_log_file_path, REGISTRY)
 
-        :param metric_name: Name of the metric
-        :param value_to_log: Time delta to be logged [in seconds]
-        """
-        histogram = [
-            histogram for histogram in self.metrics if histogram._name == metric_name
+    def _update_call_count(self):
+        call_counter = [
+            metric for metric in self.metrics if metric._name == "num_forward_passes"
         ][0]
-        histogram.observe(value_to_log)
+        call_counter.inc()
 
     def _assert_incoming_data_consistency(
         self, inference_timing: "InferenceTimingSchema"  # noqa F821

@@ -13,20 +13,62 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any
+from collections.abc import Iterable
+from typing import Any, Dict
+from typing import Iterable as iterable_type
+from typing import Optional, Union
+
+from deepsparse.pipeline import Pipeline
 
 
-__all__ = ["PipelineLogger"]
+__all__ = ["PipelineLogger", "LoggerManager"]
 
 
 class PipelineLogger(ABC):
     """
     Generic PipelineLogger abstract class meant to define interfaces
     for the loggers that support various monitoring services APIs.
+
+    :param pipeline_name: The name of the inference pipeline from which the
+        logger consumes monitoring information
+    :param identifier: The name of the monitoring service that the
+        PipelineLogger uses to log the inference data.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, identifier: str, pipeline_name: Optional[str] = None):
+        self._pipeline_name = pipeline_name
+        self._identifier = identifier
+
+    @property
+    def identifier(self) -> str:
+        return self._identifier
+
+    @property
+    def pipeline_name(self) -> str:
+        return self._pipeline_name
+
+    @pipeline_name.setter
+    def pipeline_name(self, value: str):
+        """
+        Set the name of the inference pipeline that this
+        logger collects the monitoring information from
+
+        :param value: pipeline name to be set
+        """
+        if self._pipeline_name is not None:
+            raise ValueError(
+                "Attempting to set the pipeline name for the pipeline logger, "
+                "but this logger is already associated with the pipeline: "
+                f"{self._pipeline_name}"
+            )
+        else:
+            self._pipeline_name = value
+
+    def __str__(self):
+        return (
+            f"Logger for pipeline: {self.pipeline_name}; "
+            f"using monitoring service: {self.identifier}"
+        )
 
     @abstractmethod
     def log_latency(
@@ -48,3 +90,81 @@ class PipelineLogger(ABC):
         :param outputs: the data returned by the inference pipeline
         """
         raise NotImplementedError()
+
+
+class LoggerManager:
+    """
+    Object that contains multiple loggers for
+    the given inference pipeline.
+
+    Below, the envisioned lifecycle of a logger
+    manager:
+
+    ```
+    pipeline = ... # define a pipeline
+
+    # create a LoggerManager
+    logger_manager = LoggerManager.from_pipeline(pipeline)
+    # define the set of loggers
+    logger = LoggerA() or logger = [LoggerA(), LoggerB(), ...]
+    # add loggers to the LoggerManager
+    logger_manager.add(logger)
+    ...
+    ```
+    :param pipeline_name: The name of the pipeline the
+        logger manager refers to
+    """
+
+    def __init__(self, pipeline_name: str):
+        self._pipeline_name = pipeline_name
+        self._loggers = {}
+
+    @property
+    def pipeline_name(self) -> str:
+        """
+        :return: The name of the pipeline the
+        logger manager refers to
+        """
+        return self._pipeline_name
+
+    @property
+    def loggers(self) -> Dict[str, PipelineLogger]:
+        """
+        :return: The mapping from logger identifier to the
+            logger instance
+        """
+        return self._loggers
+
+    @classmethod
+    def from_pipeline(cls, pipeline: Pipeline) -> "LoggerManager":
+        """
+        Factory method to create LoggerManager instance from the
+        existing pipeline
+
+        :param pipeline: Pipeline class object
+        :return: LoggerManager class object
+        """
+        return cls(pipeline_name=pipeline.task)  # TODO: Something better than task?
+
+    def add(
+        self, pipeline_logger: Union[PipelineLogger, iterable_type[PipelineLogger]]
+    ):
+        """
+        Adds one or multiple pipeline loggers to the manager
+
+        :param pipeline_logger: An instance of a pipeline logger or an iterable
+            that holds multiple pipeline loggers
+        """
+        if not isinstance(pipeline_logger, Iterable):
+            pipeline_logger = [pipeline_logger]
+
+        for logger in pipeline_logger:
+            if logger.pipeline_name:
+                raise ValueError(
+                    f"Expected to add a logger that is yet "
+                    f"not assigned to any pipeline."
+                    f"However, logger: {logger} is already assigned to pipeline: "
+                    f"{logger.pipeline_name}"
+                )
+            logger.pipeline_name = self.pipeline_name
+            self._loggers[logger.identifier] = logger
