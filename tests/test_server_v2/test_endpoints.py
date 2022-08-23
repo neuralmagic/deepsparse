@@ -24,12 +24,23 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 
+class FromFilesSchema(BaseModel):
+    def from_files(self, f):
+        ...
+
+
+class StrSchema(BaseModel):
+    value: str
+
+
+def parse(v: StrSchema) -> int:
+    return int(v.value)
+
+
 class TestStatusEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
-        server_config = ServerConfig(
-            num_cores=1, num_concurrent_batches=1, endpoints=[]
-        )
+        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
         yield server_config
 
     @pytest.fixture(scope="class")
@@ -63,9 +74,7 @@ class TestStatusEndpoints:
 class TestMockEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
-        server_config = ServerConfig(
-            num_cores=1, num_concurrent_batches=1, endpoints=[]
-        )
+        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
         yield server_config
 
     @pytest.fixture(scope="class")
@@ -77,16 +86,10 @@ class TestMockEndpoints:
         yield TestClient(app)
 
     def test_add_model_endpoint(self, app: FastAPI, client: TestClient):
-        class TestInput(BaseModel):
-            value: str
-
-        def parse(i: TestInput) -> int:
-            return int(i.value)
-
         _add_pipeline_endpoint(
             app,
             endpoint_config=Mock(endpoint="/predict/parse_int"),
-            pipeline=Mock(input_schema=TestInput, output_schema=int, side_effect=parse),
+            pipeline=Mock(input_schema=StrSchema, output_schema=int, side_effect=parse),
         )
         assert app.routes[-1].path == "/predict/parse_int"
         assert app.routes[-1].response_model is int
@@ -98,42 +101,31 @@ class TestMockEndpoints:
             assert response.json() == int(v)
 
     def test_add_model_endpoint_with_from_files(self, app):
-        class TestInput(BaseModel):
-            value: str
-
-            def from_files(self, f):
-                ...
-
         _add_pipeline_endpoint(
             app,
             endpoint_config=Mock(endpoint="/predict/parse_int"),
-            pipeline=Mock(input_schema=TestInput, output_schema=int),
+            pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
         )
-        assert app.routes[-2].path == "/predict/parse_int"
-        assert app.routes[-2].response_model is int
-        assert app.routes[-2].methods == {"POST"}
-
         assert app.routes[-1].path == "/predict/parse_int/files"
         assert app.routes[-1].response_model is int
         assert app.routes[-1].methods == {"POST"}
 
     def test_add_invocations_endpoint(self, app):
-        class TestInput(BaseModel):
-            value: str
-
-            def from_files(self, f):
-                ...
-
         _add_pipeline_endpoint(
             app,
             endpoint_config=Mock(endpoint="/predict/parse_int"),
-            pipeline=Mock(input_schema=TestInput, output_schema=int),
+            pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
             add_invocations_endpoint=True,
         )
-
         assert app.routes[-1].path == "/invocations"
-        assert app.routes[-1].response_model is int
-        assert app.routes[-1].methods == {"POST"}
+
+    def test_add_endpoint_with_no_route_specified(self, app):
+        _add_pipeline_endpoint(
+            app,
+            endpoint_config=Mock(endpoint=None),
+            pipeline=Mock(input_schema=StrSchema, output_schema=int),
+        )
+        assert app.routes[-1].path == "/predict"
 
 
 class TestActualModelEndpoints:
@@ -141,7 +133,7 @@ class TestActualModelEndpoints:
     def client(self):
         server_config = ServerConfig(
             num_cores=1,
-            num_concurrent_batches=1,
+            num_workers=1,
             endpoints=[
                 EndpointConfig(
                     name="test endpoint 1",

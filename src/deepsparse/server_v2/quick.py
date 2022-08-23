@@ -43,23 +43,36 @@ from deepsparse.server_v2.main import start_server
     "--batch_size",
     type=int,
     default=1,
-    help="The batch size to serve the model from model_path with. "
-    "Ignored if config_file is supplied.",
+    help="The batch size to serve the model from model_path with",
 )
 @click.option(
     "--num-cores",
     type=int,
     default=1,
-    help="TODO",
+    help="The number of cores the server should have access to.",
 )
 @click.option(
-    "--num-concurrent-batches",
+    "--num-workers",
     type=int,
     default=1,
-    help="TODO",
+    help="The number of workers to split the available cores between.",
 )
-@click.option("--host", type=str, default="0.0.0.0")
-@click.option("--port", type=int, default=5543)
+@click.option(
+    "--host",
+    type=str,
+    default="0.0.0.0",
+    help=(
+        "Bind socket to this host. Use --host 0.0.0.0 to make the application "
+        "available on your local network. "
+        "IPv6 addresses are supported, for example: --host '::'. Defaults to 0.0.0.0"
+    ),
+)
+@click.option(
+    "--port",
+    type=int,
+    default=5543,
+    help="Bind to a socket with this port. Defaults to 5543.",
+)
 @click.option(
     "--log_level",
     type=click.Choice(
@@ -73,14 +86,14 @@ def main(
     model_path: Optional[str],
     batch_size: int,
     num_cores: int,
-    num_concurrent_batches: int,
+    num_workers: int,
     host: str,
     port: int,
     log_level: str,
 ):
     cfg = ServerConfig(
         num_cores=num_cores,
-        num_concurrent_batches=num_concurrent_batches,
+        num_workers=num_workers,
         endpoints=[
             EndpointConfig(
                 task=task,

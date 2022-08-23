@@ -16,25 +16,15 @@ import logging
 from asyncio import get_running_loop
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List
 
 import click
 import yaml
 
 import uvicorn
 from deepsparse.engine import Context, Scheduler
-from deepsparse.pipeline import (
-    DEEPSPARSE_ENGINE,
-    Pipeline,
-    PipelineConfig,
-    SupportedTasks,
-)
-from deepsparse.server_v2.config import (
-    EndpointConfig,
-    ImageSizesConfig,
-    SequenceLengthsConfig,
-    ServerConfig,
-)
+from deepsparse.pipeline import Pipeline
+from deepsparse.server_v2.config import EndpointConfig, ServerConfig
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -43,8 +33,23 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @click.command()
-@click.option("--host", type=str, default="0.0.0.0")
-@click.option("--port", type=int, default=5543)
+@click.argument("config-path", type=str)
+@click.option(
+    "--host",
+    type=str,
+    default="0.0.0.0",
+    help=(
+        "Bind socket to this host. Use --host 0.0.0.0 to make the application "
+        "available on your local network. "
+        "IPv6 addresses are supported, for example: --host '::'. Defaults to 0.0.0.0"
+    ),
+)
+@click.option(
+    "--port",
+    type=int,
+    default=5543,
+    help="Bind to a socket with this port. Defaults to 5543.",
+)
 @click.option(
     "--log-level",
     type=click.Choice(
@@ -53,7 +58,6 @@ _LOGGER = logging.getLogger(__name__)
     default="info",
     help="Sets the logging level. Defaults to info.",
 )
-@click.argument("config-path", type=str)
 def main(config_path: str, host: str, port: int, log_level: str):
     start_server(config_path, host, port, log_level)
 
@@ -88,8 +92,8 @@ def start_server(
 def _build_app(server_config: ServerConfig) -> FastAPI:
     context = Context(
         num_cores=server_config.num_cores,
-        num_streams=server_config.num_concurrent_batches,
-        scheduler=_get_scheduler(server_config),
+        num_streams=server_config.num_workers,
+        scheduler=Scheduler.multi_stream,
     )
 
     _LOGGER.info(f"Built context: {repr(context)}")
@@ -115,8 +119,14 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     add_invocations_endpoint = len(server_config.endpoints) == 1
 
+    # fill in names if there are none
+    for idx, endpoint_config in enumerate(server_config.endpoints):
+        if endpoint_config.name is None:
+            endpoint_config.name = f"endpoint-{idx}"
+
+    # creat pipelines & endpoints
     for endpoint_config in server_config.endpoints:
-        pipeline_config = _endpoint_config_to_pipeline_config(endpoint_config)
+        pipeline_config = endpoint_config.to_pipeline_config()
         pipeline_config.kwargs["executor"] = app._deepsparse_pool
 
         _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
@@ -141,121 +151,33 @@ def _add_pipeline_endpoint(
 
     pool: ThreadPoolExecutor = app._deepsparse_pool
 
-    @app.post(endpoint_config.endpoint, tags=["predict"], response_model=output_schema)
+    route = endpoint_config.endpoint or "/predict"
+
+    @app.post(route, tags=["predict"], response_model=output_schema)
     async def _predict_func(request: pipeline.input_schema):
         return await get_running_loop().run_in_executor(pool, pipeline, request)
 
-    _LOGGER.info(f"Added '{endpoint_config.endpoint}' endpoint")
+    _LOGGER.info(f"Added '{route}' endpoint")
 
     if hasattr(input_schema, "from_files"):
-        file_endpoint = endpoint_config.endpoint + "/files"
+        file_route = route + "/files"
 
-        @app.post(file_endpoint, tags=["predict"], response_model=output_schema)
+        @app.post(file_route, tags=["predict"], response_model=output_schema)
         async def _predict_from_files_func(request: List[UploadFile]):
             request = pipeline.input_schema.from_files(
                 (file.file for file in request), from_server=True
             )
             return await get_running_loop().run_in_executor(pool, pipeline, request)
 
-        _LOGGER.info(f"Added '{file_endpoint}' endpoint")
+        _LOGGER.info(f"Added '{file_route}' endpoint")
 
     if add_invocations_endpoint and hasattr(input_schema, "from_files"):
 
         @app.post("/invocations", response_model=output_schema)
         async def _invocations(request: List[UploadFile]):
-            return RedirectResponse(file_endpoint)
+            return RedirectResponse(file_route)
 
         _LOGGER.info("Added '/invocations' endpoint")
-
-
-def _get_scheduler(server_config: ServerConfig) -> Scheduler:
-    return (
-        Scheduler.multi_stream
-        if server_config.num_concurrent_batches > 1
-        else Scheduler.single_stream
-    )
-
-
-def _endpoint_config_to_pipeline_config(model: EndpointConfig) -> PipelineConfig:
-    if model.batch_size == 1 and model.accept_multiples_of_batch_size:
-        # dynamic batch
-        batch_size = None
-    elif model.batch_size > 1 and model.accept_multiples_of_batch_size:
-        # should still be dynamic batch
-        raise NotImplementedError
-    else:
-        batch_size = model.batch_size
-
-    input_shapes, kwargs = _unpack_bucketing(model.task, model.bucketing)
-
-    return PipelineConfig(
-        task=model.task,
-        model_path=model.model,
-        engine_type=DEEPSPARSE_ENGINE,
-        batch_size=batch_size,
-        num_cores=None,  # this will be set from Context
-        input_shapes=input_shapes,
-        kwargs=kwargs,
-    )
-
-
-def _unpack_bucketing(
-    task: str, bucketing: Optional[Union[SequenceLengthsConfig, ImageSizesConfig]]
-) -> Tuple[Optional[List[int]], Dict[str, Any]]:
-    """
-    :return: (input_shapes, kwargs) which are passed to PipelineConfig
-    """
-    if bucketing is None:
-        return None, {}
-
-    if isinstance(bucketing, SequenceLengthsConfig):
-        if not SupportedTasks.is_nlp(task):
-            raise ValueError(f"SequenceLengthConfig specified for non-nlp task {task}")
-
-        return _unpack_nlp_bucketing(bucketing)
-    elif isinstance(bucketing, ImageSizesConfig):
-        if (
-            not SupportedTasks.is_image_classification(task)
-            and not SupportedTasks.is_yolo(task)
-            and not SupportedTasks.is_yolact(task)
-        ):
-            raise ValueError(
-                f"ImageSizeConfig specified for non computer vision task {task}"
-            )
-
-        return _unpack_cv_bucketing(bucketing)
-    else:
-        raise ValueError(f"Unknown bucket config {bucketing}")
-
-
-def _unpack_nlp_bucketing(cfg: SequenceLengthsConfig):
-    if len(cfg.sequence_lengths) == 0:
-        raise ValueError("Must specify at least one sequence length under bucketing")
-
-    if len(cfg.sequence_lengths) == 1:
-        input_shapes = None
-        kwargs = {"sequence_length": cfg.sequence_lengths[0]}
-    else:
-        input_shapes = None
-        kwargs = {"sequence_length": cfg.sequence_lengths}
-
-    return input_shapes, kwargs
-
-
-def _unpack_cv_bucketing(cfg: ImageSizesConfig):
-    if len(cfg.image_sizes) == 0:
-        raise ValueError("Must specify at least one image size under bucketing")
-
-    if len(cfg.image_sizes) == 1:
-        # NOTE: convert from List[Tuple[int, int]] to List[List[int]]
-        input_shapes = [list(cfg.image_sizes[0])]
-        kwargs = {}
-    else:
-        raise NotImplementedError(
-            "Multiple image size buckets is currently unsupported"
-        )
-
-    return input_shapes, kwargs
 
 
 if __name__ == "__main__":

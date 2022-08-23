@@ -13,9 +13,12 @@
 # limitations under the License.
 
 
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
+
+from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
+from deepsparse.tasks import SupportedTasks
 
 
 __all__ = [
@@ -39,33 +42,72 @@ class ImageSizesConfig(BaseModel):
 
 
 class EndpointConfig(BaseModel):
-    name: str = Field(
-        description="Name of the model used for logging & metric purposes."
+    name: Optional[str] = Field(
+        default=None,
+        description=(
+            "Name of the model used for logging & metric purposes. "
+            "If not specified 'endpoint-<index>' will be used."
+        ),
     )
 
-    endpoint: str = Field(
-        description="The path to use for this endpoint. E.g. '/predict'."
+    endpoint: Optional[str] = Field(
+        default=None,
+        description="Optional url to use for this endpoint. E.g. '/predict'. "
+        "If not specified '/endpoint-<index>/predict' will be used",
     )
 
     task: str = Field(description="Task this endpoint performers")
 
     model: str = Field(description="Location of the underlying model to use.")
 
-    batch_size: int = Field(description="The batch size to compile the model for.")
+    batch_size: int = Field(
+        default=1, description="The batch size to compile the model for."
+    )
 
     accept_multiples_of_batch_size: bool = Field(
-        description="""
-Whether to accept any request with a batch size that is a multiple of `batch_size`.
-
-E.g. if batch_size is 1 and this field is True,
-then the model can accept any batch size.
-    """,
+        default=True,
+        description=(
+            "Enable accepting any batch size that is a multiple of `batch_size`. "
+            "For example, if `batch_size` is 1 and this field is `True`, "
+            "then the model can accept any batch size. "
+            "If `batch_size` is 2 and this field is `True`, "
+            "then the model cant accept batch sizes 2, 4, 6, 8, ..."
+        ),
     )
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,
-        description="What input shapes this model can accept. Must specify at least 1",
+        description=(
+            "What input shapes this model can accept."
+            "Example for multiple sequence lengths in yaml: "
+            "```yaml\n"
+            "bucketing:\n"
+            "  sequence_lengths: [16, 32, 64]\n"
+            "```\n"
+        ),
     )
+
+    def to_pipeline_config(self) -> PipelineConfig:
+        if self.batch_size == 1 and self.accept_multiples_of_batch_size:
+            # dynamic batch
+            batch_size = None
+        elif self.batch_size > 1 and self.accept_multiples_of_batch_size:
+            # should still be dynamic batch
+            raise NotImplementedError
+        else:
+            batch_size = self.batch_size
+
+        input_shapes, kwargs = _unpack_bucketing(self.task, self.bucketing)
+
+        return PipelineConfig(
+            task=self.task,
+            model_path=self.model,
+            engine_type=DEEPSPARSE_ENGINE,
+            batch_size=batch_size,
+            num_cores=None,  # this will be set from Context
+            input_shapes=input_shapes,
+            kwargs=kwargs,
+        )
 
 
 class ServerConfig(BaseModel):
@@ -74,11 +116,67 @@ class ServerConfig(BaseModel):
         "Defaults to all available cores.",
     )
 
-    num_concurrent_batches: int = Field(
-        description="""
-The number of times to partition the available cores. Each batch will have access to
-`num_cores / num_concurrent_batches` cores.
-""",
+    num_workers: int = Field(
+        description="The number of workers to split the available cores between."
     )
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
+
+
+def _unpack_bucketing(
+    task: str, bucketing: Optional[Union[SequenceLengthsConfig, ImageSizesConfig]]
+) -> Tuple[Optional[List[int]], Dict[str, Any]]:
+    """
+    :return: (input_shapes, kwargs) which are passed to PipelineConfig
+    """
+    if bucketing is None:
+        return None, {}
+
+    if isinstance(bucketing, SequenceLengthsConfig):
+        if not SupportedTasks.is_nlp(task):
+            raise ValueError(f"SequenceLengthConfig specified for non-nlp task {task}")
+
+        return _unpack_nlp_bucketing(bucketing)
+    elif isinstance(bucketing, ImageSizesConfig):
+        if (
+            not SupportedTasks.is_image_classification(task)
+            and not SupportedTasks.is_yolo(task)
+            and not SupportedTasks.is_yolact(task)
+        ):
+            raise ValueError(
+                f"ImageSizeConfig specified for non computer vision task {task}"
+            )
+
+        return _unpack_cv_bucketing(bucketing)
+    else:
+        raise ValueError(f"Unknown bucket config {bucketing}")
+
+
+def _unpack_nlp_bucketing(cfg: SequenceLengthsConfig):
+    if len(cfg.sequence_lengths) == 0:
+        raise ValueError("Must specify at least one sequence length under bucketing")
+
+    if len(cfg.sequence_lengths) == 1:
+        input_shapes = None
+        kwargs = {"sequence_length": cfg.sequence_lengths[0]}
+    else:
+        input_shapes = None
+        kwargs = {"sequence_length": cfg.sequence_lengths}
+
+    return input_shapes, kwargs
+
+
+def _unpack_cv_bucketing(cfg: ImageSizesConfig):
+    if len(cfg.image_sizes) == 0:
+        raise ValueError("Must specify at least one image size under bucketing")
+
+    if len(cfg.image_sizes) == 1:
+        # NOTE: convert from List[Tuple[int, int]] to List[List[int]]
+        input_shapes = [list(cfg.image_sizes[0])]
+        kwargs = {}
+    else:
+        raise NotImplementedError(
+            "Multiple image size buckets is currently unsupported"
+        )
+
+    return input_shapes, kwargs
