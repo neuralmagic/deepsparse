@@ -131,6 +131,8 @@ results = pipeline.run(query="Where does my lover stand?", params={"Retriever": 
 ### DeepSparseDensePassageRetriever ###
 This class implements Haystack's `DensePassageRetriever` class with DeepSparse inference using two instances of the  `EmbeddingExtractionPipeline` with shared context. This node takes `query_model_path` and `passage_model_path` as arguments and produces document and query embeddings using their respective models.
 
+Dense passage retrieval requires biencoder models to use. For more support, contact support@neuralmagic.com.
+
 ``` python3
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipelines import DocumentSearchPipeline
