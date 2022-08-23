@@ -29,7 +29,8 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.tasks import SupportedTasks
-from deepsparse.timing import TimingBuilder, consolidate_batch_timing
+from deepsparse.timing import TimingBuilder
+from deepsparse.timing.timing_schema import InferenceTimingSchema
 
 
 __all__ = [

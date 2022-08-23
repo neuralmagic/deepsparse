@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import shutil
-import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from deepsparse import Pipeline
 from sparsezoo import Model
-from concurrent.futures import ThreadPoolExecutor
 
 
 @pytest.mark.parametrize(
@@ -41,26 +39,48 @@ from concurrent.futures import ThreadPoolExecutor
         #     "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94",  # noqa E501
         # ),
     ],
-    scope = "class"
+    scope="class",
 )
 class TestInferenceTiming:
     @pytest.fixture()
-    def setup(self, task, stub):
-        download_dir = tempfile.mktemp()
+    def setup(self, task, stub, tmpdir):
+        download_dir = tmpdir
+        model = Model(stub, download_dir)
+        executor = ThreadPoolExecutor()
 
-        sample_input = Model(stub, download_dir).sample_batch(5)["sample_inputs"]
-        pipeline_input = sample_input #[arr[0] for arr in sample_input]
-
-        yield pipeline_input, stub, task
-
-        shutil.rmtree(download_dir)
+        yield model, stub, task, executor
 
     def test_inference_sync(self, setup):
-        pipeline_input, stub, task = setup
+        model, stub, task, _ = setup
+
+        pipeline_input = model.sample_batch(1)["sample_inputs"][0]
         pipeline = Pipeline.create(task, stub)
 
+        self._test_inference_timing(task, pipeline, pipeline_input)
+
+    def test_inference_async(self, setup):
+        model, stub, task, executor = setup
+
+        pipeline_input = model.sample_batch(4)["sample_inputs"][0]
+        pipeline = Pipeline.create(task, stub, executor=executor)
+
+        self._test_inference_timing(task, pipeline, pipeline_input)
+
+    def test_inference_async_dynamic(self, setup):
+        model, stub, task, executor = setup
+
+        pipeline_input = model.sample_batch(5)["sample_inputs"]
+        pipeline_input = [pipeline_input[0], pipeline_input[0]]
+        pipeline = Pipeline.create(task=task, batch_size=None, executor=executor)
+
+        self._test_inference_timing(task, pipeline, pipeline_input)
+
+    @staticmethod
+    def _test_inference_timing(task, pipeline, pipeline_input):
         if task in ["question_answering"]:
-            _, inference_timing = pipeline(question="What's my name?", context="My name is Snorlax")
+            _, inference_timing = pipeline(
+                question="What's my name?", context="My name is Snorlax"
+            )
         else:
             _, inference_timing = pipeline(images=pipeline_input)
 
@@ -78,56 +98,3 @@ class TestInferenceTiming:
             + inference_timing.engine_forward_delta
             + inference_timing.post_process_delta
         )
-
-    def test_inference_async(self, setup):
-        pipeline_input, stub, task = setup
-
-        executor = ThreadPoolExecutor()
-        pipeline = Pipeline.create(task, stub, executor = executor)
-
-        if task in ["question_answering"]:
-            _, inference_timing = pipeline(question="What's my name?", context="My name is Snorlax").result()
-        else:
-            _, inference_timing = pipeline(images=pipeline_input).result()
-
-        for name, value in inference_timing:
-            assert isinstance(value, float)
-        assert (
-            inference_timing.engine_forward_delta > inference_timing.pre_process_delta
-        )
-        assert (
-            inference_timing.engine_forward_delta > inference_timing.post_process_delta
-        )
-        assert (
-            inference_timing.total_inference_delta
-            == inference_timing.pre_process_delta
-            + inference_timing.engine_forward_delta
-            + inference_timing.post_process_delta
-        )
-
-    def test_inference_async_dynamic(self, setup):
-        pipeline_input, stub, task = setup
-
-        executor = ThreadPoolExecutor()
-        pipeline = Pipeline.create(task=task, batch_size=None, executor=executor)
-
-        if task in ["question_answering"]:
-            _, inference_timing = pipeline(question="What's my name?", context="My name is Snorlax")
-        else:
-            _, inference_timing = pipeline(images=pipeline_input).result()
-
-        for name, value in inference_timing:
-            assert isinstance(value, float)
-        assert (
-            inference_timing.engine_forward_delta > inference_timing.pre_process_delta
-        )
-        assert (
-            inference_timing.engine_forward_delta > inference_timing.post_process_delta
-        )
-        assert (
-            inference_timing.total_inference_delta
-            == inference_timing.pre_process_delta
-            + inference_timing.engine_forward_delta
-            + inference_timing.post_process_delta
-        )
-

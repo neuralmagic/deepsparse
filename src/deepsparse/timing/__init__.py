@@ -14,5 +14,5 @@
 
 # flake8: noqa
 
-from .timing_builder import *
 from .helpers import *
+from .timing_builder import *
