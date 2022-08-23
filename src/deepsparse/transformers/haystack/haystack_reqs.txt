@@ -16,11 +16,9 @@
 # deepsparse/transformers/haystack/__init__.py
 
 importlib-metadata
-#torch>1.9,<1.11
 torch==1.9.1
 requests
 pydantic
-#transformers==4.13.0
 nltk
 pandas
 dill
