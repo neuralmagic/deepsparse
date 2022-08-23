@@ -4,7 +4,7 @@ The relevant features added as a part of the Haystack information retrieval inte
 These features allow a user to perform information retrieval tasks using the Haystack library as well as substitute in sparse retrieval nodes into their existing Haystack systems.
 
 ## Installation and Setup ##
-In order to ensure the proper installation, please use only install with python versions 3.8 or above.
+In order to ensure the proper installation, please use only install with python version 3.8.
 
 Install `farm-haystack`'s dependencies via deepsparse extras
 ```bash
