@@ -42,16 +42,24 @@ def mock_engine(*, rng_seed: int, mode: SampleMode = SampleMode.rand, **kwargs):
     Use like you would a regular `unittest.mock.patch`
     ```python
     @mock_engine(rng_seed=0)
-    def test_something(engine):
+    def test_something(engine_mock: MagicMock):
         ...
     ```
 
     If you want the arrays to be zeros instead of random data:
     ```python
     @mock_engine(rng_seed=0, model=SampleMode.zeros)
-    def test_something(engine):
+    def test_something(engine_mock: MagicMock):
         ...
     ```
+
+    The object that is passed into unit tests is a
+    [unittest.MagicMock](https://docs.python.org/3/library/unittest.mock.html#unittest.mock.MagicMock)
+    object.
+
+    You can use it to see how many times LIB.deepsparse_engine() was invoked and
+    with what arguments. For example of how to use this, see the
+    `test_engine_mocking.py` file.
     """
 
     def deepsparse_engine(*args, **kwargs):
@@ -119,6 +127,8 @@ class _FakeDeepsparseLibEngine:
         raise NotImplementedError("mapped_run not supported with mocked engine")
 
     def execute_list_out(self, inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        assert isinstance(inputs, list)
+
         # validate all the inputs are the correct type
         assert len(inputs) == len(self.input_descriptors)
         for descriptor, input in zip(self.input_descriptors, inputs):
@@ -154,8 +164,10 @@ class _NumpyDescriptor:
 
     def check(self, a: numpy.ndarray):
         assert isinstance(a, numpy.ndarray)
-        assert a.shape == tuple(self.shape), f"Expected {self} found shape={a.shape}"
-        assert a.dtype == self.dtype, f"Expected {self} found dtype={a.dtype}"
+        assert a.shape == tuple(
+            self.shape
+        ), f"Expected {self.shape} found shape={a.shape}"
+        assert a.dtype == self.dtype, f"Expected {self.dtype} found dtype={a.dtype}"
 
     def sample(self, rng: numpy.random.Generator, mode: SampleMode) -> numpy.ndarray:
         if mode == SampleMode.zeros:
