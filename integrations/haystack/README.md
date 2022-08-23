@@ -84,7 +84,7 @@ from deepsparse.transformers.haystack import DeepSparseEmbeddingRetriever
 
 retriever = DeepSparseEmbeddingRetriever(
     document_store,
-    model_path="zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/3layer_pruned90-none",
+    model_path="zoo:nlp/masked_language_modeling/distilbert-none/pytorch/huggingface/wikipedia_bookcorpus/pruned80_quant-none-vnni",
 )
 ```
 
@@ -99,7 +99,7 @@ from haystack.pipelines import DocumentSearchPipeline
 
 from deepsparse.transformers.haystack import DeepSparseEmbeddingRetriever
 
-document_store = InMemoryDocumentStore(similarity="cosine", embedding_dim=768, use_gpu=True)
+document_store = InMemoryDocumentStore(similarity="cosine", embedding_dim=768, use_gpu=False)
 document_store.write_documents([
     {
         "content": "He came on a summer's day "
@@ -117,7 +117,7 @@ document_store.write_documents([
 
 retriever = DeepSparseEmbeddingRetriever(
     document_store,
-    "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/3layer_pruned90-none",
+    "zoo:nlp/masked_language_modeling/distilbert-none/pytorch/huggingface/wikipedia_bookcorpus/pruned80_quant-none-vnni",
     pooling_strategy="reduce_mean",
 )
 document_store.update_embeddings(retriever)
@@ -135,7 +135,7 @@ from haystack.pipelines import DocumentSearchPipeline
 
 from deepsparse.transformers.haystack import DeepSparseDensePassageRetriever
 
-document_store = InMemoryDocumentStore(similarity="cosine", embedding_dim=768, use_gpu=True)
+document_store = InMemoryDocumentStore(similarity="cosine", embedding_dim=768, use_gpu=False)
 document_store.write_documents([
     {
         "content": "High and dry, out of the rain."
@@ -207,7 +207,7 @@ documents = [
 ]
 
 pipeline = HaystackPipeline(
-    model_path="zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/3layer_pruned90-none",
+    model_path="zoo:nlp/masked_language_modeling/distilbert-none/pytorch/huggingface/wikipedia_bookcorpus/pruned80_quant-none-vnni",
     docs=documents,
     config={
         "document_store": "InMemoryDocumentStore",
@@ -248,7 +248,7 @@ from deepsparse import Pipeline
 
 pipeline = Pipeline.create(
     "embedding_extraction",
-    model_path="zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/bookcorpus_wikitext/3layer_pruned90-none",
+    model_path="zoo:nlp/masked_language_modeling/distilbert-none/pytorch/huggingface/wikipedia_bookcorpus/pruned80_quant-none-vnni",
     emb_extraction_layer=-1,
     return_numpy=True,
 )
