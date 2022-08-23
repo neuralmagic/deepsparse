@@ -23,6 +23,7 @@ from deepsparse.image_classification.constants import (
 )
 from sparsezoo import Model
 from sparsezoo.utils import load_numpy_list
+from tests.utils import mock_engine
 
 
 from PIL import Image  # isort:skip
@@ -41,7 +42,10 @@ from torchvision import transforms  # isort:skip
     ],
 )
 @pytest.mark.smoke
-def test_image_classification_pipeline_preprocessing(zoo_stub, image_size, num_samples):
+@mock_engine(rng_seed=0)
+def test_image_classification_pipeline_preprocessing(
+    engine, zoo_stub, image_size, num_samples
+):
     non_rand_resize_scale = 256.0 / 224.0  # standard used
     standard_imagenet_transforms = transforms.Compose(
         [
