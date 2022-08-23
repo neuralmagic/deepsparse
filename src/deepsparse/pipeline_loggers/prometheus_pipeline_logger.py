@@ -16,13 +16,7 @@ import os
 from typing import Any, Optional
 
 from deepsparse.pipeline_logger import PipelineLogger
-from prometheus_client import (
-    REGISTRY,
-    CollectorRegistry,
-    Histogram,
-    start_http_server,
-    write_to_textfile,
-)
+from prometheus_client import REGISTRY, Histogram, start_http_server, write_to_textfile
 
 
 __all__ = ["PrometheusLogger"]
@@ -39,7 +33,7 @@ class PrometheusLogger(PipelineLogger):
     inference pipeline
 
     :param pipeline_name: The name of the pipeline the
-        logger refers to
+        logger is associated with
     :param port: the port used by the client. Default is 8000
     :param text_log_save_dir: the directory where the text log files
         are saved. By default, the python working directory
@@ -64,13 +58,11 @@ class PrometheusLogger(PipelineLogger):
             text_log_save_dir, text_log_file_name or f"{IDENTIFIER}_logs.prom"
         )
         self.setup_client()
-        self._registry = CollectorRegistry()
-        REGISTRY.register(self._registry)
 
         # the data structure responsible for the instrumentation
         # of the metrics
         self.metrics = []
-        # track how many times the logger has been called
+        # track internally how many times the logger has been called
         self.counter = 0
 
         super().__init__(pipeline_name=pipeline_name, identifier=IDENTIFIER)
@@ -89,7 +81,7 @@ class PrometheusLogger(PipelineLogger):
         Continuously logs the inference pipeline latencies
 
         :param inference_timing: Pydantic model that contains information
-            about time deltas processes within the inference pipeline
+            about time deltas of various processes within the inference pipeline
         """
         if not self.metrics:
             # will be run on the first digestion of

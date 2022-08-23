@@ -30,9 +30,9 @@ class PipelineLogger(ABC):
     for the loggers that support various monitoring services APIs.
 
     :param pipeline_name: The name of the inference pipeline from which the
-        logger consumes monitoring information
+        logger consumes the inference information to be monitored
     :param identifier: The name of the monitoring service that the
-        PipelineLogger uses to log the inference data.
+        PipelineLogger uses to log the inference data
     """
 
     def __init__(self, identifier: str, pipeline_name: Optional[str] = None):
@@ -51,14 +51,15 @@ class PipelineLogger(ABC):
     def pipeline_name(self, value: str):
         """
         Set the name of the inference pipeline that this
-        logger collects the monitoring information from
+        logger collects the inference data from
 
-        :param value: pipeline name to be set
+        :param value: pipeline name to be related with
+            this logger
         """
         if self._pipeline_name is not None:
             raise ValueError(
                 "Attempting to set the pipeline name for the pipeline logger, "
-                "but this logger is already associated with the pipeline: "
+                "but this logger is already associated with the existing pipeline: "
                 f"{self._pipeline_name}"
             )
         else:
@@ -66,7 +67,7 @@ class PipelineLogger(ABC):
 
     def __str__(self):
         return (
-            f"Logger for pipeline: {self.pipeline_name}; "
+            f"Logger for the pipeline: {self.pipeline_name}; "
             f"using monitoring service: {self.identifier}"
         )
 
@@ -112,7 +113,7 @@ class LoggerManager:
     ...
     ```
     :param pipeline_name: The name of the pipeline the
-        logger manager refers to
+        logger manager is associated with
     """
 
     def __init__(self, pipeline_name: str):
@@ -123,23 +124,23 @@ class LoggerManager:
     def pipeline_name(self) -> str:
         """
         :return: The name of the pipeline the
-        logger manager refers to
+        logger manager is associated with
         """
         return self._pipeline_name
 
     @property
     def loggers(self) -> Dict[str, PipelineLogger]:
         """
-        :return: The mapping from logger identifier to the
-            logger instance
+        :return: The mapping from the logger name (identifier)
+        to the PipelineLogger instance
         """
         return self._loggers
 
     @classmethod
     def from_pipeline(cls, pipeline: Pipeline) -> "LoggerManager":
         """
-        Factory method to create LoggerManager instance from the
-        existing pipeline
+        Factory method to create LoggerManager instance associated
+        with an existing pipeline
 
         :param pipeline: Pipeline class object
         :return: LoggerManager class object
