@@ -28,7 +28,7 @@ import yaml
 
 from deepsparse.pipeline import Pipeline, SupportedTasks
 from deepsparse.server.config import EndpointConfig, ServerConfig
-from deepsparse.server.config_server import start_server
+from deepsparse.server.server import start_server
 
 
 @click.group()
