@@ -178,17 +178,18 @@ class Pipeline(ABC):
 
         self._batch_size = self._batch_size or 1
 
-    def __call__(self, *args, **kwargs) -> BaseModel:
+    def __call__(self, monitoring: bool = False, *args, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
         timer = TimingBuilder()
-        timer.start()
+        timer.initialize()
 
         # parse inputs into input_schema
-        timer.pre_process_start()
+        timer.start("total_inference")
+        timer.start("pre_process")
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
@@ -201,10 +202,10 @@ class Pipeline(ABC):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
-        timer.pre_process_complete()
+        timer.stop("pre_process")
 
         # split inputs into batches of size `self._batch_size`
-        timer.engine_forward_start()
+        timer.start("engine_forward")
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit to engine
@@ -217,9 +218,9 @@ class Pipeline(ABC):
         engine_outputs = self.join_engine_outputs(
             [future.result() for future in futures]
         )
-        timer.engine_forward_complete()
+        timer.stop("engine_forward")
 
-        timer.post_process_start()
+        timer.start("post_process")
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -228,8 +229,11 @@ class Pipeline(ABC):
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
-        timer.post_process_complete()
+        timer.stop("post_process")
+        timer.stop("total_inference")
 
+        if not monitoring:
+            return pipeline_outputs
 
         if pipeline_outputs.inference_timing is not None:
             raise ValueError()
@@ -239,6 +243,25 @@ class Pipeline(ABC):
         return pipeline_outputs
 
     @staticmethod
+        else:
+            data = None
+            timing = timer.build()
+            return pipeline_outputs, timing, data
+
+    def run_with_monitoring(self, *args, **kwargs) -> Tuple[BaseModel, BaseModel, Any]:
+        """
+        Runs the inference with monitoring.
+
+        This means setting the `monitoring` flag to True for __call__()
+        and as result receiving additional information from the forward pass:
+        - timing: BaseModel, that contains the information about time elapsed during the
+            inference steps: pre-processing, engine-forward, post-processing, as well as
+            the total elapsed time
+        - data: Any, inputs and outputs to/from the inference pipeline.
+        """
+        pipeline_outputs, timing, data = self.__call__(monitoring=True, *args, **kwargs)
+        return pipeline_outputs, timing, data
+
     def split_engine_inputs(
         items: List[numpy.ndarray], batch_size: int
     ) -> List[List[numpy.ndarray]]:
