@@ -184,23 +184,27 @@ class Pipeline(ABC):
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
+        timer = TimingBuilder()
+        timer.start()
 
         # parse inputs into input_schema
+        timer.pre_process_start()
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
-
         # batch size of the inputs may be `> self._batch_size` at this point
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
+        timer.pre_process_complete()
 
         # split inputs into batches of size `self._batch_size`
+        timer.engine_forward_start()
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit to engine
@@ -213,7 +217,9 @@ class Pipeline(ABC):
         engine_outputs = self.join_engine_outputs(
             [future.result() for future in futures]
         )
+        timer.engine_forward_complete()
 
+        timer.post_process_start()
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -222,6 +228,13 @@ class Pipeline(ABC):
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
+        timer.post_process_complete()
+
+
+        if pipeline_outputs.inference_timing is not None:
+            raise ValueError()
+        else:
+            pipeline_outputs.inference_timing = timer.build()
 
         return pipeline_outputs
 

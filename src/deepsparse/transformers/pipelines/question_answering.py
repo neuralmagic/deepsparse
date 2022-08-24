@@ -45,7 +45,7 @@ from transformers.data import SquadExample
 
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
-
+from deepsparse.schemas import DeepSparseSchema
 
 __all__ = [
     "QuestionAnsweringInput",
@@ -66,7 +66,7 @@ class QuestionAnsweringInput(BaseModel):
     id: str = Field(description="Sample identifier", default=None)
 
 
-class QuestionAnsweringOutput(BaseModel):
+class QuestionAnsweringOutput(DeepSparseSchema):
     """
     Schema for question_answering pipeline output. Values are in batch order
     """

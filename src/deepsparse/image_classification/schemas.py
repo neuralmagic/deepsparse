@@ -18,7 +18,7 @@ Input/Output Schemas for Image Classification.
 from typing import List, Union
 
 from pydantic import BaseModel, Field
-
+from deepsparse.schemas import DeepSparseSchema
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
@@ -34,7 +34,7 @@ class ImageClassificationInput(ComputerVisionSchema):
     """
 
 
-class ImageClassificationOutput(BaseModel):
+class ImageClassificationOutput(DeepSparseSchema):
     """
     Output model for image classification
     """
