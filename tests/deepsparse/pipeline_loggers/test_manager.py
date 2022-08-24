@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-from .manager import *
-from .prometheus_pipeline_logger import *
+from deepsparse.pipeline_loggers import LoggerManager
+
+
+def test_logger_manager(identifier="prometheus"):
+    logger_manager = LoggerManager(identifier)
+    assert isinstance(logger_manager.loggers, dict)
+    assert len(logger_manager.loggers) == 1

@@ -13,38 +13,100 @@
 # limitations under the License.
 
 import os
+import socket
 
 import requests
 
+import pytest
 from deepsparse.pipeline_loggers import PrometheusLogger
 from deepsparse.timing.timing_schema import InferenceTimingSchema
 
 
-def test_prometheus_pipeline_logger(tmp_path, no_iterations=5, port=8000):
-    args = {
-        "pre_process_delta": 0.1,
-        "engine_forward_delta": 0.2,
-        "post_process_delta": 0.3,
-        "total_inference_delta": 0.6,
-    }
+class Pipeline:
+    def __init__(self, name):
+        self.name = name
+        self.schema_args = {
+            "pre_process_delta": 0.1,
+            "engine_forward_delta": 0.2,
+            "post_process_delta": 0.3,
+            "total_inference_delta": 0.6,
+        }
 
-    logger = PrometheusLogger(port=port, text_log_save_dir=tmp_path)
-    for iteration in range(1, no_iterations):
-        args = {name: value + iteration for (name, value) in args.items()}
-        inference_timing = InferenceTimingSchema(**args)
-        logger.log_latency(inference_timing)
+    def run_with_monitoring(self):
+        results, timings, data = None, InferenceTimingSchema(**self.schema_args), None
+        return results, timings, data
 
-        # fetch the metrics from the server and validate their content
-        response = requests.get(f"http://0.0.0.0:{port}").text
-        response_lines = [x for x in response.split("\n")]
-        for name, value in args.items():
-            assert any(
-                [f"{name}_count {float(iteration)}" in line for line in response_lines]
+
+def _find_free_port():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("0.0.0.0", 0))
+    portnum = s.getsockname()[1]
+    s.close()
+
+    return portnum
+
+
+@pytest.mark.parametrize(
+    "no_iterations, pipeline_names",
+    [(6, ["earth", "namek"]), (10, ["moon"])],
+    scope="class",
+)
+class TestPrometheusPipelineLogger:
+    @pytest.fixture()
+    def setup(self, tmp_path_factory, no_iterations, pipeline_names):
+        port = _find_free_port()
+        logger = PrometheusLogger(
+            text_log_save_dir=tmp_path_factory.mktemp("logs"),
+            # logs for each pipeline will be dumped after
+            # all the iterations are finished
+            text_log_save_freq=no_iterations,
+            port=port,
+        )
+        pipelines = [Pipeline(name) for name in pipeline_names]
+        yield logger, pipelines, no_iterations, port
+
+    def test_log_latency(self, setup):
+        logger, pipelines, no_iterations, port = setup
+
+        for pipeline in pipelines:
+            for _ in range(no_iterations):
+                results, timings, data = pipeline.run_with_monitoring()
+                logger.log_latency(pipeline.name, timings)
+
+        self._check_logs(
+            logger=logger,
+            pipelines=pipelines,
+            no_iterations=no_iterations,
+            timings=timings,
+            port=port,
+        )
+
+    @staticmethod
+    def _check_logs(logger, pipelines, no_iterations, timings, port):
+
+        # make sure that the text logs are created
+        text_logs_path = logger.text_logs_path
+        assert os.path.exists(text_logs_path)
+        with open(text_logs_path) as f:
+            text_logs_lines = f.readlines()
+        assert text_logs_lines
+        for pipeline in pipelines:
+            TestPrometheusPipelineLogger._check_correct_count(
+                text_logs_lines, timings, pipeline, no_iterations
             )
 
-        # validate the text logs as well
-        assert os.path.exists(logger.text_log_file_path)
-        with open(logger.text_log_file_path) as f:
-            lines = f.readlines()
-        for name, value in args.items():
-            assert any([f"{name}_count {float(iteration)}" in line for line in lines])
+        # make sure that the metrics from the server are properly created
+        response = requests.get(f"http://0.0.0.0:{port}").text
+        request_log_lines = [x for x in response.split("\n")]
+        assert request_log_lines
+        for pipeline in pipelines:
+            TestPrometheusPipelineLogger._check_correct_count(
+                request_log_lines, timings, pipeline, no_iterations
+            )
+
+    @staticmethod
+    def _check_correct_count(lines, timings, pipeline, no_iterations):
+        for name, value in dict(timings).items():
+            searched_line = f"{name}_{pipeline.name}_count {float(no_iterations)}"
+            assert any([searched_line in line for line in lines])
