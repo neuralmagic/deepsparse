@@ -22,7 +22,7 @@ __all__ = ["TimingBuilder"]
 
 class TimingBuilder:
     """
-    The goal of the object is to aggregate the durations
+   This object aggregates the durations
     (time deltas in seconds) of various components of the inference
     pipeline.
     Once all the desired time deltas are aggregated, the
