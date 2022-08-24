@@ -17,6 +17,11 @@ from pydantic import BaseModel, Field
 
 __all__ = ["InferenceTimingSchema"]
 
+PRE_PROCESS = "pre_process"
+ENGINE_FORWARD = "engine_forward"
+POST_PROCESS = "post_process"
+TOTAL_INFERENCE = "total_inference"
+
 
 class InferenceTimingSchema(BaseModel):
     """
