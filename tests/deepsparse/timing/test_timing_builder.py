@@ -31,7 +31,6 @@ class TestTimingBuilder:
 
     def test_happy_pathway(self, setup):
         s1, s2, s3, builder = setup
-        builder.initialize()
 
         builder.start("total_inference")
         builder.start("pre_process")
@@ -55,30 +54,15 @@ class TestTimingBuilder:
         assert summary.post_process == pytest.approx(s3, accuracy)
         assert summary.total_inference == pytest.approx(s1 + s2 + s3, accuracy)
 
-    def test_always_initialize(self, setup):
-        s1, s2, s3, builder = setup
-
-        with pytest.raises(ValueError):
-            # builder.initialized() missing
-            builder.start("process")
-
     def test_always_start_before_complete(self, setup):
         s1, s2, s3, builder = setup
 
         with pytest.raises(ValueError):
-            # builder.pre_process_start() missing
+            # builder.start("process") missing
             builder.stop("process")
-
-    def test_never_initialize_twice(self, setup):
-        s1, s2, s3, builder = setup
-
-        builder.initialize()
-        with pytest.raises(ValueError):
-            builder.initialize()
 
     def test_never_overwrite(self, setup):
         s1, s2, s3, builder = setup
-        builder.initialize()
 
         builder.start("process")
         _sleep(s1)
