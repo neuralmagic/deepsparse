@@ -36,7 +36,6 @@ class TimingBuilder:
 
     ```
     builder = TimingBuilder()
-    builder.initialize()
 
     builder.start("total_inference")
 
