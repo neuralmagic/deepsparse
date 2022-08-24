@@ -49,7 +49,6 @@ class PipelineLogger(ABC):
         :param inference_timing: pydantic model that holds the information about
             the inference latency of a forward pass
         """
-        raise NotImplementedError()
 
     @abstractmethod
     def log_data(self, pipeline_name: str, inputs: Any, outputs: Any):
