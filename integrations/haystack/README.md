@@ -41,7 +41,7 @@ retriever = EmbeddingRetriever(
 )
 ```
 ``` python3
->>> retriever.embed_queries(["How many protons in a hydrogen atom"])[0]
+>>> retriever.embed_queries(["How many protons in a hydrogen atom"])[0][:10]
 array([-0.00331814, -0.16311326, -0.64788855, -0.35724441, -0.26155273,
        -0.76656055,  0.35976224, -0.6578757 , -0.15693564, -0.1927543 ])
 ```
