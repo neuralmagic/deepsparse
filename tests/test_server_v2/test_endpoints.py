@@ -141,7 +141,6 @@ class TestActualModelEndpoints:
                     task="text-classification",
                     model=Pipeline.default_model_for("text-classification"),
                     batch_size=2,
-                    accept_multiples_of_batch_size=False,
                 ),
                 # TODO add these back in
                 # EndpointConfig(
@@ -150,7 +149,6 @@ class TestActualModelEndpoints:
                 #     task="text-classification",
                 #     model=Pipeline.default_model_for("text-classification"),
                 #     batch_size=1,
-                #     accept_multiples_of_batch_size=True,
                 # ),
                 # EndpointConfig(
                 #     name="test endpoint 3",
@@ -158,7 +156,6 @@ class TestActualModelEndpoints:
                 #     task="text-classification",
                 #     model=Pipeline.default_model_for("text-classification"),
                 #     batch_size=1,
-                #     accept_multiples_of_batch_size=False,
                 #     bucketing=SequenceLengthsConfig(sequence_lengths=[2, 4]),
                 # ),
             ],

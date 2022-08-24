@@ -64,17 +64,6 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
-    accept_multiples_of_batch_size: bool = Field(
-        default=True,
-        description=(
-            "Enable accepting any batch size that is a multiple of `batch_size`. "
-            "For example, if `batch_size` is 1 and this field is `True`, "
-            "then the model can accept any batch size. "
-            "If `batch_size` is 2 and this field is `True`, "
-            "then the model cant accept batch sizes 2, 4, 6, 8, ..."
-        ),
-    )
-
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,
         description=(
@@ -88,22 +77,13 @@ class EndpointConfig(BaseModel):
     )
 
     def to_pipeline_config(self) -> PipelineConfig:
-        if self.batch_size == 1 and self.accept_multiples_of_batch_size:
-            # dynamic batch
-            batch_size = None
-        elif self.batch_size > 1 and self.accept_multiples_of_batch_size:
-            # should still be dynamic batch
-            raise NotImplementedError
-        else:
-            batch_size = self.batch_size
-
         input_shapes, kwargs = _unpack_bucketing(self.task, self.bucketing)
 
         return PipelineConfig(
             task=self.task,
             model_path=self.model,
             engine_type=DEEPSPARSE_ENGINE,
-            batch_size=batch_size,
+            batch_size=self.batch_size,
             num_cores=None,  # this will be set from Context
             input_shapes=input_shapes,
             kwargs=kwargs,

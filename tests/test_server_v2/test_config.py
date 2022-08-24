@@ -86,16 +86,9 @@ def test_endpoint_config_to_pipeline_copy_fields():
     cfg = EndpointConfig(task="qa", model="zxcv").to_pipeline_config()
     assert cfg.task == "qa"
     assert cfg.model_path == "zxcv"
-    assert cfg.batch_size is None  # dynamic batch by default
 
-
-def test_endpoint_config_to_pipeline_config_static_batch():
-    cfg = EndpointConfig(
-        task="", model="", accept_multiples_of_batch_size=False
-    ).to_pipeline_config()
+    cfg = EndpointConfig(task="", model="").to_pipeline_config()
     assert cfg.batch_size == 1
 
-    cfg = EndpointConfig(
-        task="", model="", batch_size=64, accept_multiples_of_batch_size=False
-    ).to_pipeline_config()
+    cfg = EndpointConfig(task="", model="", batch_size=64).to_pipeline_config()
     assert cfg.batch_size == 64

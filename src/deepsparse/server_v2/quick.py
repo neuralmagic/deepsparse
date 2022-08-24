@@ -101,7 +101,6 @@ def main(
                 endpoint="/predict",
                 model=model_path or Pipeline.default_model_for(task),
                 batch_size=batch_size,
-                accept_multiples_of_batch_size=False,
             )
         ],
     )
