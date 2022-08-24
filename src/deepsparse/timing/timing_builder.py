@@ -63,8 +63,8 @@ class TimingBuilder:
     """
 
     def __init__(self):
-        self.initialized = False
-        self._start_stop_times = {}
+        self._start_times = {}
+        self._stop_times = {}
 
     def start(self, phase_name: str):
         """
@@ -73,17 +73,11 @@ class TimingBuilder:
         :param phase_name: The name of an event (phase), which duration
             we are measuring
         """
-        if not self.initialized:
-            raise ValueError(
-                "Attempting to collect time information, "
-                "but the TimingBuilder instance not initialized. "
-                "Call initialize() method first"
-            )
-        if phase_name in self._start_stop_times:
+        if phase_name in self._start_times:
             raise ValueError(
                 f"Attempting to overwrite the start time of the phase: {phase_name}"
             )
-        self._start_stop_times[phase_name] = {"start": time.time()}
+        self._start_times[phase_name] = time.perf_counter()
 
     def stop(self, phase_name: str):
         """
@@ -92,24 +86,16 @@ class TimingBuilder:
         :param phase_name: The name of an event (phase), which duration
             we are measuring
         """
-        if phase_name not in self._start_stop_times:
+        if phase_name not in self._start_times:
             raise ValueError(
                 f"Attempting to grab the stop time of the phase: {phase_name},"
                 f"but is start time missing"
             )
-        if "stop" in self._start_stop_times[phase_name]:
+        if phase_name in self._stop_times:
             raise ValueError(
                 f"Attempting to overwrite the stop time of the phase: {phase_name}"
             )
-        self._start_stop_times[phase_name]["stop"] = time.time()
-
-    def initialize(self):
-        """
-        Prime the builder, so it is ready to collect time measurements
-        """
-        if self.initialized:
-            raise ValueError("The TimingBuilder instance has been already initialized")
-        self.initialized = True
+        self._stop_times[phase_name] = time.perf_counter()
 
     def build(self, schema: BaseModel = InferenceTimingSchema) -> BaseModel:
         """
@@ -125,9 +111,10 @@ class TimingBuilder:
 
     def _compute_time_deltas(self) -> Dict[str, float]:
         deltas = {}
-        for phase_name in self._start_stop_times:
-            phase_start = self._start_stop_times[phase_name]["start"]
-            phase_stop = self._start_stop_times[phase_name]["stop"]
+        phases = self._start_times.keys()
+        for phase_name in phases:
+            phase_start = self._start_times[phase_name]
+            phase_stop = self._stop_times[phase_name]
             time_delta = phase_stop - phase_start
             deltas[phase_name] = time_delta
         return deltas
