@@ -89,7 +89,7 @@ class TimingBuilder:
         if phase_name not in self._start_times:
             raise ValueError(
                 f"Attempting to grab the stop time of the phase: {phase_name},"
-                f"but is start time missing"
+                f"but its start time is missing"
             )
         if phase_name in self._stop_times:
             raise ValueError(
