@@ -30,10 +30,17 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
 
   Example config.yaml for serving:
 
-  ```yaml num_cores: 2 num_workers: 2 endpoints:     - task:
-  question_answering       endpoint: /unpruned/predict       model_path:
-  zoo:some/zoo/stub     - task: question_answering       endpoint:
-  /pruned/predict       model_path: /path/to/local/model ```
+  ```yaml
+  num_cores: 2
+  num_workers: 2
+  endpoints:
+    - task: question_answering
+      endpoint: /unpruned/predict
+      model_path: zoo:some/zoo/stub
+    - task: question_answering
+      endpoint: /pruned/predict
+      model_path: /path/to/local/model
+  ```
 
 Options:
   --help  Show this message and exit.
