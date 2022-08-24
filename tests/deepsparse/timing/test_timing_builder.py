@@ -31,59 +31,57 @@ class TestTimingBuilder:
 
     def test_happy_pathway(self, setup):
         s1, s2, s3, builder = setup
-        builder.start()
+        builder.initialize()
 
-        builder.pre_process_start()
+        builder.start("total_inference")
+        builder.start("pre_process")
         _sleep(s1)
-        builder.pre_process_complete()
+        builder.stop("pre_process")
 
-        builder.engine_forward_start()
+        builder.start("engine_forward")
         _sleep(s2)
-        builder.engine_forward_complete()
+        builder.stop("engine_forward")
 
-        builder.post_process_start()
+        builder.start("post_process")
         _sleep(s3)
-        builder.post_process_complete()
+        builder.stop("post_process")
+        builder.stop("total_inference")
 
         summary = builder.build()
 
-        assert builder.t0 is None
-        assert builder.t1 is None
-
         accuracy = 1.0e-02
-        assert summary.pre_process_delta == pytest.approx(s1, accuracy)
-        assert summary.engine_forward_delta == pytest.approx(s2, accuracy)
-        assert summary.post_process_delta == pytest.approx(s3, accuracy)
-        assert summary.total_inference_delta == pytest.approx(s1 + s2 + s3, accuracy)
+        assert summary.pre_process == pytest.approx(s1, accuracy)
+        assert summary.engine_forward == pytest.approx(s2, accuracy)
+        assert summary.post_process == pytest.approx(s3, accuracy)
+        assert summary.total_inference == pytest.approx(s1 + s2 + s3, accuracy)
 
-    def test_always_start(self, setup):
+    def test_always_initialize(self, setup):
         s1, s2, s3, builder = setup
 
         with pytest.raises(ValueError):
-            # builder.start() missing
-            builder.pre_process_start()
+            # builder.initialized() missing
+            builder.start("process")
 
     def test_always_start_before_complete(self, setup):
         s1, s2, s3, builder = setup
 
         with pytest.raises(ValueError):
             # builder.pre_process_start() missing
-            builder.pre_process_complete()
+            builder.stop("process")
 
-    def test_never_start_twice(self, setup):
+    def test_never_initialize_twice(self, setup):
         s1, s2, s3, builder = setup
 
-        builder.start()
+        builder.initialize()
         with pytest.raises(ValueError):
-            builder.start()
+            builder.initialize()
 
     def test_never_overwrite(self, setup):
         s1, s2, s3, builder = setup
-        builder.start()
+        builder.initialize()
 
-        builder.pre_process_start()
+        builder.start("process")
         _sleep(s1)
-        builder.pre_process_complete()
+        builder.stop("process")
         with pytest.raises(ValueError):
-            # builder.build() missing
-            builder.pre_process_start()
+            builder.start("process")
