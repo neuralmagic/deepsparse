@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 import pytest
 from deepsparse.pipeline import Pipeline
-from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.config import EndpointConfig, SequenceLengthsConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -26,6 +26,7 @@ from fastapi.testclient import TestClient
 
 class FromFilesSchema(BaseModel):
     def from_files(self, f):
+        # do nothing - this method exists just to test files endpoint logic
         ...
 
 
@@ -131,70 +132,43 @@ class TestMockEndpoints:
 class TestActualModelEndpoints:
     @pytest.fixture(scope="class")
     def client(self):
+        stub = (
+            "zoo:nlp/text_classification/distilbert-none/"
+            "pytorch/huggingface/qqp/pruned80_quant-none-vnni"
+        )
         server_config = ServerConfig(
             num_cores=1,
             num_workers=1,
             endpoints=[
                 EndpointConfig(
-                    name="test endpoint 1",
+                    endpoint="/predict/dynamic-batch",
+                    task="text-classification",
+                    model=stub,
+                    batch_size=1,
+                ),
+                EndpointConfig(
                     endpoint="/predict/static-batch",
                     task="text-classification",
-                    model=Pipeline.default_model_for("text-classification"),
+                    model=stub,
                     batch_size=2,
                 ),
-                # TODO add these back in
-                # EndpointConfig(
-                #     name="test endpoint 2",
-                #     endpoint="/predict/dynamic-batch",
-                #     task="text-classification",
-                #     model=Pipeline.default_model_for("text-classification"),
-                #     batch_size=1,
-                # ),
-                # EndpointConfig(
-                #     name="test endpoint 3",
-                #     endpoint="/predict/bucketed",
-                #     task="text-classification",
-                #     model=Pipeline.default_model_for("text-classification"),
-                #     batch_size=1,
-                #     bucketing=SequenceLengthsConfig(sequence_lengths=[2, 4]),
-                # ),
             ],
         )
         app = _build_app(server_config)
         yield TestClient(app)
 
-    def test_static_batch_request(self, client):
+    def test_static_batch_errors_on_wrong_batch_size(self, client):
+        with pytest.raises(
+            ValueError, match="batch size of 1 must match the batch size"
+        ):
+            client.post("/predict/static-batch", json={"sequences": "today is great"})
+
+    def test_static_batch_good_request(self, client):
         response = client.post(
             "/predict/static-batch",
-            json={
-                "sequences": [
-                    "today is great",
-                    "today is terrible",
-                ]
-            },
+            json={"sequences": ["today is great", "today is terrible"]},
         )
         assert response.status_code == 200
-        assert response.json() == {
-            "labels": ["LABEL_1", "LABEL_0"],
-            "scores": [0.9998027682304382, 0.9995161890983582],
-        }
-
-    # def test_dynamic_batch_request(self, client):
-    #     response = client.post(
-    #         "/predict/static-batch",
-    #         json={
-    #             "sequences": [
-    #                 "today is great",
-    #                 "today is terrible",
-    #                 "today is great",
-    #             ]
-    #         },
-    #     )
-    #     assert response.status_code == 200
-    #     assert response.json() == {
-    #         "labels": ["LABEL_1", "LABEL_0", "LABEL_1"],
-    #         "scores": [0.9998027682304382, 0.9995161890983582, 0.9998027682304382],
-    #     }
-
-    # def test_bucketed_request(self, client):
-    #     ...
+        output = response.json()
+        assert len(output["labels"]) == 2
+        assert len(output["scores"]) == 2

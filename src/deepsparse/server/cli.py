@@ -56,10 +56,10 @@ def main():
     endpoints:
         - task: question_answering
           endpoint: /unpruned/predict
-          model_path: zoo:some/zoo/stub
+          model: zoo:some/zoo/stub
         - task: question_answering
           endpoint: /pruned/predict
-          model_path: /path/to/local/model
+          model: /path/to/local/model
     ```
     """
     pass

@@ -129,6 +129,8 @@ def _add_pipeline_endpoint(
     pool: ThreadPoolExecutor = app._deepsparse_pool
 
     route = endpoint_config.endpoint or "/predict"
+    if not route.startswith("/"):
+        route = "/" + route
 
     @app.post(route, tags=["predict"], response_model=output_schema)
     async def _predict_func(request: pipeline.input_schema):
