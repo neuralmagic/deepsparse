@@ -17,8 +17,7 @@ from unittest.mock import Mock
 from pydantic import BaseModel
 
 import pytest
-from deepsparse.pipeline import Pipeline
-from deepsparse.server.config import EndpointConfig, SequenceLengthsConfig, ServerConfig
+from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
