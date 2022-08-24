@@ -15,6 +15,8 @@
 import time
 from typing import Dict
 
+from pydantic import BaseModel
+
 from deepsparse.timing.timing_schema import InferenceTimingSchema
 
 
@@ -36,14 +38,28 @@ class TimingBuilder:
     builder = TimingBuilder()
     builder.initialize()
 
-    builder.start("phase_A")
-    something_happens()
-    builder.stop("phase_A")
+    builder.start("total_inference")
+
+    builder.start("pre_process")
+    do_something()
+    builder.stop("pre_process")
+
+    builder.start("engine_forward")
+    do_something()
+    builder.stop("engine_forward")
+
+    builder.start("post_process")
+    do_something()
+    builder.stop("post_process")
+
+    builder.stop("total_inference")
     ...
     summary = builder.build()
     ```
     The object may time the duration of an arbitrary number
-    of events (phases).
+    of events (phases), but the names of phases need to
+    be consistent with the `schema` argument passed to
+    the build() method
     """
 
     def __init__(self):
@@ -70,6 +86,12 @@ class TimingBuilder:
         self._start_stop_times[phase_name] = {"start": time.time()}
 
     def stop(self, phase_name: str):
+        """
+        Collect the finish time of the phase
+
+        :param phase_name: The name of an event (phase), which duration
+            we are measuring
+        """
         if phase_name not in self._start_stop_times:
             raise ValueError(
                 f"Attempting to grab the stop time of the phase: {phase_name},"
@@ -82,14 +104,24 @@ class TimingBuilder:
         self._start_stop_times[phase_name]["stop"] = time.time()
 
     def initialize(self):
+        """
+        Prime the builder, so it is ready to collect time measurements
+        """
         if self.initialized:
             raise ValueError("The TimingBuilder instance has been already initialized")
         self.initialized = True
 
-    def build(self) -> InferenceTimingSchema:
+    def build(self, schema: BaseModel = InferenceTimingSchema) -> BaseModel:
+        """
+        Aggregate the collected measurements and return them as a
+        Pydantic schema object
+        :param schema: The desired schema which fields correspond to the
+            measured phases
+        :return: Time measurements as a Pydantic schema
+        """
         time_deltas = self._compute_time_deltas()
-        inference_timing_summary = InferenceTimingSchema(**time_deltas)
-        return inference_timing_summary
+        time_schema = schema(**time_deltas)
+        return time_schema
 
     def _compute_time_deltas(self) -> Dict[str, float]:
         deltas = {}
