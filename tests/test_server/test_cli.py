@@ -42,7 +42,7 @@ def test_server_help():
 def test_server_ner(cleanup: Dict[str, List]):
     cmd = [
         "deepsparse.server",
-        "--task",
+        "task",
         "ner",
         "--model_path",
         "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/"
@@ -90,7 +90,7 @@ def test_server_ner(cleanup: Dict[str, List]):
 def test_server_qa(cleanup: Dict[str, List]):
     cmd = [
         "deepsparse.server",
-        "--task",
+        "task",
         "question_answering",
         "--model_path",
         "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
@@ -135,7 +135,7 @@ def test_server_qa(cleanup: Dict[str, List]):
 def test_server_qa_config_file(cleanup: Dict[str, List]):
     cmd = [
         "deepsparse.server",
-        "--config_file",
+        "config",
         "tests/test_data/deepsparse-server-config.yaml",
     ]
     print(f"\n==== test_server_qa_config_file command ====\n{' '.join(cmd)}\n==== ====")
@@ -199,7 +199,7 @@ def test_server_sst(cleanup: Dict[str, List]):
     model = predownload_stub(stub, copy_framework_files=True)
     cmd = [
         "deepsparse.server",
-        "--task",
+        "task",
         "sentiment_analysis",
         "--model_path",
         model.path,

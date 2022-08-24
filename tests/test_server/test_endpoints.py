@@ -18,8 +18,8 @@ from pydantic import BaseModel
 
 import pytest
 from deepsparse.pipeline import Pipeline
-from deepsparse.server_v2.config import EndpointConfig, ServerConfig
-from deepsparse.server_v2.main import _add_pipeline_endpoint, _build_app
+from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 

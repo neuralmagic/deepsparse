@@ -18,13 +18,12 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from typing import List
 
-import click
 import yaml
 
 import uvicorn
 from deepsparse.engine import Context, Scheduler
 from deepsparse.pipeline import Pipeline
-from deepsparse.server_v2.config import EndpointConfig, ServerConfig
+from deepsparse.server.config import EndpointConfig, ServerConfig
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -32,39 +31,17 @@ from starlette.responses import RedirectResponse
 _LOGGER = logging.getLogger(__name__)
 
 
-@click.command()
-@click.argument("config-path", type=str)
-@click.option(
-    "--host",
-    type=str,
-    default="0.0.0.0",
-    help=(
-        "Bind socket to this host. Use --host 0.0.0.0 to make the application "
-        "available on your local network. "
-        "IPv6 addresses are supported, for example: --host '::'. Defaults to 0.0.0.0"
-    ),
-)
-@click.option(
-    "--port",
-    type=int,
-    default=5543,
-    help="Bind to a socket with this port. Defaults to 5543.",
-)
-@click.option(
-    "--log-level",
-    type=click.Choice(
-        ["debug", "info", "warn", "critical", "fatal"], case_sensitive=False
-    ),
-    default="info",
-    help="Sets the logging level. Defaults to info.",
-)
-def main(config_path: str, host: str, port: int, log_level: str):
-    start_server(config_path, host, port, log_level)
-
-
 def start_server(
     config_path: str, host: str = "0.0.0.0", port: int = 5543, log_level: str = "info"
 ):
+    """
+    Starts a FastAPI server with uvicorn with the configuration specified.
+
+    :param config_path: A yaml file with the server config. See :class:`ServerConfig`.
+    :param host: The IP address to bind the server to.
+    :param port: The port to listen on.
+    :param log_level: Log level given to python and uvicorn logging modules.
+    """
     log_config = deepcopy(uvicorn.config.LOGGING_CONFIG)
     log_config["loggers"][__name__] = {
         "handlers": ["default"],
@@ -178,7 +155,3 @@ def _add_pipeline_endpoint(
             return RedirectResponse(file_route)
 
         _LOGGER.info("Added '/invocations' endpoint")
-
-
-if __name__ == "__main__":
-    main()

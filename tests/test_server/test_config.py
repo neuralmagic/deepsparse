@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.server_v2.config import (
+from deepsparse.server.config import (
     EndpointConfig,
     ImageSizesConfig,
     SequenceLengthsConfig,
