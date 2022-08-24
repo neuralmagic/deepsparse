@@ -29,8 +29,7 @@ class TimingBuilder:
     object may build the data structure that summarizes the
     collected information.
 
-    The envisioned flow of how the object aggregates time
-    deltas is depicted below
+    Example flow:
 
     ```
     builder.start()
