@@ -83,13 +83,6 @@ class PrometheusLogger(PipelineLogger):
         """
         return sum(self._counter.values())
 
-    def _setup_client(self):
-        """
-        Starts the Prometheus client
-        """
-        start_http_server(port=self.port)
-        _LOGGER.info(f"Prometheus client: started. Using port: {self.port}.")
-
     def log_latency(
         self,
         pipeline_name: str,
@@ -132,6 +125,13 @@ class PrometheusLogger(PipelineLogger):
         """
         histogram = self.metrics[pipeline_name][metric_name]
         histogram.observe(value_to_log)
+
+    def _setup_client(self):
+        """
+        Starts the Prometheus client
+        """
+        start_http_server(port=self.port)
+        _LOGGER.info(f"Prometheus client: started. Using port: {self.port}.")
 
     def _setup_metrics(
         self, pipeline_name: str, inference_timing: "InferenceTimingSchema"  # noqa F821
