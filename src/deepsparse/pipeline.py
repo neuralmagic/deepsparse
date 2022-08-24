@@ -178,7 +178,7 @@ class Pipeline(ABC):
 
         self._batch_size = self._batch_size or 1
 
-    def __call__(self, monitoring: bool = False, *args, **kwargs) -> BaseModel:
+    def __call__(self, *args, monitoring: bool = False, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
