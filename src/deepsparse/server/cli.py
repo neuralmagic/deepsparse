@@ -167,7 +167,7 @@ def task(
 ):
     """
     Run the server using configuration with CLI options,
-    which can only server a single model.
+    which can only serve a single model.
     """
     cfg = ServerConfig(
         num_cores=num_cores,

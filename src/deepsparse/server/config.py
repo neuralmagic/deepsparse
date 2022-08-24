@@ -56,7 +56,7 @@ class EndpointConfig(BaseModel):
         "If not specified '/endpoint-<index>/predict' will be used",
     )
 
-    task: str = Field(description="Task this endpoint performers")
+    task: str = Field(description="Task this endpoint performs")
 
     model: str = Field(description="Location of the underlying model to use.")
 
