@@ -172,7 +172,7 @@ class YOLACTPipeline(Pipeline):
 
         # all the priors should be equal, so only use the first one
         assert (batch_priors == batch_priors[0]).all()
-        return (boxes, confidence, masks, batch_priors[0], protos)
+        return [boxes, confidence, masks, batch_priors[0], protos]
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs

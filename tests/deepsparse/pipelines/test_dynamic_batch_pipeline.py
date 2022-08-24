@@ -57,12 +57,10 @@ def test_dynamic_is_same_as_static(task):
 
     # NOTE: re-use the same dynamic pipeline for different batch sizes
     dynamic_pipeline = Pipeline.create(task=task, batch_size=None, executor=executor)
-    # assert dynamic_pipeline.use_dynamic_batch()
 
     for batch_size in _BATCH_SIZES:
         # NOTE: recompile model for each different batch_size
         static_pipeline = Pipeline.create(task=task, batch_size=batch_size)
-        # assert not static_pipeline.use_dynamic_batch()
 
         inputs = create_test_inputs(task=task, batch_size=batch_size)
 
