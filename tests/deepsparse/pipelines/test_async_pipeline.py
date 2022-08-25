@@ -17,6 +17,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 
 import pytest
 from deepsparse import Pipeline
+from tests.utils import mock_engine
 
 
 @pytest.fixture(scope="module")
@@ -24,7 +25,8 @@ def pipeline():
     """
     Auto-del fixture for Sequential Pipeline
     """
-    yield Pipeline.create(task="question-answering")
+    with mock_engine(rng_seed=0):
+        yield Pipeline.create(task="question-answering")
 
 
 @pytest.fixture(scope="module")
@@ -40,7 +42,8 @@ def threaded_pipeline(executor):
     """
     Auto-del fixture for Threaded Pipeline
     """
-    yield Pipeline.create(task="question-answering", executor=executor)
+    with mock_engine(rng_seed=0):
+        yield Pipeline.create(task="question-answering", executor=executor)
 
 
 @pytest.fixture(scope="module")
