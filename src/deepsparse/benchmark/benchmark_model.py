@@ -119,7 +119,7 @@ from deepsparse.utils import (
 )
 
 
-__all__ = ["benchmark_model"]
+__all__ = ["benchmark_model", "parse_export_dict_engine_key"]
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -400,7 +400,7 @@ def benchmark_model(
         "benchmark_result": benchmark_result,
     }
 
-    parsed_export_dict = _parse_export_dict_engine_key(export_dict)
+    parsed_export_dict = parse_export_dict_engine_key(export_dict)
 
     # Export results
     if export_path:
@@ -411,7 +411,7 @@ def benchmark_model(
     return parsed_export_dict
 
 
-def _parse_export_dict_engine_key(payload: Dict) -> Dict:
+def parse_export_dict_engine_key(payload: Dict) -> Dict:
     """Extract metadata from str(Model)"""
 
     formatted_metadata = "engine: " + payload.get("engine", "").replace(
