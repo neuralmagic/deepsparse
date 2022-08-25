@@ -95,6 +95,15 @@ import argparse
 import json
 import logging
 import os
+
+import yaml
+
+
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
+
 from typing import Dict
 
 from deepsparse import Scheduler, compile_model
@@ -379,8 +388,6 @@ def benchmark_model(
 
     export_dict = {
         "engine": str(model),
-        # "version": __version__,
-        # "commit": generated_version.revision,
         "orig_model_path": orig_model_path,
         "model_path": model_path,
         "batch_size": batch_size,
@@ -404,14 +411,13 @@ def benchmark_model(
     return parsed_export_dict
 
 
-def _parse_export_dict_engine_key(payload):
+def _parse_export_dict_engine_key(payload: Dict) -> Dict:
     """Extract metadata from str(Model)"""
-    engine_split = payload["engine"].replace("\n\t", ":").split(":")
-    engine = engine_split[0]
-    payload["engine"] = engine
-    for i in range(2, len(engine_split) - 1, 2):
-        payload[engine_split[i]] = engine_split[i + 1].strip()
-    return payload
+
+    formatted_metadata = "engine: " + payload["engine"].replace("\t", "").replace(
+        ":", "", 1
+    )
+    return {**payload, **yaml.load(formatted_metadata, Loader=Loader)}
 
 
 def main():
