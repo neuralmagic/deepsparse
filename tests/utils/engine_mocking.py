@@ -31,7 +31,7 @@ class SampleMode(str, Enum):
     rand = "rand"
 
 
-def mock_engine(*, rng_seed: int, mode: SampleMode = SampleMode.rand, **kwargs):
+def mock_engine(*, rng_seed: int = 0, mode: SampleMode = SampleMode.rand, **kwargs):
     """
     Intended to create a fake engine instead of compiling the model.
 
