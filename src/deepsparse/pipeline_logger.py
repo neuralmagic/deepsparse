@@ -16,27 +16,33 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-__all__ = ["PipelineLogger"]
+__all__ = ["PipelineLogger", "classproperty"]
+
+
+class classproperty(object):
+    def __init__(self, f):
+        self.f = classmethod(f)
+
+    def __get__(self, *a):
+        return self.f.__get__(*a)()
 
 
 class PipelineLogger(ABC):
     """
     Generic PipelineLogger abstract class meant to define interfaces
     for the loggers that support various monitoring services APIs.
-
-    :param identifier: The name of the monitoring service that the
-        PipelineLogger uses to log the inference data
     """
 
-    def __init__(self, identifier: str):
-        self._identifier = identifier
-
-    @property
+    @classproperty
+    @abstractmethod
     def identifier(self) -> str:
-        return self._identifier
+        """
+        :return: The name of the monitoring service that the
+        PipelineLogger uses to log the inference data
+        """
 
-    def __str__(self):
-        return f"Pipeline logger of type: {self.identifier}"
+    def __init__(self):
+        pass
 
     @abstractmethod
     def log_latency(

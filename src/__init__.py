@@ -11,11 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from deepsparse.pipeline_loggers import LoggerManager
-
-
-def test_logger_manager(identifier="prometheus"):
-    logger_manager = LoggerManager(identifier)
-    assert isinstance(logger_manager.loggers, dict)
-    assert len(logger_manager.loggers) == 1

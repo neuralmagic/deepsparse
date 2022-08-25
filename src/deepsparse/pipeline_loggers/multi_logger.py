@@ -16,22 +16,20 @@
 A manager that oversees all the pipeline loggers
 """
 
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Union
 
-from deepsparse import PipelineLogger
-from deepsparse.pipeline_loggers.prometheus_pipeline_logger import (
-    IDENTIFIER as PROMETHEUS_IDENTIFIER,
-)
+from deepsparse.pipeline_loggers.pipeline_logger import PipelineLogger
 from deepsparse.pipeline_loggers.prometheus_pipeline_logger import PrometheusLogger
 from deepsparse.timing.timing_schema import InferenceTimingSchema
 
 
-__all__ = ["LoggerManager"]
+__all__ = ["MultiLogger"]
 
-SUPPORTED_LOGGERS = {PROMETHEUS_IDENTIFIER}
+LOGGERS = [PrometheusLogger]
+SUPPORTED_LOGGERS = {logger.identifier: logger for logger in LOGGERS}
 
 
-class LoggerManager:
+class MultiLogger(PipelineLogger):
     """
     Object that contains multiple loggers for
     the given inference pipeline.
@@ -43,10 +41,10 @@ class LoggerManager:
     pipeline = ... # define a pipeline
     pipeline_name = pipeline.name # fetch the pipeline name
 
-    # create a LoggerManager
-    logger_manager = LoggerManager("logger_name")
+    # create a MultiLogger
+    logger_manager = MultiLogger("logger_name")
     or
-    logger_manager = LoggerManager(["logger_name_1", "logger_name_2", ...])
+    logger_manager = MultiLogger(["logger_name_1", "logger_name_2", ...])
 
     # log the data for the particular inference pipeline
 
@@ -59,17 +57,15 @@ class LoggerManager:
     :param logger_identifiers: The identifier(s) of the logger types that
         will be created within the scope of the manager. This can be either a
         single identifier, or a list of identifiers (for multiple loggers).
-    :param supported_loggers: A set of supported logger identifiers; listed in
-        `SUPPORTED_LOGGERS` variable
     """
 
     def __init__(
         self,
         logger_identifiers: Union[str, List[str]],
-        supported_loggers: Set[str] = SUPPORTED_LOGGERS,
     ):
-        self._supported_loggers = supported_loggers
-        self._loggers = self._setup_loggers(logger_identifiers)
+        self._supported_loggers = SUPPORTED_LOGGERS
+        self._loggers = self._setup(logger_identifiers)
+        self._start()
 
     @property
     def loggers(self) -> Dict[str, PipelineLogger]:
@@ -104,29 +100,25 @@ class LoggerManager:
         for name, logger in self.loggers.items():
             logger.log_data(pipeline_name, inputs, outputs)
 
-    def _setup_loggers(
+    def _setup(
         self, logger_identifiers: Union[str, List[str]]
     ) -> Dict[str, PipelineLogger]:
-        _loggers = {}
         if isinstance(logger_identifiers, str):
             logger_identifiers = [logger_identifiers]
-
-        for logger_identifier in logger_identifiers:
-            # the if-statement below shall be expanded along with
-            # the new PipelineLogger implementations.
-            # Essentially a switch
-            # statement for instantiating PipelineLoggers
-            if logger_identifier not in self._supported_loggers:
+        _loggers = {}
+        for identifier in logger_identifiers:
+            if identifier not in self._supported_loggers:
                 raise ValueError(
                     "Attempting to create a pipeline logger with an "
-                    f"unknown identifier: {logger_identifier}. Supported "
+                    f"unknown identifier: {identifier}. Supported "
                     f"identifiers are: {self._supported_loggers}"
                 )
-
-            elif logger_identifier == PROMETHEUS_IDENTIFIER:
-                _loggers[logger_identifier] = PrometheusLogger()
-
             else:
-                raise NotImplementedError()
+                _loggers[identifier] = self._supported_loggers.get(identifier)
 
         return _loggers
+
+    def _start(self):
+        self._loggers = {
+            identifier: logger() for identifier, logger in self.loggers.items()
+        }

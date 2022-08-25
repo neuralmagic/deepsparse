@@ -15,15 +15,13 @@ import logging
 import os
 from typing import Any, Optional
 
-from deepsparse.pipeline_logger import PipelineLogger
+from deepsparse.pipeline_logger import PipelineLogger, classproperty
 from prometheus_client import REGISTRY, Histogram, start_http_server, write_to_textfile
 
 
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
-
-IDENTIFIER = "prometheus"
 
 
 class PrometheusLogger(PipelineLogger):
@@ -43,6 +41,10 @@ class PrometheusLogger(PipelineLogger):
         Default: `prometheus_logs.prom`.
     """
 
+    @classproperty
+    def identifier(self) -> str:
+        return "prometheus"
+
     def __init__(
         self,
         port: int = 8000,
@@ -53,7 +55,7 @@ class PrometheusLogger(PipelineLogger):
         self.port = port
         self.text_log_save_freq = text_log_save_freq
         self.text_log_save_dir = text_log_save_dir
-        self.text_log_file_name = text_log_file_name or f"{IDENTIFIER}_logs.prom"
+        self.text_log_file_name = text_log_file_name or f"{self.identifier}_logs.prom"
         self._setup_client()
 
         # the data structure responsible for the instrumentation
@@ -63,7 +65,7 @@ class PrometheusLogger(PipelineLogger):
         # pipeline i.e. self._counter: Dict[str, int]
         self._counter = {}
 
-        super().__init__(identifier=IDENTIFIER)
+        super().__init__()
 
     @property
     def text_logs_path(self) -> str:

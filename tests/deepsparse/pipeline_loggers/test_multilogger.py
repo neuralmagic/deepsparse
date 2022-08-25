@@ -11,7 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from deepsparse.pipeline_logger import PipelineLogger
+from deepsparse.pipeline_loggers import MultiLogger
 
-# flake8: noqa
-from .multi_logger import *
-from .prometheus_pipeline_logger import *
+
+def test_logger_manager(identifier="prometheus"):
+    logger_manager = MultiLogger(identifier)
+    assert isinstance(logger_manager.loggers, dict)
+    assert len(logger_manager.loggers) == 1
+    assert [
+        isinstance(logger, PipelineLogger) for logger in logger_manager.loggers.values()
+    ]
