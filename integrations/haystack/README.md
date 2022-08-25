@@ -4,7 +4,7 @@ The relevant features added as a part of the Haystack information retrieval inte
 These features allow a user to perform information retrieval tasks using the Haystack library as well as substitute in sparse retrieval nodes into their existing Haystack systems.
 
 ## Installation and Setup ##
-In order to ensure the proper installation, please use only install with python version 3.8.
+In order to ensure the proper installation, please install with python version 3.8.
 
 Install `farm-haystack`'s dependencies via deepsparse extras
 ```bash
@@ -30,7 +30,7 @@ document_store = InMemoryDocumentStore(
 )
 ```
 
-Next, create a retriever. The retriever is houses the deep model and is responsible for, given a document or query, generating an embedding such that query embeddings have a high similarity to their relevant document embeddings.
+Next, create a retriever. The retriever houses the deep model and is responsible for, given a document or query, generating an embedding such that query embeddings have a high similarity to their relevant document embeddings.
 ``` python3
 from haystack.nodes import EmbeddingRetriever
 
@@ -168,7 +168,7 @@ results = pipeline.run(query="How is everybody feeling?", params={"Retriever": {
 ```
 
 ## Haystack Pipeline ##
-The haystack pipeline is a non traditional pipeline which constructs Haystack nodes which are used for document retrieval or any other Haystack task. Said another way, this pipeline provides an API for constructing a document_store, retriever, and pipeline like the workflow described in [Document Retrieval with Haystack](#Document-Retrieval-with-Haystack)
+The haystack pipeline is a non traditional pipeline which constructs Haystack nodes used for document retrieval or any other Haystack task. Said another way, this pipeline provides an API for constructing a document_store, retriever, and pipeline like the workflow described in [Document Retrieval with Haystack](#Document-Retrieval-with-Haystack)
 
 This pipeline supports all Haystack document stores, nodes, and pipelines as well as the DeepSparse integrated nodes `DeepSparseEmbeddingRetriever` and `DeepSparseDensePassageRetriever`. Users can control which nodes are included via the `config` argument.
 ``` python3
@@ -296,10 +296,12 @@ pruned80-vnni-untied|0.7817174515|97.92%|0.8509695291|98.56%|0.8717|98.59%|
 |pruned80-vnni-untied|0.3124041479|97.01%|0.5918338109|98.29%|0.6802292264|97.45%|0.8319484241|97.55%|0.8780802292|98.10%|
 
 ## Performance Evaluation ##
-Retrievers were also evaluated on their run time. This table compares the run time of generating query embeddings using `DenseEmbeddingRetriever` with Pytorch and `DeepSparseEmbeddingRetriever` with the DeepSparse Engine. Both retrievers were evaluated with the same 12 layer BERT model on the same hardware using CPU.
+Retrievers were also evaluated on their run time. This table compares the run time of generating query embeddings using `DenseEmbeddingRetriever` with Pytorch and `DeepSparseEmbeddingRetriever` with the DeepSparse Engine. Both retrievers were evaluated with the same 80% [sparse quantized 3 layer BERT](https://sparsezoo.neuralmagic.com/models/nlp%2Fmasked_language_modeling%2Fbert-base%2Fpytorch%2Fhuggingface%2Fwikipedia_bookcorpus%2F3layer_pruned80_quant-none-vnni) model on the same CPU hardware.
 
 |Number of Queries|DenseEmbeddingRetriever (sec)|DeepSparseEmbeddingRetriever (sec)|
 |-|-|-|
-|1|0.027|0.012|
-|100|1.37|0.96|
-|1,000|12.6|9.5|
+|1|0.0319|0.0159|
+|10|0.137|0.0180|
+|100|1.32|0.101|
+|1,000|13.3|0.976|
+|10,000|134.8|9.79|
