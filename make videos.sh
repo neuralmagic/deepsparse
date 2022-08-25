@@ -1,6 +1,6 @@
 rm -rf /home/damian/deepsparse_copy/annotation-results
 
-VIDEO_DIRECTORY=/home/damian/deepsparse_copy/src/videos/*
+VIDEO_DIRECTORY=/home/damian/deepsparse_copy/fruity_videos/* # path to your 'fruity_videos'
 STUB=zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none
 FPS=5
 
