@@ -16,10 +16,10 @@ from enum import Enum
 from typing import Any, List, Type
 from unittest import mock
 
-from deepsparse.utils import override_onnx_batch_size
-
 import numpy
 import onnxruntime as ort
+
+from deepsparse.utils import override_onnx_batch_size
 
 
 class SampleMode(str, Enum):
