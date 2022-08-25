@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
 from enum import Enum
-from pathlib import Path
 from typing import Any, List, Type
 from unittest import mock
 
+from deepsparse.utils import override_onnx_batch_size
+
 import numpy
-import onnx
 import onnxruntime as ort
 
 
@@ -86,39 +85,21 @@ class _FakeDeepsparseLibEngine:
         rng_seed: int,
         mode: SampleMode,
     ):
-        self.model_path = model_path
-        self.batch_size = batch_size
-        self.num_cores = num_cores
-        self.num_streams = num_streams
-        self.scheduler_value = scheduler_value
-        self.context_value = context_value
         self.rng_seed = rng_seed
         self.mode = mode
 
         # override batch dimension in inputs & outputs
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            model = onnx.load(self.model_path)
-            inputs = model.graph.input
-            initializer_names = [node.name for node in model.graph.initializer]
-            # remove initializer nodes from inputs
-            inputs = [input for input in inputs if input.name not in initializer_names]
-
-            # This is done because not all `.onnx` files passed in will
-            # conform to expected `batch_size`.
-            #
-            # By overriding the batch size in the inputs, and loading this
-            # model with the onnxruntime, onnxruntime will automatically
-            # fix the batch dimension in outputs.
-            #
-            # Assumes the first dimension is batch dimension!!
-            # However in general we cannot assume that all outputs have
-            # a batch dimension, that's why we need onnxruntime here.
-            for input in inputs:
-                input.type.tensor_type.shape.dim[0].dim_value = batch_size
-
-            batched_model_path = str(Path(tmp_dir) / "batched_model.onnx")
-            onnx.save(model, batched_model_path)
-
+        # This is done because not all `.onnx` files passed in will
+        # conform to expected `batch_size`.
+        #
+        # By overriding the batch size in the inputs, and loading this
+        # model with the onnxruntime, onnxruntime will automatically
+        # fix the batch dimension in outputs.
+        #
+        # Assumes the first dimension is batch dimension!!
+        # However in general we cannot assume that all outputs have
+        # a batch dimension, that's why we need onnxruntime here.
+        with override_onnx_batch_size(model_path, batch_size) as batched_model_path:
             session = ort.InferenceSession(batched_model_path)
             self.input_descriptors = list(map(_to_descriptor, session.get_inputs()))
             self.output_descriptors = list(map(_to_descriptor, session.get_outputs()))
