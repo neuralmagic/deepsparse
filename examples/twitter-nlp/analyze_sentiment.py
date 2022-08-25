@@ -26,19 +26,24 @@ Usage: analyze_sentiment.py [OPTIONS]
   the results.
 
 Options:
-  --model_path TEXT       The path to the sentiment analysis model to
-                          load. Either a model.onnx file, a model folder
-                          containing the model.onnx and supporting files, or a
-                          SparseZoo model stub.
-  --tweets_file TEXT      The path to the tweets json txt file to analyze
-                          sentiment for.
-  --batch_size INTEGER    The batch size to process the tweets with. A higher
-                          batch size may increase performance at the expense
-                          of memory resources and individual latency.
-  --total_tweets INTEGER  The total number of tweets to analyze from the
-                          tweets_file. Defaults to None which will run through
-                          all tweets contained in the file.
-  --help                  Show this message and exit.
+  --model_path TEXT               The path to the sentiment analysis model to
+                                  load. Either a model.onnx file, a model
+                                  folder containing the model.onnx and
+                                  supporting files, or a SparseZoo model stub.
+  --tweets_file TEXT              The path to the tweets json txt file to
+                                  analyze sentiment for.
+  --batch_size INTEGER            The batch size to process the tweets with. A
+                                  higher batch size may increase performance
+                                  at the expense of memory resources and
+                                  individual latency.
+  --total_tweets INTEGER          The total number of tweets to analyze from
+                                  the tweets_file. Defaults to None which will
+                                  run through all tweets contained in the
+                                  file.
+  --engine [deepsparse|onnxruntime]
+                                  Inference engine to use. Default is
+                                  deepsparse
+  --help                          Show this message and exit.
 
 ##########
 Example running a sparse, quantized sentiment analysis model:
@@ -128,8 +133,14 @@ def _display_results(batch, sentiments):
     help="The total number of tweets to analyze from the tweets_file. "
     "Defaults to None which will run through all tweets contained in the file.",
 )
+@click.option(
+    "--engine",
+    type=click.Choice(["deepsparse", "onnxruntime"]),
+    default="deepsparse",
+    help="Inference engine to use. Default is deepsparse",
+)
 def analyze_tweets_sentiment(
-    model_path: str, tweets_file: str, batch_size: int, total_tweets: int
+    model_path: str, tweets_file: str, batch_size: int, total_tweets: int, engine: str
 ):
     """
     Analyze the sentiment of the tweets given in the tweets_file and
@@ -140,6 +151,7 @@ def analyze_tweets_sentiment(
         task="text-classification",
         model_path=model_path,
         batch_size=batch_size,
+        engine_type=engine,
     )
     tweets = _load_tweets(tweets_file)
     tweets = _prep_data(tweets, total_tweets)
