@@ -150,7 +150,6 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
-        self._batch_size = batch_size
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -217,7 +216,7 @@ class Pipeline(ABC):
         # that domain is to be used. (ie deepsparse.transformers will auto
         # install extra packages so should only import and register once a
         # transformers task is specified)
-        SupportedTasks.check_register_task(task)
+        SupportedTasks.check_register_task(task, _REGISTERED_PIPELINES.keys())
 
         if task not in _REGISTERED_PIPELINES:
             raise ValueError(

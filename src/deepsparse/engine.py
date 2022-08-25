@@ -54,7 +54,11 @@ _LOGGER = logging.getLogger(__name__)
 
 ARCH = cpu_architecture()
 NUM_CORES = ARCH.num_available_physical_cores
-NUM_STREAMS = 0  # Default num-streams. Actual value is scheduler-dependent.
+# Default num-streams. Always 1 when using the single_stream scheduler. Depends on the
+# hardware memory hierarchy when using elastic or multi_stream schedulers. It will
+# typically be one per numa node, but can be higher on computers with multiple L3
+# caches per numa node.
+NUM_STREAMS = 0
 AVX_TYPE = ARCH.isa
 VNNI = ARCH.vnni
 
@@ -115,8 +119,12 @@ def _validate_num_streams(num_streams: Union[None, int], num_cores: int) -> int:
     if num_streams < 0:
         raise ValueError("num_streams must be greater than 0")
 
-    if num_streams > num_cores:
-        num_streams = num_cores
+    max_num_streams = NUM_CORES
+    if max_num_streams > num_cores:
+        max_num_streams = num_cores
+
+    if num_streams > max_num_streams:
+        num_streams = max_num_streams
         _LOGGER.warn(
             "num_streams exceeds num_cores - capping to {}".format(num_streams)
         )
@@ -176,12 +184,12 @@ class Engine(object):
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
-        self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = _validate_scheduler(scheduler)
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
+        num_streams = _validate_num_streams(num_streams, self._num_cores)
         if self._input_shapes:
             with override_onnx_input_shapes(
                 self._model_path, self._input_shapes
@@ -190,7 +198,7 @@ class Engine(object):
                     model_path,
                     self._batch_size,
                     self._num_cores,
-                    self._num_streams,
+                    num_streams,
                     self._scheduler.value,
                     None,
                 )
@@ -199,7 +207,7 @@ class Engine(object):
                 self._model_path,
                 self._batch_size,
                 self._num_cores,
-                self._num_streams,
+                num_streams,
                 self._scheduler.value,
                 None,
             )
@@ -273,7 +281,7 @@ class Engine(object):
         :return: The max count of streams the current instance can handle
            concurrently.
         """
-        return self._num_streams
+        return self._eng_net.num_streams()
 
     @property
     def scheduler(self) -> Scheduler:
@@ -566,10 +574,11 @@ class Context(object):
         num_streams: int = None,
     ):
         self._num_cores = _validate_num_cores(num_cores)
-        self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = Scheduler.from_str("elastic")
         self._deepsparse_context = LIB.deepsparse_context(
-            self._num_cores, self._num_streams, self._scheduler.value
+            self._num_cores,
+            _validate_num_streams(num_streams, self._num_cores),
+            self._scheduler.value,
         )
 
     @property
@@ -582,7 +591,7 @@ class Context(object):
 
     @property
     def num_streams(self):
-        return self._num_streams
+        return self._deepsparse_context.num_streams()
 
     @property
     def scheduler(self):

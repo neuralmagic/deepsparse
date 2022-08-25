@@ -83,7 +83,7 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
     the model, so the total number of forward passes is num_labels * num_sequences
     """
 
-    labels: Union[None, List[List[str]], List[str], str] = Field(
+    labels: Optional[Union[List[str], str]] = Field(
         description="The set of possible class labels to classify each "
         "sequence into. Can be a single label, a string of comma-separated "
         "labels, or a list of labels."
@@ -124,6 +124,27 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
             raise ValueError(
                 "if no static labels are provided then batch_size must be set to 1"
             )
+
+        if (
+            self._config.hypothesis_template is not None
+            and self._config.hypothesis_template.format("sample_label")
+            == self._config.hypothesis_template
+        ):
+            raise ValueError(
+                "The provided hypothesis_template "
+                f"`{self._config.hypothesis_template}` was not able to be formatted. "
+                "Make sure the passed template includes formatting syntax such "
+                "as `{}` where the label should go."
+            )
+
+        if self._config.entailment_index == self._config.contradiction_index:
+            raise ValueError("entailment_index must differ from contradiction_index")
+
+        if self._config.entailment_index > 2:
+            raise ValueError("entailment_index must be less than or equal to 2")
+
+        if self._config.contradiction_index > 2:
+            raise ValueError("contradiction_index must be less than or equal to 2")
 
         kwargs.update({"batch_size": batch_size})
         super().__init__(model_path=model_path, **kwargs)
@@ -191,7 +212,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         # check for invalid hypothesis template
         if hypothesis_template.format(labels[0]) == hypothesis_template:
             raise ValueError(
-                f"The provided hypothesis_template {hypothesis_template} was not "
+                f"The provided hypothesis_template `{hypothesis_template}` was not "
                 "able to be formatted with the target labels. Make sure the "
                 "passed template includes formatting syntax such as {} where "
                 "the label should go."

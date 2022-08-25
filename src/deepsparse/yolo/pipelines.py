@@ -175,10 +175,10 @@ class YOLOPipeline(Pipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        # Noting that if numpy arrays are passed in, we assume they are
-        # already the correct shape
+        # Noting that if a batch of numpy arrays are passed in, we assume they
+        # are already the correct shape
 
-        if isinstance(inputs.images, str):
+        if isinstance(inputs.images, (str, numpy.ndarray)):
             inputs.images = [inputs.images]
 
         image_batch = []
@@ -190,8 +190,11 @@ class YOLOPipeline(Pipeline):
 
             if isinstance(image, str):
                 image = cv2.imread(image)
-                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
 
+            image = self._make_channels_last(image)
+            if image.ndim < 4:
+                # Assume a batch is of the correct size already
+                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
             image = self._make_channels_first(image)
             image_batch.append(image)
 
@@ -244,10 +247,14 @@ class YOLOPipeline(Pipeline):
             batch_scores.append(image_output[:, 4].tolist())
             batch_labels.append(image_output[:, 5].tolist())
             if self.class_names is not None:
-                batch_labels[-1] = [
-                    getattr(self.class_names, str(int(label)))
-                    for label in batch_labels[-1]
+                batch_labels_as_strings = [
+                    str(int(label)) for label in batch_labels[-1]
                 ]
+                batch_class_names = [
+                    self.class_names[label_string]
+                    for label_string in batch_labels_as_strings
+                ]
+                batch_labels[-1] = batch_class_names
 
         return YOLOOutput(
             predictions=batch_predictions,
@@ -278,6 +285,22 @@ class YOLOPipeline(Pipeline):
 
         if is_batch:
             return numpy.moveaxis(image, -1, 1)
+
+        return image
+
+    def _make_channels_last(self, image: numpy.ndarray) -> numpy.ndarray:
+        # return a numpy array with channels first
+        is_single_image = image.ndim == 3
+        is_batch = image.ndim == 4
+
+        if image.shape[-1] == 3:
+            return image
+
+        if is_single_image:
+            return numpy.moveaxis(image, 0, -1)
+
+        if is_batch:
+            return numpy.moveaxis(image, 1, -1)
 
         return image
 

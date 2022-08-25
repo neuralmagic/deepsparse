@@ -19,7 +19,7 @@ import pytest
 from deepsparse import Pipeline
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def pipeline():
     """
     Auto-del fixture for Sequential Pipeline
@@ -27,7 +27,7 @@ def pipeline():
     yield Pipeline.create(task="question-answering")
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def executor():
     """
     Auto-del fixture for yielding a ThreadPoolExecutor
@@ -35,7 +35,7 @@ def executor():
     yield ThreadPoolExecutor()
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def threaded_pipeline(executor):
     """
     Auto-del fixture for Threaded Pipeline
@@ -43,7 +43,7 @@ def threaded_pipeline(executor):
     yield Pipeline.create(task="question-answering", executor=executor)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def qa_input():
     """
     Auto-del fixture that yield a valid input for a qa Pipeline

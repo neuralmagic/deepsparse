@@ -61,11 +61,11 @@ _deps = [
     "requests>=2.0.0",
     "tqdm>=4.0.0",
     "protobuf>=3.12.2,<4",
-    "click==8.0",
+    "click~=8.0.0",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
-    "beautifulsoup4==4.9.3",
+    "beautifulsoup4>=4.9.3",
     "black>=20.8b1",
     "flake8>=3.8.3",
     "isort>=5.7.0",
@@ -84,6 +84,7 @@ _dev_deps = [
     "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
+    "Pillow>=8.3.2",
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
@@ -96,10 +97,9 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 _yolo_integration_deps = [
-    "torchvision>=0.3.0,<=0.10.1",
+    "torchvision>=0.3.0,<=0.12.0",
     "opencv-python",
 ]
-
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
 _haystack_requirements_file_path = os.path.join(
@@ -110,11 +110,7 @@ _haystack_requirements_file_path = os.path.join(
     "haystack",
     "haystack_reqs.txt",
 )
-_haystack_integration_deps = _parse_requirements_file(
-    _haystack_requirements_file_path
-) + [
-    "farm-haystack[all]==1.4.0"
-]  # install farm-haystack last
+_haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 
 
 def _check_supported_system():
