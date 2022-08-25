@@ -21,6 +21,7 @@ from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from tests.utils import mock_engine
 
 
 class FromFilesSchema(BaseModel):
@@ -153,7 +154,8 @@ class TestActualModelEndpoints:
                 ),
             ],
         )
-        app = _build_app(server_config)
+        with mock_engine(rng_seed=0):
+            app = _build_app(server_config)
         yield TestClient(app)
 
     def test_static_batch_errors_on_wrong_batch_size(self, client):
