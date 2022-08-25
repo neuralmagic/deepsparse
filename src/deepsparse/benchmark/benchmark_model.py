@@ -414,7 +414,7 @@ def benchmark_model(
 def _parse_export_dict_engine_key(payload: Dict) -> Dict:
     """Extract metadata from str(Model)"""
 
-    formatted_metadata = "engine: " + payload["engine"].replace("\t", "").replace(
+    formatted_metadata = "engine: " + payload.get("engine", "").replace("\t", "").replace(
         ":", "", 1
     )
     return {**payload, **yaml.load(formatted_metadata, Loader=Loader)}
