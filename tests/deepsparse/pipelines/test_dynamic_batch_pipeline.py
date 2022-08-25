@@ -68,14 +68,15 @@ def test_dynamic_is_same_as_static(task):
         static_outputs = static_pipeline(**inputs)
         dynamic_outputs = dynamic_pipeline(**inputs)
 
-        assert isinstance(dynamic_outputs, dynamic_pipeline.output_schema)
-        assert isinstance(static_outputs, static_pipeline.output_schema)
+        assert isinstance(dynamic_outputs, list)
+        assert isinstance(static_outputs, list)
 
-        expected_dict = static_outputs.dict()
-        actual_dict = dynamic_outputs.dict()
+        assert len(dynamic_outputs) == len(static_outputs)
+        for s, d in zip(static_outputs, dynamic_outputs):
+            assert isinstance(s, static_pipeline.output_schema)
+            assert isinstance(d, dynamic_pipeline.output_schema)
 
-        # Check that order is maintained
-        try:
-            assert static_outputs == dynamic_outputs
-        except Exception:
+            expected_dict = s.dict()
+            actual_dict = d.dict()
+
             assert compare(expected_dict, actual_dict)

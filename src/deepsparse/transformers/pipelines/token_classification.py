@@ -65,17 +65,7 @@ class AggregationStrategy(ExplicitEnum):
     MAX = "max"
 
 
-class TokenClassificationInput(BaseModel):
-    """
-    Schema for inputs to token_classification pipelines
-    """
-
-    inputs: Union[List[str], str] = Field(
-        description=(
-            "A string or List of batch of strings representing input(s) to"
-            "a token_classification task"
-        )
-    )
+class _PreprocessingConfig(BaseModel):
     is_split_into_words: bool = Field(
         default=False,
         description=(
@@ -83,6 +73,27 @@ class TokenClassificationInput(BaseModel):
             "individual word tokens. Currently only supports batch size 1. "
             "Default is False"
         ),
+    )
+
+
+class _PostProcessingConfig(BaseModel):
+    inputs: List["TokenClassificationInput"]
+    tokens: Any
+    offset_mapping: Any
+    special_tokens_mask: Any
+    word_start_mask: Any
+
+
+class TokenClassificationInput(BaseModel):
+    """
+    Schema for inputs to token_classification pipelines
+    """
+
+    input: str = Field(
+        description=(
+            "A string or List of batch of strings representing input(s) to"
+            "a token_classification task"
+        )
     )
 
 
@@ -119,9 +130,9 @@ class TokenClassificationOutput(BaseModel):
     token stored in a list of lists of batch[sentence[token]]
     """
 
-    predictions: List[List[TokenClassificationResult]] = Field(
+    predictions: List[TokenClassificationResult] = Field(
         description=(
-            "list of list of results of token classification pipeline. Outer list "
+            "list of results of token classification pipeline. Outer list "
             "has one item for each sequence in the batch. Inner list has one "
             "TokenClassificationResult item per token in the given sequence"
         )
@@ -217,35 +228,19 @@ class TokenClassificationPipeline(TransformersPipeline):
         """
         return TokenClassificationOutput
 
-    def parse_inputs(self, *args, **kwargs) -> BaseModel:
-        """
-        :param args: ordered arguments to pipeline, only an input_schema object
-            is supported as an arg for this function
-        :param kwargs: keyword arguments to pipeline
-        :return: pipeline arguments parsed into the given `input_schema`
-            schema if necessary. If an instance of the `input_schema` is provided
-            it will be returned
-        """
-        if args and kwargs:
-            raise ValueError(
-                f"{self.__class__} only support args OR kwargs. Found "
-                f" {len(args)} args and {len(kwargs)} kwargs"
-            )
-
-        if args:
-            if len(args) == 1:
-                # passed input_schema schema directly
-                if isinstance(args[0], self.input_schema):
-                    return args[0]
-                return self.input_schema(inputs=args[0])
-            else:
-                return self.input_schema(inputs=args)
-
-        return self.input_schema(**kwargs)
+    def parse_inputs(
+        self, inputs: Union[List[str], str], is_split_into_words: bool = False
+    ) -> Tuple[List[TokenClassificationInput], _PreprocessingConfig]:
+        if is_split_into_words and self.engine.batch_size != 1:
+            raise ValueError("is_split_into_words=True only supported for batch size 1")
+        if isinstance(inputs, str):
+            inputs = [inputs]
+        return [
+            TokenClassificationInput(inputs=i) for i in inputs
+        ], _PreprocessingConfig(is_split_into_words=is_split_into_words)
 
     def process_inputs(
-        self,
-        inputs: TokenClassificationInput,
+        self, inputs: List[TokenClassificationInput], cfg: _PreprocessingConfig
     ) -> Tuple[List[numpy.ndarray], Dict[str, Any]]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the
@@ -255,11 +250,8 @@ class TokenClassificationPipeline(TransformersPipeline):
             and dictionary containing offset mappings and special tokens mask to
             be used during postprocessing
         """
-        if inputs.is_split_into_words and self.engine.batch_size != 1:
-            raise ValueError("is_split_into_words=True only supported for batch size 1")
-
         tokens = self.tokenizer(
-            inputs.inputs,
+            [i.input for i in inputs],
             return_tensors="np",
             truncation=TruncationStrategy.LONGEST_FIRST.value,
             padding=PaddingStrategy.MAX_LENGTH.value,
@@ -276,7 +268,7 @@ class TokenClassificationPipeline(TransformersPipeline):
         special_tokens_mask = tokens.pop("special_tokens_mask")
 
         word_start_mask = None
-        if inputs.is_split_into_words:
+        if cfg.is_split_into_words:
             # create mask for word in the split words where values are True
             # if they are the start of a tokenized word
             word_start_mask = []
@@ -291,7 +283,7 @@ class TokenClassificationPipeline(TransformersPipeline):
                 else:
                     word_start_mask.append(False)
 
-        postprocessing_kwargs = dict(
+        cfg = _PostProcessingConfig(
             inputs=inputs,
             tokens=tokens,
             offset_mapping=offset_mapping,
@@ -299,40 +291,32 @@ class TokenClassificationPipeline(TransformersPipeline):
             word_start_mask=word_start_mask,
         )
 
-        return self.tokens_to_engine_input(tokens), postprocessing_kwargs
+        return self.tokens_to_engine_input(tokens), cfg
 
     def process_engine_outputs(
-        self,
-        engine_outputs: List[numpy.ndarray],
-        **kwargs,
-    ) -> BaseModel:
+        self, engine_outputs: List[numpy.ndarray], cfg: _PostProcessingConfig
+    ) -> List[TokenClassificationOutput]:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        inputs = kwargs["inputs"]
-        tokens = kwargs["tokens"]
-        offset_mapping = kwargs["offset_mapping"]
-        special_tokens_mask = kwargs["special_tokens_mask"]
-        word_start_mask = kwargs["word_start_mask"]
-
         predictions = []  # type: List[List[TokenClassificationResult]]
 
         for entities_index, current_entities in enumerate(engine_outputs[0]):
-            input_ids = tokens["input_ids"][entities_index]
+            input_ids = cfg.tokens["input_ids"][entities_index]
 
             scores = numpy.exp(current_entities) / numpy.exp(current_entities).sum(
                 -1, keepdims=True
             )
 
             pre_entities = self._gather_pre_entities(
-                inputs.inputs[entities_index],
+                cfg.inputs.inputs[entities_index],
                 input_ids,
                 scores,
-                offset_mapping[entities_index],
-                special_tokens_mask[entities_index],
+                cfg.offset_mapping[entities_index],
+                cfg.special_tokens_mask[entities_index],
             )
             grouped_entities = self._aggregate(pre_entities)
             # Filter anything that is in self.ignore_labels
@@ -341,7 +325,7 @@ class TokenClassificationPipeline(TransformersPipeline):
                 if (
                     entity.get("entity") in self.ignore_labels
                     or (entity.get("entity_group") in self.ignore_labels)
-                    or (word_start_mask and not word_start_mask[entity_idx])
+                    or (cfg.word_start_mask and not cfg.word_start_mask[entity_idx])
                 ):
                     continue
                 if entity.get("entity_group"):

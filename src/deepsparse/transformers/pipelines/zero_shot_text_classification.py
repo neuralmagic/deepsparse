@@ -204,7 +204,7 @@ class ZeroShotTextClassificationInputBase(BaseModel):
     the model, so the total number of forward passes is num_labels * num_sequences
     """
 
-    sequences: Union[List[str], str] = Field(
+    sequence: str = Field(
         description="A string or List of strings representing input to "
         "zero_shot_text_classification task"
     )
@@ -215,14 +215,12 @@ class ZeroShotTextClassificationOutput(BaseModel):
     Schema for zero_shot_text_classification pipeline output. Values are in batch order
     """
 
-    sequences: Union[List[List[str]], List[str], str] = Field(
+    sequence: str = Field(
         description="A string or List of strings representing input to "
         "zero_shot_text_classification task"
     )
-    labels: Union[List[List[str]], List[str]] = Field(
-        description="The predicted labels in batch order"
-    )
-    scores: Union[List[List[float]], List[float]] = Field(
+    label: str = Field(description="The predicted labels in batch order")
+    score: float = Field(
         description="The corresponding probability for each label in the batch"
     )
 
@@ -263,32 +261,6 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
         :return: pydantic model class that outputs of this pipeline must comply to
         """
         return ZeroShotTextClassificationOutput
-
-    def parse_inputs(self, *args, **kwargs) -> BaseModel:
-        """
-        :param args: ordered arguments to pipeline, only an input_schema object
-            is supported as an arg for this function
-        :param kwargs: keyword arguments to pipeline
-        :return: pipeline arguments parsed into the given `input_schema`
-            schema if necessary. If an instance of the `input_schema` is provided
-            it will be returned
-        """
-        if args and kwargs:
-            raise ValueError(
-                f"{self.__class__} only support args OR kwargs. Found "
-                f" {len(args)} args and {len(kwargs)} kwargs"
-            )
-
-        if args:
-            if len(args) == 1:
-                # passed input_schema schema directly
-                if isinstance(args[0], self.input_schema):
-                    return args[0]
-                return self.input_schema(sequences=args[0])
-            else:
-                return self.input_schema(sequences=args)
-
-        return self.input_schema(**kwargs)
 
     @staticmethod
     def route_input_to_bucket(

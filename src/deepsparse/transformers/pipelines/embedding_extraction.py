@@ -35,7 +35,7 @@ tasks
 
 
 from enum import Enum
-from typing import List, Type, Union
+from typing import List, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -61,9 +61,7 @@ class EmbeddingExtractionInput(BaseModel):
     Schema for inputs to embedding_extraction pipelines
     """
 
-    inputs: Union[str, List[str]] = Field(
-        description="A list of sequences from which to get embeddings"
-    )
+    input: str = Field(description="A list of sequences from which to get embeddings")
 
 
 class EmbeddingExtractionOutput(BaseModel):
@@ -71,10 +69,18 @@ class EmbeddingExtractionOutput(BaseModel):
     Schema for embedding_extraction pipeline output. Values are in batch order
     """
 
-    embeddings: Union[List[List[float]], List[numpy.ndarray]] = Field(
+    embedding: Union[List[float], numpy.ndarray] = Field(
         description="The output of the model which is an embedded "
         "representation of the input"
     )
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class EEPostProcessingConfig(BaseModel):
+    pad_masks: numpy.ndarray
+    cls_masks: numpy.ndarray
 
     class Config:
         arbitrary_types_allowed = True
@@ -215,7 +221,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
         return onnx_path
 
-    def parse_inputs(self, *args, **kwargs) -> BaseModel:
+    def parse_inputs(
+        self, inputs: Union[str, List[str]]
+    ) -> Tuple[List[BaseModel], None]:
         """
         :param args: ordered arguments to pipeline, either a input_schema object,
             a string text, or a list of inputs
@@ -224,23 +232,15 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             schema if necessary. If an instance of the `input_schema` is provided
             it will be returned
         """
-        if args and kwargs:
-            raise ValueError(
-                f"{self.__class__} only support args OR kwargs. Found "
-                f" {len(args)} args and {len(kwargs)} kwargs"
-            )
+        if isinstance(inputs, str):
+            inputs = [inputs]
+        return [EmbeddingExtractionInput(input=i) for i in inputs], None
 
-        if not args:
-            return self.input_schema(**kwargs)
-        if isinstance(args, str):
-            return self.input_schema(inputs=[args[0]])
-        if len(args) != 1:
-            return self.input_schema(inputs=args)
-        if isinstance(args[0], self.input_schema):
-            return args[0]
-        return self.input_schema(inputs=args[0])
-
-    def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
+    def process_inputs(
+        self,
+        inputs: List[EmbeddingExtractionInput],
+        cfg: None,
+    ) -> Tuple[List[numpy.ndarray], EEPostProcessingConfig]:
         """
         Tokenizes input
 
@@ -248,12 +248,12 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        if isinstance(inputs.inputs, str):
-            inputs.inputs = [inputs.inputs]
+
+        values = [input.input for input in inputs]
 
         # tokenization matches https://github.com/texttron/tevatron
         tokens = self.tokenizer(
-            inputs.inputs,
+            values,
             add_special_tokens=True,
             padding=PaddingStrategy.MAX_LENGTH.value,
             truncation=TruncationStrategy.LONGEST_FIRST.value,
@@ -264,17 +264,15 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         pad_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
         cls_masks = tokens["input_ids"] == self.tokenizer.cls_token_id
 
-        return self.tokens_to_engine_input(tokens), {
-            "pad_masks": pad_masks,
-            "cls_masks": cls_masks,
-        }
+        return self.tokens_to_engine_input(tokens), EEPostProcessingConfig(
+            pad_masks=pad_masks, cls_masks=cls_masks
+        )
 
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
-        pad_masks: numpy.ndarray,
-        cls_masks: numpy.ndarray,
-    ) -> BaseModel:
+        cfg: EEPostProcessingConfig,
+    ) -> List[EmbeddingExtractionOutput]:
         """
         Implements extraction_strategy from the intermediate layer and returns its value
 
@@ -289,9 +287,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             engine_outputs = engine_outputs[0]
 
         embeddings = []
-        assert len(engine_outputs) == len(pad_masks) == len(cls_masks)
+        assert len(engine_outputs) == len(cfg.pad_masks) == len(cfg.cls_masks)
         for engine_output, pad_mask, cls_mask in zip(
-            engine_outputs, pad_masks, cls_masks
+            engine_outputs, cfg.pad_masks, cfg.cls_masks
         ):
             # extraction strategy
             if self._extraction_strategy == ExtractionStrategy.per_token:
@@ -315,9 +313,8 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             if not self._return_numpy:
                 embedding = embedding.tolist()
 
-            embeddings.append(embedding)
-
-        return self.output_schema(embeddings=embeddings)
+            embeddings.append(EmbeddingExtractionOutput(embedding=embedding))
+        return embeddings
 
     @staticmethod
     def route_input_to_bucket(

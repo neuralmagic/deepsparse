@@ -17,17 +17,13 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Any, Iterable, List, Optional, TextIO, Union
+from typing import Any, List, Optional, Union
 
-import numpy
-from PIL import Image
 from pydantic import BaseModel, Field
-
-from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
 __all__ = [
-    "YOLACTInputSchema",
+    "YOLACTConfig",
     "YOLACTOutputSchema",
 ]
 
@@ -36,7 +32,7 @@ _YOLACTImageOutput = namedtuple(
 )
 
 
-class YOLACTInputSchema(ComputerVisionSchema):
+class YOLACTConfig(BaseModel):
     """
     Input Model for YOLACT
     """
@@ -73,31 +69,6 @@ class YOLACTInputSchema(ComputerVisionSchema):
         "return segmentation masks",
     )
 
-    @classmethod
-    def from_files(
-        cls, files: Iterable[TextIO], *args, from_server: bool = False, **kwargs
-    ) -> "YOLACTInputSchema":
-        """
-        :param files: Iterable of file pointers to create YOLACTInput from
-        :param kwargs: extra keyword args to pass to YOLACTInput constructor
-        :return: YOLACTInput constructed from files
-        """
-        if "images" in kwargs:
-            raise ValueError(
-                f"argument 'images' cannot be specified in {cls.__name__} when "
-                "constructing from file(s)"
-            )
-        files_numpy = [numpy.array(Image.open(file)) for file in files]
-        input_schema = cls(
-            # if the input comes through the client-server communication
-            # do not return segmentation masks
-            *args,
-            images=files_numpy,
-            return_masks=not from_server,
-            **kwargs,
-        )
-        return input_schema
-
     class Config:
         arbitrary_types_allowed = True
 
@@ -107,13 +78,11 @@ class YOLACTOutputSchema(BaseModel):
     Output Model for YOLACT
     """
 
-    classes: List[List[Optional[Union[int, str]]]] = Field(
-        description="List of predictions"
-    )
-    scores: List[List[Optional[float]]] = Field(
+    classes: List[Optional[Union[int, str]]] = Field(description="List of predictions")
+    scores: List[Optional[float]] = Field(
         description="List of scores, one for each prediction"
     )
-    boxes: List[List[Optional[List[float]]]] = Field(
+    boxes: List[Optional[List[float]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
     masks: Optional[List[Any]] = Field(

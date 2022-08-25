@@ -22,12 +22,10 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-from deepsparse.pipelines.computer_vision import ComputerVisionSchema
-
 
 __all__ = [
+    "YOLOConfig",
     "YOLOOutput",
-    "YOLOInput",
 ]
 
 _YOLOImageOutput = namedtuple(
@@ -35,7 +33,7 @@ _YOLOImageOutput = namedtuple(
 )
 
 
-class YOLOInput(ComputerVisionSchema):
+class YOLOConfig(BaseModel):
     """
     Input model for object detection
     """
@@ -55,16 +53,12 @@ class YOLOOutput(BaseModel):
     Output model for object detection
     """
 
-    predictions: List[List[List[float]]] = Field(description="List of predictions")
-    boxes: List[List[List[float]]] = Field(
+    predictions: List[List[float]] = Field(description="List of predictions")
+    boxes: List[List[float]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    scores: List[List[float]] = Field(
-        description="List of scores, one for each prediction"
-    )
-    labels: List[List[str]] = Field(
-        description="List of labels, one for each prediction"
-    )
+    scores: List[float] = Field(description="List of scores, one for each prediction")
+    labels: List[str] = Field(description="List of labels, one for each prediction")
 
     def __getitem__(self, index):
         if index >= len(self.predictions):

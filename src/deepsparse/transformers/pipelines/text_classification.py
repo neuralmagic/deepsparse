@@ -35,7 +35,7 @@ tasks
 """
 
 
-from typing import List, Type, Union
+from typing import List, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -57,7 +57,7 @@ class TextClassificationInput(BaseModel):
     Schema for inputs to text_classification pipelines
     """
 
-    sequences: Union[List[List[str]], List[str], str] = Field(
+    sequence: Union[str, List[str]] = Field(
         description="A string or List of strings representing input to"
         "text_classification task"
     )
@@ -68,10 +68,8 @@ class TextClassificationOutput(BaseModel):
     Schema for text_classification pipeline output. Values are in batch order
     """
 
-    labels: List[Union[str, List[str]]] = Field(
-        description="The predicted labels in batch order"
-    )
-    scores: List[Union[float, List[float]]] = Field(
+    label: str = Field(description="The predicted labels in batch order")
+    score: float = Field(
         description="The corresponding probability for each label in the batch"
     )
 
@@ -170,49 +168,39 @@ class TextClassificationPipeline(TransformersPipeline):
         """
         return TextClassificationOutput
 
-    def parse_inputs(self, *args, **kwargs) -> BaseModel:
-        """
-        :param args: ordered arguments to pipeline, only an input_schema object
-            is supported as an arg for this function
-        :param kwargs: keyword arguments to pipeline
-        :return: pipeline arguments parsed into the given `input_schema`
-            schema if necessary. If an instance of the `input_schema` is provided
-            it will be returned
-        """
-        if args and kwargs:
-            raise ValueError(
-                f"{self.__class__} only support args OR kwargs. Found "
-                f" {len(args)} args and {len(kwargs)} kwargs"
-            )
+    def parse_inputs(
+        self, sequences: Union[str, List[str], List[List[str]]]
+    ) -> Tuple[List[TextClassificationInput], None]:
+        if isinstance(sequences, str):
+            sequences = [sequences]
+        return [TextClassificationInput(sequences=s) for s in sequences], None
 
-        if args:
-            if len(args) == 1:
-                # passed input_schema schema directly
-                if isinstance(args[0], self.input_schema):
-                    return args[0]
-                return self.input_schema(sequences=args[0])
-            else:
-                return self.input_schema(sequences=args)
-
-        return self.input_schema(**kwargs)
-
-    def process_inputs(self, inputs: TextClassificationInput) -> List[numpy.ndarray]:
+    def process_inputs(
+        self,
+        inputs: List[TextClassificationInput],
+        cfg: None,
+    ) -> Tuple[List[numpy.ndarray], None]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the
             TextClassificationInput
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
+        sequences = [i.sequences for i in inputs]
         tokens = self.tokenizer(
-            inputs.sequences,
+            sequences,
             add_special_tokens=True,
             return_tensors="np",
             padding=PaddingStrategy.MAX_LENGTH.value,
             truncation=TruncationStrategy.LONGEST_FIRST.value,
         )
-        return self.tokens_to_engine_input(tokens)
+        return self.tokens_to_engine_input(tokens), None
 
-    def process_engine_outputs(self, engine_outputs: List[numpy.ndarray]) -> BaseModel:
+    def process_engine_outputs(
+        self,
+        engine_outputs: List[numpy.ndarray],
+        cfg: None,
+    ) -> List[TextClassificationOutput]:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
@@ -243,10 +231,10 @@ class TextClassificationPipeline(TransformersPipeline):
             ] * len(scores)
             label_scores = [score.reshape(-1).tolist() for score in scores]
 
-        return self.output_schema(
-            labels=labels,
-            scores=label_scores,
-        )
+        return [
+            TextClassificationOutput(label=label, score=score)
+            for label, score in zip(labels, label_scores)
+        ]
 
     @staticmethod
     def route_input_to_bucket(

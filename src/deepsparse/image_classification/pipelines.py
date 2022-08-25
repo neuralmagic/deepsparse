@@ -28,12 +28,11 @@ from deepsparse.image_classification.constants import (
     IMAGENET_RGB_STDS,
 )
 from deepsparse.image_classification.schemas import (
-    ImageClassificationInput,
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
-
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 __all__ = [
     "ImageClassificationPipeline",
@@ -113,11 +112,11 @@ class ImageClassificationPipeline(Pipeline):
         return self._class_names
 
     @property
-    def input_schema(self) -> Type[ImageClassificationInput]:
+    def input_schema(self) -> Type[ComputerVisionSchema]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return ImageClassificationInput
+        return ComputerVisionSchema
 
     @property
     def output_schema(self) -> Type[ImageClassificationOutput]:
@@ -137,7 +136,16 @@ class ImageClassificationPipeline(Pipeline):
 
         return model_to_path(self.model_path)
 
-    def process_inputs(self, inputs: ImageClassificationInput) -> List[numpy.ndarray]:
+    def parse_inputs(
+        self, images: Union[List[str], str, List[numpy.ndarray], numpy.ndarray]
+    ) -> Tuple[List[ComputerVisionSchema], None]:
+        if not isinstance(images, list):
+            images = [images]
+        return [ComputerVisionSchema(image=image) for image in images], None
+
+    def process_inputs(
+        self, inputs: List[ComputerVisionSchema], cfg: None
+    ) -> Tuple[List[numpy.ndarray], None]:
         """
         Pre-Process the Inputs for DeepSparse Engine
 
@@ -145,61 +153,41 @@ class ImageClassificationPipeline(Pipeline):
         :return: list of preprocessed numpy arrays
         """
 
-        if isinstance(inputs.images, numpy.ndarray):
-            image_batch = inputs.images
-        else:
+        image_batch = []
 
-            image_batch = []
+        for input in inputs:
+            image = input.image
+            if isinstance(image, str):
+                # load image from string filepath
+                image = Image.open(image)
+            elif isinstance(image, numpy.ndarray):
+                image = image.astype(numpy.uint8)
+                if image.shape[0] < image.shape[-1]:
+                    # put channel last
+                    image = numpy.einsum("cwh->whc", image)
+                image = Image.fromarray(image)
 
-            if isinstance(inputs.images, str):
-                inputs.images = [inputs.images]
+            if not isinstance(image, Image.Image):
+                raise ValueError(
+                    f"inputs to {self.__class__.__name__} must be a string image "
+                    "file path(s), a list representing a raw image, "
+                    "PIL.Image.Image object(s), or a numpy array representing"
+                    f"the entire pre-processed batch. Found {type(image)}"
+                )
 
-            for image in inputs.images:
-                if isinstance(image, List):
-                    # image given as raw list
-                    image = numpy.asarray(image)
-                    if image.dtype == numpy.float32:
-                        # image is already processed, append and continue
-                        image_batch.append(image)
-                        continue
-                    # assume raw image input
-                    # put image in PIL format for torchvision processing
-                    image = image.astype(numpy.uint8)
-                    if image.shape[0] < image.shape[-1]:
-                        # put channel last
-                        image = numpy.einsum("cwh->whc", image)
-                    image = Image.fromarray(image)
-                elif isinstance(image, str):
-                    # load image from string filepath
-                    image = Image.open(image)
-                elif isinstance(image, numpy.ndarray):
-                    image = image.astype(numpy.uint8)
-                    if image.shape[0] < image.shape[-1]:
-                        # put channel last
-                        image = numpy.einsum("cwh->whc", image)
-                    image = Image.fromarray(image)
+            # apply resize and center crop
+            image = self._pre_normalization_transforms(image)
+            image_numpy = numpy.array(image)
+            image.close()
 
-                if not isinstance(image, Image.Image):
-                    raise ValueError(
-                        f"inputs to {self.__class__.__name__} must be a string image "
-                        "file path(s), a list representing a raw image, "
-                        "PIL.Image.Image object(s), or a numpy array representing"
-                        f"the entire pre-processed batch. Found {type(image)}"
-                    )
+            # make channel first dimension
+            image_numpy = image_numpy.transpose(2, 0, 1)
 
-                # apply resize and center crop
-                image = self._pre_normalization_transforms(image)
-                image_numpy = numpy.array(image)
-                image.close()
+            # append to batch
+            image_batch.append(image_numpy)
 
-                # make channel first dimension
-                image_numpy = image_numpy.transpose(2, 0, 1)
-
-                # append to batch
-                image_batch.append(image_numpy)
-
-            # build batch
-            image_batch = numpy.stack(image_batch, axis=0)
+        # build batch
+        image_batch = numpy.stack(image_batch, axis=0)
 
         original_dtype = image_batch.dtype
         image_batch = numpy.ascontiguousarray(image_batch, dtype=numpy.float32)
@@ -211,12 +199,13 @@ class ImageClassificationPipeline(Pipeline):
             image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
             image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
 
-        return [image_batch]
+        return [image_batch], None
 
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
-    ) -> ImageClassificationOutput:
+        cfg: None,
+    ) -> List[ImageClassificationOutput]:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
@@ -227,8 +216,14 @@ class ImageClassificationPipeline(Pipeline):
         for prediction_batch in engine_outputs[0]:
             label = (-prediction_batch).argsort()[: self.top_k]
             score = prediction_batch[label]
+            if self.top_k == 1:
+                label = label[0]
+                score = score[0]
+            else:
+                label = label.tolist()
+                score = score.tolist()
             labels.append(label)
-            scores.append(score.tolist())
+            scores.append(score)
 
         if self.class_names is not None:
             labels = numpy.vectorize(self.class_names.__getitem__)(labels)
@@ -237,14 +232,10 @@ class ImageClassificationPipeline(Pipeline):
         if isinstance(labels[0], numpy.ndarray):
             labels = [label.tolist() for label in labels]
 
-        if len(labels) == 1:
-            labels = labels[0]
-            scores = scores[0]
-
-        return self.output_schema(
-            scores=scores,
-            labels=labels,
-        )
+        return [
+            ImageClassificationOutput(label=label, score=score)
+            for label, score in zip(labels, scores)
+        ]
 
     def _infer_image_size(self) -> Tuple[int, ...]:
         """

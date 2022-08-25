@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Iterable, List, TextIO, Union
+from typing import Iterable, TextIO, Union, List
 
 import numpy
 
@@ -39,9 +39,7 @@ class ComputerVisionSchema(BaseModel):
     `from_files` factory method, and also specifies Field types for images
     """
 
-    images: Union[str, List[str], List[Any], Any] = Field(
-        description="List of Images to process"
-    )  # List[Any] to accept List[numpy.ndarray], Any to accept numpy.ndarray
+    image: Union[str, numpy.ndarray] = Field(description="List of Images to process")
 
     class Config:
         arbitrary_types_allowed = True
@@ -53,7 +51,7 @@ class ComputerVisionSchema(BaseModel):
         *args,
         from_server: bool = False,
         **kwargs,
-    ) -> BaseModel:
+    ) -> List["ComputerVisionSchema"]:
         """
         :param files: Iterable of file pointers to create ImageClassificationInput from
         :return: ImageClassificationInput constructed from files
@@ -64,5 +62,7 @@ class ComputerVisionSchema(BaseModel):
                 f" but was not found. Error:\n{pil_import_error}, "
                 "try `pip install Pillow`"
             )
-        images = [numpy.asarray(Image.open(file)) for file in files]
-        return cls(*args, images=images, **kwargs)
+        return [
+            cls(*args, image=numpy.asarray(Image.open(file)), **kwargs)
+            for file in files
+        ]

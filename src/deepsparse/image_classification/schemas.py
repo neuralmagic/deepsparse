@@ -19,19 +19,10 @@ from typing import List, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse.pipelines.computer_vision import ComputerVisionSchema
-
 
 __all__ = [
-    "ImageClassificationInput",
     "ImageClassificationOutput",
 ]
-
-
-class ImageClassificationInput(ComputerVisionSchema):
-    """
-    Input model for image classification
-    """
 
 
 class ImageClassificationOutput(BaseModel):
@@ -39,9 +30,5 @@ class ImageClassificationOutput(BaseModel):
     Output model for image classification
     """
 
-    labels: List[Union[int, str, List[int], List[str]]] = Field(
-        description="List of labels, one for each prediction"
-    )
-    scores: List[Union[float, List[float]]] = Field(
-        description="List of scores, one for each prediction"
-    )
+    label: Union[int, str, List[int], List[str]] = Field(description="A label")
+    score: Union[float, List[float]] = Field(description="Score")

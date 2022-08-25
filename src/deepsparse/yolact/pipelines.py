@@ -20,10 +20,10 @@ import numpy
 import torch
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
-from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
+from deepsparse.yolact.schemas import YOLACTConfig, YOLACTOutputSchema
 from deepsparse.yolact.utils import decode, detect, postprocess, preprocess_array
 from deepsparse.yolo.utils import COCO_CLASSES
-
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 try:
     import cv2
@@ -42,7 +42,9 @@ __all__ = ["YOLACTPipeline"]
         "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
     ),
 )
-class YOLACTPipeline(Pipeline):
+class YOLACTPipeline(
+    Pipeline[ComputerVisionSchema, YOLACTOutputSchema, YOLACTConfig, YOLACTConfig]
+):
     """
     Image classification pipeline for DeepSparse
 
@@ -121,41 +123,34 @@ class YOLACTPipeline(Pipeline):
         """
         return model_to_path(self.model_path)
 
-    def process_inputs(
+    def parse_inputs(
         self,
-        inputs: YOLACTInputSchema,
-    ) -> List[numpy.ndarray]:
-        """
-        :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
-            of this pipeline
-        :return: inputs of this model processed into a list of numpy arrays that
-            can be directly passed into the forward pass of the pipeline engine. Can
-            also include a tuple with engine inputs and special key word arguments
-            to pass to process_engine_outputs to facilitate information from the raw
-            inputs to postprocessing that may not be included in the engine inputs
-        """
-        images = inputs.images
-
+        images: Union[numpy.ndarray, str, List[numpy.ndarray], List[str]],
+        **kwargs,
+    ) -> Tuple[List[ComputerVisionSchema], YOLACTConfig]:
         if not isinstance(images, list):
             images = [images]
+        inputs = []
+        for image in images:
+            if not isinstance(images, (str, numpy.ndarray)):
+                raise ValueError()
+            inputs.append(ComputerVisionSchema(image=image))
+        return inputs, YOLACTConfig(**kwargs)
 
-        if isinstance(images[0], str):
-            images = [cv2.imread(file_path) for file_path in images]
-
-        postprocessing_kwargs = dict(
-            confidence_threshold=inputs.confidence_threshold,
-            nms_threshold=inputs.nms_threshold,
-            score_threshold=inputs.score_threshold,
-            top_k_preprocessing=inputs.top_k_preprocessing,
-            max_num_detections=inputs.max_num_detections,
-            return_masks=inputs.return_masks,
-        )
-
+    def process_inputs(
+        self, inputs: List[ComputerVisionSchema], cfg: YOLACTConfig
+    ) -> Tuple[List[numpy.ndarray], YOLACTConfig]:
+        images = []
+        for input in inputs:
+            img = input.images
+            if isinstance(img, str):
+                img = cv2.imread(img)
+            images.append(img)
         preprocessed_images = [
             preprocess_array(array, self.image_size) for array in images
         ]
         image_batch = numpy.concatenate(preprocessed_images, axis=0)
-        return [image_batch], postprocessing_kwargs
+        return [image_batch], cfg
 
     def join_engine_outputs(
         self, batch_outputs: List[List[numpy.ndarray]]
@@ -175,14 +170,8 @@ class YOLACTPipeline(Pipeline):
         return [boxes, confidence, masks, batch_priors[0], protos]
 
     def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], **kwargs
-    ) -> YOLACTOutputSchema:
-        """
-        :param engine_outputs: list of numpy arrays that are the output of the engine
-            forward pass
-        :return: outputs of engine post-processed into an object in the `output_schema`
-            format of this pipeline
-        """
+        self, engine_outputs: List[numpy.ndarray], cfg: YOLACTConfig
+    ) -> List[YOLACTOutputSchema]:
         boxes, confidence, masks, priors, protos = engine_outputs
 
         boxes = torch.from_numpy(boxes).cpu()
@@ -191,10 +180,8 @@ class YOLACTPipeline(Pipeline):
         priors = torch.from_numpy(priors).cpu()
         protos = torch.from_numpy(protos).cpu()
 
-        batch_size, num_priors, _ = boxes.size()
-
         # Preprocess every image in the batch individually
-        batch_classes, batch_scores, batch_boxes, batch_masks = [], [], [], []
+        outputs = []
 
         for batch_idx, (
             boxes_single_image,
@@ -208,10 +195,10 @@ class YOLACTPipeline(Pipeline):
                 confidence_single_image,
                 decoded_boxes,
                 masks_single_image,
-                confidence_threshold=kwargs["confidence_threshold"],
-                nms_threshold=kwargs["nms_threshold"],
-                max_num_detections=kwargs["max_num_detections"],
-                top_k=kwargs["top_k_preprocessing"],
+                confidence_threshold=cfg.confidence_threshold,
+                nms_threshold=cfg.nms_threshold,
+                max_num_detections=cfg.max_num_detections,
+                top_k=cfg.top_k_preprocessing,
             )
             if results is not None and protos is not None:
                 results["protos"] = protos[batch_idx]
@@ -220,7 +207,7 @@ class YOLACTPipeline(Pipeline):
                 classes, scores, boxes, masks = postprocess(
                     dets=results,
                     crop_masks=True,
-                    score_threshold=kwargs["score_threshold"],
+                    score_threshold=cfg.score_threshold,
                 )
 
                 classes = classes.numpy()
@@ -231,34 +218,33 @@ class YOLACTPipeline(Pipeline):
                 # Choose the best k detections (taking into account all the classes)
                 idx = numpy.argsort(scores)[::-1][: self.top_k]
 
-                batch_classes.append(
-                    list(map(self.class_names.__getitem__, map(str, classes[idx])))
+                output = YOLACTOutputSchema(
+                    classes=list(
+                        map(self.class_names.__getitem__, map(str, classes[idx]))
+                    )
                     if self.class_names is not None
-                    else classes[idx].tolist()
+                    else classes[idx].tolist(),
+                    scores=scores[idx].tolist(),
+                    boxes=boxes[idx].tolist(),
+                    masks=masks[idx] if cfg.return_masks else None,
                 )
-                batch_scores.append(scores[idx].tolist())
-                batch_boxes.append(boxes[idx].tolist())
-                batch_masks.append(masks[idx])
-
             else:
-                batch_classes.append([None])
-                batch_scores.append([None])
-                batch_boxes.append([None])
-                batch_masks.append(None)
+                output = YOLACTOutputSchema(
+                    classes=[None],
+                    scores=[None],
+                    boxes=[None],
+                    masks=None,
+                )
+            outputs.append(output)
 
-        return YOLACTOutputSchema(
-            classes=batch_classes,
-            scores=batch_scores,
-            boxes=batch_boxes,
-            masks=batch_masks if kwargs.get("return_masks") else None,
-        )
+        return outputs
 
     @property
-    def input_schema(self) -> Type[YOLACTInputSchema]:
+    def input_schema(self) -> Type[ComputerVisionSchema]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return YOLACTInputSchema
+        return ComputerVisionSchema
 
     @property
     def output_schema(self) -> Type[YOLACTOutputSchema]:

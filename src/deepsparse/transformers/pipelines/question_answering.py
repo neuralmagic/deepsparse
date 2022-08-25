@@ -37,7 +37,7 @@ import collections
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Tuple, Type
 
 import numpy
 from pydantic import BaseModel, Field
@@ -63,7 +63,7 @@ class QuestionAnsweringInput(BaseModel):
 
     question: str = Field(description="String question to be answered")
     context: str = Field(description="String representing context for answer")
-    id: str = Field(description="Sample identifier", default=None)
+    id: Optional[str] = Field(description="Sample identifier", default=None)
 
 
 class QuestionAnsweringOutput(BaseModel):
@@ -75,6 +75,14 @@ class QuestionAnsweringOutput(BaseModel):
     answer: str = Field(description="predicted answer")
     start: int = Field(description="start index of the answer")
     end: int = Field(description="end index of the answer")
+
+
+class QAPostProcessingConfig(BaseModel):
+    span_extra_info: List[Dict[str, numpy.ndarray]]
+    example: SquadExample
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 @Pipeline.register(
@@ -231,10 +239,16 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         """
         return QuestionAnsweringOutput
 
+    def parse_inputs(
+        self, question: str, context: str, id: Optional[str] = None
+    ) -> Tuple[List[QuestionAnsweringInput], None]:
+        return [QuestionAnsweringInput(question=question, context=context, id=id)], None
+
     def process_inputs(
         self,
-        inputs: QuestionAnsweringInput,
-    ) -> Tuple[List[numpy.ndarray], Dict[str, Any]]:
+        inputs: List[QuestionAnsweringInput],
+        cfg: None,
+    ) -> Tuple[List[numpy.ndarray], QAPostProcessingConfig]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the
             QuestionAnsweringInput
@@ -242,8 +256,10 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             can be directly passed into the forward pass of the pipeline engine and
             dictionary of parsed features and original extracted example
         """
+        assert len(inputs) == 1
+        input = inputs[0]
         squad_example = SquadExample(
-            inputs.id, inputs.question, inputs.context, None, None, None
+            input.id, input.question, input.context, None, None, None
         )
         tokenized_example = self._tokenize(squad_example)
 
@@ -268,24 +284,22 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         # add batch dimension, assuming batch size 1
         engine_inputs = list(map(numpy.stack, zip(*span_engine_inputs)))
 
-        return engine_inputs, dict(
+        return engine_inputs, QAPostProcessingConfig(
             span_extra_info=span_extra_info, example=squad_example
         )
 
     def process_engine_outputs(
         self,
-        engine_outputs: List[List[numpy.ndarray]],
-        **kwargs,
-    ) -> BaseModel:
+        engine_outputs: List[numpy.ndarray],
+        cfg: QAPostProcessingConfig,
+    ) -> List[QuestionAnsweringOutput]:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        span_extra_info = kwargs["span_extra_info"]
-        example = kwargs["example"]
-        num_spans = len(span_extra_info)
+        num_spans = len(cfg.span_extra_info)
 
         if len(engine_outputs) != 2:
             raise ValueError(
@@ -316,11 +330,11 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
             # This is what will allow us to map some the positions in our logits to
             # span of texts in the original context.
-            offset_mapping = span_extra_info[span_idx]["offset_mapping"]
+            offset_mapping = cfg.span_extra_info[span_idx]["offset_mapping"]
 
             # Optional `token_is_max_context`, if provided we will remove answers
             # that do not have the maximum context available in the current feature.
-            token_is_max_context = span_extra_info[span_idx].get(
+            token_is_max_context = cfg.span_extra_info[span_idx].get(
                 "token_is_max_context", None
             )
 
@@ -405,7 +419,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         best_score = predictions[0]["score"]
 
         # Use the offsets to gather the answer text in the original context.
-        context = example.context_text
+        context = cfg.example.context_text
         for pred in predictions:
             offsets = pred.pop("offsets")
             pred["text"] = context[offsets[0] : offsets[1]]
@@ -435,7 +449,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
         # Pick the best prediction. If the null answer is not possible, this is easy.
         if not self.version_2_with_negative:
-            all_predictions[example.qas_id] = predictions[0]["text"]
+            all_predictions[cfg.example.qas_id] = predictions[0]["text"]
         else:
             # Otherwise we first need to find the best non-empty prediction.
             i = 0
@@ -449,16 +463,16 @@ class QuestionAnsweringPipeline(TransformersPipeline):
                 - best_non_null_pred["start_logit"]
                 - best_non_null_pred["end_logit"]
             )
-            scores_diff_json[example.qas_id] = float(
+            scores_diff_json[cfg.example.qas_id] = float(
                 score_diff
             )  # To be JSON-serializable.
             if score_diff > null_score_diff_threshold:
-                all_predictions[example.qas_id] = ""
+                all_predictions[cfg.example.qas_id] = ""
             else:
-                all_predictions[example.qas_id] = best_non_null_pred["text"]
+                all_predictions[cfg.example.qas_id] = best_non_null_pred["text"]
 
         # Make `predictions` JSON-serializable by casting numpy.float back to float.
-        all_nbest_json[example.qas_id] = [
+        all_nbest_json[cfg.example.qas_id] = [
             {
                 k: (
                     float(v)
@@ -476,12 +490,14 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             )
             self._save_predictions(all_predictions, all_nbest_json, scores_diff_json)
 
-        return self.output_schema(
-            score=best_score,
-            start=best_start,
-            end=best_end,
-            answer=example.context_text[best_start:best_end],
-        )
+        return [
+            QuestionAnsweringOutput(
+                score=best_score,
+                start=best_start,
+                end=best_end,
+                answer=cfg.example.context_text[best_start:best_end],
+            )
+        ]
 
     @staticmethod
     def route_input_to_bucket(

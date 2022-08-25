@@ -20,7 +20,7 @@ import onnx
 
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
-from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
+from deepsparse.yolo.schemas import YOLOOutput, YOLOConfig
 from deepsparse.yolo.utils import (
     COCO_CLASSES,
     YoloPostprocessor,
@@ -30,6 +30,8 @@ from deepsparse.yolo.utils import (
     yolo_onnx_has_postprocessing,
 )
 
+
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 try:
     import cv2
@@ -48,7 +50,7 @@ __all__ = ["YOLOPipeline"]
         "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant-aggressive_95"
     ),
 )
-class YOLOPipeline(Pipeline):
+class YOLOPipeline(Pipeline[ComputerVisionSchema, YOLOOutput, YOLOConfig, YOLOConfig]):
     """
     Image detection YOLO pipeline for DeepSparse
 
@@ -134,11 +136,11 @@ class YOLOPipeline(Pipeline):
         return self._image_size
 
     @property
-    def input_schema(self) -> Type[YOLOInput]:
+    def input_schema(self) -> Type[ComputerVisionSchema]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return YOLOInput
+        return ComputerVisionSchema
 
     @property
     def output_schema(self) -> Type[YOLOOutput]:
@@ -168,7 +170,24 @@ class YOLOPipeline(Pipeline):
             )
         return model_path
 
-    def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
+    def parse_inputs(
+        self,
+        images: Union[numpy.ndarray, str, List[numpy.ndarray], List[str]],
+        iou_thres: float = 0.25,
+        conf_thres: float = 0.45,
+    ) -> Tuple[List[ComputerVisionSchema], YOLOConfig]:
+        if not isinstance(images, list):
+            images = [images]
+        inputs = []
+        for image in images:
+            if not isinstance(images, (str, numpy.ndarray)):
+                raise ValueError()
+            inputs.append(ComputerVisionSchema(image=image))
+        return inputs, YOLOConfig(iou_thres=iou_thres, conf_thres=conf_thres)
+
+    def process_inputs(
+        self, inputs: List[ComputerVisionSchema], cfg: YOLOConfig
+    ) -> Tuple[List[numpy.ndarray], YOLOConfig]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
             of this pipeline
@@ -178,19 +197,12 @@ class YOLOPipeline(Pipeline):
         # Noting that if a batch of numpy arrays are passed in, we assume they
         # are already the correct shape
 
-        if isinstance(inputs.images, (str, numpy.ndarray)):
-            inputs.images = [inputs.images]
-
         image_batch = []
-
-        for image in inputs.images:
-            if isinstance(image, list):
-                # image consists of floats or ints
-                image = numpy.asarray(image)
-
-            if isinstance(image, str):
-                image = cv2.imread(image)
-
+        for input in inputs:
+            if isinstance(input.image, str):
+                image = cv2.imread(input.image)
+            else:
+                image = input.image
             image = self._make_channels_last(image)
             if image.ndim < 4:
                 # Assume a batch is of the correct size already
@@ -206,17 +218,11 @@ class YOLOPipeline(Pipeline):
 
         if not self.is_quantized:
             image_batch /= 255
-        postprocessing_kwargs = dict(
-            iou_thres=inputs.iou_thres,
-            conf_thres=inputs.conf_thres,
-        )
-        return [image_batch], postprocessing_kwargs
+        return [image_batch], cfg
 
     def process_engine_outputs(
-        self,
-        engine_outputs: List[numpy.ndarray],
-        **kwargs,
-    ) -> YOLOOutput:
+        self, engine_outputs: List[numpy.ndarray], cfg: YOLOConfig
+    ) -> List[YOLOOutput]:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
@@ -234,34 +240,29 @@ class YOLOPipeline(Pipeline):
 
         # NMS
         batch_output = postprocess_nms(
-            batch_output,
-            iou_thres=kwargs.get("iou_thres", 0.25),
-            conf_thres=kwargs.get("conf_thres", 0.45),
+            batch_output, iou_thres=cfg.iou_thres, conf_thres=cfg.conf_thres
         )
 
-        batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []
+        outputs = []
 
         for image_output in batch_output:
-            batch_predictions.append(image_output.tolist())
-            batch_boxes.append(image_output[:, 0:4].tolist())
-            batch_scores.append(image_output[:, 4].tolist())
-            batch_labels.append(image_output[:, 5].tolist())
+            labels = image_output[:, 5].tolist()
             if self.class_names is not None:
-                batch_labels_as_strings = [
-                    str(int(label)) for label in batch_labels[-1]
-                ]
-                batch_class_names = [
+                batch_labels_as_strings = [str(int(label)) for label in labels]
+                labels = [
                     self.class_names[label_string]
                     for label_string in batch_labels_as_strings
                 ]
-                batch_labels[-1] = batch_class_names
+            outputs.append(
+                YOLOOutput(
+                    predictions=image_output.tolist(),
+                    boxes=image_output[:, 0:4].tolist(),
+                    scores=image_output[:, 4].tolist(),
+                    labels=labels,
+                )
+            )
 
-        return YOLOOutput(
-            predictions=batch_predictions,
-            boxes=batch_boxes,
-            scores=batch_scores,
-            labels=batch_labels,
-        )
+        return outputs
 
     def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
         # return a numpy batch of images

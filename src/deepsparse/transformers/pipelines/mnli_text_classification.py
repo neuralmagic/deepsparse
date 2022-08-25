@@ -34,7 +34,7 @@ with mnli models
 """
 
 
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -42,6 +42,7 @@ from transformers.tokenization_utils_base import PaddingStrategy, TruncationStra
 
 from deepsparse.transformers.pipelines.zero_shot_text_classification import (
     ZeroShotTextClassificationInputBase,
+    ZeroShotTextClassificationOutput,
     ZeroShotTextClassificationPipelineBase,
 )
 from deepsparse.utils import numpy_softmax
@@ -49,7 +50,6 @@ from deepsparse.utils import numpy_softmax
 
 __all__ = [
     "MnliTextClassificationConfig",
-    "MnliTextClassificationInput",
     "MnliTextClassificationPipeline",
 ]
 
@@ -74,31 +74,15 @@ class MnliTextClassificationConfig(BaseModel):
         description="True if class probabilities are independent, default False",
         default=False,
     )
-
-
-class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
-    """
-    Schema for inputs to zero_shot_text_classification pipelines
-    Each sequence and each candidate label must be paired and passed through
-    the model, so the total number of forward passes is num_labels * num_sequences
-    """
-
-    labels: Optional[Union[List[str], str]] = Field(
+    labels: List[str] = Field(
         description="The set of possible class labels to classify each "
         "sequence into. Can be a single label, a string of comma-separated "
         "labels, or a list of labels."
     )
-    hypothesis_template: Optional[str] = Field(
-        description="A formattable template for wrapping around the provided "
-        "labels to create an mnli hypothesis. If provided, overrides the template "
-        "in the mnli config.",
-        default=None,
-    )
-    multi_class: Optional[bool] = Field(
-        description="True if class probabilities are independent, default False. "
-        "If provided, overrides the multi_class value in the config.",
-        default=None,
-    )
+
+
+class _PostProcessingConfig(MnliTextClassificationConfig):
+    inputs: List[ZeroShotTextClassificationInputBase]
 
 
 class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
@@ -107,11 +91,9 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         model_path: str,
         batch_size: int = 1,
         model_config: Optional[Union[MnliTextClassificationConfig, dict]] = None,
-        labels: Optional[List] = None,
         **kwargs,
     ):
         self._config = self.parse_config(model_config)
-        self._labels = self.parse_labels(labels)
 
         if self._labels and batch_size % len(self._labels) != 0:
             raise ValueError(
@@ -157,49 +139,47 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         return MnliTextClassificationConfig
 
     @property
-    def input_schema(self) -> Type[MnliTextClassificationInput]:
+    def input_schema(self) -> Type[ZeroShotTextClassificationInputBase]:
         """
         Input schema inputs using the mnli model scheme must comply to
         """
-        return MnliTextClassificationInput
+        return ZeroShotTextClassificationInputBase
+
+    def parse_inputs(
+        self,
+        sequences: Union[List[str], str],
+        labels: Optional[Union[List[str], str]] = None,
+        hypothesis_template: Optional[str] = None,
+        multi_class: Optional[bool] = None,
+    ) -> Tuple[List[ZeroShotTextClassificationInputBase], MnliTextClassificationConfig]:
+        if labels is None and self.config.labels is None:
+            raise ValueError(
+                "You must provide either static labels during pipeline creation or "
+                "dynamic labels at inference time"
+            )
+        if isinstance(sequences, str):
+            sequences = [sequences]
+        labels = self.parse_labels(self._labels or labels)
+        hypothesis_template = hypothesis_template or self._config.hypothesis_template
+        multi_class = multi_class or self._config.multi_class
+        cfg = MnliTextClassificationConfig(
+            hypothesis_template=hypothesis_template,
+            multi_class=multi_class,
+            labels=labels,
+        )
+        return [ZeroShotTextClassificationInputBase(sequence=s) for s in sequences], cfg
 
     def process_inputs(
         self,
-        inputs: MnliTextClassificationInput,
-    ) -> List[numpy.ndarray]:
+        inputs: List[ZeroShotTextClassificationInputBase],
+        cfg: MnliTextClassificationConfig,
+    ) -> Tuple[List[numpy.ndarray], _PostProcessingConfig]:
         """
         :param inputs: inputs to the pipeline
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        sequences = inputs.sequences
-        labels = self.parse_labels(self._labels or inputs.labels)
-        hypothesis_template = (
-            inputs.hypothesis_template
-            if inputs.hypothesis_template is not None
-            else self._config.hypothesis_template
-        )
-        multi_class = (
-            inputs.multi_class
-            if inputs.multi_class is not None
-            else self._config.multi_class
-        )
-        if isinstance(sequences, str):
-            sequences = [sequences]
-
-        # check for absent labels
-        if inputs.labels is None and self._labels is None:
-            raise ValueError(
-                "You must provide either static labels during pipeline creation or "
-                "dynamic labels at inference time"
-            )
-
-        # check for conflicting labels
-        if inputs.labels is not None and self._labels is not None:
-            raise ValueError(
-                "Found both static labels and dynamic labels at inference time. You "
-                "must provide only one"
-            )
+        sequences = [i.sequence for i in inputs]
 
         # check for correct size if static labels
         if self._labels and len(sequences) != self._batch_size // len(self._labels):
@@ -210,9 +190,9 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
             )
 
         # check for invalid hypothesis template
-        if hypothesis_template.format(labels[0]) == hypothesis_template:
+        if cfg.hypothesis_template.format(cfg.labels[0]) == cfg.hypothesis_template:
             raise ValueError(
-                f"The provided hypothesis_template `{hypothesis_template}` was not "
+                f"The provided hypothesis_template `{cfg.hypothesis_template}` was not "
                 "able to be formatted with the target labels. Make sure the "
                 "passed template includes formatting syntax such as {} where "
                 "the label should go."
@@ -221,7 +201,10 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         sequence_pairs = []
         for sequence in sequences:
             sequence_pairs.extend(
-                [[sequence, hypothesis_template.format(label)] for label in labels]
+                [
+                    [sequence, cfg.hypothesis_template.format(label)]
+                    for label in cfg.labels
+                ]
             )
 
         tokens = self.tokenizer(
@@ -233,13 +216,9 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
             truncation=TruncationStrategy.ONLY_FIRST.value,
         )
 
-        postprocessing_kwargs = dict(
-            sequences=inputs.sequences,  # do not include list wrapping
-            candidate_labels=labels,
-            multi_class=multi_class,
+        return self.tokens_to_engine_input(tokens), _PostProcessingConfig(
+            inputs=inputs, **cfg.dict()
         )
-
-        return self.tokens_to_engine_input(tokens), postprocessing_kwargs
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
@@ -261,9 +240,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
-        sequences: Union[str, List[str]],
-        candidate_labels: List[str],
-        multi_class: bool,
+        cfg: _PostProcessingConfig,
     ) -> BaseModel:
         """
         :param engine_outputs: list of numpy arrays that are the output of the mnli
@@ -276,13 +253,13 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
             format of this pipeline
         """
         # reshape sequences
-        num_sequences = 1 if isinstance(sequences, str) else len(sequences)
+        num_sequences = len(cfg.inputs)
         reshaped_outputs = numpy.reshape(
-            engine_outputs, (num_sequences, len(candidate_labels), -1)
+            engine_outputs, (num_sequences, len(cfg.labels), -1)
         )
 
         # calculate scores
-        if not multi_class:
+        if not cfg.multi_class:
             entailment_logits = reshaped_outputs[:, :, self._config.entailment_index]
             scores = numpy_softmax(entailment_logits, axis=1)
         else:
@@ -295,18 +272,14 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         # negate scores to perform reversed sort
         sorted_indexes = numpy.argsort(scores * -1, axis=1)
         labels = [
-            numpy.array(candidate_labels)[sorted_indexes[i]].tolist()
+            numpy.array(cfg.labels)[sorted_indexes[i]].tolist()
             for i in range(num_sequences)
         ]
         label_scores = numpy.take_along_axis(scores, sorted_indexes, axis=1).tolist()
 
-        # reduce dims if passed a string, not a list of strings
-        if isinstance(sequences, str):
-            labels = labels[0]
-            label_scores = label_scores[0]
-
-        return self.output_schema(
-            sequences=sequences,
-            labels=labels,
-            scores=label_scores,
-        )
+        return [
+            ZeroShotTextClassificationOutput(
+                sequence=input.sequence, label=label, score=score
+            )
+            for input, label, score in zip(cfg.inputs, labels, label_scores)
+        ]

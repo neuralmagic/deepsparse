@@ -63,7 +63,7 @@ class HaystackPipelineInput(BaseModel):
     Schema for inputs to Haystack pipelines
     """
 
-    queries: Union[str, List[str]] = Field(
+    queries: str = Field(
         description="String or list of strings to query documents with"
     )
     params: Dict[Any, Any] = Field(
@@ -76,21 +76,13 @@ class HaystackPipelineOutput(BaseModel):
     Schema for outputs to Haystack pipelines
     """
 
-    documents: Union[List[List[Document]], List[Document]] = Field(
+    documents: List[Document] = Field(
         description="List of document results for each input query"
     )
-    root_node: Union[str, List[str]] = Field(
-        description="Root node of Haystack Pipeline's graph"
-    )
-    params: Union[List[Dict[str, Any]], Dict[str, Any]] = Field(
-        description="Params passed to Haystack pipeline"
-    )
-    query: Union[List[str], str] = Field(
-        description="Query passed to Haystack Pipeline"
-    )
-    node_id: Union[List[str], str] = Field(
-        description="Node id field from Haystack Pipeline output"
-    )
+    root_node: str = Field(description="Root node of Haystack Pipeline's graph")
+    params: Dict[str, Any] = Field(description="Params passed to Haystack pipeline")
+    query: str = Field(description="Query passed to Haystack Pipeline")
+    node_id: str = Field(description="Node id field from Haystack Pipeline output")
 
 
 class HaystackPipelineConfig(BaseModel):

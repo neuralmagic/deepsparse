@@ -18,9 +18,9 @@ import pytest
 from deepsparse.image_classification import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
-    ImageClassificationInput,
     ImageClassificationOutput,
 )
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 from deepsparse.pipeline import Pipeline
 from deepsparse.pipelines.custom_pipeline import CustomTaskPipeline
 from deepsparse.utils.onnx import model_to_path
@@ -85,15 +85,15 @@ def test_custom_pipeline_as_image_classifier(model_path):
         ]
     )
 
-    def preprocess(input: ImageClassificationInput):
-        assert len(input.images) == 1
-        assert isinstance(input, ImageClassificationInput)
-        assert isinstance(input.images, list)
-        assert all(isinstance(i, numpy.ndarray) for i in input.images)
-        return [
-            standard_imagenet_transforms(Image.fromarray(img)).unsqueeze(0).numpy()
-            for img in input.images
-        ]
+    def preprocess(input: List[ComputerVisionSchema]):
+        # assert len(input.images) == 1
+        # assert isinstance(input, list)
+        # assert isinstance(input.images, list)
+        # assert all(isinstance(i, numpy.ndarray) for i in input.images)
+        # return [
+        #     standard_imagenet_transforms(Image.fromarray(img)).unsqueeze(0).numpy()
+        #     for img in input.images
+        # ]
 
     def postprocess(outputs, **kwargs):
         assert len(outputs) == 2  # NOTE: logits & softmax for this model
@@ -111,7 +111,7 @@ def test_custom_pipeline_as_image_classifier(model_path):
     pipeline = Pipeline.create(
         "custom",
         model_path,
-        input_schema=ImageClassificationInput,
+        input_schema=ComputerVisionSchema,
         output_schema=ImageClassificationOutput,
         process_inputs_fn=preprocess,
         process_outputs_fn=postprocess,
@@ -122,6 +122,5 @@ def test_custom_pipeline_as_image_classifier(model_path):
     image_raw = (numpy.random.random(size=(224, 224, 3)) * 255).astype(numpy.uint8)
 
     # actually run the pipeline
-    input = ImageClassificationInput(images=[image_raw])
-    output = pipeline(input)
+    output = pipeline(image_raw)
     assert isinstance(output, ImageClassificationOutput)

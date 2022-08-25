@@ -20,7 +20,7 @@ import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -54,8 +54,15 @@ SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
 _REGISTERED_PIPELINES = {}
 
+PreProcessSchema = TypeVar("PreProcessSchema")
+PostProcessSchema = TypeVar("PostProcessSchema")
+InputSchema = TypeVar("InputSchema")
+OutputSchema = TypeVar("OutputSchema")
 
-class Pipeline(ABC):
+
+class Pipeline(
+    ABC, Generic[InputSchema, OutputSchema, PreProcessSchema, PostProcessSchema]
+):
     """
     Generic Pipeline abstract class meant to wrap inference engine objects to include
     data pre/post-processing. Inputs and outputs of pipelines should be serialized
@@ -176,52 +183,29 @@ class Pipeline(ABC):
 
         self._batch_size = self._batch_size or 1
 
-    def __call__(self, *args, **kwargs) -> BaseModel:
+    def __call__(self, *args, **kwargs) -> List[OutputSchema]:
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
 
-        # parse inputs into input_schema
-        pipeline_inputs = self.parse_inputs(*args, **kwargs)
-        if not isinstance(pipeline_inputs, self.input_schema):
-            raise RuntimeError(
-                f"Unable to parse {self.__class__} inputs into a "
-                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
-            )
+        pipeline_inputs, pre_cfg = self.parse_inputs(*args, **kwargs)
 
-        # batch size of the inputs may be `> self._batch_size` at this point
-        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
-        if isinstance(engine_inputs, tuple):
-            engine_inputs, postprocess_kwargs = engine_inputs
-        else:
-            postprocess_kwargs = {}
+        engine_inputs, post_cfg = self.process_inputs(pipeline_inputs, pre_cfg)
 
-        # split inputs into batches of size `self._batch_size`
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
-        # submit to engine
         futures = [
             self.executor.submit(self.engine_forward, batch) for batch in batches
         ]
         wait(futures)
 
-        # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(
             [future.result() for future in futures]
         )
 
-        pipeline_outputs = self.process_engine_outputs(
-            engine_outputs, **postprocess_kwargs
-        )
-        if not isinstance(pipeline_outputs, self.output_schema):
-            raise ValueError(
-                f"Outputs of {self.__class__} must be instances of "
-                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
-            )
-
-        return pipeline_outputs
+        return self.process_engine_outputs(engine_outputs, post_cfg)
 
     def split_engine_inputs(
         self, items: List[numpy.ndarray], batch_size: int
@@ -507,10 +491,23 @@ class Pipeline(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def parse_inputs(
+        self, *args, **kwargs
+    ) -> Tuple[List[InputSchema], PreProcessSchema]:
+        """
+        :param args: ordered arguments to pipeline, only an input_schema object
+            is supported as an arg for this function
+        :param kwargs: keyword arguments to pipeline
+        :return: pipeline arguments parsed into the given `input_schema`
+            schema if necessary. If an instance of the `input_schema` is provided
+            it will be returned
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     def process_inputs(
-        self,
-        inputs: BaseModel,
-    ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
+        self, inputs: List[InputSchema], preprocessing_cfg: PreProcessSchema
+    ) -> Tuple[List[numpy.ndarray], PostProcessSchema]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
             of this pipeline
@@ -526,8 +523,8 @@ class Pipeline(ABC):
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
-        **kwargs,
-    ) -> BaseModel:
+        config: PostProcessSchema,
+    ) -> List[OutputSchema]:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
@@ -538,7 +535,7 @@ class Pipeline(ABC):
 
     @property
     @abstractmethod
-    def input_schema(self) -> Type[BaseModel]:
+    def input_schema(self) -> Type[InputSchema]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
@@ -546,7 +543,7 @@ class Pipeline(ABC):
 
     @property
     @abstractmethod
-    def output_schema(self) -> Type[BaseModel]:
+    def output_schema(self) -> Type[OutputSchema]:
         """
         :return: pydantic model class that outputs of this pipeline must comply to
         """
@@ -620,28 +617,6 @@ class Pipeline(ABC):
             alias=self.alias,
             kwargs=kwargs,
         )
-
-    def parse_inputs(self, *args, **kwargs) -> BaseModel:
-        """
-        :param args: ordered arguments to pipeline, only an input_schema object
-            is supported as an arg for this function
-        :param kwargs: keyword arguments to pipeline
-        :return: pipeline arguments parsed into the given `input_schema`
-            schema if necessary. If an instance of the `input_schema` is provided
-            it will be returned
-        """
-        # passed input_schema schema directly
-        if len(args) == 1 and isinstance(args[0], self.input_schema) and not kwargs:
-            return args[0]
-
-        if args:
-            raise ValueError(
-                f"pipeline {self.__class__} only supports either only a "
-                f"{self.input_schema} object. or keyword arguments to be construct "
-                f"one. Found {len(args)} args and {len(kwargs)} kwargs"
-            )
-
-        return self.input_schema(**kwargs)
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
@@ -752,13 +727,23 @@ class BucketingPipeline(object):
         self._pipeline_class = pipelines[0].__class__
         self._validate_pipeline_class()
 
-    def __call__(self, **inputs):
-        parsed_inputs = self._pipelines[-1].parse_inputs(**inputs)
-        pipeline = self._pipeline_class.route_input_to_bucket(
-            input_schema=parsed_inputs,
-            pipelines=self._pipelines,
-        )
-        return pipeline(parsed_inputs)
+    def __call__(self, *args, **kwargs):
+        parsed_inputs, pre_cfg = self._pipelines[-1].parse_inputs(*args, **kwargs)
+
+        paddings = []
+        for pipeline in self._pipelines:
+            paddings.append(pipeline.compute_paddings_for(parsed_inputs))
+        assignments = numpy.array(paddings).argmin(axis=1)
+
+        inputs_per_pipeline = [[] for _ in self._pipelines]
+        for inp, pipeline_idx in zip(parsed_inputs, assignments):
+            inputs_per_pipeline[pipeline_idx].append(inp)
+
+        outputs = []
+        for pipeline, inputs in zip(self._pipelines, inputs_per_pipeline):
+            if len(inputs) > 0:
+                outputs.extend(pipeline(inputs))
+        return outputs
 
     def __getattr__(self, item):
         value = getattr(self._pipelines[0].__class__, item)
