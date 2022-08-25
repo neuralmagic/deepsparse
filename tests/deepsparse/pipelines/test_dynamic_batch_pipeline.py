@@ -18,6 +18,7 @@ import numpy
 
 import pytest
 from deepsparse import Pipeline
+from tests.utils import SampleMode, mock_engine
 
 from .data_helpers import create_test_inputs
 
@@ -30,9 +31,7 @@ _SUPPORTED_TASKS = [
     "yolact",
 ]
 
-_BATCH_SIZES = [
-    2,
-]
+_BATCH_SIZES = [2, 4, 8]
 
 
 def compare(expected, actual):
@@ -52,7 +51,8 @@ def compare(expected, actual):
 
 
 @pytest.mark.parametrize("task", _SUPPORTED_TASKS)
-def test_dynamic_is_same_as_static(task):
+@mock_engine(rng_seed=0, mode=SampleMode.zeros)
+def test_dynamic_is_same_as_static(engine, task):
     executor = ThreadPoolExecutor()
 
     # NOTE: re-use the same dynamic pipeline for different batch sizes
