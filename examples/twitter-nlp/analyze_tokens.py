@@ -22,16 +22,16 @@ in batch processing mode.
 Command help:
 Usage: analyze_tokens.py [OPTIONS]
 
-  Analyze the sentiment of the tweets given in the tweets_file and print out
+  Analyze the tokens of the tweets given in the tweets_file and print out
   the results.
 
 Options:
   --model_path TEXT               The path to the token classification model to
-                                  load.Either a model.onnx file, a model
+                                  load. Either a model.onnx file, a model
                                   folder containing the model.onnx and
                                   supporting files, or a SparseZoo model stub.
   --tweets_file TEXT              The path to the tweets json txt file to
-                                  analyze sentiment for.
+                                  analyze tokens for.
   --batch_size INTEGER            The batch size to process the tweets with. A
                                   higher batch size may increase performance
                                   at the expense of memory resources and
@@ -139,14 +139,14 @@ def _display_results(batch, batch_pred, important_token: str):
 @click.option(
     "--model_path",
     type=str,
-    help="The path to the sentiment analysis model to load. "
+    help="The path to the tokens analysis model to load. "
     "Either a model.onnx file, a model folder containing the model.onnx "
     "and supporting files, or a SparseZoo model stub.",
 )
 @click.option(
     "--tweets_file",
     type=str,
-    help="The path to the tweets json txt file to analyze sentiment for.",
+    help="The path to the tweets json txt file to analyze tokens for.",
 )
 @click.option(
     "--batch_size",
@@ -177,7 +177,7 @@ def _display_results(batch, batch_pred, important_token: str):
     "'MIS' for miscellaneous, 'PER' for people, "
     "'ORG' for organizations, 'LOC' for locations",
 )
-def analyze_tweets_sentiment(
+def analyze_tweets_tokens(
     model_path: str,
     tweets_file: str,
     batch_size: int,
@@ -227,4 +227,4 @@ def analyze_tweets_sentiment(
 
 
 if __name__ == "__main__":
-    analyze_tweets_sentiment()
+    analyze_tweets_tokens()
