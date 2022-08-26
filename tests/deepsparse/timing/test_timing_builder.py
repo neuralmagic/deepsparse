@@ -15,7 +15,7 @@
 import time
 
 import pytest
-from deepsparse.timing import InferenceTimingSchema, TimingBuilder
+from deepsparse.timing import TimingBuilder
 
 
 def _sleep(sleep_time):
@@ -47,13 +47,12 @@ class TestTimingBuilder:
         builder.stop("total_inference")
 
         summary = builder.build()
-        timing = InferenceTimingSchema(**summary)
 
         accuracy = 1.0e-02
-        assert timing.pre_process == pytest.approx(s1, accuracy)
-        assert timing.engine_forward == pytest.approx(s2, accuracy)
-        assert timing.post_process == pytest.approx(s3, accuracy)
-        assert timing.total_inference == pytest.approx(s1 + s2 + s3, accuracy)
+        assert summary["pre_process"] == pytest.approx(s1, accuracy)
+        assert summary["engine_forward"] == pytest.approx(s2, accuracy)
+        assert summary["post_process"] == pytest.approx(s3, accuracy)
+        assert summary["total_inference"] == pytest.approx(s1 + s2 + s3, accuracy)
 
     def test_always_start_before_complete(self, setup):
         s1, s2, s3, builder = setup
