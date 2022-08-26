@@ -241,7 +241,7 @@ class TokenClassificationPipeline(TransformersPipeline):
 
     def process_inputs(
         self, inputs: List[TokenClassificationInput], cfg: _PreprocessingConfig
-    ) -> Tuple[List[numpy.ndarray], Dict[str, Any]]:
+    ) -> Tuple[List[numpy.ndarray], _PostProcessingConfig]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the
             TokenClassificationInput
@@ -257,7 +257,7 @@ class TokenClassificationPipeline(TransformersPipeline):
             padding=PaddingStrategy.MAX_LENGTH.value,
             return_special_tokens_mask=True,
             return_offsets_mapping=self.tokenizer.is_fast,
-            is_split_into_words=inputs.is_split_into_words,
+            is_split_into_words=cfg.is_split_into_words,
         )
 
         offset_mapping = (

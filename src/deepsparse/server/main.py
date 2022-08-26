@@ -81,7 +81,7 @@ deepsparse.server \
 
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 import click
 
@@ -142,23 +142,20 @@ def _add_pipeline_route(
         # if `from_files` is True, the endpoint expects request to be
         # `List[UploadFile]` otherwise, the endpoint expect request to
         # be `pipeline.input_schema`
-        input_schema = List[UploadFile] if from_files else pipeline.input_schema
+        input_schema = UploadFile if from_files else pipeline.input_schema
 
         @app.post(
             endpoint_path,
-            response_model=pipeline.output_schema,
+            response_model=List[pipeline.output_schema],
             tags=["prediction"],
         )
-        async def _predict_func(request: input_schema):
+        async def _predict_func(request: List[input_schema]):
             if from_files:
                 request = pipeline.input_schema.from_files(
                     (file.file for file in request), from_server=True
                 )
 
-            results = await execute_async(
-                pipeline,
-                request,
-            )
+            results = await execute_async(pipeline, request)
             return serializable_response(results)
 
         _LOGGER.info(f"created route {endpoint_path}")

@@ -190,7 +190,15 @@ class Pipeline(
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
 
-        pipeline_inputs, pre_cfg = self.parse_inputs(*args, **kwargs)
+        if (
+            len(args) == 1
+            and isinstance(args[0], list)
+            and isinstance(args[0][0], self.input_schema)
+        ):
+            pipeline_inputs = args[0]
+            pre_cfg = None
+        else:
+            pipeline_inputs, pre_cfg = self.parse_inputs(*args, **kwargs)
 
         engine_inputs, post_cfg = self.process_inputs(pipeline_inputs, pre_cfg)
 

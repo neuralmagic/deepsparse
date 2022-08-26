@@ -77,7 +77,7 @@ class QuestionAnsweringOutput(BaseModel):
     end: int = Field(description="end index of the answer")
 
 
-class QAPostProcessingConfig(BaseModel):
+class _PostProcessingConfig(BaseModel):
     span_extra_info: List[Dict[str, numpy.ndarray]]
     example: SquadExample
 
@@ -248,7 +248,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         self,
         inputs: List[QuestionAnsweringInput],
         cfg: None,
-    ) -> Tuple[List[numpy.ndarray], QAPostProcessingConfig]:
+    ) -> Tuple[List[numpy.ndarray], _PostProcessingConfig]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the
             QuestionAnsweringInput
@@ -284,14 +284,14 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         # add batch dimension, assuming batch size 1
         engine_inputs = list(map(numpy.stack, zip(*span_engine_inputs)))
 
-        return engine_inputs, QAPostProcessingConfig(
+        return engine_inputs, _PostProcessingConfig(
             span_extra_info=span_extra_info, example=squad_example
         )
 
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
-        cfg: QAPostProcessingConfig,
+        cfg: _PostProcessingConfig,
     ) -> List[QuestionAnsweringOutput]:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
