@@ -109,31 +109,29 @@ def test_examples():
 
 
 def test_split_engine_inputs():
-    pipeline = FakePipeline("")
     inp = [numpy.zeros((4, 28)), numpy.zeros((4, 28)), numpy.zeros((4, 28))]
 
-    out = pipeline.split_engine_inputs(inp, batch_size=4)
+    out = Pipeline.split_engine_inputs(inp, batch_size=4)
     assert numpy.array(out).shape == (1, 3, 4, 28)
 
-    out = pipeline.split_engine_inputs(inp, batch_size=2)
+    out = Pipeline.split_engine_inputs(inp, batch_size=2)
     assert numpy.array(out).shape == (2, 3, 2, 28)
 
-    out = pipeline.split_engine_inputs(inp, batch_size=1)
+    out = Pipeline.split_engine_inputs(inp, batch_size=1)
     assert numpy.array(out).shape == (4, 3, 1, 28)
 
 
 def test_join_opposite_of_split():
-    pipeline = FakePipeline("")
     inp = [
         numpy.random.rand(4, 28),
         numpy.random.rand(4, 28),
         numpy.random.rand(4, 28),
     ]
 
-    out = pipeline.split_engine_inputs(inp, batch_size=2)
+    out = Pipeline.split_engine_inputs(inp, batch_size=2)
     assert numpy.array(out).shape == (2, 3, 2, 28)
 
-    joined = pipeline.join_engine_outputs(out)
+    joined = Pipeline.join_engine_outputs(out)
     assert numpy.array(joined).shape == (3, 4, 28)
 
     for i, j in zip(inp, joined):
@@ -141,13 +139,12 @@ def test_join_opposite_of_split():
 
 
 def test_split_engine_inputs_uneven_raises_error():
-    pipeline = FakePipeline("")
     with pytest.raises(
         RuntimeError,
         match="batch size of 3 passed into pipeline "
         "is not divisible by model batch size of 2",
     ):
-        pipeline.split_engine_inputs([numpy.zeros((3, 28))], batch_size=2)
+        Pipeline.split_engine_inputs([numpy.zeros((3, 28))], batch_size=2)
 
 
 @mock.patch(

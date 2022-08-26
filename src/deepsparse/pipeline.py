@@ -223,8 +223,9 @@ class Pipeline(ABC):
 
         return pipeline_outputs
 
+    @staticmethod
     def split_engine_inputs(
-        self, items: List[numpy.ndarray], batch_size: int
+        items: List[numpy.ndarray], batch_size: int
     ) -> List[List[numpy.ndarray]]:
         """
         Splits each item into numpy arrays with the first dimension == `batch_size`.
@@ -272,8 +273,9 @@ class Pipeline(ABC):
             batches.append([item[start : start + batch_size] for item in items])
         return batches
 
+    @staticmethod
     def join_engine_outputs(
-        self, batch_outputs: List[List[numpy.ndarray]]
+        batch_outputs: List[List[numpy.ndarray]],
     ) -> List[numpy.ndarray]:
         """
         Joins list of engine outputs together into one list using `numpy.concatenate`.

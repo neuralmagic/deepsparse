@@ -157,10 +157,11 @@ class YOLACTPipeline(Pipeline):
         image_batch = numpy.concatenate(preprocessed_images, axis=0)
         return [image_batch], postprocessing_kwargs
 
+    @staticmethod
     def join_engine_outputs(
-        self, batch_outputs: List[List[numpy.ndarray]]
+        batch_outputs: List[List[numpy.ndarray]],
     ) -> List[numpy.ndarray]:
-        boxes, confidence, masks, priors, protos = super().join_engine_outputs(
+        boxes, confidence, masks, priors, protos = Pipeline.join_engine_outputs(
             batch_outputs
         )
 
