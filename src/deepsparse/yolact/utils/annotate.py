@@ -68,7 +68,7 @@ def annotate_image(
         # no detections found
         return image
 
-    classes_to_ignore = ["dining table", "chair", "bird", "carrot", "suitcase", "oven", "microwave", "truck"]
+    classes_to_ignore = ["knife", "spoon", "dining table", "chair", "bird", "carrot", "suitcase", "oven", "microwave", "truck"]
     image_res = copy.copy(image)
     masks, boxes = _resize_to_fit_img(image, masks, boxes)
     filtered_detections = [ [mask, box, class_, score] for (mask, box, class_, score) in zip(masks, boxes, classes, scores)
