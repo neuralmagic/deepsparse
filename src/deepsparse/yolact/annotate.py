@@ -66,7 +66,7 @@ Examples:
 import logging
 from typing import Optional, Tuple
 from tqdm import tqdm
-
+import numpy as np
 import click
 
 import cv2
@@ -205,12 +205,10 @@ def main(
         engine_type=engine,
         num_cores=num_cores,
     )
-
+    FPS = []
     for iteration, (input_image, source_image) in tqdm(enumerate(loader)):
-
-
         # annotate
-        annotated_image = annotate(
+        annotated_image, fps = annotate(
             pipeline=yolact_pipeline,
             annotation_func=annotate_image,
             image=input_image,
@@ -218,7 +216,7 @@ def main(
             calc_fps=is_video,
             original_image=source_image,
         )
-
+        FPS.append(fps)
         if is_webcam:
             cv2.imshow("annotated", annotated_image)
             cv2.waitKey(1)
@@ -231,6 +229,7 @@ def main(
         saver.close()
 
     _LOGGER.info(f"Results saved to {save_dir}")
+    _LOGGER.info(f"FPS: {np.mean(FPS)}")
 
 
 if __name__ == "__main__":
