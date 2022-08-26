@@ -21,7 +21,7 @@ from typing import List
 import yaml
 
 import uvicorn
-from deepsparse.engine import Context, Scheduler
+from deepsparse.engine import Context
 from deepsparse.pipeline import Pipeline
 from deepsparse.server.config import (
     INTEGRATION_LOCAL,
@@ -94,7 +94,6 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     context = Context(
         num_cores=server_config.num_cores,
         num_streams=server_config.num_workers,
-        scheduler=Scheduler.elastic,
     )
     executor = ThreadPoolExecutor(max_workers=context.num_streams)
 

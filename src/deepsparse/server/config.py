@@ -132,11 +132,7 @@ def _unpack_bucketing(
 
         return _unpack_nlp_bucketing(bucketing)
     elif isinstance(bucketing, ImageSizesConfig):
-        if (
-            not SupportedTasks.is_image_classification(task)
-            and not SupportedTasks.is_yolo(task)
-            and not SupportedTasks.is_yolact(task)
-        ):
+        if not SupportedTasks.is_cv(task):
             raise ValueError(
                 f"ImageSizeConfig specified for non computer vision task {task}"
             )
