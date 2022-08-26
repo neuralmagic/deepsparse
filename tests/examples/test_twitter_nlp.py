@@ -12,28 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-from unittest.mock import patch
-
 import pytest
-
-
-SRC_DIRS = [
-    os.path.join(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../examples"),
-        dirname,
-    )
-    for dirname in [
-        "twitter-nlp",
-    ]
-]
-sys.path.extend(SRC_DIRS)
-
-
-if SRC_DIRS is not None:
-    import analyze_sentiment
-    import analyze_tokens
+from tests.helpers import run_command
 
 
 @pytest.mark.parametrize(
@@ -52,18 +32,24 @@ if SRC_DIRS is not None:
     ),
 )
 def test_analyze_tokens(model: str, batch_size: int):
-    tweets_file = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "../test_data/pineapple.txt"
-    )
-    testargs = f"""
-        analyze_tokens.py
-        --model_path {model}
-        --batch_size {batch_size}
-        --tweets_file {tweets_file}
-        """.split()
+    cmd = [
+        "python3",
+        "examples/twitter-nlp/analyze_tokens.py",
+        "--model_path",
+        model,
+        "--batch_size",
+        str(batch_size),
+        "--tweets_file",
+        "tests/test_data/pineapple.txt",
+    ]
+    print(f"\n==== test_analyze_tokens example ====\n{' '.join(cmd)}")
+    res = run_command(cmd)
+    if res.stdout is not None:
+        print(f"\n==== test_analyze_tokens output ====\n{res.stdout}")
 
-    with patch.object(sys, "argv", testargs):
-        analyze_tokens.analyze_tweets_tokens()
+    # validate command executed successfully
+    assert res.returncode == 0
+    assert "Completed analyzing" in res.stdout.lower()
 
 
 @pytest.mark.parametrize(
@@ -82,15 +68,21 @@ def test_analyze_tokens(model: str, batch_size: int):
     ),
 )
 def test_analyze_sentiment(model: str, batch_size: int):
-    tweets_file = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "../test_data/pineapple.txt"
-    )
-    testargs = f"""
-        analyze_sentiment.py
-        --model_path {model}
-        --batch_size {batch_size}
-        --tweets_file {tweets_file}
-        """.split()
+    cmd = [
+        "python3",
+        "examples/twitter-nlp/analyze_sentiment.py",
+        "--model_path",
+        model,
+        "--batch_size",
+        str(batch_size),
+        "--tweets_file",
+        "tests/test_data/pineapple.txt",
+    ]
+    print(f"\n==== test_analyze_sentiment example ====\n{' '.join(cmd)}")
+    res = run_command(cmd)
+    if res.stdout is not None:
+        print(f"\n==== test_analyze_sentiment output ====\n{res.stdout}")
 
-    with patch.object(sys, "argv", testargs):
-        analyze_sentiment.analyze_tweets_sentiment()
+    # validate command executed successfully
+    assert res.returncode == 0
+    assert "Completed analyzing" in res.stdout.lower()
