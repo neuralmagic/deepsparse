@@ -256,11 +256,15 @@ class Pipeline(ABC):
         ]
         ```
         """
+        # if not all items here are numpy arrays, there's an internal
+        # but in the processing code
         assert all(isinstance(item, numpy.ndarray) for item in items)
 
-        # all items should have the same batch size
+        # if not all items have the same batch size, there's an
+        # internal bug in the processing code
         total_batch_size = items[0].shape[0]
         assert all(item.shape[0] == total_batch_size for item in items)
+
         if total_batch_size % batch_size != 0:
             raise RuntimeError(
                 f"batch size of {total_batch_size} passed into pipeline "
