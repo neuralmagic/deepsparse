@@ -685,8 +685,7 @@ class PipelineConfig(BaseModel):
     scheduler: str = Field(
         default="async",
         description=(
-            "(deepsparse only) kind of scheduler to execute with."
-            " Defaults to single_stream"
+            "(deepsparse only) kind of scheduler to execute with. Defaults to async"
         ),
     )
     input_shapes: List[List[int]] = Field(
