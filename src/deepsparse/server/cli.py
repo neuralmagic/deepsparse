@@ -54,10 +54,10 @@ def main():
     num_workers: 2
     endpoints:
         - task: question_answering
-          endpoint: /unpruned/predict
+          route: /unpruned/predict
           model: zoo:some/zoo/stub
         - task: question_answering
-          endpoint: /pruned/predict
+          route: /pruned/predict
           model: /path/to/local/model
     ```
     """
@@ -177,7 +177,7 @@ def task(
             EndpointConfig(
                 task=task,
                 name=f"{task} inference model",
-                endpoint="/predict",
+                route="/predict",
                 model=model_path,
                 batch_size=batch_size,
             )

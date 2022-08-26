@@ -35,10 +35,10 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
   num_workers: 2
   endpoints:
     - task: question_answering
-      endpoint: /unpruned/predict
+      route: /unpruned/predict
       model_path: zoo:some/zoo/stub
     - task: question_answering
-      endpoint: /pruned/predict
+      route: /pruned/predict
       model_path: /path/to/local/model
   ```
 

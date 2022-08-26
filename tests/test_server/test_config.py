@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import yaml
+
 import pytest
 from deepsparse.server.config import (
     EndpointConfig,
     ImageSizesConfig,
     SequenceLengthsConfig,
+    ServerConfig,
 )
 
 
@@ -92,3 +95,46 @@ def test_endpoint_config_to_pipeline_copy_fields():
 
     cfg = EndpointConfig(task="", model="", batch_size=64).to_pipeline_config()
     assert cfg.batch_size == 64
+
+
+def test_yaml_load_config(tmp_path):
+    server_config = ServerConfig(
+        num_cores=1,
+        num_workers=2,
+        integration="sagemaker",
+        endpoints=[
+            EndpointConfig(
+                name="asdf",
+                route="qwer",
+                task="uiop",
+                model="hjkl",
+                batch_size=1,
+                bucketing=None,
+            ),
+            EndpointConfig(
+                name="asdf",
+                route="qwer",
+                task="uiop",
+                model="hjkl",
+                batch_size=2,
+                bucketing=ImageSizesConfig(image_sizes=[(1, 1), (2, 2)]),
+            ),
+            EndpointConfig(
+                name="asdf",
+                route="qwer",
+                task="uiop",
+                model="hjkl",
+                batch_size=3,
+                bucketing=SequenceLengthsConfig(sequence_lengths=[5, 6, 7]),
+            ),
+        ],
+    )
+
+    path = tmp_path / "config.yaml"
+    with open(path, "w") as fp:
+        yaml.dump(server_config.dict(), fp)
+
+    with open(path) as fp:
+        obj = yaml.load(fp, Loader=yaml.Loader)
+    server_config2 = ServerConfig(**obj)
+    assert server_config == server_config2

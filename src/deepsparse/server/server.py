@@ -14,6 +14,7 @@
 
 import logging
 from asyncio import get_running_loop
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from typing import List
@@ -23,7 +24,13 @@ import yaml
 import uvicorn
 from deepsparse.engine import Context, Scheduler
 from deepsparse.pipeline import Pipeline
-from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.config import (
+    INTEGRATION_LOCAL,
+    INTEGRATION_SAGEMAKER,
+    INTEGRATIONS,
+    EndpointConfig,
+    ServerConfig,
+)
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -67,6 +74,24 @@ def start_server(
 
 
 def _build_app(server_config: ServerConfig) -> FastAPI:
+    route_counts = Counter([cfg.route for cfg in server_config.endpoints])
+    if route_counts[None] > 1:
+        raise ValueError(
+            "You must specify `route` for all endpoints if multiple endpoints are used."
+        )
+
+    for route, count in route_counts.items():
+        if count > 1:
+            raise ValueError(
+                f"{route} specified {count} times for multiple EndpoingConfig.route"
+            )
+
+    if server_config.integration not in INTEGRATIONS:
+        raise ValueError(
+            f"Unknown integration field {server_config.integration}. "
+            f"Expected one of {INTEGRATIONS}"
+        )
+
     context = Context(
         num_cores=server_config.num_cores,
         num_streams=server_config.num_workers,
@@ -92,9 +117,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     def _health():
         return True
 
-    app._deepsparse_pool = ThreadPoolExecutor(max_workers=context.num_streams)
-
-    add_invocations_endpoint = len(server_config.endpoints) == 1
+    app._deepsparse_executor = ThreadPoolExecutor(max_workers=context.num_streams)
 
     # fill in names if there are none
     for idx, endpoint_config in enumerate(server_config.endpoints):
@@ -104,13 +127,15 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     # creat pipelines & endpoints
     for endpoint_config in server_config.endpoints:
         pipeline_config = endpoint_config.to_pipeline_config()
-        pipeline_config.kwargs["executor"] = app._deepsparse_pool
+        pipeline_config.kwargs["executor"] = app._deepsparse_executor
 
         _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
         pipeline = Pipeline.from_config(pipeline_config, context)
 
         _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
-        _add_pipeline_endpoint(app, endpoint_config, pipeline, add_invocations_endpoint)
+        _add_pipeline_endpoint(
+            app, endpoint_config, pipeline, server_config.integration
+        )
 
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
 
@@ -121,39 +146,42 @@ def _add_pipeline_endpoint(
     app: FastAPI,
     endpoint_config: EndpointConfig,
     pipeline: Pipeline,
-    add_invocations_endpoint: bool = False,
+    integration: str = INTEGRATION_LOCAL,
 ):
     input_schema = pipeline.input_schema
     output_schema = pipeline.output_schema
+    executor: ThreadPoolExecutor = app._deepsparse_executor
 
-    pool: ThreadPoolExecutor = app._deepsparse_pool
+    async def _predict_from_schema(request: pipeline.input_schema):
+        return await get_running_loop().run_in_executor(executor, pipeline, request)
 
-    route = endpoint_config.endpoint or "/predict"
-    if not route.startswith("/"):
-        route = "/" + route
+    async def _predict_from_files(request: List[UploadFile]):
+        request = pipeline.input_schema.from_files(
+            (file.file for file in request), from_server=True
+        )
+        return await get_running_loop().run_in_executor(executor, pipeline, request)
 
-    @app.post(route, tags=["predict"], response_model=output_schema)
-    async def _predict_func(request: pipeline.input_schema):
-        return await get_running_loop().run_in_executor(pool, pipeline, request)
+    routes_and_fns = []
+    if integration == INTEGRATION_LOCAL:
+        route = endpoint_config.route or "/predict"
+        if not route.startswith("/"):
+            route = "/" + route
+        routes_and_fns.append((route, _predict_from_schema))
+        if hasattr(input_schema, "from_files"):
+            routes_and_fns.append((route + "/files", _predict_from_schema))
+    elif integration == INTEGRATION_SAGEMAKER:
+        route = "/invocations"
+        if hasattr(input_schema, "from_files"):
+            routes_and_fns.append((route, _predict_from_files))
+        else:
+            routes_and_fns.append((route, _predict_from_schema))
 
-    _LOGGER.info(f"Added '{route}' endpoint")
-
-    if hasattr(input_schema, "from_files"):
-        file_route = route + "/files"
-
-        @app.post(file_route, tags=["predict"], response_model=output_schema)
-        async def _predict_from_files_func(request: List[UploadFile]):
-            request = pipeline.input_schema.from_files(
-                (file.file for file in request), from_server=True
-            )
-            return await get_running_loop().run_in_executor(pool, pipeline, request)
-
-        _LOGGER.info(f"Added '{file_route}' endpoint")
-
-    if add_invocations_endpoint and hasattr(input_schema, "from_files"):
-
-        @app.post("/invocations", response_model=output_schema)
-        async def _invocations(request: List[UploadFile]):
-            return RedirectResponse(file_route)
-
-        _LOGGER.info("Added '/invocations' endpoint")
+    for route, endpoint_fn in routes_and_fns:
+        app.add_api_route(
+            route,
+            endpoint_fn,
+            response_model=output_schema,
+            methods=["POST"],
+            tags=["predict"],
+        )
+        _LOGGER.info(f"Added '{route}' endpoint")

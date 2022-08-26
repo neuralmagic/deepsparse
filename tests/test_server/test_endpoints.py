@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from unittest.mock import Mock
-
+from re import escape
 from pydantic import BaseModel
 
 import pytest
@@ -53,11 +53,9 @@ class TestStatusEndpoints:
         loaded = ServerConfig(**response.json())
         assert loaded == server_config
 
-    @pytest.mark.parametrize(
-        "endpoint", ["/ping", "/health", "/healthcheck", "/status"]
-    )
-    def test_pings_exist(self, client, endpoint):
-        response = client.get(endpoint)
+    @pytest.mark.parametrize("route", ["/ping", "/health", "/healthcheck", "/status"])
+    def test_pings_exist(self, client, route):
+        response = client.get(route)
         assert response.status_code == 200
         assert response.json() is True
 
@@ -70,6 +68,51 @@ class TestStatusEndpoints:
         assert response.request.path_url == "/docs"
         assert len(response.history) > 0
         assert response.history[-1].is_redirect
+
+
+def test_add_multiple_endpoints_with_no_route():
+    with pytest.raises(
+        ValueError,
+        match=(
+            "must specify `route` for all endpoints if multiple endpoints are used."
+        ),
+    ):
+        _build_app(
+            ServerConfig(
+                num_cores=1,
+                num_workers=1,
+                endpoints=[
+                    EndpointConfig(task="", model="", route=None),
+                    EndpointConfig(task="", model="", route=None),
+                ],
+            )
+        )
+
+
+def test_add_multiple_endpoints_with_same_route():
+    with pytest.raises(ValueError, match="asdf specified 2 times"):
+        _build_app(
+            ServerConfig(
+                num_cores=1,
+                num_workers=1,
+                endpoints=[
+                    EndpointConfig(task="", model="", route="asdf"),
+                    EndpointConfig(task="", model="", route="asdf"),
+                ],
+            )
+        )
+
+
+def test_invalid_integration():
+    with pytest.raises(
+        ValueError,
+        match=escape(
+            "Unknown integration field asdf. Expected one of ['local', 'sagemaker']"
+        ),
+    ):
+        _build_app(
+            ServerConfig(num_cores=1, num_workers=1, integration="asdf", endpoints=[])
+        )
 
 
 class TestMockEndpoints:
@@ -89,7 +132,7 @@ class TestMockEndpoints:
     def test_add_model_endpoint(self, app: FastAPI, client: TestClient):
         _add_pipeline_endpoint(
             app,
-            endpoint_config=Mock(endpoint="/predict/parse_int"),
+            endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=StrSchema, output_schema=int, side_effect=parse),
         )
         assert app.routes[-1].path == "/predict/parse_int"
@@ -104,26 +147,39 @@ class TestMockEndpoints:
     def test_add_model_endpoint_with_from_files(self, app):
         _add_pipeline_endpoint(
             app,
-            endpoint_config=Mock(endpoint="/predict/parse_int"),
+            endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
         )
+        assert app.routes[-2].path == "/predict/parse_int"
         assert app.routes[-1].path == "/predict/parse_int/files"
         assert app.routes[-1].response_model is int
         assert app.routes[-1].methods == {"POST"}
 
-    def test_add_invocations_endpoint(self, app):
+    def test_sagemaker_only_adds_one_endpoint(self, app):
+        num_routes = len(app.routes)
         _add_pipeline_endpoint(
             app,
-            endpoint_config=Mock(endpoint="/predict/parse_int"),
+            endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
-            add_invocations_endpoint=True,
+            integration="sagemaker",
         )
+        assert len(app.routes) == num_routes + 1
+        assert app.routes[-1].path == "/invocations"
+
+        num_routes = len(app.routes)
+        _add_pipeline_endpoint(
+            app,
+            endpoint_config=Mock(route="/predict/parse_int"),
+            pipeline=Mock(input_schema=StrSchema, output_schema=int),
+            integration="sagemaker",
+        )
+        assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
 
     def test_add_endpoint_with_no_route_specified(self, app):
         _add_pipeline_endpoint(
             app,
-            endpoint_config=Mock(endpoint=None),
+            endpoint_config=Mock(route=None),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
         )
         assert app.routes[-1].path == "/predict"
@@ -141,13 +197,13 @@ class TestActualModelEndpoints:
             num_workers=1,
             endpoints=[
                 EndpointConfig(
-                    endpoint="/predict/dynamic-batch",
+                    route="/predict/dynamic-batch",
                     task="text-classification",
                     model=stub,
                     batch_size=1,
                 ),
                 EndpointConfig(
-                    endpoint="/predict/static-batch",
+                    route="/predict/static-batch",
                     task="text-classification",
                     model=stub,
                     batch_size=2,

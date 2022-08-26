@@ -28,6 +28,13 @@ __all__ = [
     "ImageSizesConfig",
 ]
 
+# these are stored as global variables instead of enum because in order
+# to save/load enums using yaml, you have to enable arbitrary code
+# execution.
+INTEGRATION_LOCAL = "local"
+INTEGRATION_SAGEMAKER = "sagemaker"
+INTEGRATIONS = [INTEGRATION_LOCAL, INTEGRATION_SAGEMAKER]
+
 
 class SequenceLengthsConfig(BaseModel):
     sequence_lengths: List[int] = Field(
@@ -50,10 +57,11 @@ class EndpointConfig(BaseModel):
         ),
     )
 
-    endpoint: Optional[str] = Field(
+    route: Optional[str] = Field(
         default=None,
         description="Optional url to use for this endpoint. E.g. '/predict'. "
-        "If not specified '/endpoint-<index>/predict' will be used",
+        "If there are multiple endpoints, all routes must be specified. "
+        "If there is a single endpoint, '/predict' is default if not specified.",
     )
 
     task: str = Field(description="Task this endpoint performs")
@@ -99,6 +107,11 @@ class ServerConfig(BaseModel):
 
     num_workers: int = Field(
         description="The number of workers to split the available cores between."
+    )
+
+    integration: str = Field(
+        default=INTEGRATION_LOCAL,
+        description="The kind of integration to use. local|sagemaker",
     )
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
