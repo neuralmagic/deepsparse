@@ -254,7 +254,7 @@ class Pipeline(ABC):
         pipeline_constructor = Pipeline._get_task_constructor(task)
 
         if (
-            model_path is None
+            (model_path is None or model_path == "default")
             and hasattr(pipeline_constructor, "default_model_path")
             and pipeline_constructor.default_model_path
         ):
@@ -297,17 +297,6 @@ class Pipeline(ABC):
             context=context,
             **kwargs,
         )
-
-    @classmethod
-    def default_model_for(cls, task: str) -> Optional[str]:
-        """
-        :param task: the name of the task.
-        :return: the default model path associated with `task` if there is one,
-            otherwise `None`.
-        """
-        task_cls = Pipeline._get_task_constructor(task)
-        if hasattr(task_cls, "default_model_path") and task_cls.default_model_path:
-            return task_cls.default_model_path
 
     @classmethod
     def register(

@@ -26,7 +26,7 @@ from typing import Optional
 import click
 import yaml
 
-from deepsparse.pipeline import Pipeline, SupportedTasks
+from deepsparse.pipeline import SupportedTasks
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import start_server
 
@@ -65,7 +65,7 @@ def main():
     pass
 
 
-@main.command()
+@main.command(context_settings=dict(show_default=True))
 @click.argument("config-path", type=str)
 @click.option(
     "--host",
@@ -74,14 +74,14 @@ def main():
     help=(
         "Bind socket to this host. Use --host 0.0.0.0 to make the application "
         "available on your local network. "
-        "IPv6 addresses are supported, for example: --host '::'. Defaults to 0.0.0.0"
+        "IPv6 addresses are supported, for example: --host '::'."
     ),
 )
 @click.option(
     "--port",
     type=int,
     default=5543,
-    help="Bind to a socket with this port. Defaults to 5543.",
+    help="Bind to a socket with this port.",
 )
 @click.option(
     "--log-level",
@@ -89,7 +89,7 @@ def main():
         ["debug", "info", "warn", "critical", "fatal"], case_sensitive=False
     ),
     default="info",
-    help="Sets the logging level. Defaults to info.",
+    help="Sets the logging level.",
 )
 def config(config_path: str, host: str, port: int, log_level: str):
     "Run the server using configuration from a .yaml file."
@@ -97,7 +97,9 @@ def config(config_path: str, host: str, port: int, log_level: str):
 
 
 @main.command(
-    context_settings=dict(token_normalize_func=lambda x: x.replace("-", "_")),
+    context_settings=dict(
+        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
+    ),
 )
 @click.argument(
     "task",
@@ -106,7 +108,7 @@ def config(config_path: str, host: str, port: int, log_level: str):
 @click.option(
     "--model_path",
     type=str,
-    default=None,
+    default="default",
     help=(
         "The path to a model.onnx file, a model folder containing the model.onnx "
         "and supporting files, or a SparseZoo model stub. "
@@ -138,14 +140,14 @@ def config(config_path: str, host: str, port: int, log_level: str):
     help=(
         "Bind socket to this host. Use --host 0.0.0.0 to make the application "
         "available on your local network. "
-        "IPv6 addresses are supported, for example: --host '::'. Defaults to 0.0.0.0"
+        "IPv6 addresses are supported, for example: --host '::'."
     ),
 )
 @click.option(
     "--port",
     type=int,
     default=5543,
-    help="Bind to a socket with this port. Defaults to 5543.",
+    help="Bind to a socket with this port.",
 )
 @click.option(
     "--log-level",
@@ -153,11 +155,11 @@ def config(config_path: str, host: str, port: int, log_level: str):
         ["debug", "info", "warn", "critical", "fatal"], case_sensitive=False
     ),
     default="info",
-    help="Sets the logging level. Defaults to info.",
+    help="Sets the logging level.",
 )
 def task(
     task: str,
-    model_path: Optional[str],
+    model_path: str,
     batch_size: int,
     num_cores: int,
     num_workers: int,
@@ -177,7 +179,7 @@ def task(
                 task=task,
                 name=f"{task} inference model",
                 endpoint="/predict",
-                model=model_path or Pipeline.default_model_for(task),
+                model=model_path,
                 batch_size=batch_size,
             )
         ],
