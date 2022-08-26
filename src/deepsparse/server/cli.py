@@ -21,7 +21,6 @@ There are two sub-commands for the server:
 
 import os
 from tempfile import TemporaryDirectory
-from typing import Optional
 
 import click
 import yaml

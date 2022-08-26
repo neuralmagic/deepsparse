@@ -70,7 +70,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     context = Context(
         num_cores=server_config.num_cores,
         num_streams=server_config.num_workers,
-        scheduler=Scheduler.multi_stream,
+        scheduler=Scheduler.elastic,
     )
 
     _LOGGER.info(f"Built context: {repr(context)}")

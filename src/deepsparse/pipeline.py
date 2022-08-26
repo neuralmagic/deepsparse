@@ -682,8 +682,8 @@ class PipelineConfig(BaseModel):
             "specifies all available cores. Default is None"
         ),
     )
-    scheduler: Scheduler = Field(
-        default=Scheduler.single_stream,
+    scheduler: str = Field(
+        default="async",
         description=(
             "(deepsparse only) kind of scheduler to execute with."
             " Defaults to single_stream"
