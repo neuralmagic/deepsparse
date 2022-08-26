@@ -85,6 +85,7 @@ class EndpointConfig(BaseModel):
             engine_type=DEEPSPARSE_ENGINE,
             batch_size=self.batch_size,
             num_cores=None,  # this will be set from Context
+            alias=self.name,
             input_shapes=input_shapes,
             kwargs=kwargs,
         )
