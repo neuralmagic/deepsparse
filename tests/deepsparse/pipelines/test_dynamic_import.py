@@ -12,23 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import pytest
-from deepsparse.pipeline import (
-    _REGISTERED_PIPELINES,
-    Pipeline,
-    _dynamic_import_task,
-    _module_to_dir_and_name,
-)
+from deepsparse.pipeline import _REGISTERED_PIPELINES, Pipeline
+from deepsparse.tasks import _split_dir_and_name, dynamic_import_task
 from deepsparse.transformers.pipelines.question_answering import (
     QuestionAnsweringPipeline,
 )
 
 
-def test_module_dirs_and_names():
-    assert _module_to_dir_and_name("a") == ("", "a")
-    assert _module_to_dir_and_name("a.b") == ("a", "b")
-    assert _module_to_dir_and_name("a.b.c") == ("a/b", "c")
-    assert _module_to_dir_and_name("a.b.c.d") == ("a/b/c", "d")
+def test_split_dir_and_name_module():
+    assert _split_dir_and_name("a") == ("", "a")
+    assert _split_dir_and_name(".a") == ("/", "a")
+    assert _split_dir_and_name(".a.b") == ("/a", "b")
+    assert _split_dir_and_name("a.b") == ("a", "b")
+    assert _split_dir_and_name("a.b.c") == ("a/b", "c")
+    assert _split_dir_and_name("a.b.c.d") == ("a/b/c", "d")
+
+
+def test_split_dir_and_name_path():
+    assert _split_dir_and_name("a.py") == ("", "a")
+    assert _split_dir_and_name("/a.py") == ("/", "a")
+    assert _split_dir_and_name("a/b.py") == ("a", "b")
+    assert _split_dir_and_name("/a/b.py") == ("/a", "b")
+    assert _split_dir_and_name("a/b/c.py") == ("a/b", "c")
+    assert _split_dir_and_name("a/b/c/d.py") == ("a/b/c", "d")
 
 
 def test_dynamic_import_raises_file_not_found():
@@ -36,13 +45,13 @@ def test_dynamic_import_raises_file_not_found():
         FileNotFoundError,
         match="Unable to find file for a.b.c. Looked for c.py under a/b",
     ):
-        _dynamic_import_task("a.b.c")
+        dynamic_import_task("a.b.c")
 
     with pytest.raises(
         FileNotFoundError,
         match="Unable to find file for c. Looked for c.py under .",
     ):
-        _dynamic_import_task("c")
+        dynamic_import_task("c")
 
 
 def test_dynamic_import_no_task():
@@ -50,29 +59,27 @@ def test_dynamic_import_no_task():
         RuntimeError,
         match="module must set the `TASK` attribute.",
     ):
-        _dynamic_import_task(
-            "tests.deepsparse.pipelines.dynamic_import_modules.no_task"
-        )
+        dynamic_import_task("tests.deepsparse.pipelines.dynamic_import_modules.no_task")
 
 
-def test_dynamic_import_no_register():
-    with pytest.raises(
-        RuntimeError,
-        match="the file must register a pipeline",
-    ):
-        _dynamic_import_task(
-            "tests.deepsparse.pipelines.dynamic_import_modules.no_register"
-        )
-
-
-def test_good_dynamic_import():
+def test_good_dynamic_import_module_version():
     assert "unit_test_task" not in _REGISTERED_PIPELINES
-    _dynamic_import_task("tests.deepsparse.pipelines.dynamic_import_modules.ok")
+    dynamic_import_task(
+        "tests.deepsparse.pipelines.dynamic_import_modules.valid_dynamic_import"
+    )
     assert "unit_test_task" in _REGISTERED_PIPELINES
 
 
+def test_dynamic_import_no_register():
+    with pytest.raises(ValueError, match="Unknown Pipeline task ASDF"):
+        Pipeline._get_task_constructor(
+            "import:tests.deepsparse.pipelines.dynamic_import_modules.no_register"
+        )
+
+
 def test_pipeline_create_dynamic_task():
-    constructor = Pipeline._get_task_constructor(
-        "import:tests.deepsparse.pipelines.dynamic_import_modules.ok"
+    path = os.path.abspath(
+        "tests/deepsparse/pipelines/dynamic_import_modules/valid_dynamic_import.py"
     )
+    constructor = Pipeline._get_task_constructor("import:" + path)
     assert constructor == QuestionAnsweringPipeline

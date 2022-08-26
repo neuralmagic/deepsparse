@@ -17,9 +17,7 @@ Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
 import concurrent.futures
-import importlib
 import os
-import sys
 from abc import ABC, abstractmethod
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
@@ -32,7 +30,7 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.pipelines import Joinable, Splittable
-from deepsparse.tasks import SupportedTasks
+from deepsparse.tasks import SupportedTasks, dynamic_import_task
 
 
 __all__ = [
@@ -212,7 +210,7 @@ class Pipeline(ABC):
         """
         if task.startswith("import:"):
             # dynamically import the task from a file
-            task = _dynamic_import_task(module=task.replace("import:", ""))
+            task = dynamic_import_task(module_or_path=task.replace("import:", ""))
         elif task.startswith("custom"):
             # support any task that has "custom" at the beginning via the "custom" task
             task = "custom"
@@ -1360,76 +1358,3 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         with 2 streams to make use of parallel inference of labels
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
-
-
-def _dynamic_import_task(module: str) -> str:
-    """
-    Dynamically imports `module` with importlib, and returns the `TASK`
-    attribute on the module (something like `importlib.import_module(module).TASK`).
-
-    Example contents of `module`:
-    ```python
-    from deepsparse.pipeline import Pipeline
-    from deepsparse.transformers.pipelines.question_answering import (
-        QuestionAnsweringPipeline,
-    )
-
-    TASK = "my_qa_task"
-    Pipeline.register(TASK)(QuestionAnsweringPipeline)
-    ```
-
-    NOTE: this modifies `sys.path`.
-
-    :raises FileNotFoundError: if path does not exist
-    :raises RuntimeError: if the imported module does not contain `TASK`
-    :raises RuntimeError: if the module doesn't register the task
-    :return: The task from the imported module.
-    """
-    parent_dir, module_name = _module_to_dir_and_name(module)
-    if not os.path.exists(os.path.join(parent_dir, module_name + ".py")):
-        raise FileNotFoundError(
-            f"Unable to find file for {module}. "
-            f"Looked for {module_name}.py under {parent_dir if parent_dir else '.'}"
-        )
-
-    # add parent_dir to sys.path so we can import the file as a module
-    sys.path.append(os.curdir)
-    if parent_dir:
-        print(f"Adding {parent_dir} to sys.path")
-        sys.path.append(parent_dir)
-
-    # do the import
-    print(f"Importing '{module_name}'")
-    module = importlib.import_module(module_name)
-
-    if not hasattr(module, "TASK"):
-        raise RuntimeError(
-            "When using --task import:<module>, "
-            "module must set the `TASK` attribute."
-        )
-
-    task = getattr(module, "TASK")
-    print(f"Using task={repr(task)}")
-
-    if task not in _REGISTERED_PIPELINES:
-        raise RuntimeError(
-            "When using --task import:<module>, "
-            "the file must register a pipeline "
-            "using @Pipeline.register(TASK)."
-        )
-
-    return task
-
-
-def _module_to_dir_and_name(module: str) -> Tuple[str, str]:
-    """
-    Examples:
-    - `a` -> `("", "a")`
-    - `a.b` -> `("a", "b")`
-    - `a.b.c` -> `("a/b", "c")`
-
-    :return: module split into directory & name
-    """
-    *dirs, module_name = module.split(".")
-    parent_dir = os.sep.join(dirs)
-    return parent_dir, module_name
