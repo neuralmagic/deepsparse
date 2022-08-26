@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import Mock
 from re import escape
+from unittest.mock import Mock
+
 from pydantic import BaseModel
 
 import pytest
