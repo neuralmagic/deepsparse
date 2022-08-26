@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-from asyncio import get_running_loop
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -97,8 +96,10 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
         num_streams=server_config.num_workers,
         scheduler=Scheduler.elastic,
     )
+    executor = ThreadPoolExecutor(max_workers=context.num_streams)
 
     _LOGGER.info(f"Built context: {repr(context)}")
+    _LOGGER.info(f"Built ThreadPoolExecutor with {executor._max_workers} workers")
 
     app = FastAPI()
 
@@ -117,8 +118,6 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     def _health():
         return True
 
-    app._deepsparse_executor = ThreadPoolExecutor(max_workers=context.num_streams)
-
     # fill in names if there are none
     for idx, endpoint_config in enumerate(server_config.endpoints):
         if endpoint_config.name is None:
@@ -127,7 +126,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     # creat pipelines & endpoints
     for endpoint_config in server_config.endpoints:
         pipeline_config = endpoint_config.to_pipeline_config()
-        pipeline_config.kwargs["executor"] = app._deepsparse_executor
+        pipeline_config.kwargs["executor"] = executor
 
         _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
         pipeline = Pipeline.from_config(pipeline_config, context)
@@ -150,22 +149,22 @@ def _add_pipeline_endpoint(
 ):
     input_schema = pipeline.input_schema
     output_schema = pipeline.output_schema
-    executor: ThreadPoolExecutor = app._deepsparse_executor
 
-    async def _predict_from_schema(request: pipeline.input_schema):
-        return await get_running_loop().run_in_executor(executor, pipeline, request)
+    def _predict_from_schema(request: pipeline.input_schema):
+        return pipeline(request)
 
-    async def _predict_from_files(request: List[UploadFile]):
+    def _predict_from_files(request: List[UploadFile]):
         request = pipeline.input_schema.from_files(
             (file.file for file in request), from_server=True
         )
-        return await get_running_loop().run_in_executor(executor, pipeline, request)
+        return pipeline(request)
 
     routes_and_fns = []
     if integration == INTEGRATION_LOCAL:
         route = endpoint_config.route or "/predict"
         if not route.startswith("/"):
             route = "/" + route
+
         routes_and_fns.append((route, _predict_from_schema))
         if hasattr(input_schema, "from_files"):
             routes_and_fns.append((route + "/files", _predict_from_files))
