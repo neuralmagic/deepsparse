@@ -45,7 +45,6 @@ class ManagerLogger(BaseLogger):
     logger_manager = ManagerLogger(["logger_name_1", "logger_name_2", ...])
 
     # log the data for the particular inference pipeline
-
     timings, data = ...
     logger.log_timings(pipeline_name, timings)
     logger.log_data(pipeline_name, data)
@@ -65,6 +64,11 @@ class ManagerLogger(BaseLogger):
 
     @property
     def identifier(self) -> List[str]:
+        """
+        :return: a list of identifiers for every logger
+            that is being contained in scope of the
+            manager logger
+        """
         return [identifier for identifier in self.loggers]
 
     @property
