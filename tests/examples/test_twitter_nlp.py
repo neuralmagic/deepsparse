@@ -16,29 +16,16 @@ import pytest
 from tests.helpers import run_command
 
 
-@pytest.mark.parametrize(
-    "model, batch_size",
-    (
-        [
-            pytest.param(
-                m,
-                b,
-            )
-            for m in [
-                "zoo:nlp/token_classification/distilbert-none/pytorch/huggingface/conll2003/pruned80_quant-none-vnni"
-            ]
-            for b in [1, 16]
-        ]
-    ),
-)
+@pytest.mark.smoke
 def test_analyze_tokens(model: str, batch_size: int):
     cmd = [
         "python3",
         "examples/twitter-nlp/analyze_tokens.py",
         "--model_path",
-        model,
+        "zoo:nlp/token_classification/distilbert-none/pytorch"
+        "/huggingface/conll2003/pruned80_quant-none-vnni",
         "--batch_size",
-        str(batch_size),
+        "8",
         "--tweets_file",
         "tests/test_data/pineapple.txt",
     ]
@@ -52,29 +39,16 @@ def test_analyze_tokens(model: str, batch_size: int):
     assert "Completed analyzing" in res.stdout.lower()
 
 
-@pytest.mark.parametrize(
-    "model, batch_size",
-    (
-        [
-            pytest.param(
-                m,
-                b,
-            )
-            for m in [
-                "zoo:nlp/sentiment_analysis/distilbert-none/pytorch/huggingface/sst2/pruned80_quant-none-vnni"
-            ]
-            for b in [1, 16]
-        ]
-    ),
-)
+@pytest.mark.smoke
 def test_analyze_sentiment(model: str, batch_size: int):
     cmd = [
         "python3",
         "examples/twitter-nlp/analyze_sentiment.py",
         "--model_path",
-        model,
+        "zoo:nlp/sentiment_analysis/distilbert-none/pytorch"
+        "/huggingface/sst2/pruned80_quant-none-vnni",
         "--batch_size",
-        str(batch_size),
+        "8",
         "--tweets_file",
         "tests/test_data/pineapple.txt",
     ]
