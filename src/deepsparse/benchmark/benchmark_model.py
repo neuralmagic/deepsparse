@@ -95,15 +95,6 @@ import argparse
 import json
 import logging
 import os
-
-import yaml
-
-
-try:
-    from yaml import CLoader as Loader
-except ImportError:
-    from yaml import Loader
-
 from typing import Dict
 
 from deepsparse import Scheduler, compile_model
@@ -119,7 +110,7 @@ from deepsparse.utils import (
 )
 
 
-__all__ = ["benchmark_model", "parse_export_dict_engine_key"]
+__all__ = ["benchmark_model"]
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -387,7 +378,7 @@ def benchmark_model(
     )
 
     export_dict = {
-        "engine": str(model),
+        "engine": engine,
         "orig_model_path": orig_model_path,
         "model_path": model_path,
         "batch_size": batch_size,
@@ -399,8 +390,7 @@ def benchmark_model(
         "num_streams": num_streams,
         "benchmark_result": benchmark_result,
     }
-
-    parsed_export_dict = parse_export_dict_engine_key(export_dict)
+    parsed_export_dict = {**model._properties_dict(), **export_dict}
 
     # Export results
     if export_path:
@@ -409,15 +399,6 @@ def benchmark_model(
             json.dump(parsed_export_dict, out, indent=2)
 
     return parsed_export_dict
-
-
-def parse_export_dict_engine_key(payload: Dict) -> Dict:
-    """Extract metadata from str(Model)"""
-
-    formatted_metadata = "engine: " + payload.get("engine", "").replace(
-        "\t", ""
-    ).replace(":", "", 1)
-    return {**payload, **yaml.load(formatted_metadata, Loader=Loader)}
 
 
 def main():

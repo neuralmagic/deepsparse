@@ -15,7 +15,6 @@
 from typing import Dict, List
 
 import pytest
-from src.deepsparse.benchmark.benchmark_model import parse_export_dict_engine_key
 from tests.helpers import predownload_stub, run_command
 
 
@@ -131,43 +130,3 @@ def test_benchmark_local(model_stub: str):
     assert res.returncode == 0
     assert "error" not in res.stdout.lower()
     assert "fail" not in res.stdout.lower()
-
-
-@pytest.mark.parametrize(
-    ("engine_key", "expected"),
-    [
-        (
-            "deepsparse.engine.Engine:\n\tversion: 1.1.0.20220805\n\tcommit: 8f2ea328"
-            "\n\tonnx_file_path: /home/george/.cache/sparsezoo/61686faf-c724-42f9"
-            "-b9ae-749266e3f669/model.onnx\n\tbatch_size: 1\n\tnum_cores: 18\n\t"
-            "num_streams: 9\n\tscheduler: Scheduler.multi_stream\n\t"
-            "cpu_avx_type: avx512"
-            "\n\tcpu_vnni: False",
-            {
-                "engine": "deepsparse.engine.Engine",
-                "version": "1.1.0.20220805",
-                "commit": "8f2ea328",
-                "onnx_file_path": (
-                    "/home/george/.cache/sparsezoo/"
-                    "61686faf-c724-42f9-b9ae-749266e3f669/model.onnx"
-                ),
-                "batch_size": 1,
-                "num_cores": 18,
-                "num_streams": 9,
-                "scheduler": "Scheduler.multi_stream",
-                "cpu_avx_type": "avx512",
-                "cpu_vnni": False,
-                "persistent_key": "this entry should be persistent",
-            },
-        ),
-    ],
-)
-def test_parse_export_dict_engine_key(engine_key: str, expected: Dict):
-    input_payload = {
-        "engine": engine_key,
-        "persistent_key": "this entry should be persistent",
-    }
-    response = parse_export_dict_engine_key(input_payload)
-    assert (
-        expected == response
-    ), f"Error in parsing str(model). Expected {expected}\ngot {response}"
