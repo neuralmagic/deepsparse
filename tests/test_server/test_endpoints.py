@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from re import escape
+from typing import List
 from unittest.mock import Mock
 
 from pydantic import BaseModel
@@ -20,7 +21,7 @@ from pydantic import BaseModel
 import pytest
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
 from tests.utils import mock_engine
 
@@ -138,6 +139,7 @@ class TestMockEndpoints:
         )
         assert app.routes[-1].path == "/predict/parse_int"
         assert app.routes[-1].response_model is int
+        assert app.routes[-1].endpoint.__annotations__ == {"request": StrSchema}
         assert app.routes[-1].methods == {"POST"}
 
         for v in ["1234", "5678"]:
@@ -152,7 +154,9 @@ class TestMockEndpoints:
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
         )
         assert app.routes[-2].path == "/predict/parse_int"
+        assert app.routes[-2].endpoint.__annotations__ == {"request": StrSchema}
         assert app.routes[-1].path == "/predict/parse_int/files"
+        assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
         assert app.routes[-1].response_model is int
         assert app.routes[-1].methods == {"POST"}
 
@@ -166,6 +170,7 @@ class TestMockEndpoints:
         )
         assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
+        assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
 
         num_routes = len(app.routes)
         _add_pipeline_endpoint(
@@ -176,6 +181,7 @@ class TestMockEndpoints:
         )
         assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
+        assert app.routes[-1].endpoint.__annotations__ == {"request": StrSchema}
 
     def test_add_endpoint_with_no_route_specified(self, app):
         _add_pipeline_endpoint(
