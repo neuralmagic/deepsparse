@@ -12,14 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import pytest
 from tests.helpers import run_command
 
 
+@pytest.fixture(scope="session", autouse=True)
+def install_reqs():
+    run_command(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            "examples/twitter-nlp/requirements.txt",
+        ]
+    )
+
+
 @pytest.mark.smoke
-def test_analyze_tokens(model: str, batch_size: int):
+def test_analyze_tokens():
     cmd = [
-        "python3",
+        sys.executable,
         "examples/twitter-nlp/analyze_tokens.py",
         "--model_path",
         "zoo:nlp/token_classification/distilbert-none/pytorch"
@@ -36,13 +52,13 @@ def test_analyze_tokens(model: str, batch_size: int):
 
     # validate command executed successfully
     assert res.returncode == 0
-    assert "Completed analyzing" in res.stdout.lower()
+    assert "Completed analyzing" in res.stdout
 
 
 @pytest.mark.smoke
-def test_analyze_sentiment(model: str, batch_size: int):
+def test_analyze_sentiment():
     cmd = [
-        "python3",
+        sys.executable,
         "examples/twitter-nlp/analyze_sentiment.py",
         "--model_path",
         "zoo:nlp/sentiment_analysis/distilbert-none/pytorch"
@@ -59,4 +75,4 @@ def test_analyze_sentiment(model: str, batch_size: int):
 
     # validate command executed successfully
     assert res.returncode == 0
-    assert "Completed analyzing" in res.stdout.lower()
+    assert "Completed analyzing" in res.stdout
