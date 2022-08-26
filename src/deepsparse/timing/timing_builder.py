@@ -15,10 +15,6 @@
 import time
 from typing import Dict
 
-from pydantic import BaseModel
-
-from deepsparse.timing.timing_schema import InferenceTimingSchema
-
 
 __all__ = ["TimingBuilder"]
 
@@ -56,9 +52,8 @@ class TimingBuilder:
     summary = builder.build()
     ```
     The object may time the duration of an arbitrary number
-    of events (phases), but the names of phases need to
-    be consistent with the `schema` argument passed to
-    the build() method
+    of events (phases). Choice of naming for phases is left
+    for the user to decide.
     """
 
     def __init__(self):
@@ -96,17 +91,13 @@ class TimingBuilder:
             )
         self._stop_times[phase_name] = time.perf_counter()
 
-    def build(self, schema: BaseModel = InferenceTimingSchema) -> BaseModel:
+    def build(self) -> Dict[str, float]:
         """
         Aggregate the collected measurements and return them as a
-        Pydantic schema object
-        :param schema: The desired schema which fields correspond to the
-            measured phases
-        :return: Time measurements as a Pydantic schema
+        dictionary
+        :return: Mapping from the phase name to the phase duration in seconds.
         """
-        time_deltas = self._compute_time_deltas()
-        time_schema = schema(**time_deltas)
-        return time_schema
+        return self._compute_time_deltas()
 
     def _compute_time_deltas(self) -> Dict[str, float]:
         deltas = {}

@@ -30,11 +30,12 @@ class InferenceTimingSchema(BaseModel):
         "the pre-processing step prior to inference"
     )
     engine_forward: float = Field(
-        description="The duration [in seconds] of the " "pure neural network inference"
+        description="The duration [in seconds] of the "
+        "neural network inference in the engine"
     )
     post_process: float = Field(
         description="The duration [in seconds] of the "
-        "post-processing step following the inference"
+        "post-processing step following inference"
     )
     total_inference: float = Field(
         description="The total duration [in seconds] for "
