@@ -18,33 +18,31 @@ A manager that oversees all the pipeline loggers
 
 from typing import Any, Dict, List, Union
 
-from deepsparse.pipeline_loggers.pipeline_logger import PipelineLogger
-from deepsparse.pipeline_loggers.prometheus_pipeline_logger import PrometheusLogger
+from deepsparse.loggers import BaseLogger
+from deepsparse.loggers.prometheus_logger import PrometheusLogger
 from deepsparse.timing.timing_schema import InferenceTimingSchema
 
 
-__all__ = ["MultiLogger"]
+__all__ = ["ManagerLogger"]
 
-LOGGERS = [PrometheusLogger]
-SUPPORTED_LOGGERS = {logger.identifier: logger for logger in LOGGERS}
+SUPPORTED_LOGGERS = [PrometheusLogger]
 
 
-class MultiLogger(PipelineLogger):
+class ManagerLogger(BaseLogger):
     """
     Object that contains multiple loggers for
     the given inference pipeline.
 
-    The envisioned lifecycle of a logger
-    manager:
+    The envisioned lifecycle of a manager logger:
 
     ```
     pipeline = ... # define a pipeline
     pipeline_name = pipeline.name # fetch the pipeline name
 
-    # create a MultiLogger
-    logger_manager = MultiLogger("logger_name")
+    # create a ManagerLogger
+    logger_manager = ManagerLogger("logger_name")
     or
-    logger_manager = MultiLogger(["logger_name_1", "logger_name_2", ...])
+    logger_manager = ManagerLogger(["logger_name_1", "logger_name_2", ...])
 
     # log the data for the particular inference pipeline
 
@@ -53,25 +51,27 @@ class MultiLogger(PipelineLogger):
     logger.log_data(pipeline_name, data)
 
     ```
-
-    :param logger_identifiers: The identifier(s) of the logger types that
-        will be created within the scope of the manager. This can be either a
-        single identifier, or a list of identifiers (for multiple loggers).
+    :param loggers: Logger class instances that will be contained
+        within the scope of a manager. This can be either a single logger
+        or a  list of loggers (for multiple loggers).
     """
 
     def __init__(
         self,
-        logger_identifiers: Union[str, List[str]],
+        loggers: Union[BaseLogger, List[BaseLogger]],
     ):
         self._supported_loggers = SUPPORTED_LOGGERS
-        self._loggers = self._setup(logger_identifiers)
-        self._start()
+        self._loggers = self._validate(loggers)
 
     @property
-    def loggers(self) -> Dict[str, PipelineLogger]:
+    def identifier(self) -> List[str]:
+        return [identifier for identifier in self.loggers]
+
+    @property
+    def loggers(self) -> Dict[str, BaseLogger]:
         """
         :return: The mapping from the logger identifier
-        to the PipelineLogger instance
+        to the BaseLogger instance
         """
         return self._loggers
 
@@ -100,25 +100,23 @@ class MultiLogger(PipelineLogger):
         for name, logger in self.loggers.items():
             logger.log_data(pipeline_name, inputs, outputs)
 
-    def _setup(
-        self, logger_identifiers: Union[str, List[str]]
-    ) -> Dict[str, PipelineLogger]:
-        if isinstance(logger_identifiers, str):
-            logger_identifiers = [logger_identifiers]
+    def _validate(
+        self, loggers: Union[BaseLogger, List[BaseLogger]]
+    ) -> Dict[str, BaseLogger]:
+        if not isinstance(loggers, List):
+            loggers = [loggers]
         _loggers = {}
-        for identifier in logger_identifiers:
-            if identifier not in self._supported_loggers:
+        for logger in loggers:
+            is_logger_supported = any(
+                isinstance(logger, supported_logger)
+                for supported_logger in self._supported_loggers
+            )
+            if not is_logger_supported:
                 raise ValueError(
-                    "Attempting to create a pipeline logger with an "
-                    f"unknown identifier: {identifier}. Supported "
-                    f"identifiers are: {self._supported_loggers}"
+                    f"Attempting to create an unknown "
+                    f"pipeline logger: {logger.identifier} logger"
                 )
             else:
-                _loggers[identifier] = self._supported_loggers.get(identifier)
+                _loggers[logger.identifier] = logger
 
         return _loggers
-
-    def _start(self):
-        self._loggers = {
-            identifier: logger() for identifier, logger in self.loggers.items()
-        }

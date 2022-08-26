@@ -13,9 +13,10 @@
 # limitations under the License.
 import logging
 import os
+from collections import defaultdict
 from typing import Any, Optional
 
-from deepsparse.pipeline_logger import PipelineLogger, classproperty
+from deepsparse.loggers.base_logger import BaseLogger
 from prometheus_client import REGISTRY, Histogram, start_http_server, write_to_textfile
 
 
@@ -24,9 +25,9 @@ __all__ = ["PrometheusLogger"]
 _LOGGER = logging.getLogger(__name__)
 
 
-class PrometheusLogger(PipelineLogger):
+class PrometheusLogger(BaseLogger):
     """
-    PipelineLogger that uses the official Prometheus python client
+    Logger that uses the official Prometheus python client
     (https://github.com/prometheus/client_python) to monitor the
     inference pipeline
 
@@ -40,10 +41,6 @@ class PrometheusLogger(PipelineLogger):
     :param text_log_file_name: the name of the text log file.
         Default: `prometheus_logs.prom`.
     """
-
-    @classproperty
-    def identifier(self) -> str:
-        return "prometheus"
 
     def __init__(
         self,
@@ -60,12 +57,16 @@ class PrometheusLogger(PipelineLogger):
 
         # the data structure responsible for the instrumentation
         # of the metrics
-        self.metrics = {}
+        self.metrics = defaultdict(lambda: defaultdict(str))
         # internal counter tracking the number of calls per each
         # pipeline i.e. self._counter: Dict[str, int]
         self._counter = {}
 
         super().__init__()
+
+    @property
+    def identifier(self) -> str:
+        return "prometheus"
 
     @property
     def text_logs_path(self) -> str:
@@ -148,8 +149,6 @@ class PrometheusLogger(PipelineLogger):
         # set multiple Histograms to track latencies
         # per Prometheus docs:
         # Histograms track the size and number of events in buckets
-        self.metrics[pipeline_name] = {}
-
         for field_name, field_data in inference_timing.__fields__.items():
             field_description = field_data.field_info.description
             self.metrics[pipeline_name][field_name] = Histogram(

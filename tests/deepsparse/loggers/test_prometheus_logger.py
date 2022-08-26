@@ -18,7 +18,7 @@ import socket
 import requests
 
 import pytest
-from deepsparse.pipeline_loggers import PrometheusLogger
+from deepsparse.loggers.prometheus_logger import PrometheusLogger
 from deepsparse.timing.timing_schema import InferenceTimingSchema
 
 
@@ -26,10 +26,10 @@ class Pipeline:
     def __init__(self, name):
         self.name = name
         self.schema_args = {
-            "pre_process_delta": 0.1,
-            "engine_forward_delta": 0.2,
-            "post_process_delta": 0.3,
-            "total_inference_delta": 0.6,
+            "pre_process": 0.1,
+            "engine_forward": 0.2,
+            "post_process": 0.3,
+            "total_inference": 0.6,
         }
 
     def run_with_monitoring(self):

@@ -30,7 +30,6 @@ from .cpu import (
     cpu_avx512_compatible,
     cpu_vnni_compatible,
 )
-from .pipeline_logger import *
 from .engine import *
 from .timing import *
 from .pipeline import *

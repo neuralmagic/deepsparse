@@ -11,7 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pytest
+from deepsparse.loggers import BaseLogger, ManagerLogger, PrometheusLogger
 
-# flake8: noqa
-from .multi_logger import *
-from .prometheus_pipeline_logger import *
+
+@pytest.mark.parametrize("loggers", [PrometheusLogger(port=0)])
+def test_logger_manager(loggers):
+    logger_manager = ManagerLogger(loggers)
+    assert isinstance(logger_manager.loggers, dict)
+    assert len(logger_manager.loggers) == 1
+    assert [
+        isinstance(logger, BaseLogger) for logger in logger_manager.loggers.values()
+    ]
+    assert logger_manager.identifier == [loggers.identifier]

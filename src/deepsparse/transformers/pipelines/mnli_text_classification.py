@@ -83,7 +83,7 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
     the model, so the total number of forward passes is num_labels * num_sequences
     """
 
-    labels: Union[None, List[List[str]], List[str], str] = Field(
+    labels: Optional[Union[List[str], str]] = Field(
         description="The set of possible class labels to classify each "
         "sequence into. Can be a single label, a string of comma-separated "
         "labels, or a list of labels."

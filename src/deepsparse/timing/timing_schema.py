@@ -15,6 +15,9 @@
 from pydantic import BaseModel, Field
 
 
+__all__ = ["InferenceTimingSchema"]
+
+
 class InferenceTimingSchema(BaseModel):
     """
     Stores the information about time deltas
@@ -22,18 +25,19 @@ class InferenceTimingSchema(BaseModel):
     the inference pipeline
     """
 
-    pre_process_delta: float = Field(
+    pre_process: float = Field(
         description="The duration [in seconds] of "
         "the pre-processing step prior to inference"
     )
-    engine_forward_delta: float = Field(
-        description="The duration [in seconds] of the " "pure neural network inference"
-    )
-    post_process_delta: float = Field(
+    engine_forward: float = Field(
         description="The duration [in seconds] of the "
-        "post-processing step following the inference"
+        "neural network inference in the engine"
     )
-    total_inference_delta: float = Field(
+    post_process: float = Field(
+        description="The duration [in seconds] of the "
+        "post-processing step following inference"
+    )
+    total_inference: float = Field(
         description="The total duration [in seconds] for "
         "the inference pipeline, end to end"
     )

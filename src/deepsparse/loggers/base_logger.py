@@ -16,33 +16,25 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-__all__ = ["PipelineLogger", "classproperty"]
+__all__ = ["BaseLogger"]
 
 
-class classproperty(object):
-    def __init__(self, f):
-        self.f = classmethod(f)
-
-    def __get__(self, *a):
-        return self.f.__get__(*a)()
-
-
-class PipelineLogger(ABC):
+class BaseLogger(ABC):
     """
-    Generic PipelineLogger abstract class meant to define interfaces
+    Generic BaseLogger abstract class meant to define interfaces
     for the loggers that support various monitoring services APIs.
     """
 
-    @classproperty
+    def __init__(self):
+        pass
+
+    @property
     @abstractmethod
     def identifier(self) -> str:
         """
         :return: The name of the monitoring service that the
-        PipelineLogger uses to log the inference data
+        BaseLogger uses to log the inference data
         """
-
-    def __init__(self):
-        pass
 
     @abstractmethod
     def log_latency(
@@ -67,4 +59,3 @@ class PipelineLogger(ABC):
             pipeline
         :param outputs: the data returned by the inference pipeline
         """
-        raise NotImplementedError()
