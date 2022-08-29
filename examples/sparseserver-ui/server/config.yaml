@@ -12,21 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-models:
+num_cores: 1
+num_workers: 1
+endpoints:
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 1
-      alias: question_answering/12l_pruned80_quant
+      route: /predict/question_answering/12l_pruned80_quant
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_96
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_96
       batch_size: 1
-      alias: question_answering/quant6lagg96
+      route: /predict/question_answering/quant6lagg96
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_89
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_89
       batch_size: 1
-      alias: question_answering/quant3lagg89
+      route: /predict/question_answering/quant3lagg89
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
-      alias: question_answering/base
+      route: /predict/question_answering/base
   

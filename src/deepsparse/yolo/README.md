@@ -120,7 +120,7 @@ If a `--model_filepath` arg isn't provided, then `zoo:cv/detection/yolov5-s/pyto
 Spinning up:
 ```bash
 deepsparse.server \
-    --task yolo \
+    task yolo \
     --model_path "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94"
 ```
 

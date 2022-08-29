@@ -1,7 +1,10 @@
-models:
+num_cores: 1
+num_workers: 1
+integration: sagemaker
+endpoints:
     - task: question_answering
-      model_path: zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni
+      route: /invocations
+      model: zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni
       batch_size: 1
       kwargs:
         sequence_length: 384
-integration: sagemaker
