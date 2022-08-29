@@ -141,3 +141,16 @@ def test_pipeline_call_is_async(engine_mock):
         end = time.time_ns()
         dur_ms = (end - start) * 1e-6
         assert abs(dur_ms - 30) < 10
+
+
+def test_run_with_monitoring():
+    pipeline = Pipeline.create("token_classification", batch_size=1)
+    _, inference_timing, _ = pipeline.run_with_monitoring(
+        "all_your_base_are_belong_to_us"
+    )
+    assert pytest.approx(
+        inference_timing.pre_processing
+        + inference_timing.post_processing
+        + inference_timing.engine_forward
+        == inference_timing.total_inference
+    )

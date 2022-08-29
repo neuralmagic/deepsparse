@@ -22,7 +22,7 @@ from typing import Any, Iterable, List, Optional, TextIO, Union
 import numpy
 from PIL import Image
 from pydantic import BaseModel, Field
-from deepsparse.schemas import DeepSparseSchema
+
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
@@ -102,7 +102,7 @@ class YOLACTInputSchema(ComputerVisionSchema):
         arbitrary_types_allowed = True
 
 
-class YOLACTOutputSchema(DeepSparseSchema):
+class YOLACTOutputSchema(BaseModel):
     """
     Output Model for YOLACT
     """

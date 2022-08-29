@@ -29,8 +29,7 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.tasks import SupportedTasks
-from deepsparse.timing import TimingBuilder
-from deepsparse.timing.timing_schema import InferenceTimingSchema
+from deepsparse.timing import InferencePhases, InferenceTimingSchema, TimingBuilder
 
 
 __all__ = [
@@ -185,11 +184,10 @@ class Pipeline(ABC):
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
         timer = TimingBuilder()
-        timer.initialize()
 
         # parse inputs into input_schema
-        timer.start("total_inference")
-        timer.start("pre_process")
+        timer.start(InferencePhases.TOTAL_INFERENCE.value)
+        timer.start(InferencePhases.PRE_PROCESS.value)
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
@@ -202,10 +200,10 @@ class Pipeline(ABC):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
-        timer.stop("pre_process")
+        timer.stop(InferencePhases.PRE_PROCESS.value)
 
         # split inputs into batches of size `self._batch_size`
-        timer.start("engine_forward")
+        timer.start(InferencePhases.ENGINE_FORWARD.value)
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit to engine
@@ -218,9 +216,9 @@ class Pipeline(ABC):
         engine_outputs = self.join_engine_outputs(
             [future.result() for future in futures]
         )
-        timer.stop("engine_forward")
+        timer.stop(InferencePhases.ENGINE_FORWARD.value)
 
-        timer.start("post_process")
+        timer.start(InferencePhases.POST_PROCESS.value)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -229,38 +227,36 @@ class Pipeline(ABC):
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
-        timer.stop("post_process")
-        timer.stop("total_inference")
+        timer.stop(InferencePhases.POST_PROCESS.value)
+        timer.stop(InferencePhases.TOTAL_INFERENCE.value)
 
         if not monitoring:
             return pipeline_outputs
 
-        if pipeline_outputs.inference_timing is not None:
-            raise ValueError()
-        else:
-            pipeline_outputs.inference_timing = timer.build()
-
-        return pipeline_outputs
-
-    @staticmethod
         else:
             data = None
-            timing = timer.build()
-            return pipeline_outputs, timing, data
+            inference_timing = InferenceTimingSchema(**timer.build())
+            return pipeline_outputs, inference_timing, data
 
-    def run_with_monitoring(self, *args, **kwargs) -> Tuple[BaseModel, BaseModel, Any]:
+    def run_with_monitoring(
+        self, *args, **kwargs
+    ) -> Tuple[BaseModel, InferenceTimingSchema, Any]:
         """
-        Runs the inference with monitoring.
+        Run the inference forward pass and additionally
+        return extra monitoring information
 
-        This means setting the `monitoring` flag to True for __call__()
-        and as result receiving additional information from the forward pass:
-        - timing: BaseModel, that contains the information about time elapsed during the
-            inference steps: pre-processing, engine-forward, post-processing, as well as
-            the total elapsed time
-        - data: Any, inputs and outputs to/from the inference pipeline.
+        :return:
+            timing: BaseModel, that contains the information about time
+                elapsed during the inference steps: pre-processing,
+                engine-forward, post-processing, as well as
+                the total elapsed time
+            data: Any, inputs and outputs to/from the inference
+                pipeline.
         """
-        pipeline_outputs, timing, data = self.__call__(monitoring=True, *args, **kwargs)
-        return pipeline_outputs, timing, data
+        pipeline_outputs, inference_timing, data = self.__call__(
+            monitoring=True, *args, **kwargs
+        )
+        return pipeline_outputs, inference_timing, data
 
     def split_engine_inputs(
         items: List[numpy.ndarray], batch_size: int

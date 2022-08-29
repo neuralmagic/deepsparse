@@ -19,7 +19,7 @@ Input/Output Schemas for Object Detection with YOLO
 
 from collections import namedtuple
 from typing import List
-from deepsparse.schemas import DeepSparseSchema
+
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -50,7 +50,7 @@ class YOLOInput(ComputerVisionSchema):
     )
 
 
-class YOLOOutput(DeepSparseSchema):
+class YOLOOutput(BaseModel):
     """
     Output model for object detection
     """

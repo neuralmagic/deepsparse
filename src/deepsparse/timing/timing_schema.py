@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 
-__all__ = ["InferenceTimingSchema"]
+__all__ = ["InferenceTimingSchema", "InferencePhases"]
 
-PRE_PROCESS = "pre_process"
-ENGINE_FORWARD = "engine_forward"
-POST_PROCESS = "post_process"
-TOTAL_INFERENCE = "total_inference"
+
+class InferencePhases(Enum):
+    PRE_PROCESS = "pre_process"
+    ENGINE_FORWARD = "engine_forward"
+    POST_PROCESS = "post_process"
+    TOTAL_INFERENCE = "total_inference"
 
 
 class InferenceTimingSchema(BaseModel):

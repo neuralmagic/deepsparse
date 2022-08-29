@@ -45,7 +45,7 @@ from deepsparse import Pipeline
 from deepsparse.log import get_main_logger
 from deepsparse.transformers.helpers import truncate_transformer_onnx_model
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.schemas import DeepSparseSchema
+
 
 __all__ = [
     "EmbeddingExtractionInput",
@@ -66,7 +66,7 @@ class EmbeddingExtractionInput(BaseModel):
     )
 
 
-class EmbeddingExtractionOutput(DeepSparseSchema):
+class EmbeddingExtractionOutput(BaseModel):
     """
     Schema for embedding_extraction pipeline output. Values are in batch order
     """
