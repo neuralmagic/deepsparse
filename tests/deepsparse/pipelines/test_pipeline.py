@@ -148,9 +148,12 @@ def test_run_with_monitoring():
     _, inference_timing, _ = pipeline.run_with_monitoring(
         "all_your_base_are_belong_to_us"
     )
-    assert pytest.approx(
-        inference_timing.pre_processing
-        + inference_timing.post_processing
-        + inference_timing.engine_forward
+    assert (
+        pytest.approx(
+            inference_timing.pre_process
+            + inference_timing.post_process
+            + inference_timing.engine_forward,
+            10e-4,
+        )
         == inference_timing.total_inference
     )
