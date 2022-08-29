@@ -151,7 +151,7 @@ class ImageClassificationPipeline(Pipeline):
             if isinstance(inputs.images, str):
                 inputs.images = [inputs.images]
 
-            image_batch = list(self.executor.map(self._preproess_image, inputs.images))
+            image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
 
             # build batch
             image_batch = numpy.stack(image_batch, axis=0)
