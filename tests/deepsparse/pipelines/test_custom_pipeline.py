@@ -23,7 +23,7 @@ from deepsparse.image_classification import (
 )
 from deepsparse.pipeline import Pipeline
 from deepsparse.pipelines.custom_pipeline import CustomTaskPipeline
-from deepsparse.utils.onnx import model_to_path
+from deepsparse.utils.onnx import model_to_path_and_config
 from tests.utils import mock_engine
 
 
@@ -38,7 +38,8 @@ def model_path():
         "zoo:cv/classification/resnet_v1-50/pytorch/sparseml"
         "/imagenet/pruned85_quant-none-vnni"
     )
-    yield model_to_path(stub)
+    model_path, _ = model_to_path_and_config(stub)
+    yield model_path
 
 
 @pytest.mark.parametrize(

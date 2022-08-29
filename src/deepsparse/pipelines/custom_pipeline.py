@@ -18,7 +18,7 @@ import numpy
 from pydantic import BaseModel
 
 from deepsparse.pipeline import Pipeline
-from deepsparse.utils.onnx import model_to_path
+from deepsparse.utils.onnx import model_to_path_and_config
 
 
 @Pipeline.register(task="custom")
@@ -109,12 +109,13 @@ class CustomTaskPipeline(Pipeline):
         self._process_outputs_fn = process_outputs_fn
         super().__init__(model_path, *args, **kwargs)
 
-    def setup_onnx_file_path(self) -> str:
+    def setup_from_model(self) -> str:
         """
-        :return: output from `model_to_path` using the `model_path`
+        :return: output from `model_to_path_and_config` using the `model_path`
             from the constructor
         """
-        return model_to_path(self.model_path)
+        onnx_model_path, _ = model_to_path_and_config(self.model_path)
+        return onnx_model_path
 
     @property
     def input_schema(self) -> Type[BaseModel]:

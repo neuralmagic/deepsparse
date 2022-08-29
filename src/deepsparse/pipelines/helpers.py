@@ -12,26 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import Enum
+from types import MappingProxyType
 
 
-__all__ = ["DeploymentFiles"]
+__all__ = ["deployment_files"]
+"""
+Universal container for deployment files
+that can be potentially held by any
+model
+"""
 
-
-class _OnnxModelFile(Enum):
-    name = "model.onnx"
-
-
-class _ConfigFile(Enum):
-    name = "config.json"
-    label_to_class_mapping = "labels_to_class_mapping"
-
-
-class _TokenizerJsonFile(Enum):
-    name = "tokenizer.json"
-
-
-class DeploymentFiles(Enum):
-    OnnxModelFile = _OnnxModelFile
-    ConfigFile = _ConfigFile
-    TokenizerJsonFile = _TokenizerJsonFile
+deployment_files = MappingProxyType(
+    {
+        "ONNX_MODEL_FILE": {"name": "model.onnx"},
+        "CONFIG_FILE": {
+            "name": "config.json",
+            "label_to_class_mapping": "labels_to_class_mapping",
+        },
+        "TOKENIZER_FILE": {"name": "tokenizer.json"},
+        "TOKENIZER_CONFIG_FILE": {"name": "tokenizer_config.json"},
+    }
+)

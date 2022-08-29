@@ -38,7 +38,7 @@ def test_mock_engine_calls(engine_mock: MagicMock):
     engine_mock.assert_called_once_with(
         os.path.join(
             os.path.expanduser("~"),
-            ".cache/sparsezoo/84774c96-ab7d-4b3b-ab8c-2509d7bfcb09/model.onnx",
+            ".cache/sparsezoo/84774c96-ab7d-4b3b-ab8c-2509d7bfcb09/deployment/model.onnx",  # noqa E501
         ),
         3,
         1,

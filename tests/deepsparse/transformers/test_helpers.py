@@ -17,6 +17,7 @@ import os
 import onnx
 
 import pytest
+from deepsparse.pipelines.helpers import deployment_files
 from deepsparse.transformers.helpers import (
     get_onnx_path_and_configs,
     get_transformer_layer_init_names,
@@ -72,7 +73,9 @@ def get_model_onnx_path(model_stubs):
     model_onnx_paths = {}
     for model_name, model_stub in model_stubs.items():
         model = Model(model_stub)
-        onnx_path = model.onnx_model.path
+        onnx_path = model.deployment.get_file(
+            deployment_files["ONNX_MODEL_FILE"]["name"]
+        ).path
         model_onnx_paths[model_name] = onnx_path
 
     def _get_model_onnx_path(model_name):

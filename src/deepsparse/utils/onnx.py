@@ -21,7 +21,7 @@ from typing import List, Optional, Union
 import numpy
 import onnx
 
-from deepsparse.pipelines.helpers import DeploymentFiles
+from deepsparse.pipelines.helpers import deployment_files
 from deepsparse.utils.extractor import Extractor
 
 
@@ -93,54 +93,58 @@ def model_to_path_and_config(
     :param model: Either a local str path or SparseZoo stub to the model. Can
         also be a sparsezoo.Model, sparsezoo.Directory or sparsezoo.File object
     :returns: The absolute local str path to the model and optionally
-        absolute local str path to the config
+        absolute local str path to the config file
     """
+    config = None
+
     if not model:
         raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
 
-    if isinstance(model, str):
-        if model.startswith("zoo:"):
-            # load SparseZoo Model from stub
-            if sparsezoo_import_error is not None:
-                raise sparsezoo_import_error
-            model = Model(model)
-        else:
-            if not isinstance(model, str):
-                raise ValueError("unsupported type for model: {}".format(type(model)))
+    # model is a string that reprezents sparsezoo stub
+    if isinstance(model, str) and model.startswith("zoo:"):
+        # load SparseZoo Model from stub
+        if sparsezoo_import_error is not None:
+            raise sparsezoo_import_error
+        model = Model(model)
 
-            if not os.path.exists(model):
-                raise ValueError("model path must exist: given {}".format(model))
-
-            return model, None
-
+    # model is a Model class object
     if Model is not object and isinstance(model, Model):
         # default to the onnx file / config file in the default deployment directory
-        model = model.deployment.default.get_file(
-            DeploymentFiles.OnnxModelFile.value.name.value
+        onnx_model = model.deployment.default.get_file(
+            deployment_files["ONNX_MODEL_FILE"]["name"]
         )
         config = model.deployment.default.get_file(
-            DeploymentFiles.ConfigFile.value.name.value
+            deployment_files["CONFIG_FILE"]["name"]
         )
+    # model is a Directory class object (deployment)
     elif Directory is not object and isinstance(model, Directory):
         # default to the onnx file / config file in the directory
-        # (assumed to be deployment directory)
         directory = model
-        model = directory.default.get_file(
-            DeploymentFiles.OnnxModelFile.value.name.value
+        onnx_model = directory.default.get_file(
+            deployment_files["ONNX_MODEL_FILE"]["name"]
         )
-        config = directory.default.get_file(DeploymentFiles.ConfigFile.value.name.value)
+        config = directory.default.get_file(deployment_files["CONFIG_FILE"]["name"])
 
-    elif File is not object and isinstance(model, File):
-        config = None
+    # model is a File class object or a string path to the onnx model
+    else:
+        onnx_model = model
 
-    model_path = model.path
-    config_path = config if config is None else config.path
+    # model can still be a string path to the onnx model
+    # or a File class object (or inherit from File)
+    model_path = (
+        onnx_model.path
+        if File is not object and isinstance(model, File)
+        else onnx_model
+    )
 
     if not isinstance(model_path, str):
-        raise ValueError("unsupported type for model: {}".format(type(model)))
+        raise ValueError("unsupported type for model: {}".format(type(onnx_model)))
 
     if not os.path.exists(model_path):
-        raise ValueError("model path must exist: given {}".format(model))
+        raise ValueError("model path must exist: given {}".format(onnx_model))
+
+    # if config_path exists, fetch its path
+    config_path = config if config is None else config.path
 
     return model_path, config_path
 

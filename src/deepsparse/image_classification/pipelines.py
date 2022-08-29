@@ -33,7 +33,7 @@ from deepsparse.image_classification.schemas import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
-from deepsparse.pipelines.helpers import DeploymentFiles
+from deepsparse.pipelines.helpers import deployment_files
 from deepsparse.utils import model_to_path_and_config
 
 
@@ -80,7 +80,6 @@ class ImageClassificationPipeline(Pipeline):
         top_k: int = 1,
         **kwargs,
     ):
-
         super().__init__(**kwargs)
 
         if isinstance(class_names, str) and class_names.endswith(".json"):
@@ -116,14 +115,16 @@ class ImageClassificationPipeline(Pipeline):
         return self._class_names
 
     @class_names.setter
-    def class_names(self, value):
+    def class_names(self, value: Optional[Dict[str, str]]):
         """
-
-        :param value:
-        :return:
+        :param value: A dictionary that maps string
+            representation of integer (numerical label) to
+            string class name.
         """
         if self._class_names:
-            _LOGGER.warning("")
+            _LOGGER.warning(
+                "Overwriting the existing `class_names` variable " "with a new value"
+            )
 
         self._class_names = value
 
@@ -152,12 +153,8 @@ class ImageClassificationPipeline(Pipeline):
 
         model_path, config_path = model_to_path_and_config(self.model_path)
 
-        self._class_names = None
-        if config_path:
-            config_data = self._read_config_data(config_path)
-            self.class_names = config_data.get(
-                DeploymentFiles.ConfigFile.value.label_to_class_mapping.value
-            )
+        config_data = self._read_config_data(config_path) if config_path else {}
+        self._class_names = config_data.get(deployment_files["ONNX_MODEL_FILE"]["name"])
 
         return model_path
 

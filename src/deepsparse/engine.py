@@ -624,7 +624,7 @@ class MultiModelEngine(Engine):
         context: Context,
         input_shapes: List[List[int]] = None,
     ):
-        self._model_path = model_to_path(model)
+        self._model_path, _ = model_to_path_and_config(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = context.num_cores
         self._num_streams = context.num_streams

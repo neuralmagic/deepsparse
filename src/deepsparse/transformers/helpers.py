@@ -28,7 +28,7 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.pipelines.helpers import DeploymentFiles
+from deepsparse.pipelines.helpers import deployment_files
 from deepsparse.utils.onnx import truncate_onnx_model
 from sparsezoo import Model
 
@@ -50,7 +50,7 @@ def get_onnx_path_and_configs(
 ) -> Tuple[str, Optional[str], Optional[str]]:
     """
     :param model_path: path to onnx file, transformers sparsezoo stub,
-        or directory containing `model.onnx`, `config.json`, and/or
+        or deployment directory containing `model.onnx`, `config.json`, and/or
         `tokenizer.json` files. If no `model.onnx` file is found in
         a model directory, an exception will be raised
     :param require_configs: if True, model_path must be a directory containing
@@ -70,14 +70,16 @@ def get_onnx_path_and_configs(
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if DeploymentFiles.OnnxModelFile.value.name not in model_files:
+        if deployment_files["ONNX_MODEL_FILE"]["name"] not in model_files:
             raise ValueError(
-                f"{DeploymentFiles.OnnxModelFile.value.name} not found in transformers "
-                "model directory "
+                f"{deployment_files['ONNX_MODEL_FILE']['name']} "
+                f"not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, DeploymentFiles.OnnxModelFile.value.name)}"
+                f"{os.path.join(model_path, deployment_files['ONNX_MODEL_FILE']['name'])}"  # noqa E501
             )
-        onnx_path = os.path.join(model_path, DeploymentFiles.OnnxModelFile.value.name)
+        onnx_path = os.path.join(
+            model_path, deployment_files["ONNX_MODEL_FILE"]["name"]
+        )
 
         # attempt to read config and tokenizer from sparsezoo-like framework directory
         framework_dir = None
@@ -87,35 +89,37 @@ def get_onnx_path_and_configs(
             framework_dir = os.path.join(model_path, "pytorch")
         if framework_dir and os.path.isdir(framework_dir):
             framework_files = os.listdir(framework_dir)
-            if DeploymentFiles.ConfigFile.value.name in framework_files:
+            if deployment_files["CONFIG_FILE"]["name"] in framework_files:
                 config_path = framework_dir
-            if DeploymentFiles.TokenizerJsonFile.value.name in framework_files:
+            if deployment_files["TOKENIZER_FILE"]["name"] in framework_files:
                 tokenizer_path = framework_dir
 
         # prefer config and tokenizer files in same directory as model.onnx
-        if DeploymentFiles.ConfigFile.value.name in model_files:
+        if deployment_files["CONFIG_FILE"]["name"] in model_files:
             config_path = model_path
-        if DeploymentFiles.TokenizerJsonFile.value.name in model_files:
+        if deployment_files["TOKENIZER_FILE"]["name"] in model_files:
             tokenizer_path = model_path
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
-        onnx_path = zoo_model.onnx_model.path
+        onnx_path = zoo_model.deployment.default.get_file(
+            deployment_files["ONNX_MODEL_FILE"]["name"]
+        ).path
         config_path = _get_file_parent(
             zoo_model.deployment.default.get_file(
-                DeploymentFiles.ConfigFile.value.name
+                deployment_files["CONFIG_FILE"]["name"]
             ).path
         )
         tokenizer_path = _get_file_parent(
             zoo_model.deployment.default.get_file(
-                DeploymentFiles.TokenizerJsonFile.value.name
+                deployment_files["TOKENIZER_FILE"]["name"]
             ).path
         )
-        tokenizer_config_path = zoo_model.deployment.default.get_file(
-            DeploymentFiles.ConfigFile.value.name
+        tokenizer_config = zoo_model.deployment.default.get_file(
+            deployment_files["TOKENIZER_CONFIG_FILE"]["name"]
         )
-        if tokenizer_config_path is not None:
-            tokenizer_config_path.path  # trigger download of tokenizer_config
+        if tokenizer_config is not None:
+            tokenizer_config.path  # trigger download of tokenizer_config
     elif require_configs and (config_path is None or tokenizer_path is None):
         raise RuntimeError(
             f"Unable to find model and tokenizer config for model_path {model_path}. "

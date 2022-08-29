@@ -20,7 +20,7 @@ import numpy
 import onnx
 
 from deepsparse.pipeline import Pipeline
-from deepsparse.pipelines.helpers import DeploymentFiles
+from deepsparse.pipelines.helpers import deployment_files
 from deepsparse.utils import model_to_path_and_config
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
 from deepsparse.yolo.utils import (
@@ -100,7 +100,7 @@ class YOLOPipeline(Pipeline):
                 raise ValueError(f"Unknown class_names: {class_names}")
 
         if isinstance(class_names, dict):
-            self._class_names = class_names
+            self.class_names = class_names
 
         onnx_model = onnx.load(self.onnx_file_path)
         self.has_postprocessing = yolo_onnx_has_postprocessing(onnx_model)
@@ -124,14 +124,16 @@ class YOLOPipeline(Pipeline):
         return self._class_names
 
     @class_names.setter
-    def class_names(self, value):
+    def class_names(self, value: Optional[Dict[str, str]]):
         """
-
-        :param value:
-        :return:
+        :param value: A dictionary that maps string
+            representation of integer (numerical label) to
+            string class name.
         """
         if self._class_names:
-            _LOGGER.warning("")
+            _LOGGER.warning(
+                "Overwriting the existing `class_names` variable " "with a new value"
+            )
 
         self._class_names = value
 
@@ -165,6 +167,10 @@ class YOLOPipeline(Pipeline):
         :return: file path to the ONNX file for the engine to compile
         """
         model_path, config_path = model_to_path_and_config(self.model_path)
+
+        config_data = self._read_config_data(config_path) if config_path else {}
+        self._class_names = config_data.get(deployment_files["ONNX_MODEL_FILE"]["name"])
+
         if self._image_size is None:
             self._image_size = get_onnx_expected_image_shape(onnx.load(model_path))
         else:
@@ -174,12 +180,6 @@ class YOLOPipeline(Pipeline):
             self._image_size = self._image_size[:2]
             model_path, self._onnx_temp_file = modify_yolo_onnx_input_shape(
                 model_path, self._image_size
-            )
-        self._class_names = None
-        if config_path:
-            config_data = self._read_config_data(config_path)
-            self.class_names = config_data.get(
-                DeploymentFiles.ConfigFile.value.label_to_class_mapping.value
             )
 
         return model_path

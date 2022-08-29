@@ -94,7 +94,7 @@ class TransformersPipeline(Pipeline, Bucketable):
         """
         return self._sequence_length
 
-    def setup_onnx_file_path(self) -> str:
+    def setup_from_model(self) -> str:
         """
         Parses ONNX, tokenizer, and config file paths from the given `model_path`.
         Supports sparsezoo stubs
