@@ -30,7 +30,7 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.pipelines import Joinable, Splittable
-from deepsparse.tasks import SupportedTasks
+from deepsparse.tasks import SupportedTasks, dynamic_import_task
 
 
 __all__ = [
@@ -199,17 +199,23 @@ class Pipeline(ABC):
         This function retrieves the class previously registered via `Pipeline.register`
         for `task`.
 
+        If `task` starts with "import:", it is treated as a module to be imported,
+        and retrieves the task via the `TASK` attribute of the imported module.
+
         If `task` starts with "custom", then it is mapped to the "custom" task.
 
         :param task: The task name to get the constructor for
         :return: The class registered to `task`
         :raises ValueError: if `task` was not registered via `Pipeline.register`.
         """
-        task = task.lower().replace("-", "_")
-
-        # support any task that has "custom" at the beginning via the "custom" task
-        if task.startswith("custom"):
+        if task.startswith("import:"):
+            # dynamically import the task from a file
+            task = dynamic_import_task(module_or_path=task.replace("import:", ""))
+        elif task.startswith("custom"):
+            # support any task that has "custom" at the beginning via the "custom" task
             task = "custom"
+        else:
+            task = task.lower().replace("-", "_")
 
         # extra step to register pipelines for a given task domain
         # for cases where imports should only happen once a user specifies
@@ -242,7 +248,7 @@ class Pipeline(ABC):
     ) -> "Pipeline":
         """
         :param task: name of task to create a pipeline for. Use "custom" for
-            custom tasks. See `CustomTaskPipeline`.
+            custom tasks (see `CustomTaskPipeline`).
         :param model_path: path on local system or SparseZoo stub to load the model
             from. Some tasks may have a default model path
         :param engine_type: inference engine to use. Currently supported values
