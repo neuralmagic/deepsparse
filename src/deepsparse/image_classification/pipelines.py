@@ -148,55 +148,10 @@ class ImageClassificationPipeline(Pipeline):
         if isinstance(inputs.images, numpy.ndarray):
             image_batch = inputs.images
         else:
-
-            image_batch = []
-
             if isinstance(inputs.images, str):
                 inputs.images = [inputs.images]
 
-            for image in inputs.images:
-                if isinstance(image, List):
-                    # image given as raw list
-                    image = numpy.asarray(image)
-                    if image.dtype == numpy.float32:
-                        # image is already processed, append and continue
-                        image_batch.append(image)
-                        continue
-                    # assume raw image input
-                    # put image in PIL format for torchvision processing
-                    image = image.astype(numpy.uint8)
-                    if image.shape[0] < image.shape[-1]:
-                        # put channel last
-                        image = numpy.einsum("cwh->whc", image)
-                    image = Image.fromarray(image)
-                elif isinstance(image, str):
-                    # load image from string filepath
-                    image = Image.open(image)
-                elif isinstance(image, numpy.ndarray):
-                    image = image.astype(numpy.uint8)
-                    if image.shape[0] < image.shape[-1]:
-                        # put channel last
-                        image = numpy.einsum("cwh->whc", image)
-                    image = Image.fromarray(image)
-
-                if not isinstance(image, Image.Image):
-                    raise ValueError(
-                        f"inputs to {self.__class__.__name__} must be a string image "
-                        "file path(s), a list representing a raw image, "
-                        "PIL.Image.Image object(s), or a numpy array representing"
-                        f"the entire pre-processed batch. Found {type(image)}"
-                    )
-
-                # apply resize and center crop
-                image = self._pre_normalization_transforms(image)
-                image_numpy = numpy.array(image)
-                image.close()
-
-                # make channel first dimension
-                image_numpy = image_numpy.transpose(2, 0, 1)
-
-                # append to batch
-                image_batch.append(image_numpy)
+            image_batch = list(self.executor.map(self._preproess_image, inputs.images))
 
             # build batch
             image_batch = numpy.stack(image_batch, axis=0)
@@ -205,13 +160,52 @@ class ImageClassificationPipeline(Pipeline):
         image_batch = numpy.ascontiguousarray(image_batch, dtype=numpy.float32)
 
         if original_dtype == numpy.uint8:
-
             image_batch /= 255
             # normalize entire batch
             image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
             image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
 
         return [image_batch]
+
+    def _preprocess_image(self, image) -> numpy.ndarray:
+        if isinstance(image, List):
+            # image given as raw list
+            image = numpy.asarray(image)
+            if image.dtype == numpy.float32:
+                # image is already processed, append and continue
+                return image
+            # assume raw image input
+            # put image in PIL format for torchvision processing
+            image = image.astype(numpy.uint8)
+            if image.shape[0] < image.shape[-1]:
+                # put channel last
+                image = numpy.einsum("cwh->whc", image)
+            image = Image.fromarray(image)
+        elif isinstance(image, str):
+            # load image from string filepath
+            image = Image.open(image)
+        elif isinstance(image, numpy.ndarray):
+            image = image.astype(numpy.uint8)
+            if image.shape[0] < image.shape[-1]:
+                # put channel last
+                image = numpy.einsum("cwh->whc", image)
+            image = Image.fromarray(image)
+        else:
+            raise ValueError(
+                f"inputs to {self.__class__.__name__} must be a string image "
+                "file path(s), a list representing a raw image, "
+                "PIL.Image.Image object(s), or a numpy array representing"
+                f"the entire pre-processed batch. Found {type(image)}"
+            )
+
+        # apply resize and center crop
+        image = self._pre_normalization_transforms(image)
+        image_numpy = numpy.array(image)
+        image.close()
+
+        # make channel first dimension
+        image_numpy = image_numpy.transpose(2, 0, 1)
+        return image_numpy
 
     def process_engine_outputs(
         self,
