@@ -122,7 +122,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
         if endpoint_config.name is None:
             endpoint_config.name = f"endpoint-{idx}"
 
-    # creat pipelines & endpoints
+    # create pipelines & endpoints
     for endpoint_config in server_config.endpoints:
         pipeline_config = endpoint_config.to_pipeline_config()
         pipeline_config.kwargs["executor"] = executor
