@@ -413,7 +413,7 @@ class TokenClassificationPipeline(TransformersPipeline):
             padding=False,
             truncation=False,
         )
-        input_seq_len = len(tokens)
+        input_seq_len = max(map(len, tokens["input_ids"]))
         return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     # utilities below adapted from transformers

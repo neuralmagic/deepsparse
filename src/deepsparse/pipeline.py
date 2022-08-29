@@ -748,13 +748,17 @@ class BucketingPipeline(object):
         self._pipeline_class = pipelines[0].__class__
         self._validate_pipeline_class()
 
-    def __call__(self, **inputs):
-        parsed_inputs = self._pipelines[-1].parse_inputs(**inputs)
-        pipeline = self._pipeline_class.route_input_to_bucket(
+    def __call__(self, *args, **kwargs):
+        bucket, parsed_inputs = self._choose_bucket(*args, **kwargs)
+        return bucket(parsed_inputs)
+
+    def _choose_bucket(self, *args, **kwargs):
+        parsed_inputs = self._pipelines[-1].parse_inputs(*args, **kwargs)
+        bucket = self._pipeline_class.route_input_to_bucket(
             input_schema=parsed_inputs,
             pipelines=self._pipelines,
         )
-        return pipeline(parsed_inputs)
+        return bucket, parsed_inputs
 
     def __getattr__(self, item):
         value = getattr(self._pipelines[0].__class__, item)
