@@ -21,23 +21,24 @@ from typing import List, Optional, Union
 import numpy
 import onnx
 
-from deepsparse.pipelines.helpers import MODEL_DIR_ONNX_NAME
+from deepsparse.pipelines.helpers import DeploymentFiles
 from deepsparse.utils.extractor import Extractor
 
 
 try:
-    from sparsezoo import File, Model
+    from sparsezoo import Directory, File, Model
 
     sparsezoo_import_error = None
 except Exception as sparsezoo_err:
     Model = object
+    Directory = object
     File = object
     sparsezoo_import_error = sparsezoo_err
 
 
 __all__ = [
     "ONNX_TENSOR_TYPE_MAP",
-    "model_to_path",
+    "model_to_path_and_config",
     "get_external_inputs",
     "get_external_outputs",
     "get_input_names",
@@ -79,40 +80,69 @@ def translate_onnx_type_to_numpy(tensor_type: int):
     return ONNX_TENSOR_TYPE_MAP[tensor_type]
 
 
-def model_to_path(model: Union[str, Model, File]) -> str:
+def model_to_path_and_config(
+    model: Union[str, Model, Directory, File]
+) -> Union[str, Optional[str]]:
     """
     Deals with the various forms a model can take. Either an ONNX file,
     a SparseZoo model stub prefixed by 'zoo:', a SparseZoo Model object,
+    a SparseZoo Directory object (Deployment directory)
     or a SparseZoo ONNX File object that defines the neural network. Noting
     the model will be downloaded automatically if a SparseZoo stub is passed
 
     :param model: Either a local str path or SparseZoo stub to the model. Can
-        also be a sparsezoo.Model or sparsezoo.File object
-    :returns: The absolute local str path to the model
+        also be a sparsezoo.Model, sparsezoo.Directory or sparsezoo.File object
+    :returns: The absolute local str path to the model and optionally
+        absolute local str path to the config
     """
     if not model:
         raise ValueError("model must be a path, sparsezoo.Model, or sparsezoo.File")
 
-    if isinstance(model, str) and model.startswith("zoo:"):
-        # load SparseZoo Model from stub
-        if sparsezoo_import_error is not None:
-            raise sparsezoo_import_error
-        model = Model(model)
+    if isinstance(model, str):
+        if model.startswith("zoo:"):
+            # load SparseZoo Model from stub
+            if sparsezoo_import_error is not None:
+                raise sparsezoo_import_error
+            model = Model(model)
+        else:
+            if not isinstance(model, str):
+                raise ValueError("unsupported type for model: {}".format(type(model)))
+
+            if not os.path.exists(model):
+                raise ValueError("model path must exist: given {}".format(model))
+
+            return model, None
 
     if Model is not object and isinstance(model, Model):
-        # default to the onnx file in the default deployment directory
-        model = model.deployment.default.get_file(MODEL_DIR_ONNX_NAME)
-    elif File is not object and isinstance(model, File):
-        # get the downloaded_path -- will auto download if not on local system
-        model = model.path
+        # default to the onnx file / config file in the default deployment directory
+        model = model.deployment.default.get_file(
+            DeploymentFiles.OnnxModelFile.value.name.value
+        )
+        config = model.deployment.default.get_file(
+            DeploymentFiles.ConfigFile.value.name.value
+        )
+    elif Directory is not object and isinstance(model, Directory):
+        # default to the onnx file / config file in the directory
+        # (assumed to be deployment directory)
+        directory = model
+        model = directory.default.get_file(
+            DeploymentFiles.OnnxModelFile.value.name.value
+        )
+        config = directory.default.get_file(DeploymentFiles.ConfigFile.value.name.value)
 
-    if not isinstance(model, str):
+    elif File is not object and isinstance(model, File):
+        config = None
+
+    model_path = model.path
+    config_path = config if config is None else config.path
+
+    if not isinstance(model_path, str):
         raise ValueError("unsupported type for model: {}".format(type(model)))
 
-    if not os.path.exists(model):
+    if not os.path.exists(model_path):
         raise ValueError("model path must exist: given {}".format(model))
 
-    return model
+    return model_path, config_path
 
 
 def get_external_inputs(onnx_filepath: str) -> List:

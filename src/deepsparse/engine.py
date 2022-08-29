@@ -25,7 +25,7 @@ import numpy
 from tqdm.auto import tqdm
 
 from deepsparse.benchmark import BenchmarkResults
-from deepsparse.utils import model_to_path, override_onnx_input_shapes
+from deepsparse.utils import model_to_path_and_config, override_onnx_input_shapes
 
 
 try:
@@ -181,7 +181,7 @@ class Engine(object):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
     ):
-        self._model_path = model_to_path(model)
+        self._model_path, _ = model_to_path_and_config(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
         self._scheduler = _validate_scheduler(scheduler)

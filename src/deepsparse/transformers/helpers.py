@@ -28,6 +28,7 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
+from deepsparse.pipelines.helpers import DeploymentFiles
 from deepsparse.utils.onnx import truncate_onnx_model
 from sparsezoo import Model
 
@@ -41,11 +42,6 @@ __all__ = [
 ]
 
 _LOGGER = get_main_logger()
-
-_MODEL_DIR_ONNX_NAME = "model.onnx"
-_MODEL_DIR_CONFIG_NAME = "config.json"
-_MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
-_MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
 
 
 def get_onnx_path_and_configs(
@@ -74,13 +70,14 @@ def get_onnx_path_and_configs(
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if _MODEL_DIR_ONNX_NAME not in model_files:
+        if DeploymentFiles.OnnxModelFile.value.name not in model_files:
             raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{DeploymentFiles.OnnxModelFile.value.name} not found in transformers "
+                "model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
+                f"{os.path.join(model_path, DeploymentFiles.OnnxModelFile.value.name)}"
             )
-        onnx_path = os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
+        onnx_path = os.path.join(model_path, DeploymentFiles.OnnxModelFile.value.name)
 
         # attempt to read config and tokenizer from sparsezoo-like framework directory
         framework_dir = None
@@ -90,28 +87,32 @@ def get_onnx_path_and_configs(
             framework_dir = os.path.join(model_path, "pytorch")
         if framework_dir and os.path.isdir(framework_dir):
             framework_files = os.listdir(framework_dir)
-            if _MODEL_DIR_CONFIG_NAME in framework_files:
+            if DeploymentFiles.ConfigFile.value.name in framework_files:
                 config_path = framework_dir
-            if _MODEL_DIR_TOKENIZER_NAME in framework_files:
+            if DeploymentFiles.TokenizerJsonFile.value.name in framework_files:
                 tokenizer_path = framework_dir
 
         # prefer config and tokenizer files in same directory as model.onnx
-        if _MODEL_DIR_CONFIG_NAME in model_files:
+        if DeploymentFiles.ConfigFile.value.name in model_files:
             config_path = model_path
-        if _MODEL_DIR_TOKENIZER_NAME in model_files:
+        if DeploymentFiles.TokenizerJsonFile.value.name in model_files:
             tokenizer_path = model_path
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
         onnx_path = zoo_model.onnx_model.path
         config_path = _get_file_parent(
-            zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
+            zoo_model.deployment.default.get_file(
+                DeploymentFiles.ConfigFile.value.name
+            ).path
         )
         tokenizer_path = _get_file_parent(
-            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
+            zoo_model.deployment.default.get_file(
+                DeploymentFiles.TokenizerJsonFile.value.name
+            ).path
         )
         tokenizer_config_path = zoo_model.deployment.default.get_file(
-            _MODEL_DIR_TOKENIZER_CONFIG_NAME
+            DeploymentFiles.ConfigFile.value.name
         )
         if tokenizer_config_path is not None:
             tokenizer_config_path.path  # trigger download of tokenizer_config

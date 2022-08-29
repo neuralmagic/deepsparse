@@ -13,17 +13,15 @@
 # limitations under the License.
 
 import json
+import logging
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
 
 from deepsparse.pipeline import Pipeline
-from deepsparse.pipelines.helpers import (
-    LABELS_TO_CLASS_MAPPING_NAME,
-    MODEL_DIR_CONFIG_NAME,
-    MODEL_DIR_ONNX_NAME,
-)
+from deepsparse.pipelines.helpers import DeploymentFiles
+from deepsparse.utils import model_to_path_and_config
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
 from deepsparse.yolo.utils import (
     COCO_CLASSES,
@@ -33,7 +31,6 @@ from deepsparse.yolo.utils import (
     postprocess_nms,
     yolo_onnx_has_postprocessing,
 )
-from sparsezoo import Model
 
 
 try:
@@ -45,6 +42,7 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 __all__ = ["YOLOPipeline"]
+_LOGGER = logging.getLogger(__name__)
 
 
 @Pipeline.register(
@@ -85,7 +83,7 @@ class YOLOPipeline(Pipeline):
         image_size: Union[int, Tuple[int, int], None] = None,
         **kwargs,
     ):
-        self.config = None
+
         self._image_size = image_size
         self._onnx_temp_file = None  # placeholder for potential tmpfile reference
 
@@ -103,14 +101,6 @@ class YOLOPipeline(Pipeline):
 
         if isinstance(class_names, dict):
             self._class_names = class_names
-        elif isinstance(class_names, list):
-            self._class_names = {
-                str(index): class_name for index, class_name in enumerate(class_names)
-            }
-        elif self.config and LABELS_TO_CLASS_MAPPING_NAME in self.config:
-            self._class_names = self.config[LABELS_TO_CLASS_MAPPING_NAME]
-        else:
-            self._class_names = None
 
         onnx_model = onnx.load(self.onnx_file_path)
         self.has_postprocessing = yolo_onnx_has_postprocessing(onnx_model)
@@ -133,6 +123,18 @@ class YOLOPipeline(Pipeline):
     def class_names(self) -> Optional[Dict[str, str]]:
         return self._class_names
 
+    @class_names.setter
+    def class_names(self, value):
+        """
+
+        :param value:
+        :return:
+        """
+        if self._class_names:
+            _LOGGER.warning("")
+
+        self._class_names = value
+
     @property
     def image_size(self) -> Tuple[int, int]:
         """
@@ -154,7 +156,7 @@ class YOLOPipeline(Pipeline):
         """
         return YOLOOutput
 
-    def setup_onnx_file_path(self) -> str:
+    def setup_from_model(self) -> str:
         """
         Performs any setup to unwrap and process the given `model_path` and other
         class properties into an inference ready onnx file to be compiled by the
@@ -162,15 +164,7 @@ class YOLOPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        model = Model(self.model_path)
-        model.deployment.download()
-        deployment = model.deployment.default
-
-        config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
-        if config_file:
-            self.config = self._setup_config(config_file.path)
-
-        model_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path
+        model_path, config_path = model_to_path_and_config(self.model_path)
         if self._image_size is None:
             self._image_size = get_onnx_expected_image_shape(onnx.load(model_path))
         else:
@@ -181,6 +175,13 @@ class YOLOPipeline(Pipeline):
             model_path, self._onnx_temp_file = modify_yolo_onnx_input_shape(
                 model_path, self._image_size
             )
+        self._class_names = None
+        if config_path:
+            config_data = self._read_config_data(config_path)
+            self.class_names = config_data.get(
+                DeploymentFiles.ConfigFile.value.label_to_class_mapping.value
+            )
+
         return model_path
 
     def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
@@ -278,12 +279,6 @@ class YOLOPipeline(Pipeline):
             labels=batch_labels,
         )
 
-    @staticmethod
-    def _setup_config(config_file_path: str) -> Dict[Any, Any]:
-        with open(config_file_path) as json_file:
-            config = json.load(json_file)
-        return config
-
     def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
         # return a numpy batch of images
         if len(image_batch) == 1:
@@ -349,3 +344,9 @@ class YOLOPipeline(Pipeline):
             onnx_model.graph.input[0].type.tensor_type.elem_type
             == onnx.TensorProto.UINT8
         )
+
+    @staticmethod
+    def _read_config_data(config_file_path: str) -> Dict[str, Any]:
+        with open(config_file_path) as json_file:
+            config = json.load(json_file)
+        return config

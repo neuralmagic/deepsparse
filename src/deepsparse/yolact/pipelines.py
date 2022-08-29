@@ -13,21 +13,18 @@
 # limitations under the License.
 
 import json
+import logging
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 
 import torch
 from deepsparse import Pipeline
-from deepsparse.pipelines.helpers import (
-    LABELS_TO_CLASS_MAPPING_NAME,
-    MODEL_DIR_CONFIG_NAME,
-    MODEL_DIR_ONNX_NAME,
-)
+from deepsparse.pipelines.helpers import DeploymentFiles
+from deepsparse.utils import model_to_path_and_config
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
 from deepsparse.yolact.utils import decode, detect, postprocess, preprocess_array
 from deepsparse.yolo.utils import COCO_CLASSES
-from sparsezoo import Model
 
 
 try:
@@ -39,6 +36,8 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 __all__ = ["YOLACTPipeline"]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @Pipeline.register(
@@ -85,7 +84,6 @@ class YOLACTPipeline(Pipeline):
             image_size if isinstance(image_size, Tuple) else (image_size, image_size)
         )
         self.top_k = top_k
-        self.config = None
 
         super().__init__(**kwargs)
 
@@ -103,14 +101,22 @@ class YOLACTPipeline(Pipeline):
             self._class_names = {
                 str(index): class_name for index, class_name in enumerate(class_names)
             }
-        elif self.config and LABELS_TO_CLASS_MAPPING_NAME in self.config:
-            self._class_names = self.config[LABELS_TO_CLASS_MAPPING_NAME]
-        else:
-            self._class_names = None
 
     @property
     def class_names(self) -> Optional[Dict[str, str]]:
         return self._class_names
+
+    @class_names.setter
+    def class_names(self, value):
+        """
+
+        :param value:
+        :return:
+        """
+        if self._class_names:
+            _LOGGER.warning("")
+
+        self._class_names = value
 
     @property
     def image_size(self) -> Tuple[int, int]:
@@ -119,7 +125,7 @@ class YOLACTPipeline(Pipeline):
         """
         return self._image_size
 
-    def setup_onnx_file_path(self) -> str:
+    def setup_from_model(self) -> str:
         """
         Performs any setup to unwrap and process the given `model_path` and other
         class properties into an inference ready onnx file to be compiled by the
@@ -127,16 +133,14 @@ class YOLACTPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        model = Model(self.model_path)
-        model.deployment.download()
-        deployment = model.deployment.default
-
-        self.onnx_model_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path
-
-        config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
-        if config_file:
-            self.config = self._setup_config(config_file.path)
-        return self.onnx_model_path
+        model_path, config_path = model_to_path_and_config(self.model_path)
+        self._class_names = None
+        if config_path:
+            config_data = self._read_config_data(config_path)
+            self.class_names = config_data.get(
+                DeploymentFiles.ConfigFile.value.label_to_class_mapping.value
+            )
+        return model_path
 
     def process_inputs(
         self,
@@ -268,7 +272,7 @@ class YOLACTPipeline(Pipeline):
         return YOLACTOutputSchema
 
     @staticmethod
-    def _setup_config(config_file_path: str) -> Dict[Any, Any]:
+    def _read_config_data(config_file_path: str) -> Dict[str, Any]:
         with open(config_file_path) as json_file:
             config = json.load(json_file)
         return config

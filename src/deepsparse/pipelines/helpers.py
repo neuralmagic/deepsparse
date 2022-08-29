@@ -12,7 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-MODEL_DIR_ONNX_NAME = "model.onnx"
-MODEL_DIR_CONFIG_NAME = "config.json"
-MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
-LABELS_TO_CLASS_MAPPING_NAME = "labels_to_class_mapping"
+from enum import Enum
+
+
+__all__ = ["DeploymentFiles"]
+
+
+class _OnnxModelFile(Enum):
+    name = "model.onnx"
+
+
+class _ConfigFile(Enum):
+    name = "config.json"
+    label_to_class_mapping = "labels_to_class_mapping"
+
+
+class _TokenizerJsonFile(Enum):
+    name = "tokenizer.json"
+
+
+class DeploymentFiles(Enum):
+    OnnxModelFile = _OnnxModelFile
+    ConfigFile = _ConfigFile
+    TokenizerJsonFile = _TokenizerJsonFile

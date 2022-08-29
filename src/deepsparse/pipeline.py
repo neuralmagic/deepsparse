@@ -173,7 +173,7 @@ class Pipeline(ABC):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
 
-        self.onnx_file_path = self.setup_onnx_file_path()
+        self.onnx_file_path = self.setup_from_model()
         self.engine = self._initialize_engine()
 
     def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
@@ -407,7 +407,7 @@ class Pipeline(ABC):
         )
 
     @abstractmethod
-    def setup_onnx_file_path(self) -> str:
+    def setup_from_model(self) -> str:
         """
         Performs any setup to unwrap and process the given `model_path` and other
         class properties into an inference ready onnx file to be compiled by the

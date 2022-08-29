@@ -20,7 +20,7 @@ import numpy
 from deepsparse.utils import (
     get_input_names,
     get_output_names,
-    model_to_path,
+    model_to_path_and_config,
     override_onnx_batch_size,
     override_onnx_input_shapes,
 )
@@ -90,7 +90,7 @@ class ORTEngine(object):
     ):
         _validate_ort_import()
 
-        self._model_path = model_to_path(model)
+        self._model_path, _ = model_to_path_and_config(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = num_cores
         self._input_shapes = input_shapes

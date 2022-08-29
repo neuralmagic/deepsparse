@@ -16,6 +16,7 @@
 Image classification pipeline
 """
 import json
+import logging
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
@@ -32,17 +33,15 @@ from deepsparse.image_classification.schemas import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
-from deepsparse.pipelines.helpers import (
-    LABELS_TO_CLASS_MAPPING_NAME,
-    MODEL_DIR_CONFIG_NAME,
-    MODEL_DIR_ONNX_NAME,
-)
-from sparsezoo import Model
+from deepsparse.pipelines.helpers import DeploymentFiles
+from deepsparse.utils import model_to_path_and_config
 
 
 __all__ = [
     "ImageClassificationPipeline",
 ]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @Pipeline.register(
@@ -81,20 +80,13 @@ class ImageClassificationPipeline(Pipeline):
         top_k: int = 1,
         **kwargs,
     ):
-        self.config = None
 
         super().__init__(**kwargs)
 
         if isinstance(class_names, str) and class_names.endswith(".json"):
-            self._class_names = json.load(open(class_names))
+            self.class_names = json.load(open(class_names))
         elif isinstance(class_names, dict):
-            self._class_names = class_names
-        elif self.config and LABELS_TO_CLASS_MAPPING_NAME in self.config:
-            self._class_names = {
-                int(k): v for k, v in self.config[LABELS_TO_CLASS_MAPPING_NAME].items()
-            }
-        else:
-            self._class_names = None
+            self.class_names = class_names
 
         self._image_size = self._infer_image_size()
         self.top_k = top_k
@@ -123,6 +115,18 @@ class ImageClassificationPipeline(Pipeline):
         """
         return self._class_names
 
+    @class_names.setter
+    def class_names(self, value):
+        """
+
+        :param value:
+        :return:
+        """
+        if self._class_names:
+            _LOGGER.warning("")
+
+        self._class_names = value
+
     @property
     def input_schema(self) -> Type[ImageClassificationInput]:
         """
@@ -137,7 +141,7 @@ class ImageClassificationPipeline(Pipeline):
         """
         return ImageClassificationOutput
 
-    def setup_onnx_file_path(self) -> str:
+    def setup_from_model(self) -> str:
         """
         Performs any setup to unwrap and process the given `model_path` and other
         class properties into an inference ready onnx file to be compiled by the
@@ -145,17 +149,17 @@ class ImageClassificationPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        model = Model(self.model_path)
-        model.deployment.download()
-        deployment = model.deployment.default
 
-        self.onnx_model_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path
+        model_path, config_path = model_to_path_and_config(self.model_path)
 
-        config_file = deployment.get_file(MODEL_DIR_CONFIG_NAME)
-        if config_file:
-            self.config = self._setup_config(config_file.path)
+        self._class_names = None
+        if config_path:
+            config_data = self._read_config_data(config_path)
+            self.class_names = config_data.get(
+                DeploymentFiles.ConfigFile.value.label_to_class_mapping.value
+            )
 
-        return self.onnx_model_path
+        return model_path
 
     def process_inputs(self, inputs: ImageClassificationInput) -> List[numpy.ndarray]:
         """
@@ -251,6 +255,7 @@ class ImageClassificationPipeline(Pipeline):
             scores.append(score.tolist())
 
         if self.class_names is not None:
+            labels = [label.astype(str) for label in labels]
             labels = numpy.vectorize(self.class_names.__getitem__)(labels)
             labels = labels.tolist()
 
@@ -267,7 +272,7 @@ class ImageClassificationPipeline(Pipeline):
         )
 
     @staticmethod
-    def _setup_config(config_file_path: str) -> Dict[Any, Any]:
+    def _read_config_data(config_file_path: str) -> Dict[str, Any]:
         with open(config_file_path) as json_file:
             config = json.load(json_file)
         return config
