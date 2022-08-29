@@ -6,5 +6,5 @@ endpoints:
       route: /invocations
       model: zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni
       batch_size: 1
-      kwargs:
-        sequence_length: 384
+      bucketing:
+        sequence_lengths: [384]
