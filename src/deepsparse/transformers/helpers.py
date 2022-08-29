@@ -19,6 +19,7 @@ Helper functions for working with ONNX exports of transformer models and deepspa
 
 import os
 import re
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
 
@@ -27,11 +28,6 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.pipelines.helpers import (
-    MODEL_DIR_CONFIG_NAME,
-    MODEL_DIR_ONNX_NAME,
-    MODEL_DIR_TOKENIZER_NAME,
-)
 from deepsparse.utils.onnx import truncate_onnx_model
 from sparsezoo import Model
 
@@ -45,6 +41,11 @@ __all__ = [
 ]
 
 _LOGGER = get_main_logger()
+
+_MODEL_DIR_ONNX_NAME = "model.onnx"
+_MODEL_DIR_CONFIG_NAME = "config.json"
+_MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
+_MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
 
 
 def get_onnx_path_and_configs(
@@ -73,13 +74,13 @@ def get_onnx_path_and_configs(
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if MODEL_DIR_ONNX_NAME not in model_files:
+        if _MODEL_DIR_ONNX_NAME not in model_files:
             raise ValueError(
-                f"{MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, MODEL_DIR_ONNX_NAME)}"
+                f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
             )
-        onnx_path = os.path.join(model_path, MODEL_DIR_ONNX_NAME)
+        onnx_path = os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
 
         # attempt to read config and tokenizer from sparsezoo-like framework directory
         framework_dir = None
@@ -89,25 +90,31 @@ def get_onnx_path_and_configs(
             framework_dir = os.path.join(model_path, "pytorch")
         if framework_dir and os.path.isdir(framework_dir):
             framework_files = os.listdir(framework_dir)
-            if MODEL_DIR_CONFIG_NAME in framework_files:
+            if _MODEL_DIR_CONFIG_NAME in framework_files:
                 config_path = framework_dir
-            if MODEL_DIR_TOKENIZER_NAME in framework_files:
+            if _MODEL_DIR_TOKENIZER_NAME in framework_files:
                 tokenizer_path = framework_dir
 
         # prefer config and tokenizer files in same directory as model.onnx
-        if MODEL_DIR_CONFIG_NAME in model_files:
+        if _MODEL_DIR_CONFIG_NAME in model_files:
             config_path = model_path
-        if MODEL_DIR_TOKENIZER_NAME in model_files:
+        if _MODEL_DIR_TOKENIZER_NAME in model_files:
             tokenizer_path = model_path
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
-
-        deployment = zoo_model.deployment.default
-        onnx_path = deployment.get_file(MODEL_DIR_ONNX_NAME).path
-        config_path = deployment.get_file(MODEL_DIR_CONFIG_NAME).path
-        tokenizer_path = deployment.default.get_file(MODEL_DIR_TOKENIZER_NAME).path
-
+        onnx_path = zoo_model.onnx_model.path
+        config_path = _get_file_parent(
+            zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
+        )
+        tokenizer_path = _get_file_parent(
+            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
+        )
+        tokenizer_config_path = zoo_model.deployment.default.get_file(
+            _MODEL_DIR_TOKENIZER_CONFIG_NAME
+        )
+        if tokenizer_config_path is not None:
+            tokenizer_config_path.path  # trigger download of tokenizer_config
     elif require_configs and (config_path is None or tokenizer_path is None):
         raise RuntimeError(
             f"Unable to find model and tokenizer config for model_path {model_path}. "
@@ -165,6 +172,10 @@ def overwrite_transformer_onnx_model_inputs(
     else:
         onnx.save(model, output_path)
         return input_names
+
+
+def _get_file_parent(file_path: str) -> str:
+    return str(Path(file_path).parent.absolute())
 
 
 def fix_numpy_types(func):

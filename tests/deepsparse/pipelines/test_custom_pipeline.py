@@ -24,6 +24,7 @@ from deepsparse.image_classification import (
 from deepsparse.pipeline import Pipeline
 from deepsparse.pipelines.custom_pipeline import CustomTaskPipeline
 from deepsparse.utils.onnx import model_to_path
+from tests.utils import mock_engine
 
 
 # NOTE: these need to be placed after the other imports bc of a dependency chain issue
@@ -55,7 +56,8 @@ def test_custom_pipeline_task_names(task_name):
     assert cls == CustomTaskPipeline
 
 
-def test_no_input_call(model_path):
+@mock_engine(rng_seed=0)
+def test_no_input_call(engine, model_path):
     pipeline = Pipeline.create(task="custom", model_path=model_path)
     assert isinstance(pipeline, CustomTaskPipeline)
 
@@ -73,7 +75,8 @@ def test_no_input_call(model_path):
     assert len(output) == 2
 
 
-def test_custom_pipeline_as_image_classifier(model_path):
+@mock_engine(rng_seed=0)
+def test_custom_pipeline_as_image_classifier(engine, model_path):
     image_size = 224
     non_rand_resize_scale = 256.0 / 224.0  # standard used
     standard_imagenet_transforms = transforms.Compose(

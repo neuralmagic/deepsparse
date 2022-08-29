@@ -83,7 +83,7 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
     the model, so the total number of forward passes is num_labels * num_sequences
     """
 
-    labels: Union[None, List[List[str]], List[str], str] = Field(
+    labels: Optional[Union[List[str], str]] = Field(
         description="The set of possible class labels to classify each "
         "sequence into. Can be a single label, a string of comma-separated "
         "labels, or a list of labels."
@@ -134,7 +134,7 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
                 "The provided hypothesis_template "
                 f"`{self._config.hypothesis_template}` was not able to be formatted. "
                 "Make sure the passed template includes formatting syntax such "
-                "as {} where the label should go."
+                "as `{}` where the label should go."
             )
 
         if self._config.entailment_index == self._config.contradiction_index:

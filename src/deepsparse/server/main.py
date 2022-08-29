@@ -87,7 +87,7 @@ import click
 
 from deepsparse import Context, Pipeline
 from deepsparse.log import set_logging_level
-from deepsparse.server.asynchronous import execute_async, initialize_aysnc
+from deepsparse.server.asynchronous import execute_async, initialize_async
 from deepsparse.server.config import (
     ServerConfig,
     server_config_from_env,
@@ -152,7 +152,7 @@ def _add_pipeline_route(
         async def _predict_func(request: input_schema):
             if from_files:
                 request = pipeline.input_schema.from_files(
-                    file.file for file in request
+                    (file.file for file in request), from_server=True
                 )
 
             results = await execute_async(
@@ -209,11 +209,12 @@ def server_app_factory():
         title="deepsparse.server",
         version=version,
         description="DeepSparse Inference Server",
+        swagger_ui_parameters={"syntaxHighlight": False},
     )
     _LOGGER.info("created FastAPI app for inference serving")
 
     config = server_config_from_env()
-    initialize_aysnc(config.workers)
+    initialize_async(config.workers)
     _LOGGER.debug("loaded server config %s", config)
     _add_general_routes(app, config)
 
@@ -239,7 +240,9 @@ def server_app_factory():
     return app
 
 
-@click.command()
+@click.command(
+    context_settings=dict(token_normalize_func=lambda x: x.replace("-", "_"))
+)
 @click.option(
     "--host",
     type=str,
@@ -276,7 +279,7 @@ def server_app_factory():
 )
 @click.option(
     "--task",
-    type=click.Choice(SupportedTasks.task_names()),
+    type=click.Choice(SupportedTasks.task_names(), case_sensitive=False),
     default=None,
     help="The task the model_path is serving.",
 )

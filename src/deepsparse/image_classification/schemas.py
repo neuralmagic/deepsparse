@@ -15,12 +15,13 @@
 """
 Input/Output Schemas for Image Classification.
 """
-from typing import Any, Generator, Iterable, List, Union
+from typing import Generator, Iterable, List, Union
 
 import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines import Joinable, Splittable
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
 __all__ = [
@@ -29,30 +30,10 @@ __all__ = [
 ]
 
 
-class ImageClassificationInput(BaseModel, Splittable):
+class ImageClassificationInput(ComputerVisionSchema, Splittable):
     """
     Input model for image classification
     """
-
-    images: Union[str, List[str], List[Any]] = Field(
-        description="List of Images to process"
-    )
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    @classmethod
-    def from_files(cls, files: List[str], **kwargs) -> "ImageClassificationInput":
-        """
-        :param files: list of file paths to create ImageClassificationInput from
-        :return: ImageClassificationInput constructed from files
-        """
-        if kwargs:
-            raise ValueError(
-                f"{cls.__name__} does not support additional arguments "
-                f"{list(kwargs.keys())}"
-            )
-        return cls(images=files)
 
     def split(self) -> Generator["ImageClassificationInput", None, None]:
         """

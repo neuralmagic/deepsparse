@@ -150,7 +150,6 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
-        self._batch_size = batch_size
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
