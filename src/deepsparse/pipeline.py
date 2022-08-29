@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.tasks import SupportedTasks
+from deepsparse.tasks import SupportedTasks, dynamic_import_task
 from deepsparse.timing import InferencePhases, InferenceTimingSchema, TimingBuilder
 
 
@@ -258,6 +258,7 @@ class Pipeline(ABC):
         )
         return pipeline_outputs, inference_timing, data
 
+    @staticmethod
     def split_engine_inputs(
         items: List[numpy.ndarray], batch_size: int
     ) -> List[List[numpy.ndarray]]:
@@ -328,17 +329,23 @@ class Pipeline(ABC):
         This function retrieves the class previously registered via `Pipeline.register`
         for `task`.
 
+        If `task` starts with "import:", it is treated as a module to be imported,
+        and retrieves the task via the `TASK` attribute of the imported module.
+
         If `task` starts with "custom", then it is mapped to the "custom" task.
 
         :param task: The task name to get the constructor for
         :return: The class registered to `task`
         :raises ValueError: if `task` was not registered via `Pipeline.register`.
         """
-        task = task.lower().replace("-", "_")
-
-        # support any task that has "custom" at the beginning via the "custom" task
-        if task.startswith("custom"):
+        if task.startswith("import:"):
+            # dynamically import the task from a file
+            task = dynamic_import_task(module_or_path=task.replace("import:", ""))
+        elif task.startswith("custom"):
+            # support any task that has "custom" at the beginning via the "custom" task
             task = "custom"
+        else:
+            task = task.lower().replace("-", "_")
 
         # extra step to register pipelines for a given task domain
         # for cases where imports should only happen once a user specifies
@@ -371,7 +378,7 @@ class Pipeline(ABC):
     ) -> "Pipeline":
         """
         :param task: name of task to create a pipeline for. Use "custom" for
-            custom tasks. See `CustomTaskPipeline`.
+            custom tasks (see `CustomTaskPipeline`).
         :param model_path: path on local system or SparseZoo stub to load the model
             from. Some tasks may have a default model path
         :param engine_type: inference engine to use. Currently supported values
@@ -792,13 +799,17 @@ class BucketingPipeline(object):
         self._pipeline_class = pipelines[0].__class__
         self._validate_pipeline_class()
 
-    def __call__(self, **inputs):
-        parsed_inputs = self._pipelines[-1].parse_inputs(**inputs)
-        pipeline = self._pipeline_class.route_input_to_bucket(
+    def __call__(self, *args, **kwargs):
+        bucket, parsed_inputs = self._choose_bucket(*args, **kwargs)
+        return bucket(parsed_inputs)
+
+    def _choose_bucket(self, *args, **kwargs):
+        parsed_inputs = self._pipelines[-1].parse_inputs(*args, **kwargs)
+        bucket = self._pipeline_class.route_input_to_bucket(
             input_schema=parsed_inputs,
             pipelines=self._pipelines,
         )
-        return pipeline(parsed_inputs)
+        return bucket, parsed_inputs
 
     def __getattr__(self, item):
         value = getattr(self._pipelines[0].__class__, item)
