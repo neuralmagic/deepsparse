@@ -180,20 +180,12 @@ class TransformersPipeline(Pipeline, Bucketable):
             length. If no pipeline fits the input, the pipeline with the largest
             sequence length is returned
         """
-        # select pipeline with the minimal sequence length to fit the input
-        selected_pipeline = buckets[0]
-        for pipeline in buckets:
-            seq_len = pipeline.sequence_length
-            if input_seq_len <= seq_len < selected_pipeline.sequence_length:
-                selected_pipeline = pipeline
-
-        # if no pipeline fits the input, select the pipeline with maximal length
-        if input_seq_len > selected_pipeline.sequence_length:
-            selected_pipeline = max(
-                buckets, key=lambda pipeline: pipeline.sequence_length
-            )
-
-        return selected_pipeline
+        valid_pipelines = [
+            bucket for bucket in buckets if bucket.sequence_length >= input_seq_len
+        ]
+        if len(valid_pipelines) == 0:
+            return max(buckets, key=lambda bucket: bucket.sequence_length)
+        return min(valid_pipelines, key=lambda bucket: bucket.sequence_length)
 
 
 def pipeline(

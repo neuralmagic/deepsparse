@@ -292,7 +292,7 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
 
     @staticmethod
     def route_input_to_bucket(
-        cls, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
     ) -> Pipeline:
         """
         :param input_schema: The schema representing an input to the pipeline
@@ -301,18 +301,14 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
         """
         tokenizer = pipelines[0].tokenizer
         tokens = tokenizer(
-            " ".join(input_schema.sequences),
+            input_schema.sequences,
             add_special_tokens=True,
             return_tensors="np",
             padding=False,
             truncation=False,
         )
-        current_seq_len = len(tokens)
-
-        for pipeline in pipelines:
-            if pipeline.sequence_length > current_seq_len:
-                return pipeline
-        return pipelines[-1]
+        input_seq_len = max(map(len, tokens["input_ids"]))
+        return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     def parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
         """
