@@ -35,6 +35,7 @@ class BaseLogger(ABC):
         :return: The name of the monitoring service that the
         BaseLogger uses to log the inference data
         """
+        raise NotImplementedError()
 
     @abstractmethod
     def log_latency(
@@ -47,6 +48,7 @@ class BaseLogger(ABC):
         :param inference_timing: pydantic model that holds the information about
             the inference latency of a forward pass
         """
+        raise NotImplementedError()
 
     @abstractmethod
     def log_data(self, pipeline_name: str, inputs: Any, outputs: Any):
@@ -59,3 +61,4 @@ class BaseLogger(ABC):
             pipeline
         :param outputs: the data returned by the inference pipeline
         """
+        raise NotImplementedError()
