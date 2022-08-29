@@ -162,9 +162,9 @@ def analyze_tweets_sentiment(
         batch = _batched_model_input(tweets, batch_size)
         if batch is None:
             break
-        start = time.time()
+        start = time.perf_counter()
         sentiments = text_pipeline(batch)
-        end = time.time()
+        end = time.perf_counter()
 
         if sentiments.__class__.__name__ == "TextClassificationOutput":
             sentiments: List[str] = sentiments.labels

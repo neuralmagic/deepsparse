@@ -206,9 +206,9 @@ def analyze_tweets_tokens(
         batch = _batched_model_input(tweets, batch_size)
         if batch is None:
             break
-        start = time.time()
+        start = time.perf_counter()
         tokens = token_classify(inputs=batch)
-        end = time.time()
+        end = time.perf_counter()
 
         tokens = tokens.predictions
 
