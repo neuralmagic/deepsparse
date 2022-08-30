@@ -36,10 +36,10 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
   endpoints:
     - task: question_answering
       route: /unpruned/predict
-      model_path: zoo:some/zoo/stub
+      model: zoo:some/zoo/stub
     - task: question_answering
       route: /pruned/predict
-      model_path: /path/to/local/model
+      model: /path/to/local/model
   ```
 
 Options:
@@ -97,12 +97,12 @@ num_cores: 2
 num_workers: 2
 endpoints:
     - task: question_answering
-      endpoint: /unpruned/predict
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
     - task: question_answering
-      endpoint: /pruned/predict
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
+      route: /pruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 2
 ```
 You can now run the server with the config file path passed in the `--config_file` argument:
