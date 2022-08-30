@@ -1,6 +1,3 @@
-# flake8: noqa
-# isort: skip_file
-
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,3 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pytest
+from deepsparse.loggers import BaseLogger, ManagerLogger, PrometheusLogger
+
+
+@pytest.mark.parametrize("loggers", [PrometheusLogger(port=0)])
+def test_logger_manager(loggers):
+    logger_manager = ManagerLogger(loggers)
+    assert isinstance(logger_manager.loggers, dict)
+    assert len(logger_manager.loggers) == 1
+    assert [
+        isinstance(logger, BaseLogger) for logger in logger_manager.loggers.values()
+    ]
+    assert logger_manager.identifier == [loggers.identifier]

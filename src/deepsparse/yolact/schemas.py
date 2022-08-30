@@ -17,13 +17,12 @@ Input/Output Schemas for Image Segmentation with YOLACT
 """
 
 from collections import namedtuple
-from typing import Any, Generator, Iterable, List, Optional, TextIO, Union
+from typing import Any, Iterable, List, Optional, TextIO, Union
 
 import numpy
 from PIL import Image
 from pydantic import BaseModel, Field
 
-from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
 
@@ -37,7 +36,7 @@ _YOLACTImageOutput = namedtuple(
 )
 
 
-class YOLACTInputSchema(ComputerVisionSchema, Splittable):
+class YOLACTInputSchema(ComputerVisionSchema):
     """
     Input Model for YOLACT
     """
@@ -69,7 +68,7 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
         "`postprocess` step (optional)",
     )
     return_masks: bool = Field(
-        default=False,
+        default=True,
         description="Controls whether the pipeline should additionally "
         "return segmentation masks",
     )
@@ -102,34 +101,8 @@ class YOLACTInputSchema(ComputerVisionSchema, Splittable):
     class Config:
         arbitrary_types_allowed = True
 
-    def split(self) -> Generator["YOLACTInputSchema", None, None]:
-        """
-        Split a current `YOLACTInputSchema` object with a batch size b, into a
-        generator of b smaller objects with batch size 1, the returned
-        object can be iterated on.
 
-        :return: A Generator of smaller `YOLACTInputSchema` objects each
-            representing an input of batch-size 1
-        """
-        images = self.images
-
-        is_batch_size_1 = isinstance(images, str) or (
-            isinstance(images, numpy.ndarray) and images.ndim == 3
-        )
-        if is_batch_size_1:
-            # case 1: str, numpy.ndarray(3D)
-            yield self
-
-        elif isinstance(images, numpy.ndarray) and images.ndim != 4:
-            raise ValueError(f"Could not breakdown {self} into smaller batches")
-
-        else:
-            # case 2: List[str, Any], numpy.ndarray(4D) -> multiple images of size 1
-            for image in images:
-                yield YOLACTInputSchema(images=image, return_masks=self.return_masks)
-
-
-class YOLACTOutputSchema(BaseModel, Joinable):
+class YOLACTOutputSchema(BaseModel):
     """
     Output Model for YOLACT
     """
@@ -164,30 +137,3 @@ class YOLACTOutputSchema(BaseModel, Joinable):
     def __iter__(self):
         for index in range(len(self.classes)):
             yield self[index]
-
-    @staticmethod
-    def join(outputs: Iterable["YOLACTOutputSchema"]) -> "YOLACTOutputSchema":
-        """
-        Takes in ab Iterable of `YOLACTOutputSchema` objects and combines
-        them into one object representing a bigger batch size
-
-        :return: A new `YOLACTOutputSchema` object that represents a bigger batch
-        """
-
-        classes = list()
-        scores = list()
-        boxes = list()
-        masks = list()
-
-        for yolact_output in outputs:
-            for image_output in yolact_output:
-                classes.append(image_output.classes)
-                scores.append(image_output.scores)
-                boxes.append(image_output.boxes)
-                if image_output.masks is not None:
-                    masks.append(image_output.masks)
-
-        masks = masks if len(masks) == len(classes) else None
-        return YOLACTOutputSchema(
-            classes=classes, scores=scores, boxes=boxes, masks=masks
-        )

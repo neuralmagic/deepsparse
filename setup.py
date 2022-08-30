@@ -92,6 +92,7 @@ _server_deps = [
     "pydantic>=1.8.2",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
+    "prometheus-client>=0.14.1",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
