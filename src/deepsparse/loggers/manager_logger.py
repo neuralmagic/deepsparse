@@ -46,7 +46,7 @@ class ManagerLogger(BaseLogger):
 
     # log the data for the particular inference pipeline
     timings, data = ...
-    logger.log_timings(pipeline_name, timings)
+    logger.log_latency(pipeline_name, timings)
     logger.log_data(pipeline_name, data)
 
     ```
