@@ -190,7 +190,8 @@ class ImageClassificationPipeline(Pipeline):
                 # put channel last
                 image = numpy.einsum("cwh->whc", image)
             image = Image.fromarray(image)
-        else:
+
+        if not isinstance(image, Image.Image):
             raise ValueError(
                 f"inputs to {self.__class__.__name__} must be a string image "
                 "file path(s), a list representing a raw image, "
