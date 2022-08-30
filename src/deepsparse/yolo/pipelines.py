@@ -181,7 +181,7 @@ class YOLOPipeline(Pipeline):
         if isinstance(inputs.images, (str, numpy.ndarray)):
             inputs.images = [inputs.images]
 
-        image_batch = list(self.executor.map(self._preproess_image, inputs.images))
+        image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
 
         image_batch = self._make_batch(image_batch)
         image_batch = numpy.ascontiguousarray(
