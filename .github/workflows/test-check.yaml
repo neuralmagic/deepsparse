@@ -31,7 +31,7 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev, server] opencv-python
+        run: pip3 install .[dev,server] opencv-python
       - name: Run base tests
         run: make test
   cli-smoke-tests:
