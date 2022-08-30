@@ -213,7 +213,7 @@ def main(
         engine_type=engine,
         num_cores=num_cores,
         top_k=top_k,
-        class_names={idx: label for idx, label in enumerate(IMAGENET_LABELS)},
+        class_names={str(idx): label for idx, label in enumerate(IMAGENET_LABELS)},
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
