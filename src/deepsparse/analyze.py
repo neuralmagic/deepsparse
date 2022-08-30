@@ -65,7 +65,7 @@ import os
 from deepsparse import analyze_model
 from deepsparse.utils import (
     generate_random_inputs,
-    model_to_path,
+    model_to_path_and_config,
     override_onnx_input_shapes,
     parse_input_shapes,
 )
@@ -291,7 +291,7 @@ def main():
         imposed_kernel_sparsity = args.kernel_sparsity_file
 
     orig_model_path = args.model_path
-    model_path = model_to_path(args.model_path)
+    model_path, _ = model_to_path_and_config(args.model_path)
 
     print("Analyzing model: {}".format(orig_model_path))
 

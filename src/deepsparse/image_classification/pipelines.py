@@ -123,7 +123,7 @@ class ImageClassificationPipeline(Pipeline):
         """
         if self._class_names:
             _LOGGER.warning(
-                "Overwriting the existing `class_names` variable " "with a new value"
+                "Overwriting the existing `class_names` variable with a new value"
             )
 
         self._class_names = value

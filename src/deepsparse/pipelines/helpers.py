@@ -23,7 +23,7 @@ class DeploymentFiles:
     """
     Universal container for deployment files
     that can be potentially held by any
-    model. Additionally, it will hold any
+    model. Additionally, holds any
     additional keys pertaining to the
     deployment files
     """

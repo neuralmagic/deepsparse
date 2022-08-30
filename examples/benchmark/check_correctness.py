@@ -48,7 +48,7 @@ from deepsparse import compile_model, cpu
 from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.utils import (
     generate_random_inputs,
-    model_to_path,
+    model_to_path_and_config,
     override_onnx_input_shapes,
     parse_input_shapes,
     verify_outputs,
@@ -95,7 +95,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    onnx_filepath = model_to_path(args.onnx_filepath)
+    onnx_filepath, _ = model_to_path_and_config(args.onnx_filepath)
     batch_size = args.batch_size
 
     input_shapes = parse_input_shapes(args.input_shapes)

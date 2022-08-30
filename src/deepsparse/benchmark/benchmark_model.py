@@ -104,7 +104,7 @@ from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,
-    model_to_path,
+    model_to_path_and_config,
     override_onnx_input_shapes,
     parse_input_shapes,
 )
@@ -332,7 +332,7 @@ def benchmark_model(
     input_shapes = parse_input_shapes(input_shapes)
 
     orig_model_path = model_path
-    model_path = model_to_path(model_path)
+    model_path, _ = model_to_path_and_config(model_path)
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     # Compile the ONNX into a runnable model

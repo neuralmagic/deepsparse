@@ -70,9 +70,9 @@ def get_onnx_path_and_configs(
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if DeploymentFiles["ONNX_MODEL_FILE"]["name"] not in model_files:
+        if DeploymentFiles.ONNX_MODEL_FILE not in model_files:
             raise ValueError(
-                f"{DeploymentFiles['ONNX_MODEL_FILE']['name']} "
+                f"{DeploymentFiles.ONNX_MODEL_FILE} "
                 f"not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
                 f"{os.path.join(model_path, DeploymentFiles.ONNX_MODEL_FILE)}"  # noqa E501

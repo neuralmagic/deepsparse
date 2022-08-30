@@ -27,7 +27,7 @@ from deepsparse.benchmark.stream_benchmark import singlestream_benchmark
 from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,
-    model_to_path,
+    model_to_path_and_config,
     override_onnx_input_shapes,
     parse_input_shapes,
 )
@@ -242,7 +242,7 @@ def main():
         raise ValueError("Number of streams larger than the number of affinity sets!")
 
     orig_model_path = args.model_path
-    args.model_path = model_to_path(args.model_path)
+    args.model_path, _ = model_to_path_and_config(args.model_path)
 
     all_batch_times = []
     summed_throughput = 0
