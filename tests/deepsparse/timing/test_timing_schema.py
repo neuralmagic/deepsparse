@@ -37,6 +37,7 @@ def test_timing_schema(phase_names, durations):
 
 
 def test_fields_consistency():
-    assert {field.value for field in InferencePhases} == {
-        field for field in InferenceTimingSchema.__fields__
+    assert {field for field in InferenceTimingSchema.__fields__} == {
+        getattr(InferencePhases, field)
+        for field in InferencePhases.__dataclass_fields__
     }

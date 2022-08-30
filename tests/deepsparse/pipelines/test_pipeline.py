@@ -145,9 +145,8 @@ def test_pipeline_call_is_async(engine_mock):
 
 def test_run_with_monitoring():
     pipeline = Pipeline.create("token_classification", batch_size=1)
-    _, inference_timing, _ = pipeline.run_with_monitoring(
-        "all_your_base_are_belong_to_us"
-    )
+    output_w_monitoring = pipeline.run_with_monitoring("all_your_base_are_belong_to_us")
+    inference_timing = output_w_monitoring[3]
     assert (
         pytest.approx(
             inference_timing.pre_process

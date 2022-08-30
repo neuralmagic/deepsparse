@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import Enum
+from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
 
@@ -20,11 +20,12 @@ from pydantic import BaseModel, Field
 __all__ = ["InferenceTimingSchema", "InferencePhases"]
 
 
-class InferencePhases(Enum):
-    PRE_PROCESS = "pre_process"
-    ENGINE_FORWARD = "engine_forward"
-    POST_PROCESS = "post_process"
-    TOTAL_INFERENCE = "total_inference"
+@dataclass(frozen=True)
+class InferencePhases:
+    PRE_PROCESS: str = "pre_process"
+    ENGINE_FORWARD: str = "engine_forward"
+    POST_PROCESS: str = "post_process"
+    TOTAL_INFERENCE: str = "total_inference"
 
 
 class InferenceTimingSchema(BaseModel):
