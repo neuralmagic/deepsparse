@@ -139,8 +139,9 @@ class YOLACTPipeline(Pipeline):
         if not isinstance(images, list):
             images = [images]
 
-        if isinstance(images[0], str):
-            images = [cv2.imread(file_path) for file_path in images]
+        image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
+
+        image_batch = numpy.concatenate(image_batch, axis=0)
 
         postprocessing_kwargs = dict(
             confidence_threshold=inputs.confidence_threshold,
@@ -150,11 +151,6 @@ class YOLACTPipeline(Pipeline):
             max_num_detections=inputs.max_num_detections,
             return_masks=inputs.return_masks,
         )
-
-        preprocessed_images = [
-            preprocess_array(array, self.image_size) for array in images
-        ]
-        image_batch = numpy.concatenate(preprocessed_images, axis=0)
         return [image_batch], postprocessing_kwargs
 
     @staticmethod
@@ -174,6 +170,12 @@ class YOLACTPipeline(Pipeline):
         # all the priors should be equal, so only use the first one
         assert (batch_priors == batch_priors[0]).all()
         return [boxes, confidence, masks, batch_priors[0], protos]
+
+    def _preprocess_image(self, image) -> numpy.ndarray:
+        if isinstance(image, str):
+            image = cv2.imread(image)
+
+        return preprocess_array(image)
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
