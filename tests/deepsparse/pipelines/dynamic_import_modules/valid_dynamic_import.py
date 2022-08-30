@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from deepsparse.pipeline import Pipeline
-from deepsparse.transformers.pipelines.question_answering import (
-    QuestionAnsweringPipeline,
-)
 
 
 TASK = "unit_test_task"
-Pipeline.register(TASK)(QuestionAnsweringPipeline)
+
+
+@Pipeline.register(TASK)
+class UnitTestTaskPipeline(Pipeline):
+    ...
