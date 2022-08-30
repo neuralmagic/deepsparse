@@ -33,7 +33,7 @@ from deepsparse.image_classification.schemas import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
-from deepsparse.pipelines.helpers import deployment_files
+from deepsparse.pipelines.helpers import DeploymentFiles
 from deepsparse.utils import model_to_path_and_config
 
 
@@ -154,7 +154,7 @@ class ImageClassificationPipeline(Pipeline):
         model_path, config_path = model_to_path_and_config(self.model_path)
 
         config_data = self._read_config_data(config_path) if config_path else {}
-        self._class_names = config_data.get(deployment_files["ONNX_MODEL_FILE"]["name"])
+        self._class_names = config_data.get(DeploymentFiles.ONNX_MODEL_FILE)
 
         return model_path
 

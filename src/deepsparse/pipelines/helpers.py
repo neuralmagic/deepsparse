@@ -12,24 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from types import MappingProxyType
+from dataclasses import dataclass
 
 
-__all__ = ["deployment_files"]
-"""
-Universal container for deployment files
-that can be potentially held by any
-model
-"""
+__all__ = ["DeploymentFiles"]
 
-deployment_files = MappingProxyType(
-    {
-        "ONNX_MODEL_FILE": {"name": "model.onnx"},
-        "CONFIG_FILE": {
-            "name": "config.json",
-            "label_to_class_mapping": "labels_to_class_mapping",
-        },
-        "TOKENIZER_FILE": {"name": "tokenizer.json"},
-        "TOKENIZER_CONFIG_FILE": {"name": "tokenizer_config.json"},
-    }
-)
+
+@dataclass(frozen=True)
+class DeploymentFiles:
+    """
+    Universal container for deployment files
+    that can be potentially held by any
+    model. Additionally, it will hold any
+    additional keys pertaining to the
+    deployment files
+    """
+
+    ONNX_MODEL_FILE: str = "model.onnx"
+    CONFIG_FILE: str = "config.json"
+    TOKENIZER_FILE: str = "tokenizer.json"
+    TOKENIZER_CONFIG_FILE: str = "tokenizer_config.json"
+    LABEL_TO_CLASS_MAPPING: str = "label_to_class_mapping"

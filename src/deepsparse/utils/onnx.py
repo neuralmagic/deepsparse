@@ -21,7 +21,7 @@ from typing import List, Optional, Union
 import numpy
 import onnx
 
-from deepsparse.pipelines.helpers import deployment_files
+from deepsparse.pipelines.helpers import DeploymentFiles
 from deepsparse.utils.extractor import Extractor
 
 
@@ -110,20 +110,14 @@ def model_to_path_and_config(
     # model is a Model class object
     if Model is not object and isinstance(model, Model):
         # default to the onnx file / config file in the default deployment directory
-        onnx_model = model.deployment.default.get_file(
-            deployment_files["ONNX_MODEL_FILE"]["name"]
-        )
-        config = model.deployment.default.get_file(
-            deployment_files["CONFIG_FILE"]["name"]
-        )
+        onnx_model = model.deployment.default.get_file(DeploymentFiles.ONNX_MODEL_FILE)
+        config = model.deployment.default.get_file(DeploymentFiles.CONFIG_FILE)
     # model is a Directory class object (deployment)
     elif Directory is not object and isinstance(model, Directory):
         # default to the onnx file / config file in the directory
         directory = model
-        onnx_model = directory.default.get_file(
-            deployment_files["ONNX_MODEL_FILE"]["name"]
-        )
-        config = directory.default.get_file(deployment_files["CONFIG_FILE"]["name"])
+        onnx_model = directory.default.get_file(DeploymentFiles.ONNX_MODEL_FILE)
+        config = directory.default.get_file(DeploymentFiles.CONFIG_FILE)
 
     # model is a File class object or a string path to the onnx model
     else:
