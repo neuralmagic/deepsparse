@@ -42,7 +42,7 @@ except Exception:
     is_release = False
     splash = (
         "DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. "
-        f"version: {version} (release)"
+        f"version: {version} COMMUNITY EDITION (release)"
     )
 
 __version__ = version
