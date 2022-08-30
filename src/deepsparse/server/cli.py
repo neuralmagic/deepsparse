@@ -15,7 +15,7 @@
 """
 There are two sub-commands for the server:
 1. `deepsparse.server config [OPTIONS] <config path>`
-2. `deepsparse.server quick [OPTIONS] <task>
+2. `deepsparse.server task [OPTIONS] <task>
 ```
 """
 
