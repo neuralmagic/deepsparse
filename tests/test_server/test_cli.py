@@ -102,7 +102,7 @@ def test_server_qa(cleanup: Dict[str, List]):
         "pruned_6layers-aggressive_98",
     ]
     print(f"\n==== test_server_qa command ====\n{' '.join(cmd)}\n==== ====")
-    proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
+    proc = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
     cleanup["processes"].append(proc)
     is_up = wait_for_server("http://localhost:5543/docs", 60)
 
