@@ -93,6 +93,18 @@ def test_server_ner(cleanup: Dict[str, List]):
 
 @pytest.mark.smoke
 def test_server_qa(cleanup: Dict[str, List]):
+    commands = [
+        ["deepsparse.server", "--help"],
+        ["deepsparse.server", "task", "--help"],
+        ["deepsparse.server", "config", "--help"],
+    ]
+    for cmd in commands:
+        print(f"\n==== test_server_help command ====\n{' '.join(cmd)}\n==== ====")
+        res = run_command(cmd)
+        if res.stdout is not None:
+            print(f"\n==== test_server_help output ====\n{res.stdout}\n==== ====")
+        assert res.returncode == 0
+
     cmd = [
         "deepsparse.server",
         "task",
@@ -102,7 +114,7 @@ def test_server_qa(cleanup: Dict[str, List]):
         "pruned_6layers-aggressive_98",
     ]
     print(f"\n==== test_server_qa command ====\n{' '.join(cmd)}\n==== ====")
-    proc = Popen(cmd, stdout=PIPE, stderr=STDOUT, shell=True)
+    proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
     cleanup["processes"].append(proc)
     is_up = wait_for_server("http://localhost:5543/docs", 60)
 
