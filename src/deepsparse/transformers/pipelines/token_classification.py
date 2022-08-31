@@ -33,7 +33,7 @@
 Pipeline implementation and pydantic models for token classification transformers
 tasks
 """
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -41,7 +41,6 @@ from transformers.file_utils import ExplicitEnum
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
-from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -66,7 +65,7 @@ class AggregationStrategy(ExplicitEnum):
     MAX = "max"
 
 
-class TokenClassificationInput(BaseModel, Splittable):
+class TokenClassificationInput(BaseModel):
     """
     Schema for inputs to token_classification pipelines
     """
@@ -85,32 +84,6 @@ class TokenClassificationInput(BaseModel, Splittable):
             "Default is False"
         ),
     )
-
-    def split(self) -> Generator["TokenClassificationInput", None, None]:
-        """
-        Split a current `TokenClassificationInput` object with a batch size b, into a
-        generator of b smaller objects with batch size 1, the returned
-        object can be iterated on.
-
-        :return: A Generator of smaller `TokenClassificationInput` objects each
-            representing an input of batch-size 1
-        """
-
-        inputs = self.inputs
-
-        # case 1: do nothing if single input of batch_size 1
-        if isinstance(inputs, str):
-            yield self
-
-        elif isinstance(inputs, list) and len(inputs) and isinstance(inputs[0], str):
-            # case 2: List[str] -> multi-batches of size 1 Or batch-size 1 multi-inputs
-            for input_ in inputs:
-                yield TokenClassificationInput(
-                    inputs=input_, is_split_into_words=self.is_split_into_words
-                )
-
-        else:
-            raise ValueError(f"Could not breakdown {self} into smaller batches")
 
 
 class TokenClassificationResult(BaseModel):
@@ -140,7 +113,7 @@ class TokenClassificationResult(BaseModel):
     )
 
 
-class TokenClassificationOutput(BaseModel, Joinable):
+class TokenClassificationOutput(BaseModel):
     """
     Schema for results of TokenClassificationPipeline inference. Classifications of each
     token stored in a list of lists of batch[sentence[token]]
@@ -153,22 +126,6 @@ class TokenClassificationOutput(BaseModel, Joinable):
             "TokenClassificationResult item per token in the given sequence"
         )
     )
-
-    @staticmethod
-    def join(
-        outputs: Iterable["TokenClassificationOutput"],
-    ) -> "TokenClassificationOutput":
-        """
-        Takes in ab Iterable of `TokenClassificationOutput` objects and combines
-        them into one object representing a bigger batch size
-
-        :return: A new `TokenClassificationOutput` object that represents a bigger batch
-        """
-        predictions = [
-            prediction for output in outputs for prediction in output.predictions
-        ]
-
-        return TokenClassificationOutput(predictions=predictions)
 
 
 @Pipeline.register(
@@ -413,7 +370,7 @@ class TokenClassificationPipeline(TransformersPipeline):
             padding=False,
             truncation=False,
         )
-        input_seq_len = len(tokens)
+        input_seq_len = max(map(len, tokens["input_ids"]))
         return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     # utilities below adapted from transformers

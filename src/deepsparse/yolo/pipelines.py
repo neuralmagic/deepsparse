@@ -197,22 +197,7 @@ class YOLOPipeline(Pipeline):
         if isinstance(inputs.images, (str, numpy.ndarray)):
             inputs.images = [inputs.images]
 
-        image_batch = []
-
-        for image in inputs.images:
-            if isinstance(image, list):
-                # image consists of floats or ints
-                image = numpy.asarray(image)
-
-            if isinstance(image, str):
-                image = cv2.imread(image)
-
-            image = self._make_channels_last(image)
-            if image.ndim < 4:
-                # Assume a batch is of the correct size already
-                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
-            image = self._make_channels_first(image)
-            image_batch.append(image)
+        image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
 
         image_batch = self._make_batch(image_batch)
         image_batch = numpy.ascontiguousarray(
@@ -227,6 +212,21 @@ class YOLOPipeline(Pipeline):
             conf_thres=inputs.conf_thres,
         )
         return [image_batch], postprocessing_kwargs
+
+    def _preprocess_image(self, image) -> numpy.ndarray:
+        if isinstance(image, list):
+            # image consists of floats or ints
+            image = numpy.asarray(image)
+
+        if isinstance(image, str):
+            image = cv2.imread(image)
+
+        image = self._make_channels_last(image)
+        if image.ndim < 4:
+            # Assume a batch is of the correct size already
+            image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
+        image = self._make_channels_first(image)
+        return image
 
     def process_engine_outputs(
         self,
