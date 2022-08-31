@@ -223,7 +223,11 @@ class TestActualModelEndpoints:
 
     def test_static_batch_errors_on_wrong_batch_size(self, client):
         with pytest.raises(
-            ValueError, match="batch size of 1 must match the batch size"
+            RuntimeError,
+            match=(
+                "batch size of 1 passed into pipeline is "
+                "not divisible by model batch size of 2"
+            ),
         ):
             client.post("/predict/static-batch", json={"sequences": "today is great"})
 
@@ -236,3 +240,18 @@ class TestActualModelEndpoints:
         output = response.json()
         assert len(output["labels"]) == 2
         assert len(output["scores"]) == 2
+
+    @pytest.mark.parametrize(
+        "seqs",
+        [
+            ["today is great"],
+            ["today is great", "today is terrible"],
+            ["the first sentence", "the second sentence", "the third sentence"],
+        ],
+    )
+    def test_dynamic_batch_any(self, client, seqs):
+        response = client.post("/predict/dynamic-batch", json={"sequences": seqs})
+        assert response.status_code == 200
+        output = response.json()
+        assert len(output["labels"]) == len(seqs)
+        assert len(output["scores"]) == len(seqs)
