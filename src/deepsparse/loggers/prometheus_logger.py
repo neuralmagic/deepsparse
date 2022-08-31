@@ -13,14 +13,15 @@
 # limitations under the License.
 import logging
 import os
+import shlex
+import subprocess
 from collections import defaultdict
 from typing import Any, Optional
 
-from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.dashboards import docker_compose_path
+from deepsparse.loggers.base_logger import BaseLogger
 from prometheus_client import REGISTRY, Histogram, start_http_server, write_to_textfile
-import subprocess
-import shlex
+
 
 __all__ = ["PrometheusLogger"]
 
@@ -50,7 +51,7 @@ class PrometheusLogger(BaseLogger):
         text_log_save_dir: str = os.getcwd(),
         text_log_save_freq: int = 10,
         text_log_file_name: Optional[str] = None,
-        grafana_monitoring: bool = False
+        grafana_monitoring: bool = False,
     ):
         self.port = port
         self.text_log_save_freq = text_log_save_freq
@@ -138,9 +139,9 @@ class PrometheusLogger(BaseLogger):
         """
         Starts the Grafana service
         """
-        command = f'docker-compose -f {docker_compose_path} up --build --force-recreate'
+        command = f"docker-compose -f {docker_compose_path} up --build --force-recreate"
         command_shlex = shlex.split(command)
-        subprocess.run(command_shlex)
+        subprocess.Popen(command_shlex)
 
     def _setup_client(self):
         """

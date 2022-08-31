@@ -3,6 +3,8 @@ version: "3"
 services:
   prometheus:
     image: prom/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "9090:9090"
     volumes:

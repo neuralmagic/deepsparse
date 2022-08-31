@@ -32,7 +32,7 @@ def get_inference_timing():
     return InferenceTimingSchema(**timing_args)
 
 
-logger = PrometheusLogger(port=PYTHON_CLIENT_PORT, grafana_monitoring = True)
+logger = PrometheusLogger(port=PYTHON_CLIENT_PORT, grafana_monitoring=True)
 
 while True:
     inference_timing = get_inference_timing()
