@@ -28,15 +28,20 @@ from tests.helpers import predownload_stub, run_command, wait_for_server
 
 @pytest.mark.smoke
 def test_server_help():
-    cmd = ["deepsparse.server", "--help"]
-    print(f"\n==== test_server_help command ====\n{' '.join(cmd)}\n==== ====")
-    res = run_command(cmd)
-    if res.stdout is not None:
-        print(f"\n==== test_server_help output ====\n{res.stdout}\n==== ====")
-    assert res.returncode == 0
-    assert "Usage:" in res.stdout
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
+    commands = [
+        ["deepsparse.server", "--help"],
+        ["deepsparse.server", "task", "--help"],
+        ["deepsparse.server", "config", "--help"],
+    ]
+    for cmd in commands:
+        print(f"\n==== test_server_help command ====\n{' '.join(cmd)}\n==== ====")
+        res = run_command(cmd)
+        if res.stdout is not None:
+            print(f"\n==== test_server_help output ====\n{res.stdout}\n==== ====")
+        assert res.returncode == 0
+        assert "Usage:" in res.stdout
+        assert "error" not in res.stdout.lower()
+        assert "fail" not in res.stdout.lower()
 
 
 def test_server_ner(cleanup: Dict[str, List]):
