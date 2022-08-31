@@ -17,8 +17,11 @@ from collections import defaultdict
 from typing import Any, Optional
 
 from deepsparse.loggers.base_logger import BaseLogger
+from deepsparse.dashboards import docker_compose_path
 from prometheus_client import REGISTRY, Histogram, start_http_server, write_to_textfile
-
+import subprocess
+from subprocess import PIPE
+import sys
 
 __all__ = ["PrometheusLogger"]
 
@@ -48,6 +51,7 @@ class PrometheusLogger(BaseLogger):
         text_log_save_dir: str = os.getcwd(),
         text_log_save_freq: int = 10,
         text_log_file_name: Optional[str] = None,
+        grafana_monitoring: bool = False
     ):
         self.port = port
         self.text_log_save_freq = text_log_save_freq
@@ -61,6 +65,8 @@ class PrometheusLogger(BaseLogger):
         # internal counter tracking the number of calls per each
         # pipeline i.e. self._counter: Dict[str, int]
         self._counter = {}
+        if grafana_monitoring:
+            self._setup_grafana()
 
         super().__init__()
 
@@ -128,6 +134,10 @@ class PrometheusLogger(BaseLogger):
         """
         histogram = self.metrics[pipeline_name][metric_name]
         histogram.observe(value_to_log)
+
+    def _setup_grafana(self):
+        print(subprocess.Popen(f'docker-compose -f {docker_compose_path} up -d --build', shell=True, stdout=subprocess.PIPE).stdout.read())
+
 
     def _setup_client(self):
         """
