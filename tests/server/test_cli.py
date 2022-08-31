@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from subprocess import PIPE, STDOUT, Popen
 from typing import Dict, List
 
@@ -93,20 +94,10 @@ def test_server_ner(cleanup: Dict[str, List]):
 
 @pytest.mark.smoke
 def test_server_qa(cleanup: Dict[str, List]):
-    commands = [
-        ["deepsparse.server", "--help"],
-        ["deepsparse.server", "task", "--help"],
-        ["deepsparse.server", "config", "--help"],
-    ]
-    for cmd in commands:
-        print(f"\n==== test_server_help command ====\n{' '.join(cmd)}\n==== ====")
-        res = run_command(cmd)
-        if res.stdout is not None:
-            print(f"\n==== test_server_help output ====\n{res.stdout}\n==== ====")
-        assert res.returncode == 0
-
     cmd = [
-        "deepsparse.server",
+        sys.executable,
+        "-m",
+        "deepsparse.server.cli",
         "task",
         "question_answering",
         "--model_path",
