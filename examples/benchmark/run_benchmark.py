@@ -130,9 +130,9 @@ def main():
         for i in range(num_warmup_iterations):
             ort_network.run(output_names, inputs_dict)
         for i in range(num_iterations):
-            start = time.time()
+            start = time.perf_counter()
             output = ort_network.run(output_names, inputs_dict)
-            end = time.time()
+            end = time.perf_counter()
             ort_results.append_batch(
                 time_start=start, time_end=end, batch_size=batch_size, outputs=output
             )
