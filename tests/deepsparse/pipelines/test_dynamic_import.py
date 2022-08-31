@@ -17,9 +17,6 @@ import os
 import pytest
 from deepsparse.pipeline import _REGISTERED_PIPELINES, Pipeline
 from deepsparse.tasks import _split_dir_and_name, dynamic_import_task
-from deepsparse.transformers.pipelines.question_answering import (
-    QuestionAnsweringPipeline,
-)
 
 
 def test_split_dir_and_name_module():
@@ -82,4 +79,4 @@ def test_pipeline_create_dynamic_task():
         "tests/deepsparse/pipelines/dynamic_import_modules/valid_dynamic_import.py"
     )
     constructor = Pipeline._get_task_constructor("import:" + path)
-    assert constructor == QuestionAnsweringPipeline
+    assert constructor.__name__ == "UnitTestTaskPipeline"

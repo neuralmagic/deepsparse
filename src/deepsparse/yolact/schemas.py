@@ -68,7 +68,7 @@ class YOLACTInputSchema(ComputerVisionSchema):
         "`postprocess` step (optional)",
     )
     return_masks: bool = Field(
-        default=False,
+        default=True,
         description="Controls whether the pipeline should additionally "
         "return segmentation masks",
     )

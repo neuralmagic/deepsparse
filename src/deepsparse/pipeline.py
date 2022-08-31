@@ -31,7 +31,6 @@ from deepsparse.cpu import cpu_details
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
 from deepsparse.timing import InferencePhases, InferenceTimingSchema, TimingBuilder
 
-
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",

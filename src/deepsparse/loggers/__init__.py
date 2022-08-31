@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from deepsparse.pipeline import Pipeline
-
-
-TASK = "unit_test_task"
-
-
-@Pipeline.register(TASK)
-class UnitTestTaskPipeline(Pipeline):
-    ...
+# flake8: noqa
+from .base_logger import *
+from .manager_logger import *
+from .prometheus_logger import *
