@@ -1,3 +1,3 @@
 deepsparse>=0.11
 git+https://github.com/twintproject/twint@e7c8a0c764f6879188e5c21e25fb6f1f856a7221#egg=twint
-rich==12.2.0
+rich>=12.2.0
