@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 from subprocess import PIPE, STDOUT, Popen
 from typing import Dict, List
 
@@ -30,9 +29,9 @@ from tests.helpers import predownload_stub, run_command, wait_for_server
 @pytest.mark.smoke
 def test_server_help():
     commands = [
-        [sys.executable, "-m", "deepsparse.server.cli", "--help"],
-        [sys.executable, "-m", "deepsparse.server.cli", "task", "--help"],
-        [sys.executable, "-m", "deepsparse.server.cli", "config", "--help"],
+        ["deepsparse.server", "--help"],
+        ["deepsparse.server", "task", "--help"],
+        ["deepsparse.server", "config", "--help"],
     ]
     for cmd in commands:
         print(f"\n==== test_server_help command ====\n{' '.join(cmd)}\n==== ====")
@@ -47,9 +46,7 @@ def test_server_help():
 
 def test_server_ner(cleanup: Dict[str, List]):
     cmd = [
-        sys.executable,
-        "-m",
-        "deepsparse.server.cli",
+        "deepsparse.server",
         "task",
         "ner",
         "--model_path",
@@ -97,9 +94,9 @@ def test_server_ner(cleanup: Dict[str, List]):
 @pytest.mark.smoke
 def test_server_qa(cleanup: Dict[str, List]):
     commands = [
-        [sys.executable, "-m", "deepsparse.server.cli", "--help"],
-        [sys.executable, "-m", "deepsparse.server.cli", "task", "--help"],
-        [sys.executable, "-m", "deepsparse.server.cli", "config", "--help"],
+        ["deepsparse.server", "--help"],
+        ["deepsparse.server", "task", "--help"],
+        ["deepsparse.server", "config", "--help"],
     ]
     for cmd in commands:
         print(f"\n==== test_server_help command ====\n{' '.join(cmd)}\n==== ====")
@@ -109,9 +106,7 @@ def test_server_qa(cleanup: Dict[str, List]):
         assert res.returncode == 0
 
     cmd = [
-        sys.executable,
-        "-m",
-        "deepsparse.server.cli",
+        "deepsparse.server",
         "task",
         "question_answering",
         "--model_path",
@@ -156,9 +151,7 @@ def test_server_qa(cleanup: Dict[str, List]):
 
 def test_server_qa_config_file(cleanup: Dict[str, List]):
     cmd = [
-        sys.executable,
-        "-m",
-        "deepsparse.server.cli",
+        "deepsparse.server",
         "config",
         "tests/test_data/deepsparse-server-config.yaml",
     ]
@@ -222,9 +215,7 @@ def test_server_sst(cleanup: Dict[str, List]):
     stub = "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none"
     model = predownload_stub(stub, copy_framework_files=True)
     cmd = [
-        sys.executable,
-        "-m",
-        "deepsparse.server.cli",
+        "deepsparse.server",
         "task",
         "sentiment_analysis",
         "--model_path",
