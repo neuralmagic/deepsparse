@@ -15,7 +15,7 @@ ifneq ($(findstring cli,$(TARGETS)),cli)
 	PYTEST_ARGS += --ignore tests/test_benchmark.py \
 	--ignore tests/test_check_hardware.py \
 	--ignore tests/test_run_inference.py \
-	--ignore tests/test_server.py
+	--ignore tests/server/test_cli.py
 endif
 ifeq ($(findstring nobase,$(TARGETS)),nobase)
 	PYTEST_ARGS += --ignore tests/deepsparse \
@@ -53,7 +53,7 @@ artifacts:
 # run tests for the repo
 test:
 	@echo "Running python tests";
-	@SPARSEZOO_TEST_MODE="true" pytest ./tests/ $(PYTEST_ARGS);
+	@SPARSEZOO_TEST_MODE="true" pytest $(PYTEST_ARGS);
 
 # create docs
 docs:
