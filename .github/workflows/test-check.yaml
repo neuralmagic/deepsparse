@@ -20,11 +20,8 @@ jobs:
   base-tests:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      - uses: actions/checkout@v3
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with:
           repository: "neuralmagic/sparsezoo"
           path: "sparsezoo"
@@ -39,23 +36,17 @@ jobs:
         run: make test
   cli-smoke-tests:
     runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      - uses: actions/checkout@v3
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
         with:
           repository: "neuralmagic/sparsezoo"
           path: "sparsezoo"
           ref: ${{needs.test-setup.outputs.branch}}
       - name: "⚙️ Install sparsezoo dependencies"
-        run: pip3 install -U pip && pip3 install -U wheel setuptools && pip3 install sparsezoo/
+        run: pip3 install -U pip && pip3 install setuptools sparsezoo/
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
         run: pip3 install .[dev,server]
-      - name: Tests
-        run: ls && which deepsparse.server | xargs cat && echo $PYTHONPATH && pwd
       - name: Run CLI smoke tests
         run: PYTEST_ARGS="-m smoke" make test TARGETS=cli,nobase
