@@ -31,6 +31,7 @@ from deepsparse.cpu import cpu_details
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
 from deepsparse.timing import InferencePhases, InferenceTimingSchema, TimingBuilder
 
+
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",
@@ -247,7 +248,7 @@ class Pipeline(ABC):
             pipeline_outputs: outputs from the inference pipeline
             pipeline_inputs: inputs to the inference pipeline
             engine_inputs: direct input to the inference engine
-            timing: BaseModel, that contains the information about time
+            inference_timing: BaseModel, that contains the information about time
                 elapsed during the inference steps: pre-processing,
                 engine-forward, post-processing, as well as
                 the total elapsed time
