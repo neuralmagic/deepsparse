@@ -20,8 +20,7 @@ from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.dashboards import docker_compose_path
 from prometheus_client import REGISTRY, Histogram, start_http_server, write_to_textfile
 import subprocess
-from subprocess import PIPE
-import sys
+import shlex
 
 __all__ = ["PrometheusLogger"]
 
@@ -136,8 +135,12 @@ class PrometheusLogger(BaseLogger):
         histogram.observe(value_to_log)
 
     def _setup_grafana(self):
-        print(subprocess.Popen(f'docker-compose -f {docker_compose_path} up -d --build', shell=True, stdout=subprocess.PIPE).stdout.read())
-
+        """
+        Starts the Grafana service
+        """
+        command = f'docker-compose -f {docker_compose_path} up --build --force-recreate'
+        command_shlex = shlex.split(command)
+        subprocess.run(command_shlex)
 
     def _setup_client(self):
         """
