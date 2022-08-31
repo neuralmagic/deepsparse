@@ -55,5 +55,7 @@ jobs:
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
         run: pip3 install .[dev,server]
+      - name: Tests
+        run: ls && which deepsparse.server | xargs cat && echo $PYTHONPATH && pwd
       - name: Run CLI smoke tests
         run: PYTEST_ARGS="-m smoke" make test TARGETS=cli,nobase
