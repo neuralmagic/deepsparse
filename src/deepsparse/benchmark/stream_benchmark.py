@@ -26,9 +26,9 @@ __all__ = ["model_stream_benchmark"]
 
 
 def iteration(model: Engine, input: List[numpy.ndarray]):
-    start = time.time()
+    start = time.perf_counter()
     output = model.run(input, val_inp=False)
-    end = time.time()
+    end = time.perf_counter()
     return output, start, end
 
 
@@ -39,8 +39,8 @@ def singlestream_benchmark(
 ) -> List[float]:
     batch_times = []
 
-    stream_end_time = time.time() + seconds_to_run
-    while time.time() < stream_end_time:
+    stream_end_time = time.perf_counter() + seconds_to_run
+    while time.perf_counter() < stream_end_time:
         _, start, end = iteration(model, input_list)
         batch_times.append([start, end])
 
@@ -62,7 +62,7 @@ class EngineExecutorThread(threading.Thread):
         self._max_time = max_time
 
     def run(self):
-        while time.time() < self._max_time:
+        while time.perf_counter() < self._max_time:
             _, start, end = iteration(self._model, self._input_list)
             self._time_queue.put([start, end])
 
@@ -74,7 +74,7 @@ def multistream_benchmark(
     num_streams: int,
 ) -> List[float]:
     time_queue = queue.Queue()
-    max_time = time.time() + seconds_to_run
+    max_time = time.perf_counter() + seconds_to_run
     threads = []
 
     for thread in range(num_streams):

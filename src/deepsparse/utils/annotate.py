@@ -363,12 +363,12 @@ def annotate(
         original_image = cv2.imread(image)
 
     if target_fps is None and calc_fps:
-        start = time.time()
+        start = time.perf_counter()
 
     pipeline_output = pipeline(images=[image])
 
     if target_fps is None and calc_fps:
-        target_fps = 1 / (time.time() - start)
+        target_fps = 1 / (time.perf_counter() - start)
 
     result = annotation_func(
         image=original_image,
