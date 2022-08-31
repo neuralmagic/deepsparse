@@ -181,7 +181,7 @@ def _non_max_suppression(
     multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
     merge = False  # use merge-NMS
 
-    t = time.time()
+    t = time.perf_counter()
     output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
         # Apply constraints
@@ -247,7 +247,7 @@ def _non_max_suppression(
                 i = i[iou.sum(1) > 1]  # require redundancy
 
         output[xi] = x[i]
-        if (time.time() - t) > time_limit:
+        if (time.perf_counter() - t) > time_limit:
             print(f"WARNING: NMS time limit {time_limit}s exceeded")
             break  # time limit exceeded
 
