@@ -1326,7 +1326,6 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
-        batch_size=3,
         model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
@@ -1351,12 +1350,8 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: if static labels are given, then batch_size must be
-        num_sequences * num_labels. Otherwise, batch_size must be 1. Default is 1
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
+    :param batch_size: batch size must divide sequences * labels, regardless of
+        whether using dynamic or static labels. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -1365,6 +1360,10 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"
