@@ -34,32 +34,26 @@ If increasing core count doesn't decrease latency, that's a strong indicator tha
 
 _Multi-stream scheduling; requests execute in parallel and may utilize hardware resources better_
 
-Whereas the default scheduler will queue up requests made simultaneously and handle them serially, the multi-stream scheduler maintains a set of dropboxes where requests may be deposited and the requesting threads can wait. These dropboxes allow workers to find work from multiple sources when work from a single source would otherwise be scarce, maximizing throughput. When a request is complete, the requesting thread is awakened and returns the results to the caller.
+Whereas the default scheduler will queue up requests made simultaneously and handle them serially, the multi-stream scheduler allows multiple requests to be run in parallel. The num_streams argument to the Engine/Context classes controls how the multi-streams scheduler partitions up the machine. Each stream maps to a contiguous set of hardware threads. By default, only one hyperthread per core is used. There is no sharing amongst the partitions and it is generally good practice make sure that the num_streams value evenly divides into your number of cores. By default num_streams is set to multiplex requests across L3 caches.
+
+Here's an example: Consider a machine with 2 sockets, each with 8 cores. In this case the multi-stream scheduler will create two streams, one per socket by default. The first stream will contain cores 0-7 and the second stream will contain cores 8-15.
+
+Manually increasing num_streams to 3 will result in the following stream breakdown: threads 0-5 in the first stream, 6-10 in the second, and 11-15 in the last. This is problematic for our two socket system. The second stream (threads 6-10) is straddling both sockets, meaning that each request being serviced by that stream is going to incur a performance penalty each time one of its threads makes a remote memory access. The impact of this penalty will depend on the workload, but it will likely be significant.
+
+Manually increasing num_streams to 4 is interesting. Here's the stream breakdown: threads 0-3 in the first stream, 4-7 in the second, 8-11 in the third, and 12-15 in the fourth. Each stream is only making memory accesses that are local to its socket which is good. However, the first two and last two streams are sharing the same L3 cache which can result in worse performance due to cache thrashing. Depending on the workload, the performance gain from the increased parallelism may negate this penalty, though.
 
 The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them. Implementing a model server may fit such a scenario and be ideal for using multi-stream scheduling.
-
-A final "elastic" scheduler is available, designed to allow concurrent requests without multiplexing them on individual NUMA nodes. A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache. The elastic scheduler executes no more than one request on a single NUMA node at any time, inhibiting cache sharing.
-
-Since the multi-stream scheduler will potentially handle multiple requests on a single NUMA node, if you're working on a multi-socket system, you may find it useful to compare performance between the multi-stream and elastic schedulers to determine the profile of your model. Be aware that even apparently minor changes, such as batch size, can radically alter the size of the computation and, therefore, cache behavior.
-
-_Elastic scheduling; requests execute in parallel, but not multiplexed on individual NUMA Nodes_
 
 Depending on your engine execution strategy, enable one of these options by running:
 
 ```python
-engine = compile_model(model_path, batch_size, num_cores, "single_stream")
+engine = compile_model(model_path, scheduler="single_stream")
 ```
 
 or
 
 ```python
-engine = compile_model(model_path, batch_size, num_cores, "multi_stream")
-```
-
-or
-
-```python
-engine = compile_model(model_path, batch_size, num_cores, "elastic")
+engine = compile_model(model_path, scheduler="multi_stream", num_streams=None) # None is the default
 ```
 
 or pass in the enum value directly, since` "multi_stream" == Scheduler.multi_stream`

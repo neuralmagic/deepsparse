@@ -1,0 +1,81 @@
+# haystack_reqs.py
+#
+# This file is used to control which dependencies are installed by
+# deepsparse[haystack]. This is done to ensure that farm-haystack has all of its
+# dependencies without installing dependencies that conflict with NM.
+#
+# This file lists dependencies for farm-haystack[all]==1.4.0, excluding the following
+# which conflict with deepsparse dependencies:
+# [transformers]
+# the following versions have been updated to match deepsparse and sparseml versioning
+# [torch]
+# you can see their haystack versions as comments in this file
+#
+# because haystack cannot be included in setup.py without its inclusion also causing
+# an installation of huggingface/transformers, it will be auto installed through
+# deepsparse/transformers/haystack/__init__.py
+
+importlib-metadata
+torch==1.9.1
+requests
+pydantic
+nltk
+pandas
+dill
+tqdm
+networkx
+mmh3
+quantulum3
+posthog
+azure-ai-formrecognizer==3.2.0b2
+azure-core<1.23
+more_itertools
+python-docx
+langdetect
+tika
+sentence-transformers>=2.2.0
+scipy>=1.3.2
+scikit-learn>=1.0.0
+seqeval
+mlflow
+elasticsearch>=7.7,<=7.10
+elastic-apm
+rapidfuzz
+jsonschema
+sqlalchemy>=1.4.2,<2
+sqlalchemy_utils
+psycopg2-binary
+faiss-cpu>=1.6.3,<2
+pymilvus<2.0.0
+weaviate-client==3.3.3
+pinecone-client
+SPARQLWrapper
+selenium
+webdriver-manager
+beautifulsoup4
+markdown
+python-magic
+pytesseract==0.3.7
+pillow
+pdf2image==1.14.0
+onnxruntime
+onnxruntime_tools
+ray>=1.9.1,<2
+aiorwlock>=1.3.0,<2
+grpcio==1.43.0
+beir
+mypy
+typing_extensions
+pytest
+responses
+tox
+coverage
+python-multipart
+psutil
+pylint
+black[jupyter]
+pydoc-markdown==4.5.1
+mkdocs
+jupytercontrib
+watchdog
+requests-cache

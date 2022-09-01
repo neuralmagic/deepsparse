@@ -45,7 +45,7 @@ python examples/benchmark/check_correctness.py \
 import argparse
 
 from deepsparse import compile_model, cpu
-from deepsparse.benchmark_model.ort_engine import ORTEngine
+from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.utils import (
     generate_random_inputs,
     model_to_path,

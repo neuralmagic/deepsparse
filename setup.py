@@ -21,20 +21,24 @@ from typing import Dict, List, Tuple
 from setuptools import find_packages, setup
 from setuptools.command.install import install
 
+from utils.artifacts import (
+    check_wand_binaries_exist,
+    download_wand_binaries,
+    get_release_and_version,
+)
 
-# default variables to be overwritten by the version.py file
-is_release = None
-version = "unknown"
-version_major = version
-version_minor = version
-version_bug = version
 
-# load and overwrite version and release info from deepsparse package
-version_path = os.path.join("src", "deepsparse", "generated_version.py")
-if not os.path.exists(version_path):
-    version_path = os.path.join("src", "deepsparse", "version.py")
-exec(open(version_path).read())
-print(f"loaded version {version} from {version_path}")
+# Load version and release info from deepsparse package
+package_path = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "src", "deepsparse"
+)
+(
+    is_release,
+    version,
+    version_major,
+    version_minor,
+    version_bug,
+) = get_release_and_version(package_path)
 version_base = f"{version_major}.{version_minor}.0"
 
 _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
@@ -42,22 +46,33 @@ _PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
+
+def _parse_requirements_file(file_path):
+    with open(file_path, "r") as requirements_file:
+        lines = requirements_file.read().splitlines()
+
+    return [line for line in lines if len(line) > 0 and line[0] != "#"]
+
+
 _deps = [
     "numpy>=1.16.3",
-    "onnx>=1.5.0,<=1.10.1",
+    "onnx>=1.5.0,<=1.12.0",
+    "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
-    "protobuf>=3.12.2",
+    "protobuf>=3.12.2,<4",
+    "click~=8.0.0",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
-    "beautifulsoup4==4.9.3",
+    "beautifulsoup4>=4.9.3",
     "black>=20.8b1",
     "flake8>=3.8.3",
     "isort>=5.7.0",
     "m2r2~=0.2.7",
     "mistune==0.8.4",
     "myst-parser~=0.14.0",
+    "ndjson>=0.3.1",
     "rinohtype>=0.4.2",
     "sphinx>=3.4.0",
     "sphinx-copybutton>=0.3.0",
@@ -66,81 +81,108 @@ _dev_deps = [
     "pytest>=6.0.0",
     "sphinx-multiversion==0.2.4",
     "sphinx-rtd-theme",
-    "onnxruntime>=1.4.0,<1.9.0",
+    "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
+    "Pillow>=8.3.2",
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
     "fastapi>=0.70.0",
-    "starlette>=0.16.0",
     "pydantic>=1.8.2",
     "requests>=2.26.0",
+    "python-multipart>=0.0.5",
+    "prometheus-client>=0.14.1",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
+_yolo_integration_deps = [
+    "torchvision>=0.3.0,<=0.12.0",
+    "opencv-python",
+]
+# haystack dependencies are installed from a requirements file to avoid
+# conflicting versions with NM's deepsparse/transformers
+_haystack_requirements_file_path = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)),
+    "src",
+    "deepsparse",
+    "transformers",
+    "haystack",
+    "haystack_reqs.txt",
+)
+_haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 
 
-class OverrideInstall(install):
-    """
-    Install class to run checks for supported systems before install
-    and correcting binary file permissions after install.
-    """
+def _check_supported_system():
+    if sys.platform.startswith("linux"):
+        # linux is supported, allow install to go through
+        return
 
-    def run(self):
-        self._check_supported_system()
-        self._check_supported_python_version()
-        super().run()
-        self._fix_file_modes()
-
-    def _check_supported_system(self):
-        if sys.platform.startswith("linux"):
-            # linux is supported, allow install to go through
-            return
-
-        if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
-            # windows is not supported, raise error on install
-            raise OSError(
-                "Native Windows is currently unsupported for the DeepSparse Engine. "
-                "Please run on a Linux system or within a Linux container on Windows. "
-                "More info can be found in our docs here: "
-                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-            )
-
-        if sys.platform.startswith("darwin"):
-            # mac is not supported, raise error on install
-            raise OSError(
-                "Native Mac is currently unsupported for the DeepSparse Engine. "
-                "Please run on a Linux system or within a Linux container on Mac. "
-                "More info can be found in our docs here: "
-                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-            )
-
-        # unknown system, raise error on install
+    if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
+        # windows is not supported, raise error on install
         raise OSError(
-            f"Unknown OS given of {sys.platform}; "
-            "it is unsupported for the DeepSparse Engine. "
-            "Please run on a Linux system. "
+            "Native Windows is currently unsupported for the DeepSparse Engine. "
+            "Please run on a Linux system or within a Linux container on Windows. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
         )
 
-    def _check_supported_python_version(self):
-        supported_major = 3
-        supported_minor = [6, 7, 8, 9]
+    if sys.platform.startswith("darwin"):
+        # mac is not supported, raise error on install
+        raise OSError(
+            "Native Mac is currently unsupported for the DeepSparse Engine. "
+            "Please run on a Linux system or within a Linux container on Mac. "
+            "More info can be found in our docs here: "
+            "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+        )
 
-        if (
-            sys.version_info[0] != supported_major
-            or sys.version_info[1] not in supported_minor
-        ):
-            raise EnvironmentError(
-                f"Python {supported_major}.{supported_minor} "
-                f"is only supported for the DeepSparse Engine; found {sys.version}. "
-                "Please run on a system with the proper Python version installed. "
-                "More info can be found in our docs here: "
-                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-            )
+    # unknown system, raise error on install
+    raise OSError(
+        f"Unknown OS given of {sys.platform}; "
+        "it is unsupported for the DeepSparse Engine. "
+        "Please run on a Linux system. "
+        "More info can be found in our docs here: "
+        "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+    )
+
+
+def _check_supported_python_version():
+    supported_major = 3
+    supported_minor = [6, 7, 8, 9, 10]
+
+    if (
+        sys.version_info[0] != supported_major
+        or sys.version_info[1] not in supported_minor
+    ):
+        raise EnvironmentError(
+            f"Python {supported_major}.{supported_minor} "
+            f"is only supported for the DeepSparse Engine; found {sys.version}. "
+            "Please run on a system with the proper Python version installed. "
+            "More info can be found in our docs here: "
+            "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+        )
+
+
+# Ensure system and python environment is compatible
+_check_supported_system()
+_check_supported_python_version()
+
+# Download WAND binaries if needed
+if not check_wand_binaries_exist(package_path):
+    download_wand_binaries(
+        package_path, f"{version_major}.{version_minor}.{version_bug}", is_release
+    )
+
+
+class OverrideInstall(install):
+    """
+    Install class to run checks for correcting binary file permissions after install.
+    """
+
+    def run(self):
+        super().run()
+        self._fix_file_modes()
 
     def _fix_file_modes(self):
         mode = 0o755
@@ -173,20 +215,28 @@ def _setup_extras() -> Dict:
         "dev": _dev_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
+        "yolo": _yolo_integration_deps,
+        "haystack": _haystack_integration_deps,
     }
 
 
 def _setup_entry_points() -> Dict:
     data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     eval_downstream = "deepsparse.transformers.eval_downstream:main"
+    ic_eval = "deepsparse.image_classification.validation_script:main"
+
     return {
         "console_scripts": [
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             f"deepsparse.transformers.eval_downstream={eval_downstream}",
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
-            "deepsparse.benchmark=deepsparse.benchmark_model.benchmark_model:main",
+            "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.main:start_server",
+            "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
+            "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
+            "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
+            f"deepsparse.image_classification.eval={ic_eval}",
         ]
     }
 
@@ -220,11 +270,16 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.6.0",
+    python_requires=">=3.6, <3.11",
     classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Environment :: Console",
+        "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
@@ -232,8 +287,6 @@ setup(
         "License :: Other/Proprietary License",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: POSIX :: Linux",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3 :: Only",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Scientific/Engineering :: Mathematics",

@@ -1,3 +1,5 @@
 include LICENSE
+include utils/artifacts.py
+include src/deepsparse/transformers/haystack/haystack_reqs.txt
 recursive-include src/deepsparse/avx2 *
 recursive-include src/deepsparse/avx512 *

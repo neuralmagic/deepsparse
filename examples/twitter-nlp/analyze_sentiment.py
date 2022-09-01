@@ -26,19 +26,24 @@ Usage: analyze_sentiment.py [OPTIONS]
   the results.
 
 Options:
-  --model_path TEXT       The path to the sentiment analysis model to
-                          load.Either a model.onnx file, a model folder
-                          containing the model.onnx and supporting files, or a
-                          SparseZoo model stub.
-  --tweets_file TEXT      The path to the tweets json txt file to analyze
-                          sentiment for.
-  --batch_size INTEGER    The batch size to process the tweets with. A higher
-                          batch size may increase performance at the expense
-                          of memory resources and individual latency.
-  --total_tweets INTEGER  The total number of tweets to analyze from the
-                          tweets_file.Defaults to None which will run through
-                          all tweets contained in the file.
-  --help                  Show this message and exit.
+  --model_path TEXT               The path to the sentiment analysis model to
+                                  load. Either a model.onnx file, a model
+                                  folder containing the model.onnx and
+                                  supporting files, or a SparseZoo model stub.
+  --tweets_file TEXT              The path to the tweets json txt file to
+                                  analyze sentiment for.
+  --batch_size INTEGER            The batch size to process the tweets with. A
+                                  higher batch size may increase performance
+                                  at the expense of memory resources and
+                                  individual latency.
+  --total_tweets INTEGER          The total number of tweets to analyze from
+                                  the tweets_file. Defaults to None which will
+                                  run through all tweets contained in the
+                                  file.
+  --engine [deepsparse|onnxruntime]
+                                  Inference engine to use. Default is
+                                  deepsparse
+  --help                          Show this message and exit.
 
 ##########
 Example running a sparse, quantized sentiment analysis model:
@@ -54,12 +59,13 @@ python analyze_sentiment.py
 """
 
 import json
+import time
 from itertools import cycle, islice
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import click
 
-from deepsparse.transformers import pipeline
+from deepsparse import Pipeline
 from rich import print
 
 
@@ -80,7 +86,7 @@ def _prep_data(tweets: List[Dict], total_num: int) -> List[str]:
 
 
 def _batched_model_input(tweets: List[str], batch_size: int) -> Optional[List[str]]:
-    if batch_size >= len(tweets):
+    if batch_size > len(tweets):
         return None
 
     batched = tweets[0:batch_size]
@@ -89,8 +95,8 @@ def _batched_model_input(tweets: List[str], batch_size: int) -> Optional[List[st
     return batched
 
 
-def _classified_positive(sentiment: Dict[str, Any]):
-    return sentiment["label"] == "LABEL_1"
+def _classified_positive(sentiment: str):
+    return sentiment == "LABEL_1" or sentiment == "positive"
 
 
 def _display_results(batch, sentiments):
@@ -103,7 +109,7 @@ def _display_results(batch, sentiments):
 @click.option(
     "--model_path",
     type=str,
-    help="The path to the sentiment analysis model to load."
+    help="The path to the sentiment analysis model to load. "
     "Either a model.onnx file, a model folder containing the model.onnx "
     "and supporting files, or a SparseZoo model stub.",
 )
@@ -124,32 +130,51 @@ def _display_results(batch, sentiments):
     "--total_tweets",
     type=int,
     default=None,
-    help="The total number of tweets to analyze from the tweets_file."
+    help="The total number of tweets to analyze from the tweets_file. "
     "Defaults to None which will run through all tweets contained in the file.",
 )
+@click.option(
+    "--engine",
+    type=click.Choice(["deepsparse", "onnxruntime"]),
+    default="deepsparse",
+    help="Inference engine to use. Default is deepsparse",
+)
 def analyze_tweets_sentiment(
-    model_path: str, tweets_file: str, batch_size: int, total_tweets: int
+    model_path: str, tweets_file: str, batch_size: int, total_tweets: int, engine: str
 ):
     """
     Analyze the sentiment of the tweets given in the tweets_file and
     print out the results.
     """
-    text_pipeline = pipeline(
+    print("Loading the model for inference...")
+    text_pipeline = Pipeline.create(
         task="text-classification",
         model_path=model_path,
         batch_size=batch_size,
+        engine_type=engine,
     )
     tweets = _load_tweets(tweets_file)
     tweets = _prep_data(tweets, total_tweets)
     tot_sentiments = []
+    times = []
 
     while True:
         batch = _batched_model_input(tweets, batch_size)
         if batch is None:
             break
+        start = time.perf_counter()
         sentiments = text_pipeline(batch)
+        end = time.perf_counter()
+
+        if sentiments.__class__.__name__ == "TextClassificationOutput":
+            sentiments: List[str] = sentiments.labels
+        else:
+            # backwards compatibility with old pipelines
+            sentiments: List[str] = [sentiment["label"] for sentiment in sentiments]
+
         _display_results(batch, sentiments)
         tot_sentiments.extend(sentiments)
+        times.append(end - start)
 
     num_positive = sum(
         [1 if _classified_positive(sent) else 0 for sent in tot_sentiments]
@@ -159,7 +184,7 @@ def analyze_tweets_sentiment(
     )
     print("\n\n\n")
     print("###########################################################################")
-    print(f"Completed analyzing {len(tweets)} tweets for sentiment,")
+    print(f"Completed analyzing {len(tot_sentiments)} tweets for sentiment,")
 
     if num_positive >= num_negative:
         print(
@@ -172,6 +197,7 @@ def analyze_tweets_sentiment(
             f"[magenta]General sentiment is negative with "
             f"{100*num_negative/float(len(tot_sentiments)):.0f}% against.[/magenta]"
         )
+    print(f"This took {sum(times):2f} seconds total")
     print("###########################################################################")
 
 

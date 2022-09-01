@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+) <sup><samp>[**NEURAL MAGIC**](https://neuralmagic.com)</samp></sup> ![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)
 
         ███████╗██████╗  █████╗ ██████╗ ███████╗███████╗  ███████╗███████╗██████╗ ██╗   ██╗███████╗██████╗     ██╗   ██╗ ██╗
         ██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔════╝  ██╔════╝██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗    ██║   ██║ ██║
@@ -21,11 +20,9 @@ limitations under the License.
         ╚════██║██╔═══╝ ██╔══██║██╔══██╗╚════██║██╔══╝    ╚════██║██╔══╝  ██╔══██╗╚██╗ ██╔╝██╔══╝  ██╔══██╗    ██║   ██║ ██║
         ███████║██║     ██║  ██║██║  ██║███████║███████╗  ███████║███████╗██║  ██║ ╚████╔╝ ███████╗██║  ██║ ██╗ ╚██████╔ ██║
         ╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚══════╝  ╚══════╝╚══════╝╚═╝  ╚═╝  ╚═══╝  ╚══════╝╚═╝  ╚═╝ ╚═╝  ╚═════╝ ╚═╝
-                                                                                                                    
+                                                                                                                
 
-                *** A Streamlit app for deploying the DeepSparse Server *** 
-![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)![#00F](https://via.placeholder.com/15/00F/000000?text=+)
-
+                        *** A Streamlit app for deploying the DeepSparse Server *** 
 
 ## <div>`INTRO`</div>
 
@@ -85,4 +82,27 @@ Visit `http://localhost:8501` in your browser to view the demo.
 - 19 models should fit on 16GB RAM of a c2-standard-4 VM instance on GCP
 - Ubuntu 20.04.4 LTS
 - Python 3.8.10
+
+
+## <div>`DOCKER COMPOSE`</div>
+
+### Pre-requisite
+
+- Docker
+- Docker Compose
+
+The SparseServer.UI demo is also available in a containerised docker format.
+
+
+```bash
+git clone https://github.com/neuralmagic/deepsparse.git
+cd deepsparse/examples/sparseserver-ui
+docker-compose up --build
+```
+<br />
+This will automate the setup process and provide the streamlit app at 
+`http://localhost:8501` and the deepserver at `http://localhost:5543` as described above.
+
+<br />
+Please note that the **build** flag is optional after the first build. 
 </samp>

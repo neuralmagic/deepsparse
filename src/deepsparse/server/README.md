@@ -1,10 +1,13 @@
-## DeepSparse Server 🔌
+## 🔌 DeepSparse Server
 
 ```bash
 pip install deepsparse[server]
 ```
 
-The DeepSparse inference server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Currently, the server only supports NLP tasks; however, support for computer vision will soon be released in upcoming versions.
+The DeepSparse server allows you to serve models and pipelines for deployment in HTTP. The server runs on top of the popular FastAPI web framework and Uvicorn web server.
+The server supports any task from deepsparse. Pipeline including NLP, image classification, and object detection tasks.
+An updated list of available tasks can be found
+[here](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/PIPELINES.md)
 
  - Run `deepsparse.server --help` to lookup the available CLI arguments.
 
@@ -53,7 +56,7 @@ deepsparse.server \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
-To make a request to your server, you can use the `requests` library and pass the request URL:
+To make a request to your server, use the `requests` library and pass the request URL:
 
 ```python
 import requests
@@ -68,20 +71,16 @@ obj = {
 response = requests.post(url, json=obj)
 ```
 
-In addition, you can also make a request with a `curl` command from terminal:
+In addition, you can make a request with a `curl` command from terminal:
 
 ```bash
-curl -X 'POST' \
+curl -X POST \
   'http://localhost:5543/predict' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
-  "question": [
-    "Who is Mark?"
-  ],
-  "context": [
-    "Mark is batman."
-  ]
+  "question": "Who is Mark?",
+  "context": "Mark is batman."
 }'
 ```
 __ __
@@ -106,7 +105,7 @@ You can now run the server with the config file path passed in the `--config_fil
 deepsparse.server --config_file config.yaml
 ```
 
-You can can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, the alias would be `question_answering/pruned_quant`:
+You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, the alias would be `question_answering/pruned_quant`:
 
 ```python
 import requests
@@ -121,7 +120,9 @@ obj = {
 response = requests.post(url, json=obj)
 ```
 
-💡 **PRO TIP** 💡: While your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes. All you need is to add `/docs` at the end of your host URL:
+💡 **PRO TIP** 💡: While your server is running, you can always use the awesome swagger UI that's built into FastAPI to view your model's pipeline `POST` routes.
+The UI also enables you to easily make sample requests to your server.
+All you need is to add `/docs` at the end of your host URL:
 
     localhost:5543/docs
 

@@ -16,7 +16,7 @@ limitations under the License.
 
 # Developing the DeepSparse Engine
 
-The DeepSparse Python API is developed and tested using Python 3.6-3.9.
+The DeepSparse Python API is developed and tested using Python 3.6-3.10.
 To develop the Python API, you will also need the development dependencies and to follow the styling guidelines.
 
 Here's some details to get started.
@@ -29,6 +29,7 @@ Here's some details to get started.
 git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse
 python3 -m pip install -e ./[dev]
+make artifacts
 ```
 
 This will clone the DeepSparse repo, install it, and install the development dependencies.
