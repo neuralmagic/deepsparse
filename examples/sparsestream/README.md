@@ -57,11 +57,12 @@ This will download a Sparse ONNX model and initialize an NLP inference pipeline 
 Tweets should now be streaming in terminal, you should see a dictionary printing with two keys:
 
 - `tweet`: The tweet received from server.
-- `inference`: The tweet's sentiment: `positive` or `negative`
+- `sentiment`: The tweet's sentiment: `bullish` or `bearish` or `neutral`
+- `topic`: The tweet's finance topic: Please refer to `labels.py` for a full list of the 20 topic labels.
 
 For example:
 
 ```text
-{'tweet': '@CNBC: Whatever it is that is being done ( aka sanctions)  is not working. Why is the ruble going up?', 'inference': 'negative'}
-{'tweet': 'RT @business: BREAKING: Elon Musk has taken a 9.2% passive stake in Twitter', 'inference': 'positive'}
+{'tweet': '@CNBC: Whatever it is that is being done ( aka sanctions)  is not working. Why is the ruble going up?', 'sentiment': 'Bearish', 'topic': 'Currencies'}
+{'tweet': 'RT @business: BREAKING: Elon Musk has taken a 9.2% passive stake in Twitter', 'sentiment': 'Bullish', 'topic': 'Company | Product News'}
 ```

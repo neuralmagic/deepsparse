@@ -4,4 +4,6 @@ access_token: "<placeholder>"
 access_token_secret: "<placeholder>"
 
 task: "text-classification"
-model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+sent_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+task: "text-classification"
+sent_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
