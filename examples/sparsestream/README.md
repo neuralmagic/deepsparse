@@ -50,15 +50,15 @@ In terminal, start a Twitter stream with:
 python stream.py
 ```
 
-This will download a Sparse ONNX model and initialize an NLP inference pipeline for the text classification task.
+This will download a Sparse ONNX model and initialize two NLP inference pipelines for the text classification task, one pipeline for sentiment classification, and the other for topic classification.
 
 ## <div>`STREAM WHILE YOU EAT SOME POPCORN 🍿`</div>
 
 Tweets should now be streaming in terminal, you should see a dictionary printing with three keys:
 
-- `tweet`: The tweet received from server.
-- `sentiment`: The tweet's sentiment: `bullish` or `bearish` or `neutral`
-- `topic`: The tweet's finance topic: Please refer to `labels.py` for a full list of the 20 topic labels.
+- `tweet`: The tweet received from the Twitter API.
+- `sentiment`: The tweet's sentiment: `Bullish` or `Bearish` or `Neutral`
+- `topic`: The tweet's financial topic: Please refer to `labels.py` for a full list of the 20 topic labels.
 
 For example:
 
