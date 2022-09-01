@@ -47,7 +47,7 @@ topic_classifier = Pipeline.create(
 class SparseStream(AsyncStream):
     async def on_status(self, status):
 
-        """logic to prevent retweets and replies to appearing in stream"""
+        """logic to prevent retweets and replies appearing in stream"""
 
         if (
             (not status.retweeted)
