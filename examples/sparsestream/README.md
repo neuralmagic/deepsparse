@@ -52,7 +52,7 @@ python stream.py
 
 This will download a Sparse ONNX model and initialize an NLP inference pipeline for the text classification task.
 
-## <div>`WATCH STREAM WHILE YOU EAT SOME POPCORN 🍿`</div>
+## <div>`STREAM WHILE YOU EAT SOME POPCORN 🍿`</div>
 
 Tweets should now be streaming in terminal, you should see a dictionary printing with two keys:
 
