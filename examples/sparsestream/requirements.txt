@@ -1,2 +1,2 @@
 tweepy==4.8.0
-deepsparse>=0.11
+deepsparse>=1.1.0
