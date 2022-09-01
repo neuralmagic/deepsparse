@@ -54,6 +54,7 @@ def test_uint8_array():
         arr: NumpyArray[UInt8]
 
     Model(arr=numpy.array([], dtype=numpy.uint8))
+
     for dtype in [
         numpy.float16,
         numpy.float32,
@@ -63,3 +64,11 @@ def test_uint8_array():
     ]:
         with pytest.raises(ValidationError):
             Model(arr=numpy.array([], dtype=dtype))
+
+
+def test_invalid_raw_type():
+    class Model(BaseModel):
+        arr: NumpyArray[str]
+
+    with pytest.raises(ValidationError, match="Invalid generic parameter"):
+        Model(arr=numpy.array([], dtype=str))

@@ -28,10 +28,12 @@ class NumpyArray(Generic[Dtype]):
 
     Examples:
     ```python
+    from deepsparse.pipelines.numpy_schemas import NumpyArray, UInt8, Float64
     class Model(BaseModel):
         any_dtype: NumpyArray
-        f64_array: NumpyArray[Float64]
-        u8_array: NumpyArray[Uint8]
+        any_sized_float: NumpyArray[float]
+        f64: NumpyArray[Float64]
+        u8: NumpyArray[UInt8]
     ```
 
     See https://pydantic-docs.helpmanual.io/usage/types/#generic-classes-as-types
@@ -51,9 +53,23 @@ class NumpyArray(Generic[Dtype]):
             return v
 
         dtype_f: ModelField = field.sub_fields[0]
-        _, error = dtype_f.validate(v.dtype, {}, loc="dtype")
-        if error:
-            raise ValidationError([error], cls)
+        validator = dtype_f.type_
+        if issubclass(validator, _NumpyDtypeValidator):
+            expected_dtype = validator.expected
+        else:
+            possible_raw_types = {
+                float: numpy.floating,
+                int: numpy.integer,
+                bool: numpy.bool8,
+            }
+            if dtype_f.type_ not in possible_raw_types:
+                raise TypeError(
+                    f"Invalid generic parameter of NumpyArray {dtype_f.type_}"
+                )
+            expected_dtype = possible_raw_types[dtype_f.type_]
+
+        if not numpy.issubdtype(v.dtype, expected_dtype):
+            raise TypeError(f"Expected dtype {expected_dtype}, found {v.dtype}")
         return v
 
 
