@@ -15,7 +15,6 @@
 from typing import Generic, Type, TypeVar
 
 import numpy
-from pydantic import ValidationError
 from pydantic.fields import ModelField
 
 
