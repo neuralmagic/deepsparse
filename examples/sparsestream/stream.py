@@ -31,14 +31,23 @@ def get_config(path):
 
 config = get_config(config_path)
 
-sentiment_classifier = Pipeline.create(task=config["task"], model_path=config["sent_model"], scheduler="sync")
-topic_classifier = Pipeline.create(task=config["task"], model_path=config["topic_model"], scheduler="sync")
+sentiment_classifier = Pipeline.create(
+    task=config["task"], 
+    model_path=config["sent_model"], 
+    scheduler="sync"
+)
+
+topic_classifier = Pipeline.create(
+    task=config["task"], 
+    model_path=config["topic_model"], 
+    scheduler="sync"
+)
 
 class SparseStream(AsyncStream):
     async def on_status(self, status):
 
 
-        """ logic to prevent retweets and replies to tweets appearing in stream """
+        """ logic to prevent retweets and replies to appearing in stream """
 
         if (
             (not status.retweeted)
