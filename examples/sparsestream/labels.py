@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-sentiments = {
-    "LABEL_0": "Bearish", 
-    "LABEL_1": "Bullish",
-    "LABEL_2": "Neutral"
-}    
+sentiments = {"LABEL_0": "Bearish", "LABEL_1": "Bullish", "LABEL_2": "Neutral"}
 
 topics = {
     "LABEL_0": "Analyst Update",
@@ -29,7 +25,7 @@ topics = {
     "LABEL_7": "Financials",
     "LABEL_8": "Currencies",
     "LABEL_9": "General News | Opinion",
-    "LABEL_10" :"Gold | Metals | Materials",
+    "LABEL_10": "Gold | Metals | Materials",
     "LABEL_11": "IPO",
     "LABEL_12": "Legal | Regulation",
     "LABEL_13": "M&A | Investments",
@@ -38,5 +34,5 @@ topics = {
     "LABEL_16": "Politics",
     "LABEL_17": "Personnel Change",
     "LABEL_18": "Stock Commentary",
-    "LABEL_19": "Stock Movement"
+    "LABEL_19": "Stock Movement",
 }

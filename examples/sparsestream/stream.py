@@ -13,14 +13,17 @@
 # limitations under the License.
 
 import asyncio
+
 import yaml
 
 from deepsparse import Pipeline
+from labels import sentiments, topics
 from tweepy.asynchronous import AsyncStream
 from usernames import user_id, user_name
-from labels import sentiments, topics
+
 
 config_path = "./config.yaml"
+
 
 def get_config(path):
 
@@ -29,25 +32,22 @@ def get_config(path):
 
     return config
 
+
 config = get_config(config_path)
 
 sentiment_classifier = Pipeline.create(
-    task=config["task"], 
-    model_path=config["sent_model"], 
-    scheduler="sync"
+    task=config["task"], model_path=config["sent_model"], scheduler="sync"
 )
 
 topic_classifier = Pipeline.create(
-    task=config["task"], 
-    model_path=config["topic_model"], 
-    scheduler="sync"
+    task=config["task"], model_path=config["topic_model"], scheduler="sync"
 )
+
 
 class SparseStream(AsyncStream):
     async def on_status(self, status):
 
-
-        """ logic to prevent retweets and replies to appearing in stream """
+        """logic to prevent retweets and replies to appearing in stream"""
 
         if (
             (not status.retweeted)
@@ -61,11 +61,7 @@ class SparseStream(AsyncStream):
             topic = topic_classifier(status.text)
             topic = topics[topic.labels[0]]
 
-            output = {
-                "tweet": status.text, 
-                "sentiment": sentiment, 
-                "topic": topic
-            }
+            output = {"tweet": status.text, "sentiment": sentiment, "topic": topic}
 
             print(output)
 
