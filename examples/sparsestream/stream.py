@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import asyncio
-
 import yaml
-
 from deepsparse import Pipeline
-from labels import sentiments, topics
 from tweepy.asynchronous import AsyncStream
+from labels import sentiments, topics
 from usernames import user_id, user_name
 
 
