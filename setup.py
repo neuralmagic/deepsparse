@@ -237,6 +237,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
+            "deepsparse.license=deepsparse.license::main",
         ]
     }
 
