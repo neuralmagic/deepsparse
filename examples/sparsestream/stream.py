@@ -63,9 +63,7 @@ class SparseStream(AsyncStream):
             topic = topic_classifier(status.text)
             topic = topics[topic.labels[0]]
 
-            output = {"tweet": status.text, "sentiment": sentiment, "topic": topic}
-
-            print(output)
+            print({"tweet": status.text, "sentiment": sentiment, "topic": topic})
 
 
 async def main():
