@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import suppress as do_not_raise
+from contextlib import nullcontext
+
+import numpy
 
 import pytest
 from deepsparse import Pipeline
@@ -28,48 +30,105 @@ def model_stub():
 
 
 @pytest.mark.parametrize(
-    (
-        "batch_size,num_static_labels,num_sequences,num_labels,"
-        "creation_expectation,inference_expectation"
-    ),
+    "batch_size,num_sequences,num_static_labels,num_dynamic_labels,inference_error",
     [
-        (None, 1, 1, 1, do_not_raise(), pytest.raises(ValueError)),
-        (None, 1, 1, None, do_not_raise(), do_not_raise()),
-        (1, 1, 1, 1, do_not_raise(), pytest.raises(ValueError)),
-        (1, 1, 1, None, do_not_raise(), do_not_raise()),
-        (7, 13, 7, None, do_not_raise(), do_not_raise()),
-        (13, None, 7, 13, do_not_raise(), do_not_raise()),
-        (2, 13, 7, None, do_not_raise(), pytest.raises(ValueError)),
-        (2, None, 7, 13, do_not_raise(), pytest.raises(ValueError)),
+        (1, 1, 1, 1, ValueError),  # both labels provided
+        (1, 1, None, None, ValueError),  # no labels provided
+        (1, 1, 1, None, None),  # static labels
+        (1, 1, None, 1, None),  # dynamic labels
+        # pass string sequence
+        (1, "test_sequence", None, 1, None),
+        (1, "test_sequence", 1, None, None),
+        # batch_size 1
+        (1, 13, 7, None, None),
+        (1, 7, 13, None, None),
+        (1, 13, None, 7, None),
+        (1, 7, None, 13, None),
+        # batch_size divides inputs
+        (7, 13, 7, None, None),
+        (13, 7, 13, None, None),
+        (7, 13, None, 7, None),
+        (13, 7, None, 13, None),
+        # batch_size does not divide inputs
+        (2, 13, 7, None, ValueError),
+        (2, 7, 13, None, ValueError),
+        (2, 13, None, 7, ValueError),
+        (2, 7, None, 13, ValueError),
     ],
 )
 @pytest.mark.smoke
 @mock_engine(rng_seed=0)
-def test_zscp_pipeline(
+def test_batch_size(
     engine,
     batch_size,
-    num_static_labels,
     num_sequences,
-    num_labels,
-    creation_expectation,
-    inference_expectation,
+    num_static_labels,
+    num_dynamic_labels,
+    inference_error,
     model_stub,
 ):
     static_labels = _generate_texts(num_static_labels)
     sequences = _generate_texts(num_sequences)
-    labels = _generate_texts(num_labels)
+    dynamic_labels = _generate_texts(num_dynamic_labels)
 
-    with creation_expectation:
-        pipeline = Pipeline.create(
-            "zero_shot_text_classification",
-            model_path=model_stub,
-            batch_size=batch_size,
-            labels=static_labels,
-        )
+    pipeline = Pipeline.create(
+        "zero_shot_text_classification",
+        model_path=model_stub,
+        batch_size=batch_size,
+        labels=static_labels,
+    )
 
-    with inference_expectation:
-        pipeline(sequences=sequences, labels=labels)
+    with pytest.raises(inference_error) if inference_error else nullcontext():
+        pipeline(sequences=sequences, labels=dynamic_labels)
+
+
+@pytest.mark.parametrize(
+    (
+        "num_sequences,num_static_labels,num_dynamic_labels,"
+        "exp_sequences_shape,exp_labels_shape,exp_scores_shape"
+    ),
+    [
+        # static batch
+        (3, 5, None, (3,), (3, 5), (3, 5)),
+        (5, 3, None, (5,), (5, 3), (5, 3)),
+        # dynamic batch
+        (3, None, 5, (3,), (3, 5), (3, 5)),
+        (5, None, 3, (5,), (5, 3), (5, 3)),
+        # passing string removes the first dimension
+        (1, 3, None, (1,), (1, 3), (1, 3)),
+        ("test_sequence", 3, None, (), (3,), (3,)),
+    ],
+)
+@pytest.mark.smoke
+@mock_engine(rng_seed=0)
+def test_output_shapes(
+    engine,
+    num_sequences,
+    num_static_labels,
+    num_dynamic_labels,
+    exp_sequences_shape,
+    exp_labels_shape,
+    exp_scores_shape,
+    model_stub,
+):
+    static_labels = _generate_texts(num_static_labels)
+    sequences = _generate_texts(num_sequences)
+    dynamic_labels = _generate_texts(num_dynamic_labels)
+
+    pipeline = Pipeline.create(
+        "zero_shot_text_classification",
+        model_path=model_stub,
+        labels=static_labels,
+    )
+
+    pipeline_output = pipeline(sequences=sequences, labels=dynamic_labels)
+    assert numpy.array(pipeline_output.sequences).shape == exp_sequences_shape
+    assert numpy.array(pipeline_output.labels).shape == exp_labels_shape
+    assert numpy.array(pipeline_output.scores).shape == exp_scores_shape
 
 
 def _generate_texts(num_texts):
-    return ["sample_text"] * num_texts if num_texts else None
+    if isinstance(num_texts, int):
+        return ["sample_text"] * num_texts
+    else:
+        return num_texts
