@@ -128,16 +128,16 @@ def test_pipeline_call_is_async(engine_mock):
         return pipeline.engine(xs)
 
     with mock.patch.object(Pipeline, "engine_forward", side_effect=sleep_for_10ms):
-        start = time.time_ns()
+        start = time.perf_counter()
         pipeline(["abcdef"] * 6)
-        end = time.time_ns()
-        dur_ms = (end - start) * 1e-6
+        end = time.perf_counter()
+        dur_ms = (end - start) * 1e3
         assert abs(dur_ms - 60) < 10
 
         pipeline.executor = ThreadPoolExecutor(max_workers=2)
 
-        start = time.time_ns()
+        start = time.perf_counter()
         pipeline(["abcdef"] * 6)
-        end = time.time_ns()
-        dur_ms = (end - start) * 1e-6
+        end = time.perf_counter()
+        dur_ms = (end - start) * 1e3
         assert abs(dur_ms - 30) < 10
