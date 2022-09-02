@@ -22,9 +22,6 @@ from tweepy.asynchronous import AsyncStream
 from usernames import user_id, user_name
 
 
-config_path = "./config.yaml"
-
-
 def get_config(path):
 
     with open(path) as file:
@@ -33,6 +30,7 @@ def get_config(path):
     return config
 
 
+config_path = "./config.yaml"
 config = get_config(config_path)
 
 sentiment_classifier = Pipeline.create(
@@ -45,10 +43,14 @@ topic_classifier = Pipeline.create(
 
 
 class SparseStream(AsyncStream):
+
+    """
+    Client object for executing the Twitter Streaming API and running
+    inference on incoming tweets
+    """
+
     async def on_status(self, status):
-
-        """logic to prevent retweets and replies appearing in stream"""
-
+        # logic to prevent retweets and replies appearing in stream
         if (
             (not status.retweeted)
             and ("RT @" not in status.text)
