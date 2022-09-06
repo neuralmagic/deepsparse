@@ -114,30 +114,31 @@ def test_pipeline_executor_num_workers():
 
 @mock_engine(rng_seed=0)
 def test_pipeline_call_is_async(engine_mock):
-    # here we make engine_forward take a different amount of time
-    # based on the input. the total time should be the longest
-    # forward call, instead of sum.
-    #
-    # The time each forward takes is just summing up character counts
-    # in each word. So "aaaa" will sleep for 50ms whereas "a" will sleep for 10ms
     executor = ThreadPoolExecutor(max_workers=1)
     pipeline = Pipeline.create("token_classification", batch_size=1, executor=executor)
 
+    # each call to engine_forward also sleeps for 10ms
     def sleep_for_10ms(xs):
-        time.sleep(10 / 1000)
+        time.sleep(20 / 1000)
         return pipeline.engine(xs)
 
     with mock.patch.object(Pipeline, "engine_forward", side_effect=sleep_for_10ms):
         start = time.perf_counter()
+        # since there are 6 entries in the input, should sleep for (6 * 20) ms
+        # since there are 1 worker threads, should take a total of (120 / 1) ms
         pipeline(["abcdef"] * 6)
         end = time.perf_counter()
-        dur_ms = (end - start) * 1e3
-        assert abs(dur_ms - 60) < 10
+        dur_1_worker = (end - start) * 1e3
 
         pipeline.executor = ThreadPoolExecutor(max_workers=2)
 
+        # since there are 6 entries in the input, should sleep for (6 * 20) ms
+        # since there are 2 worker threads, should take a total of (120 / 2) ms
         start = time.perf_counter()
         pipeline(["abcdef"] * 6)
         end = time.perf_counter()
-        dur_ms = (end - start) * 1e3
-        assert abs(dur_ms - 30) < 10
+        dur_2_worker = (end - start) * 1e3
+
+        # instead of doing a hard comparison of timing for each separate
+        # duration, do relative comparison of timing
+        assert numpy.allclose(dur_1_worker / dur_2_worker, 2, atol=0.1)
