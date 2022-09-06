@@ -54,6 +54,8 @@ def start_server(
         "level": log_level.upper(),
     }
 
+    _LOGGER.info(f"config_path: {config_path}")
+
     with open(config_path) as fp:
         obj = yaml.safe_load(fp)
     server_config = ServerConfig(**obj)
@@ -117,6 +119,23 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     def _health():
         return True
 
+    @app.post("/endpoints", tags=["endpoints"], response_model=bool)
+    def _add_endpoint_endpoint(cfg: EndpointConfig):
+        _add_endpoint(app, server_config, cfg, executor, context)
+        # force regeneration of the docs
+        app.openapi_schema = None
+        return True
+
+    @app.delete("/endpoints", tags=["endpoints"], response_model=bool)
+    def _delete_endpoint(cfg: EndpointConfig):
+        _LOGGER.info(f"Deleting endpoint for {cfg}")
+        matching = [r for r in app.routes if r.path == cfg.route]
+        assert len(matching) == 1
+        app.routes.remove(matching[0])
+        # force regeneration of the docs
+        app.openapi_schema = None
+        return True
+
     # fill in names if there are none
     for idx, endpoint_config in enumerate(server_config.endpoints):
         if endpoint_config.name is None:
@@ -124,20 +143,28 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     # create pipelines & endpoints
     for endpoint_config in server_config.endpoints:
-        pipeline_config = endpoint_config.to_pipeline_config()
-        pipeline_config.kwargs["executor"] = executor
-
-        _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
-        pipeline = Pipeline.from_config(pipeline_config, context)
-
-        _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
-        _add_pipeline_endpoint(
-            app, endpoint_config, pipeline, server_config.integration
-        )
+        _add_endpoint(app, server_config, endpoint_config, executor, context)
 
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
 
     return app
+
+
+def _add_endpoint(
+    app: FastAPI,
+    server_config: ServerConfig,
+    endpoint_config: EndpointConfig,
+    executor: ThreadPoolExecutor,
+    context: Context,
+):
+    pipeline_config = endpoint_config.to_pipeline_config()
+    pipeline_config.kwargs["executor"] = executor
+
+    _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
+    pipeline = Pipeline.from_config(pipeline_config, context)
+
+    _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
+    _add_pipeline_endpoint(app, endpoint_config, pipeline, server_config.integration)
 
 
 def _add_pipeline_endpoint(
