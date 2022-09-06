@@ -112,6 +112,18 @@ class MnliTextClassificationPipeline(ZeroShotTextClassificationPipelineBase):
         self._config = self.parse_config(model_config)
         self._labels = self.parse_labels(labels)
 
+        if (
+            self._config.hypothesis_template is not None
+            and self._config.hypothesis_template.format("sample_label")
+            == self._config.hypothesis_template
+        ):
+            raise ValueError(
+                "The provided hypothesis_template "
+                f"`{self._config.hypothesis_template}` was not able to be formatted. "
+                "Make sure the passed template includes formatting syntax such "
+                "as `{}` where the label should go."
+            )
+
         if self._config.entailment_index == self._config.contradiction_index:
             raise ValueError("entailment_index must differ from contradiction_index")
 
