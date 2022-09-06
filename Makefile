@@ -14,8 +14,7 @@ PYTEST_ARGS ?= ""
 ifneq ($(findstring cli,$(TARGETS)),cli)
 	PYTEST_ARGS += --ignore tests/test_benchmark.py \
 	--ignore tests/test_check_hardware.py \
-	--ignore tests/test_run_inference.py \
-	--ignore tests/test_server.py
+	--ignore tests/test_run_inference.py
 endif
 ifeq ($(findstring nobase,$(TARGETS)),nobase)
 	PYTEST_ARGS += --ignore tests/deepsparse \

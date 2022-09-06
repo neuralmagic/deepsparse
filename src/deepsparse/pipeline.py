@@ -369,7 +369,7 @@ class Pipeline(ABC):
         pipeline_constructor = Pipeline._get_task_constructor(task)
 
         if (
-            model_path is None
+            (model_path is None or model_path == "default")
             and hasattr(pipeline_constructor, "default_model_path")
             and pipeline_constructor.default_model_path
         ):
@@ -707,7 +707,7 @@ class PipelineConfig(BaseModel):
             "'deepsparse' and 'onnxruntime'. Default is 'deepsparse'"
         ),
     )
-    batch_size: int = Field(
+    batch_size: Optional[int] = Field(
         default=1,
         description=("static batch size to use for inference. Default is 1"),
     )
