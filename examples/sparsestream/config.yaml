@@ -5,5 +5,4 @@ access_token_secret: "<placeholder>"
 
 task: "text-classification"
 sent_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni" # PLACEHOLDER UNTIL CUSTOM MODELS ARE UP ON SPARSEZOO
-task: "text-classification"
 topic_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni" # PLACEHOLDER UNTIL CUSTOM MODELS ARE UP ON SPARSEZOO
