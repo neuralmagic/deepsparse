@@ -255,3 +255,41 @@ class TestActualModelEndpoints:
         output = response.json()
         assert len(output["labels"]) == len(seqs)
         assert len(output["scores"]) == len(seqs)
+
+
+class TestDynamicEndpoints:
+    @pytest.fixture(scope="class")
+    def client(self):
+        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
+        with mock_engine(rng_seed=0):
+            app = _build_app(server_config)
+            yield TestClient(app)
+
+
+@mock_engine(rng_seed=0)
+def test_dynamic_add_and_remove_endpoint(engine_mock):
+    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
+    app = _build_app(server_config)
+    client = TestClient(app)
+
+    # assert /predict doesn't exist
+    assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code
+
+    # add /predict
+    response = client.post(
+        "/endpoints",
+        json=EndpointConfig(task="text-classification", model="default").dict(),
+    )
+    assert response.status_code == 200
+    response = client.post("/predict", json=dict(sequences="asdf"))
+    assert response.status_code == 200
+
+    # remove /predict
+    response = client.delete(
+        "/endpoints",
+        json=EndpointConfig(
+            route="/predict", task="text-classification", model="default"
+        ).dict(),
+    )
+    assert response.status_code == 200
+    assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code
