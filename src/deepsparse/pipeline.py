@@ -258,7 +258,7 @@ class Pipeline(ABC):
             pipeline_inputs,
             engine_inputs,
             inference_timing,
-        ) = self.__call__(monitoring=True, *args, **kwargs)
+        ) = self.__call__(*args, monitoring=True, **kwargs)
         return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
 
     @staticmethod
