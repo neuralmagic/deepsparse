@@ -30,7 +30,7 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
 
   Example config.yaml for serving:
 
-  ```yaml
+  \```yaml
   num_cores: 2
   num_workers: 2
   endpoints:
@@ -40,7 +40,7 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
     - task: question_answering
       route: /pruned/predict
       model: /path/to/local/model
-  ```
+  \```
 
 Options:
   --help  Show this message and exit.
