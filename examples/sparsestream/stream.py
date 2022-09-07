@@ -18,8 +18,12 @@ import yaml
 
 from deepsparse import Pipeline
 from labels import sentiments, topics
+from rich.console import Console
 from tweepy.asynchronous import AsyncStream
 from usernames import user_id, user_name
+
+
+console = Console(width=100)
 
 
 def get_config(path):
@@ -49,7 +53,10 @@ class SparseStream(AsyncStream):
     inference on incoming tweets
     """
 
+    console.print("Stream Opening...", style="bold white on blue")
+
     async def on_status(self, status):
+
         # logic to prevent retweets and replies appearing in stream
         if (
             (not status.retweeted)
@@ -63,7 +70,9 @@ class SparseStream(AsyncStream):
             topic = topic_classifier(status.text)
             topic = topics[topic.labels[0]]
 
-            print({"tweet": status.text, "sentiment": sentiment, "topic": topic})
+            console.print(status.text, style="bold white")
+            console.print(sentiment, style="bold yellow")
+            console.print(topic, style="bold red")
 
 
 async def main():

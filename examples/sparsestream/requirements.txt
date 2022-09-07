@@ -1,2 +1,3 @@
 tweepy==4.8.0
 deepsparse>=1.1.0
+rich>=12.2.0

@@ -1,7 +1,7 @@
-consumer_key: "<placeholder>"
-consumer_secret: "<placeholder>"
-access_token: "<placeholder>"
-access_token_secret: "<placeholder>"
+consumer_key: <"PLACEHOLDER">
+consumer_secret: <"PLACEHOLDER">
+access_token: <"PLACEHOLDER">
+access_token_secret: "<"PLACEHOLDER">
 
 task: "text-classification"
 sent_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni" # PLACEHOLDER UNTIL CUSTOM MODELS ARE UP ON SPARSEZOO
