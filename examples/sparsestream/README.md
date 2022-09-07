@@ -54,7 +54,7 @@ This will download a Sparse ONNX model and initialize two NLP inference pipeline
 
 ## <div>`STREAM WHILE YOU EAT SOME POPCORN 🍿`</div>
 
-Tweets should now be streaming in terminal, you should see a dictionary printing with three objects:
+Tweets should now be streaming in terminal, you should see three objects per tweet:
 
 - `tweet`: The tweet received from the Twitter API.
 - `sentiment`: The tweet's sentiment: `Bullish` or `Bearish` or `Neutral`
