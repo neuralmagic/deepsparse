@@ -84,8 +84,14 @@ class EndpointConfig(BaseModel):
         ),
     )
 
+    kwargs: Dict[str, Any] = Field(
+        default={}, description="Additional arguments to pass to the Pipeline"
+    )
+
     def to_pipeline_config(self) -> PipelineConfig:
         input_shapes, kwargs = _unpack_bucketing(self.task, self.bucketing)
+
+        kwargs.update(self.kwargs)
 
         return PipelineConfig(
             task=self.task,
