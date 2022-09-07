@@ -143,7 +143,8 @@ def test_pipeline_call_is_async(engine_mock):
         assert abs(dur_ms - 30) < 10
 
 
-def test_run_with_monitoring():
+@mock_engine(rng_seed=0)
+def test_run_with_monitoring(engine_mock):
     pipeline = Pipeline.create("token_classification", batch_size=1)
     output_w_monitoring = pipeline.run_with_monitoring("all_your_base_are_belong_to_us")
     inference_timing = output_w_monitoring[3]
