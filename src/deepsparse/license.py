@@ -31,7 +31,7 @@ import os
 
 import click
 
-from deepsparse.lib import get_neuralmagic_binaries_dir
+from deepsparse.lib import get_neuralmagic_binaries_dir, init_deepsparse_lib
 
 
 LICENSE_FILE = "license.txt"
@@ -56,13 +56,11 @@ def add_deepsparse_license(token_or_path):
 
 
 def _validate_token(token):
-    if not token:  # TODO: propagate validation from engine
-        raise ValueError(
-            "Sorry, it does not seem as if you have an active "
-            "enterprise license for DeepSparse. If you believe "
-            "this is a mistake, please reach out to license@neuralmagic.com "
-            "for help."
-        )
+    deepsparse_lib = init_deepsparse_lib()
+
+    # nothing happens if token is valid
+    # if token is invalid, deepsparse_lib will raise appropriate error response
+    deepsparse_lib.validate_token(token)
 
 
 @click.command()
