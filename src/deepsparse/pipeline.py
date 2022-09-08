@@ -206,7 +206,7 @@ class Pipeline(ABC):
         timer.start(InferencePhases.ENGINE_FORWARD)
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
-        # submit to engine
+        # submit split batches to engine threadpool
         batch_outputs = list(self.executor.map(self.engine_forward, batches))
 
         # join together the batches of size `self._batch_size`
