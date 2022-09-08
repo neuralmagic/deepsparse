@@ -167,10 +167,6 @@ def _set_pytorch_num_threads(server_config: ServerConfig):
             )
 
 
-_CORES = "NM_BIND_THREADS_TO_CORES"
-_SOCKS = "NM_BIND_THREADS_TO_SOCKETS"
-
-
 def _set_thread_pinning(server_config: ServerConfig):
     pinning = {"core": ("1", "0"), "numa": ("0", "1"), "none": ("0", "0")}
 
@@ -180,6 +176,10 @@ def _set_thread_pinning(server_config: ServerConfig):
             'Expected one of {"core","numa","none"}. Found '
             f"{server_config.engine_thread_pinning}"
         )
+
+    # environment variable names
+    _CORES = "NM_BIND_THREADS_TO_CORES"
+    _SOCKS = "NM_BIND_THREADS_TO_SOCKETS"
 
     os.environ[_CORES], os.environ[_SOCKS] = pinning[
         server_config.engine_thread_pinning
