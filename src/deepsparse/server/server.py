@@ -94,20 +94,8 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
             f"Expected one of {INTEGRATIONS}"
         )
 
-    if server_config.pytorch_num_threads is not None:
-        try:
-            import torch
-
-            torch.set_num_threads(server_config.pytorch_num_threads)
-            _LOGGER.info(f"torch.set_num_threads({server_config.pytorch_num_threads})")
-        except ImportError:
-            _LOGGER.debug(
-                "pytorch not installed, skipping pytorch_num_threads configuration"
-            )
-
-    if server_config.engine_thread_pinning:
-        os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
-        _LOGGER.info("NM_BIND_THREADS_TO_CORES=1")
+    _set_pytorch_num_threads(server_config)
+    _set_thread_pinning(server_config)
 
     context = Context(
         num_cores=server_config.num_cores,
@@ -164,6 +152,44 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
 
     return app
+
+
+def _set_pytorch_num_threads(server_config: ServerConfig):
+    if server_config.pytorch_num_threads is not None:
+        try:
+            import torch
+
+            torch.set_num_threads(server_config.pytorch_num_threads)
+            _LOGGER.info(f"torch.set_num_threads({server_config.pytorch_num_threads})")
+        except ImportError:
+            _LOGGER.debug(
+                "pytorch not installed, skipping pytorch_num_threads configuration"
+            )
+
+
+_CORES = "NM_BIND_THREADS_TO_CORES"
+_SOCKETS = "NM_BIND_THREADS_TO_SOCKETS"
+
+
+def _set_thread_pinning(server_config: ServerConfig):
+    if server_config.engine_thread_pinning == "core":
+        os.environ[_CORES] = "1"
+        os.environ[_SOCKETS] = "0"
+    elif server_config.engine_thread_pinning == "numa":
+        os.environ[_CORES] = "0"
+        os.environ[_SOCKETS] = "1"
+    elif server_config.engine_thread_pinning == "none":
+        os.environ[_CORES] = "0"
+        os.environ[_SOCKETS] = "0"
+    else:
+        raise ValueError(
+            "Invalid value for engine_thread_pinning. "
+            'Expected one of {"core","numa","none"}. Found '
+            f"{server_config.engine_thread_pinning}"
+        )
+
+    _LOGGER.info(f"{_CORES} {os.environ[_CORES]}")
+    _LOGGER.info(f"{_SOCKETS} {os.environ[_SOCKETS]}")
 
 
 def _add_endpoint(

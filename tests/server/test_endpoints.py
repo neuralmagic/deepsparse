@@ -320,17 +320,48 @@ def test_pytorch_num_threads():
 
 
 @patch.dict(os.environ, deepcopy(os.environ))
-def test_thread_pinning():
+def test_thread_pinning_none():
+    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
+    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
     _build_app(
         ServerConfig(
-            num_cores=1, num_workers=1, engine_thread_pinning=False, endpoints=[]
+            num_cores=1, num_workers=1, engine_thread_pinning="none", endpoints=[]
         )
     )
-    assert "NM_BIND_THREADS_TO_CORES" not in os.environ
+    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
+    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "0"
 
+
+@patch.dict(os.environ, deepcopy(os.environ))
+def test_thread_pinning_numa():
+    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
+    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
     _build_app(
         ServerConfig(
-            num_cores=1, num_workers=1, engine_thread_pinning=True, endpoints=[]
+            num_cores=1, num_workers=1, engine_thread_pinning="numa", endpoints=[]
+        )
+    )
+    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
+    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "1"
+
+
+@patch.dict(os.environ, deepcopy(os.environ))
+def test_thread_pinning_cores():
+    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
+    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
+    _build_app(
+        ServerConfig(
+            num_cores=1, num_workers=1, engine_thread_pinning="core", endpoints=[]
         )
     )
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "1"
+    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "0"
+
+
+def test_invalid_thread_pinning():
+    with pytest.raises(ValueError, match='Expected one of {"core","numa","none"}.'):
+        _build_app(
+            ServerConfig(
+                num_cores=1, num_workers=1, engine_thread_pinning="asdf", endpoints=[]
+            )
+        )
