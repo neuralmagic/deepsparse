@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from copy import deepcopy
 from re import escape
 from typing import List
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from pydantic import BaseModel
 
@@ -293,3 +295,42 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     )
     assert response.status_code == 200
     assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code
+
+
+def test_pytorch_num_threads():
+    try:
+        import torch
+
+        orig_num_threads = torch.get_num_threads()
+        _build_app(
+            ServerConfig(
+                num_cores=1, num_workers=1, pytorch_num_threads=None, endpoints=[]
+            )
+        )
+        assert torch.get_num_threads() == orig_num_threads
+
+        _build_app(
+            ServerConfig(
+                num_cores=1, num_workers=1, pytorch_num_threads=1, endpoints=[]
+            )
+        )
+        assert torch.get_num_threads() == 1
+    except ImportError:
+        ...
+
+
+@patch.dict(os.environ, deepcopy(os.environ))
+def test_thread_pinning():
+    _build_app(
+        ServerConfig(
+            num_cores=1, num_workers=1, engine_thread_pinning=False, endpoints=[]
+        )
+    )
+    assert "NM_BIND_THREADS_TO_CORES" not in os.environ
+
+    _build_app(
+        ServerConfig(
+            num_cores=1, num_workers=1, engine_thread_pinning=True, endpoints=[]
+        )
+    )
+    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "1"

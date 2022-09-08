@@ -62,21 +62,6 @@ def start_server(
     server_config = ServerConfig(**obj)
     _LOGGER.info(f"Using config: {repr(server_config)}")
 
-    if server_config.pytorch_num_threads is not None:
-        try:
-            import torch
-
-            torch.set_num_threads(server_config.pytorch_num_threads)
-            _LOGGER.info(f"torch.set_num_threads({server_config.pytorch_num_threads})")
-        except ImportError:
-            _LOGGER.debug(
-                "pytorch not installed, skipping pytorch_num_threads configuration"
-            )
-
-    if server_config.engine_thread_pinning:
-        os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
-        _LOGGER.info("NM_BIND_THREADS_TO_CORES=1")
-
     app = _build_app(server_config)
 
     uvicorn.run(
@@ -108,6 +93,21 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
             f"Unknown integration field {server_config.integration}. "
             f"Expected one of {INTEGRATIONS}"
         )
+
+    if server_config.pytorch_num_threads is not None:
+        try:
+            import torch
+
+            torch.set_num_threads(server_config.pytorch_num_threads)
+            _LOGGER.info(f"torch.set_num_threads({server_config.pytorch_num_threads})")
+        except ImportError:
+            _LOGGER.debug(
+                "pytorch not installed, skipping pytorch_num_threads configuration"
+            )
+
+    if server_config.engine_thread_pinning:
+        os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
+        _LOGGER.info("NM_BIND_THREADS_TO_CORES=1")
 
     context = Context(
         num_cores=server_config.num_cores,
