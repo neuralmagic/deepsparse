@@ -19,9 +19,15 @@ import numpy
 
 import torch
 from deepsparse import Pipeline
+from deepsparse.pipelines.computer_vision import (
+    assert_3d,
+    make_float32,
+    read_resize_and_transpose_u8_image,
+    resize_and_channel_first,
+)
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
-from deepsparse.yolact.utils import decode, detect, postprocess, preprocess_array
+from deepsparse.yolact.utils import decode, detect, postprocess
 from deepsparse.yolo.utils import COCO_CLASSES
 
 
@@ -134,15 +140,6 @@ class YOLACTPipeline(Pipeline):
             to pass to process_engine_outputs to facilitate information from the raw
             inputs to postprocessing that may not be included in the engine inputs
         """
-        images = inputs.images
-
-        if not isinstance(images, list):
-            images = [images]
-
-        image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
-
-        image_batch = numpy.concatenate(image_batch, axis=0)
-
         postprocessing_kwargs = dict(
             confidence_threshold=inputs.confidence_threshold,
             nms_threshold=inputs.nms_threshold,
@@ -151,7 +148,17 @@ class YOLACTPipeline(Pipeline):
             max_num_detections=inputs.max_num_detections,
             return_masks=inputs.return_masks,
         )
-        return [image_batch], postprocessing_kwargs
+
+        if isinstance(inputs.images, numpy.ndarray) and inputs.images.ndim == 4:
+            # NOTE: assume batch of images are already pre-preocessed
+            return [inputs.images], postprocessing_kwargs
+
+        if isinstance(inputs.images, (str, numpy.ndarray)):
+            inputs.images = [inputs.images]
+
+        images = list(self.executor.map(self._preprocess_image, inputs.images))
+        batch = numpy.stack(images, axis=0)
+        return [batch], postprocessing_kwargs
 
     @staticmethod
     def join_engine_outputs(
@@ -173,9 +180,17 @@ class YOLACTPipeline(Pipeline):
 
     def _preprocess_image(self, image) -> numpy.ndarray:
         if isinstance(image, str):
-            image = cv2.imread(image)
+            image = read_resize_and_transpose_u8_image(image, self._image_size)
+            image = make_float32(image)
+            return image
 
-        return preprocess_array(image)
+        if isinstance(image, numpy.ndarray):
+            assert_3d(image)
+            image = resize_and_channel_first(image, self.image_size)
+            image = make_float32(image)
+            return image
+
+        raise ValueError(f"Expected str or numpy.ndarray, found {type(image)}")
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs

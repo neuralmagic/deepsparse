@@ -23,6 +23,7 @@ from typing import List
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
+from deepsparse.pipelines.numpy_schemas import NumpyArray
 
 
 __all__ = [
@@ -55,7 +56,7 @@ class YOLOOutput(BaseModel):
     Output model for object detection
     """
 
-    predictions: List[List[List[float]]] = Field(description="List of predictions")
+    # predictions: List[List[List[float]]] = Field(description="List of predictions")
     boxes: List[List[List[float]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
@@ -71,7 +72,7 @@ class YOLOOutput(BaseModel):
             raise IndexError("Index out of range")
 
         return _YOLOImageOutput(
-            self.predictions[index],
+            # self.predictions[index],
             self.boxes[index],
             self.scores[index],
             self.labels[index],

@@ -13,12 +13,20 @@
 # limitations under the License.
 
 import json
+import multiprocessing
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
 
 from deepsparse.pipeline import Pipeline
+from deepsparse.pipelines.computer_vision import (
+    assert_3d,
+    make_float32,
+    make_uint8,
+    read_resize_and_transpose_u8_image,
+    resize_and_channel_first,
+)
 from deepsparse.utils import model_to_path
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
 from deepsparse.yolo.utils import (
@@ -175,42 +183,38 @@ class YOLOPipeline(Pipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        # Noting that if a batch of numpy arrays are passed in, we assume they
-        # are already the correct shape
 
-        if isinstance(inputs.images, (str, numpy.ndarray)):
-            inputs.images = [inputs.images]
-
-        image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
-
-        image_batch = self._make_batch(image_batch)
-        image_batch = numpy.ascontiguousarray(
-            image_batch,
-            dtype=numpy.uint8 if self.is_quantized else numpy.float32,
-        )
-
-        if not self.is_quantized:
-            image_batch /= 255
         postprocessing_kwargs = dict(
             iou_thres=inputs.iou_thres,
             conf_thres=inputs.conf_thres,
         )
-        return [image_batch], postprocessing_kwargs
+
+        if isinstance(inputs.images, numpy.ndarray) and inputs.images.ndim == 4:
+            # NOTE: assume batch of images are already pre-preocessed
+            return [inputs.images], postprocessing_kwargs
+
+        if isinstance(inputs.images, (str, numpy.ndarray)):
+            inputs.images = [inputs.images]
+
+        images = list(self.async_map(self._preprocess_image, inputs.images))
+        batch = numpy.stack(images, axis=0)
+        return [batch], postprocessing_kwargs
 
     def _preprocess_image(self, image) -> numpy.ndarray:
-        if isinstance(image, list):
-            # image consists of floats or ints
-            image = numpy.asarray(image)
-
         if isinstance(image, str):
-            image = cv2.imread(image)
+            image = read_resize_and_transpose_u8_image(image, self.image_size)
+            if not self.is_quantized:
+                image = make_float32(image)
+            return image
 
-        image = self._make_channels_last(image)
-        if image.ndim < 4:
-            # Assume a batch is of the correct size already
-            image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
-        image = self._make_channels_first(image)
-        return image
+        if isinstance(image, numpy.ndarray):
+            assert_3d(image)
+            image = resize_and_channel_first(image, self.image_size)
+            image = make_uint8(image) if self.is_quantized else make_float32(image)
+            image = numpy.ascontiguousarray(image)
+            return image
+
+        raise ValueError(f"Expected str or numpy.ndarray, found {type(image)}")
 
     def process_engine_outputs(
         self,
@@ -239,10 +243,9 @@ class YOLOPipeline(Pipeline):
             conf_thres=kwargs.get("conf_thres", 0.45),
         )
 
-        batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []
+        batch_boxes, batch_scores, batch_labels = [], [], []
 
         for image_output in batch_output:
-            batch_predictions.append(image_output.tolist())
             batch_boxes.append(image_output[:, 0:4].tolist())
             batch_scores.append(image_output[:, 4].tolist())
             batch_labels.append(image_output[:, 5].tolist())
@@ -257,52 +260,10 @@ class YOLOPipeline(Pipeline):
                 batch_labels[-1] = batch_class_names
 
         return YOLOOutput(
-            predictions=batch_predictions,
             boxes=batch_boxes,
             scores=batch_scores,
             labels=batch_labels,
         )
-
-    def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:
-        # return a numpy batch of images
-        if len(image_batch) == 1:
-            current_batch = image_batch[0]
-            if current_batch.ndim == 4:
-                return current_batch
-
-        return numpy.stack(image_batch, axis=0)
-
-    def _make_channels_first(self, image: numpy.ndarray) -> numpy.ndarray:
-        # return a numpy array with channels first
-        is_single_image = image.ndim == 3
-        is_batch = image.ndim == 4
-
-        if image.shape[-1] != 3:
-            return image
-
-        if is_single_image:
-            return numpy.moveaxis(image, -1, 0)
-
-        if is_batch:
-            return numpy.moveaxis(image, -1, 1)
-
-        return image
-
-    def _make_channels_last(self, image: numpy.ndarray) -> numpy.ndarray:
-        # return a numpy array with channels first
-        is_single_image = image.ndim == 3
-        is_batch = image.ndim == 4
-
-        if image.shape[-1] == 3:
-            return image
-
-        if is_single_image:
-            return numpy.moveaxis(image, 0, -1)
-
-        if is_batch:
-            return numpy.moveaxis(image, 1, -1)
-
-        return image
 
     def model_has_postprocessing(self, loaded_onnx_model) -> bool:
         """

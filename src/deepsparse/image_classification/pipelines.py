@@ -32,6 +32,12 @@ from deepsparse.image_classification.schemas import (
     ImageClassificationOutput,
 )
 from deepsparse.pipeline import Pipeline
+from deepsparse.pipelines.computer_vision import (
+    assert_3d,
+    make_float32,
+    needs_resize,
+    resize_and_channel_first,
+)
 from deepsparse.utils import model_to_path
 
 
@@ -104,6 +110,9 @@ class ImageClassificationPipeline(Pipeline):
             ]
         )
 
+        self.mean = numpy.array(IMAGENET_RGB_MEANS).reshape((3, 1, 1))
+        self.inv_std = 1.0 / numpy.array(IMAGENET_RGB_STDS).reshape((3, 1, 1))
+
     @property
     def class_names(self) -> Optional[Dict[str, str]]:
         """
@@ -145,68 +154,41 @@ class ImageClassificationPipeline(Pipeline):
         :return: list of preprocessed numpy arrays
         """
 
-        if isinstance(inputs.images, numpy.ndarray):
-            image_batch = inputs.images
-        else:
-            if isinstance(inputs.images, str):
-                inputs.images = [inputs.images]
+        if isinstance(inputs.images, numpy.ndarray) and inputs.images.ndim == 4:
+            # assume already preprocessed
+            return [inputs.images]
 
-            image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
+        if isinstance(inputs.images, (str, numpy.ndarray)):
+            inputs.images = [inputs.images]
 
-            # build batch
-            image_batch = numpy.stack(image_batch, axis=0)
-
-        original_dtype = image_batch.dtype
-        image_batch = numpy.ascontiguousarray(image_batch, dtype=numpy.float32)
-
-        if original_dtype == numpy.uint8:
-            image_batch /= 255
-            # normalize entire batch
-            image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
-            image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
-
-        return [image_batch]
+        images = list(self.executor.map(self._preprocess_image, inputs.images))
+        batch = numpy.stack(images, axis=0)
+        batch -= self.mean
+        batch *= self.inv_std
+        return [batch]
 
     def _preprocess_image(self, image) -> numpy.ndarray:
-        if isinstance(image, List):
-            # image given as raw list
-            image = numpy.asarray(image)
-            if image.dtype == numpy.float32:
-                # image is already processed, append and continue
+        if isinstance(image, str):
+            with Image.open(image) as image:
+                image = self._pre_normalization_transforms(image)
+                image = numpy.asarray(image)
+                image = resize_and_channel_first(image, self._image_size)
+                image = make_float32(image)
                 return image
-            # assume raw image input
-            # put image in PIL format for torchvision processing
-            image = image.astype(numpy.uint8)
-            if image.shape[0] < image.shape[-1]:
-                # put channel last
-                image = numpy.einsum("cwh->whc", image)
-            image = Image.fromarray(image)
-        elif isinstance(image, str):
-            # load image from string filepath
-            image = Image.open(image)
-        elif isinstance(image, numpy.ndarray):
-            image = image.astype(numpy.uint8)
-            if image.shape[0] < image.shape[-1]:
-                # put channel last
-                image = numpy.einsum("cwh->whc", image)
-            image = Image.fromarray(image)
 
-        if not isinstance(image, Image.Image):
-            raise ValueError(
-                f"inputs to {self.__class__.__name__} must be a string image "
-                "file path(s), a list representing a raw image, "
-                "PIL.Image.Image object(s), or a numpy array representing"
-                f"the entire pre-processed batch. Found {type(image)}"
-            )
+        if isinstance(image, numpy.ndarray):
+            assert_3d(image)
+            if needs_resize(image):
+                if image.shape[0] == 3:
+                    image = numpy.transpose(image, (1, 2, 0))
+                image = Image.fromarray(image)
+                image = self._pre_normalization_transforms(image)
+                image = numpy.asarray(image)
+            image = resize_and_channel_first(image, self._image_size)
+            image = make_float32(image)
+            return image
 
-        # apply resize and center crop
-        image = self._pre_normalization_transforms(image)
-        image_numpy = numpy.array(image)
-        image.close()
-
-        # make channel first dimension
-        image_numpy = image_numpy.transpose(2, 0, 1)
-        return image_numpy
+        raise ValueError(f"Expected str or numpy.ndarray, found {type(image)}")
 
     def process_engine_outputs(
         self,
@@ -220,7 +202,7 @@ class ImageClassificationPipeline(Pipeline):
         """
         labels, scores = [], []
         for prediction_batch in engine_outputs[0]:
-            label = (-prediction_batch).argsort()[: self.top_k]
+            label = prediction_batch.argsort()[::-1][: self.top_k]
             score = prediction_batch[label]
             labels.append(label)
             scores.append(score.tolist())
@@ -241,7 +223,7 @@ class ImageClassificationPipeline(Pipeline):
             labels=labels,
         )
 
-    def _infer_image_size(self) -> Tuple[int, ...]:
+    def _infer_image_size(self) -> Tuple[int, int]:
         """
         Infer and return the expected shape of the input tensor
 

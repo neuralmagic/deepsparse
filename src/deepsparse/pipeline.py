@@ -18,7 +18,7 @@ inference engine and include pre/postprocessing
 """
 import os
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -155,6 +155,11 @@ class Pipeline(ABC):
             workers_or_executor=executor,
         )
 
+        if self.executor._max_workers == 1:
+            self.async_map = map
+        else:
+            self.async_map = self.executor.map
+
         if self.context is not None:
             num_cores = num_cores or self.context.num_cores
             if self.context.num_cores != num_cores:
@@ -207,14 +212,9 @@ class Pipeline(ABC):
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit to engine
-        futures = [
-            self.executor.submit(self.engine_forward, batch) for batch in batches
-        ]
-        wait(futures)
-
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(
-            [future.result() for future in futures]
+            list(self.executor.map(self.engine_forward, batches))
         )
         timer.stop(InferencePhases.ENGINE_FORWARD)
 

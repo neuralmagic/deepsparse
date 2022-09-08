@@ -309,7 +309,7 @@ def decode(loc: torch.Tensor, priors: torch.Tensor) -> torch.Tensor:
         ),
         1,
     )
-    boxes[:, :2] -= boxes[:, 2:] / 2
+    boxes[:, :2] -= boxes[:, 2:] * 0.5
     boxes[:, 2:] += boxes[:, :2]
 
     return boxes
