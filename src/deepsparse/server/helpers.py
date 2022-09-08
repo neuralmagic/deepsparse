@@ -18,6 +18,7 @@ Helper functions for deepsparse.server
 
 
 import logging
+from typing import Any, Dict, Union
 
 import yaml
 
@@ -44,9 +45,12 @@ def default_logger_manager() -> ManagerLogger:
     return ManagerLogger(logger)
 
 
-def logger_manager_from_config(config_path: str) -> ManagerLogger:
+def logger_manager_from_config(
+    config: Union[str, Dict[str, Dict[str, Any]]]
+) -> ManagerLogger:
     """
     Initializes a ManagerLogger from loggers defined by a yaml config file
+    or loaded dictionary
 
     Config should be a logger integration name, followed by its initialization
     kwargs as a dict
@@ -63,21 +67,22 @@ def logger_manager_from_config(config_path: str) -> ManagerLogger:
         text_log_save_freq: 30
     ```
 
-    :param config_path: path to YAML config file
+    :param config: path to YAML config file or dictionary config
     :return: constructed ManagerLogger object
     """
-    with open(config_path) as config:
-        loggers_config = yaml.safe_load(config)
+    if isinstance(config, str):
+        with open(config) as config_reader:
+            config = yaml.safe_load(config_reader)
 
-    if not isinstance(loggers_config, dict):
-        raise ValueError(
-            "Loggers config must be a yaml dict, loaded object of "
-            f"type {type(loggers_config)}"
-        )
+        if not isinstance(config, dict):
+            raise ValueError(
+                "Loggers config must be a yaml dict, loaded object of "
+                f"type {type(config)}"
+            )
 
     loggers = []
 
-    for integration, logger_kwargs in loggers_config.items():
+    for integration, logger_kwargs in config.items():
         logger_class = _SUPPORTED_LOGGERS.get(integration.lower())
         if logger_class is None:
             raise ValueError(
