@@ -177,16 +177,12 @@ def _set_thread_pinning(server_config: ServerConfig):
             f"{server_config.engine_thread_pinning}"
         )
 
-    # environment variable names
-    _CORES = "NM_BIND_THREADS_TO_CORES"
-    _SOCKS = "NM_BIND_THREADS_TO_SOCKETS"
+    cores, socks = pinning[server_config.engine_thread_pinning]
+    os.environ["NM_BIND_THREADS_TO_CORES"] = cores
+    os.environ["NM_BIND_THREADS_TO_SOCKETS"] = socks
 
-    os.environ[_CORES], os.environ[_SOCKS] = pinning[
-        server_config.engine_thread_pinning
-    ]
-
-    _LOGGER.info(f"{_CORES} {os.environ[_CORES]}")
-    _LOGGER.info(f"{_SOCKS} {os.environ[_SOCKS]}")
+    _LOGGER.info(f"NM_BIND_THREADS_TO_CORES={cores}")
+    _LOGGER.info(f"NM_BIND_THREADS_TO_SOCKETS={socks}")
 
 
 def _add_endpoint(
