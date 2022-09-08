@@ -20,6 +20,7 @@ import numpy
 
 import pytest
 from deepsparse.pipeline import Pipeline, _initialize_executor_and_workers
+from deepsparse.timing import InferenceTimingSchema
 from tests.utils import mock_engine
 
 
@@ -141,3 +142,21 @@ def test_pipeline_call_is_async(engine_mock):
         end = time.perf_counter()
         dur_ms = (end - start) * 1e3
         assert abs(dur_ms - 30) < 10
+
+
+@mock_engine(rng_seed=0)
+def test_run_with_monitoring(engine_mock):
+    pipeline = Pipeline.create("token_classification", batch_size=1)
+    _, _, _, inference_timing = pipeline.run_with_monitoring(
+        "all_your_base_are_belong_to_us"
+    )
+    assert isinstance(inference_timing, InferenceTimingSchema)
+    assert (
+        pytest.approx(
+            inference_timing.pre_process
+            + inference_timing.post_process
+            + inference_timing.engine_forward,
+            10e-3,
+        )
+        == inference_timing.total_inference
+    )

@@ -29,6 +29,7 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
+from deepsparse.timing import InferencePhases, InferenceTimingSchema, TimingBuilder
 
 
 __all__ = [
@@ -176,29 +177,33 @@ class Pipeline(ABC):
 
         self._batch_size = self._batch_size or 1
 
-    def __call__(self, *args, **kwargs) -> BaseModel:
+    def __call__(self, *args, monitoring: bool = False, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
+        timer = TimingBuilder()
 
         # parse inputs into input_schema
+        timer.start(InferencePhases.TOTAL_INFERENCE)
+        timer.start(InferencePhases.PRE_PROCESS)
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
-
         # batch size of the inputs may be `> self._batch_size` at this point
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
+        timer.stop(InferencePhases.PRE_PROCESS)
 
         # split inputs into batches of size `self._batch_size`
+        timer.start(InferencePhases.ENGINE_FORWARD)
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit to engine
@@ -211,7 +216,9 @@ class Pipeline(ABC):
         engine_outputs = self.join_engine_outputs(
             [future.result() for future in futures]
         )
+        timer.stop(InferencePhases.ENGINE_FORWARD)
 
+        timer.start(InferencePhases.POST_PROCESS)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -220,8 +227,39 @@ class Pipeline(ABC):
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
+        timer.stop(InferencePhases.POST_PROCESS)
+        timer.stop(InferencePhases.TOTAL_INFERENCE)
 
-        return pipeline_outputs
+        if not monitoring:
+            return pipeline_outputs
+
+        else:
+            inference_timing = InferenceTimingSchema(**timer.build())
+            return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
+
+    def run_with_monitoring(
+        self, *args, **kwargs
+    ) -> Tuple[BaseModel, BaseModel, Any, InferenceTimingSchema]:
+        """
+        Run the inference forward pass and additionally
+        return extra monitoring information
+
+        :return:
+            pipeline_outputs: outputs from the inference pipeline
+            pipeline_inputs: inputs to the inference pipeline
+            engine_inputs: direct input to the inference engine
+            inference_timing: BaseModel, that contains the information about time
+                elapsed during the inference steps: pre-processing,
+                engine-forward, post-processing, as well as
+                the total elapsed time
+        """
+        (
+            pipeline_outputs,
+            pipeline_inputs,
+            engine_inputs,
+            inference_timing,
+        ) = self.__call__(*args, monitoring=True, **kwargs)
+        return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
 
     @staticmethod
     def split_engine_inputs(
