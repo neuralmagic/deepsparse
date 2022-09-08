@@ -30,9 +30,7 @@ __all__ = [
     "YOLOInput",
 ]
 
-_YOLOImageOutput = namedtuple(
-    "_YOLOImageOutput", ["predictions", "boxes", "scores", "labels"]
-)
+_YOLOImageOutput = namedtuple("_YOLOImageOutput", ["boxes", "scores", "labels"])
 
 
 class YOLOInput(ComputerVisionSchema):
