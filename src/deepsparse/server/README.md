@@ -103,7 +103,7 @@ endpoints:
     - task: question_answering
       route: /pruned/predict
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
-      batch_size: 2
+      batch_size: 1
 ```
 You can now run the server with the config file path passed in the `--config_file` argument:
 
