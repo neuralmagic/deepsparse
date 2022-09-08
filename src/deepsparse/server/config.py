@@ -121,6 +121,13 @@ class ServerConfig(BaseModel):
     )
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
+    loggers: Union[Dict[str, Dict[str, Any]], str, None] = Field(
+        default=None,
+        description=(
+            "Optional dictionary of logger integration names to initialization kwargs "
+            "or path to a yaml config file of the same specification. Default is None."
+        ),
+    )
 
 
 def _unpack_bucketing(

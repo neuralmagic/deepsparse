@@ -123,8 +123,16 @@ class PrometheusLogger(BaseLogger):
         self._update_call_count(pipeline_name)
         self._export_metrics_to_textfile()
 
-    def log_data(self, inputs: Any, outputs: Any):
-        raise NotImplementedError()
+    def log_data(self, pipeline_name: str, inputs: Any, outputs: Any):
+        """
+
+        :param pipeline_name: The name of the inference pipeline from which the
+            logger consumes the inference information to be monitored
+        :param inputs: the data received and consumed by the inference
+            pipeline
+        :param outputs: the data returned by the inference pipeline
+        """
+        pass
 
     def _log_latency(self, metric_name: str, value_to_log: float, pipeline_name: str):
         """

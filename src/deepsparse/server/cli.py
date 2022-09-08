@@ -156,6 +156,15 @@ def config(config_path: str, host: str, port: int, log_level: str):
     default="info",
     help="Sets the logging level.",
 )
+@click.option(
+    "--loggers",
+    type=str,
+    default="",
+    help=(
+        "Optional path to a config file defining server logger integrations "
+        "to initialize."
+    ),
+)
 def task(
     task: str,
     model_path: str,
@@ -165,11 +174,13 @@ def task(
     host: str,
     port: int,
     log_level: str,
+    loggers: str,
 ):
     """
     Run the server using configuration with CLI options,
     which can only serve a single model.
     """
+    loggers = loggers or None
     cfg = ServerConfig(
         num_cores=num_cores,
         num_workers=num_workers,
@@ -182,6 +193,7 @@ def task(
                 batch_size=batch_size,
             )
         ],
+        loggers=loggers,
     )
 
     with TemporaryDirectory() as tmp_dir:
