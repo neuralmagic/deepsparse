@@ -39,7 +39,9 @@ def default_logger_manager() -> ManagerLogger:
     :return: default ManagerLogger object for the deployment scenario
     """
     # always return prometheus logger for now
-    return ManagerLogger(PrometheusLogger())
+    logger = PrometheusLogger()
+    _LOGGER.info(f"Created default logger {logger}")
+    return ManagerLogger(logger)
 
 
 def logger_manager_from_config(config_path: str) -> ManagerLogger:
