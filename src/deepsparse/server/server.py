@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -60,6 +61,21 @@ def start_server(
         obj = yaml.safe_load(fp)
     server_config = ServerConfig(**obj)
     _LOGGER.info(f"Using config: {repr(server_config)}")
+
+    if server_config.pytorch_num_threads is not None:
+        try:
+            import torch
+
+            torch.set_num_threads(server_config.pytorch_num_threads)
+            _LOGGER.info(f"torch.set_num_threads({server_config.pytorch_num_threads})")
+        except ImportError:
+            _LOGGER.debug(
+                "pytorch not installed, skipping pytorch_num_threads configuration"
+            )
+
+    if server_config.engine_thread_pinning:
+        os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
+        _LOGGER.info("NM_BIND_THREADS_TO_CORES=1")
 
     app = _build_app(server_config)
 
