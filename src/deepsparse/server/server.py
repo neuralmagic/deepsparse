@@ -168,28 +168,25 @@ def _set_pytorch_num_threads(server_config: ServerConfig):
 
 
 _CORES = "NM_BIND_THREADS_TO_CORES"
-_SOCKETS = "NM_BIND_THREADS_TO_SOCKETS"
+_SOCKS = "NM_BIND_THREADS_TO_SOCKETS"
 
 
 def _set_thread_pinning(server_config: ServerConfig):
-    if server_config.engine_thread_pinning == "core":
-        os.environ[_CORES] = "1"
-        os.environ[_SOCKETS] = "0"
-    elif server_config.engine_thread_pinning == "numa":
-        os.environ[_CORES] = "0"
-        os.environ[_SOCKETS] = "1"
-    elif server_config.engine_thread_pinning == "none":
-        os.environ[_CORES] = "0"
-        os.environ[_SOCKETS] = "0"
-    else:
+    pinning = {"core": ("1", "0"), "numa": ("0", "1"), "none": ("0", "0")}
+
+    if server_config.engine_thread_pinning not in pinning:
         raise ValueError(
             "Invalid value for engine_thread_pinning. "
             'Expected one of {"core","numa","none"}. Found '
             f"{server_config.engine_thread_pinning}"
         )
 
+    os.environ[_CORES], os.environ[_SOCKS] = pinning[
+        server_config.engine_thread_pinning
+    ]
+
     _LOGGER.info(f"{_CORES} {os.environ[_CORES]}")
-    _LOGGER.info(f"{_SOCKETS} {os.environ[_SOCKETS]}")
+    _LOGGER.info(f"{_SOCKS} {os.environ[_SOCKS]}")
 
 
 def _add_endpoint(
