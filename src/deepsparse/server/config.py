@@ -120,6 +120,23 @@ class ServerConfig(BaseModel):
         description="The kind of integration to use. local|sagemaker",
     )
 
+    engine_thread_pinning: str = Field(
+        default="core",
+        description=(
+            "Enable binding threads to cores ('core' the default), "
+            "threads to cores on sockets ('numa'), or disable ('none')"
+        ),
+    )
+
+    pytorch_num_threads: Optional[int] = Field(
+        default=1,
+        description=(
+            "Configures number of threads that pytorch is allowed to use during"
+            "pre and post-processing. Useful to reduce resource contention. "
+            "Set to `None` to place no restrictions on pytorch."
+        ),
+    )
+
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
 
