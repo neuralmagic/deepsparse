@@ -28,17 +28,10 @@ import onnx
 import torchvision
 import yaml
 
+import cv2
 import torch
 from deepsparse.yolo.schemas import YOLOOutput
 
-
-try:
-    import cv2
-
-    cv2_error = None
-except ModuleNotFoundError as cv2_import_error:
-    cv2 = None
-    cv2_error = cv2_import_error
 
 _YOLO_CLASS_COLORS = list(itertools.product([0, 255, 128, 64, 192], repeat=3))
 _YOLO_CLASS_COLORS.remove((255, 255, 255))  # remove white from possible colors

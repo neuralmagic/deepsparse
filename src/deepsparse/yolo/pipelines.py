@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 import numpy
 import onnx
 
+import cv2
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
@@ -30,14 +31,6 @@ from deepsparse.yolo.utils import (
     yolo_onnx_has_postprocessing,
 )
 
-
-try:
-    import cv2
-
-    cv2_error = None
-except ModuleNotFoundError as cv2_import_error:
-    cv2 = None
-    cv2_error = cv2_import_error
 
 __all__ = ["YOLOPipeline"]
 

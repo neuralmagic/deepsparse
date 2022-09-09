@@ -25,16 +25,9 @@ from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Uni
 
 import numpy
 
+import cv2
 from sparsezoo.utils import create_dirs
 
-
-try:
-    import cv2
-
-    cv2_error = None
-except ModuleNotFoundError as cv2_import_error:
-    cv2 = None
-    cv2_error = cv2_import_error
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 
+import cv2
 import torch
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
@@ -24,14 +25,6 @@ from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
 from deepsparse.yolact.utils import decode, detect, postprocess, preprocess_array
 from deepsparse.yolo.utils import COCO_CLASSES
 
-
-try:
-    import cv2
-
-    cv2_error = None
-except ModuleNotFoundError as cv2_import_error:
-    cv2 = None
-    cv2_error = cv2_import_error
 
 __all__ = ["YOLACTPipeline"]
 

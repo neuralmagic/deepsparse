@@ -19,16 +19,8 @@ from typing import Dict, Tuple
 
 import numpy
 
+import cv2
 import torch
-
-
-try:
-    import cv2
-
-    cv2_error = None
-except ModuleNotFoundError as cv2_import_error:
-    cv2 = None
-    cv2_error = cv2_import_error
 
 
 _all__ = ["detect", "decode", "postprocess", "preprocess_array"]
