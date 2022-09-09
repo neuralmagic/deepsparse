@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-from tempfile import NamedTemporaryFile
 from unittest import mock
 
 from deepsparse.loggers import ManagerLogger, PrometheusLogger
@@ -21,7 +20,7 @@ from deepsparse.server.helpers import logger_manager_from_config
 
 
 @mock.patch.object(PrometheusLogger, "_setup_client", lambda _: None)
-def test_logger_manager_from_config():
+def test_logger_manager_from_config(tmp_path):
     port = 8001
     text_log_save_dir = "/home/deepsparse-server/prometheus"
     text_log_save_freq = 30
@@ -32,11 +31,11 @@ def test_logger_manager_from_config():
         text_log_save_dir: {text_log_save_dir}
         text_log_save_freq: {text_log_save_freq}
     """
-    config_file = NamedTemporaryFile()
-    with open(config_file.name, "w") as config_writer:
+    config_path = tmp_path / "loggers.yaml"
+    with open(config_path, "w") as config_writer:
         config_writer.write(yaml_str)
 
-    logger_manager = logger_manager_from_config(config_file.name)
+    logger_manager = logger_manager_from_config(str(config_path))
     assert isinstance(logger_manager, ManagerLogger)
 
     loggers = logger_manager.loggers
