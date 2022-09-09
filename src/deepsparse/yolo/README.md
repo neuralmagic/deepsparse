@@ -134,7 +134,7 @@ path = ['basilica.jpg'] # list of images for inference
 files = [('request', open(img, 'rb')) for img in path]
 resp = requests.post(url=url, files=files)
 annotations = json.loads(resp.text) # dictionary of annotation results
-bounding_boxes = annotations["predictions"]
+bounding_boxes = annotations["boxes"]
 labels = annotations["labels"]
 ```
 
