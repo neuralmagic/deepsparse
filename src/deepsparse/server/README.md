@@ -105,18 +105,18 @@ endpoints:
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 1
 ```
-You can now run the server with the config file path passed in the `--config_file` argument:
+You can now run the server with the config file path using the `config` sub command:
 
 ```bash
 deepsparse.server config config.yaml
 ```
 
-You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, the alias would be `question_answering/pruned_quant`:
+You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, you can send a request to its configured route:
 
 ```python
 import requests
 
-url = "http://localhost:5543/predict/question_answering/pruned_quant"
+url = "http://localhost:5543/pruned/predict"
 
 obj = {
     "question": "Who is Mark?", 

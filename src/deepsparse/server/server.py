@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -95,6 +96,9 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
             f"Expected one of {INTEGRATIONS}"
         )
 
+    _set_pytorch_num_threads(server_config)
+    _set_thread_pinning(server_config)
+
     context = Context(
         num_cores=server_config.num_cores,
         num_streams=server_config.num_workers,
@@ -155,6 +159,37 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     return app
 
 
+def _set_pytorch_num_threads(server_config: ServerConfig):
+    if server_config.pytorch_num_threads is not None:
+        try:
+            import torch
+
+            torch.set_num_threads(server_config.pytorch_num_threads)
+            _LOGGER.info(f"torch.set_num_threads({server_config.pytorch_num_threads})")
+        except ImportError:
+            _LOGGER.debug(
+                "pytorch not installed, skipping pytorch_num_threads configuration"
+            )
+
+
+def _set_thread_pinning(server_config: ServerConfig):
+    pinning = {"core": ("1", "0"), "numa": ("0", "1"), "none": ("0", "0")}
+
+    if server_config.engine_thread_pinning not in pinning:
+        raise ValueError(
+            "Invalid value for engine_thread_pinning. "
+            'Expected one of {"core","numa","none"}. Found '
+            f"{server_config.engine_thread_pinning}"
+        )
+
+    cores, socks = pinning[server_config.engine_thread_pinning]
+    os.environ["NM_BIND_THREADS_TO_CORES"] = cores
+    os.environ["NM_BIND_THREADS_TO_SOCKETS"] = socks
+
+    _LOGGER.info(f"NM_BIND_THREADS_TO_CORES={cores}")
+    _LOGGER.info(f"NM_BIND_THREADS_TO_SOCKETS={socks}")
+
+
 def _add_endpoint(
     app: FastAPI,
     server_config: ServerConfig,
@@ -213,7 +248,7 @@ def _add_pipeline_endpoint(
 
         routes_and_fns.append((route, _predict))
         if hasattr(input_schema, "from_files"):
-            routes_and_fns.append((route + "/files", _predict_from_files))
+            routes_and_fns.append((route + "/from_files", _predict_from_files))
     elif integration == INTEGRATION_SAGEMAKER:
         route = "/invocations"
         if hasattr(input_schema, "from_files"):

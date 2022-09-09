@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from copy import deepcopy
 from re import escape
 from typing import List
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import requests
 from pydantic import BaseModel
@@ -172,7 +174,7 @@ class TestMockEndpoints:
         )
         assert app.routes[-2].path == "/predict/parse_int"
         assert app.routes[-2].endpoint.__annotations__ == {"request": FromFilesSchema}
-        assert app.routes[-1].path == "/predict/parse_int/files"
+        assert app.routes[-1].path == "/predict/parse_int/from_files"
         assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
         assert app.routes[-1].response_model is int
         assert app.routes[-1].methods == {"POST"}
@@ -326,3 +328,66 @@ def test_default_logging_server_launches(engine_mock):
     # check positive ping to expected prometheus server on port 6100
     response = requests.get("http://127.0.0.1:6100")
     assert response.status_code == 200
+
+
+def test_pytorch_num_threads():
+    torch = pytest.importorskip("torch")
+
+    orig_num_threads = torch.get_num_threads()
+    _build_app(
+        ServerConfig(num_cores=1, num_workers=1, pytorch_num_threads=None, endpoints=[])
+    )
+    assert torch.get_num_threads() == orig_num_threads
+
+    _build_app(
+        ServerConfig(num_cores=1, num_workers=1, pytorch_num_threads=1, endpoints=[])
+    )
+    assert torch.get_num_threads() == 1
+
+
+@patch.dict(os.environ, deepcopy(os.environ))
+def test_thread_pinning_none():
+    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
+    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
+    _build_app(
+        ServerConfig(
+            num_cores=1, num_workers=1, engine_thread_pinning="none", endpoints=[]
+        )
+    )
+    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
+    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "0"
+
+
+@patch.dict(os.environ, deepcopy(os.environ))
+def test_thread_pinning_numa():
+    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
+    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
+    _build_app(
+        ServerConfig(
+            num_cores=1, num_workers=1, engine_thread_pinning="numa", endpoints=[]
+        )
+    )
+    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
+    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "1"
+
+
+@patch.dict(os.environ, deepcopy(os.environ))
+def test_thread_pinning_cores():
+    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
+    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
+    _build_app(
+        ServerConfig(
+            num_cores=1, num_workers=1, engine_thread_pinning="core", endpoints=[]
+        )
+    )
+    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "1"
+    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "0"
+
+
+def test_invalid_thread_pinning():
+    with pytest.raises(ValueError, match='Expected one of {"core","numa","none"}.'):
+        _build_app(
+            ServerConfig(
+                num_cores=1, num_workers=1, engine_thread_pinning="asdf", endpoints=[]
+            )
+        )

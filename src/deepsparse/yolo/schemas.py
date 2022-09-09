@@ -30,9 +30,7 @@ __all__ = [
     "YOLOInput",
 ]
 
-_YOLOImageOutput = namedtuple(
-    "_YOLOImageOutput", ["predictions", "boxes", "scores", "labels"]
-)
+_YOLOImageOutput = namedtuple("_YOLOImageOutput", ["boxes", "scores", "labels"])
 
 
 class YOLOInput(ComputerVisionSchema):
@@ -55,7 +53,6 @@ class YOLOOutput(BaseModel):
     Output model for object detection
     """
 
-    predictions: List[List[List[float]]] = Field(description="List of predictions")
     boxes: List[List[List[float]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
@@ -67,16 +64,15 @@ class YOLOOutput(BaseModel):
     )
 
     def __getitem__(self, index):
-        if index >= len(self.predictions):
+        if index >= len(self.boxes):
             raise IndexError("Index out of range")
 
         return _YOLOImageOutput(
-            self.predictions[index],
             self.boxes[index],
             self.scores[index],
             self.labels[index],
         )
 
     def __iter__(self):
-        for index in range(len(self.predictions)):
+        for index in range(len(self.boxes)):
             yield self[index]
