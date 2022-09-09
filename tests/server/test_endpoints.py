@@ -298,25 +298,18 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
 
 
 def test_pytorch_num_threads():
-    try:
-        import torch
+    torch = pytest.importorskip("torch")
 
-        orig_num_threads = torch.get_num_threads()
-        _build_app(
-            ServerConfig(
-                num_cores=1, num_workers=1, pytorch_num_threads=None, endpoints=[]
-            )
-        )
-        assert torch.get_num_threads() == orig_num_threads
+    orig_num_threads = torch.get_num_threads()
+    _build_app(
+        ServerConfig(num_cores=1, num_workers=1, pytorch_num_threads=None, endpoints=[])
+    )
+    assert torch.get_num_threads() == orig_num_threads
 
-        _build_app(
-            ServerConfig(
-                num_cores=1, num_workers=1, pytorch_num_threads=1, endpoints=[]
-            )
-        )
-        assert torch.get_num_threads() == 1
-    except ImportError:
-        ...
+    _build_app(
+        ServerConfig(num_cores=1, num_workers=1, pytorch_num_threads=1, endpoints=[])
+    )
+    assert torch.get_num_threads() == 1
 
 
 @patch.dict(os.environ, deepcopy(os.environ))
