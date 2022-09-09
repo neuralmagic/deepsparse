@@ -157,7 +157,7 @@ class TestMockEndpoints:
         )
         assert app.routes[-2].path == "/predict/parse_int"
         assert app.routes[-2].endpoint.__annotations__ == {"request": FromFilesSchema}
-        assert app.routes[-1].path == "/predict/parse_int/files"
+        assert app.routes[-1].path == "/predict/parse_int/from_files"
         assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
         assert app.routes[-1].response_model is int
         assert app.routes[-1].methods == {"POST"}

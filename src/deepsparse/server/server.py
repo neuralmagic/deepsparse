@@ -228,7 +228,7 @@ def _add_pipeline_endpoint(
 
         routes_and_fns.append((route, _predict_from_schema))
         if hasattr(input_schema, "from_files"):
-            routes_and_fns.append((route + "/files", _predict_from_files))
+            routes_and_fns.append((route + "/from_files", _predict_from_files))
     elif integration == INTEGRATION_SAGEMAKER:
         route = "/invocations"
         if hasattr(input_schema, "from_files"):
