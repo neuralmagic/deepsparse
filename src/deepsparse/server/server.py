@@ -194,7 +194,9 @@ def _add_pipeline_endpoint(
             inference_timing,
         ) = pipeline.run_with_monitoring(request)
         pipeline_logger.log_latency(pipeline_name, inference_timing)
-        pipeline_logger.log_data((pipeline_inputs, engine_inputs), pipeline_outputs)
+        pipeline_logger.log_data(
+            pipeline_name, (pipeline_inputs, engine_inputs), pipeline_outputs
+        )
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):

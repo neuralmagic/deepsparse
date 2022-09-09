@@ -125,7 +125,8 @@ class ServerConfig(BaseModel):
         default=None,
         description=(
             "Optional dictionary of logger integration names to initialization kwargs "
-            "or path to a yaml config file of the same specification. Default is None."
+            "or path to a yaml config file of the same specification. Example: "
+            "{'prometheus': {'port': 8001}}. Default is None."
         ),
     )
 
