@@ -111,7 +111,7 @@ You can now run the server with the config file path using the `config` sub comm
 deepsparse.server config config.yaml
 ```
 
-You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, you can send a request to it's configured route:
+You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, you can send a request to its configured route:
 
 ```python
 import requests
