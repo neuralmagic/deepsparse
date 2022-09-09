@@ -320,27 +320,25 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code
 
 
-@mock_engine(rng_seed=0)
-def test_default_logging_server_launches(engine_mock):
-    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[], loggers=None)
-    _build_app(server_config)
-
-    # check positive ping to expected prometheus server on port 6100
-    response = requests.get("http://127.0.0.1:6100")
-    assert response.status_code == 200
-
-
 def test_pytorch_num_threads():
     torch = pytest.importorskip("torch")
 
     orig_num_threads = torch.get_num_threads()
     _build_app(
-        ServerConfig(num_cores=1, num_workers=1, pytorch_num_threads=None, endpoints=[])
+        ServerConfig(
+            num_cores=1,
+            num_workers=1,
+            pytorch_num_threads=None,
+            endpoints=[],
+            loggers={},
+        )
     )
     assert torch.get_num_threads() == orig_num_threads
 
     _build_app(
-        ServerConfig(num_cores=1, num_workers=1, pytorch_num_threads=1, endpoints=[])
+        ServerConfig(
+            num_cores=1, num_workers=1, pytorch_num_threads=1, endpoints=[], loggers={}
+        )
     )
     assert torch.get_num_threads() == 1
 
@@ -351,7 +349,11 @@ def test_thread_pinning_none():
     os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
     _build_app(
         ServerConfig(
-            num_cores=1, num_workers=1, engine_thread_pinning="none", endpoints=[]
+            num_cores=1,
+            num_workers=1,
+            engine_thread_pinning="none",
+            endpoints=[],
+            loggers={},
         )
     )
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
@@ -364,7 +366,11 @@ def test_thread_pinning_numa():
     os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
     _build_app(
         ServerConfig(
-            num_cores=1, num_workers=1, engine_thread_pinning="numa", endpoints=[]
+            num_cores=1,
+            num_workers=1,
+            engine_thread_pinning="numa",
+            endpoints=[],
+            loggers={},
         )
     )
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
@@ -377,7 +383,11 @@ def test_thread_pinning_cores():
     os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
     _build_app(
         ServerConfig(
-            num_cores=1, num_workers=1, engine_thread_pinning="core", endpoints=[]
+            num_cores=1,
+            num_workers=1,
+            engine_thread_pinning="core",
+            endpoints=[],
+            loggers={},
         )
     )
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "1"
@@ -388,6 +398,20 @@ def test_invalid_thread_pinning():
     with pytest.raises(ValueError, match='Expected one of {"core","numa","none"}.'):
         _build_app(
             ServerConfig(
-                num_cores=1, num_workers=1, engine_thread_pinning="asdf", endpoints=[]
+                num_cores=1,
+                num_workers=1,
+                engine_thread_pinning="asdf",
+                endpoints=[],
+                loggers={},
             )
         )
+
+
+@mock_engine(rng_seed=0)
+def test_default_logging_server_launches(engine_mock):
+    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[], loggers=None)
+    _build_app(server_config)
+
+    # check positive ping to expected prometheus server on port 6100
+    response = requests.get("http://127.0.0.1:6100")
+    assert response.status_code == 200
