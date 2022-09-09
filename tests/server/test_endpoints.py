@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-from copy import deepcopy
-from re import escape
 from typing import List
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from pydantic import BaseModel
 
@@ -72,51 +69,6 @@ class TestStatusEndpoints:
         assert response.request.path_url == "/docs"
         assert len(response.history) > 0
         assert response.history[-1].is_redirect
-
-
-def test_add_multiple_endpoints_with_no_route():
-    with pytest.raises(
-        ValueError,
-        match=(
-            "must specify `route` for all endpoints if multiple endpoints are used."
-        ),
-    ):
-        _build_app(
-            ServerConfig(
-                num_cores=1,
-                num_workers=1,
-                endpoints=[
-                    EndpointConfig(task="", model="", route=None),
-                    EndpointConfig(task="", model="", route=None),
-                ],
-            )
-        )
-
-
-def test_add_multiple_endpoints_with_same_route():
-    with pytest.raises(ValueError, match="asdf specified 2 times"):
-        _build_app(
-            ServerConfig(
-                num_cores=1,
-                num_workers=1,
-                endpoints=[
-                    EndpointConfig(task="", model="", route="asdf"),
-                    EndpointConfig(task="", model="", route="asdf"),
-                ],
-            )
-        )
-
-
-def test_invalid_integration():
-    with pytest.raises(
-        ValueError,
-        match=escape(
-            "Unknown integration field asdf. Expected one of ['local', 'sagemaker']"
-        ),
-    ):
-        _build_app(
-            ServerConfig(num_cores=1, num_workers=1, integration="asdf", endpoints=[])
-        )
 
 
 class TestMockEndpoints:
@@ -295,66 +247,3 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     )
     assert response.status_code == 200
     assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code
-
-
-def test_pytorch_num_threads():
-    torch = pytest.importorskip("torch")
-
-    orig_num_threads = torch.get_num_threads()
-    _build_app(
-        ServerConfig(num_cores=1, num_workers=1, pytorch_num_threads=None, endpoints=[])
-    )
-    assert torch.get_num_threads() == orig_num_threads
-
-    _build_app(
-        ServerConfig(num_cores=1, num_workers=1, pytorch_num_threads=1, endpoints=[])
-    )
-    assert torch.get_num_threads() == 1
-
-
-@patch.dict(os.environ, deepcopy(os.environ))
-def test_thread_pinning_none():
-    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
-    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
-    _build_app(
-        ServerConfig(
-            num_cores=1, num_workers=1, engine_thread_pinning="none", endpoints=[]
-        )
-    )
-    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
-    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "0"
-
-
-@patch.dict(os.environ, deepcopy(os.environ))
-def test_thread_pinning_numa():
-    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
-    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
-    _build_app(
-        ServerConfig(
-            num_cores=1, num_workers=1, engine_thread_pinning="numa", endpoints=[]
-        )
-    )
-    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
-    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "1"
-
-
-@patch.dict(os.environ, deepcopy(os.environ))
-def test_thread_pinning_cores():
-    os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
-    os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
-    _build_app(
-        ServerConfig(
-            num_cores=1, num_workers=1, engine_thread_pinning="core", endpoints=[]
-        )
-    )
-    assert os.environ["NM_BIND_THREADS_TO_CORES"] == "1"
-    assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "0"
-
-
-def test_invalid_thread_pinning():
-    with pytest.raises(ValueError, match='Expected one of {"core","numa","none"}.'):
-        _build_app(
-            ServerConfig(
-                num_cores=1, num_workers=1, engine_thread_pinning="asdf", endpoints=[]
-            )
-        )
