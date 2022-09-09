@@ -44,7 +44,7 @@ class PrometheusLogger(BaseLogger):
 
     def __init__(
         self,
-        port: int = 8000,
+        port: int = 6100,
         text_log_save_dir: str = os.getcwd(),
         text_log_save_freq: int = 10,
         text_log_file_name: Optional[str] = None,
