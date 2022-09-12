@@ -64,6 +64,13 @@ class PrometheusLogger(BaseLogger):
 
         super().__init__()
 
+    def __str__(self):
+        return (
+            f"{self.__class__.__name__}(port={self.port}, text_log_save_dir="
+            f"{self.text_log_save_dir}, text_log_save_freq={self.text_log_save_freq}, "
+            f"text_log_file_name={self.text_log_file_name})"
+        )
+
     @property
     def identifier(self) -> str:
         return "prometheus"
