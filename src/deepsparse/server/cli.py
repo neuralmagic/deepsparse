@@ -187,7 +187,7 @@ def task(
         endpoints=[
             EndpointConfig(
                 task=task,
-                name=f"{task} inference model",
+                name=f"{task}",
                 route="/predict",
                 model=model_path,
                 batch_size=batch_size,

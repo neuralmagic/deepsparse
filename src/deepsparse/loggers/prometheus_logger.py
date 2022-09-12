@@ -166,12 +166,13 @@ class PrometheusLogger(BaseLogger):
         # Histograms track the size and number of events in buckets
         for field_name, field_data in inference_timing.__fields__.items():
             field_description = field_data.field_info.description
+            metric_name = f"{pipeline_name}:{field_name}".strip().replace(" ", "-")
             self.metrics[pipeline_name][field_name] = Histogram(
-                f"{field_name}_{pipeline_name}", field_description, registry=REGISTRY
+                metric_name, field_description, registry=REGISTRY
             )
         _LOGGER.info(
             f"Prometheus client: set the metrics to track pipeline: {pipeline_name}. "
-            f"Tracked metrics: {[metric for metric in self.metrics]}"
+            f"Added metrics: {[metric for metric in self.metrics[pipeline_name]]}"
         )
 
     def _export_metrics_to_textfile(self):
