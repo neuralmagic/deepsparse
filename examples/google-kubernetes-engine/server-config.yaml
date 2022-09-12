@@ -1,0 +1,6 @@
+num_cores: 1
+num_workers: 1
+endpoints:
+    - task: question-answering
+      route: /predict
+      model: zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni
