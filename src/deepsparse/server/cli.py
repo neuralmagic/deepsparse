@@ -123,14 +123,20 @@ def config(config_path: str, host: str, port: int, log_level: str):
 @click.option(
     "--num-cores",
     type=int,
-    default=1,
-    help="The number of cores the server should have access to.",
+    default=None,
+    help=(
+        "The number of cores available for model execution. "
+        "Defaults to all available cores."
+    ),
 )
 @click.option(
     "--num-workers",
     type=int,
-    default=1,
-    help="The number of workers to split the available cores between.",
+    default=None,
+    help=(
+        "The number of workers to split the available cores between. "
+        "Defaults to half of the num_cores set"
+    ),
 )
 @click.option(
     "--host",
