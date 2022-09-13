@@ -23,7 +23,7 @@ The scope of this application is able to automate:
 2. Create an ECR repo in AWS.
 3. Push the image to ECR.
 4. Create the appropriate IAM permissions for handling Lambda.
-4. Create a Lambda function alongside an API Gateway in a cloudformation stack. 
+5. Create a Lambda function alongside an API Gateway in a cloudformation stack. 
 
 ### Requirements
 The following credentials, tools, and libraries are also required:
