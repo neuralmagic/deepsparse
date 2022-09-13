@@ -30,13 +30,16 @@ import logging
 import os
 import shutil
 import sys
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import click
 
-from deepsparse.lib import get_neuralmagic_binaries_dir, init_deepsparse_lib
+from deepsparse.lib import init_deepsparse_lib
 
 
+NM_CONFIG_DIR = "NM_CONFIG_DIR"
+DEFAULT_CONFIG_DIR = os.path.join(Path.home(), ".config", "neuralmagic")
 LICENSE_FILE = "license.txt"
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,13 +58,9 @@ def add_deepsparse_license(token_or_path):
     _LOGGER.info("DeepSparse license successfully validated")
 
     # copy candidate file to {LICENSE_FILE} in same directory as NM engine binaries
-    license_file_path = os.path.join(get_neuralmagic_binaries_dir(), LICENSE_FILE)
+    license_file_path = _get_license_file_path()
     shutil.copy(candidate_license_file_path, license_file_path)
     _LOGGER.info(f"DeepSparse license file written to {license_file_path}")
-    _LOGGER.info(
-        "To run DeepSparse in enterprise mode, run the following command "
-        f"`export NM_LICENSE={license_file_path}`"
-    )
 
 
 def _validate_license(token):
@@ -74,6 +73,13 @@ def _validate_license(token):
     except RuntimeError:
         # deepsparse_lib handles error messaging, exit after message
         sys.exit(0)
+
+
+def _get_license_file_path():
+    # license file written to NM_CONFIG_DIR env var under license.txt
+    # defaults to ~/.config/neuralmagic
+    config_dir = os.environ.get(NM_CONFIG_DIR, DEFAULT_CONFIG_DIR)
+    return os.path.join(config_dir, LICENSE_FILE)
 
 
 @click.command()
