@@ -21,6 +21,7 @@ class LambdaClient:
     """
     Client object for making requests to the Lambda HTTP endpoint
     :param url: API endpoint URL
+    :returns json output
     """
 
     def __init__(self, url: str):
