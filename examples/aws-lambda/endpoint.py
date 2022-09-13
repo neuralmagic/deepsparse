@@ -1,0 +1,104 @@
+import subprocess
+import click
+
+import boto3
+import pprint as pp
+
+"""
+Example script for auto-generating a Lambda HTTP endpoint in AWS Cloud
+
+##########
+Command help:
+usage: python endpoint.py [-h] [action]
+
+Args:
+  action [create, destroy]  choose between creating or destroying an endpoint
+
+##########
+Example command for creating an endpoint:
+
+python endpoint.py create
+
+Example command for destroying an endpoint:
+
+python endpoint.py destroy
+"""
+class SparseLambda:
+
+    def __init__(
+        self, 
+        region_name: str, 
+        ecr_repo_name: str, 
+        stack_name: str
+    ):
+
+        self.region_name = region_name
+        self.ecr_repo_name = ecr_repo_name
+        self.stack_name = stack_name
+
+        self.create_endpoint = "./create_endpoint.sh"
+        self.ecr = boto3.client("ecr", region_name=self.region_name)
+        self._lambda = boto3.client('lambda', region_name=self.region_name)
+        self.cloudformation = boto3.client('cloudformation')
+
+    def create_ecr_repo(self):
+
+        try:  
+            self.ecr.create_repository(repositoryName=self.ecr_repo_name)
+
+        except self.ecr.exceptions.RepositoryAlreadyExistsException:
+            pass
+
+        repo_check = self.ecr.describe_repositories(repositoryNames=[self.ecr_repo_name])
+        pp.pprint(repo_check["repositories"])
+
+    def create_api_endpoint(self):
+
+        """
+        runs bash script:
+        # 1. builds local image
+        # 2. pushes image to ECR
+        # 3. builds Lambda API endpoint
+        """
+        
+        subprocess.call(["sh", self.create_endpoint])
+
+    def list_functions(self):
+
+        response = self._lambda.list_functions()
+        for function in response["Functions"]:
+            print("*** These are your Lambda functions: ***\n")
+            print("Function name: " + function["FunctionName"], "\n")
+
+    def destroy_endpoint(self):
+
+        self.cloudformation.delete_stack(StackName=self.stack_name)
+
+def construct_sparselambda():
+    return SparseLambda(
+        region_name="us-east-1", 
+        ecr_repo_name="lambda-deepsparse", 
+        stack_name="lambda-deepsparse"
+    )
+
+@click.group(chain=True)
+def main():
+    pass
+
+
+@main.command("create")
+def create():
+    SL = construct_sparselambda()
+    SL.create_ecr_repo()
+    SL.create_api_endpoint()
+    SL.list_functions()
+
+
+@main.command("destroy")
+def destroy():
+    SL = construct_sparselambda()
+    SL.destroy_endpoint()
+
+
+if __name__ == "__main__":
+    main()
