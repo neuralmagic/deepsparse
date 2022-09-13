@@ -280,7 +280,7 @@ class TestDefaultLoggingServer:
     def client(self, server_config):
         yield TestClient(_build_app(server_config))
 
-    def test_config(self, server_config, client):
+    def test_prometheus_server_running(self, server_config, client):
         # check positive ping to expected prometheus server on port 6100
         response = requests.get("http://127.0.0.1:6100")
         assert response.status_code == 200
