@@ -42,6 +42,17 @@ python endpoint.py destroy
 
 
 class SparseLambda:
+
+    """
+    Object for generating a docker image running a DeepSparse pipeline,
+    pushing the image to ECR and generating a Lambda API Gateway endpoint
+
+    :param region_name: AWS region
+    :param ecr_repo_name: ECR repo name on AWS
+    :param stack_name: cloudformation name on AWS
+
+    """
+
     def __init__(self, region_name: str, ecr_repo_name: str, stack_name: str):
 
         self.region_name = region_name
