@@ -25,7 +25,7 @@ to deploy the `Dockerfile` in this directory to GKE.
 
 ## Sending a request to GKE
 
-After following the tutorial, your web server will be exposed just like a normal web server. You can interact with it just like you would if you ran the docker image locally (e.g. visit the swagger api with a browser or send requests using curl).
+After following the tutorial, your web server will be exposed just like a normal web server. You can interact with it just like you would if you ran the docker image locally (e.g. visit the swagger documentation UI with a browser at `/docs` or send requests using curl).  See more information on [interacting with the DeepSparse server here](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server).
 
 ## Testing `Dockerfile` Locally
 
