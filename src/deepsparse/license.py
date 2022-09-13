@@ -58,6 +58,10 @@ def add_deepsparse_license(token_or_path):
     license_file_path = os.path.join(get_neuralmagic_binaries_dir(), LICENSE_FILE)
     shutil.copy(candidate_license_file_path, license_file_path)
     _LOGGER.info(f"DeepSparse license file written to {license_file_path}")
+    _LOGGER.info(
+        "To run DeepSparse in enterprise mode, run the following command "
+        f"`export NM_LICENSE={license_file_path}`"
+    )
 
 
 def _validate_license(token):
