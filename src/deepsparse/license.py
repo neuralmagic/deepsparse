@@ -28,6 +28,7 @@ Options:
 
 import logging
 import os
+import sys
 
 import click
 
@@ -45,7 +46,8 @@ def add_deepsparse_license(token_or_path):
         with open(token_or_path) as token_file:
             token = token_file.read()
 
-    _validate_token(token)
+    _validate_license(token)
+    _LOGGER.info("DeepSparse license successfully validated")
 
     # write to {LICENSE_FILE} in same directory as NM engine binaries
     license_file_path = os.path.join(get_neuralmagic_binaries_dir(), LICENSE_FILE)
@@ -55,12 +57,16 @@ def add_deepsparse_license(token_or_path):
     _LOGGER.info(f"DeepSparse license file written to {license_file_path}")
 
 
-def _validate_token(token):
+def _validate_license(token):
     deepsparse_lib = init_deepsparse_lib()
 
     # nothing happens if token is valid
     # if token is invalid, deepsparse_lib will raise appropriate error response
-    deepsparse_lib.validate_token(token)
+    try:
+        deepsparse_lib.validate_license(token)
+    except RuntimeError:
+        # deepsparse_lib handles error messaging, exit after message
+        sys.exit(0)
 
 
 @click.command()
