@@ -18,12 +18,12 @@ limitations under the License.
 
 AWS Lambda is an event-driven, serverless computing infrastructure for deploying applications at minimal cost. This directory provides a guided example for deploying a DeepSparse pipeline on AWS Lambda for the question answering NLP task.
 
-The scope of this application is able to automate:
-1. The construction of a local docker image.
-2. Create an ECR repo in AWS.
-3. Push the image to ECR.
-4. Create the appropriate IAM permissions for handling Lambda.
-5. Create a Lambda function alongside an API Gateway in a cloudformation stack. 
+The scope of this application encompasses:
+1. The construction of a local Docker image.
+2. The creation of an ECR repo in AWS.
+3. Pushing the local image to ECR.
+4. The creation of the appropriate IAM permissions for handling Lambda.
+5. The creation of a Lambda function alongside an API Gateway in a Cloudformation stack. 
 
 ### Requirements
 The following credentials, tools, and libraries are also required:
