@@ -23,6 +23,10 @@ See [GKE documentation](https://cloud.google.com/kubernetes-engine) for more inf
 Follow the steps at https://cloud.google.com/kubernetes-engine/docs/tutorials/hello-app
 to deploy the `Dockerfile` in this directory to GKE.
 
+## Sending a request to GKE
+
+After following the tutorial, your web server will be exposed just like a normal web server. You can interact with it just like you would if you ran the docker image locally (e.g. visit the swagger api with a browser or send requests using curl).
+
 ## Testing `Dockerfile` Locally
 
 1. `docker build -t qa .`
