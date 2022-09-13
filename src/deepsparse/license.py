@@ -84,6 +84,10 @@ def _get_license_file_path():
     # license file written to NM_CONFIG_DIR env var under license.txt
     # defaults to ~/.config/neuralmagic
     config_dir = os.environ.get(NM_CONFIG_DIR, DEFAULT_CONFIG_DIR)
+
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+
     return os.path.join(config_dir, LICENSE_FILE)
 
 
