@@ -15,7 +15,6 @@
 from typing import List
 from unittest.mock import Mock
 
-import requests
 from pydantic import BaseModel
 
 import pytest
@@ -45,7 +44,7 @@ class TestStatusEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
         server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[], loggers={}
+            num_cores=1, num_workers=1, endpoints=[], loggers=None
         )
         yield server_config
 
@@ -79,7 +78,7 @@ class TestMockEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
         server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[], loggers={}
+            num_cores=1, num_workers=1, endpoints=[], loggers=None
         )
         yield server_config
 
@@ -186,7 +185,7 @@ class TestActualModelEndpoints:
                     batch_size=2,
                 ),
             ],
-            loggers={},  # do not instantiate any loggers
+            loggers=None,  # do not instantiate any loggers
         )
         with mock_engine(rng_seed=0):
             app = _build_app(server_config)
@@ -232,7 +231,7 @@ class TestDynamicEndpoints:
     @pytest.fixture(scope="class")
     def client(self):
         server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[], loggers={}
+            num_cores=1, num_workers=1, endpoints=[], loggers=None
         )
         with mock_engine(rng_seed=0):
             app = _build_app(server_config)
@@ -241,7 +240,7 @@ class TestDynamicEndpoints:
 
 @mock_engine(rng_seed=0)
 def test_dynamic_add_and_remove_endpoint(engine_mock):
-    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[], loggers={})
+    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[], loggers=None)
     app = _build_app(server_config)
     client = TestClient(app)
 

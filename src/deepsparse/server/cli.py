@@ -157,12 +157,12 @@ def config(config_path: str, host: str, port: int, log_level: str):
     help="Sets the logging level.",
 )
 @click.option(
-    "--loggers",
-    type=str,
-    default="",
+    "--no-loggers",
+    type=bool,
+    default=False,
     help=(
-        "Optional path to a config file defining server logger integrations "
-        "to initialize."
+        "Set to not use any inference logging integration. Defaults to using "
+        "a default integration such as Prometheus."
     ),
 )
 def task(
@@ -174,13 +174,12 @@ def task(
     host: str,
     port: int,
     log_level: str,
-    loggers: str,
+    no_loggers: bool,
 ):
     """
     Run the server using configuration with CLI options,
     which can only serve a single model.
     """
-    loggers = loggers or None
     cfg = ServerConfig(
         num_cores=num_cores,
         num_workers=num_workers,
@@ -193,7 +192,7 @@ def task(
                 batch_size=batch_size,
             )
         ],
-        loggers=loggers,
+        loggers=None if no_loggers else "default",
     )
 
     with TemporaryDirectory() as tmp_dir:

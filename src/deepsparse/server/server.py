@@ -268,6 +268,17 @@ def _add_pipeline_endpoint(
 
 
 def _initialize_loggers(server_config: ServerConfig) -> ManagerLogger:
-    if server_config.loggers is None:
-        return default_logger_manager()
+    loggers_config = server_config.loggers
+    if loggers_config is None:
+        return ManagerLogger([])
+    if isinstance(loggers_config, str):
+        if not loggers_config == "default":
+            raise ValueError(
+                f"given string {loggers_config} for ServerConfig.loggers only "
+                "supported string is 'default', other configs should be specified "
+                "with a dict literal of logging integration to their initialization "
+                "kwargs"
+            )
+        else:
+            return default_logger_manager()
     return logger_manager_from_config(server_config.loggers)
