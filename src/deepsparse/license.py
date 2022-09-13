@@ -19,6 +19,11 @@ Usage: deepsparse.license [OPTIONS] TOKEN_OR_PATH
   Validates a token for a DeepSparse enterprise license and creates a token
   file to be read for future use
 
+  Token file by default will be written to license.txt in
+  ~/.config/neuralmagic. This directory may be overwritten by setting the
+  NM_CONFIG_DIR environment variable - this variable should then be set as
+  well in any subsequent uses of the deepsparse engine
+
   TOKEN_OR_PATH raw token or path to a text file containing one
 
 Options:
@@ -88,6 +93,11 @@ def main(token_or_path: str):
     """
     Validates a token for a DeepSparse enterprise license and creates
     a token file to be read for future use
+
+    Token file by default will be written to license.txt in
+    ~/.config/neuralmagic. This directory may be overwritten by setting
+    the NM_CONFIG_DIR environment variable - this variable should then
+    be set as well in any subsequent uses of the deepsparse engine
 
     TOKEN_OR_PATH raw token or path to a text file containing one
     """
