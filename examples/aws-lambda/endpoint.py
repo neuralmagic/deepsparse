@@ -1,8 +1,24 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import pprint as pp
 import subprocess
+
 import click
 
 import boto3
-import pprint as pp
+
 
 """
 Example script for auto-generating a Lambda HTTP endpoint in AWS Cloud
@@ -23,14 +39,10 @@ Example command for destroying an endpoint:
 
 python endpoint.py destroy
 """
-class SparseLambda:
 
-    def __init__(
-        self, 
-        region_name: str, 
-        ecr_repo_name: str, 
-        stack_name: str
-    ):
+
+class SparseLambda:
+    def __init__(self, region_name: str, ecr_repo_name: str, stack_name: str):
 
         self.region_name = region_name
         self.ecr_repo_name = ecr_repo_name
@@ -38,18 +50,20 @@ class SparseLambda:
 
         self.create_endpoint = "./create_endpoint.sh"
         self.ecr = boto3.client("ecr", region_name=self.region_name)
-        self._lambda = boto3.client('lambda', region_name=self.region_name)
-        self.cloudformation = boto3.client('cloudformation')
+        self._lambda = boto3.client("lambda", region_name=self.region_name)
+        self.cloudformation = boto3.client("cloudformation")
 
     def create_ecr_repo(self):
 
-        try:  
+        try:
             self.ecr.create_repository(repositoryName=self.ecr_repo_name)
 
         except self.ecr.exceptions.RepositoryAlreadyExistsException:
             pass
 
-        repo_check = self.ecr.describe_repositories(repositoryNames=[self.ecr_repo_name])
+        repo_check = self.ecr.describe_repositories(
+            repositoryNames=[self.ecr_repo_name]
+        )
         pp.pprint(repo_check["repositories"])
 
     def create_api_endpoint(self):
@@ -60,7 +74,7 @@ class SparseLambda:
         # 2. pushes image to ECR
         # 3. builds Lambda API endpoint
         """
-        
+
         subprocess.call(["sh", self.create_endpoint])
 
     def list_functions(self):
@@ -74,12 +88,14 @@ class SparseLambda:
 
         self.cloudformation.delete_stack(StackName=self.stack_name)
 
+
 def construct_sparselambda():
     return SparseLambda(
-        region_name="us-east-1", 
-        ecr_repo_name="lambda-deepsparse", 
-        stack_name="lambda-deepsparse"
+        region_name="us-east-1",
+        ecr_repo_name="lambda-deepsparse",
+        stack_name="lambda-deepsparse",
     )
+
 
 @click.group(chain=True)
 def main():
