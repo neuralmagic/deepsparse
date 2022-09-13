@@ -1,3 +1,4 @@
+# NOTE: this is a sample configuration file for a question-answering server
 num_cores: 1
 num_workers: 1
 endpoints:
