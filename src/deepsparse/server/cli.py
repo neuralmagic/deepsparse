@@ -158,7 +158,7 @@ def config(config_path: str, host: str, port: int, log_level: str):
 )
 @click.option(
     "--no-loggers",
-    is_flag=bool,
+    is_flag=True,
     default=False,
     help=(
         "Set to not use any inference logging integration. Defaults to using "
