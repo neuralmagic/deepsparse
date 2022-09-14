@@ -63,7 +63,7 @@ Tweets should now be streaming in terminal, you should see three objects per twe
 For example:
 
 ```text
-'@CNBC: Whatever it is that is being done ( aka sanctions)  is not working. Why is the ruble going up?'
-'Bearish'
-'Currencies'
+'Gold is up 25% in after-hours trading.'
+'Bullish'
+'Gold | Metals | Materials'
 ```
