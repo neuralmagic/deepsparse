@@ -106,13 +106,16 @@ class EndpointConfig(BaseModel):
 
 
 class ServerConfig(BaseModel):
-    num_cores: int = Field(
+    num_cores: Optional[int] = Field(
         description="The number of cores available for model execution. "
         "Defaults to all available cores.",
+        default=None,
     )
 
-    num_workers: int = Field(
-        description="The number of workers to split the available cores between."
+    num_workers: Optional[int] = Field(
+        description="The number of workers to split the available cores between. "
+        "Defaults to half of the num_cores set",
+        default=None,
     )
 
     integration: str = Field(
@@ -138,6 +141,16 @@ class ServerConfig(BaseModel):
     )
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
+
+    loggers: Union[Dict[str, Dict[str, Any]], str, None] = Field(
+        default="default",
+        description=(
+            "Optional dictionary of logger integration names to initialization kwargs."
+            " Set to 'default' for default logger based on deployment. Set to None for"
+            " no loggers. Default is 'default'. Example: "
+            "{'prometheus': {'port': 8001}}."
+        ),
+    )
 
 
 def _unpack_bucketing(

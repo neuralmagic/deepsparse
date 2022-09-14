@@ -108,5 +108,5 @@ class TestPrometheusPipelineLogger:
     @staticmethod
     def _check_correct_count(lines, timings, pipeline, no_iterations):
         for name, value in dict(timings).items():
-            searched_line = f"{name}_{pipeline.name}_count {float(no_iterations)}"
+            searched_line = f"{pipeline.name}:{name}_count {float(no_iterations)}"
             assert any([searched_line in line for line in lines])
