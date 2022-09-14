@@ -24,7 +24,7 @@ RUN python3 -m venv $VIRTUAL_ENV && \
 # create 'serve' command for sagemaker entrypoint
 RUN mkdir /opt/server/
 RUN echo "#! /bin/bash" > /opt/server/serve
-RUN echo "deepsparse.server --port 8080 --config_file /root/server-config.yaml" >> /opt/server/serve
+RUN echo "deepsparse.server config --port 8080 /root/server-config.yaml" >> /opt/server/serve
 RUN chmod 777 /opt/server/serve
 
 ENV PATH="/opt/server:${PATH}"

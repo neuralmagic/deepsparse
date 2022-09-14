@@ -88,7 +88,7 @@ Once installed, the following example CLI command is available for running infer
 
 ```bash
 deepsparse.server \
-    --task question_answering \
+    task question_answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
@@ -98,20 +98,22 @@ To look up arguments run: `deepsparse.server --help`.
 To serve multiple models in your deployment you can easily build a `config.yaml`. In the example below, we define two BERT models in our configuration for the question answering task:
 
 ```yaml
-models:
+num_cores: 1
+num_workers: 1
+endpoints:
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      route: /predict/question_answering/base
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
-      alias: question_answering/base
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
+      route: /predict/question_answering/pruned_quant
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 1
-      alias: question_answering/pruned_quant
 ```
 
 Finally, after your `config.yaml` file is built, run the server with the config file path as an argument:
 ```bash
-deepsparse.server --config_file config.yaml
+deepsparse.server config config.yaml
 ```
 
 [Getting Started with the DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) for more info.

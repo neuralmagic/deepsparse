@@ -10,4 +10,4 @@ RUN pip install deepsparse[server]>=0.11
 COPY . /app/server
 
 # command run at the entry point
-CMD ["deepsparse.server", "--config_file", "server/config.yaml"]
+CMD ["deepsparse.server", "config_file", "server/config.yaml"]
