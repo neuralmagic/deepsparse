@@ -53,7 +53,7 @@ class SparseStream(AsyncStream):
     inference on incoming tweets
     """
 
-    console.print("Stream Opening...", style="bold white on blue")
+    console.print("Opening Stream...", style="bold white on blue")
 
     async def on_status(self, status):
 
@@ -72,7 +72,7 @@ class SparseStream(AsyncStream):
 
             console.print(status.text, style="bold white")
             console.print(sentiment, style="bold yellow")
-            console.print(topic, style="bold red")
+            console.print(topic + "\n", style="bold red")
 
 
 async def main():
@@ -85,7 +85,6 @@ async def main():
     )
 
     await stream.filter(follow=user_id, stall_warnings=True)
-
 
 if __name__ == "__main__":
 
