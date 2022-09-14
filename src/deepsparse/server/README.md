@@ -12,38 +12,42 @@ An updated list of available tasks can be found
  - Run `deepsparse.server --help` to lookup the available CLI arguments.
 
 ```
---host TEXT                     Bind socket to this host. Use --host 0.0.0.0
-                                to make the application available on your
-                                local network. IPv6 addresses are supported,
-                                for example: --host '::'. Defaults to
-                                0.0.0.0.
+Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
 
---port INTEGER                  Bind to a socket with this port. Defaults to
-                                5543.
+  Start a DeepSparse inference server for serving the models and pipelines.
 
---workers INTEGER               Use multiple worker processes. Defaults to
-                                1.
+      1. `deepsparse.server config [OPTIONS] <config path>`
 
---log_level TEXT                Sets the logging level. Defaults to info.
+      2. `deepsparse.server task [OPTIONS] <task>
 
---config_file TEXT              Configuration file containing info on how to
-                                serve the desired models.
+  Examples for using the server:
 
---task TEXT                     The task the model_path is serving. For
-                                example, one of: question_answering,
-                                text_classification, token_classification.
-                                Ignored if config file is supplied.
+      `deepsparse.server config server-config.yaml`
 
---model_path TEXT               The path to a model.onnx file, a model
-                                folder containing the model.onnx and
-                                supporting files, or a SparseZoo model stub.
-                                Ignored if config_file is supplied.
+      `deepsparse.server task question_answering --batch-size 2`
 
---batch_size INTEGER            The batch size to serve the model from
-                                model_path with. Ignored if config_file is
-                                supplied.
+      `deepsparse.server task question_answering --host "0.0.0.0"`
 
---help                          Show this message and exit.
+  Example config.yaml for serving:
+
+  \```yaml
+  num_cores: 2
+  num_workers: 2
+  endpoints:
+    - task: question_answering
+      route: /unpruned/predict
+      model: zoo:some/zoo/stub
+    - task: question_answering
+      route: /pruned/predict
+      model: /path/to/local/model
+  \```
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  config  Run the server using configuration from a .yaml file.
+  task    Run the server using configuration with CLI options, which can...
 ```
 
 ### Single Model Inference
@@ -52,7 +56,7 @@ Example CLI command for serving a single model for the **question answering** ta
 
 ```bash
 deepsparse.server \
-    --task question_answering \
+    task question_answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
@@ -89,28 +93,30 @@ To serve multiple models you can build a `config.yaml` file.
 In the sample YAML file below, we are defining two BERT models to be served by the `deepsparse.server` for the **question answering** task:
 
 ```yaml
-models:
+num_cores: 2
+num_workers: 2
+endpoints:
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
-      alias: question_answering/base
     - task: question_answering
-      model_path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
+      route: /pruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 1
-      alias: question_answering/pruned_quant
 ```
-You can now run the server with the config file path passed in the `--config_file` argument:
+You can now run the server with the config file path using the `config` sub command:
 
 ```bash
-deepsparse.server --config_file config.yaml
+deepsparse.server config config.yaml
 ```
 
-You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, the alias would be `question_answering/pruned_quant`:
+You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, you can send a request to its configured route:
 
 ```python
 import requests
 
-url = "http://localhost:5543/predict/question_answering/pruned_quant"
+url = "http://localhost:5543/pruned/predict"
 
 obj = {
     "question": "Who is Mark?", 

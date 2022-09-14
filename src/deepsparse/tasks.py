@@ -167,6 +167,14 @@ class SupportedTasks:
         return any([nlp_task.matches(task) for nlp_task in cls.nlp])
 
     @classmethod
+    def is_cv(cls, task: str) -> bool:
+        return (
+            cls.is_yolo(task)
+            or cls.is_yolact(task)
+            or cls.is_image_classification(task)
+        )
+
+    @classmethod
     def is_image_classification(cls, task: str) -> bool:
         """
         :param task: the name of the task to check whether it is an image

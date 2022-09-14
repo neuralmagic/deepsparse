@@ -142,7 +142,7 @@ inference = cv_pipeline(images=input_image)
 Spinning up:
 ```bash
 deepsparse.server \
-    --task image_classification \
+    task image_classification \
     --model_path "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none" \
     --port 5543
 ```

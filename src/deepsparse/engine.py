@@ -597,6 +597,9 @@ class Context(object):
     def scheduler(self):
         return self._scheduler
 
+    def __repr__(self) -> str:
+        return f"Context(num_cores={self.num_cores}, num_streams={self.num_streams}, scheduler={self.scheduler})"
+
 
 class MultiModelEngine(Engine):
     """

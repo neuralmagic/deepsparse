@@ -12,10 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
+
 from pydantic import BaseModel, Field
 
 
-__all__ = ["InferenceTimingSchema"]
+__all__ = ["InferenceTimingSchema", "InferencePhases"]
+
+
+@dataclass(frozen=True)
+class InferencePhases:
+    PRE_PROCESS: str = "pre_process"
+    ENGINE_FORWARD: str = "engine_forward"
+    POST_PROCESS: str = "post_process"
+    TOTAL_INFERENCE: str = "total_inference"
 
 
 class InferenceTimingSchema(BaseModel):

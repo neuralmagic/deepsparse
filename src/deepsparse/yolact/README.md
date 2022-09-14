@@ -121,7 +121,7 @@ If a `--model_filepath` arg isn't provided, then `zoo:cv/segmentation/yolact-dar
 Spinning up:
 ```bash
 deepsparse.server \
-    --task yolact \
+    task yolact \
     --model_path "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
 ```
 

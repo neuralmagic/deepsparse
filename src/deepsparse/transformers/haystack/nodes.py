@@ -54,7 +54,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
     :param document_store: reference to document store to retrieve from
     :param model_path: sparsezoo stub to a transformers model or (preferred) a
         directory containing a model.onnx, tokenizer config, and model config
-    :param batch_size: number of documents to encode at once
+    :param batch_size: number of documents to encode at once. Default is 1
     :param max_seq_len: longest length of each document sequence. Maximum number
         of tokens for the document text. Longer ones will be cut down
     :param pooling_strategy: strategy for combining embeddings
@@ -218,11 +218,6 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
                 "progress_bar to False"
             )
 
-        if self.batch_size != 1:
-            raise ValueError(
-                "DeepSparseDensePassageRetriever only supports batch_size 1"
-            )
-
         if "model_path" in pipeline_kwargs:
             del pipeline_kwargs["model_path"]  # ignore model_path argument
         if "max_seq_len" in pipeline_kwargs:
@@ -279,7 +274,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         :param texts: list of query strings to embed
         :return: list of embeddings for each query
         """
-        return [self.query_pipeline([text]).embeddings[0] for text in texts]
+        return self.query_pipeline(texts).embeddings
 
     def embed_documents(self, docs: List[Document]) -> List[numpy.ndarray]:
         """
@@ -287,11 +282,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         :return: list of embeddings for each document
         """
         passage_inputs = [self._document_to_passage_input(doc) for doc in docs]
-
-        return [
-            self.passage_pipeline([passage_input]).embeddings[0]
-            for passage_input in passage_inputs
-        ]
+        return self.passage_pipeline(passage_inputs).embeddings
 
     def train(*args, **kwargs):
         raise NotImplementedError("DeepSparse Engine does not support model training")
@@ -305,7 +296,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         )
 
     def _document_to_passage_input(self, document: Document) -> str:
-        # Optionally appends title
+        # Preprocesses documents to be used as pipeline inputs
         #
         # :param document: document to turn into raw text input
         # :return: raw text input of document title and content
@@ -348,9 +339,6 @@ class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.show_progress_bar = retriever.progress_bar
         document_store = retriever.document_store
 
-        if self.batch_size != 1:
-            raise ValueError("DeepSparseEmbeddingEncoder only supports batch_size 1")
-
         if self.show_progress_bar:
             _LOGGER.warn(
                 "DeepSparseEmbeddingEncoder does not support progress bar, set "
@@ -370,10 +358,7 @@ class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param texts: list of strings to embed
         :return: list of embeddings for each string
         """
-        embeddings = [
-            numpy.array(self.embedding_pipeline([text]).embeddings[0]) for text in texts
-        ]
-        return embeddings
+        return self.embedding_pipeline(texts).embeddings
 
     def embed_queries(self, texts: List[str]) -> List[numpy.ndarray]:
         """
