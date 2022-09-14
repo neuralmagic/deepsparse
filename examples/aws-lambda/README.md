@@ -47,7 +47,7 @@ Run the following command to build your Lambda endpoint.
 python endpoint.py create
 ```
 
-After the endpoint has been staged (~1 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your question and context:
+After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your question and context:
 
 ```python
 from client import LambdaClient
