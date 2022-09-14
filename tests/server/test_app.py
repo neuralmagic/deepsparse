@@ -17,12 +17,9 @@ from copy import deepcopy
 from re import escape
 from unittest.mock import patch
 
-import requests
-
 import pytest
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _build_app
-from tests.utils import mock_engine
 
 
 def test_add_multiple_endpoints_with_no_route():
@@ -167,15 +164,3 @@ def test_invalid_thread_pinning():
                 loggers=None,
             )
         )
-
-
-@mock_engine(rng_seed=0)
-def test_default_logging_server_launches(engine_mock):
-    server_config = ServerConfig(
-        num_cores=1, num_workers=1, endpoints=[], loggers="default"
-    )
-    _build_app(server_config)
-
-    # check positive ping to expected prometheus server on port 6100
-    response = requests.get("http://127.0.0.1:6100")
-    assert response.status_code == 200
