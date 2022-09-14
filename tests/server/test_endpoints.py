@@ -15,6 +15,7 @@
 from typing import List
 from unittest.mock import Mock
 
+import requests
 from pydantic import BaseModel
 
 import pytest
@@ -265,3 +266,21 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     )
     assert response.status_code == 200
     assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code
+
+
+class TestDefaultLoggingServer:
+    @pytest.fixture(scope="class")
+    def server_config(self):
+        server_config = ServerConfig(
+            num_cores=1, num_workers=1, endpoints=[], loggers="default"
+        )
+        yield server_config
+
+    @pytest.fixture(scope="class")
+    def client(self, server_config):
+        yield TestClient(_build_app(server_config))
+
+    def test_prometheus_server_running(self, server_config, client):
+        # check positive ping to expected prometheus server on port 6100
+        response = requests.get("http://127.0.0.1:6100")
+        assert response.status_code == 200
