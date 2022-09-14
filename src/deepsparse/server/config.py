@@ -106,13 +106,16 @@ class EndpointConfig(BaseModel):
 
 
 class ServerConfig(BaseModel):
-    num_cores: int = Field(
+    num_cores: Optional[int] = Field(
         description="The number of cores available for model execution. "
         "Defaults to all available cores.",
+        default=None,
     )
 
-    num_workers: int = Field(
-        description="The number of workers to split the available cores between."
+    num_workers: Optional[int] = Field(
+        description="The number of workers to split the available cores between. "
+        "Defaults to half of the num_cores set",
+        default=None,
     )
 
     integration: str = Field(
