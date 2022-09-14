@@ -3,6 +3,7 @@ consumer_secret: <"PLACEHOLDER">
 access_token: <"PLACEHOLDER">
 access_token_secret: "<"PLACEHOLDER">
 
+# PLACEHOLDER UNTIL CUSTOM MODELS ARE UP ON SPARSEZOO
 task: "text-classification"
-sent_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni" # PLACEHOLDER UNTIL CUSTOM MODELS ARE UP ON SPARSEZOO
-topic_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni" # PLACEHOLDER UNTIL CUSTOM MODELS ARE UP ON SPARSEZOO
+sent_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni" 
+topic_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
