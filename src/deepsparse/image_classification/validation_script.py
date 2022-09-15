@@ -52,12 +52,13 @@ python validation_script.py \
   --dataset-path /path/to/imagenette/
 
 """
-import click
 import json
+from typing import Dict
+
+import click
 import torchvision
 from torchvision import transforms
 from tqdm import tqdm
-from typing import Dict
 
 from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
@@ -65,6 +66,7 @@ from deepsparse.image_classification.constants import (
 )
 from deepsparse.pipeline import Pipeline
 from torch.utils.data import DataLoader
+
 
 resnet50_imagenet_pruned = (
     "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenette/base-none"
@@ -84,6 +86,7 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
         return json.loads(value)
     return value
 
+
 @click.command()
 @click.option(
     "--dataset-path",
@@ -98,7 +101,7 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
     type=str,
     default=resnet50_imagenet_pruned,
     help="Path/SparseZoo stub for the Image Classification model to be "
-         "evaluated. Defaults to dense (vanilla) resnet50 trained on Imagenette",
+    "evaluated. Defaults to dense (vanilla) resnet50 trained on Imagenette",
     show_default=True,
 )
 @click.option(
@@ -108,7 +111,7 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
     default=1,
     show_default=True,
     help="Test batch size, must divide the dataset evenly, else last "
-         "batch will be dropped",
+    "batch will be dropped",
 )
 @click.option(
     "--image-size",
@@ -133,11 +136,15 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
     type=str,
     callback=parse_json_callback,
     help="Keyword arguments to be passed to dataset constructor, "
-         "should be specified as a json object",
+    "should be specified as a json object",
 )
-
 def main(
-        dataset_path: str, model_path: str, batch_size: int, image_size: int, num_cores: int, dataset_kwargs: Dict
+    dataset_path: str,
+    model_path: str,
+    batch_size: int,
+    image_size: int,
+    num_cores: int,
+    dataset_kwargs: Dict,
 ):
     """
     Validation Script for Image Classification Models
@@ -163,7 +170,9 @@ def main(
         root=dataset_path,
         transform=transforms.Compose(
             [
-                transforms.Resize(round(resize_scale * image_size), interpolation=interpolation),
+                transforms.Resize(
+                    round(resize_scale * image_size), interpolation=interpolation
+                ),
                 transforms.CenterCrop(image_size),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=IMAGENET_RGB_MEANS, std=IMAGENET_RGB_STDS),
