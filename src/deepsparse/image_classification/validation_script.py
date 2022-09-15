@@ -37,6 +37,9 @@ Options:
   --num-cores, --num_cores INTEGER
                                   Number of CPU cores to run deepsparse with,
                                   default is all available
+  --dataset-kwargs, --dataset_kwargs TEXT
+                                  Keyword arguments to be passed to dataset
+                                  constructor, should be specified as a json
   --help                          Show this message and exit.
 
 #########
@@ -50,9 +53,11 @@ python validation_script.py \
 
 """
 import click
+import json
 import torchvision
 from torchvision import transforms
 from tqdm import tqdm
+from typing import Dict
 
 from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
@@ -61,11 +66,23 @@ from deepsparse.image_classification.constants import (
 from deepsparse.pipeline import Pipeline
 from torch.utils.data import DataLoader
 
-
 resnet50_imagenet_pruned = (
     "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenette/base-none"
 )
 
+
+def parse_json_callback(ctx, params, value: str) -> Dict:
+    """
+    Parse a json string into a dictionary
+    :param ctx: The click context
+    :param params: The click params
+    :param value: The json string to parse
+    :return: The parsed dictionary
+    """
+    # JSON string -> dict Callback
+    if isinstance(value, str):
+        return json.loads(value)
+    return value
 
 @click.command()
 @click.option(
@@ -81,7 +98,7 @@ resnet50_imagenet_pruned = (
     type=str,
     default=resnet50_imagenet_pruned,
     help="Path/SparseZoo stub for the Image Classification model to be "
-    "evaluated. Defaults to dense (vanilla) resnet50 trained on Imagenette",
+         "evaluated. Defaults to dense (vanilla) resnet50 trained on Imagenette",
     show_default=True,
 )
 @click.option(
@@ -91,7 +108,7 @@ resnet50_imagenet_pruned = (
     default=1,
     show_default=True,
     help="Test batch size, must divide the dataset evenly, else last "
-    "batch will be dropped",
+         "batch will be dropped",
 )
 @click.option(
     "--image-size",
@@ -109,18 +126,44 @@ resnet50_imagenet_pruned = (
     show_default=True,
     help="Number of CPU cores to run deepsparse with, default is all available",
 )
+@click.option(
+    "--dataset-kwargs",
+    "--dataset_kwargs",
+    default=json.dumps({}),
+    type=str,
+    callback=parse_json_callback,
+    help="Keyword arguments to be passed to dataset constructor, "
+         "should be specified as a json object",
+)
+
 def main(
-    dataset_path: str, model_path: str, batch_size: int, image_size: int, num_cores: int
+        dataset_path: str, model_path: str, batch_size: int, image_size: int, num_cores: int, dataset_kwargs: Dict
 ):
     """
     Validation Script for Image Classification Models
     """
-    non_rand_resize_scale = 256.0 / 224.0  # standard used
+
+    print(dataset_kwargs)
+    if "resize_scale" in dataset_kwargs:
+        resize_scale = dataset_kwargs["resize_scale"]
+    else:
+        resize_scale = 256.0 / 224.0  # standard used
+
+    if "resize_mode" in dataset_kwargs:
+        resize_mode = dataset_kwargs["resize_mode"]
+    else:
+        resize_mode = "bilinear"
+
+    if type(resize_mode) is str and resize_mode.lower() in ["linear", "bilinear"]:
+        interpolation = transforms.InterpolationMode.BILINEAR
+    elif type(resize_mode) is str and resize_mode.lower() in ["cubic", "bicubic"]:
+        interpolation = transforms.InterpolationMode.BICUBIC
+
     dataset = torchvision.datasets.ImageFolder(
         root=dataset_path,
         transform=transforms.Compose(
             [
-                transforms.Resize(round(non_rand_resize_scale * image_size)),
+                transforms.Resize(round(resize_scale * image_size), interpolation=interpolation),
                 transforms.CenterCrop(image_size),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=IMAGENET_RGB_MEANS, std=IMAGENET_RGB_STDS),
