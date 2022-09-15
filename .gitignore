@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/windows,macos,linux,python,react,pycharm,emacs,vim,visualstudio,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,macos,linux,python,react,pycharm,emacs,vim,visualstudio,visualstudiocode
 
+# logging
+**/*.prom
+
 ### Emacs ###
 # -*- mode: gitignore; -*-
 *~
