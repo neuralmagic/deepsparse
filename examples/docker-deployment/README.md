@@ -16,11 +16,7 @@ It is a directory with at least a `model.onnx` file in it, but usually other con
 
 ## How to create a Model Deployment?
 
-For the sake of examples, we will use this `question-answering` stub:
-
-```
-zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none
-```
+There are many options!
 
 #### Use sparsezoo.download
 
