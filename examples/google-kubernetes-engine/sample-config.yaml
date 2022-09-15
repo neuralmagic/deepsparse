@@ -1,0 +1,5 @@
+# NOTE: this is a sample configuration file for a question-answering server
+endpoints:
+    - task: question-answering
+      route: /predict
+      model: zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni
