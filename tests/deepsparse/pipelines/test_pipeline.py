@@ -120,12 +120,12 @@ def test_pipeline_call_is_async(engine_mock):
     executor = ThreadPoolExecutor(max_workers=1)
     pipeline = Pipeline.create("token_classification", batch_size=1, executor=executor)
 
-    def sleepy_engine(xs):
+    def sleep_then_engine_forward(xs):
         # each call to engine_forward also sleeps
         time.sleep(20 / 1000)
         return pipeline.engine(xs)
 
-    with mock.patch.object(Pipeline, "engine_forward", side_effect=sleepy_engine):
+    with mock.patch.object(Pipeline, "engine_forward", side_effect=sleep_then_engine_forward):
         start = time.perf_counter()
         # since there are 6 entries in the input, should sleep for (6 * 20) ms
         # since there are 1 worker threads, should take a total of (120 / 1) ms
