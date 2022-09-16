@@ -126,7 +126,9 @@ def test_pipeline_call_is_async(engine_mock):
         time.sleep(20 / 1000)
         return pipeline.engine(xs)
 
-    with mock.patch.object(Pipeline, "engine_forward", side_effect=sleep_then_engine_forward):
+    with mock.patch.object(
+        Pipeline, "engine_forward", side_effect=sleep_then_engine_forward
+    ):
         start = time.perf_counter()
         # since there are 6 entries in the input, should sleep for (6 * 20) ms
         # since there are 1 worker threads, should take a total of (120 / 1) ms
@@ -146,7 +148,6 @@ def test_pipeline_call_is_async(engine_mock):
         # instead of doing a hard comparison of timing for each separate
         # duration, do relative comparison of timing
         assert numpy.allclose(dur_1_worker / dur_2_worker, 2, atol=0.1)
-
 
 
 @mock_engine(rng_seed=0)
