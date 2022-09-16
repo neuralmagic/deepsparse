@@ -165,4 +165,3 @@ def test_run_with_monitoring(engine_mock):
         )
         == inference_timing.total_inference
     )
-
