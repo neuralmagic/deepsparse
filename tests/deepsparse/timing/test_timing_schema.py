@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.timing import InferenceTimingSchema
+from deepsparse.timing import InferencePhases, InferenceTimingSchema
 
 
 @pytest.mark.parametrize(
@@ -34,3 +34,10 @@ def test_timing_schema(phase_names, durations):
     assert timing.engine_forward == durations[1]
     assert timing.post_process == durations[2]
     assert timing.total_inference == durations[3]
+
+
+def test_fields_consistency():
+    assert {field for field in InferenceTimingSchema.__fields__} == {
+        getattr(InferencePhases, field)
+        for field in InferencePhases.__dataclass_fields__
+    }

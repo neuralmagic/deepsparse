@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from re import escape
 from typing import List
 from unittest.mock import Mock
 
+import requests
 from pydantic import BaseModel
 
 import pytest
+from deepsparse.loggers import ManagerLogger
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI, UploadFile
@@ -43,7 +44,9 @@ def parse(v: StrSchema) -> int:
 class TestStatusEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
-        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
+        server_config = ServerConfig(
+            num_cores=1, num_workers=1, endpoints=[], loggers=None
+        )
         yield server_config
 
     @pytest.fixture(scope="class")
@@ -72,55 +75,12 @@ class TestStatusEndpoints:
         assert response.history[-1].is_redirect
 
 
-def test_add_multiple_endpoints_with_no_route():
-    with pytest.raises(
-        ValueError,
-        match=(
-            "must specify `route` for all endpoints if multiple endpoints are used."
-        ),
-    ):
-        _build_app(
-            ServerConfig(
-                num_cores=1,
-                num_workers=1,
-                endpoints=[
-                    EndpointConfig(task="", model="", route=None),
-                    EndpointConfig(task="", model="", route=None),
-                ],
-            )
-        )
-
-
-def test_add_multiple_endpoints_with_same_route():
-    with pytest.raises(ValueError, match="asdf specified 2 times"):
-        _build_app(
-            ServerConfig(
-                num_cores=1,
-                num_workers=1,
-                endpoints=[
-                    EndpointConfig(task="", model="", route="asdf"),
-                    EndpointConfig(task="", model="", route="asdf"),
-                ],
-            )
-        )
-
-
-def test_invalid_integration():
-    with pytest.raises(
-        ValueError,
-        match=escape(
-            "Unknown integration field asdf. Expected one of ['local', 'sagemaker']"
-        ),
-    ):
-        _build_app(
-            ServerConfig(num_cores=1, num_workers=1, integration="asdf", endpoints=[])
-        )
-
-
 class TestMockEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
-        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
+        server_config = ServerConfig(
+            num_cores=1, num_workers=1, endpoints=[], loggers=None
+        )
         yield server_config
 
     @pytest.fixture(scope="class")
@@ -132,10 +92,16 @@ class TestMockEndpoints:
         yield TestClient(app)
 
     def test_add_model_endpoint(self, app: FastAPI, client: TestClient):
+        # create mock pipeline that overrides run_with_monitoring
+        mock_pipeline = Mock(input_schema=StrSchema, output_schema=int)
+        mock_pipeline.run_with_monitoring = Mock(
+            side_effect=lambda val: [parse(val)] * 4
+        )
         _add_pipeline_endpoint(
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
-            pipeline=Mock(input_schema=StrSchema, output_schema=int, side_effect=parse),
+            pipeline=mock_pipeline,
+            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-1].path == "/predict/parse_int"
         assert app.routes[-1].response_model is int
@@ -152,10 +118,11 @@ class TestMockEndpoints:
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
+            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-2].path == "/predict/parse_int"
         assert app.routes[-2].endpoint.__annotations__ == {"request": FromFilesSchema}
-        assert app.routes[-1].path == "/predict/parse_int/files"
+        assert app.routes[-1].path == "/predict/parse_int/from_files"
         assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
         assert app.routes[-1].response_model is int
         assert app.routes[-1].methods == {"POST"}
@@ -167,6 +134,7 @@ class TestMockEndpoints:
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
             integration="sagemaker",
+            pipeline_logger=ManagerLogger([]),
         )
         assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
@@ -178,6 +146,7 @@ class TestMockEndpoints:
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
             integration="sagemaker",
+            pipeline_logger=ManagerLogger([]),
         )
         assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
@@ -188,6 +157,7 @@ class TestMockEndpoints:
             app,
             endpoint_config=Mock(route=None),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
+            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-1].path == "/predict"
 
@@ -216,6 +186,7 @@ class TestActualModelEndpoints:
                     batch_size=2,
                 ),
             ],
+            loggers=None,  # do not instantiate any loggers
         )
         with mock_engine(rng_seed=0):
             app = _build_app(server_config)
@@ -260,7 +231,9 @@ class TestActualModelEndpoints:
 class TestDynamicEndpoints:
     @pytest.fixture(scope="class")
     def client(self):
-        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
+        server_config = ServerConfig(
+            num_cores=1, num_workers=1, endpoints=[], loggers=None
+        )
         with mock_engine(rng_seed=0):
             app = _build_app(server_config)
             yield TestClient(app)
@@ -268,7 +241,7 @@ class TestDynamicEndpoints:
 
 @mock_engine(rng_seed=0)
 def test_dynamic_add_and_remove_endpoint(engine_mock):
-    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
+    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[], loggers=None)
     app = _build_app(server_config)
     client = TestClient(app)
 
@@ -293,3 +266,21 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     )
     assert response.status_code == 200
     assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code
+
+
+class TestDefaultLoggingServer:
+    @pytest.fixture(scope="class")
+    def server_config(self):
+        server_config = ServerConfig(
+            num_cores=1, num_workers=1, endpoints=[], loggers="default"
+        )
+        yield server_config
+
+    @pytest.fixture(scope="class")
+    def client(self, server_config):
+        yield TestClient(_build_app(server_config))
+
+    def test_prometheus_server_running(self, server_config, client):
+        # check positive ping to expected prometheus server on port 6100
+        response = requests.get("http://127.0.0.1:6100")
+        assert response.status_code == 200

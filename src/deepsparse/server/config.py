@@ -84,8 +84,14 @@ class EndpointConfig(BaseModel):
         ),
     )
 
+    kwargs: Dict[str, Any] = Field(
+        default={}, description="Additional arguments to pass to the Pipeline"
+    )
+
     def to_pipeline_config(self) -> PipelineConfig:
         input_shapes, kwargs = _unpack_bucketing(self.task, self.bucketing)
+
+        kwargs.update(self.kwargs)
 
         return PipelineConfig(
             task=self.task,
@@ -100,13 +106,16 @@ class EndpointConfig(BaseModel):
 
 
 class ServerConfig(BaseModel):
-    num_cores: int = Field(
+    num_cores: Optional[int] = Field(
         description="The number of cores available for model execution. "
         "Defaults to all available cores.",
+        default=None,
     )
 
-    num_workers: int = Field(
-        description="The number of workers to split the available cores between."
+    num_workers: Optional[int] = Field(
+        description="The number of workers to split the available cores between. "
+        "Defaults to half of the num_cores set",
+        default=None,
     )
 
     integration: str = Field(
@@ -114,7 +123,34 @@ class ServerConfig(BaseModel):
         description="The kind of integration to use. local|sagemaker",
     )
 
+    engine_thread_pinning: str = Field(
+        default="core",
+        description=(
+            "Enable binding threads to cores ('core' the default), "
+            "threads to cores on sockets ('numa'), or disable ('none')"
+        ),
+    )
+
+    pytorch_num_threads: Optional[int] = Field(
+        default=1,
+        description=(
+            "Configures number of threads that pytorch is allowed to use during"
+            "pre and post-processing. Useful to reduce resource contention. "
+            "Set to `None` to place no restrictions on pytorch."
+        ),
+    )
+
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
+
+    loggers: Union[Dict[str, Dict[str, Any]], str, None] = Field(
+        default="default",
+        description=(
+            "Optional dictionary of logger integration names to initialization kwargs."
+            " Set to 'default' for default logger based on deployment. Set to None for"
+            " no loggers. Default is 'default'. Example: "
+            "{'prometheus': {'port': 8001}}."
+        ),
+    )
 
 
 def _unpack_bucketing(
