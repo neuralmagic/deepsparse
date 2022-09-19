@@ -16,13 +16,13 @@ import logging
 import multiprocessing
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import pydantic
 import requests
 import yaml
 
-from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.config import ServerConfig
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -56,42 +56,51 @@ def start_file_watcher(
     return proc
 
 
-def _file_watcher(config_path: str, endpoints_url: str, check_interval_s: float):
+def _file_watcher(
+    config_path: str,
+    endpoints_url: str,
+    check_interval_s: float,
+    continue_fn: Callable[[], bool] = None,
+):
+    if continue_fn is None:
+
+        def continue_fn():
+            return True
+
     content = _ContentMonitor(config_path)
 
-    while True:
+    version = 0
+
+    while continue_fn():
         time.sleep(check_interval_s)
-        diff = content.diff()
+
+        diff = content.maybe_update_content()
         if diff is None:
             continue
 
+        old_content, new_content = diff
+        _LOGGER.info(f"Detected change in {config_path}")
+
         try:
-            _update_endpoints(endpoints_url, diff)
+            old_config = ServerConfig(**yaml.safe_load(old_content))
+            new_config = ServerConfig(**yaml.safe_load(new_content))
         except yaml.error.YAMLError:
             _LOGGER.error("Failed to read yaml, not updating.", exc_info=1)
+            continue
         except pydantic.ValidationError:
             _LOGGER.error("Unable to load ServerConfig, not updating.", exc_info=1)
+            continue
+
+        try:
+            _update_endpoints(endpoints_url, old_config, new_config)
         except requests.RequestException:
             _LOGGER.error("Requests to server failed, not updating.", exc_info=1)
 
-
-def _update_endpoints(url: str, diff: Tuple[str, str]) -> None:
-    old_content, new_content = diff
-
-    old_config = ServerConfig(**yaml.safe_load(old_content))
-    new_config = ServerConfig(**yaml.safe_load(new_content))
-
-    added, removed = _endpoint_diff(old_config, new_config)
-
-    for endpoint in removed:
-        _LOGGER.info(f"Requesting removal of endpoint '{endpoint.route}'")
-        requests.delete(url, json=endpoint.dict()).raise_for_status()
-
-    for endpoint in added:
-        _LOGGER.info(f"Requesting addition of endpoint '{endpoint.route}'")
-        requests.post(url, json=endpoint.dict()).raise_for_status()
-
-    return added, removed
+        path = config_path + f".v{version}"
+        with open(path, "w") as fp:
+            fp.write(old_config)
+        _LOGGER.info(f"Saved old version of config to {path}")
+        version += 1
 
 
 class _ContentMonitor:
@@ -106,26 +115,27 @@ class _ContentMonitor:
         self.last_modified = self.path.stat().st_mtime_ns
         self.content = self.path.read_text()
 
-    def diff(self) -> Optional[Tuple[str, str]]:
+    def maybe_update_content(self) -> Optional[Tuple[str, str]]:
         mtime = self.path.stat().st_mtime_ns
         if mtime != self.last_modified:
-            _LOGGER.info(f"Detected change in {self.path}")
-
             old_content = self.content
             new_content = self.path.read_text()
             self.content = new_content
             self.last_modified = mtime
-
             return old_content, new_content
 
 
-def _endpoint_diff(
-    old: ServerConfig, new: ServerConfig
-) -> Tuple[List[EndpointConfig], List[EndpointConfig]]:
-    old_routes = set([e.route for e in old.endpoints if e.route is not None])
-    new_routes = set([e.route for e in new.endpoints if e.route is not None])
-    added_routes = new_routes - old_routes
-    removed_routes = old_routes - new_routes
-    added_endpoints = [e for e in new.endpoints if e.route in added_routes]
-    removed_endpoints = [e for e in old.endpoints if e.route in removed_routes]
-    return added_endpoints, removed_endpoints
+def _update_endpoints(
+    url: str, old_config: ServerConfig, new_config: ServerConfig
+) -> None:
+    added, removed = old_config.endpoint_diff(new_config)
+
+    for endpoint in removed:
+        _LOGGER.info(f"Requesting removal of endpoint '{endpoint.route}'")
+        requests.delete(url, json=endpoint.dict()).raise_for_status()
+
+    for endpoint in added:
+        _LOGGER.info(f"Requesting addition of endpoint '{endpoint.route}'")
+        requests.post(url, json=endpoint.dict()).raise_for_status()
+
+    return added, removed

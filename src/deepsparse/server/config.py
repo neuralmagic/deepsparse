@@ -152,6 +152,26 @@ class ServerConfig(BaseModel):
         ),
     )
 
+    def endpoint_diff(
+        self, new: "ServerConfig"
+    ) -> Tuple[List[EndpointConfig], List[EndpointConfig]]:
+        old_routes = {e.route: e for e in self.endpoints if e.route is not None}
+        new_routes = {e.route: e for e in new.endpoints if e.route is not None}
+
+        added_routes = set(new_routes) - set(old_routes)
+        removed_routes = set(old_routes) - set(new_routes)
+
+        # for any routes that are in both, check if the config object is different
+        # if so, then we do modification by adding the route to both remove & add
+        for route in set(new_routes) & set(old_routes):
+            if old_routes[route] != new_routes[route]:
+                removed_routes.add(route)
+                added_routes.add(route)
+
+        added_endpoints = [e for e in new.endpoints if e.route in added_routes]
+        removed_endpoints = [e for e in self.endpoints if e.route in removed_routes]
+        return added_endpoints, removed_endpoints
+
 
 def _unpack_bucketing(
     task: str, bucketing: Optional[Union[SequenceLengthsConfig, ImageSizesConfig]]

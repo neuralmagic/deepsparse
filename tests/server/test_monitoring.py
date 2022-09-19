@@ -16,28 +16,69 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import yaml
-
-from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.config import EndpointConfig, ServerConfig, ImageSizesConfig
 from deepsparse.server.monitoring import _ContentMonitor, _update_endpoints
+
+
+def test_no_route_not_in_diff():
+    no_route = EndpointConfig(task="b", model="c")
+    old = ServerConfig(endpoints=[])
+    new = ServerConfig(endpoints=[no_route])
+
+    added, removed = old.endpoint_diff(new)
+    assert added == []
+    assert removed == []
+
+    added, removed = new.endpoint_diff(old)
+    assert added == []
+    assert removed == []
+
+
+def test_added_removed_endpoint_diff():
+    route1 = EndpointConfig(task="b", model="c", route="1")
+    route2 = EndpointConfig(task="b", model="c", route="2")
+    route3 = EndpointConfig(task="b", model="c", route="3")
+    old = ServerConfig(endpoints=[route1, route2])
+    new = ServerConfig(endpoints=[route1, route3])
+
+    added, removed = old.endpoint_diff(new)
+    assert added == [route3]
+    assert removed == [route2]
+
+
+def test_endpoint_diff_modified_model():
+    default_cfg = dict(model="a", route="1", task="b")
+    route1 = EndpointConfig(**default_cfg)
+    old = ServerConfig(endpoints=[route1])
+
+    all_fields = dict(
+        model="b",
+        task="c",
+        batch_size=2,
+        bucketing=ImageSizesConfig(image_sizes=[], kwargs=dict(a=2)),
+    )
+    for key, value in all_fields.items():
+        cfg = default_cfg.copy()
+        cfg[key] = value
+        route2 = EndpointConfig(**cfg)
+        new = ServerConfig(endpoints=[route2])
+        added, removed = old.endpoint_diff(new)
+        assert added == [route2]
+        assert removed == [route1]
 
 
 @patch("requests.post")
 @patch("requests.delete")
 def test_update_endpoints(delete: MagicMock, post: MagicMock):
-    no_route = EndpointConfig(name="a", task="b", model="c")
-    route1 = EndpointConfig(name="a", task="b", model="c", route="1")
-    route2 = EndpointConfig(name="a", task="b", model="c", route="2")
-    route3 = EndpointConfig(name="a", task="b", model="c", route="3")
-    old = ServerConfig(num_cores=1, num_workers=1, endpoints=[no_route, route1, route2])
+    route1 = EndpointConfig(task="b", model="c", route="1")
+    route2 = EndpointConfig(task="b", model="c", route="2")
+    route3 = EndpointConfig(task="b", model="c", route="3")
+    old = ServerConfig(num_cores=1, num_workers=1, endpoints=[route1, route2])
     new = ServerConfig(num_cores=1, num_workers=1, endpoints=[route1, route3])
-
-    old_s = yaml.dump(old.dict())
-    new_s = yaml.dump(new.dict())
 
     # NOTE: no_route not included in removed since we can't detect
     # changes for this without route specified
-    added, removed = _update_endpoints(url="", diff=(old_s, new_s))
+    added, removed = _update_endpoints("", old, new)
     assert added == [route3]
     assert removed == [route2]
 
@@ -54,15 +95,15 @@ def test_file_changes(tmp_path: Path):
 
     content = _ContentMonitor(path)
 
-    assert content.diff() is None
+    assert content.maybe_update_content() is None
 
     time.sleep(0.1)
     path.write_text("first")
-    assert content.diff() == ("", "first")
+    assert content.maybe_update_content() == ("", "first")
 
     time.sleep(0.1)
-    assert content.diff() is None
+    assert content.maybe_update_content() is None
 
     time.sleep(0.1)
     path.write_text("second")
-    assert content.diff() == ("first", "second")
+    assert content.maybe_update_content() == ("first", "second")
