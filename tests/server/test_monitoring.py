@@ -23,6 +23,7 @@ from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerCon
 from deepsparse.server.monitoring import (
     _ContentMonitor,
     _diff_generator,
+    _endpoint_diff,
     _update_endpoints,
 )
 
@@ -32,11 +33,11 @@ def test_no_route_not_in_diff():
     old = ServerConfig(endpoints=[])
     new = ServerConfig(endpoints=[no_route])
 
-    added, removed = old.endpoint_diff(new)
+    added, removed = _endpoint_diff(old, new)
     assert added == []
     assert removed == []
 
-    added, removed = new.endpoint_diff(old)
+    added, removed = _endpoint_diff(new, old)
     assert added == []
     assert removed == []
 
@@ -48,7 +49,7 @@ def test_added_removed_endpoint_diff():
     old = ServerConfig(endpoints=[route1, route2])
     new = ServerConfig(endpoints=[route1, route3])
 
-    added, removed = old.endpoint_diff(new)
+    added, removed = _endpoint_diff(old, new)
     assert added == [route3]
     assert removed == [route2]
 
@@ -69,7 +70,7 @@ def test_endpoint_diff_modified_model():
         cfg[key] = value
         route2 = EndpointConfig(**cfg)
         new = ServerConfig(endpoints=[route2])
-        added, removed = old.endpoint_diff(new)
+        added, removed = _endpoint_diff(old, new)
         assert added == [route2]
         assert removed == [route1]
 

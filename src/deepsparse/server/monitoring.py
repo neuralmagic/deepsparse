@@ -16,13 +16,13 @@ import logging
 import multiprocessing
 import time
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Generator, Optional, Tuple
 
 import pydantic
 import requests
 import yaml
 
-from deepsparse.server.config import ServerConfig
+from deepsparse.server.config import ServerConfig, _endpoint_diff
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,7 +61,18 @@ def _watch_file(config_path: str, endpoints_url: str, check_interval_s: float):
         ...
 
 
-def _diff_generator(config_path: str, endpoints_url: str, check_interval_s: float):
+def _diff_generator(
+    config_path: str, endpoints_url: str, check_interval_s: float
+) -> Generator[Optional[Tuple[ServerConfig, ServerConfig, str]], None, None]:
+    """
+    A generator that does the following:
+    1. Monitors for changes on `config_path`. It checks every `check_interval_s`.
+    2. If content has not changed, yields None
+    3. If content has changed, sends requests to server to update the config,
+       and yields the old and new server. It also saves the old verison of the config
+       with `.v{version}` postfixed to the path, where version is incremented after
+       every content change.
+    """
     content = _ContentMonitor(config_path)
 
     version = 0
@@ -106,18 +117,15 @@ def _diff_generator(config_path: str, endpoints_url: str, check_interval_s: floa
 
 
 class _ContentMonitor:
-    """
-    Checks `path` for modifications for every call
-
-    :param path: The path to check.
-    """
-
     def __init__(self, path: str):
         self.path = Path(path)
         self.last_modified = self.path.stat().st_mtime_ns
         self.content = self.path.read_text()
 
     def maybe_update_content(self) -> Optional[Tuple[str, str]]:
+        """
+        :return: (old content, new content) if path has been modified, otherwise None
+        """
         mtime = self.path.stat().st_mtime_ns
         if mtime != self.last_modified:
             old_content = self.content
@@ -130,7 +138,7 @@ class _ContentMonitor:
 def _update_endpoints(
     url: str, old_config: ServerConfig, new_config: ServerConfig
 ) -> None:
-    added, removed = old_config.endpoint_diff(new_config)
+    added, removed = _endpoint_diff(old_config, new_config)
 
     for endpoint in removed:
         _LOGGER.info(f"Requesting removal of endpoint '{endpoint.route}'")
