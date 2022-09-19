@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import nullcontext
-
 import numpy
 
 import pytest
@@ -78,7 +76,10 @@ def test_batch_size(
         labels=static_labels,
     )
 
-    with pytest.raises(inference_error) if inference_error else nullcontext():
+    if inference_error:
+        with pytest.raises(inference_error):
+            pipeline(sequences=sequences, labels=dynamic_labels)
+    else:
         pipeline(sequences=sequences, labels=dynamic_labels)
 
 
