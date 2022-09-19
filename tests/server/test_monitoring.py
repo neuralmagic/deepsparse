@@ -12,12 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from deepsparse.server.config import EndpointConfig, ServerConfig, ImageSizesConfig
-from deepsparse.server.monitoring import _ContentMonitor, _update_endpoints
+import yaml
+
+from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerConfig
+from deepsparse.server.monitoring import (
+    _ContentMonitor,
+    _diff_generator,
+    _update_endpoints,
+)
 
 
 def test_no_route_not_in_diff():
@@ -73,8 +80,8 @@ def test_update_endpoints(delete: MagicMock, post: MagicMock):
     route1 = EndpointConfig(task="b", model="c", route="1")
     route2 = EndpointConfig(task="b", model="c", route="2")
     route3 = EndpointConfig(task="b", model="c", route="3")
-    old = ServerConfig(num_cores=1, num_workers=1, endpoints=[route1, route2])
-    new = ServerConfig(num_cores=1, num_workers=1, endpoints=[route1, route3])
+    old = ServerConfig(endpoints=[route1, route2])
+    new = ServerConfig(endpoints=[route1, route3])
 
     # NOTE: no_route not included in removed since we can't detect
     # changes for this without route specified
@@ -107,3 +114,34 @@ def test_file_changes(tmp_path: Path):
     time.sleep(0.1)
     path.write_text("second")
     assert content.maybe_update_content() == ("first", "second")
+
+
+@patch("requests.post")
+@patch("requests.delete")
+def test_file_monitoring(delete_mock, post_mock, tmp_path: Path):
+    path = str(tmp_path / "cfg.yaml")
+
+    cfg1 = ServerConfig(endpoints=[])
+    with open(path, "w") as fp:
+        yaml.safe_dump(cfg1.dict(), fp)
+
+    diffs = _diff_generator(path, "", 1.0)
+    assert next(diffs) is None
+
+    cfg2 = ServerConfig(endpoints=[EndpointConfig(task="a", model="b", route="1")])
+    with open(path, "w") as fp:
+        yaml.safe_dump(cfg2.dict(), fp)
+    assert next(diffs) == (cfg1, cfg2, path + ".v0")
+
+    assert next(diffs) is None
+
+    cfg3 = ServerConfig(endpoints=[EndpointConfig(task="a", model="c", route="1")])
+    with open(path, "w") as fp:
+        yaml.safe_dump(cfg3.dict(), fp)
+    assert next(diffs) == (cfg2, cfg3, path + ".v1")
+
+    assert os.listdir(str(tmp_path)) == [
+        "cfg.yaml.v1",
+        "cfg.yaml.v0",
+        "cfg.yaml",
+    ]

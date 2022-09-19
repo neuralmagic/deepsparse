@@ -44,7 +44,7 @@ def start_file_watcher(
     """
 
     proc = multiprocessing.Process(
-        target=_file_watcher,
+        target=_watch_file,
         kwargs=dict(
             config_path=config_path,
             endpoints_url=endpoints_url,
@@ -56,26 +56,22 @@ def start_file_watcher(
     return proc
 
 
-def _file_watcher(
-    config_path: str,
-    endpoints_url: str,
-    check_interval_s: float,
-    continue_fn: Callable[[], bool] = None,
-):
-    if continue_fn is None:
+def _watch_file(config_path: str, endpoints_url: str, check_interval_s: float):
+    for _ in _diff_generator(config_path, endpoints_url, check_interval_s):
+        ...
 
-        def continue_fn():
-            return True
 
+def _diff_generator(config_path: str, endpoints_url: str, check_interval_s: float):
     content = _ContentMonitor(config_path)
 
     version = 0
 
-    while continue_fn():
+    while True:
         time.sleep(check_interval_s)
 
         diff = content.maybe_update_content()
         if diff is None:
+            yield None
             continue
 
         old_content, new_content = diff
@@ -86,21 +82,27 @@ def _file_watcher(
             new_config = ServerConfig(**yaml.safe_load(new_content))
         except yaml.error.YAMLError:
             _LOGGER.error("Failed to read yaml, not updating.", exc_info=1)
+            yield None
             continue
         except pydantic.ValidationError:
             _LOGGER.error("Unable to load ServerConfig, not updating.", exc_info=1)
+            yield None
             continue
 
         try:
             _update_endpoints(endpoints_url, old_config, new_config)
         except requests.RequestException:
+            yield None
             _LOGGER.error("Requests to server failed, not updating.", exc_info=1)
+            continue
 
         path = config_path + f".v{version}"
         with open(path, "w") as fp:
-            fp.write(old_config)
+            yaml.safe_dump(old_config.dict(), fp)
         _LOGGER.info(f"Saved old version of config to {path}")
         version += 1
+
+        yield old_config, new_config, path
 
 
 class _ContentMonitor:
