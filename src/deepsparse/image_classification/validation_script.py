@@ -150,7 +150,6 @@ def main(
     Validation Script for Image Classification Models
     """
 
-    print(dataset_kwargs)
     if "resize_scale" in dataset_kwargs:
         resize_scale = dataset_kwargs["resize_scale"]
     else:
@@ -204,6 +203,8 @@ def main(
 
         for actual, predicted in zip(actual_labels, predicted_labels):
             total += 1
+            if isinstance(predicted, list):
+                predicted = predicted[0]  # unwrap label returned as list
             if isinstance(predicted, str):
                 predicted = int(predicted)
             if actual.item() == predicted:
