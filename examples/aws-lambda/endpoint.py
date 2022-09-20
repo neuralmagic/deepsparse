@@ -53,12 +53,7 @@ class SparseLambda:
 
     """
 
-    def __init__(
-        self, 
-        region_name: str, 
-        ecr_repo_name: str,
-        stack_name: str
-    ):
+    def __init__(self, region_name: str, ecr_repo_name: str, stack_name: str):
 
         self.region_name = region_name
         self.ecr_repo_name = ecr_repo_name
@@ -93,11 +88,11 @@ class SparseLambda:
 
         subprocess.call(
             [
-                "sh", 
-                self.create_endpoint, 
-                self.region_name, 
-                self.stack_name, 
-                self.ecr_repo_name
+                "sh",
+                self.create_endpoint,
+                self.region_name,
+                self.stack_name,
+                self.ecr_repo_name,
             ]
         )
 
