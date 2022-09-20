@@ -15,9 +15,9 @@
 import logging
 import multiprocessing
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Generator, Optional, Tuple
-from datetime import datetime
 
 import pydantic
 import requests
