@@ -53,7 +53,12 @@ class SparseLambda:
 
     """
 
-    def __init__(self, region_name: str, ecr_repo_name: str, stack_name: str):
+    def __init__(
+        self, 
+        region_name: str, 
+        ecr_repo_name: str,
+        stack_name: str
+    ):
 
         self.region_name = region_name
         self.ecr_repo_name = ecr_repo_name
@@ -80,17 +85,26 @@ class SparseLambda:
     def create_api_endpoint(self):
 
         """
-        runs bash script:
-        # 1. builds local image
-        # 2. pushes image to ECR
-        # 3. builds Lambda API endpoint
+        runs bash script for:
+        1. building local image
+        2. pushing image to ECR
+        3. building Lambda API endpoint
         """
 
-        subprocess.call(["sh", self.create_endpoint])
+        subprocess.call(
+            [
+                "sh", 
+                self.create_endpoint, 
+                self.region_name, 
+                self.stack_name, 
+                self.ecr_repo_name
+            ]
+        )
 
     def list_functions(self):
 
         response = self._lambda.list_functions()
+
         for function in response["Functions"]:
             print("*** These are your Lambda functions: ***\n")
             print("Function name: " + function["FunctionName"], "\n")
