@@ -153,10 +153,9 @@ class ServerConfig(BaseModel):
     )
 
 
-def _endpoint_diff(
+def endpoint_diff(
     old: ServerConfig, new: ServerConfig
 ) -> Tuple[List[EndpointConfig], List[EndpointConfig]]:
-    """ """
     old_routes = {e.route: e for e in old.endpoints if e.route is not None}
     new_routes = {e.route: e for e in new.endpoints if e.route is not None}
 

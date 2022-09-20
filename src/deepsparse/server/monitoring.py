@@ -22,7 +22,7 @@ import pydantic
 import requests
 import yaml
 
-from deepsparse.server.config import ServerConfig, _endpoint_diff
+from deepsparse.server.config import ServerConfig, endpoint_diff
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,6 +74,7 @@ def _diff_generator(
        every content change.
     """
     content = _ContentMonitor(config_path)
+    versions_dir = Path(config_path + ".versions")
 
     version = 0
 
@@ -107,13 +108,14 @@ def _diff_generator(
             _LOGGER.error("Requests to server failed, not updating.", exc_info=1)
             continue
 
-        path = config_path + f".v{version}"
-        with open(path, "w") as fp:
+        versions_dir.mkdir(exist_ok=True)
+        old_path = str(versions_dir / f"{version}.yaml")
+        with open(old_path, "w") as fp:
             yaml.safe_dump(old_config.dict(), fp)
-        _LOGGER.info(f"Saved old version of config to {path}")
+        _LOGGER.info(f"Saved old version of config to {old_path}")
         version += 1
 
-        yield old_config, new_config, path
+        yield old_config, new_config, old_path
 
 
 class _ContentMonitor:
@@ -138,7 +140,7 @@ class _ContentMonitor:
 def _update_endpoints(
     url: str, old_config: ServerConfig, new_config: ServerConfig
 ) -> None:
-    added, removed = _endpoint_diff(old_config, new_config)
+    added, removed = endpoint_diff(old_config, new_config)
 
     for endpoint in removed:
         _LOGGER.info(f"Requesting removal of endpoint '{endpoint.route}'")

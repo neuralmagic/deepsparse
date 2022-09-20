@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -23,8 +23,8 @@ from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerCon
 from deepsparse.server.monitoring import (
     _ContentMonitor,
     _diff_generator,
-    _endpoint_diff,
     _update_endpoints,
+    endpoint_diff,
 )
 
 
@@ -33,11 +33,11 @@ def test_no_route_not_in_diff():
     old = ServerConfig(endpoints=[])
     new = ServerConfig(endpoints=[no_route])
 
-    added, removed = _endpoint_diff(old, new)
+    added, removed = endpoint_diff(old, new)
     assert added == []
     assert removed == []
 
-    added, removed = _endpoint_diff(new, old)
+    added, removed = endpoint_diff(new, old)
     assert added == []
     assert removed == []
 
@@ -49,7 +49,7 @@ def test_added_removed_endpoint_diff():
     old = ServerConfig(endpoints=[route1, route2])
     new = ServerConfig(endpoints=[route1, route3])
 
-    added, removed = _endpoint_diff(old, new)
+    added, removed = endpoint_diff(old, new)
     assert added == [route3]
     assert removed == [route2]
 
@@ -70,7 +70,7 @@ def test_endpoint_diff_modified_model():
         cfg[key] = value
         route2 = EndpointConfig(**cfg)
         new = ServerConfig(endpoints=[route2])
-        added, removed = _endpoint_diff(old, new)
+        added, removed = endpoint_diff(old, new)
         assert added == [route2]
         assert removed == [route1]
 
@@ -121,28 +121,34 @@ def test_file_changes(tmp_path: Path):
 @patch("requests.delete")
 def test_file_monitoring(delete_mock, post_mock, tmp_path: Path):
     path = str(tmp_path / "cfg.yaml")
+    versions_path = tmp_path / "cfg.yaml.versions"
 
     cfg1 = ServerConfig(endpoints=[])
     with open(path, "w") as fp:
         yaml.safe_dump(cfg1.dict(), fp)
 
-    diffs = _diff_generator(path, "", 1.0)
+    diffs = _diff_generator(path, "", 0.1)
     assert next(diffs) is None
+    assert not versions_path.exists()
 
     cfg2 = ServerConfig(endpoints=[EndpointConfig(task="a", model="b", route="1")])
     with open(path, "w") as fp:
         yaml.safe_dump(cfg2.dict(), fp)
-    assert next(diffs) == (cfg1, cfg2, path + ".v0")
+    assert next(diffs) == (cfg1, cfg2, path + ".versions/0.yaml")
+    assert versions_path.exists()
 
     assert next(diffs) is None
 
     cfg3 = ServerConfig(endpoints=[EndpointConfig(task="a", model="c", route="1")])
     with open(path, "w") as fp:
         yaml.safe_dump(cfg3.dict(), fp)
-    assert next(diffs) == (cfg2, cfg3, path + ".v1")
+    assert next(diffs) == (cfg2, cfg3, path + ".versions/1.yaml")
 
-    assert sorted(os.listdir(str(tmp_path))) == [
-        "cfg.yaml",
-        "cfg.yaml.v0",
-        "cfg.yaml.v1",
+    all_files = sorted(map(str, tmp_path.rglob("*")))
+    all_files = [f.replace(str(tmp_path), "") for f in all_files]
+    assert all_files == [
+        "/cfg.yaml",
+        "/cfg.yaml.versions",
+        "/cfg.yaml.versions/0.yaml",
+        "/cfg.yaml.versions/1.yaml",
     ]
