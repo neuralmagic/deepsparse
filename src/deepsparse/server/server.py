@@ -23,6 +23,7 @@ import yaml
 
 import uvicorn
 from deepsparse.engine import Context
+from deepsparse.loggers import ManagerLogger
 from deepsparse.pipeline import Pipeline
 from deepsparse.server.config import (
     INTEGRATION_LOCAL,
@@ -31,6 +32,7 @@ from deepsparse.server.config import (
     EndpointConfig,
     ServerConfig,
 )
+from deepsparse.server.helpers import default_logger_manager, logger_manager_from_config
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -107,6 +109,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     _LOGGER.info(f"Built ThreadPoolExecutor with {executor._max_workers} workers")
 
     app = FastAPI()
+    pipeline_logger = _initialize_loggers(server_config)
 
     @app.get("/", include_in_schema=False)
     def _home():
@@ -125,7 +128,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     @app.post("/endpoints", tags=["endpoints"], response_model=bool)
     def _add_endpoint_endpoint(cfg: EndpointConfig):
-        _add_endpoint(app, server_config, cfg, executor, context)
+        _add_endpoint(app, server_config, cfg, executor, context, pipeline_logger)
         # force regeneration of the docs
         app.openapi_schema = None
         return True
@@ -147,7 +150,9 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     # create pipelines & endpoints
     for endpoint_config in server_config.endpoints:
-        _add_endpoint(app, server_config, endpoint_config, executor, context)
+        _add_endpoint(
+            app, server_config, endpoint_config, executor, context, pipeline_logger
+        )
 
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
 
@@ -191,6 +196,7 @@ def _add_endpoint(
     endpoint_config: EndpointConfig,
     executor: ThreadPoolExecutor,
     context: Context,
+    pipeline_logger: ManagerLogger,
 ):
     pipeline_config = endpoint_config.to_pipeline_config()
     pipeline_config.kwargs["executor"] = executor
@@ -199,26 +205,40 @@ def _add_endpoint(
     pipeline = Pipeline.from_config(pipeline_config, context)
 
     _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
-    _add_pipeline_endpoint(app, endpoint_config, pipeline, server_config.integration)
+    _add_pipeline_endpoint(
+        app, endpoint_config, pipeline, pipeline_logger, server_config.integration
+    )
 
 
 def _add_pipeline_endpoint(
     app: FastAPI,
     endpoint_config: EndpointConfig,
     pipeline: Pipeline,
+    pipeline_logger: ManagerLogger,
     integration: str = INTEGRATION_LOCAL,
 ):
     input_schema = pipeline.input_schema
     output_schema = pipeline.output_schema
+    pipeline_name = pipeline.alias or pipeline.task
 
-    def _predict_from_schema(request: pipeline.input_schema):
-        return pipeline(request)
+    def _predict(request: pipeline.input_schema):
+        (
+            pipeline_outputs,
+            pipeline_inputs,
+            engine_inputs,
+            inference_timing,
+        ) = pipeline.run_with_monitoring(request)
+        pipeline_logger.log_latency(pipeline_name, inference_timing)
+        pipeline_logger.log_data(
+            pipeline_name, (pipeline_inputs, engine_inputs), pipeline_outputs
+        )
+        return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):
         request = pipeline.input_schema.from_files(
             (file.file for file in request), from_server=True
         )
-        return pipeline(request)
+        return _predict(request)
 
     routes_and_fns = []
     if integration == INTEGRATION_LOCAL:
@@ -226,7 +246,7 @@ def _add_pipeline_endpoint(
         if not route.startswith("/"):
             route = "/" + route
 
-        routes_and_fns.append((route, _predict_from_schema))
+        routes_and_fns.append((route, _predict))
         if hasattr(input_schema, "from_files"):
             routes_and_fns.append((route + "/from_files", _predict_from_files))
     elif integration == INTEGRATION_SAGEMAKER:
@@ -234,7 +254,7 @@ def _add_pipeline_endpoint(
         if hasattr(input_schema, "from_files"):
             routes_and_fns.append((route, _predict_from_files))
         else:
-            routes_and_fns.append((route, _predict_from_schema))
+            routes_and_fns.append((route, _predict))
 
     for route, endpoint_fn in routes_and_fns:
         app.add_api_route(
@@ -245,3 +265,20 @@ def _add_pipeline_endpoint(
             tags=["predict"],
         )
         _LOGGER.info(f"Added '{route}' endpoint")
+
+
+def _initialize_loggers(server_config: ServerConfig) -> ManagerLogger:
+    loggers_config = server_config.loggers
+    if loggers_config is None:
+        return ManagerLogger([])
+    if isinstance(loggers_config, str):
+        if not loggers_config == "default":
+            raise ValueError(
+                f"given string {loggers_config} for ServerConfig.loggers only "
+                "supported string is 'default', other configs should be specified "
+                "with a dict literal of logging integration to their initialization "
+                "kwargs"
+            )
+        else:
+            return default_logger_manager()
+    return logger_manager_from_config(server_config.loggers)
