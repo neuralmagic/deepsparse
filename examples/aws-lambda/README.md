@@ -53,12 +53,12 @@ After the endpoint has been staged (~3 minute), AWS SAM will provide your API Ga
 from client import LambdaClient
 
 LC = LambdaClient("https://1zkckuuw1c.execute-api.us-east-1.amazonaws.com/inference")
-answer = LC.qa_client(question="who is batman?", context="Mark is batman.")
+answer = LC.sa_client("I like pizza.")
 
 print(answer)
 ```
 
-answer: `{'Question': 'who is batman?', 'Answer': 'Mark'}`
+answer: `{'Answer': ['positive']}`
 
 On your first cold start, it will take a ~30 seconds to get your first inference, but afterwards, it should be in milliseconds.
 

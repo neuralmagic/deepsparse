@@ -17,21 +17,34 @@ import json
 from deepsparse import Pipeline
 
 
-qa_pipeline = Pipeline.create(
-    task="question-answering", model_path="./model/deployment"
-)
+pipeline = Pipeline.create(task="sentiment-analysis", model_path="./model/deployment")
 
 
-def lambda_handler(event, context):
+def qa_lambda_handler(event, context):
 
     body = json.loads(event["body"])
     question = body["question"]
     context = body["context"]
 
-    inference = qa_pipeline(question=question, context=context)
+    inference = pipeline(question=question, context=context)
     print(f"Question: {question}, Answer: {inference.answer}")
 
     return {
         "statusCode": 200,
         "body": json.dumps({"Question": question, "Answer": inference.answer}),
+    }
+
+
+def sa_lambda_handler(event, context):
+
+    body = json.loads(event["body"])
+    sequences = body["sequences"]
+    print(sequences)
+
+    inference = pipeline(sequences)
+    print(f"Sentiment: {inference.labels}")
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps({"Answer": inference.labels}),
     }

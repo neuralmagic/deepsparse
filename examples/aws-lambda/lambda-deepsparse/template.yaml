@@ -9,7 +9,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
-      MemorySize: 1000
+      MemorySize: 2000
       Timeout: 300
       Events:
         ApiEndpoint:

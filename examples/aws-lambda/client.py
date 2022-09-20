@@ -29,15 +29,27 @@ class LambdaClient:
         self.headers = {"Content-Type": "application/json"}
 
     def qa_client(self, question: str, context: str) -> bytes:
-
         """
+        Client for question answering task.
+
         :param question: question input to the model pipeline.
         :param context: context input to the model pipeline.
         :return: json output from Lambda
         """
 
         obj = {"question": question, "context": context}
+        response = requests.post(self.url, headers=self.headers, json=obj)
 
+        return json.loads(response.content)
+
+    def sa_client(self, context: str) -> bytes:
+        """
+        Client for sentiment analysis task.
+
+        :param context: context input to the model pipeline.
+        """
+
+        obj = {"sequences": context}
         response = requests.post(self.url, headers=self.headers, json=obj)
 
         return json.loads(response.content)

@@ -98,13 +98,17 @@ class SparseLambda:
     def destroy_endpoint(self):
 
         self.cloudformation.delete_stack(StackName=self.stack_name)
+        self.ecr.delete_repository(repositoryName=self.ecr_repo_name, force=True)
+        print(
+            f"Your '{self.stack_name}' and ECR repo '{self.ecr_repo_name}' were killed."
+        )
 
 
 def construct_sparselambda():
     return SparseLambda(
         region_name="us-east-1",
         ecr_repo_name="lambda-deepsparse",
-        stack_name="lambda-deepsparse",
+        stack_name="lambda-stack",
     )
 
 
