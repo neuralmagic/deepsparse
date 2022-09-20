@@ -16,7 +16,7 @@ limitations under the License.
 
 # 🐑 Deploy a DeepSparse Pipeline in AWS Lambda
 
-AWS Lambda is an event-driven, serverless computing infrastructure for deploying applications at minimal cost. This directory provides a guided example for deploying a DeepSparse pipeline on AWS Lambda for the question answering NLP task.
+AWS Lambda is an event-driven, serverless computing infrastructure for deploying applications at minimal cost. This directory provides a guided example for deploying a DeepSparse pipeline on AWS Lambda for the sentiment analysis task.
 
 The scope of this application encompasses:
 1. The construction of a local Docker image.
@@ -47,7 +47,7 @@ Run the following command to build your Lambda endpoint.
 python endpoint.py create
 ```
 
-After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your question and context:
+After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
 
 ```python
 from client import LambdaClient
