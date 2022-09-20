@@ -65,7 +65,7 @@ Examples:
 """
 import logging
 from typing import Optional, Tuple
-
+import numpy as np
 import click
 
 import cv2
@@ -102,7 +102,7 @@ _LOGGER = logging.getLogger(__name__)
 @click.option(
     "--source",
     type=str,
-    required=True,
+    default="animals_60fps.mp4",
     help="File path to image or directory of .jpg files, a .mp4 video, "
     "or an integer (i.e. 0) for webcam",
 )
@@ -126,7 +126,7 @@ _LOGGER = logging.getLogger(__name__)
     "--num_cores",
     "--num-cores",
     type=int,
-    default=None,
+    default=4,
     help="The number of physical cores to run the annotations with, "
     "defaults to using all physical cores available on the system."
     " For DeepSparse benchmarks, this value is the number of cores "
@@ -204,11 +204,11 @@ def main(
         engine_type=engine,
         num_cores=num_cores,
     )
-
+    all_fps = []
     for iteration, (input_image, source_image) in enumerate(loader):
 
         # annotate
-        annotated_image = annotate(
+        annotated_image, fps = annotate(
             pipeline=yolact_pipeline,
             annotation_func=annotate_image,
             image=input_image,
@@ -216,6 +216,8 @@ def main(
             calc_fps=is_video,
             original_image=source_image,
         )
+        all_fps.append(fps)
+        print(fps)
 
         if is_webcam:
             cv2.imshow("annotated", annotated_image)
@@ -229,6 +231,7 @@ def main(
         saver.close()
 
     _LOGGER.info(f"Results saved to {save_dir}")
+    _LOGGER.info(f"Average FPS: {np.mean(fps)}")
 
 
 if __name__ == "__main__":

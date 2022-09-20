@@ -253,7 +253,7 @@ class YOLACTPipeline(Pipeline):
             classes=batch_classes,
             scores=batch_scores,
             boxes=batch_boxes,
-            masks=batch_masks if kwargs.get("return_masks") else None,
+            masks=batch_masks,
         )
 
     @property
