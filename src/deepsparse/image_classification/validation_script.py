@@ -150,7 +150,6 @@ def main(
     Validation Script for Image Classification Models
     """
 
-    print(dataset_kwargs)
     if "resize_scale" in dataset_kwargs:
         resize_scale = dataset_kwargs["resize_scale"]
     else:
