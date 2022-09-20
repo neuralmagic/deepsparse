@@ -17,6 +17,7 @@ import multiprocessing
 import time
 from pathlib import Path
 from typing import Generator, Optional, Tuple
+from datetime import datetime
 
 import pydantic
 import requests
@@ -110,7 +111,9 @@ def _diff_generator(
 
         versions_dir.mkdir(exist_ok=True)
         old_path = str(versions_dir / f"{version}.yaml")
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         with open(old_path, "w") as fp:
+            fp.write(f"# Version {version} saved at {timestamp} by deepsparse.server\n")
             yaml.safe_dump(old_config.dict(), fp)
         _LOGGER.info(f"Saved old version of config to {old_path}")
         version += 1

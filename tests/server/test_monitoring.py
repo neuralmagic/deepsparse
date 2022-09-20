@@ -152,3 +152,9 @@ def test_file_monitoring(delete_mock, post_mock, tmp_path: Path):
         "/cfg.yaml.versions/0.yaml",
         "/cfg.yaml.versions/1.yaml",
     ]
+
+    for idx, v in enumerate(["0.yaml", "1.yaml"]):
+        with open(str(versions_path / v)) as fp:
+            content = fp.read()
+            assert content.startswith(f"# Version {idx} saved at")
+            yaml.safe_load(content)
