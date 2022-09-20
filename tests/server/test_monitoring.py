@@ -141,8 +141,8 @@ def test_file_monitoring(delete_mock, post_mock, tmp_path: Path):
         yaml.safe_dump(cfg3.dict(), fp)
     assert next(diffs) == (cfg2, cfg3, path + ".v1")
 
-    assert os.listdir(str(tmp_path)) == [
-        "cfg.yaml.v1",
-        "cfg.yaml.v0",
+    assert sorted(os.listdir(str(tmp_path))) == [
         "cfg.yaml",
+        "cfg.yaml.v0",
+        "cfg.yaml.v1",
     ]
