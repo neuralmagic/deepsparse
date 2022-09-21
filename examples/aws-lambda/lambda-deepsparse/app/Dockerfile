@@ -24,4 +24,4 @@ RUN mkdir model
 RUN sparsezoo.download zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --save-dir ./model
 
 # Set the CMD to your handler
-CMD ["app.sa_lambda_handler"]
+CMD ["app.lambda_handler"]
