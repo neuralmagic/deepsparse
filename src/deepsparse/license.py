@@ -37,6 +37,7 @@ import shutil
 import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Optional
 
 import click
 
@@ -66,31 +67,30 @@ def add_deepsparse_license(token_or_path):
     license_file_path = _get_license_file_path()
     shutil.copy(candidate_license_file_path, license_file_path)
     _LOGGER.info(f"DeepSparse license file written to {license_file_path}")
+    validate_license()
 
 
-def validate_license(license_path: str):
+def validate_license(license_path: Optional[str] = None):
     """
     Validates a candidate license token (JWT). Should be passed
-    as a text file containing only the JWT.
-    If successful, the token will be logged. If the token is invalid
-    an error will be raised
+    as a text file containing only the JWT. If no path is provided
+    the expected file path of the token will be validated
 
-    :param license_path: file path to text file of token to validate
+    :param license_path: file path to text file of token to validate.
+        Default is None, expected token path will be validated
     """
+
     deepsparse_lib = init_deepsparse_lib()
 
-    # nothing happens if token is valid
     # if token is invalid, deepsparse_lib will raise appropriate error response
     try:
+        if license_path is None:
+            deepsparse_lib.validate_license()
+            return
         deepsparse_lib.validate_license(license_path)
     except RuntimeError:
         # deepsparse_lib handles error messaging, exit after message
         sys.exit(0)
-
-    with open(license_path) as license_file:
-        token = license_file.read()
-
-    _LOGGER.info(f"Successfully validated token: {token}")
 
 
 def _get_license_file_path():
