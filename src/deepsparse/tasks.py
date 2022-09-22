@@ -19,7 +19,6 @@ Classes and implementations for supported tasks in the DeepSparse pipeline and s
 from collections import namedtuple
 from typing import Iterable, List, Optional
 
-
 __all__ = ["SupportedTasks", "AliasedTask"]
 
 
@@ -107,7 +106,11 @@ class SupportedTasks:
         ),
     )
 
-    all_task_categories = [nlp, image_classification, yolo, yolact, haystack]
+    gpt2 = namedtuple("gpt2", ["gpt2"])(
+        gpt2=AliasedTask("gpt2", ["gpt-2", "gpt_2"])
+    )
+
+    all_task_categories = [nlp, image_classification, yolo, yolact, haystack, gpt2]
 
     @classmethod
     def check_register_task(
@@ -143,6 +146,10 @@ class SupportedTasks:
             # trigger haystack pipeline as well as transformers pipelines to
             # register with Pipeline.register
             import deepsparse.transformers.haystack  # noqa: F401
+
+        elif cls.is_gpt(task):
+            # trigger haystack pipeline as well as transformers pipelines to
+            import deepsparse.gpt.pipelines  # noqa: F401
 
         all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
         if task not in all_tasks:
@@ -194,6 +201,14 @@ class SupportedTasks:
         :return: True if it is a haystack task, False otherwise
         """
         return any([haystack_task.matches(task) for haystack_task in cls.haystack])
+
+    @classmethod
+    def is_gpt(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a gpt task
+        :return: True if it is a gpt task, False otherwise
+        """
+        return any([gpt_task.matches(task) for gpt_task in cls.gpt2])
 
     @classmethod
     def task_names(cls):
