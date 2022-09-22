@@ -88,7 +88,8 @@ def validate_license(license_path: Optional[str] = None):
     # if token is invalid, deepsparse_lib will raise appropriate error response
     try:
         if license_path is None:
-            deepsparse_lib.validate_license()
+            splash_message = deepsparse_lib.validate_license()
+            print(splash_message)
             return
         deepsparse_lib.validate_license(license_path)
     except RuntimeError:
