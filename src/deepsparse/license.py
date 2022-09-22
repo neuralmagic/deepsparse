@@ -59,7 +59,7 @@ def add_deepsparse_license(token_or_path):
         with open(candidate_license_file_path, "w") as token_file:
             token_file.write(token_or_path)
 
-    _validate_license(candidate_license_file_path)
+    validate_license(candidate_license_file_path)
     _LOGGER.info("DeepSparse license successfully validated")
 
     # copy candidate file to {LICENSE_FILE} in same directory as NM engine binaries
@@ -68,16 +68,29 @@ def add_deepsparse_license(token_or_path):
     _LOGGER.info(f"DeepSparse license file written to {license_file_path}")
 
 
-def _validate_license(token):
+def validate_license(license_path: str):
+    """
+    Validates a candidate license token (JWT). Should be passed
+    as a text file containing only the JWT.
+    If successful, the token will be logged. If the token is invalid
+    an error will be raised
+
+    :param license_path: file path to text file of token to validate
+    """
     deepsparse_lib = init_deepsparse_lib()
 
     # nothing happens if token is valid
     # if token is invalid, deepsparse_lib will raise appropriate error response
     try:
-        deepsparse_lib.validate_license(token)
+        deepsparse_lib.validate_license(license_path)
     except RuntimeError:
         # deepsparse_lib handles error messaging, exit after message
         sys.exit(0)
+
+    with open(license_path) as license_file:
+        token = license_file.read()
+
+    _LOGGER.info(f"Successfully validated token: {token}")
 
 
 def _get_license_file_path():
