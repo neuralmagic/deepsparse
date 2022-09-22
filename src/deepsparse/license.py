@@ -70,11 +70,14 @@ def add_deepsparse_license(token_or_path):
     validate_license()
 
 
+@click.command()
+@click.option("--license_path", type=str, default=None)
 def validate_license(license_path: Optional[str] = None):
     """
     Validates a candidate license token (JWT). Should be passed
     as a text file containing only the JWT. If no path is provided
-    the expected file path of the token will be validated
+    the expected file path of the token will be validated. Default
+    path is ~/.config/neuralmagic/license.txt
 
     :param license_path: file path to text file of token to validate.
         Default is None, expected token path will be validated
@@ -90,7 +93,7 @@ def validate_license(license_path: Optional[str] = None):
         deepsparse_lib.validate_license(license_path)
     except RuntimeError:
         # deepsparse_lib handles error messaging, exit after message
-        sys.exit(0)
+        sys.exit(1)
 
 
 def _get_license_file_path():
