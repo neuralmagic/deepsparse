@@ -181,22 +181,7 @@ class YOLOPipeline(Pipeline):
         if isinstance(inputs.images, (str, numpy.ndarray)):
             inputs.images = [inputs.images]
 
-        image_batch = []
-
-        for image in inputs.images:
-            if isinstance(image, list):
-                # image consists of floats or ints
-                image = numpy.asarray(image)
-
-            if isinstance(image, str):
-                image = cv2.imread(image)
-
-            image = self._make_channels_last(image)
-            if image.ndim < 4:
-                # Assume a batch is of the correct size already
-                image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
-            image = self._make_channels_first(image)
-            image_batch.append(image)
+        image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
 
         image_batch = self._make_batch(image_batch)
         image_batch = numpy.ascontiguousarray(
@@ -211,6 +196,21 @@ class YOLOPipeline(Pipeline):
             conf_thres=inputs.conf_thres,
         )
         return [image_batch], postprocessing_kwargs
+
+    def _preprocess_image(self, image) -> numpy.ndarray:
+        if isinstance(image, list):
+            # image consists of floats or ints
+            image = numpy.asarray(image)
+
+        if isinstance(image, str):
+            image = cv2.imread(image)
+
+        image = self._make_channels_last(image)
+        if image.ndim < 4:
+            # Assume a batch is of the correct size already
+            image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
+        image = self._make_channels_first(image)
+        return image
 
     def process_engine_outputs(
         self,
@@ -239,10 +239,9 @@ class YOLOPipeline(Pipeline):
             conf_thres=kwargs.get("conf_thres", 0.45),
         )
 
-        batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []
+        batch_boxes, batch_scores, batch_labels = [], [], []
 
         for image_output in batch_output:
-            batch_predictions.append(image_output.tolist())
             batch_boxes.append(image_output[:, 0:4].tolist())
             batch_scores.append(image_output[:, 4].tolist())
             batch_labels.append(image_output[:, 5].tolist())
@@ -257,7 +256,6 @@ class YOLOPipeline(Pipeline):
                 batch_labels[-1] = batch_class_names
 
         return YOLOOutput(
-            predictions=batch_predictions,
             boxes=batch_boxes,
             scores=batch_scores,
             labels=batch_labels,

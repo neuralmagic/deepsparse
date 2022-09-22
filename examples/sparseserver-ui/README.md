@@ -61,7 +61,7 @@ For more details on question answering models, please refer to our [updated list
 
 To download and initialize the four models in the `config.yaml` file, run:
 ```bash
-deepsparse.server --config_file server/config.yaml
+deepsparse.server config server/config.yaml
 ```
 
 After downloading, the DeepSparse Server should now be running on host `0.0.0.0` and port `5543`.

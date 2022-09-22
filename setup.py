@@ -61,7 +61,7 @@ _deps = [
     "requests>=2.0.0",
     "tqdm>=4.0.0",
     "protobuf>=3.12.2,<4",
-    "click==8.0",
+    "click~=8.0.0",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
@@ -92,6 +92,7 @@ _server_deps = [
     "pydantic>=1.8.2",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
+    "prometheus-client>=0.14.1",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
@@ -231,11 +232,12 @@ def _setup_entry_points() -> Dict:
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
-            "deepsparse.server=deepsparse.server.main:start_server",
+            "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
+            "deepsparse.license=deepsparse.license:main",
         ]
     }
 

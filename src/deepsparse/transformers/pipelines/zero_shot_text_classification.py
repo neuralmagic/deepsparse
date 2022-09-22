@@ -128,7 +128,6 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
-        batch_size=3,
         model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
@@ -149,14 +148,12 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
     Note that if a hypothesis_template is provided at inference time, then it
     will override the value provided during model instantiation
 
-    :param model_path: sparsezoo stub to a transformers model, an ONNX file, or
-        (preferred) a directory containing a model.onnx, tokenizer config, and model
-        config. If no tokenizer and/or model config(s) are found, then they will be
-        loaded from huggingface transformers using the `default_model_name` key
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: if static labels are given, then batch_size must be
-        num_sequences * num_labels. Otherwise, batch_size must be 1. Default is 1
+    :param batch_size: batch size must divide sequences * labels, regardless of
+        whether using dynamic or static labels. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -292,7 +289,7 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
 
     @staticmethod
     def route_input_to_bucket(
-        cls, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
     ) -> Pipeline:
         """
         :param input_schema: The schema representing an input to the pipeline
@@ -301,18 +298,14 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
         """
         tokenizer = pipelines[0].tokenizer
         tokens = tokenizer(
-            " ".join(input_schema.sequences),
+            input_schema.sequences,
             add_special_tokens=True,
             return_tensors="np",
             padding=False,
             truncation=False,
         )
-        current_seq_len = len(tokens)
-
-        for pipeline in pipelines:
-            if pipeline.sequence_length > current_seq_len:
-                return pipeline
-        return pipelines[-1]
+        input_seq_len = max(map(len, tokens["input_ids"]))
+        return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     def parse_labels(self, labels: Union[None, List[str], str]) -> List[str]:
         """
