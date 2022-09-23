@@ -71,7 +71,7 @@ class TransformersPipeline(Pipeline, Bucketable):
     def __init__(
         self,
         *,
-        sequence_length: Union[int, List[int]] = 128,
+        sequence_length: Union[int, List[int]] = 1,
         **kwargs,
     ):
 
@@ -109,7 +109,7 @@ class TransformersPipeline(Pipeline, Bucketable):
             config_path, finetuning_task=self.task if hasattr(self, "task") else None
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_path, model_max_length=self.sequence_length
+            tokenizer_path, model_max_length=2000
         )
         self.config_path = os.path.join(config_path, "config.json")
         self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
