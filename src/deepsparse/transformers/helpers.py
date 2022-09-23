@@ -99,7 +99,7 @@ def get_onnx_path_and_configs(
         if _MODEL_DIR_CONFIG_NAME in model_files:
             config_path = model_path
         if _MODEL_DIR_TOKENIZER_NAME in model_files:
-            tokenizer_path = model_path
+            tokenizer_path = "wav2vec2-base-960h"
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
@@ -127,7 +127,7 @@ def get_onnx_path_and_configs(
             f"model_path {model_path} is not a valid file, directory, or zoo stub"
         )
 
-    return onnx_path, config_path, tokenizer_path
+    return onnx_path, config_path, "facebook/wav2vec2-base-960h"
 
 
 def overwrite_transformer_onnx_model_inputs(
