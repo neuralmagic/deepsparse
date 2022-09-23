@@ -82,6 +82,7 @@ class SupportedTasks:
             "token_classification",
             "zero_shot_text_classification",
             "embedding_extraction",
+            "asr",
         ],
     )(
         question_answering=AliasedTask("question_answering", ["qa"]),
@@ -91,6 +92,7 @@ class SupportedTasks:
         token_classification=AliasedTask("token_classification", ["ner"]),
         zero_shot_text_classification=AliasedTask("zero_shot_text_classification", []),
         embedding_extraction=AliasedTask("embedding_extraction", []),
+        asr=AliasedTask("asr",[]),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(
