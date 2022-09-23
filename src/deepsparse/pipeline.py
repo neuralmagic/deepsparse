@@ -694,7 +694,7 @@ class Pipeline(ABC):
             pass
         :return: result of forward pass to Pipeline engine
         """
-        return self.engine(engine_inputs)
+        return self.engine([engine_inputs[0].reshape(1,1,-1)])
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
