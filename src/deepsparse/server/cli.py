@@ -91,7 +91,6 @@ def main():
     help="Sets the logging level.",
 )
 @click.option(
-    "-r",
     "--hot-reload-config",
     is_flag=True,
     default=False,
@@ -186,7 +185,6 @@ def config(
     ),
 )
 @click.option(
-    "-r",
     "--hot-reload-config",
     is_flag=True,
     default=False,
