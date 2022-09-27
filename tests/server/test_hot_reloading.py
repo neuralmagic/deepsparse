@@ -31,8 +31,7 @@ from deepsparse.server.config_hot_reloading import (
 )
 from deepsparse.server.server import start_server
 from tests.helpers import wait_for_server
-
-from .test_prometheus import _find_free_port
+from tests.server.test_prometheus import _find_free_port
 
 
 def test_no_route_not_in_diff():
@@ -200,13 +199,13 @@ def server_process(config_path, server_port):
 
 
 def test_hot_reload_config_with_start_server(server_process, server_port, config_path):
-    assert wait_for_server(f"http://localhost:{server_port}", retries=50, interval=0.1)
+    assert wait_for_server(f"http://0.0.0.0:{server_port}", retries=50, interval=0.1)
 
-    resp = requests.get(f"http://localhost:{server_port}/")
+    resp = requests.get(f"http://0.0.0.0:{server_port}/")
     assert resp.status_code == 200
 
     # endpoint doesn't exist yet
-    resp = requests.post(f"http://localhost:{server_port}/predict1")
+    resp = requests.post(f"http://0.0.0.0:{server_port}/predict1")
     assert resp.status_code == 404
 
     cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers=None)
@@ -224,13 +223,13 @@ def test_hot_reload_config_with_start_server(server_process, server_port, config
     # wait for endpoint to be added to server
     for _ in range(50):
         time.sleep(0.1)
-        resp = requests.post(f"http://localhost:{server_port}/predict1")
+        resp = requests.post(f"http://0.0.0.0:{server_port}/predict1")
         if resp.status_code != 404:
             break
 
     # the endpoint should exist now
     resp = requests.post(
-        f"http://localhost:{server_port}/predict1",
+        f"http://0.0.0.0:{server_port}/predict1",
         json={"question": "who am i", "context": "i am bob"},
     )
     assert resp.status_code == 200
@@ -243,5 +242,5 @@ def test_hot_reload_config_with_start_server(server_process, server_port, config
     time.sleep(1.0)
 
     # the endpoint should not exist anymore
-    resp = requests.post(f"http://localhost:{server_port}/predict1")
+    resp = requests.post(f"http://0.0.0.0:{server_port}/predict1")
     assert resp.status_code == 404
