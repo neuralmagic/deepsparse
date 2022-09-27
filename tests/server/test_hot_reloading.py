@@ -199,7 +199,8 @@ def server_process(config_path, server_port):
 
 
 def test_hot_reload_config_with_start_server(server_process, server_port, config_path):
-    assert wait_for_server(f"http://0.0.0.0:{server_port}", retries=50, interval=0.1)
+    # wait max 60s for server to spin up
+    assert wait_for_server(f"http://0.0.0.0:{server_port}", retries=600, interval=0.1)
 
     resp = requests.get(f"http://0.0.0.0:{server_port}/")
     assert resp.status_code == 200
