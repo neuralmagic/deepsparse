@@ -154,23 +154,45 @@ class ServerConfig(BaseModel):
 
 
 def endpoint_diff(
-    old: ServerConfig, new: ServerConfig
+    old_cfg: ServerConfig, new_cfg: ServerConfig
 ) -> Tuple[List[EndpointConfig], List[EndpointConfig]]:
-    old_routes = {e.route: e for e in old.endpoints if e.route is not None}
-    new_routes = {e.route: e for e in new.endpoints if e.route is not None}
+    """
+    - Added endpoint: the endpoint's route is **not** present in `old_cfg`,
+        and present in `new_cfg`.
+    - Removed endpoint: the endpoint's route is present in `old_cfg`, and
+        **not** present in `new_cfg`.
+    - Modified endpoint: Any field of the endpoint changed. In this case
+        the endpoint will be present in both returned lists (it is both
+        added and removed).
+    :return: Tuple of (added endpoints, removed endpoints).
+    """
+    routes_in_old = {
+        endpoint.route: endpoint
+        for endpoint in old_cfg.endpoints
+        if endpoint.route is not None
+    }
+    routes_in_new = {
+        endpoint.route: endpoint
+        for endpoint in new_cfg.endpoints
+        if endpoint.route is not None
+    }
 
-    added_routes = set(new_routes) - set(old_routes)
-    removed_routes = set(old_routes) - set(new_routes)
+    added_routes = set(routes_in_new) - set(routes_in_old)
+    removed_routes = set(routes_in_old) - set(routes_in_new)
 
     # for any routes that are in both, check if the config object is different.
     # if so, then we do modification by adding the route to both remove & add
-    for route in set(new_routes) & set(old_routes):
-        if old_routes[route] != new_routes[route]:
+    for route in set(routes_in_new) & set(routes_in_old):
+        if routes_in_old[route] != routes_in_new[route]:
             removed_routes.add(route)
             added_routes.add(route)
 
-    added_endpoints = [e for e in new.endpoints if e.route in added_routes]
-    removed_endpoints = [e for e in old.endpoints if e.route in removed_routes]
+    added_endpoints = [
+        endpoint for endpoint in new_cfg.endpoints if endpoint.route in added_routes
+    ]
+    removed_endpoints = [
+        endpoint for endpoint in old_cfg.endpoints if endpoint.route in removed_routes
+    ]
     return added_endpoints, removed_endpoints
 
 
