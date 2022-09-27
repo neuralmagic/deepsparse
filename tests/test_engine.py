@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse import analyze_model, compile_model
+from deepsparse import Engine, compile_model
 from deepsparse.utils import verify_outputs
 from sparsezoo import Model
 
@@ -34,31 +34,32 @@ model_test_registry = {
 }
 
 
-@pytest.mark.parametrize(
-    "model, batch_size",
-    (
-        [
-            pytest.param(
-                model,
-                b,
-            )
-            for model_name, model in model_test_registry.items()
-            for b in [1, 16, 64]
-        ]
-    ),
-)
+@pytest.mark.parametrize("batch_size", [1, 2, 3], scope="class")
+@pytest.mark.parametrize("zoo_stub", model_test_registry.values(), scope="class")
 @pytest.mark.smoke
 class TestEngineParametrized:
-    def test_engine(self, model: Model, batch_size: int):
+    @pytest.fixture(scope="class")
+    def model(self, zoo_stub: str):
+        yield Model(zoo_stub)
+
+    @pytest.fixture(scope="class")
+    def engine(self, model: Model, batch_size: int):
+        print("compile model")
+        yield compile_model(model, batch_size, num_cores=1, num_streams=1)
+
+    @pytest.fixture(scope="class")
+    def engine_io(self, model: Model, batch_size: int):
+        batch = model.sample_batch(batch_size=batch_size)
+        input_key = next(key for key in batch.keys() if "input" in key)
+        output_key = next(key for key in batch.keys() if "output" in key)
+        yield batch[input_key], batch[output_key]
+
+    def test_engine(self, engine: Engine, engine_io):
         """
         Test the Engine.inference interfaces
         """
-        m = Model(model)
 
-        inputs, outputs = _get_sample_inputs_outputs(m, batch_size)
-
-        print("compile model")
-        engine = compile_model(m, batch_size)
+        inputs, outputs = engine_io
 
         print("engine callable")
         pred_outputs = engine(inputs)
@@ -76,34 +77,20 @@ class TestEngineParametrized:
         pred_outputs, elapsed = engine.timed_run(inputs)
         verify_outputs(pred_outputs, outputs)
 
-    def test_benchmark(self, model: Model, batch_size: int):
+    def test_benchmark(self, engine: Engine, engine_io):
         """
         Test the Engine.benchmark() interface
         """
+        inputs, outputs = engine_io
 
-        m = Model(model)
-
-        inputs, outputs = _get_sample_inputs_outputs(m, batch_size)
-
-        engine = compile_model(m, batch_size)
-        results = engine.benchmark(inputs, include_outputs=True)
+        results = engine.benchmark(
+            inputs, include_outputs=True, num_iterations=1, num_warmup_iterations=0
+        )
 
         for output in results.outputs:
             verify_outputs(output, outputs)
 
-    def test_analyze(self, model: Model, batch_size: int):
-
-        model = Model(model)
-        inputs = model.sample_inputs.sample_batch(batch_size=batch_size)
-
-        results = analyze_model(model, inputs, batch_size)
-        print(results)
-
-
-def _get_sample_inputs_outputs(model: Model, batch_size: int):
-    batch = model.sample_batch(batch_size=batch_size)
-
-    input_key = next(key for key in batch.keys() if "input" in key)
-    output_key = next(key for key in batch.keys() if "output" in key)
-
-    return batch[input_key], batch[output_key]
+    def test_analyze(self, engine: Engine, engine_io):
+        inputs, _ = engine_io
+        results = engine.analyze(inputs, num_iterations=1, num_warmup_iterations=0)
+        assert "layer_info" in results
