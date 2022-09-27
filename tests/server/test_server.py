@@ -23,6 +23,7 @@ import yaml
 import pytest
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import start_server
+from tests.helpers import wait_for_server
 
 from .test_prometheus import _find_free_port
 
@@ -60,8 +61,7 @@ def server_process(config_path, server_port):
 
 
 def test_hot_reload_config(server_process, server_port, config_path):
-    # wait for server to spin up
-    time.sleep(2.0)
+    assert wait_for_server(f"http://localhost:{server_port}", retries=50, interval=0.1)
 
     resp = requests.get(f"http://localhost:{server_port}/")
     assert resp.status_code == 200
@@ -83,7 +83,11 @@ def test_hot_reload_config(server_process, server_port, config_path):
         yaml.safe_dump(cfg.dict(), fp)
 
     # wait for endpoint to be added to server
-    time.sleep(2.0)
+    for _ in range(50):
+        time.sleep(0.1)
+        resp = requests.post(f"http://localhost:{server_port}/predict1")
+        if resp.status_code != 404:
+            break
 
     # the endpoint should exist now
     resp = requests.post(
