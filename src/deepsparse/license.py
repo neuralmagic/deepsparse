@@ -37,6 +37,7 @@ import shutil
 import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Optional
 
 import click
 
@@ -59,25 +60,41 @@ def add_deepsparse_license(token_or_path):
         with open(candidate_license_file_path, "w") as token_file:
             token_file.write(token_or_path)
 
-    _validate_license(candidate_license_file_path)
+    validate_license(candidate_license_file_path)
     _LOGGER.info("DeepSparse license successfully validated")
 
     # copy candidate file to {LICENSE_FILE} in same directory as NM engine binaries
     license_file_path = _get_license_file_path()
     shutil.copy(candidate_license_file_path, license_file_path)
     _LOGGER.info(f"DeepSparse license file written to {license_file_path}")
+    validate_license()
 
 
-def _validate_license(token):
+@click.command()
+@click.option("--license_path", type=str, default=None)
+def validate_license(license_path: Optional[str] = None):
+    """
+    Validates a candidate license token (JWT). Should be passed
+    as a text file containing only the JWT. If no path is provided
+    the expected file path of the token will be validated. Default
+    path is ~/.config/neuralmagic/license.txt
+
+    :param license_path: file path to text file of token to validate.
+        Default is None, expected token path will be validated
+    """
+
     deepsparse_lib = init_deepsparse_lib()
 
-    # nothing happens if token is valid
     # if token is invalid, deepsparse_lib will raise appropriate error response
     try:
-        deepsparse_lib.validate_license(token)
+        if license_path is None:
+            splash_message = deepsparse_lib.validate_license()
+            print(splash_message)
+            return
+        deepsparse_lib.validate_license(license_path)
     except RuntimeError:
         # deepsparse_lib handles error messaging, exit after message
-        sys.exit(0)
+        sys.exit(1)
 
 
 def _get_license_file_path():
