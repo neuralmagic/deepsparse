@@ -95,7 +95,10 @@ def main():
     "--hot-reload-config",
     is_flag=True,
     default=False,
-    help="Hot reload the config whenever the file is updated.",
+    help=(
+        "Hot reload the config whenever the file is updated."
+        "Deployed endpoints will be updated based on latest config."
+    ),
 )
 def config(
     config_path: str, host: str, port: int, log_level: str, hot_reload_config: bool
@@ -187,7 +190,10 @@ def config(
     "--hot-reload-config",
     is_flag=True,
     default=False,
-    help="Hot reload the config whenever the file is updated.",
+    help=(
+        "Hot reload the config whenever the file is updated."
+        "Deployed endpoints will be updated based on latest config."
+    ),
 )
 def task(
     task: str,
