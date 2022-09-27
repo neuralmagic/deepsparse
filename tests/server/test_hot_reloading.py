@@ -13,7 +13,8 @@
 # limitations under the License.
 
 
-import multiprocessing
+import subprocess
+import sys
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -29,7 +30,6 @@ from deepsparse.server.config_hot_reloading import (
     _update_endpoints,
     endpoint_diff,
 )
-from deepsparse.server.server import start_server
 from tests.helpers import wait_for_server
 from tests.server.test_prometheus import _find_free_port
 
@@ -183,19 +183,21 @@ def config_path(tmp_path: Path):
 
 @pytest.fixture
 def server_process(config_path, server_port):
-    proc = multiprocessing.Process(
-        target=start_server,
-        kwargs=dict(
-            config_path=config_path,
-            host="0.0.0.0",
-            port=server_port,
-            hot_reload_config=True,
-        ),
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "deepsparse.server.cli",
+            "config",
+            "--port",
+            str(server_port),
+            "--hot-reload-config",
+            config_path,
+        ]
     )
-    proc.start()
     yield proc
     proc.kill()
-    proc.join()
+    proc.wait()
 
 
 def test_hot_reload_config_with_start_server(server_process, server_port, config_path):
