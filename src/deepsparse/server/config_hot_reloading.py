@@ -29,7 +29,7 @@ from deepsparse.server.config import ServerConfig, endpoint_diff
 _LOGGER = logging.getLogger(__name__)
 
 
-def start_file_watcher(
+def start_config_watcher(
     config_path: str, endpoints_url: str, check_interval_s: float
 ) -> multiprocessing.Process:
     """

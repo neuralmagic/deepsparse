@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 import yaml
 
 from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerConfig
-from deepsparse.server.monitoring import (
+from deepsparse.server.config_hot_reloading import (
     _ContentMonitor,
     _diff_generator,
     _update_endpoints,
