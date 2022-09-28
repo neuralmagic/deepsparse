@@ -59,9 +59,10 @@ print(model.deployment.path)
 
 ## Storing a Model Deployment in a Dockerfile
 
-There are two methods here:
+There are three methods here:
 1. Download the deployment directory to your host machine and copy it in
 2. Use sparsezoo.download in your Dockerfile
+3. Mount a host directory into docker when the container is run.
 
 #### Copying a host deployment directory
 
@@ -75,6 +76,20 @@ COPY $MODEL_DIR/deployment /model/deployment
 
 ```Dockerfile
 RUN sparsezoo.download --save-dir /model <stub>
+```
+
+#### Mounting the deployment directory from host
+
+In this case, you just need to specify in the deepsparse commands
+where the deployment directory will be in the docker container.
+
+The `Dockerfile` won't need any additional commands to support this,
+as nothing needs to be done at build time.
+
+At run time, you will need to invoke docker run with a mount argument:
+
+```bash
+docker run -v <host>/model/deployment:/model/deployment ...
 ```
 
 ## Passing deployment directory to deepsparse
