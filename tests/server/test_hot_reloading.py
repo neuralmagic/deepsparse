@@ -174,38 +174,38 @@ def test_hot_reload_config_with_start_server(
     with open(cfg_path, "w") as fp:
         yaml.safe_dump(cfg.dict(), fp)
 
+    # setting to False calls uvicorn.run(), but NOT start_config_watcher
     start_server(cfg_path, hot_reload_config=False)
-    run_patch.assert_called_once()
-    watcher_patch.assert_not_called()
+    assert run_patch.call_count == 1
+    assert watcher_patch.call_count == 0
 
-    run_patch.reset_mock()
-    watcher_patch.reset_mock()
+    # setting to True calls uvicorn.run() AND start_config_watcher
     start_server(cfg_path, hot_reload_config=True)
-    run_patch.assert_called_once()
-    watcher_patch.assert_called_once()
+    assert run_patch.call_count == 2
+    assert watcher_patch.call_count == 1
 
 
-def test_task_cli_hot_reload():
+@mock.patch("deepsparse.server.cli.start_server")
+def test_task_cli_hot_reload(start_server):
     runner = CliRunner()
-    with mock.patch("deepsparse.server.cli.start_server") as start_server:
-        runner.invoke(task, ["qa"])
-        start_server.assert_called_once()
-        assert start_server.call_args.kwargs == dict(hot_reload_config=False)
 
-    with mock.patch("deepsparse.server.cli.start_server") as start_server:
-        runner.invoke(task, ["qa", "--hot-reload-config"])
-        start_server.assert_called_once()
-        assert start_server.call_args.kwargs == dict(hot_reload_config=True)
+    # no flag sets hot_reload_config to False
+    runner.invoke(task, ["qa"])
+    assert start_server.call_args.kwargs["hot_reload_config"] is False
+
+    # using flag sets hot_reload_config to True
+    runner.invoke(task, ["qa", "--hot-reload-config"])
+    assert start_server.call_args.kwargs["hot_reload_config"] is True
 
 
-def test_config_cli_hot_reload(tmp_path: Path):
+@mock.patch("deepsparse.server.cli.start_server")
+def test_config_cli_hot_reload(start_server, tmp_path: Path):
     runner = CliRunner()
-    with mock.patch("deepsparse.server.cli.start_server") as start_server:
-        runner.invoke(config, [str(tmp_path)])
-        start_server.assert_called_once()
-        assert start_server.call_args.kwargs == dict(hot_reload_config=False)
 
-    with mock.patch("deepsparse.server.cli.start_server") as start_server:
-        runner.invoke(config, [str(tmp_path), "--hot-reload-config"])
-        start_server.assert_called_once()
-        assert start_server.call_args.kwargs == dict(hot_reload_config=True)
+    # no flag sets hot_reload_config to False
+    runner.invoke(config, [str(tmp_path)])
+    assert start_server.call_args.kwargs["hot_reload_config"] is False
+
+    # using flag sets hot_reload_config to True
+    runner.invoke(config, [str(tmp_path), "--hot-reload-config"])
+    assert start_server.call_args.kwargs["hot_reload_config"] is True
