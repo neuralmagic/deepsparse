@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+import os
 from deepsparse import Engine, compile_model
 from deepsparse.utils import verify_outputs
 from sparsezoo import Model
@@ -34,7 +35,7 @@ model_test_registry = {
 }
 
 
-@pytest.mark.parametrize("batch_size", [1, 2, 3], scope="class")
+@pytest.mark.parametrize("batch_size", [1, 4, 16], scope="class")
 @pytest.mark.parametrize("zoo_stub", model_test_registry.values(), scope="class")
 @pytest.mark.smoke
 class TestEngineParametrized:
