@@ -13,12 +13,15 @@
 # limitations under the License.
 
 
+import multiprocessing
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import requests
 import yaml
 
+import pytest
 from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerConfig
 from deepsparse.server.config_hot_reloading import (
     _ContentMonitor,
@@ -26,6 +29,9 @@ from deepsparse.server.config_hot_reloading import (
     _update_endpoints,
     endpoint_diff,
 )
+from deepsparse.server.server import start_server
+from tests.helpers import wait_for_server
+from tests.server.test_prometheus import _find_free_port
 
 
 def test_no_route_not_in_diff():
@@ -158,3 +164,84 @@ def test_file_monitoring(delete_mock, post_mock, tmp_path: Path):
             content = fp.read()
             assert content.startswith(f"# Version {idx} saved at")
             yaml.safe_load(content)
+
+
+@pytest.fixture
+def server_port():
+    p = _find_free_port()
+    yield p
+
+
+@pytest.fixture
+def config_path(tmp_path: Path):
+    cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers=None)
+    cfg_path = str(tmp_path / "cfg.yaml")
+    with open(cfg_path, "w") as fp:
+        yaml.safe_dump(cfg.dict(), fp)
+    yield cfg_path
+
+
+@pytest.fixture
+def server_process(config_path, server_port):
+    proc = multiprocessing.Process(
+        target=start_server,
+        kwargs=dict(
+            config_path=config_path,
+            host="127.0.0.1",
+            port=server_port,
+            hot_reload_config=True,
+        ),
+    )
+    proc.start()
+    yield proc
+    proc.kill()
+    proc.join()
+
+
+def test_hot_reload_config_with_start_server(server_process, server_port, config_path):
+    # wait max 5s for server to spin up
+    assert wait_for_server(f"http://127.0.0.1:{server_port}", retries=50, interval=0.1)
+
+    resp = requests.get(f"http://127.0.0.1:{server_port}/")
+    assert resp.status_code == 200
+
+    # endpoint doesn't exist yet
+    resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
+    assert resp.status_code == 404
+
+    cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers=None)
+    cfg.endpoints.append(
+        EndpointConfig(
+            route="/predict1",
+            task="qa",
+            model="default",
+            kwargs=dict(engine_type="onnxruntime"),
+        )
+    )
+    with open(config_path, "w") as fp:
+        yaml.safe_dump(cfg.dict(), fp)
+
+    # wait for endpoint to be added to server
+    for _ in range(50):
+        time.sleep(0.1)
+        resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
+        if resp.status_code != 404:
+            break
+
+    # the endpoint should exist now
+    resp = requests.post(
+        f"http://127.0.0.1:{server_port}/predict1",
+        json={"question": "who am i", "context": "i am bob"},
+    )
+    assert resp.status_code == 200
+
+    cfg.endpoints.clear()
+    with open(config_path, "w") as fp:
+        yaml.safe_dump(cfg.dict(), fp)
+
+    # wait for endpoint to be removed from the server
+    time.sleep(1.0)
+
+    # the endpoint should not exist anymore
+    resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
+    assert resp.status_code == 404

@@ -90,9 +90,22 @@ def main():
     default="info",
     help="Sets the logging level.",
 )
-def config(config_path: str, host: str, port: int, log_level: str):
+@click.option(
+    "--hot-reload-config",
+    is_flag=True,
+    default=False,
+    help=(
+        "Hot reload the config whenever the file is updated."
+        "Deployed endpoints will be updated based on latest config."
+    ),
+)
+def config(
+    config_path: str, host: str, port: int, log_level: str, hot_reload_config: bool
+):
     "Run the server using configuration from a .yaml file."
-    start_server(config_path, host, port, log_level)
+    start_server(
+        config_path, host, port, log_level, hot_reload_config=hot_reload_config
+    )
 
 
 @main.command(
@@ -171,6 +184,15 @@ def config(config_path: str, host: str, port: int, log_level: str):
         "a default integration such as Prometheus."
     ),
 )
+@click.option(
+    "--hot-reload-config",
+    is_flag=True,
+    default=False,
+    help=(
+        "Hot reload the config whenever the file is updated."
+        "Deployed endpoints will be updated based on latest config."
+    ),
+)
 def task(
     task: str,
     model_path: str,
@@ -181,6 +203,7 @@ def task(
     port: int,
     log_level: str,
     no_loggers: bool,
+    hot_reload_config: bool,
 ):
     """
     Run the server using configuration with CLI options,
@@ -205,7 +228,9 @@ def task(
         config_path = os.path.join(tmp_dir, "server-config.yaml")
         with open(config_path, "w") as fp:
             yaml.dump(cfg.dict(), fp)
-        start_server(config_path, host, port, log_level)
+        start_server(
+            config_path, host, port, log_level, hot_reload_config=hot_reload_config
+        )
 
 
 if __name__ == "__main__":
