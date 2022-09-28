@@ -189,19 +189,27 @@ def server_process(config_path, server_port):
             config_path=config_path,
             host="127.0.0.1",
             port=server_port,
+            log_level="debug",
             hot_reload_config=True,
         ),
     )
     proc.start()
-    yield proc
-    proc.kill()
-    proc.join()
+    try:
+        # wait max 10s for server to spin up
+        server_started = wait_for_server(
+            f"http://127.0.0.1:{server_port}", retries=100, interval=0.1
+        )
+        if server_started:
+            yield proc
+    finally:
+        proc.terminate()
+        proc.join()
+
+    if not server_started:
+        assert False, "Server unable to start"
 
 
 def test_hot_reload_config_with_start_server(server_process, server_port, config_path):
-    # wait max 5s for server to spin up
-    assert wait_for_server(f"http://127.0.0.1:{server_port}", retries=50, interval=0.1)
-
     resp = requests.get(f"http://127.0.0.1:{server_port}/")
     assert resp.status_code == 200
 
