@@ -32,6 +32,7 @@ from deepsparse.server.config import (
     EndpointConfig,
     ServerConfig,
 )
+from deepsparse.server.config_hot_reloading import start_config_watcher
 from deepsparse.server.helpers import default_logger_manager, logger_manager_from_config
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
@@ -41,7 +42,11 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def start_server(
-    config_path: str, host: str = "0.0.0.0", port: int = 5543, log_level: str = "info"
+    config_path: str,
+    host: str = "0.0.0.0",
+    port: int = 5543,
+    log_level: str = "info",
+    hot_reload_config: bool = False,
 ):
     """
     Starts a FastAPI server with uvicorn with the configuration specified.
@@ -50,6 +55,7 @@ def start_server(
     :param host: The IP address to bind the server to.
     :param port: The port to listen on.
     :param log_level: Log level given to python and uvicorn logging modules.
+    :param hot_reload_config: `True` to reload the config file if it is modified.
     """
     log_config = deepcopy(uvicorn.config.LOGGING_CONFIG)
     log_config["loggers"][__name__] = {
@@ -63,6 +69,10 @@ def start_server(
         obj = yaml.safe_load(fp)
     server_config = ServerConfig(**obj)
     _LOGGER.info(f"Using config: {repr(server_config)}")
+
+    if hot_reload_config:
+        _LOGGER.info(f"Watching {config_path} for changes.")
+        _ = start_config_watcher(config_path, f"http://{host}:{port}/endpoints", 0.5)
 
     app = _build_app(server_config)
 
@@ -128,6 +138,8 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     @app.post("/endpoints", tags=["endpoints"], response_model=bool)
     def _add_endpoint_endpoint(cfg: EndpointConfig):
+        if cfg.name is None:
+            cfg.name = f"endpoint-{len(app.routes)}"
         _add_endpoint(app, server_config, cfg, executor, context, pipeline_logger)
         # force regeneration of the docs
         app.openapi_schema = None

@@ -93,10 +93,12 @@ class EndpointConfig(BaseModel):
 
         kwargs.update(self.kwargs)
 
+        engine_type = kwargs.pop("engine_type", DEEPSPARSE_ENGINE)
+
         return PipelineConfig(
             task=self.task,
             model_path=self.model,
-            engine_type=DEEPSPARSE_ENGINE,
+            engine_type=engine_type,
             batch_size=self.batch_size,
             num_cores=None,  # this will be set from Context
             alias=self.name,
