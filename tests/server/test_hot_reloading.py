@@ -22,7 +22,6 @@ import requests
 import yaml
 
 import pytest
-from deepsparse.server.server import start_server
 from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerConfig
 from deepsparse.server.config_hot_reloading import (
     _ContentMonitor,
@@ -30,6 +29,7 @@ from deepsparse.server.config_hot_reloading import (
     _update_endpoints,
     endpoint_diff,
 )
+from deepsparse.server.server import start_server
 from tests.helpers import wait_for_server
 from tests.server.test_prometheus import _find_free_port
 
