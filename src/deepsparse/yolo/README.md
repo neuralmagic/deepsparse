@@ -120,7 +120,7 @@ If a `--model_filepath` arg isn't provided, then `zoo:cv/detection/yolov5-s/pyto
 Spinning up:
 ```bash
 deepsparse.server \
-    --task yolo \
+    task yolo \
     --model_path "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94"
 ```
 
@@ -134,7 +134,7 @@ path = ['basilica.jpg'] # list of images for inference
 files = [('request', open(img, 'rb')) for img in path]
 resp = requests.post(url=url, files=files)
 annotations = json.loads(resp.text) # dictionary of annotation results
-bounding_boxes = annotations["predictions"]
+bounding_boxes = annotations["boxes"]
 labels = annotations["labels"]
 ```
 

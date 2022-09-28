@@ -370,9 +370,9 @@ class Engine(object):
             are setup correctly for the DeepSparse Engine
         :return: The list of outputs from the model after executing over the inputs
         """
-        start = time.time()
+        start = time.perf_counter()
         out = self.run(inp, val_inp)
-        end = time.time()
+        end = time.perf_counter()
 
         return out, end - start
 
@@ -497,9 +497,9 @@ class Engine(object):
         while completed_iterations < num_warmup_iterations + num_iterations:
             for batch in loader:
                 # run benchmark
-                start = time.time()
+                start = time.perf_counter()
                 out = self.run(batch)
-                end = time.time()
+                end = time.perf_counter()
 
                 if completed_iterations >= num_warmup_iterations:
                     # update results if warmup iterations are completed
@@ -596,6 +596,9 @@ class Context(object):
     @property
     def scheduler(self):
         return self._scheduler
+
+    def __repr__(self) -> str:
+        return f"Context(num_cores={self.num_cores}, num_streams={self.num_streams}, scheduler={self.scheduler})"
 
 
 class MultiModelEngine(Engine):

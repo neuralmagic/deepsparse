@@ -18,7 +18,7 @@ inference engine and include pre/postprocessing
 """
 import os
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -29,6 +29,7 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
+from deepsparse.timing import InferencePhases, InferenceTimingSchema, TimingBuilder
 
 
 __all__ = [
@@ -176,42 +177,43 @@ class Pipeline(ABC):
 
         self._batch_size = self._batch_size or 1
 
-    def __call__(self, *args, **kwargs) -> BaseModel:
+    def __call__(self, *args, monitoring: bool = False, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
+        timer = TimingBuilder()
 
         # parse inputs into input_schema
+        timer.start(InferencePhases.TOTAL_INFERENCE)
+        timer.start(InferencePhases.PRE_PROCESS)
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
-
         # batch size of the inputs may be `> self._batch_size` at this point
         engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
         if isinstance(engine_inputs, tuple):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
+        timer.stop(InferencePhases.PRE_PROCESS)
 
         # split inputs into batches of size `self._batch_size`
+        timer.start(InferencePhases.ENGINE_FORWARD)
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
-        # submit to engine
-        futures = [
-            self.executor.submit(self.engine_forward, batch) for batch in batches
-        ]
-        wait(futures)
+        # submit split batches to engine threadpool
+        batch_outputs = list(self.executor.map(self.engine_forward, batches))
 
         # join together the batches of size `self._batch_size`
-        engine_outputs = self.join_engine_outputs(
-            [future.result() for future in futures]
-        )
+        engine_outputs = self.join_engine_outputs(batch_outputs)
+        timer.stop(InferencePhases.ENGINE_FORWARD)
 
+        timer.start(InferencePhases.POST_PROCESS)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -220,8 +222,39 @@ class Pipeline(ABC):
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
+        timer.stop(InferencePhases.POST_PROCESS)
+        timer.stop(InferencePhases.TOTAL_INFERENCE)
 
-        return pipeline_outputs
+        if not monitoring:
+            return pipeline_outputs
+
+        else:
+            inference_timing = InferenceTimingSchema(**timer.build())
+            return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
+
+    def run_with_monitoring(
+        self, *args, **kwargs
+    ) -> Tuple[BaseModel, BaseModel, Any, InferenceTimingSchema]:
+        """
+        Run the inference forward pass and additionally
+        return extra monitoring information
+
+        :return:
+            pipeline_outputs: outputs from the inference pipeline
+            pipeline_inputs: inputs to the inference pipeline
+            engine_inputs: direct input to the inference engine
+            inference_timing: BaseModel, that contains the information about time
+                elapsed during the inference steps: pre-processing,
+                engine-forward, post-processing, as well as
+                the total elapsed time
+        """
+        (
+            pipeline_outputs,
+            pipeline_inputs,
+            engine_inputs,
+            inference_timing,
+        ) = self.__call__(*args, monitoring=True, **kwargs)
+        return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
 
     @staticmethod
     def split_engine_inputs(
@@ -369,7 +402,7 @@ class Pipeline(ABC):
         pipeline_constructor = Pipeline._get_task_constructor(task)
 
         if (
-            model_path is None
+            (model_path is None or model_path == "default")
             and hasattr(pipeline_constructor, "default_model_path")
             and pipeline_constructor.default_model_path
         ):
@@ -707,7 +740,7 @@ class PipelineConfig(BaseModel):
             "'deepsparse' and 'onnxruntime'. Default is 'deepsparse'"
         ),
     )
-    batch_size: int = Field(
+    batch_size: Optional[int] = Field(
         default=1,
         description=("static batch size to use for inference. Default is 1"),
     )
@@ -1326,7 +1359,6 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
-        batch_size=3,
         model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
@@ -1351,12 +1383,8 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: if static labels are given, then batch_size must be
-        num_sequences * num_labels. Otherwise, batch_size must be 1. Default is 1
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
+    :param batch_size: batch size must divide sequences * labels, regardless of
+        whether using dynamic or static labels. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -1365,6 +1393,10 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"

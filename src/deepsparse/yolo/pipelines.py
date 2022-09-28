@@ -255,10 +255,9 @@ class YOLOPipeline(Pipeline):
             conf_thres=kwargs.get("conf_thres", 0.45),
         )
 
-        batch_predictions, batch_boxes, batch_scores, batch_labels = [], [], [], []
+        batch_boxes, batch_scores, batch_labels = [], [], []
 
         for image_output in batch_output:
-            batch_predictions.append(image_output.tolist())
             batch_boxes.append(image_output[:, 0:4].tolist())
             batch_scores.append(image_output[:, 4].tolist())
             batch_labels.append(image_output[:, 5].tolist())
@@ -273,7 +272,6 @@ class YOLOPipeline(Pipeline):
                 batch_labels[-1] = batch_class_names
 
         return YOLOOutput(
-            predictions=batch_predictions,
             boxes=batch_boxes,
             scores=batch_scores,
             labels=batch_labels,

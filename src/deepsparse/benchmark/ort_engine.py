@@ -248,9 +248,9 @@ class ORTEngine(object):
             are setup correctly for inference.
         :return: The list of outputs from the model after executing over the inputs
         """
-        start = time.time()
+        start = time.perf_counter()
         out = self.run(inp, val_inp)
-        end = time.time()
+        end = time.perf_counter()
 
         return out, end - start
 
