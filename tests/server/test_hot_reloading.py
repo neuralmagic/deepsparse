@@ -14,7 +14,6 @@
 
 
 import subprocess
-import sys
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -185,9 +184,7 @@ def config_path(tmp_path: Path):
 def server_process(config_path, server_port):
     proc = subprocess.Popen(
         [
-            sys.executable,
-            "-m",
-            "deepsparse.server.cli",
+            "deepsparse.server",
             "config",
             "--port",
             str(server_port),
