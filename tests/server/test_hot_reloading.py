@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-import subprocess
+import multiprocessing
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -22,6 +22,7 @@ import requests
 import yaml
 
 import pytest
+from deepsparse.server.server import start_server
 from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerConfig
 from deepsparse.server.config_hot_reloading import (
     _ContentMonitor,
@@ -182,30 +183,30 @@ def config_path(tmp_path: Path):
 
 @pytest.fixture
 def server_process(config_path, server_port):
-    proc = subprocess.Popen(
-        [
-            "deepsparse.server",
-            "config",
-            "--port",
-            str(server_port),
-            "--hot-reload-config",
-            config_path,
-        ]
+    proc = multiprocessing.Process(
+        target=start_server,
+        kwargs=dict(
+            config_path=config_path,
+            host="127.0.0.1",
+            port=server_port,
+            hot_reload_config=True,
+        ),
     )
+    proc.start()
     yield proc
     proc.kill()
-    proc.wait()
+    proc.join()
 
 
 def test_hot_reload_config_with_start_server(server_process, server_port, config_path):
-    # wait max 60s for server to spin up
-    assert wait_for_server(f"http://0.0.0.0:{server_port}", retries=600, interval=0.1)
+    # wait max 5s for server to spin up
+    assert wait_for_server(f"http://127.0.0.1:{server_port}", retries=50, interval=0.1)
 
-    resp = requests.get(f"http://0.0.0.0:{server_port}/")
+    resp = requests.get(f"http://127.0.0.1:{server_port}/")
     assert resp.status_code == 200
 
     # endpoint doesn't exist yet
-    resp = requests.post(f"http://0.0.0.0:{server_port}/predict1")
+    resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
     assert resp.status_code == 404
 
     cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers=None)
@@ -223,13 +224,13 @@ def test_hot_reload_config_with_start_server(server_process, server_port, config
     # wait for endpoint to be added to server
     for _ in range(50):
         time.sleep(0.1)
-        resp = requests.post(f"http://0.0.0.0:{server_port}/predict1")
+        resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
         if resp.status_code != 404:
             break
 
     # the endpoint should exist now
     resp = requests.post(
-        f"http://0.0.0.0:{server_port}/predict1",
+        f"http://127.0.0.1:{server_port}/predict1",
         json={"question": "who am i", "context": "i am bob"},
     )
     assert resp.status_code == 200
@@ -242,5 +243,5 @@ def test_hot_reload_config_with_start_server(server_process, server_port, config
     time.sleep(1.0)
 
     # the endpoint should not exist anymore
-    resp = requests.post(f"http://0.0.0.0:{server_port}/predict1")
+    resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
     assert resp.status_code == 404
