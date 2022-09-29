@@ -13,15 +13,15 @@
 # limitations under the License.
 
 
-import multiprocessing
 import time
 from pathlib import Path
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
-import requests
 import yaml
+from click.testing import CliRunner
 
-import pytest
+from deepsparse.server.cli import config, task
 from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerConfig
 from deepsparse.server.config_hot_reloading import (
     _ContentMonitor,
@@ -30,8 +30,6 @@ from deepsparse.server.config_hot_reloading import (
     endpoint_diff,
 )
 from deepsparse.server.server import start_server
-from tests.helpers import wait_for_server
-from tests.server.test_prometheus import _find_free_port
 
 
 def test_no_route_not_in_diff():
@@ -166,82 +164,48 @@ def test_file_monitoring(delete_mock, post_mock, tmp_path: Path):
             yaml.safe_load(content)
 
 
-@pytest.fixture
-def server_port():
-    p = _find_free_port()
-    yield p
-
-
-@pytest.fixture
-def config_path(tmp_path: Path):
+@mock.patch("uvicorn.run")
+@mock.patch("deepsparse.server.server.start_config_watcher")
+def test_hot_reload_config_with_start_server(
+    watcher_patch: mock.Mock, run_patch: mock.Mock, tmp_path: Path
+):
     cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers=None)
     cfg_path = str(tmp_path / "cfg.yaml")
     with open(cfg_path, "w") as fp:
         yaml.safe_dump(cfg.dict(), fp)
-    yield cfg_path
+
+    # setting to False calls uvicorn.run(), but NOT start_config_watcher
+    start_server(cfg_path, hot_reload_config=False)
+    assert run_patch.call_count == 1
+    assert watcher_patch.call_count == 0
+
+    # setting to True calls uvicorn.run() AND start_config_watcher
+    start_server(cfg_path, hot_reload_config=True)
+    assert run_patch.call_count == 2
+    assert watcher_patch.call_count == 1
 
 
-@pytest.fixture
-def server_process(config_path, server_port):
-    proc = multiprocessing.Process(
-        target=start_server,
-        kwargs=dict(
-            config_path=config_path,
-            host="127.0.0.1",
-            port=server_port,
-            hot_reload_config=True,
-        ),
-    )
-    proc.start()
-    yield proc
-    proc.kill()
-    proc.join()
+@mock.patch("deepsparse.server.cli.start_server")
+def test_task_cli_hot_reload(start_server):
+    runner = CliRunner()
+
+    # no flag sets hot_reload_config to False
+    runner.invoke(task, ["qa"])
+    assert start_server.call_args.kwargs["hot_reload_config"] is False
+
+    # using flag sets hot_reload_config to True
+    runner.invoke(task, ["qa", "--hot-reload-config"])
+    assert start_server.call_args.kwargs["hot_reload_config"] is True
 
 
-def test_hot_reload_config_with_start_server(server_process, server_port, config_path):
-    # wait max 5s for server to spin up
-    assert wait_for_server(f"http://127.0.0.1:{server_port}", retries=50, interval=0.1)
+@mock.patch("deepsparse.server.cli.start_server")
+def test_config_cli_hot_reload(start_server, tmp_path: Path):
+    runner = CliRunner()
 
-    resp = requests.get(f"http://127.0.0.1:{server_port}/")
-    assert resp.status_code == 200
+    # no flag sets hot_reload_config to False
+    runner.invoke(config, [str(tmp_path)])
+    assert start_server.call_args.kwargs["hot_reload_config"] is False
 
-    # endpoint doesn't exist yet
-    resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
-    assert resp.status_code == 404
-
-    cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers=None)
-    cfg.endpoints.append(
-        EndpointConfig(
-            route="/predict1",
-            task="qa",
-            model="default",
-            kwargs=dict(engine_type="onnxruntime"),
-        )
-    )
-    with open(config_path, "w") as fp:
-        yaml.safe_dump(cfg.dict(), fp)
-
-    # wait for endpoint to be added to server
-    for _ in range(50):
-        time.sleep(0.1)
-        resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
-        if resp.status_code != 404:
-            break
-
-    # the endpoint should exist now
-    resp = requests.post(
-        f"http://127.0.0.1:{server_port}/predict1",
-        json={"question": "who am i", "context": "i am bob"},
-    )
-    assert resp.status_code == 200
-
-    cfg.endpoints.clear()
-    with open(config_path, "w") as fp:
-        yaml.safe_dump(cfg.dict(), fp)
-
-    # wait for endpoint to be removed from the server
-    time.sleep(1.0)
-
-    # the endpoint should not exist anymore
-    resp = requests.post(f"http://127.0.0.1:{server_port}/predict1")
-    assert resp.status_code == 404
+    # using flag sets hot_reload_config to True
+    runner.invoke(config, [str(tmp_path), "--hot-reload-config"])
+    assert start_server.call_args.kwargs["hot_reload_config"] is True
