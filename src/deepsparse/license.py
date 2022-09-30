@@ -70,8 +70,6 @@ def add_deepsparse_license(token_or_path):
     validate_license()
 
 
-@click.command()
-@click.option("--license_path", type=str, default=None)
 def validate_license(license_path: Optional[str] = None):
     """
     Validates a candidate license token (JWT). Should be passed
@@ -104,6 +102,21 @@ def _get_license_file_path():
     os.makedirs(config_dir, exist_ok=True)
 
     return os.path.join(config_dir, LICENSE_FILE)
+
+
+@click.command()
+@click.option("--license_path", type=str, default=None)
+def validate_license_cli(license_path: Optional[str] = None):
+    """
+    Validates a candidate license token (JWT). Should be passed
+    as a text file containing only the JWT. If no path is provided
+    the expected file path of the token will be validated. Default
+    path is ~/.config/neuralmagic/license.txt
+
+    :param license_path: file path to text file of token to validate.
+        Default is None, expected token path will be validated
+    """
+    validate_license(license_path)
 
 
 @click.command()
