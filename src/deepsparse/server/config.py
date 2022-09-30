@@ -145,11 +145,11 @@ class ServerConfig(BaseModel):
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
     loggers: Union[Dict[str, Dict[str, Any]], str, None] = Field(
-        default="default",
+        default=None,
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
             " Set to 'default' for default logger based on deployment. Set to None for"
-            " no loggers. Default is 'default'. Example: "
+            " no loggers. Default is `None`. Example: "
             "{'prometheus': {'port': 8001}}."
         ),
     )
