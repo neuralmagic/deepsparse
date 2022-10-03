@@ -98,7 +98,9 @@ def validate_license(license_path: Optional[str] = None):
 def _get_license_file_path():
     # license file written to NM_CONFIG_DIR env var under license.txt
     # defaults to ~/.config/neuralmagic
-    config_dir = os.environ.get(NM_CONFIG_DIR, DEFAULT_CONFIG_DIR)
+    config_dir = os.environ.get(NM_CONFIG_DIR, None)
+    if not config_dir:
+        config_dir = DEFAULT_CONFIG_DIR
     os.makedirs(config_dir, exist_ok=True)
 
     return os.path.join(config_dir, LICENSE_FILE)
