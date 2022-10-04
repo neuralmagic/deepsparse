@@ -194,7 +194,7 @@ Note: We have four graphs -> two apps, each containing two replicas of itself.
 ## QnA
 **Question:** What other interesting features should we explore?
 
-**Answer:** It would be cool to learn more about the alert managers. Would be also great to instruct the users on how to set up alerts when some custom, engine-related metrics get out of hand.
+**Answer:** It would be cool to learn more about the alert managers. Would be also great to instruct the users on how to set up alerts when some custom, engine-related metrics get out of hand. Also, let's not forget that the Operator gives us a ton of metrics about our services off-the-shelf - it is obviously monitoring all the cluster, not only the custom metrics. We should absolutely explore those as well and pick the ones that our customers will be interested in.
 
 **Question:** What about making the logs persistent?
 
