@@ -103,6 +103,8 @@ class ORTEngine(object):
         if num_cores is not None:
             sess_options.intra_op_num_threads = num_cores
 
+        providers = onnxruntime.get_available_providers()
+
         # TODO (michael): Unfortunately we are stacking overrides here, this can be
         # cleaned up once we pass the loaded ONNX around and not paths
         if self._input_shapes:
@@ -113,14 +115,18 @@ class ORTEngine(object):
                     input_override_model_path, batch_size
                 ) as batch_override_model_path:
                     self._eng_net = onnxruntime.InferenceSession(
-                        batch_override_model_path, sess_options
+                        batch_override_model_path,
+                        sess_options,
+                        providers=providers,
                     )
         else:
             with override_onnx_batch_size(
                 self._model_path, batch_size
             ) as batch_override_model_path:
                 self._eng_net = onnxruntime.InferenceSession(
-                    batch_override_model_path, sess_options
+                    batch_override_model_path,
+                    sess_options,
+                    providers=providers,
                 )
 
     def __call__(
