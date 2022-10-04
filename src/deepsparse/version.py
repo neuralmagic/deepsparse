@@ -36,11 +36,12 @@ __all__ = [
 
 try:
     # check for the backend's built version file, if it exists use that for version info
-    from deepsparse.generated_version import is_release, splash, version
+    from deepsparse.generated_version import is_enterprise, is_release, splash, version
 except Exception:
     # otherwise, fall back to version info in this file
     version = "1.2.0"
     is_release = False
+    is_enterprise = False
     splash = (
         "DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. "
         f"version: {version} COMMUNITY EDITION (release)"
@@ -51,4 +52,3 @@ version_major, version_minor, version_bug, version_build = version.split(".") + 
     [None] if len(version.split(".")) < 4 else []
 )  # handle conditional for version being 3 parts or 4 (4 containing build date)
 version_major_minor = f"{version_major}.{version_minor}"
-is_enterprise = False  # # change to True to set the generated version as a ent version
