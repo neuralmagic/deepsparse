@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-python
+  labels:
+    app: hello-python
+spec:
+  selector:
+    app: hello-python
+  ports:
+  - name: web
+    port: 8000
+  type: LoadBalancer
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hello-python
+  labels:
+    app: hello-python
+spec:
+  selector:
+    matchLabels:
+      app: hello-python
+  endpoints:
+  - interval: 1s
+    port: web
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-python
+  labels:
+    app: hello-python
+spec:
+  selector:
+    matchLabels:
+      app: hello-python
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: hello-python
+    spec:
+      containers:
+      - name: hello-python-container
+        image: hello-python:latest
+        imagePullPolicy: Never
+        ports:
+        - name: web
+          containerPort: 8000
