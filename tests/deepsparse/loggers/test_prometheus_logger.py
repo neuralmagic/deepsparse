@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import os
-import socket
 
 import requests
 
 import pytest
 from deepsparse.loggers.prometheus_logger import PrometheusLogger
 from deepsparse.timing.timing_schema import InferenceTimingSchema
+from tests.helpers import find_free_port
 
 
 class Pipeline:
@@ -37,16 +37,6 @@ class Pipeline:
         return results, timings, data
 
 
-def _find_free_port():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(("0.0.0.0", 0))
-    portnum = s.getsockname()[1]
-    s.close()
-
-    return portnum
-
-
 @pytest.mark.parametrize(
     "no_iterations, pipeline_names",
     [(6, ["earth", "namek"]), (10, ["moon"])],
@@ -55,7 +45,7 @@ def _find_free_port():
 class TestPrometheusPipelineLogger:
     @pytest.fixture()
     def setup(self, tmp_path_factory, no_iterations, pipeline_names):
-        port = _find_free_port()
+        port = find_free_port()
         logger = PrometheusLogger(
             text_log_save_dir=tmp_path_factory.mktemp("logs"),
             # logs for each pipeline will be dumped after
