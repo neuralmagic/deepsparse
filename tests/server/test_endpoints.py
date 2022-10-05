@@ -19,7 +19,6 @@ import requests
 from pydantic import BaseModel
 
 import pytest
-from deepsparse.loggers import ManagerLogger
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI, UploadFile
@@ -46,7 +45,7 @@ class TestStatusEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
         server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[], loggers=None
+            num_cores=1, num_workers=1, endpoints=[]
         )
         yield server_config
 
@@ -80,7 +79,7 @@ class TestMockEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
         server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[], loggers=None
+            num_cores=1, num_workers=1, endpoints=[]
         )
         yield server_config
 
@@ -102,7 +101,6 @@ class TestMockEndpoints:
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=mock_pipeline,
-            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-1].path == "/predict/parse_int"
         assert app.routes[-1].response_model is int
@@ -119,7 +117,6 @@ class TestMockEndpoints:
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
-            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-2].path == "/predict/parse_int"
         assert app.routes[-2].endpoint.__annotations__ == {"request": FromFilesSchema}
@@ -135,7 +132,6 @@ class TestMockEndpoints:
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
             integration="sagemaker",
-            pipeline_logger=ManagerLogger([]),
         )
         assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
@@ -147,7 +143,6 @@ class TestMockEndpoints:
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
             integration="sagemaker",
-            pipeline_logger=ManagerLogger([]),
         )
         assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
@@ -158,7 +153,6 @@ class TestMockEndpoints:
             app,
             endpoint_config=Mock(route=None),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
-            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-1].path == "/predict"
 
@@ -187,7 +181,6 @@ class TestActualModelEndpoints:
                     batch_size=2,
                 ),
             ],
-            loggers=None,  # do not instantiate any loggers
         )
         with mock_engine(rng_seed=0):
             app = _build_app(server_config)
@@ -233,7 +226,7 @@ class TestDynamicEndpoints:
     @pytest.fixture(scope="class")
     def client(self):
         server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[], loggers=None
+            num_cores=1, num_workers=1, endpoints=[]
         )
         with mock_engine(rng_seed=0):
             app = _build_app(server_config)
@@ -242,7 +235,7 @@ class TestDynamicEndpoints:
 
 @mock_engine(rng_seed=0)
 def test_dynamic_add_and_remove_endpoint(engine_mock):
-    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[], loggers=None)
+    server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
     app = _build_app(server_config)
     client = TestClient(app)
 
@@ -267,26 +260,3 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     )
     assert response.status_code == 200
     assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code
-
-
-class TestDefaultLoggingServer:
-    @pytest.fixture(scope="class")
-    def prometheus_port(self):
-        yield find_free_port()
-
-    @pytest.fixture(scope="class")
-    def server_config(self, prometheus_port):
-        server_config = ServerConfig(
-            endpoints=[],
-            loggers={"prometheus": {"port": prometheus_port}},
-        )
-        yield server_config
-
-    @pytest.fixture(scope="class")
-    def client(self, server_config):
-        yield TestClient(_build_app(server_config))
-
-    def test_prometheus_server_running(self, server_config, client, prometheus_port):
-        # check positive ping to expected prometheus server on port 6100
-        response = requests.get(f"http://127.0.0.1:{prometheus_port}")
-        assert response.status_code == 200
