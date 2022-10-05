@@ -204,6 +204,12 @@ Note: We have four graphs -> two apps, each containing two replicas of itself.
 
 **Answer:** [Not trivial, but doable](https://stackoverflow.com/questions/57322022/stable-prometheus-operator-adding-persistent-grafana-dashboards). JinaAI does something [similar](https://docs.jina.ai/how-to/monitoring/).
 
+**Question:** How are other community members using Prometheus Operator?
+**Answer** There is a [great blog](https://developer.nvidia.com/blog/deploying-nvidia-triton-at-scale-with-mig-and-kubernetes/) by Nvidia that describes the use of the Operator in the context of Triton Server . One great feature of their setup which I like a lot is an additional feedback loop:  the metrics collected by Prometheus can be used to make scaling decisions about the deployment. E.g. if Prometheus detects that there is an unusually high number of requests directed at one of the deepsparse servers, it may command the deployment to increase the number of pods. Autoscaling essentially. Below, short comparison between their architecture and the architecture of the demo.
+
+<img width="1839" alt="image" src="https://user-images.githubusercontent.com/97082108/194012183-d549c253-6217-4bb2-ab9d-3431cb863217.png">
+
+
 
 ## Useful sources
 
