@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import time
 from typing import Dict, List, Tuple, Union
 
@@ -46,6 +47,8 @@ except ImportError:
 
 __all__ = ["ORTEngine"]
 
+_LOGGER = logging.getLogger(__name__)
+
 ARCH = cpu_architecture()
 NUM_CORES = ARCH.num_available_physical_cores
 
@@ -79,6 +82,7 @@ class ORTEngine(object):
     :param batch_size: The batch size of the inputs to be used with the engine
     :param num_cores: The number of physical cores to run the model on.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param providers: The list of execution providers executing with. Pass None to use all available.
     """
 
     def __init__(
@@ -87,6 +91,7 @@ class ORTEngine(object):
         batch_size: int,
         num_cores: Union[None, int],
         input_shapes: List[List[int]] = None,
+        providers: List[str] = None,
     ):
         _validate_ort_import()
 
@@ -98,12 +103,23 @@ class ORTEngine(object):
         self._input_names = get_input_names(self._model_path)
         self._output_names = get_output_names(self._model_path)
 
+        if providers is None:
+            providers = onnxruntime.get_available_providers()
+        self._providers = providers
+
         sess_options = onnxruntime.SessionOptions()
         sess_options.log_severity_level = 3
         if num_cores is not None:
             sess_options.intra_op_num_threads = num_cores
 
-        providers = onnxruntime.get_available_providers()
+            # Warn about num_cores usage for non-CPU providers
+            if any(p != "CPUExecutionProvider" for p in providers):
+                _LOGGER.warn(
+                    (
+                        "Using ORTEngine with providers {} may not respect num_cores={},"
+                        " please specify CPUExecutionProvider"
+                    ).format(providers, num_cores)
+                )
 
         # TODO (michael): Unfortunately we are stacking overrides here, this can be
         # cleaned up once we pass the loaded ONNX around and not paths
@@ -197,6 +213,13 @@ class ORTEngine(object):
         :return: The kind of scheduler to execute with
         """
         return None
+
+    @property
+    def providers(self) -> List[str]:
+        """
+        :return: The list of execution providers executing with
+        """
+        return self._providers
 
     def run(
         self,
@@ -308,4 +331,5 @@ class ORTEngine(object):
             "onnx_file_path": self.model_path,
             "batch_size": self.batch_size,
             "num_cores": self.num_cores,
+            "providers": self.providers,
         }
