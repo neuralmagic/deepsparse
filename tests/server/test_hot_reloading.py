@@ -191,11 +191,13 @@ def test_task_cli_hot_reload(start_server):
 
     # no flag sets hot_reload_config to False
     runner.invoke(task, ["qa"])
-    assert start_server.call_args.kwargs["hot_reload_config"] is False
+    _, kwargs = start_server.call_args
+    assert kwargs["hot_reload_config"] is False
 
     # using flag sets hot_reload_config to True
     runner.invoke(task, ["qa", "--hot-reload-config"])
-    assert start_server.call_args.kwargs["hot_reload_config"] is True
+    _, kwargs = start_server.call_args
+    assert kwargs["hot_reload_config"] is True
 
 
 @mock.patch("deepsparse.server.cli.start_server")
@@ -204,8 +206,10 @@ def test_config_cli_hot_reload(start_server, tmp_path: Path):
 
     # no flag sets hot_reload_config to False
     runner.invoke(config, [str(tmp_path)])
-    assert start_server.call_args.kwargs["hot_reload_config"] is False
+    _, kwargs = start_server.call_args
+    assert kwargs["hot_reload_config"] is False
 
     # using flag sets hot_reload_config to True
     runner.invoke(config, [str(tmp_path), "--hot-reload-config"])
-    assert start_server.call_args.kwargs["hot_reload_config"] is True
+    _, kwargs = start_server.call_args
+    assert kwargs["hot_reload_config"] is True
