@@ -17,11 +17,12 @@ from unittest import mock
 
 from deepsparse.loggers import ManagerLogger, PrometheusLogger
 from deepsparse.server.helpers import logger_manager_from_config
+from tests.helpers import find_free_port
 
 
 @mock.patch.object(PrometheusLogger, "_setup_client", lambda _: None)
 def test_logger_manager_from_config(tmp_path):
-    port = 8001
+    port = find_free_port()
     text_log_save_dir = "/home/deepsparse-server/prometheus"
     text_log_save_freq = 30
 

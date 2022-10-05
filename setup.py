@@ -60,7 +60,7 @@ _deps = [
     "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
-    "protobuf>=3.12.2,<4",
+    "protobuf>=3.12.2,<=3.20.1",
     "click~=8.0.0",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
@@ -237,6 +237,8 @@ def _setup_entry_points() -> Dict:
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
+            "deepsparse.license=deepsparse.license:main",
+            "deepsparse.validate_license=deepsparse.license:validate_license_cli",
         ]
     }
 
@@ -270,12 +272,11 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.6, <3.11",
+    python_requires=">=3.7, <3.11",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
