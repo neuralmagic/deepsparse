@@ -108,7 +108,6 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     app = FastAPI()
 
-
     @app.get("/", include_in_schema=False)
     def _home():
         return RedirectResponse("/docs")
@@ -148,9 +147,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     # create pipelines & endpoints
     for endpoint_config in server_config.endpoints:
-        _add_endpoint(
-            app, server_config, endpoint_config, executor, context
-        )
+        _add_endpoint(app, server_config, endpoint_config, executor, context)
 
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
 
@@ -202,9 +199,7 @@ def _add_endpoint(
     pipeline = Pipeline.from_config(pipeline_config, context)
 
     _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
-    _add_pipeline_endpoint(
-        app, endpoint_config, pipeline, server_config.integration
-    )
+    _add_pipeline_endpoint(app, endpoint_config, pipeline, server_config.integration)
 
 
 def _add_pipeline_endpoint(

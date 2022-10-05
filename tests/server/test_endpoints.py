@@ -15,7 +15,6 @@
 from typing import List
 from unittest.mock import Mock
 
-import requests
 from pydantic import BaseModel
 
 import pytest
@@ -23,7 +22,6 @@ from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
-from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
 
@@ -44,9 +42,7 @@ def parse(v: StrSchema) -> int:
 class TestStatusEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
-        server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[]
-        )
+        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
         yield server_config
 
     @pytest.fixture(scope="class")
@@ -78,9 +74,7 @@ class TestStatusEndpoints:
 class TestMockEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
-        server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[]
-        )
+        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
         yield server_config
 
     @pytest.fixture(scope="class")
@@ -225,9 +219,7 @@ class TestActualModelEndpoints:
 class TestDynamicEndpoints:
     @pytest.fixture(scope="class")
     def client(self):
-        server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[]
-        )
+        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[])
         with mock_engine(rng_seed=0):
             app = _build_app(server_config)
             yield TestClient(app)
