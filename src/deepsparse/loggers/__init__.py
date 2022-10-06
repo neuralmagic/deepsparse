@@ -15,4 +15,5 @@
 # flake8: noqa
 from .base_logger import *
 from .manager_logger import *
+from .monitoring import *
 from .prometheus_logger import *

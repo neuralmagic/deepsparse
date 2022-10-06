@@ -11,86 +11,110 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import logging
+import warnings
 from collections import defaultdict
-from typing import Any, Dict, Set, Union
+from typing import Any, Dict, Optional
 
 import numpy
+import numpy as np
 from pydantic import BaseModel
 
-from . import estimators
+from deepsparse.loggers.monitoring import estimators
 
 
-SUPPORTED_TYPES_COMPUTE_ESTIMATES = {numpy.ndarray, bool, int, float}
-
-
-def convert_data_to_estimates(
-    input_data: Union[BaseModel, Any], config: Dict[str, Any]
-) -> Dict[str, Dict[str, numpy.array]]:
+def extract_logging_data(
+    logging_config: Dict[str, Dict[str, Dict[str, Any]]],
+    pipeline_inputs: Optional[BaseModel] = None,
+    pipeline_outputs: Optional[BaseModel] = None,
+    engine_inputs: Optional[Any] = None,
+) -> Dict[str, Dict[str, Dict[str, np.ndarray]]]:
     """
-    Converts any incoming data from the pipeline into low-dimensional estimates that can be
-    further processed by server loggers
+    Extracts logging data (estimates) from the pipeline data.
 
-    :param input_data: Any type of data returned by running the pipeline with "monitoring" feature
-    :param config: A dictionary that specifies the estimates to be computed, along with additional args
-    :return: A dictionary that relates the `input_data` with its computed estimates
+    :param logging_config: Nested dictionary,
+        that contains the information
+        about the processing that is applied to `pipeline_inputs`,
+        `pipeline_outputs` and `engine_inputs`
+    :param pipeline_inputs: Inputs to the inference pipeline
+    :param pipeline_outputs: Outputs from the inference pipeline
+    :param engine_inputs: Direct input to the inference engine
+    :return: Nested dictionary, that contains the computed logging data (estimates)
     """
-    monitoring_estimates = defaultdict()
-    numpy_inputs = convert_data_to_numpy(
-        input_data=input_data, supported_types=SUPPORTED_TYPES_COMPUTE_ESTIMATES
+    if pipeline_outputs or engine_inputs:
+        raise NotImplementedError
+
+    if logging_config["pipeline_inputs"] and not pipeline_inputs:
+        warnings.warn(
+            "No `pipeline_inputs` specified, but the `logging_config` "
+            "contains non-empty values for 'pipeline_inputs' key."
+        )
+    pipeline_inputs_numpy = (
+        extract_numpy_data(pipeline_inputs) if pipeline_inputs is not None else {}
     )
 
-    for input_name, numpy_array in numpy_inputs.items():
-        # right now the config is being applied to all the data in input_data
-        monitoring_estimates[input_name] = compute_estimates(
-            input=numpy_array, config=config
-        )
-    return monitoring_estimates
+    pipeline_inputs_estimates = compute_estimates(
+        pipeline_inputs_numpy, config=logging_config["pipeline_inputs"]
+    )
+
+    engine_inputs_estimates = {}
+    pipeline_outputs_estimates = {}
+
+    return {
+        "pipeline_inputs": pipeline_inputs_estimates,
+        "engine_inputs": engine_inputs_estimates,
+        "pipeline_outputs": pipeline_outputs_estimates,
+    }
 
 
-def convert_data_to_numpy(
-    input_data: Any, supported_types: Set
-) -> Dict[str, numpy.ndarray]:
+def extract_numpy_data(data_input: Any) -> Dict[str, numpy.ndarray]:
     """
-    Converts any `input_data` in a dictionary {data_name: numpy_array}.
+    Extracts the numpy arrays contained within `data_input`
 
-    :param input_data: Any type of data returned by running the pipeline with "monitoring" feature
-    :param supported_types: Possible types of input_data that will be converted into numpy arrays.
-        If input_data is not included in the set of `supported_types`, it will be discarded (with a warning)
-    :return: A dictionary that relates the data name with it's numpy array
+    :param data_input: A data structure that
+        contains numpy arrays
+    :return: A dictionary where keys are string identifiers
+        and the values are the respective numpy arrays
     """
-    if isinstance(input_data, BaseModel):
-        # convert Pydantic model to a dictionary
-        input_data = dict(input_data)
+    if isinstance(data_input, BaseModel):
+        data_input = dict(data_input)
     else:
         raise NotImplementedError
 
-    for input_name, any_inputs in input_data.items():
-        if isinstance(any_inputs, list):
-            if len(any_inputs) != 1:
-                raise NotImplementedError
-            else:
-                any_inputs = any_inputs[0]
-        if type(any_inputs) not in supported_types:
-            logging.warning("boo")
-        else:
-            input_data[input_name] = (
-                numpy.array(any_inputs)
-                if not isinstance(any_inputs, numpy.ndarray)
-                else any_inputs
-            )
-    return input_data
+    data_numpy = {
+        identifier: data
+        for (identifier, data) in data_input.items()
+        if isinstance(data, numpy.ndarray)
+    }
+    return data_numpy
 
 
-def compute_estimates(input: numpy.ndarray, config: Dict[str, Any]):
-    results = {}
+def compute_estimates(
+    input_data: Dict[str, Any], config: Dict[str, Any]
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Takes `input_data` and applies various estimators (as specified in the config) to it
 
-    for estimator_name, estimator_args in config.items():
+    :param input_data: A dictionary, where keys are string identifiers
+        and values are arbitrary data structures to compute estimates from
+    :param config: A dictionary, where keys are the estimator identifiers
+        and values are (optional) estimator arguments
+    :return: A nested dictionary, with the structure
+        {'data_identifier': {'estimator_identifier' : estimate}
+    """
+    computed_estimates = defaultdict(dict)
+    # iterate over estimators specified in the config
+    for estimator_identifier, estimator_args in config.items():
         try:
-            estimator_func = getattr(estimators, estimator_name)
-        except:
-            raise ValueError
-        results[f"{estimator_name}_result"] = estimator_func(input, **estimator_args)
+            estimator_func = getattr(estimators, estimator_identifier)
+        except Exception as e:
+            raise type(e)(
+                e.message + f"Unknown estimator identifier: '{estimator_identifier}'. "
+                f"The available identifiers are: {estimators.__all__}."
+            )
 
-    return results
+        for data_identifier, data in input_data.items():
+            estimate = estimator_func(data, **estimator_args)
+            computed_estimates[data_identifier][
+                f"{estimator_identifier}_result"
+            ] = estimate
+    return dict(computed_estimates)

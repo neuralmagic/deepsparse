@@ -12,45 +12,119 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
 import numpy
+from pydantic import BaseModel
+
 import pytest
-from deepsparse.loggers.monitoring.monitoring import convert_data_to_estimates
-from deepsparse.pipeline import Pipeline
+from deepsparse.loggers import extract_logging_data, extract_numpy_data
 
 
-CONFIG = {
-    "pipeline_inputs": {"min_estimator": {"axis": 0}},
-    "engine_inputs": {},
-    "pipeline_outputs": {},
-}
+class PipelineInputs(BaseModel):
+    numpy_field: numpy.ndarray
+    non_numpy_field: Any
 
-def _test_pipeline_inputs(pipeline_inputs, config):
-    estimates = convert_data_to_estimates(pipeline_inputs, config)
+    class Config:
+        arbitrary_types_allowed = True
+
+
+numpy_array = numpy.arange(-10, 10, 1).reshape(2, 10)
+pipeline_inputs = PipelineInputs(numpy_field=numpy_array, non_numpy_field="some_string")
+pipeline_inputs_numpy = {"numpy_field": numpy_array}
 
 
 @pytest.mark.parametrize(
-    "pipeline_name, input, batch_size, config",
+    "data_input, expected_result",
+    [(pipeline_inputs, pipeline_inputs_numpy)],
+)
+def test_extract_numpy_data(data_input, expected_result):
+    result = extract_numpy_data(data_input)
+    assert result == expected_result
+
+
+@pytest.mark.parametrize(
+    "config, pipeline_inputs, engine_inputs, pipeline_outputs, "
+    "expected_result, raise_warning, raise_error",
     [
-        ("image_classification", {'images' : [numpy.random.normal(loc=0.0, scale = 1.0, size = (224, 224, 3))]}, 1, CONFIG)
+        (
+            {"pipeline_inputs": {"min_estimator": {"axis": 0}}},
+            pipeline_inputs,
+            None,
+            None,
+            {
+                "pipeline_inputs": {"numpy_field": {"min_estimator_result": -10}},
+                "pipeline_outputs": {},
+                "engine_inputs": {},
+            },
+            False,
+            False,
+        ),
+        (
+            {"pipeline_inputs": {"min_estimator": {}}},
+            pipeline_inputs,
+            None,
+            None,
+            {
+                "pipeline_inputs": {"numpy_field": {"min_estimator_result": -10}},
+                "pipeline_outputs": {},
+                "engine_inputs": {},
+            },
+            False,
+            False,
+        ),
+        (
+            {"pipeline_inputs": {"min_estimator": {}}},
+            None,
+            None,
+            None,
+            {"pipeline_inputs": {}, "pipeline_outputs": {}, "engine_inputs": {}},
+            True,
+            False,
+        ),
+        (
+            {"pipeline_inputs": {"RAISE_ERROR_estimator": {}}},
+            pipeline_inputs,
+            None,
+            None,
+            {"pipeline_inputs": {}, "pipeline_outputs": {}, "engine_inputs": {}},
+            False,
+            True,
+        ),
     ],
 )
-def test_convert_data_to_estimates(pipeline_name, input, batch_size, config):
-    pipeline = Pipeline.create(pipeline_name, batch_size=batch_size)
-    pipeline_outputs, pipeline_inputs, engine_inputs, _ = pipeline.run_with_monitoring(**input)
-    _test_pipeline_inputs(pipeline_inputs = pipeline_inputs, config = config["pipeline_inputs"])
+def test_extract_logging_data(
+    config,
+    pipeline_inputs,
+    engine_inputs,
+    pipeline_outputs,
+    expected_result,
+    raise_warning,
+    raise_error,
+):
+    if raise_error:
+        with pytest.raises(AttributeError):
+            extract_logging_data(
+                logging_config=config,
+                pipeline_inputs=pipeline_inputs,
+                engine_inputs=engine_inputs,
+                pipeline_outputs=pipeline_outputs,
+            )
+    elif raise_warning:
+        with pytest.warns(UserWarning):
+            extract_logging_data(
+                logging_config=config,
+                pipeline_inputs=pipeline_inputs,
+                engine_inputs=engine_inputs,
+                pipeline_outputs=pipeline_outputs,
+            )
 
+    else:
+        result = extract_logging_data(
+            logging_config=config,
+            pipeline_inputs=pipeline_inputs,
+            engine_inputs=engine_inputs,
+            pipeline_outputs=pipeline_outputs,
+        )
 
-
-
-# pipeline = Pipeline.create("image_classification", batch_size=1)
-# pipeline_outputs, pipeline_inputs, engine_inputs, _ = pipeline.run_with_monitoring(
-#     images=[numpy.random.rand(224, 224, 3)]
-# )
-# # # pipeline = Pipeline.create("yolact", batch_size=1)
-# # # pipeline_outputs, pipeline_inputs, engine_inputs, _ = pipeline.run_with_monitoring(images = [numpy.random.rand(550, 550, 3)])
-# # # pipeline = Pipeline.create("yolo", batch_size=1)
-# # # pipeline_outputs, pipeline_inputs, engine_inputs, _ = pipeline.run_with_monitoring(images = [numpy.random.rand(550, 550, 3)])
-# # pipeline = Pipeline.create("qa", batch_size=1)
-# # pipeline_outputs, pipeline_inputs, engine_inputs, _ = pipeline.run_with_monitoring(question="What's my name?", context="My name is Snorlax")
-# data_to_log = convert_data_to_estimates(pipeline_inputs, config["pipeline_inputs"])
-# pass
+        assert result == expected_result

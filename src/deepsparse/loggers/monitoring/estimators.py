@@ -1,3 +1,7 @@
+"""
+Container how all the estimators available for the
+data logging
+"""
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,23 +24,25 @@ import numpy
 __all__ = ["min_estimator"]
 
 
-def min_estimator(input: numpy.ndarray, axis: Optional[Union[int, Tuple]]):
+def min_estimator(
+    input: numpy.ndarray, axis: Optional[Union[int, Tuple]] = None
+) -> numpy.ndarray:
     if axis:
         return numpy.min(input, axis=axis)
     return numpy.min(input)
 
 
 def max_estimator():
-    pass
+    raise NotImplementedError
 
 
 def percentage_zeros_estimator():
-    pass
+    raise NotImplementedError
 
 
 def mean_estimator():
-    pass
+    raise NotImplementedError
 
 
-def std_estiamtor():
-    pass
+def std_estimator():
+    raise NotImplementedError
