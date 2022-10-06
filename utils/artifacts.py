@@ -47,7 +47,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_release_and_version(package_path: str) -> Tuple[bool, str, str, str, str]:
+def get_release_and_version(package_path: str) -> Tuple[bool, bool, str, str, str, str]:
     """
     Load version and release info from deepsparse package
     """
@@ -66,6 +66,7 @@ def get_release_and_version(package_path: str) -> Tuple[bool, str, str, str, str
     locals_dict = {}
     exec(open(version_path).read(), globals(), locals_dict)
     is_release = locals_dict.get("is_release", False)
+    is_enterprise = locals_dict.get("is_enterprise", False)
     version = locals_dict.get("version", "unknown")
     version_major = locals_dict.get("version_major", "unknown")
     version_minor = locals_dict.get("version_minor", "unknown")
@@ -73,7 +74,14 @@ def get_release_and_version(package_path: str) -> Tuple[bool, str, str, str, str
 
     print(f"Loaded version {version} from {version_path}")
 
-    return is_release, version, version_major, version_minor, version_bug
+    return (
+        is_release,
+        is_enterprise,
+        version,
+        version_major,
+        version_minor,
+        version_bug,
+    )
 
 
 def check_wand_binaries_exist(package_path: str) -> bool:
@@ -127,6 +135,7 @@ def main():
     if args.force_update or not check_wand_binaries_exist(args.package_path):
         (
             is_release,
+            _,
             _,
             version_major,
             version_minor,
