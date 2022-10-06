@@ -16,7 +16,7 @@ limitations under the License.
 
 
 # Activating a DeepSparse Commercial License
-
+**TODO** add information about deepsparse-ent
 A commercial license for the DeepSparse engine can be activated using the
 `deepsparse.license` tool.
 
@@ -33,7 +33,7 @@ The license tool comes installed as part of the deepsparse python package which
 is installed through `pip`:
 
 ```bash
-pip3 install deepsparse
+pip3 install deepsparse-ent
 ```
 
 
