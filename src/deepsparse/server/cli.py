@@ -162,15 +162,6 @@ def config(config_path: str, host: str, port: int, log_level: str):
     default="info",
     help="Sets the logging level.",
 )
-@click.option(
-    "--no-loggers",
-    is_flag=True,
-    default=False,
-    help=(
-        "Set to not use any inference logging integration. Defaults to using "
-        "a default integration such as Prometheus."
-    ),
-)
 def task(
     task: str,
     model_path: str,
@@ -180,7 +171,6 @@ def task(
     host: str,
     port: int,
     log_level: str,
-    no_loggers: bool,
 ):
     """
     Run the server using configuration with CLI options,
@@ -198,7 +188,6 @@ def task(
                 batch_size=batch_size,
             )
         ],
-        loggers=None if no_loggers else "default",
     )
 
     with TemporaryDirectory() as tmp_dir:

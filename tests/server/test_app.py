@@ -37,7 +37,6 @@ def test_add_multiple_endpoints_with_no_route():
                     EndpointConfig(task="", model="", route=None),
                     EndpointConfig(task="", model="", route=None),
                 ],
-                loggers=None,
             )
         )
 
@@ -52,7 +51,6 @@ def test_add_multiple_endpoints_with_same_route():
                     EndpointConfig(task="", model="", route="asdf"),
                     EndpointConfig(task="", model="", route="asdf"),
                 ],
-                loggers=None,
             )
         )
 
@@ -70,7 +68,6 @@ def test_invalid_integration():
                 num_workers=1,
                 integration="asdf",
                 endpoints=[],
-                loggers=None,
             )
         )
 
@@ -85,7 +82,6 @@ def test_pytorch_num_threads():
             num_workers=1,
             pytorch_num_threads=None,
             endpoints=[],
-            loggers=None,
         )
     )
     assert torch.get_num_threads() == orig_num_threads
@@ -96,7 +92,6 @@ def test_pytorch_num_threads():
             num_workers=1,
             pytorch_num_threads=1,
             endpoints=[],
-            loggers=None,
         )
     )
     assert torch.get_num_threads() == 1
@@ -112,7 +107,6 @@ def test_thread_pinning_none():
             num_workers=1,
             engine_thread_pinning="none",
             endpoints=[],
-            loggers=None,
         )
     )
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
@@ -129,7 +123,6 @@ def test_thread_pinning_numa():
             num_workers=1,
             engine_thread_pinning="numa",
             endpoints=[],
-            loggers=None,
         )
     )
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
@@ -146,7 +139,6 @@ def test_thread_pinning_cores():
             num_workers=1,
             engine_thread_pinning="core",
             endpoints=[],
-            loggers=None,
         )
     )
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "1"
@@ -161,6 +153,5 @@ def test_invalid_thread_pinning():
                 num_workers=1,
                 engine_thread_pinning="asdf",
                 endpoints=[],
-                loggers=None,
             )
         )
