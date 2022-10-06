@@ -34,6 +34,7 @@ package_path = os.path.join(
 )
 (
     is_release,
+    is_enterprise,
     version,
     version_major,
     version_minor,
@@ -41,7 +42,13 @@ package_path = os.path.join(
 ) = get_release_and_version(package_path)
 version_base = f"{version_major}.{version_minor}.0"
 
-_PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
+_PACKAGE_NAME = (
+    "deepsparse-ent"
+    if is_enterprise
+    else "deepsparse"
+    if is_release
+    else "deepsparse-nightly"
+)
 
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
