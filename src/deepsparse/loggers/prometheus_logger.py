@@ -44,7 +44,7 @@ class PrometheusLogger(BaseLogger):
 
     def __init__(
         self,
-        port: int = 8000,
+        port: int = 6100,
         text_log_save_dir: str = os.getcwd(),
         text_log_save_freq: int = 10,
         text_log_file_name: Optional[str] = None,
@@ -123,8 +123,16 @@ class PrometheusLogger(BaseLogger):
         self._update_call_count(pipeline_name)
         self._export_metrics_to_textfile()
 
-    def log_data(self, inputs: Any, outputs: Any):
-        raise NotImplementedError()
+    def log_data(self, pipeline_name: str, inputs: Any, outputs: Any):
+        """
+
+        :param pipeline_name: The name of the inference pipeline from which the
+            logger consumes the inference information to be monitored
+        :param inputs: the data received and consumed by the inference
+            pipeline
+        :param outputs: the data returned by the inference pipeline
+        """
+        pass
 
     def _log_latency(self, metric_name: str, value_to_log: float, pipeline_name: str):
         """
@@ -158,12 +166,13 @@ class PrometheusLogger(BaseLogger):
         # Histograms track the size and number of events in buckets
         for field_name, field_data in inference_timing.__fields__.items():
             field_description = field_data.field_info.description
+            metric_name = f"{pipeline_name}:{field_name}".strip().replace(" ", "-")
             self.metrics[pipeline_name][field_name] = Histogram(
-                f"{field_name}_{pipeline_name}", field_description, registry=REGISTRY
+                metric_name, field_description, registry=REGISTRY
             )
         _LOGGER.info(
             f"Prometheus client: set the metrics to track pipeline: {pipeline_name}. "
-            f"Tracked metrics: {[metric for metric in self.metrics]}"
+            f"Added metrics: {[metric for metric in self.metrics[pipeline_name]]}"
         )
 
     def _export_metrics_to_textfile(self):
