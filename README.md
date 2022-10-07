@@ -111,6 +111,8 @@ To try out the DeepSparse Enterprise Edition and get a Neural Magic Trial Licens
 To learn more about DeepSparse Enterprise Edition pricing, [review our pricing page](https://neuralmagic.wpengine.com/deepsparse-engine-free-trial/). Details on how to [contact our Sales team](https://neuralmagic.com/deepsparse-engine/#form) and discuss your use case further for a custom quote are also available.
 
 ## DeepSparse Enterprise Edition License Management
+<details>
+	<summary>DeepSparse Enterprise Edition License Management</summary>
 
 Once you have obtained a license, you will need to initialize it to be able to run the DeepSparse Enterprise Edition. You can initialize your license by running the command: 
 
@@ -130,8 +132,11 @@ To initialize a license on a machine:
 	- `deepsparse.license ./license.txt`
 5. Once the license is authenticated, you should see a splash message indicating that you are now running DeepSparse Enterprise Edition. 
 6. Mark/Ben to help fill in how exactly the env variable gets set and how to do that. 
+</details>
 
 ## License Validation for DeepSparse Enterprise
+<details>
+	<summary>## License Validation for DeepSparse Enterprise</summary>
 
 Once you have initialized your license, you may want to check if it is still valid before running a workload on Deepsparse Enterprise Edition. To confirm your license is still active with the DeepSparse Enterprise Edition, run the command:
 
@@ -148,6 +153,8 @@ To validate a license on a machine:
 	- Run the `deepsparse.validate_license` with either `“license_string”` or `path_to_license` as an argument. If the referenced license is valid, you should get the DeepSparse Enterprise Edition splash screen printed out in your terminal window. 
 
 If you encounter issues initializing or validating your DeepSparse Enterprise Edition License, contact [license@neuralmagic.com](mailto:license@neuralmagic.com) for help.
+
+</details>
 
 ## Features
 
