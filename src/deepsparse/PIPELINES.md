@@ -44,6 +44,7 @@ Development of new Pipelines for tasks is always ongoing. Currently supported ta
 | NLP    | [question-answering](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/README.md)  |
 | CV     | [image-classification](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/image_classification/README.md) |
 | CV     | [object-detection](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/yolo/README.md)   |
+| CV     | [instance-segmentation](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/yolact/README.md)   |
 
 
 ## Deployment
