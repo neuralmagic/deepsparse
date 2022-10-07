@@ -136,7 +136,7 @@ To initialize a license on a machine:
 
 ## License Validation for DeepSparse Enterprise
 <details>
-	<summary>## License Validation for DeepSparse Enterprise</summary>
+	<summary>License Validation for DeepSparse Enterprise</summary>
 
 Once you have initialized your license, you may want to check if it is still valid before running a workload on Deepsparse Enterprise Edition. To confirm your license is still active with the DeepSparse Enterprise Edition, run the command:
 
