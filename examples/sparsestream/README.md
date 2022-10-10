@@ -40,7 +40,7 @@ Supports Python >= 3.7
 
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
-cd examples/sparsestream
+cd deepsparse/examples/sparsestream
 pip install -r requirements.txt
 ```
 ## <div>`START STREAM`</div>
@@ -50,7 +50,7 @@ In terminal, start a Twitter stream with:
 python stream.py
 ```
 
-This will download a Sparse ONNX model and initialize two NLP inference pipelines for the text classification task, one pipeline for sentiment classification, and the other for topic classification.
+This will download sparse-optimized models and initialize two NLP inference pipelines for the financial text classification task: one pipeline for sentiment classification and the other for topic classification.
 
 ## <div>`STREAM WHILE YOU EAT SOME POPCORN 🍿`</div>
 
