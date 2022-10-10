@@ -38,11 +38,11 @@ config_path = "./config.yaml"
 config = get_config(config_path)
 
 sentiment_classifier = Pipeline.create(
-    task=config["task"], model_path=config["sent_model"], scheduler="sync"
+    task="text-classification", model_path=config["sent_model"], scheduler="sync"
 )
 
 topic_classifier = Pipeline.create(
-    task=config["task"], model_path=config["topic_model"], scheduler="sync"
+    task="text-classification", model_path=config["topic_model"], scheduler="sync"
 )
 
 
