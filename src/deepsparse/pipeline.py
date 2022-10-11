@@ -46,6 +46,7 @@ __all__ = [
     "yolo_pipeline",
     "Bucketable",
     "BucketingPipeline",
+    "masking_pipeline",
 ]
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -1108,6 +1109,43 @@ def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     return Pipeline.create("token_classification", *args, **kwargs)
 
+
+def masking_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers masking pipeline
+
+    example instantiation:
+    ```python
+    token_classifier = Pipeline.create(
+        task="masking",
+        model_path="masking dir/",
+        batch_size=BATCH_SIZE,
+    )
+    ```
+
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
+    :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
+        include 'none', 'simple', 'first', 'average', and 'max'. Default is None
+    :param ignore_labels: list of label names to ignore in output. Default is
+        ['0'] which ignores the default known class label
+    """
+    return Pipeline.create("masking", *args, **kwargs)
 
 def image_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
