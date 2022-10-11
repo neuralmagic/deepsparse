@@ -1,0 +1,124 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 707.0
+python_gc_objects_collected_total{generation="1"} 337.0
+python_gc_objects_collected_total{generation="2"} 0.0
+# HELP python_gc_objects_uncollectable_total Uncollectable object found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 262.0
+python_gc_collections_total{generation="1"} 23.0
+python_gc_collections_total{generation="2"} 2.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="8",patchlevel="10",version="3.8.10"} 1.0
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 4.663119872e+09
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 5.84278016e+08
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.66549084096e+09
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 9.950000000000001
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 11.0
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 4096.0
+# HELP endpoint_0:pre_process The duration [in seconds] of the pre-processing step prior to inference
+# TYPE endpoint_0:pre_process histogram
+endpoint_0:pre_process_bucket{le="0.005"} 25.0
+endpoint_0:pre_process_bucket{le="0.01"} 30.0
+endpoint_0:pre_process_bucket{le="0.025"} 30.0
+endpoint_0:pre_process_bucket{le="0.05"} 30.0
+endpoint_0:pre_process_bucket{le="0.075"} 30.0
+endpoint_0:pre_process_bucket{le="0.1"} 30.0
+endpoint_0:pre_process_bucket{le="0.25"} 30.0
+endpoint_0:pre_process_bucket{le="0.5"} 30.0
+endpoint_0:pre_process_bucket{le="0.75"} 30.0
+endpoint_0:pre_process_bucket{le="1.0"} 30.0
+endpoint_0:pre_process_bucket{le="2.5"} 30.0
+endpoint_0:pre_process_bucket{le="5.0"} 30.0
+endpoint_0:pre_process_bucket{le="7.5"} 30.0
+endpoint_0:pre_process_bucket{le="10.0"} 30.0
+endpoint_0:pre_process_bucket{le="+Inf"} 30.0
+endpoint_0:pre_process_count 30.0
+endpoint_0:pre_process_sum 0.1400227304548025
+# HELP endpoint_0:pre_process_created The duration [in seconds] of the pre-processing step prior to inference
+# TYPE endpoint_0:pre_process_created gauge
+endpoint_0:pre_process_created 1.66549085401851e+09
+# HELP endpoint_0:engine_forward The duration [in seconds] of the neural network inference in the engine
+# TYPE endpoint_0:engine_forward histogram
+endpoint_0:engine_forward_bucket{le="0.005"} 0.0
+endpoint_0:engine_forward_bucket{le="0.01"} 0.0
+endpoint_0:engine_forward_bucket{le="0.025"} 0.0
+endpoint_0:engine_forward_bucket{le="0.05"} 29.0
+endpoint_0:engine_forward_bucket{le="0.075"} 29.0
+endpoint_0:engine_forward_bucket{le="0.1"} 29.0
+endpoint_0:engine_forward_bucket{le="0.25"} 30.0
+endpoint_0:engine_forward_bucket{le="0.5"} 30.0
+endpoint_0:engine_forward_bucket{le="0.75"} 30.0
+endpoint_0:engine_forward_bucket{le="1.0"} 30.0
+endpoint_0:engine_forward_bucket{le="2.5"} 30.0
+endpoint_0:engine_forward_bucket{le="5.0"} 30.0
+endpoint_0:engine_forward_bucket{le="7.5"} 30.0
+endpoint_0:engine_forward_bucket{le="10.0"} 30.0
+endpoint_0:engine_forward_bucket{le="+Inf"} 30.0
+endpoint_0:engine_forward_count 30.0
+endpoint_0:engine_forward_sum 0.9904222963377833
+# HELP endpoint_0:engine_forward_created The duration [in seconds] of the neural network inference in the engine
+# TYPE endpoint_0:engine_forward_created gauge
+endpoint_0:engine_forward_created 1.665490854018616e+09
+# HELP endpoint_0:post_process The duration [in seconds] of the post-processing step following inference
+# TYPE endpoint_0:post_process histogram
+endpoint_0:post_process_bucket{le="0.005"} 30.0
+endpoint_0:post_process_bucket{le="0.01"} 30.0
+endpoint_0:post_process_bucket{le="0.025"} 30.0
+endpoint_0:post_process_bucket{le="0.05"} 30.0
+endpoint_0:post_process_bucket{le="0.075"} 30.0
+endpoint_0:post_process_bucket{le="0.1"} 30.0
+endpoint_0:post_process_bucket{le="0.25"} 30.0
+endpoint_0:post_process_bucket{le="0.5"} 30.0
+endpoint_0:post_process_bucket{le="0.75"} 30.0
+endpoint_0:post_process_bucket{le="1.0"} 30.0
+endpoint_0:post_process_bucket{le="2.5"} 30.0
+endpoint_0:post_process_bucket{le="5.0"} 30.0
+endpoint_0:post_process_bucket{le="7.5"} 30.0
+endpoint_0:post_process_bucket{le="10.0"} 30.0
+endpoint_0:post_process_bucket{le="+Inf"} 30.0
+endpoint_0:post_process_count 30.0
+endpoint_0:post_process_sum 0.0043830969370901585
+# HELP endpoint_0:post_process_created The duration [in seconds] of the post-processing step following inference
+# TYPE endpoint_0:post_process_created gauge
+endpoint_0:post_process_created 1.6654908540186772e+09
+# HELP endpoint_0:total_inference The total duration [in seconds] for the inference pipeline, end to end
+# TYPE endpoint_0:total_inference histogram
+endpoint_0:total_inference_bucket{le="0.005"} 0.0
+endpoint_0:total_inference_bucket{le="0.01"} 0.0
+endpoint_0:total_inference_bucket{le="0.025"} 0.0
+endpoint_0:total_inference_bucket{le="0.05"} 29.0
+endpoint_0:total_inference_bucket{le="0.075"} 29.0
+endpoint_0:total_inference_bucket{le="0.1"} 29.0
+endpoint_0:total_inference_bucket{le="0.25"} 30.0
+endpoint_0:total_inference_bucket{le="0.5"} 30.0
+endpoint_0:total_inference_bucket{le="0.75"} 30.0
+endpoint_0:total_inference_bucket{le="1.0"} 30.0
+endpoint_0:total_inference_bucket{le="2.5"} 30.0
+endpoint_0:total_inference_bucket{le="5.0"} 30.0
+endpoint_0:total_inference_bucket{le="7.5"} 30.0
+endpoint_0:total_inference_bucket{le="10.0"} 30.0
+endpoint_0:total_inference_bucket{le="+Inf"} 30.0
+endpoint_0:total_inference_count 30.0
+endpoint_0:total_inference_sum 1.1349854646250606
+# HELP endpoint_0:total_inference_created The total duration [in seconds] for the inference pipeline, end to end
+# TYPE endpoint_0:total_inference_created gauge
+endpoint_0:total_inference_created 1.6654908540187297e+09

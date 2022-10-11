@@ -1,0 +1,10 @@
+num_cores: 2
+num_workers: 2
+loggers:
+    prometheus:
+        port: 6100
+endpoints:
+    - task: image_classification
+      batch_size: 1
+      model: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
+      name: image_classification_pipeline
