@@ -293,6 +293,7 @@ class TextClassificationPipeline(TransformersPipeline):
 
 
 def _get_top_k(top_k: int, return_all_scores: bool, num_labels: int) -> int:
+    # handle deprecations of return_all_scores
     if top_k <= 0:
         raise ValueError(f"text_classification top_k must be > 0. found {top_k}")
     if return_all_scores and top_k not in [1, num_labels]:
