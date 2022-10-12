@@ -1,8 +1,9 @@
 #!/bin/bash
 
+virtual_env_path="..."
+
 docker_files_path="${PWD}/docker"
 client_path="${PWD}/client"
-virtual_env_path="/home/damian/deepsparse_venv"
 
 server_config_file_path="${PWD}/deepsparse_server_config.yaml"
 sample_image_path="${client_path}""/piglet.jpg"

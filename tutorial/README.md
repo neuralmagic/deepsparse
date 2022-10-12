@@ -1,5 +1,7 @@
 
-First, let’s have some context on the monitoring stack that we will be using during this guide. To leverage the metrics that Jina exposes, we recommend using the Prometheus/Grafana stack. In this setup, Jina will expose different metrics endpoint, and Prometheus will then be in charge of scraping these endpoints, as well as collecting, aggregating, and storing the different metrics. Prometheus will then allow external entities (like Grafana) to access these aggregated metrics via the query language PromQL. Then the role of Grafana here will be to allow users to visualize these metrics by creating dashboards.
+DeepSparse Server First, let’s have some context on the monitoring stack that we will be using during this guide. 
+To leverage the metrics that Jina exposes, we recommend using the Prometheus/Grafana stack. 
+In this setup, Jina will expose different metrics endpoint, and Prometheus will then be in charge of scraping these endpoints, as well as collecting, aggregating, and storing the different metrics. Prometheus will then allow external entities (like Grafana) to access these aggregated metrics via the query language PromQL. Then the role of Grafana here will be to allow users to visualize these metrics by creating dashboards.
 
 This tutorial will show you how to monitor the DeepSparse server using Prometheus/Grafana stack.
 
@@ -63,9 +65,11 @@ Note: the first argument is the path to the sample image, while the second argum
 
 You may visit `localhost:9090` to inspect whether Prometheus recognizes the `metrics` endpoint (`Status` -> `Targets`)
 
+![img.png](images/img_1.png)
+
 Visit `localhost:3000` to launch Grafana. Log in with the default username (`admin`) and password (`admin`). Setup the Prometheus data source (`Add your first data source` -> `Prometheus`). Now you should be ready to create/import your dashboard. If you decide to import the dashboard, either upload `grafana/dashboard.json` or paste its contents using Grafanas `import` functionality.
 
-
+![img.png](images/img_2.png)
 
 
 
