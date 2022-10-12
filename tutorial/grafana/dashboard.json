@@ -35,7 +35,7 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 5,
+        "w": 8,
         "x": 0,
         "y": 0
       },
@@ -56,8 +56,8 @@
       "description": "",
       "gridPos": {
         "h": 3,
-        "w": 11,
-        "x": 7,
+        "w": 7,
+        "x": 9,
         "y": 0
       },
       "id": 4,
@@ -98,8 +98,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 3,
-        "w": 5,
+        "h": 5,
+        "w": 4,
         "x": 18,
         "y": 0
       },
@@ -196,7 +196,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 7,
+        "h": 11,
         "w": 24,
         "x": 0,
         "y": 6
@@ -207,7 +207,7 @@
           "calcs": [],
           "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "mode": "single",
@@ -286,10 +286,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 11,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 17
       },
       "id": 10,
       "options": {
@@ -320,7 +320,7 @@
           "refId": "bucket_data"
         }
       ],
-      "title": "Total Inference: Histogram of latencies",
+      "title": "Total Inference: Histogram of Latencies",
       "transformations": [
         {
           "id": "convertFieldType",
@@ -346,20 +346,20 @@
         "auto_min": "10s",
         "current": {
           "selected": false,
-          "text": "10m",
-          "value": "10m"
+          "text": "1m",
+          "value": "1m"
         },
         "hide": 0,
         "label": "Interval",
         "name": "interval",
         "options": [
           {
-            "selected": false,
+            "selected": true,
             "text": "1m",
             "value": "1m"
           },
           {
-            "selected": true,
+            "selected": false,
             "text": "10m",
             "value": "10m"
           },
@@ -418,8 +418,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Tutorial 1 Dashboard",
+  "title": "DeepSparse Engine Dashboard",
   "uid": "ZddPkVIVz",
-  "version": 2,
+  "version": 4,
   "weekStart": ""
 }
