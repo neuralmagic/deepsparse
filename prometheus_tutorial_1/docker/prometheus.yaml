@@ -1,9 +1,0 @@
-global:
-  scrape_interval: 15s # how often the  Prometheus is pulling data from the exposed endpoints
-  evaluation_interval: 30s # time between each evaluation of Prometheus' alerting rules
-
-scrape_configs:
-  - job_name: prometheus_logs   # your project name
-    static_configs:
-      - targets:
-        - 'host.docker.internal:6100' # should match the port exposed by the PrometheusLogger in the DeepSparse Server config file
