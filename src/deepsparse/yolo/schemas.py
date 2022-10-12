@@ -48,7 +48,11 @@ class YOLOInput(ComputerVisionSchema):
     )
     multi_label: bool = Field(
         default=False,
-        description="when true, allow multi-label assignment to each detected object",
+        description=(
+            "when true, allow multi-label assignment to each detected object. Defaults "
+            "to False to mimic yolov5 detection pathway. Note that yolov5 validation "
+            "pathway by default run with multi_label on"
+        ),
     )
 
 
