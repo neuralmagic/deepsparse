@@ -1,6 +1,6 @@
 #!/bin/bash
 
-virtual_env_path="..."
+virtual_env_path="..." # e.g. ".../deepsparse_venv"
 
 docker_files_path="${PWD}/docker"
 client_path="${PWD}/client"
