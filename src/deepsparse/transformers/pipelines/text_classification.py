@@ -35,6 +35,7 @@ tasks
 """
 
 
+import warnings
 from typing import List, Type, Union
 
 import numpy
@@ -42,7 +43,6 @@ from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
-from deepsparse.log import get_main_logger
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -51,9 +51,6 @@ __all__ = [
     "TextClassificationOutput",
     "TextClassificationPipeline",
 ]
-
-
-_LOGGER = get_main_logger()
 
 
 class TextClassificationInput(BaseModel):
@@ -257,14 +254,10 @@ class TextClassificationPipeline(TransformersPipeline):
                 labels.append(self.config.id2label[score.argmax()])
                 label_scores.append(score.max().item())
             else:
+                ranked_idxs = (-score.reshape(-1)).argsort()[: self.top_k]
                 score = score.reshape(-1).tolist()
-                ranked_idxs = sorted(
-                    range(len(score)), reverse=True, key=lambda idx: score[idx]
-                )
-                labels.append(
-                    [self.config.id2label[idx] for idx in ranked_idxs[: self._top_k]]
-                )
-                label_scores.append([score[idx] for idx in ranked_idxs[: self._top_k]])
+                labels.append([self.config.id2label[idx] for idx in ranked_idxs])
+                label_scores.append([score[idx] for idx in ranked_idxs])
 
         return self.output_schema(
             labels=labels,
@@ -307,9 +300,10 @@ def _get_top_k(top_k: int, return_all_scores: bool, num_labels: int) -> int:
 
     if top_k == 1 and return_all_scores:
         # set top_k to num_labels from config and warn
-        _LOGGER.warn(
+        warnings.warn(
             f"return_all_scores deprecated, set {top_k} instead. setting "
-            f"top_k to num_lables from config: {num_labels}"
+            f"top_k to num_lables from config: {num_labels}",
+            category=DeprecationWarning,
         )
         top_k = num_labels
 
