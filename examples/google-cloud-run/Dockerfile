@@ -1,15 +1,17 @@
 # Use Python37
-FROM python:3.8
-# Allow statements and log messages to immediately appear in the Knative logs
-ENV PYTHONUNBUFFERED True
-# Copy requirements.txt to the docker image and install packages
+FROM python:3.9-slim
+
+ARG config_path=./config.yaml
+
+USER root
+
+COPY ${config_path} /root/server-config.yaml
+
+ENV VIRTUAL_ENV=/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
 COPY requirements.txt /
-RUN pip install -r requirements.txt
-# Set the WORKDIR to be the folder
-COPY . /app
-# Expose port 5000
-EXPOSE 5000
-ENV PORT 5000
-WORKDIR /app
-# Use gunicorn as the entrypoint
-# CMD exec gunicorn --bind :$PORT main:app --workers 1 --threads 1 --timeout 0
+RUN python3 -m venv $VIRTUAL_ENV && pip3 install --no-cache-dir --upgrade pip
+RUN pip3 install -r requirements.txt
+
+ENTRYPOINT deepsparse.server config --port 8080
