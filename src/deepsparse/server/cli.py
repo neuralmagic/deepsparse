@@ -33,35 +33,35 @@ from deepsparse.server.server import start_server
 @click.group()
 def main():
     """
-     Start a DeepSparse inference server for serving the models and pipelines.
+    Start a DeepSparse inference server for serving the models and pipelines.
 
-         1. `deepsparse.server config [OPTIONS] <config path>`
+        1. `deepsparse.server config [OPTIONS] <config path>`
 
-         2. `deepsparse.server task [OPTIONS] <task>
+        2. `deepsparse.server task [OPTIONS] <task>
 
-     Examples for using the server:
+    Examples for using the server:
 
-         `deepsparse.server config server-config.yaml`
+        `deepsparse.server config server-config.yaml`
 
-         `deepsparse.server task question_answering --batch-size 2`
+        `deepsparse.server task question_answering --batch-size 2`
 
-         `deepsparse.server task question_answering --host "0.0.0.0"`
+        `deepsparse.server task question_answering --host "0.0.0.0"`
 
-     Example config.yaml for serving:
+    Example config.yaml for serving:
 
-     ```yaml
-     num_cores: 2
-     num_workers: 2
-     endpoints:
-         - task: question_answering
-           route: /unpruned/predict
-           model: zoo:some/zoo/stub
-         - task: question_answering
-           route: /pruned/predict
-           model: /path/to/local/model
-     ```
+    ```yaml
+    num_cores: 2
+    num_workers: 2
+    endpoints:
+        - task: question_answering
+          route: /unpruned/predict
+          model: zoo:some/zoo/stub
+        - task: question_answering
+          route: /pruned/predict
+          model: /path/to/local/model
+    ```
 
-     To manually specify the set of loggers:
+    To manually specify the set of loggers:
 
     ```yaml
      num_cores: 2
@@ -74,8 +74,7 @@ def main():
      endpoints:
      - task: question_answering
        ...
-     ...
-     ```
+    ```
     """
     pass
 
