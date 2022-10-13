@@ -69,7 +69,7 @@ docker-compose up
 
 Note that inside the file `docker/prometheus.yaml`, the `scrape_config` has the information about the `metrics` endpoint exposed by the server on port `6100`.
 
-## Launch the Python Client and Run Inference Continuously
+## Launch the Python Client and Run Inference
 
 Run:
 
