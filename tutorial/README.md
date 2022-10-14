@@ -72,9 +72,15 @@ python client/client.py client/piglet.jpg 5543
 ```
 
 to instantiate a simple client, that periodically sends requests to the Server. 
-The client simulates the behavior of some application (that usually would be defined by the user), that sends the raw inputs to the inference server and receives the outputs.
+The client simulates the behavior of some application, that sends the raw inputs to the inference server and receives the outputs.
+The first argument is the path to the sample image, while the second argument is the port number that matches the inference endpoint of the Server.
 
-Note: the first argument is the path to the sample image, while the second argument is the port number that matches the inference endpoint of the Server.
+Note: It is very easy to create your own custom client, that communicates with the DeepSparse Server. 
+In the separate [README](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server),
+we instruct the users how they can communicate with the Server (that serves one or multiple models) either through:
+- a convinient Python API
+- `curl` command from terminal
+- [Swagger UI](https://swagger.io/tools/swagger-ui/)
 
 ## 4. Inspecting the Prometheus/Grafana Stack
 
