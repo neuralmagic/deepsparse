@@ -20,9 +20,9 @@ There are two sub-commands for the server:
 """
 
 import os
+import warnings
 from tempfile import TemporaryDirectory
 from typing import Optional
-import warnings
 
 import click
 import yaml
