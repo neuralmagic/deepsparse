@@ -60,6 +60,21 @@ def main():
           route: /pruned/predict
           model: /path/to/local/model
     ```
+
+    To manually specify the set of loggers:
+
+    ```yaml
+     num_cores: 2
+     num_workers: 2
+     loggers:
+     prometheus:
+         port: 6100
+         text_log_save_dir: /home/deepsparse-server/prometheus
+         text_log_save_freq: 30
+     endpoints:
+     - task: question_answering
+       ...
+    ```
     """
     pass
 
