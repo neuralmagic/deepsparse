@@ -119,7 +119,12 @@ INTEGRATION_OPTION = click.option(
 )
 
 
-@click.group(invoke_without_command=True)
+@click.group(
+    invoke_without_command=True,
+    context_settings=dict(
+        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
+    ),
+)
 @click.option(
     "--config_file",
     type=str,
@@ -237,7 +242,11 @@ def main(
         )
 
 
-@main.command(context_settings=dict(show_default=True))
+@main.command(
+    context_settings=dict(
+        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
+    ),
+)
 @click.argument("config-path", type=str)
 @HOST_OPTION
 @PORT_OPTION
