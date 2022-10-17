@@ -206,6 +206,7 @@ def main(
     if task is None and config_file is None:
         raise ValueError("Must specify either --task or --config_file. Found neither")
 
+    warnings.simplefilter("always", DeprecationWarning)
     warnings.warn(
         "Invoking using --task or --config_file is deprecated. "
         "Use the task and config subcommands instead.",
