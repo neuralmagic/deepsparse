@@ -206,13 +206,6 @@ def main(
     if task is None and config_file is None:
         raise ValueError("Must specify either --task or --config_file. Found neither")
 
-    warnings.simplefilter("always", DeprecationWarning)
-    warnings.warn(
-        "Invoking using --task or --config_file is deprecated. "
-        "Use the task and config subcommands instead.",
-        category=DeprecationWarning,
-    )
-
     if task is not None:
         cfg = ServerConfig(
             num_cores=num_cores,
@@ -253,7 +246,13 @@ def main(
 def config(
     config_path: str, host: str, port: int, log_level: str, hot_reload_config: bool
 ):
-    "Run the server using configuration from a .yaml file."
+    "[DEPRECATED] Run the server using configuration from a .yaml file."
+    warnings.simplefilter("always", DeprecationWarning)
+    warnings.warn(
+        "Using the `config` sub command is deprecated. "
+        "Use the `--config_file` argument instead.",
+        category=DeprecationWarning,
+    )
     start_server(
         config_path, host, port, log_level, hot_reload_config=hot_reload_config
     )
@@ -300,9 +299,17 @@ def task(
     no_loggers: bool,
 ):
     """
-    Run the server using configuration with CLI options,
+    [DEPRECATED] Run the server using configuration with CLI options,
     which can only serve a single model.
     """
+
+    warnings.simplefilter("always", DeprecationWarning)
+    warnings.warn(
+        "Using the `task` sub command is deprecated. "
+        "Use the `--task` argument instead.",
+        category=DeprecationWarning,
+    )
+
     cfg = ServerConfig(
         num_cores=num_cores,
         num_workers=num_workers,
