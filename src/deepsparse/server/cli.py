@@ -164,17 +164,17 @@ def main(
     """
     Start a DeepSparse inference server for serving the models and pipelines.
 
-        1. `deepsparse.server config [OPTIONS] <config path>`
+        1. `deepsparse.server --config_file <config path> [OPTIONS]`
 
-        2. `deepsparse.server task [OPTIONS] <task>
+        2. `deepsparse.server --task <task> [OPTIONS]`
 
     Examples for using the server:
 
-        `deepsparse.server config server-config.yaml`
+        `deepsparse.server --config_file server-config.yaml`
 
-        `deepsparse.server task question_answering --batch-size 2`
+        `deepsparse.server --task question_answering --batch-size 2`
 
-        `deepsparse.server task question_answering --host "0.0.0.0"`
+        `deepsparse.server --task question_answering --host "0.0.0.0"`
 
     Example config.yaml for serving:
 
