@@ -160,6 +160,16 @@ def main(
     else:
         resize_mode = "bilinear"
 
+    if "rgb_means" in dataset_kwargs:
+        rgb_means = dataset_kwargs["rgb_means"]
+    else:
+        rgb_means = IMAGENET_RGB_MEANS
+
+    if "rgb_stds" in dataset_kwargs:
+        rgb_stds = dataset_kwargs["rgb_stds"]
+    else:
+        rgb_stds = IMAGENET_RGB_STDS
+
     if type(resize_mode) is str and resize_mode.lower() in ["linear", "bilinear"]:
         interpolation = transforms.InterpolationMode.BILINEAR
     elif type(resize_mode) is str and resize_mode.lower() in ["cubic", "bicubic"]:
@@ -174,7 +184,7 @@ def main(
                 ),
                 transforms.CenterCrop(image_size),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=IMAGENET_RGB_MEANS, std=IMAGENET_RGB_STDS),
+                transforms.Normalize(mean=rgb_means, std=rgb_stds),
             ]
         ),
     )

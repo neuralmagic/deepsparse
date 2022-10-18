@@ -74,3 +74,15 @@ def predownload_stub(stub: str, copy_framework_files: bool = False) -> Model:
         shutil.copy(tokenizer_config_path, model_path)
 
     return model
+
+
+def find_free_port():
+    import socket
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("0.0.0.0", 0))
+    portnum = s.getsockname()[1]
+    s.close()
+
+    return portnum
