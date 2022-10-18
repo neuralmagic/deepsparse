@@ -34,17 +34,8 @@ def get_config(path):
     return config
 
 
-config_path = "./config.yaml"
-config = get_config(config_path)
-
-sentiment_classifier = Pipeline.create(
-    task="text-classification", model_path=config["sent_model"], scheduler="sync"
-)
-
-topic_classifier = Pipeline.create(
-    task="text-classification", model_path=config["topic_model"], scheduler="sync"
-)
-
+CONFIG_PATH = "./config.yaml"
+CONFIG = get_config(CONFIG_PATH)
 
 class SparseStream(AsyncStream):
 
@@ -53,35 +44,42 @@ class SparseStream(AsyncStream):
     inference on incoming tweets
     """
 
+    sentiment_classifier = Pipeline.create(
+        task="text-classification", model_path=CONFIG["sent_model"], scheduler="sync"
+    )
+
+    topic_classifier = Pipeline.create(
+        task="text-classification", model_path=CONFIG["topic_model"], scheduler="sync"
+    )
+
     console.print("Opening Stream...", style="bold white on blue")
 
     async def on_status(self, status):
 
         # logic to prevent retweets and replies appearing in stream
         if (
-            (not status.retweeted)
-            and ("RT @" not in status.text)
-            and (status.in_reply_to_screen_name not in user_name)
-            and (status.in_reply_to_status_id is None)
+            not status.retweeted
+            and "RT @" not in status.text
+            and status.in_reply_to_screen_name not in user_name
+            and status.in_reply_to_status_id is None
         ):
 
-            sentiment = sentiment_classifier(status.text)
+            sentiment = self.sentiment_classifier(status.text)
             sentiment = sentiments[sentiment.labels[0]]
-            topic = topic_classifier(status.text)
+            topic = self.topic_classifier(status.text)
             topic = topics[topic.labels[0]]
 
             console.print(status.text, style="bold white")
             console.print(sentiment, style="bold yellow")
             console.print(topic + "\n", style="bold red")
 
-
 async def main():
 
     stream = SparseStream(
-        config["consumer_key"],
-        config["consumer_secret"],
-        config["access_token"],
-        config["access_token_secret"],
+        CONFIG["consumer_key"],
+        CONFIG["consumer_secret"],
+        CONFIG["access_token"],
+        CONFIG["access_token_secret"],
     )
 
     await stream.filter(follow=user_id, stall_warnings=True)
