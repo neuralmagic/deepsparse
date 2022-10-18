@@ -14,4 +14,4 @@ COPY requirements.txt /
 RUN python3 -m venv $VIRTUAL_ENV && pip3 install --no-cache-dir --upgrade pip
 RUN pip3 install -r requirements.txt
 
-ENTRYPOINT deepsparse.server config --port 8080
+ENTRYPOINT deepsparse.server config /root/server-config.yaml --port 8080

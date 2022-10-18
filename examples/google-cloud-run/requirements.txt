@@ -1,1 +1,1 @@
-deepsparse[server]>=1.1.0
+deepsparse-nightly[server]
