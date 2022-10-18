@@ -37,6 +37,7 @@ def get_config(path):
 CONFIG_PATH = "./config.yaml"
 CONFIG = get_config(CONFIG_PATH)
 
+
 class SparseStream(AsyncStream):
 
     """
@@ -72,6 +73,7 @@ class SparseStream(AsyncStream):
             console.print(status.text, style="bold white")
             console.print(sentiment, style="bold yellow")
             console.print(topic + "\n", style="bold red")
+
 
 async def main():
 
