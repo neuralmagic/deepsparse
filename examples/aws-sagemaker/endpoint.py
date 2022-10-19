@@ -88,10 +88,9 @@ class SparseMaker:
         self.sm_boto3 = boto3.client("sagemaker", region_name=self.region_name)
 
         # Model
-        self.region = boto3.Session().region_name
         self.acc = boto3.client("sts").get_caller_identity()["Account"]
         self.repo_path = f"amazonaws.com/{self.repo_name}:latest"
-        self.image_uri = f"{self.acc}.dkr.ecr.{self.region}.{self.repo_path}"
+        self.image_uri = f"{self.acc}.dkr.ecr.{self.region_name}.{self.repo_path}"
         self.image = [{"Image": self.image_uri}]
         self.ROLE_ARN = role_arn
 
