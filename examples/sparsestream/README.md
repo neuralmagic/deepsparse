@@ -66,4 +66,10 @@ For example:
 'Gold is up 25% in after-hours trading.'
 'Bullish'
 'Gold | Metals | Materials'
+'Apple will introduce its new Ipad in November.'
+'Neutral'
+'Company | Product News'
+'Goldman downgrades Twitter before Elon buyout.'
+'Bearish'
+'Analyst Update'
 ```
