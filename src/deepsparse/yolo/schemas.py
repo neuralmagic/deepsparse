@@ -46,6 +46,14 @@ class YOLOInput(ComputerVisionSchema):
         default=0.45,
         description="minimum confidence score for a prediction to be valid",
     )
+    multi_label: bool = Field(
+        default=False,
+        description=(
+            "when true, allow multi-label assignment to each detected object. Defaults "
+            "to False to mimic yolov5 detection pathway. Note that yolov5 validation "
+            "pathway by default run with multi_label on"
+        ),
+    )
 
 
 class YOLOOutput(BaseModel):
