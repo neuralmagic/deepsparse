@@ -45,7 +45,7 @@ pip install -r requirements.txt
 ```
 ## <div>`START STREAM`</div>
 
-In terminal, start a Twitter stream with:
+In a terminal, start a Twitter stream with:
 ```bash
 python stream.py
 ```
@@ -54,7 +54,7 @@ This will download sparse-optimized models and initialize two NLP inference pipe
 
 ## <div>`STREAM WHILE YOU EAT SOME POPCORN 🍿`</div>
 
-Tweets should now be streaming in terminal, you should see three objects per tweet:
+Tweets should now be streaming in you terminal, and you should see three objects per tweet:
 
 - `tweet`: The tweet received from the Twitter API.
 - `sentiment`: The tweet's sentiment: `Bullish` or `Bearish` or `Neutral`
