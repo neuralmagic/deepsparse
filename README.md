@@ -62,13 +62,13 @@ Neural Magic's DeepSparse Engine is able to integrate into popular deep learning
 
 The DeepSparse Engine is available in two editions: 
 1. **The Community Edition** is open-source and free for evaluation, research, and non-production use with our [Engine Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2 **The Enterprise Edition** requires a Trial License or can be fully licensed for production, commercial applications. 
+2. **The Enterprise Edition** requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications. 
 
-## Installation Guide
+## Installation Overview
 
 - [Hardware Support and System Requirements](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
-- DeepSparse Community Edition
-- DeepSparse Enterprise Edition
+- [DeepSparse Community Edition](https://github.com/neuralmagic/deepsparse/main/README.md#deepsparse-community-edition)
+- [DeepSparse Enterprise Edition](https://github.com/neuralmagic/deepsparse/main/README.md#deepsparse-enterprise-edition)
 
 ## Features
 
@@ -83,7 +83,6 @@ The DeepSparse Engine is available in two editions:
 Review [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html) to understand system requirements. The DeepSparse Engine works natively on Linux; Mac and Windows require running Linux in a Docker or virtual machine; it will not run natively on those operating systems.
 
 
-## Installation Guide
 The DeepSparse Engine is tested on Python 3.7-3.10, ONNX 1.5.0-1.12.0, ONNX opset version 11+, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended. 
 
 ## DeepSparse Community Edition
@@ -104,17 +103,18 @@ Install the Enterprise Edition as follows:
 pip install deepsparse-ent
 ```
 
+### Getting a license
 The DeepSparse Enterprise Edition requires a valid license to run the engine and can be licensed for production, commercial applications. There are two options available:
 
-### 90-Day Enterprise Trial License
-To try out the DeepSparse Enterprise Edition and get a Neural Magic Trial License, complete our [registration form](https://neuralmagic.wpengine.com/deepsparse-engine-free-trial/). Upon submission, the license will be emailed immediately to you and your 90-day term starts right then.
+#### 90-Day Enterprise Trial License
+To try out the DeepSparse Enterprise Edition and get a Neural Magic Trial License, complete our [registration form](https://neuralmagic.com/deepsparse-engine-free-trial). Upon submission, the license will be emailed immediately to you and your 90-day term starts right then.
 
-### Enterprise Edition License
+#### Enterprise Edition License
 To learn more about DeepSparse Enterprise Edition pricing, [review our pricing page](https://neuralmagic.wpengine.com/deepsparse-engine-free-trial/). Details on how to [contact our Sales team](https://neuralmagic.com/deepsparse-engine/#form) and discuss your use case further for a custom quote are also available.
 
-## DeepSparse Enterprise Edition License Management
+### Installing a License
 <details>
-	<summary>DeepSparse Enterprise Edition License Management</summary>
+	<summary>Installing a License</summary>
 
 Once you have obtained a license, you will need to initialize it to be able to run the DeepSparse Enterprise Edition. You can initialize your license by running the command: 
 
@@ -122,23 +122,23 @@ Once you have obtained a license, you will need to initialize it to be able to r
 deepsparse.license
 ```
 
-`deepsparse.license` takes one argument that is a reference to the license and can be referenced in the `deepsparse.license` command as either `“license_string”` or `path_to_license`. 
+`deepsparse.license` takes one argument that is a reference to the license and can be referenced in the `deepsparse.license` command as either `<license_string>` or `path/to/license.txt`. 
 
 To initialize a license on a machine:
 1. Confirm you have deepsparse-ent installed in a fresh virtual environment. 
 	- Note: Installing deepsparse and deepsparse-ent on the same virtual environment could yield unsupported behaviors. 
 2. Take your license.txt file and move it to the directory you wish to use to run deepsparse-ent for inference. 
 3. You can set an environment variable to store the license to make future startup of the Deepsparse Enterprise Edition faster. 
-4. Run `deepsparse.license` with the `“license_string”` or `path_to_license` as an argument as follows:
-	- `deepsparse.license “samplelicensetring”`
+4. Run `deepsparse.license` with the `<license_string>` or `path/to/license.txt` as an argument as follows:
+	- `deepsparse.license <samplelicensetring>`
 	- `deepsparse.license ./license.txt`
 5. Once the license is authenticated, you should see a splash message indicating that you are now running DeepSparse Enterprise Edition. 
 6. Mark/Ben to help fill in how exactly the env variable gets set and how to do that. 
 </details>
 
-## License Validation for DeepSparse Enterprise
+### Validating a License
 <details>
-	<summary>License Validation for DeepSparse Enterprise</summary>
+	<summary>Validating a License</summary>
 
 Once you have initialized your license, you may want to check if it is still valid before running a workload on Deepsparse Enterprise Edition. To confirm your license is still active with the DeepSparse Enterprise Edition, run the command:
 
@@ -146,13 +146,13 @@ Once you have initialized your license, you may want to check if it is still val
 deepsparse.validate_license
 ```
 
-`deepsparse.validate_license` can be run with no arguments, which will reference an existing environment variable (if set), or with one argument that is a reference to the license and can be referenced in the `deepsparse.validate_license` command as either `“license_string”` or `path_to_license`. 
+`deepsparse.validate_license` can be run with no arguments, which will reference an existing environment variable (if set), or with one argument that is a reference to the license and can be referenced in the `deepsparse.validate_license` command as either `<license_string>` or `path/to/license.txt`. 
 
 To validate a license on a machine:
 1. If you have the license environment variable set in your current environment:
 	- Run the `deepsparse.validate_license` with no arguments. If the referenced license is valid, you should get the DeepSparse Enterprise Edition splash screen printed out in your terminal window. 
-2. If you want to supply the `“license_string”` or `path_to_license`:
-	- Run the `deepsparse.validate_license` with either `“license_string”` or `path_to_license` as an argument. If the referenced license is valid, you should get the DeepSparse Enterprise Edition splash screen printed out in your terminal window. 
+2. If you want to supply the `<license_string>` or `path/to/license.txt`:
+	- Run the `deepsparse.validate_license` with either `<license_string>` or `path/to/license.txt` as an argument. If the referenced license is valid, you should get the DeepSparse Enterprise Edition splash screen printed out in your terminal window. 
 
 If you encounter issues initializing or validating your DeepSparse Enterprise Edition License, contact [license@neuralmagic.com](mailto:license@neuralmagic.com) for help.
 
