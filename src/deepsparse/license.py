@@ -90,9 +90,9 @@ def license_status(license_path: Optional[str] = None) -> Tuple[bool, str, str]:
     """
     deepsparse_lib = init_deepsparse_lib()
     return (
-        deepsparse_lib.validate_license()
+        deepsparse_lib.license_status()
         if license_path is None
-        else deepsparse_lib.validate_license(license_path)
+        else deepsparse_lib.license_status(license_path)
     )
 
 def validate_license(
