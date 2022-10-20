@@ -77,9 +77,9 @@ def add_deepsparse_license(token_or_path):
 
 def license_status(license_path: Optional[str] = None) -> Tuple[bool, str, str]:
     """
-    Returns the status of a license as tuple of 
+    Returns the status of a license as tuple of
     (is_exception, error/warning, splash message)
-    
+
     License should be passed as a text file containing only the JWT. If no path is
     provided the expected file path of the token will be validated. Default
     path is ~/.config/neuralmagic/license.txt
@@ -94,6 +94,7 @@ def license_status(license_path: Optional[str] = None) -> Tuple[bool, str, str]:
         if license_path is None
         else deepsparse_lib.license_status(license_path)
     )
+
 
 def validate_license(
     license_path: Optional[str] = None,
