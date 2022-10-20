@@ -60,7 +60,9 @@ A CPU runtime that takes advantage of sparsity within neural networks to reduce 
 
 Neural Magic's DeepSparse Engine is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. ONNX gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
-The DeepSparse Engine is available in two editions: Community and Enterprise. The Community Edition is open-source and free for evaluation, research, and non-production use with our [Engine Community License](https://neuralmagic.com/legal/engine-license-agreement/). The Enterprise Edition requires a Trial License or can be fully licensed for production, commercial applications. 
+The DeepSparse Engine is available in two editions: 
+1. **The Community Edition** is open-source and free for evaluation, research, and non-production use with our [Engine Community License](https://neuralmagic.com/legal/engine-license-agreement/).
+2 **The Enterprise Edition** requires a Trial License or can be fully licensed for production, commercial applications. 
 
 ## Installation Guide
 
