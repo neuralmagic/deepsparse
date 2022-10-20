@@ -34,7 +34,6 @@ Options:
 import logging
 import os
 import shutil
-import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Optional, Tuple
