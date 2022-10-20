@@ -103,7 +103,7 @@ Install the Enterprise Edition as follows:
 pip install deepsparse-ent
 ```
 
-### Getting a license
+### Getting a License
 The DeepSparse Enterprise Edition requires a valid license to run the engine and can be licensed for production, commercial applications. There are two options available:
 
 #### 90-Day Enterprise Trial License
