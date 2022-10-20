@@ -124,6 +124,8 @@ deepsparse.license
 
 `deepsparse.license` takes one argument that is a reference to the license and can be referenced in the `deepsparse.license` command as either `<license_string>` or `path/to/license.txt`. 
 
+**Note:** *Create a `license.txt` file by taking your `<license_string>`, pasting it into a text editor, and saving the file as `license.txt`.*
+
 To initialize a license on a machine:
 1. Confirm you have deepsparse-ent installed in a fresh virtual environment. 
 	- Note: Installing deepsparse and deepsparse-ent on the same virtual environment could yield unsupported behaviors. 
@@ -147,6 +149,8 @@ deepsparse.validate_license
 ```
 
 `deepsparse.validate_license` can be run with no arguments, which will reference an existing environment variable (if set), or with one argument that is a reference to the license and can be referenced in the `deepsparse.validate_license` command as either `<license_string>` or `path/to/license.txt`. 
+
+**Note:** *Create a `license.txt` file by taking your `<license_string>`, pasting it into a text editor, and saving the file as `license.txt`.*
 
 To validate a license on a machine:
 1. If you have the license environment variable set in your current environment:
