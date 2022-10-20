@@ -78,7 +78,7 @@ def add_deepsparse_license(token_or_path):
 def license_status(license_path: Optional[str] = None) -> Tuple[bool, str, str]:
     """
     Returns the status of a license as tuple of 
-    (is_exception, error/warning, display message)
+    (is_exception, error/warning, splash message)
     
     License should be passed as a text file containing only the JWT. If no path is
     provided the expected file path of the token will be validated. Default
@@ -86,7 +86,7 @@ def license_status(license_path: Optional[str] = None) -> Tuple[bool, str, str]:
 
     :param license_path: file path to text file of token to check status of.
         Default is None, expected token path will be validated
-    :return: tuple of (is_exception, error/warning, display message)
+    :return: tuple of (is_exception, error/warning, splash message)
     """
     deepsparse_lib = init_deepsparse_lib()
     return (
@@ -117,7 +117,7 @@ def validate_license(
 
     if is_exception:
         # exception would be raised on compilation with license_path, raise
-        raise ValueError(splash_message)
+        raise ValueError(error_message)
     elif print_warning and error_message:
         # no exception would be raised but message displayed, assume warning
         print(error_message)
