@@ -249,7 +249,7 @@ class Pipeline(ABC):
 
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
-# ------ POSTPROCESSING ------
+        # ------ POSTPROCESSING ------
         timer.start(InferencePhases.POST_PROCESS)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
