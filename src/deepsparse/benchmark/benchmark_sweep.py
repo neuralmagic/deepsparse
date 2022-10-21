@@ -82,6 +82,7 @@ def benchmark_sweep(
                 "Throughput",
                 "Mean Latency",
                 "Median Latency",
+                "Std Latency",
                 "Command",
             ]
         )
@@ -117,6 +118,21 @@ def benchmark_sweep(
                 items_per_second = result["benchmark_result"]["items_per_sec"]
                 latency_mean = result["benchmark_result"]["mean"]
                 latency_median = result["benchmark_result"]["median"]
+                latency_std = result["benchmark_result"]["std"]
+
+                command = [
+                    "deepsparse.benchmark",
+                    f"{model}",
+                    f"--batch_size={batch_size}",
+                    f"--input_shapes={input_shape}",
+                    f"--num_cores={num_core}",
+                    f"--scenario={scenario}",
+                    f"--time={run_time}",
+                    f"--warmup_time={warmup_time}",
+                    f"--num_streams={num_streams}",
+                    f"--engine={engine}",
+                ]
+                command_str = f"\"{' '.join(command)}\""
 
                 writer.writerow(
                     [
@@ -128,5 +144,7 @@ def benchmark_sweep(
                         items_per_second,
                         latency_mean,
                         latency_median,
+                        latency_std,
+                        command_str,
                     ]
                 )

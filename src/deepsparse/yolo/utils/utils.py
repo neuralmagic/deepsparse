@@ -133,6 +133,7 @@ def postprocess_nms(
     outputs: Union[torch.Tensor, numpy.ndarray],
     iou_thres: float = 0.25,
     conf_thres: float = 0.45,
+    multi_label: bool = False,
 ) -> List[numpy.ndarray]:
     """
     :param outputs: Tensor of post-processed model outputs
@@ -144,7 +145,7 @@ def postprocess_nms(
     if isinstance(outputs, numpy.ndarray):
         outputs = torch.from_numpy(outputs)
     nms_outputs = _non_max_suppression(
-        outputs, conf_thres=conf_thres, iou_thres=iou_thres
+        outputs, conf_thres=conf_thres, iou_thres=iou_thres, multi_label=multi_label
     )
     return [output.cpu().numpy() for output in nms_outputs]
 
