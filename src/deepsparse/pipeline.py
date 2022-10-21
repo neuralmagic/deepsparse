@@ -131,7 +131,7 @@ class Pipeline(ABC):
         ThreadPoolExecutor with default workers equal to the number of available
         cores / 2
     :param logger: An optional BaseLogger object. If provided, it will be logging
-        the appropriate data (according to logger's internal state) on __call__()
+        the appropriate information (according to logger's internal state) from the pipeline on __call__()
     """
 
     def __init__(
@@ -249,6 +249,7 @@ class Pipeline(ABC):
 
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
+# ------ POSTPROCESSING ------
         timer.start(InferencePhases.POST_PROCESS)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs

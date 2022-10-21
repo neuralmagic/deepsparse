@@ -26,7 +26,7 @@ __all__ = ["BaseLogger", "MetricCategories"]
 class MetricCategories(Enum):
     """
     Metric Taxonomy [for reference]
-        CATEGORY - category of metric (System/Latency/Data)
+        CATEGORY - category of metric (System/Performance/Data)
             GROUP - logical group of metrics
                 METRIC - individual metric
     """
@@ -59,4 +59,4 @@ class BaseLogger(ABC):
         :param value: The data structure that is logged
         :param category: The metric category that the log belongs to
         """
-        raise NotImplementedError
+        raise NotImplementedError()
