@@ -13,8 +13,7 @@
 # limitations under the License.
 import logging
 
-from deepsparse import Pipeline
-from deepsparse.loggers import PythonLogger
+from deepsparse import Pipeline, PythonLogger
 from tests.utils import mock_engine
 
 
