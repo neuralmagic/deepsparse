@@ -28,8 +28,9 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
+from deepsparse.loggers import BaseLogger
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
-from deepsparse.timing import InferencePhases, InferenceTimingSchema, TimingBuilder
+from deepsparse.timing import InferencePhases, TimingBuilder
 
 
 __all__ = [
@@ -129,6 +130,8 @@ class Pipeline(ABC):
         synchronous execution - if running in dynamic batch mode a default
         ThreadPoolExecutor with default workers equal to the number of available
         cores / 2
+    :param logger: An optional BaseLogger object. If provided, it will be logging
+        the appropriate data (according to logger's internal state) on __call__()
     """
 
     def __init__(
@@ -142,6 +145,7 @@ class Pipeline(ABC):
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
+        logger: Optional[BaseLogger] = None,
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -149,6 +153,15 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
+        self.logger = logger
+
+        if self.logger and not self._alias:
+            raise ValueError(
+                f"A logger: {self.logger} is specified, but the alias of "
+                f"the pipeline is {self._alias}. For the sake of clarity, "
+                "if the logger is to be used, it is required to specify "
+                "the alias of the pipeline."
+            )
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -185,10 +198,19 @@ class Pipeline(ABC):
             )
         timer = TimingBuilder()
 
-        # parse inputs into input_schema
         timer.start(InferencePhases.TOTAL_INFERENCE)
+
+        # ------ PREPROCESSING ------
         timer.start(InferencePhases.PRE_PROCESS)
+        # parse inputs into input_schema
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
+        if self.logger:
+            self.logger.log(
+                identifier=f"{self._alias}.pipeline_inputs",
+                value=pipeline_inputs,
+                category=self.logger.metric_categories.DATA,
+            )
+
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
@@ -200,8 +222,15 @@ class Pipeline(ABC):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
+        if self.logger:
+            self.logger.log(
+                identifier=f"{self._alias}.engine_inputs",
+                value=engine_inputs,
+                category=self.logger.metric_categories.DATA,
+            )
         timer.stop(InferencePhases.PRE_PROCESS)
 
+        # ------ INFERENCE ------
         # split inputs into batches of size `self._batch_size`
         timer.start(InferencePhases.ENGINE_FORWARD)
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
@@ -211,6 +240,13 @@ class Pipeline(ABC):
 
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
+        if self.logger:
+            self.logger.log(
+                identifier=f"{self._alias}.engine_outputs",
+                value=engine_outputs,
+                category=self.logger.metric_categories.DATA,
+            )
+
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
         timer.start(InferencePhases.POST_PROCESS)
@@ -222,39 +258,23 @@ class Pipeline(ABC):
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
+        if self.logger:
+            self.logger.log(
+                identifier=f"{self._alias}.pipeline_outputs",
+                value=pipeline_outputs,
+                category=self.logger.metric_categories.DATA,
+            )
         timer.stop(InferencePhases.POST_PROCESS)
         timer.stop(InferencePhases.TOTAL_INFERENCE)
 
-        if not monitoring:
-            return pipeline_outputs
+        if self.logger:
+            self.logger.log(
+                identifier=f"{self._alias}.inference_timing",
+                value=timer.build(),
+                category=self.logger.metric_categories.PERFORMANCE,
+            )
 
-        else:
-            inference_timing = InferenceTimingSchema(**timer.build())
-            return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
-
-    def run_with_monitoring(
-        self, *args, **kwargs
-    ) -> Tuple[BaseModel, BaseModel, Any, InferenceTimingSchema]:
-        """
-        Run the inference forward pass and additionally
-        return extra monitoring information
-
-        :return:
-            pipeline_outputs: outputs from the inference pipeline
-            pipeline_inputs: inputs to the inference pipeline
-            engine_inputs: direct input to the inference engine
-            inference_timing: BaseModel, that contains the information about time
-                elapsed during the inference steps: pre-processing,
-                engine-forward, post-processing, as well as
-                the total elapsed time
-        """
-        (
-            pipeline_outputs,
-            pipeline_inputs,
-            engine_inputs,
-            inference_timing,
-        ) = self.__call__(*args, monitoring=True, **kwargs)
-        return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
+        return pipeline_outputs
 
     @staticmethod
     def split_engine_inputs(

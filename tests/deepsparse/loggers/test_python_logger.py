@@ -11,16 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pytest
-from deepsparse.loggers import BaseLogger, ManagerLogger, PrometheusLogger
+import logging
+
+from deepsparse import Pipeline
+from deepsparse.loggers import PythonLogger
+from tests.utils import mock_engine
 
 
-@pytest.mark.parametrize("loggers", [PrometheusLogger(port=0)])
-def test_logger_manager(loggers):
-    logger_manager = ManagerLogger(loggers)
-    assert isinstance(logger_manager.loggers, dict)
-    assert len(logger_manager.loggers) == 1
-    assert [
-        isinstance(logger, BaseLogger) for logger in logger_manager.loggers.values()
-    ]
-    assert logger_manager.identifier == [loggers.identifier]
+@mock_engine(rng_seed=0)
+def test_python_logger(engine_mock, caplog, alias="python_logger"):
+    caplog.set_level(logging.INFO)
+    python_logger = PythonLogger()
+    pipeline = Pipeline.create(
+        "token_classification", batch_size=1, alias=alias, logger=python_logger
+    )
+    pipeline("all_your_base_are_belong_to_us")
+    relevant_logs = [message for message in caplog.messages if alias in message]
+    assert len(relevant_logs) == 5

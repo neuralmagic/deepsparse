@@ -1,6 +1,3 @@
-"""
-Base implementation of the logger
-"""
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,48 +12,41 @@ Base implementation of the logger
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any, Optional
+"""
+Implementation of the Python Logger that logs to the stdout
+"""
+import logging
+from typing import Any
+
+from deepsparse.loggers import BaseLogger, MetricCategories
 
 
-__all__ = ["BaseLogger", "MetricCategories"]
+logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
+
+__all__ = ["PythonLogger"]
 
 
-class MetricCategories(Enum):
-    """
-    Metric Taxonomy [for reference]
-        CATEGORY - category of metric (System/Latency/Data)
-            GROUP - logical group of metrics
-                METRIC - individual metric
-    """
-
-    SYSTEM = "system"
-    PERFORMANCE = "performance"
-    DATA = "data"
-
-
-class BaseLogger(ABC):
+class PythonLogger(BaseLogger):
     """
     Generic BaseLogger abstract class meant to define interfaces
     for the loggers that support various monitoring services APIs.
     """
 
-    def __init__(self, config: Optional[dict] = None):
-        self.config = config
-        self.metric_categories = MetricCategories
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-    @abstractmethod
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
-        The main method to collect information from the pipeline
-        and then possibly process the information and pass it to
-        the monitoring service
+        Collect information from the pipeline and print them to the console
 
         :param identifier: The identifier of the log
              By convention should have the following structure:
              {pipeline_name}.{target_name}.{optional_identifier_1}.{optional_identifier_2}.{...}
-        :param value: The data structure that is logged
+        :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        raise NotImplementedError
+        msg = (
+            f"Identifier: {identifier} | Category: {category.value} "
+            f"| Logged Data Type: {type(value)}"
+        )
+        logging.info(msg=msg)
