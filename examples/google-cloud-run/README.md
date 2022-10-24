@@ -43,7 +43,7 @@ Run the following command to build your Cloud Run endpoint.
 python endpoint.py create
 ```
 
-After the endpoint has been staged (~3 minute), you can start making requests by passing this URL into the CloudRunClient object. Afterwards, you can run inference by passing in your text input:
+After the endpoint has been staged (~3 minute), gcloud CLI will provide your API endpoint URL. You can start making requests by passing this URL into the CloudRunClient object. Afterwards, you can run inference by passing in your text input:
 
 ```python
 from client import CloudRunClient
