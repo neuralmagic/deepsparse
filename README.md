@@ -107,7 +107,7 @@ pip install deepsparse-ent
 The DeepSparse Enterprise Edition requires a valid license to run the engine and can be licensed for production, commercial applications. There are two options available:
 
 #### 90-Day Enterprise Trial License
-To try out the DeepSparse Enterprise Edition and get a Neural Magic Trial License, complete our [registration form](https://neuralmagic.com/deepsparse-engine-free-trial). Upon submission, the license will be emailed immediately to you and your 90-day term starts right then.
+To try out the DeepSparse Enterprise Edition and get a Neural Magic Trial License, complete our [registration form](https://neuralmagic.com/deepsparse-engine-free-trial). Upon submission, the license will be emailed to you and your 90-day term starts right then.
 
 #### Enterprise Edition License
 To learn more about DeepSparse Enterprise Edition pricing, [contact our Sales team](https://neuralmagic.com/deepsparse-engine/#form) to discuss your use case further for a custom quote.
