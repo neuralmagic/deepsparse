@@ -16,24 +16,7 @@ Base implementation of the logger
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Any, Optional
-
-
-__all__ = ["BaseLogger", "MetricCategories"]
-
-
-class MetricCategories(Enum):
-    """
-    Metric Taxonomy [for reference]
-        CATEGORY - category of metric (System/Performance/Data)
-            GROUP - logical group of metrics
-                METRIC - individual metric
-    """
-
-    SYSTEM = "system"
-    PERFORMANCE = "performance"
-    DATA = "data"
 
 
 class BaseLogger(ABC):
@@ -42,12 +25,8 @@ class BaseLogger(ABC):
     for the loggers that support various monitoring services APIs.
     """
 
-    def __init__(self, config: Optional[dict] = None):
-        self.config = config
-        self.metric_categories = MetricCategories
-
     @abstractmethod
-    def log(self, identifier: str, value: Any, category: MetricCategories):
+    def log(self, identifier: str, value: Any, category: Optional[str] = None):
         """
         The main method to collect information from the pipeline
         and then possibly process the information and pass it to
@@ -55,7 +34,7 @@ class BaseLogger(ABC):
 
         :param identifier: The identifier of the log
              By convention should have the following structure:
-             {pipeline_name}.{target_name}.{optional_identifier_1}.{optional_identifier_2}.{...}
+             {pipeline_name}..{optional_identifier_1}.{optional_identifier_2}.{...}
         :param value: The data structure that is logged
         :param category: The metric category that the log belongs to
         """

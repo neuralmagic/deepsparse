@@ -26,4 +26,19 @@ def test_python_logger(engine_mock, caplog, alias="python_logger"):
     )
     pipeline("all_your_base_are_belong_to_us")
     relevant_logs = [message for message in caplog.messages if alias in message]
-    assert len(relevant_logs) == 5
+    assert len(relevant_logs) == 8
+    assert all(f"Identifier: {alias}" in log for log in relevant_logs)
+
+
+@mock_engine(rng_seed=0)
+def test_python_logger_no_alias(engine_mock, caplog):
+    caplog.set_level(logging.INFO)
+    python_logger = PythonLogger()
+    pipeline = Pipeline.create(
+        "token_classification", batch_size=1, logger=python_logger
+    )
+    task_name = pipeline.task
+    pipeline("all_your_base_are_belong_to_us")
+    relevant_logs = [message for message in caplog.messages if task_name in message]
+    assert len(relevant_logs) == 8
+    assert all(f"Identifier: {task_name}" in log for log in relevant_logs)

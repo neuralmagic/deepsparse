@@ -14,10 +14,8 @@
 
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field
 
-
-__all__ = ["InferenceTimingSchema", "InferencePhases"]
+__all__ = ["InferencePhases"]
 
 
 @dataclass(frozen=True)
@@ -26,28 +24,3 @@ class InferencePhases:
     ENGINE_FORWARD: str = "engine_forward"
     POST_PROCESS: str = "post_process"
     TOTAL_INFERENCE: str = "total_inference"
-
-
-class InferenceTimingSchema(BaseModel):
-    """
-    Stores the information about time deltas
-    (in seconds) of certain processes within
-    the inference pipeline
-    """
-
-    pre_process: float = Field(
-        description="The duration [in seconds] of "
-        "the pre-processing step prior to inference"
-    )
-    engine_forward: float = Field(
-        description="The duration [in seconds] of the "
-        "neural network inference in the engine"
-    )
-    post_process: float = Field(
-        description="The duration [in seconds] of the "
-        "post-processing step following inference"
-    )
-    total_inference: float = Field(
-        description="The total duration [in seconds] for "
-        "the inference pipeline, end to end"
-    )
