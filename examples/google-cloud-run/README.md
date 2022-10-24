@@ -36,7 +36,6 @@ credentials, tools, and libraries are also required:
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/google-cloud-run
-pip install -r requirements.txt
 ```
 Run the following command to build your Cloud Run endpoint.
 
@@ -48,6 +47,7 @@ After the endpoint has been staged (~3 minute), you can start making requests by
 
 ```python
 from client import CloudRunClient
+
 CR = CloudRunClient("https://1zkckuuw1c.execute-api.us-east-1.amazonaws.com/inference")
 answer = CR.client("Drive from California to Texas!")
 print(answer)
