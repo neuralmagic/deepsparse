@@ -5,6 +5,7 @@ projectid=$2
 image_name=$3
 region_name=$4
 
+ARG config_path=./config.yaml
 # creates GCP project
 gcloud projects create $projectid --name="Cloud Run example"
 # set GCP project
@@ -18,12 +19,12 @@ gcloud services enable run.googleapis.com
 
 # build image and push to container registry on GCP
 docker build -t $image_name .
-docker build . -t gcr.io/{$projectid}/{$image_name}:latest
-docker push gcr.io/{$projectid}/{$image_name}:latest
+docker build . -t gcr.io/$projectid/$image_name:latest
+docker push gcr.io/$projectid/$image_name:latest
 
 # deploy image on Cloud Run with deployment configuration
 gcloud run deploy deepsparse-cloudrun \
-    --image gcr.io/{$projectid}/{$image_name}:latest \
+    --image gcr.io/$projectid/$image_name:latest \
     --region $region_name \
     --min-instances 0 \
     --max-instances 2 \
@@ -31,6 +32,6 @@ gcloud run deploy deepsparse-cloudrun \
     --concurrency 1 \
     --memory 3Gi \
     --timeout 2m \
-    --port 80 \
+    --port 8080 \
     --allow-unauthenticated
     
