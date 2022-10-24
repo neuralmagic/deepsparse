@@ -79,7 +79,10 @@ class FunctionLogger(BaseLogger):
         if category == MetricCategories.DATA:
             pipeline_name, target_name, *_ = identifier.split(".")
             list_functions = self.config.get(target_name)
-            if list_functions:
+            if list_functions is None:
+                # NOTE: explicitly filtering values not present in the config
+                return
+           # TODO & unindent everything below
                 for (
                     function_dict
                 ) in list_functions:  # iterate over all available functions
