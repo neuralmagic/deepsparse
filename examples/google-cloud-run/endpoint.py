@@ -49,12 +49,7 @@ class SparseRun:
     :param image_name: Name of Docker image to be created
     """
 
-    def __init__(
-        self, 
-        billing_id: str, 
-        image_name: str, 
-        region_name: str
-    ):
+    def __init__(self, billing_id: str, image_name: str, region_name: str):
 
         self.billing_id = billing_id
         self.image_name = image_name
@@ -63,7 +58,7 @@ class SparseRun:
         rand_id = randint(10000, 99999)
         self.project_id = "deepsparse" + str(rand_id)
         self.endpoint_script = "./create_endpoint.sh"
-  
+
     def create_endpoint(self):
 
         subprocess.call(
@@ -73,7 +68,7 @@ class SparseRun:
                 self.billing_id,
                 self.project_id,
                 self.image_name,
-                self.region_name
+                self.region_name,
             ]
         )
 
@@ -84,10 +79,9 @@ class SparseRun:
 
 def construct_sparserun():
     return SparseRun(
-        billing_id="<PLACEHOLDER>",
-        image_name="sparserun",
-        region_name="us-east1"
+        billing_id="<PLACEHOLDER>", image_name="sparserun", region_name="us-east1"
     )
+
 
 @click.group(chain=True)
 def main():
