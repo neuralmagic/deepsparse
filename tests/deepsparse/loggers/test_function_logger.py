@@ -16,7 +16,6 @@ import pytest
 from deepsparse import FunctionLogger, Pipeline, PythonLogger
 from tests.utils import mock_engine
 
-
 CONFIG_1 = {
     "pipeline_inputs": [
         {"function": "identity", "target_logger": "python", "frequency": 3}
@@ -42,6 +41,13 @@ CONFIG_3 = {
 @pytest.mark.parametrize(
     "config,num_iterations,expected_logs_count",
     [
+        """
+        if for some target (e.g. "pipeline_inputs") we have
+        "frequency" = 3 and
+        "num_iterations" = 14
+        logging will occur on iterations
+        0, 3, 6, 9, 12 -> and thus 5 logs collected
+        """
         (CONFIG_1, 14, {"pipeline_inputs": 5}),
         (CONFIG_2, 14, {"pipeline_inputs": 8}),
         (CONFIG_3, 14, {"pipeline_inputs": 8, "pipeline_outputs": 4}),
@@ -61,7 +67,7 @@ def test_function_logger(engine, config, num_iterations, expected_logs_count, ca
         all_messages += [message for message in capsys.readouterr().out.split("\n")]
     for target_name, logs_count in expected_logs_count.items():
         assert (
-            len([m for m in all_messages if target_name in m if "Category: data" in m])
+            len([m for m in all_messages if (target_name in m) and ("Category: data" in m)])
             == logs_count
         )
     assert (
