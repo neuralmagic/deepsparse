@@ -18,12 +18,12 @@ gcloud services enable run.googleapis.com
 
 # build image and push to container registry on GCP
 docker build -t $image_name .
-docker build . -t gcr.io/$projectid/$image_name:latest
-docker push gcr.io/$projectid/$image_name:latest
+docker build . -t gcr.io/{$projectid}/{$image_name}:latest
+docker push gcr.io/{$projectid}/{$image_name}:latest
 
 # deploy image on Cloud Run with deployment configuration
 gcloud run deploy deepsparse-cloudrun \
-    --image gcr.io/$projectid/$image_name:latest \
+    --image gcr.io/{$projectid}/{$image_name}:latest \
     --region $region_name \
     --min-instances 0 \
     --max-instances 2 \
@@ -34,6 +34,3 @@ gcloud run deploy deepsparse-cloudrun \
     --port 80 \
     --allow-unauthenticated
     
-# TESTING #
-# docker run -d --name sparse-cloud -p 80:80 sparserun
-# gcloud container images delete gcr.io/${project}/quickstart-image:tag1 --force-delete-tags
