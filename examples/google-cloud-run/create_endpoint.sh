@@ -4,6 +4,7 @@ billingid=$1
 projectid=$2
 image_name=$3
 region_name=$4
+service_name=$5
 
 # creates GCP project
 gcloud projects create $projectid --name="Cloud Run example"
@@ -22,7 +23,7 @@ docker build . -t gcr.io/$projectid/$image_name:latest
 docker push gcr.io/$projectid/$image_name:latest
 
 # deploy image on Cloud Run with deployment configuration
-gcloud run deploy deepsparse-cloudrun \
+gcloud run deploy $service_name \
     --image gcr.io/$projectid/$image_name:latest \
     --region $region_name \
     --min-instances 0 \

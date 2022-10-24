@@ -49,22 +49,25 @@ class SparseRun:
     pushing the image to GCP and generating a Cloud Run inference endpoint
 
     :param billind_id: Your GCP's account Billind ID
+    :param service_name: Name of the cloud run app
     :param image_name: Name of Docker image to be created
+    :param region_name: Name of cloud region to use
     """
 
-    def __init__(self, billing_id: str, image_name: str, region_name: str):
+    def __init__(
+        self, billing_id: str, service_name: str, image_name: str, region_name: str
+    ):
 
         self.billing_id = billing_id
-        self.image_name = image_name
+        self.service = service_name
+        self.image = image_name
         self.region = region_name
 
         self.project_id = "deepsparse" + str(RAND_ID)
         self.endpoint_script = "./create_endpoint.sh"
 
-        self.img = f"gcr.io/{self.project_id}/{self.image_name}:latest"
-        self.del_img = [f"gcloud container images delete {self.img}"]
         self.del_api = [
-            f"gcloud run services delete deepsparse-cloudrun --region {self.region}"
+            f"gcloud run services delete {self.service} --region {self.region} --quiet"
         ]
 
     def create_endpoint(self):
@@ -75,22 +78,24 @@ class SparseRun:
                 self.endpoint_script,
                 self.billing_id,
                 self.project_id,
-                self.image_name,
+                self.image,
                 self.region,
+                self.service,
             ]
         )
 
     def destroy_endpoint(self):
 
-        subprocess.run(self.del_img, shell=True)
-        print("deleted image")
         subprocess.run(self.del_api, shell=True)
         print("endpoint and Cloud Run endpoint deleted")
 
 
 def construct_sparserun():
     return SparseRun(
-        billing_id="<PLACEHOLDER>", image_name="sparserun", region_name="us-east1"
+        billing_id="<PLACEHOLDER>",
+        service_name="deepsparse-cloudrun",
+        image_name="sparserun",
+        region_name="us-east1",
     )
 
 
