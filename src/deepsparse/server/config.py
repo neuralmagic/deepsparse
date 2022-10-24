@@ -93,10 +93,12 @@ class EndpointConfig(BaseModel):
 
         kwargs.update(self.kwargs)
 
+        engine_type = kwargs.pop("engine_type", DEEPSPARSE_ENGINE)
+
         return PipelineConfig(
             task=self.task,
             model_path=self.model,
-            engine_type=DEEPSPARSE_ENGINE,
+            engine_type=engine_type,
             batch_size=self.batch_size,
             num_cores=None,  # this will be set from Context
             alias=self.name,
@@ -143,14 +145,57 @@ class ServerConfig(BaseModel):
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
     loggers: Union[Dict[str, Dict[str, Any]], str, None] = Field(
-        default="default",
+        default=None,
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
             " Set to 'default' for default logger based on deployment. Set to None for"
-            " no loggers. Default is 'default'. Example: "
+            " no loggers. Default is `None`. Example: "
             "{'prometheus': {'port': 8001}}."
         ),
     )
+
+
+def endpoint_diff(
+    old_cfg: ServerConfig, new_cfg: ServerConfig
+) -> Tuple[List[EndpointConfig], List[EndpointConfig]]:
+    """
+    - Added endpoint: the endpoint's route is **not** present in `old_cfg`,
+        and present in `new_cfg`.
+    - Removed endpoint: the endpoint's route is present in `old_cfg`, and
+        **not** present in `new_cfg`.
+    - Modified endpoint: Any field of the endpoint changed. In this case
+        the endpoint will be present in both returned lists (it is both
+        added and removed).
+    :return: Tuple of (added endpoints, removed endpoints).
+    """
+    routes_in_old = {
+        endpoint.route: endpoint
+        for endpoint in old_cfg.endpoints
+        if endpoint.route is not None
+    }
+    routes_in_new = {
+        endpoint.route: endpoint
+        for endpoint in new_cfg.endpoints
+        if endpoint.route is not None
+    }
+
+    added_routes = set(routes_in_new) - set(routes_in_old)
+    removed_routes = set(routes_in_old) - set(routes_in_new)
+
+    # for any routes that are in both, check if the config object is different.
+    # if so, then we do modification by adding the route to both remove & add
+    for route in set(routes_in_new) & set(routes_in_old):
+        if routes_in_old[route] != routes_in_new[route]:
+            removed_routes.add(route)
+            added_routes.add(route)
+
+    added_endpoints = [
+        endpoint for endpoint in new_cfg.endpoints if endpoint.route in added_routes
+    ]
+    removed_endpoints = [
+        endpoint for endpoint in old_cfg.endpoints if endpoint.route in removed_routes
+    ]
+    return added_endpoints, removed_endpoints
 
 
 def _unpack_bucketing(

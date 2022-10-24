@@ -15,19 +15,8 @@
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
+from tests.helpers import find_free_port
 from tests.utils import mock_engine
-
-
-def _find_free_port():
-    import socket
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(("0.0.0.0", 0))
-    portnum = s.getsockname()[1]
-    s.close()
-
-    return portnum
 
 
 @mock_engine(rng_seed=0)
@@ -38,7 +27,7 @@ def test_instantiate_prometheus(tmp_path):
                 endpoints=[EndpointConfig(task="text_classification", model="default")],
                 loggers=dict(
                     prometheus={
-                        "port": _find_free_port(),
+                        "port": find_free_port(),
                         "text_log_save_dir": str(tmp_path),
                         "text_log_save_freq": 30,
                     }
