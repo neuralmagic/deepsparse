@@ -59,7 +59,7 @@ print(answer)
 {'entity': 'LABEL_5','word': 'texas', ...}, 
 {'entity': 'LABEL_0','word': '!', ...}]`
 
-On your first cold start, it will take a ~30 seconds to get your first inference, but afterwards, it should be in milliseconds.
+On your first cold start, it will take a ~60 seconds to get your first inference, but afterwards, it should be in milliseconds.
 
 If you want to delete your Cloud Run endpoint, run:
 

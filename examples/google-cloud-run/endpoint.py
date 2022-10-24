@@ -87,7 +87,7 @@ class SparseRun:
     def destroy_endpoint(self):
 
         subprocess.run(self.del_api, shell=True)
-        print("endpoint and Cloud Run endpoint deleted")
+        print("Cloud Run endpoint deleted")
 
 
 def construct_sparserun():
