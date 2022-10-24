@@ -245,7 +245,7 @@ class Pipeline(ABC):
                 category=MetricCategories.DATA,
             )
             self.log(
-                identifier=f"{self._alias}.{InferencePhases.ENGINE_FORWARD}",
+                identifier=InferencePhases.ENGINE_FORWARD,
                 value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
                 category=MetricCategories.SYSTEM,
             )
@@ -694,10 +694,10 @@ class Pipeline(ABC):
 
     def log(self, identifier: str, value: Any, category: str):
         """
-        Pass the data to the DeepSparse logger object
+        Pass the logged data to the DeepSparse logger object
 
-        :param identifier: The string name assigned to the value logged
-        :param value: The data structure that is logged
+        :param identifier: The string name assigned to the logged value
+        :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
         self.logger.log(

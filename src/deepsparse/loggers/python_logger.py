@@ -15,21 +15,18 @@
 """
 Implementation of the Python Logger that logs to the stdout
 """
-import logging
+from datetime import datetime
 from typing import Any
 
 from deepsparse.loggers import BaseLogger, MetricCategories
 
-
-logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 
 __all__ = ["PythonLogger"]
 
 
 class PythonLogger(BaseLogger):
     """
-    Generic BaseLogger abstract class meant to define interfaces
-    for the loggers that support various monitoring services APIs.
+    Python logger that writes the collected logs to stdout
     """
 
     def __init__(self, **kwargs):
@@ -37,7 +34,7 @@ class PythonLogger(BaseLogger):
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
-        Collect information from the pipeline and print them to the console
+        Collect information from the pipeline and pipe it them to the stdout
 
         :param identifier: The identifier of the log
              By convention should have the following structure:
@@ -46,7 +43,7 @@ class PythonLogger(BaseLogger):
         :param category: The metric category that the log belongs to
         """
         msg = (
-            f"Identifier: {identifier} | Category: {category.value} "
-            f"| Logged Data Type: {type(value)}"
+            f" Identifier: {identifier} | Category: {category.value} "
+            f"| Logged Data Type: {value}"
         )
-        logging.info(msg=msg)
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + msg)

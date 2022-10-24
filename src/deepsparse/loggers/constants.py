@@ -1,3 +1,6 @@
+"""
+Holds logging-related objects with constant values
+"""
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
