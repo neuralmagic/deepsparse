@@ -30,10 +30,7 @@ class CloudRunClient:
 
     def client(self, **kwargs):
         """
-        Client for question answering task.
-        :param question: question input to the model pipeline.
-        :param context: context input to the model pipeline.
-        :return: json output from Lambda
+        Client for NLP tasks.
         """
 
         response = requests.post(self.url, headers=self.headers, json=kwargs)
