@@ -30,7 +30,6 @@ class PythonLogger(BaseLogger):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
