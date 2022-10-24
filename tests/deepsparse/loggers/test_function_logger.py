@@ -25,7 +25,7 @@ CONFIG_1 = {
 
 CONFIG_2 = {
     "pipeline_inputs": [
-        {"function": "identity", "target_logger": "python", "frequency": 3},
+        {"function": "identity", "frequency": 3},
         {"function": "identity", "frequency": 5},
     ]
 }
@@ -60,7 +60,7 @@ def test_function_logger(engine, config, num_iterations, expected_logs_count, ca
     pipeline = Pipeline.create(
         "token_classification",
         batch_size=1,
-        logger=FunctionLogger(loggers=PythonLogger(), config=config),
+        logger=FunctionLogger(logger=PythonLogger(), config=config),
     )
     all_messages = []
     for iter in range(num_iterations):

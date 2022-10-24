@@ -25,14 +25,6 @@ class BaseLogger(ABC):
     for the loggers that support various monitoring services APIs.
     """
 
-    @property
-    @abstractmethod
-    def identifier(self) -> str:
-        """
-        :return: The identifier of the logger type
-        """
-        raise NotImplementedError()
-
     @abstractmethod
     def log(self, identifier: str, value: Any, category: Optional[str] = None):
         """
