@@ -29,7 +29,6 @@ class PythonLogger(BaseLogger):
     Python logger that writes the collected logs to stdout
     """
 
-
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
         Collect information from the pipeline and pipe it them to the stdout
