@@ -5,7 +5,6 @@ projectid=$2
 image_name=$3
 region_name=$4
 
-ARG config_path=./config.yaml
 # creates GCP project
 gcloud projects create $projectid --name="Cloud Run example"
 # set GCP project

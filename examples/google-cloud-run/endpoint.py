@@ -39,6 +39,9 @@ from random import randint
 import click
 
 
+RAND_ID = randint(10000, 99999)
+
+
 class SparseRun:
 
     """
@@ -53,11 +56,16 @@ class SparseRun:
 
         self.billing_id = billing_id
         self.image_name = image_name
-        self.region_name = region_name
+        self.region = region_name
 
-        rand_id = randint(10000, 99999)
-        self.project_id = "deepsparse" + str(rand_id)
+        self.project_id = "deepsparse" + str(RAND_ID)
         self.endpoint_script = "./create_endpoint.sh"
+
+        self.img = f"gcr.io/{self.project_id}/{self.image_name}:latest"
+        self.del_img = [f"gcloud container images delete {self.img}"]
+        self.del_api = [
+            f"gcloud run services delete deepsparse-cloudrun --region {self.region}"
+        ]
 
     def create_endpoint(self):
 
@@ -68,12 +76,15 @@ class SparseRun:
                 self.billing_id,
                 self.project_id,
                 self.image_name,
-                self.region_name,
+                self.region,
             ]
         )
 
     def destroy_endpoint(self):
 
+        subprocess.run(self.del_img, shell=True)
+        print("deleted image")
+        subprocess.run(self.del_api, shell=True)
         print("endpoint and Cloud Run endpoint deleted")
 
 
