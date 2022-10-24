@@ -29,8 +29,9 @@ class PythonLogger(BaseLogger):
     Python logger that writes the collected logs to stdout
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    @property
+    def identifier(self) -> str:
+        return "python"
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
@@ -47,6 +48,6 @@ class PythonLogger(BaseLogger):
         """
         msg = (
             f" Identifier: {identifier} | Category: {category.value} "
-            f"| Logged Data Type: {value}"
+            f"| Logged Data: {value}"
         )
-        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + msg)
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f") + msg)

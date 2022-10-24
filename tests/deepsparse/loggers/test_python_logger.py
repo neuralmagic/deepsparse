@@ -13,19 +13,35 @@
 # limitations under the License.
 
 
+import pytest
 from deepsparse import MetricCategories, Pipeline, PythonLogger
 from tests.utils import mock_engine
 
 
+@pytest.mark.parametrize(
+    "pipeline_name",
+    [
+        ("python_logger"),
+        (None),
+    ],
+)
 @mock_engine(rng_seed=0)
-def test_python_logger(engine_mock, capsys, alias="python_logger"):
-    python_logger = PythonLogger()
-    pipeline = Pipeline.create(
-        "token_classification", batch_size=1, alias=alias, logger=python_logger
-    )
+def test_python_logger(engine, pipeline_name, capsys):
+    if pipeline_name:
+        pipeline = Pipeline.create(
+            "token_classification",
+            batch_size=1,
+            alias=pipeline_name,
+            logger=PythonLogger(),
+        )
+    else:
+        pipeline = Pipeline.create(
+            "token_classification", batch_size=1, logger=PythonLogger()
+        )
+        pipeline_name = pipeline.task
     pipeline("all_your_base_are_belong_to_us")
     messages = capsys.readouterr().out.split("\n")
-    relevant_logs = [message for message in messages if alias in message]
+    relevant_logs = [message for message in messages if pipeline_name in message]
     assert len(relevant_logs) == 8
     assert (
         len(
@@ -47,38 +63,4 @@ def test_python_logger(engine_mock, capsys, alias="python_logger"):
         )
         == 4
     )
-    assert all(f"Identifier: {alias}" in log for log in relevant_logs)
-
-
-@mock_engine(rng_seed=0)
-def test_python_logger_no_alias(engine_mock, capsys):
-    python_logger = PythonLogger()
-    pipeline = Pipeline.create(
-        "token_classification", batch_size=1, logger=python_logger
-    )
-    task_name = pipeline.task
-    pipeline("all_your_base_are_belong_to_us")
-    messages = capsys.readouterr().out.split("\n")
-    relevant_logs = [message for message in messages if task_name in message]
-    assert len(relevant_logs) == 8
-    assert (
-        len(
-            [
-                log
-                for log in relevant_logs
-                if f"Category: {MetricCategories.SYSTEM.value}" in log
-            ]
-        )
-        == 4
-    )
-    assert (
-        len(
-            [
-                log
-                for log in relevant_logs
-                if f"Category: {MetricCategories.DATA.value}" in log
-            ]
-        )
-        == 4
-    )
-    assert all(f"Identifier: {task_name}" in log for log in relevant_logs)
+    assert all(f"Identifier: {pipeline_name}" in log for log in relevant_logs)
