@@ -1,0 +1,53 @@
+# Deploying the DeepSparse Server with GCP's Cloud Run
+
+### INTRO
+
+[GCP's Cloud Run](https://cloud.google.com/run) is a serverless, event-driven environment for making quick deployments for various applications including machine learning in varous programming languages. The most convenient Cloud Run feature is delegating server management to GCP's infrastructure allowing the developer to focus on the deployment with minimum management.
+
+<br />
+
+[Getting Started with the DeepSparse Server](https://github.com/neuralmagic/deepsparse)🔌
+
+### Requirements
+The listed steps can be easily completed using `Python` and `Bash`. The following
+credentials, tools, and libraries are also required:
+* The [gcloud CLI](https://cloud.google.com/sdk/gcloud)
+* [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
+
+**Before starting, replace the `billing_id` PLACEHOLDER string with your GCP billing ID at the bottom of the SparseRun class found in the `endpoint.py` file. Your billing id, found in the `BILLING` menu in your GCP console should be alphanumeric look something like this:** `XXXXX-XXXXX-XXXXX`
+
+### Quick Start
+
+```bash
+git clone https://github.com/neuralmagic/deepsparse.git
+cd deepsparse/examples/google-cloud-run
+pip install -r requirements.txt
+```
+Run the following command to build your Cloud Run endpoint.
+
+```bash
+python endpoint.py create
+```
+
+After the endpoint has been staged (~3 minute), you can start making requests by passing this URL into the CloudRunClient object. Afterwards, you can run inference by passing in your text input:
+
+```python
+from client import CloudRunClient
+CR = CloudRunClient("https://1zkckuuw1c.execute-api.us-east-1.amazonaws.com/inference")
+answer = CR.client("Drive from California to Texas!")
+print(answer)
+```
+`[{'entity': 'LABEL_0','word': 'drive', ...}, 
+{'entity': 'LABEL_0','word': 'from', ...}, 
+{'entity': 'LABEL_5','word': 'california', ...}, 
+{'entity': 'LABEL_0','word': 'to', ...}, 
+{'entity': 'LABEL_5','word': 'texas', ...}, 
+{'entity': 'LABEL_0','word': '!', ...}]`
+
+On your first cold start, it will take a ~30 seconds to get your first inference, but afterwards, it should be in milliseconds.
+
+If you want to delete your Cloud Run endpoint, run:
+
+```bash
+python endpoint.py destroy
+```
