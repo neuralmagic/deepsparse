@@ -29,7 +29,6 @@ class PythonLogger(BaseLogger):
     Python logger that writes the collected logs to stdout
     """
 
-    def __init__(self, **kwargs):
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
