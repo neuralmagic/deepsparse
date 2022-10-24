@@ -47,6 +47,6 @@ class PythonLogger(BaseLogger):
         """
         msg = (
             f" Identifier: {identifier} | Category: {category.value} "
-            f"| Logged Data Type: {value}"
+            f"| Logged Data: {value}"
         )
         print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + msg)
