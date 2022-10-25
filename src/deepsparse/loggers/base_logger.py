@@ -26,18 +26,25 @@ class BaseLogger(ABC):
     """
 
     @abstractmethod
-    def log(self, identifier: str, value: Any, category: Optional[str] = None):
+    def log(
+        self,
+        pipeline_name: str,
+        target: str,
+        value: Any,
+        category: Optional[str] = None,
+    ):
         """
         The main method to collect information from the pipeline
         and then possibly process the information and pass it to
         the monitoring service
 
-        :param identifier: The identifier of the log
-             By default should consist of at least one string (name of the pipeline):
-                e.g. identifier = "pipeline_name"
-            If identifier is to be more complex, optional strings are to be concatenated
+        :param pipeline_name: The name of the pipeline that the log relates to
+        :param target: The identifier of the log
+            The target may be a single string:
+                e.g. target = "pipeline_input"
+            Or, if identifier is complex, multiple strings are to be concatenated
             using dot as a separator:
-                e.g. identifier = "pipeline_name.some_argument_1.some_argument_2"
+                e.g. target = "pipeline_input.embedding"
         :param value: The data structure that is logged
         :param category: The metric category that the log belongs to
         """

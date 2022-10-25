@@ -17,26 +17,25 @@ from deepsparse import FunctionLogger, Pipeline, PythonLogger
 from tests.utils import mock_engine
 
 
-CONFIG_1 = {
-    "pipeline_inputs": [
-        {"function": "identity", "target_logger": "python", "frequency": 3}
-    ]
-}
+CONFIG_1 = {"pipeline_inputs": [{"function": "identity_1", "frequency": 3}]}
 
 CONFIG_2 = {
     "pipeline_inputs": [
-        {"function": "identity", "frequency": 3},
-        {"function": "identity", "frequency": 5},
+        {"function": "identity_1", "frequency": 3},
+        {"function": "identity_2", "frequency": 5},
     ]
 }
 
 CONFIG_3 = {
     "pipeline_inputs": [
-        {"function": "identity", "target_logger": "python", "frequency": 3},
-        {"function": "identity", "frequency": 5},
+        {"function": "identity_1", "frequency": 3},
+        {"function": "identity_2", "frequency": 5},
     ],
-    "pipeline_outputs": [{"function": "identity", "frequency": 4}],
+    "pipeline_outputs": [{"function": "identity_1", "frequency": 4}],
 }
+
+CONFIG_4 = "./test_data/function_config.yaml"
+
 """
 if for some target (e.g. "pipeline_inputs") we have
 "frequency" = 3 and
@@ -52,6 +51,7 @@ logging will occur on iterations
         (CONFIG_1, 14, {"pipeline_inputs": 5}),
         (CONFIG_2, 14, {"pipeline_inputs": 8}),
         (CONFIG_3, 14, {"pipeline_inputs": 8, "pipeline_outputs": 4}),
+        (CONFIG_4, 14, {"pipeline_inputs": 8, "pipeline_outputs": 4}),
     ],
 )
 @mock_engine(rng_seed=0)

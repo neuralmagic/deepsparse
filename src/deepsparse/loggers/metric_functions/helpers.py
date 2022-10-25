@@ -18,8 +18,8 @@ from typing import Any
 __all__ = ["apply_function"]
 
 
-def apply_function(value: Any, function_signature: str):
-    if function_signature != "identity":
+def apply_function(value: Any, function: str):
+    if function not in ["identity_1", "identity_2"]:
         raise NotImplementedError()
     else:
         return value

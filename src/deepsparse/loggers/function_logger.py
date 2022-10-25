@@ -15,8 +15,11 @@
 """
 Implementation of the Function Logger
 """
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Union
 
-from typing import Any, Dict, List
+import yaml
 
 from deepsparse.loggers import BaseLogger, MetricCategories
 from deepsparse.loggers.metric_functions import apply_function
@@ -33,79 +36,120 @@ class FunctionLogger(BaseLogger):
     :param loggers: A DeepSparse Logger object
     :param config: A configuration dictionary that specifies the mapping between
         the target name and the functions to be applied to raw log values
+
+        `config` can be specified as a dictionary type:
         e.g.
-        ```
+
         {"pipeline_inputs":
-            [{"function": "identity",
+            [{"function": "some_function_1",
               "frequency": 3},
 
-            [{"function": "identity",
+            [{"function": "some_function_2",
               "frequency": 5}],
 
          "pipeline_outputs":
-            [{"function": "identity",
+            [{"function": "some_function_1",
             "frequency": 4}]
         }
+
+        or a a yaml file:
+        e.g.
+
+        ```yaml
+        pipeline_inputs:
+            - function: some_function_1
+              frequency: 3
+            - function: some_function_2
+              frequency: 5
+        pipeline_outputs:
+            - function: some_function_1
+              frequency: 4
+        ```
     """
 
     def __init__(
         self,
         logger: BaseLogger,
-        config: Dict[str, List[Dict[str, Any]]],
+        config: Union[str, Dict[str, List[Dict[str, Any]]]],
     ):
 
         self.logger = logger
-        self.config = self._add_frequency_counter(config)
+        self.config = (
+            config
+            if isinstance(config, dict)
+            else yaml.safe_load(Path(config).read_text())
+        )
+        self.function_call_counter = self._create_function_call_counter(self.config)
 
-    def log(self, identifier: str, value: Any, category: MetricCategories):
+    def log(
+        self, pipeline_name: str, target: str, value: Any, category: MetricCategories
+    ):
         """
-        :param identifier: The identifier of the log
-             By default should consist of at least one string (name of the pipeline):
-                e.g. identifier = "pipeline_name"
-            If identifier is to be more complex, optional strings are to be concatenated
+        :param pipeline_name: The name of the pipeline that the log relates to
+        :param target: The identifier of the log
+            The target may be a single string:
+                e.g. target = "pipeline_input"
+            Or, if identifier is complex, multiple strings are to be concatenated
             using dot as a separator:
-                e.g. identifier = "pipeline_name.some_argument_1.some_argument_2"
+                e.g. target = "pipeline_input.embedding"
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
         if category == MetricCategories.DATA:
-            pipeline_name, *target_name = identifier.split(".")
-
-            list_functions = self.config.get(".".join(target_name))
-            if list_functions is None:
-                return
-
-            for function_dict in list_functions:  # iterate over all available functions
-                if function_dict["frequency_counter"] % function_dict["frequency"] == 0:
-                    # if count matches the frequency, log
-                    # otherwise, pass
-                    self._log_data(identifier, value, category, function_dict)
-                # increment the counter
-                function_dict["frequency_counter"] += 1
-
+            # logging data information
+            self._log_data(
+                pipeline_name=pipeline_name,
+                target=target,
+                value=value,
+                category=category,
+            )
         else:
-            self.logger.log(identifier=identifier, value=value, category=category)
+            # logging system information
+            self.logger.log(
+                pipeline_name=pipeline_name,
+                target=target,
+                value=value,
+                category=category,
+            )
 
     def _log_data(
         self,
-        identifier: str,
+        pipeline_name: str,
+        target: str,
         value: Any,
         category: MetricCategories,
-        function_dict: Dict[str, Any],
     ):
-        # fetch the string signature & apply function
-        # specified by the signature to the value
-        function_signature = function_dict.get("function")
-        value = apply_function(value=value, function_signature=function_signature)
-        self.logger.log(
-            identifier=".".join([identifier, function_signature]),
-            value=value,
-            category=category,
-        )
+        list_target_functions = self.config.get(target)
+        if list_target_functions is None:
+            # no function to apply to the given target
+            return
+
+        for function_dict in list_target_functions:
+            function = function_dict.get("function")
+            logging_frequency = function_dict.get("frequency")
+
+            if self.function_call_counter[target][function] % logging_frequency == 0:
+                # reset the counter
+                self.function_call_counter[target][function] = 0
+
+                # fetch the function and apply it to the value
+                mapped_value = apply_function(value=value, function=function)
+
+                self.logger.log(
+                    pipeline_name=pipeline_name,
+                    target=target,
+                    value=mapped_value,
+                    category=category,
+                )
+
+            # increment the counter
+            self.function_call_counter[target][function] += 1
 
     @staticmethod
-    def _add_frequency_counter(config):
-        for identifier, list_functions in config.items():
+    def _create_function_call_counter(config):
+        function_call_counter = defaultdict(lambda: defaultdict(str))
+        for target, list_functions in config.items():
             for function_dict in list_functions:
-                function_dict.update(frequency_counter=0)
-        return config
+                function = function_dict.get("function")
+                function_call_counter[target][function] = 0
+        return function_call_counter

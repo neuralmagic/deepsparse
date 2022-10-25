@@ -198,7 +198,7 @@ class Pipeline(ABC):
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
         if self.logger:
             self.log(
-                identifier="pipeline_inputs",
+                target="pipeline_inputs",
                 value=pipeline_inputs,
                 category=MetricCategories.DATA,
             )
@@ -217,12 +217,12 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.PRE_PROCESS)
         if self.logger:
             self.log(
-                identifier="engine_inputs",
+                target="engine_inputs",
                 value=engine_inputs,
                 category=MetricCategories.DATA,
             )
             self.log(
-                identifier=InferencePhases.PRE_PROCESS,
+                target=InferencePhases.PRE_PROCESS,
                 value=timer.time_delta(InferencePhases.PRE_PROCESS),
                 category=MetricCategories.SYSTEM,
             )
@@ -240,12 +240,12 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.ENGINE_FORWARD)
         if self.logger:
             self.log(
-                identifier="engine_outputs",
+                target="engine_outputs",
                 value=engine_outputs,
                 category=MetricCategories.DATA,
             )
             self.log(
-                identifier=InferencePhases.ENGINE_FORWARD,
+                target=InferencePhases.ENGINE_FORWARD,
                 value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
                 category=MetricCategories.SYSTEM,
             )
@@ -265,17 +265,17 @@ class Pipeline(ABC):
 
         if self.logger:
             self.log(
-                identifier="pipeline_outputs",
+                target="pipeline_outputs",
                 value=pipeline_outputs,
                 category=MetricCategories.DATA,
             )
             self.log(
-                identifier=InferencePhases.POST_PROCESS,
+                target=InferencePhases.POST_PROCESS,
                 value=timer.time_delta(InferencePhases.POST_PROCESS),
                 category=MetricCategories.SYSTEM,
             )
             self.log(
-                identifier=InferencePhases.TOTAL_INFERENCE,
+                target=InferencePhases.TOTAL_INFERENCE,
                 value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
                 category=MetricCategories.SYSTEM,
             )
@@ -692,16 +692,17 @@ class Pipeline(ABC):
             kwargs=kwargs,
         )
 
-    def log(self, identifier: str, value: Any, category: str):
+    def log(self, target: str, value: Any, category: str):
         """
         Pass the logged data to the DeepSparse logger object
 
-        :param identifier: The string name assigned to the logged value
+        :param target: The string name assigned to the logged value
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
         self.logger.log(
-            identifier=f"{self.alias or self.task}.{identifier}",
+            pipeline_name=self.alias or self.task,
+            target=target,
             value=value,
             category=category,
         )

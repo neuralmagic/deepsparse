@@ -1,0 +1,8 @@
+pipeline_inputs:
+  - function: identity_1
+    frequency: 3
+  - function: identity_2
+    frequency: 5
+pipeline_outputs:
+  - function: identity_1
+    frequency: 4
