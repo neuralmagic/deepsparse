@@ -196,12 +196,12 @@ class Pipeline(ABC):
         timer.start(InferencePhases.PRE_PROCESS)
         # parse inputs into input_schema
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
-        if self.logger:
-            self.log(
-                identifier="pipeline_inputs",
-                value=pipeline_inputs,
-                category=MetricCategories.DATA,
-            )
+
+        self.log(
+            identifier="pipeline_inputs",
+            value=pipeline_inputs,
+            category=MetricCategories.DATA,
+        )
 
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
@@ -215,17 +215,17 @@ class Pipeline(ABC):
         else:
             postprocess_kwargs = {}
         timer.stop(InferencePhases.PRE_PROCESS)
-        if self.logger:
-            self.log(
-                identifier="engine_inputs",
-                value=engine_inputs,
-                category=MetricCategories.DATA,
-            )
-            self.log(
-                identifier=InferencePhases.PRE_PROCESS,
-                value=timer.time_delta(InferencePhases.PRE_PROCESS),
-                category=MetricCategories.SYSTEM,
-            )
+
+        self.log(
+            identifier="engine_inputs",
+            value=engine_inputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.PRE_PROCESS,
+            value=timer.time_delta(InferencePhases.PRE_PROCESS),
+            category=MetricCategories.SYSTEM,
+        )
 
         # ------ INFERENCE ------
         # split inputs into batches of size `self._batch_size`
@@ -238,17 +238,17 @@ class Pipeline(ABC):
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
         timer.stop(InferencePhases.ENGINE_FORWARD)
-        if self.logger:
-            self.log(
-                identifier="engine_outputs",
-                value=engine_outputs,
-                category=MetricCategories.DATA,
-            )
-            self.log(
-                identifier=InferencePhases.ENGINE_FORWARD,
-                value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
-                category=MetricCategories.SYSTEM,
-            )
+
+        self.log(
+            identifier="engine_outputs",
+            value=engine_outputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.ENGINE_FORWARD,
+            value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
+            category=MetricCategories.SYSTEM,
+        )
 
         # ------ POSTPROCESSING ------
         timer.start(InferencePhases.POST_PROCESS)
@@ -263,22 +263,21 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.POST_PROCESS)
         timer.stop(InferencePhases.TOTAL_INFERENCE)
 
-        if self.logger:
-            self.log(
-                identifier="pipeline_outputs",
-                value=pipeline_outputs,
-                category=MetricCategories.DATA,
-            )
-            self.log(
-                identifier=InferencePhases.POST_PROCESS,
-                value=timer.time_delta(InferencePhases.POST_PROCESS),
-                category=MetricCategories.SYSTEM,
-            )
-            self.log(
-                identifier=InferencePhases.TOTAL_INFERENCE,
-                value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
-                category=MetricCategories.SYSTEM,
-            )
+        self.log(
+            identifier="pipeline_outputs",
+            value=pipeline_outputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.POST_PROCESS,
+            value=timer.time_delta(InferencePhases.POST_PROCESS),
+            category=MetricCategories.SYSTEM,
+        )
+        self.log(
+            identifier=InferencePhases.TOTAL_INFERENCE,
+            value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
+            category=MetricCategories.SYSTEM,
+        )
 
         return pipeline_outputs
 
@@ -694,17 +693,19 @@ class Pipeline(ABC):
 
     def log(self, identifier: str, value: Any, category: str):
         """
-        Pass the logged data to the DeepSparse logger object
+        Pass the logged data to the DeepSparse logger object (if present)
 
         :param identifier: The string name assigned to the logged value
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
-        self.logger.log(
-            identifier=f"{self.alias or self.task}.{identifier}",
-            value=value,
-            category=category,
-        )
+        if self.logger:
+            self.logger.log(
+                identifier=f"{self.alias or self.task}.{identifier}",
+                value=value,
+                category=category,
+            )
+        return
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """
