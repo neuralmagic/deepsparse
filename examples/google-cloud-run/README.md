@@ -48,7 +48,7 @@ After the endpoint has been staged (~3 minute), gcloud CLI will provide your API
 ```python
 from client import CloudRunClient
 
-CR = CloudRunClient("https://1zkckuuw1c.execute-api.us-east-1.amazonaws.com/inference")
+CR = CloudRunClient("https://sparserun-xxxxxxxxxx-xx.a.run.app")
 answer = CR.client("Drive from California to Texas!")
 print(answer)
 ```
