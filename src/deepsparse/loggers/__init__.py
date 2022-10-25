@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
 from .base_logger import *
-from .manager_logger import *
-from .prometheus_logger import *
+
+# flake8: noqa
+from .constants import *
+from .python_logger import *
