@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
+from typing import Any
 
-from .inference_phases import *
-from .timer import *
+
+__all__ = ["apply_function"]
+
+
+def apply_function(value: Any, function: str):
+    if function not in ["identity_1", "identity_2"]:
+        raise NotImplementedError()
+    else:
+        return value

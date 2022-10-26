@@ -1,3 +1,6 @@
+"""
+Holds logging-related objects with constant values
+"""
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +15,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
+from enum import Enum
 
-from .inference_phases import *
-from .timer import *
+
+__all__ = ["MetricCategories"]
+
+
+class MetricCategories(Enum):
+    """
+    Metric Taxonomy [for reference]
+        CATEGORY - category of metric (System/Data)
+            GROUP - logical group of metrics
+                METRIC - individual metric
+    """
+
+    # Categories
+    SYSTEM = "system"
+    DATA = "data"
