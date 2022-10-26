@@ -28,8 +28,7 @@ class BaseLogger(ABC):
     @abstractmethod
     def log(
         self,
-        pipeline_name: str,
-        target: str,
+        identifier: str,
         value: Any,
         category: Optional[str] = None,
     ):
@@ -38,13 +37,7 @@ class BaseLogger(ABC):
         and then possibly process the information and pass it to
         the monitoring service
 
-        :param pipeline_name: The name of the pipeline that the log relates to
-        :param target: The identifier of the log
-            The target may be a single string:
-                e.g. target = "pipeline_input"
-            Or, if identifier is complex, multiple strings are to be concatenated
-            using dot as a separator:
-                e.g. target = "pipeline_input.embedding"
+        :param identifier: The name of the thing that is being logged.
         :param value: The data structure that is logged
         :param category: The metric category that the log belongs to
         """

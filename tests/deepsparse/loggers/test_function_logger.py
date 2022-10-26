@@ -34,7 +34,7 @@ CONFIG_3 = {
     "pipeline_outputs": [{"function": "identity_1", "frequency": 4}],
 }
 
-CONFIG_4 = "./test_data/function_config.yaml"
+CONFIG_4 = "tests/deepsparse/loggers/test_data/function_config.yaml"
 
 """
 if for some target (e.g. "pipeline_inputs") we have

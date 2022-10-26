@@ -33,7 +33,7 @@ class FunctionLogger(BaseLogger):
     DeepSparse logger that applies functions to raw log values
     according to the specified config file
 
-    :param loggers: A DeepSparse Logger object
+    :param logger: A DeepSparse Logger object
     :param config: A configuration dictionary that specifies the mapping between
         the target name and the functions to be applied to raw log values
 
@@ -81,33 +81,25 @@ class FunctionLogger(BaseLogger):
         )
         self.function_call_counter = self._create_function_call_counter(self.config)
 
-    def log(
-        self, pipeline_name: str, target: str, value: Any, category: MetricCategories
-    ):
+    def log(self, identifier: str, value: Any, category: MetricCategories):
         """
-        :param pipeline_name: The name of the pipeline that the log relates to
-        :param target: The identifier of the log
-            The target may be a single string:
-                e.g. target = "pipeline_input"
-            Or, if identifier is complex, multiple strings are to be concatenated
-            using dot as a separator:
-                e.g. target = "pipeline_input.embedding"
+        :param identifier: The name of the thing that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
         if category == MetricCategories.DATA:
             # logging data information
+            pipeline_name, *target = identifier.split(".")
             self._log_data(
                 pipeline_name=pipeline_name,
-                target=target,
+                target=".".join(target),
                 value=value,
                 category=category,
             )
         else:
             # logging system information
             self.logger.log(
-                pipeline_name=pipeline_name,
-                target=target,
+                identifier=identifier,
                 value=value,
                 category=category,
             )
@@ -136,8 +128,7 @@ class FunctionLogger(BaseLogger):
                 mapped_value = apply_function(value=value, function=function)
 
                 self.logger.log(
-                    pipeline_name=pipeline_name,
-                    target=target,
+                    identifier=f"{pipeline_name}.{target}.{function}",
                     value=mapped_value,
                     category=category,
                 )

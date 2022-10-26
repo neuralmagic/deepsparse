@@ -29,23 +29,15 @@ class PythonLogger(BaseLogger):
     Python logger that writes the collected logs to stdout
     """
 
-    def log(
-        self, pipeline_name: str, target: str, value: Any, category: MetricCategories
-    ):
+    def log(self, identifier: str, value: Any, category: MetricCategories):
         """
         Collect information from the pipeline and pipe it them to the stdout
 
-        :param pipeline_name: The name of the pipeline that the log relates to
-        :param target: The identifier of the log
-            The target may be a single string:
-                e.g. target = "pipeline_input"
-            Or, if identifier is complex, multiple strings are to be concatenated
-            using dot as a separator:
-                e.g. target = "pipeline_input.embedding"
+        :param identifier: The name of the thing that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        identifier = ".".join([pipeline_name, target])
+
         msg = (
             f" Identifier: {identifier} | Category: {category.value} "
             f"| Logged Data: {value}"

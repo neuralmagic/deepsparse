@@ -701,8 +701,7 @@ class Pipeline(ABC):
         :param category: The metric category that the log belongs to
         """
         self.logger.log(
-            pipeline_name=self.alias or self.task,
-            target=target,
+            identifier=f"{self.alias or self.task}.{target}",
             value=value,
             category=category,
         )
