@@ -60,19 +60,111 @@ A CPU runtime that takes advantage of sparsity within neural networks to reduce 
 
 Neural Magic's DeepSparse Engine is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. ONNX gives the flexibility to serve your model in a framework-agnostic environment. Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
+The DeepSparse Engine is available in two editions: 
+1. **The Community Edition** is open-source and free for evaluation, research, and non-production use with our [Engine Community License](https://neuralmagic.com/legal/engine-license-agreement/).
+2. **The Enterprise Edition** requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications. 
+
+## Installation Overview
+
+- [Hardware Support and System Requirements](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
+- [DeepSparse Community Edition](https://github.com/neuralmagic/deepsparse/main/README.md#deepsparse-community-edition)
+- [DeepSparse Enterprise Edition](https://github.com/neuralmagic/deepsparse/main/README.md#deepsparse-enterprise-edition)
+
 ## Features
 
 - 🔌 [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)
 - 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)
 - 👩‍💻 [NLP and Computer Vision Tasks Supported](https://github.com/neuralmagic/deepsparse/tree/main/examples)
-- 🧰 [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html)
 
-## Installation
-The DeepSparse Engine is tested on Python 3.6-3.10, ONNX 1.5.0-1.12.0, ONNX opset version 11+, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended. Install the engine using the following command:
+## Installation Guide
+
+## 🧰 Hardware Support and System Requirements
+
+Review [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html) to understand system requirements. The DeepSparse Engine works natively on Linux; Mac and Windows require running Linux in a Docker or virtual machine; it will not run natively on those operating systems.
+
+
+The DeepSparse Engine is tested on Python 3.7-3.10, ONNX 1.5.0-1.12.0, ONNX opset version 11+, and manylinux compliant. Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended. 
+
+## DeepSparse Community Edition
+
+Install the Community Edition as follows: 
 
 ```bash
 pip install deepsparse
 ```
+
+To trial or inquire about licensing for DeepSparse Enterprise Edition, see the following DeepSparse Enterprise section. 
+
+## DeepSparse Enterprise Edition
+
+Install the Enterprise Edition as follows:
+
+```bash
+pip install deepsparse-ent
+```
+
+### Getting a License
+The DeepSparse Enterprise Edition requires a valid license to run the engine and can be licensed for production, commercial applications. There are two options available:
+
+#### 90-Day Enterprise Trial License
+To try out the DeepSparse Enterprise Edition and get a Neural Magic Trial License, complete our [registration form](https://neuralmagic.com/deepsparse-engine-free-trial). Upon submission, the license will be emailed to you and your 90-day term starts right then.
+
+#### Enterprise Edition License
+To learn more about DeepSparse Enterprise Edition pricing, [contact our Sales team](https://neuralmagic.com/deepsparse-engine/#form) to discuss your use case further for a custom quote.
+
+### Installing a License
+<details>
+	<summary>Installing a License</summary>
+
+Once you have obtained a license, you will need to initialize it to be able to run the DeepSparse Enterprise Edition. You can initialize your license by running the command: 
+
+```bash
+deepsparse.license
+```
+
+`deepsparse.license` takes one argument that is a reference to the license and can be referenced in the `deepsparse.license` command as either `<license_string>` or `path/to/license.txt`. 
+
+To initialize a license on a machine:
+1. Confirm you have deepsparse-ent installed in a fresh virtual environment. 
+	- Note: Installing deepsparse and deepsparse-ent on the same virtual environment may result in unsupported behaviors. 
+2. Run `deepsparse.license` with the `<license_string>` or `path/to/license.txt` as an argument as follows:
+	- `deepsparse.license <samplelicensetring>`
+	- `deepsparse.license ./license.txt`
+3. If successful, `deepsparse.license` will write the license file to `~/.config/neuralmagic/license.txt`. You may overwrite this path by setting the environment variable `NM_CONFIG_DIR` (before and after running the script) with the following command:
+	- `export NM_CONFIG_DIR=path/to/license.txt`
+
+4. Once the license is authenticated, you should see a splash message indicating that you are now running DeepSparse Enterprise Edition. 
+
+If you encounter issues initializing your DeepSparse Enterprise Edition License, contact [license@neuralmagic.com](mailto:license@neuralmagic.com) for help.
+
+</details>
+
+### Validating a License
+<details>
+	<summary>Validating a License</summary>
+
+Once you have initialized your license, you may want to check if it is still valid before running a workload on DeepSparse Enterprise Edition. To confirm your license is still active with the DeepSparse Enterprise Edition, run the command:
+
+```bash
+deepsparse.validate_license
+```
+
+`deepsparse.validate_license` can be run with no arguments, which will reference an existing environment variable (if set), or with one argument that is a reference to the license and can be referenced in the `deepsparse.validate_license` command as  `path/to/license.txt`. 
+
+To validate a license on a machine:
+1. If you have successfully ran `deepsparse.license`, `deepsparse.validate_license` can be used to validate that the license file is in the correct location:
+	- Run the `deepsparse.validate_license` with no arguments. If the referenced license is valid, you should get the DeepSparse Enterprise Edition splash screen printed out in your terminal window.
+	- If the `NM_CONFIG_DIR` environment variable was set when creating the license, ensure this variable is still set to the same value.
+2. If you want to supply the `path/to/license.txt`:
+	- Run the `deepsparse.validate_license` with `path/to/license.txt` as an argument as follows:
+		- `deepsparse.validate_license --license_path path/to/license.txt`
+	- If the referenced license is valid, you should get the DeepSparse Enterprise Edition splash screen printed out in your terminal window. 
+
+If you encounter issues validating your DeepSparse Enterprise Edition License, contact [license@neuralmagic.com](mailto:license@neuralmagic.com) for help.
+
+</details>
+
+## Features
 
 ## 🔌 DeepSparse Server
 
@@ -213,19 +305,6 @@ PRO TIP: The most common use cases for the multi-stream scheduler are where para
 3 ⚡ Elastic scheduling: requests execute in parallel, but not multiplexed on individual NUMA nodes.
 
 Use Case: A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache.
-
-## 🧰 CPU Hardware Support
-
-With support for AVX2, AVX-512, and VNNI instruction sets, the DeepSparse Engine is validated to work on x86 Intel (Haswell generation and later) and AMD CPUs running Linux. Mac and Windows require running Linux in a Docker or virtual machine.
-
-Here is a table detailing specific support for some algorithms over different microarchitectures:
-
-|   x86 Extension    |          Microarchitectures         | Activation Sparsity | Kernel Sparsity | Sparse Quantization |
-|:------------------:|:-----------------------------------:|:-------------------:|:---------------:|:-------------------:|
-|      [AMD AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)      |             [Zen 2,](https://en.wikipedia.org/wiki/Zen_2) [Zen 3](https://en.wikipedia.org/wiki/Zen_3)            |    not supported    |    optimized    |    emulated    |
-|     [Intel AVX2](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions#CPUs_with_AVX2)     |          [Haswell,](<https://en.wikipedia.org/wiki/Haswell_(microarchitecture)>) [Broadwell,](<https://en.wikipedia.org/wiki/Broadwell_(microarchitecture)>) and newer         |    not supported    |    optimized    |    emulated    |
-|    [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512)   |         [Skylake,](<https://en.wikipedia.org/wiki/Skylake_(microarchitecture)>) [Cannon Lake,](<https://en.wikipedia.org/wiki/Cannon_Lake_(microarchitecture)>) and newer        |      optimized      |    optimized    |       emulated      |
-| [Intel AVX-512](https://en.wikipedia.org/wiki/AVX-512#CPUs_with_AVX-512) VNNI (DL Boost) | [Cascade Lake,](<https://en.wikipedia.org/wiki/Cascade_Lake_(microarchitecture)>) [Ice Lake,](<https://en.wikipedia.org/wiki/Ice_Lake_(microprocessor)>) [Cooper Lake,](<https://en.wikipedia.org/wiki/Cooper_Lake_(microarchitecture)>) [Tiger Lake](<https://en.wikipedia.org/wiki/Tiger_Lake_(microprocessor)>) |      optimized      |    optimized    |      optimized      |
 
 ## Resources
 
