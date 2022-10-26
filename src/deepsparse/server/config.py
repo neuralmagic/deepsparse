@@ -72,6 +72,11 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
+    data_logging: Dict[str, List[Dict[str, Union[int, str]]]] = Field(
+        default=None,
+        description="Specifies the rules that govern the data logging pipeline.",
+    )
+
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,
         description=(
@@ -144,7 +149,7 @@ class ServerConfig(BaseModel):
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
-    loggers: Union[Dict[str, Dict[str, Any]], str, None] = Field(
+    loggers: List[Union[Dict[str, Dict[str, Union[str, int]]], str]] = Field(
         default=None,
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
