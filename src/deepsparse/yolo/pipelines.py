@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
@@ -168,7 +168,9 @@ class YOLOPipeline(Pipeline):
             )
         return model_path
 
-    def process_inputs(self, inputs: YOLOInput) -> List[numpy.ndarray]:
+    def process_inputs(
+        self, inputs: YOLOInput
+    ) -> Tuple[List[numpy.ndarray], Dict[str, Any]]:
         """
         :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
             of this pipeline
@@ -194,6 +196,7 @@ class YOLOPipeline(Pipeline):
         postprocessing_kwargs = dict(
             iou_thres=inputs.iou_thres,
             conf_thres=inputs.conf_thres,
+            multi_label=inputs.multi_label,
         )
         return [image_batch], postprocessing_kwargs
 
@@ -237,6 +240,7 @@ class YOLOPipeline(Pipeline):
             batch_output,
             iou_thres=kwargs.get("iou_thres", 0.25),
             conf_thres=kwargs.get("conf_thres", 0.45),
+            multi_label=kwargs.get("multi_label", False),
         )
 
         batch_boxes, batch_scores, batch_labels = [], [], []
