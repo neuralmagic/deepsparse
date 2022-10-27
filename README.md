@@ -15,45 +15,41 @@ limitations under the License.
 -->
 
 
-<div align="center">
-    <h1><img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />&nbsp;&nbsp;DeepSparse Engine</h1>
-	<p>
-		<b>
-        <h3> Sparsity-aware neural network inference engine for GPU-class performance on CPUs </h3>
-        </b>
-	</p>
-
-<p>
+<div style="display: flex; flex-direction: column; align-items: center;">
+  <h1>
+    <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />
+    &nbsp;&nbsp;DeepSparse Engine
+  </h1>
+  <h3> Sparsity-aware neural network inference engine for GPU-class performance on CPUs </h3>
+  <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap">
     <a href="https://docs.neuralmagic.com/deepsparse/">
-        <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height=25>
+      <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="25" />
     </a>
     <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
-        <img src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height=25>
+      <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="25" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/issues/">
-        <img src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height=25>
+      <img alt="Support" src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height="25" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/actions/workflows/quality-check.yaml">
-        <img alt="Main" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=build&style=for-the-badge" height=25>
+      <img alt="Main" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=build&style=for-the-badge" height="25" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/releases">
-        <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height=25>
+      <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height="25" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/CODE_OF_CONDUCT.md">
-        <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height=25>
+      <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height="25" />
     </a>
     <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
-        <img src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height=25>
+      <img alt="YouTube" src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height="25" />
     </a>
-     <a href="https://medium.com/limitlessai">
-        <img src="https://img.shields.io/badge/medium-%2312100E.svg?&style=for-the-badge&logo=medium&logoColor=white" height=25>
+    <a href="https://medium.com/limitlessai">
+      <img alt="Medium" src="https://img.shields.io/badge/medium-%2312100E.svg?&style=for-the-badge&logo=medium&logoColor=white" height="25" />
     </a>
     <a href="https://twitter.com/neuralmagic">
-        <img src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height=25>
+      <img alt="Twitter" src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height="25" />
     </a>
-</p>
-
-<br>
+  </div>
 </div>
 
 A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification).
