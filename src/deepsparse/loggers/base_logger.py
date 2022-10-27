@@ -26,12 +26,7 @@ class BaseLogger(ABC):
     """
 
     @abstractmethod
-    def log(
-        self,
-        identifier: str,
-        value: Any,
-        category: Optional[str] = None,
-    ):
+    def log(self, identifier: str, value: Any, category: Optional[str] = None):
         """
         The main method to collect information from the pipeline
         and then possibly process the information and pass it to

@@ -37,7 +37,6 @@ class PythonLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-
         msg = (
             f" Identifier: {identifier} | Category: {category.value} "
             f"| Logged Data: {value}"
