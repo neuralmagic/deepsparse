@@ -60,7 +60,7 @@ Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFl
 
 The DeepSparse Engine is available in two editions: 
 1. [**The Community Edition**](#installation) is open-source and free for evaluation, research, and non-production use with our [Engine Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2. [**The Enterprise Edition**](https://docs.neuralmagic.com/products/deepsparse-enterprise) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+2. [**The Enterprise Edition**](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
 
 ## Features
 
@@ -84,7 +84,7 @@ Install the DeepSparse Community Edition as follows:
 pip install deepsparse
 ```
 
-To trial or inquire about licensing for DeepSparse Enterprise Edition, see the [DeepSparse Enterprise documentation](https://docs.neuralmagic.com/products/deepsparse-enterprise).
+To trial or inquire about licensing for DeepSparse Enterprise Edition, see the [DeepSparse Enterprise documentation](https://docs.neuralmagic.com/products/deepsparse-ent).
 
 ## Features
 
