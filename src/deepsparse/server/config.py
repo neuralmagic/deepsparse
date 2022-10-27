@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
+from deepsparse.loggers.configs import TargetLoggingConfig
 from deepsparse.tasks import SupportedTasks
 
 
@@ -72,10 +73,7 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
-    data_logging: Dict[str, List[Dict[str, Union[int, str]]]] = Field(
-        default=None,
-        description="Specifies the rules that govern the data logging pipeline.",
-    )
+    data_logging: List[TargetLoggingConfig]
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,

@@ -17,13 +17,12 @@ import os
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import List
+from typing import Any, List
 
 import yaml
 
 import uvicorn
 from deepsparse.engine import Context
-from deepsparse.loggers import ManagerLogger
 from deepsparse.pipeline import Pipeline
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import (
@@ -208,7 +207,7 @@ def _add_endpoint(
     endpoint_config: EndpointConfig,
     executor: ThreadPoolExecutor,
     context: Context,
-    pipeline_logger: ManagerLogger,
+    pipeline_logger: Any,
 ):
     pipeline_config = endpoint_config.to_pipeline_config()
     pipeline_config.kwargs["executor"] = executor
@@ -226,7 +225,7 @@ def _add_pipeline_endpoint(
     app: FastAPI,
     endpoint_config: EndpointConfig,
     pipeline: Pipeline,
-    pipeline_logger: ManagerLogger,
+    pipeline_logger: Any,
     integration: str = INTEGRATION_LOCAL,
 ):
     input_schema = pipeline.input_schema

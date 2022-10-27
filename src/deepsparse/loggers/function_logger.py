@@ -17,11 +17,12 @@ Implementation of the Function Logger
 """
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
 from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers.configs import PipelineLoggingConfig, TargetLoggingConfig
 from deepsparse.loggers.metric_functions import apply_function
 
 
@@ -70,16 +71,18 @@ class FunctionLogger(BaseLogger):
     def __init__(
         self,
         logger: BaseLogger,
-        config: Union[str, Dict[str, List[Dict[str, Any]]]],
+        config: Union[List[PipelineLoggingConfig], List[TargetLoggingConfig]],
     ):
 
         self.logger = logger
-        self.config = (
-            config
-            if isinstance(config, dict)
-            else yaml.safe_load(Path(config).read_text())
-        )
-        self.function_call_counter = self._create_function_call_counter(self.config)
+        self.config = config
+        # self.config = (
+        #     config
+        #     if isinstance(config, dict)
+        #     else yaml.safe_load(Path(config).read_text())
+        # )
+
+        self.function_call_counter = self._create_frequency_counter(config)
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
@@ -137,10 +140,16 @@ class FunctionLogger(BaseLogger):
             self.function_call_counter[target][function] += 1
 
     @staticmethod
-    def _create_function_call_counter(config):
-        function_call_counter = defaultdict(lambda: defaultdict(str))
-        for target, list_functions in config.items():
-            for function_dict in list_functions:
-                function = function_dict.get("function")
-                function_call_counter[target][function] = 0
+    def _create_frequency_counter(config: List[PipelineLoggingConfig]):
+        function_call_counter = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(str))
+        )
+        for pipeline_logging_config in config:
+            targets = pipeline_logging_config.targets
+            for target in targets:
+                for mapping in target.mappings:
+                    function_call_counter[pipeline_logging_config.name][target.target][
+                        mapping.function_name
+                    ] = 0
+
         return function_call_counter

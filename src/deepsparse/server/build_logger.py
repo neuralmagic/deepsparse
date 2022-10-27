@@ -12,116 +12,103 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import importlib
 from collections import defaultdict
+from typing import List, Optional
 
-import numpy
-
-import torch
-
-
-class PythonLogger:
-    pass
+from deepsparse import loggers as logger_objects
+from deepsparse.loggers.configs import PipelineLoggingConfig
+from deepsparse.server.config import ServerConfig
 
 
-class PrometheusLogger:
-    pass
-
-
-class FunctionLogger:
-    pass
-
-
-class MultiLogger:
-    pass
-
-
-class SubprocessLogger:
-    pass
-
-
-def build_logger(server_config: "ServerConfig") -> "BaseLogger":
+def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
     """
-    Hierarchy
-    Leaf Loggers --> Multi Logger --> FunctionLogger --> SubprocessLogger
+    Builds a DeepSparse logger from the server config.
+
+    The process follows the following tree-like hierarchy:
+
+    First: the "leaf" loggers are being built
+    Second: if there are multiple "leaf" loggers, they are wrapped inside the MultiLogger
+            else: we pass on the single "leaf" logger
+    Third: if specified in the ServerConfig, the resulting logger is wrapped inside
+            the FunctionLogger
+    Fourth: lastly, the resulting loggers is wrapped inside the SubprocessLogger (todo)
+
+    :param server_config: the Server configuration model
+    :return: a DeepSparse logger instance
     """
+
     loggers_config = server_config.loggers
-    functions_config = _extract_functions_config(server_config)
-    functions_config = _substitute_func_str_for_callables(functions_config)
     if loggers_config is None:
-        # will figure out whether not having loggers in config
-        # results in some default logger (like PythonLogger)
-        # or just None
-        raise NotImplementedError()
-    else:
-        loggers = []
-        for logger_name, logger_arguments in loggers_config.items():
+        return loggers_config
+
+    pipeline_data_logging_configs = get_pipeline_logging_configs(server_config)
+
+    loggers = []
+    for logger_config in loggers_config:
+        if isinstance(logger_config, str):
+            logger_name = logger_config
+            loggers.append(_build_single_logger(logger_name=logger_name))
+        else:
+            logger_name, logger_arguments = tuple(logger_config.items())[0]
             loggers.append(
                 _build_single_logger(
                     logger_name=logger_name, logger_arguments=logger_arguments
                 )
             )
 
-        multi_logger = MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
-        function_logger = FunctionLogger(logger=multi_logger, config=functions_config)
-        subprocess_logger = SubprocessLogger(logger=function_logger)
+    logger = logger_objects.MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
+    logger = (
+        logger_objects.FunctionLogger(
+            logger=logger, config=pipeline_data_logging_configs
+        )
+        if pipeline_data_logging_configs
+        else logger
+    )
 
-        return subprocess_logger
+    return logger
 
 
-def _build_single_logger(logger_name, logger_arguments):
+def _build_single_logger(logger_name, logger_arguments: Optional = None):
     """
     in future if logger_name == "prometheus":
         return PrometheusLogger(**logger_arguments)
     etc
     """
-    return PythonLogger()
+    if logger_name == "python":
+        if logger_arguments:
+            raise ValueError()
+        return logger_objects.PythonLogger()
 
-
-def _potentially_wrap_inside_function_logger(logger, functions_config):
-    if isinstance(logger, PrometheusLogger):
-        return FunctionLogger(logger=logger, config=functions_config)
-    elif isinstance(logger, PythonLogger):
-        return FunctionLogger(logger=logger, config=functions_config)
+    if logger_name == "prometheus":
+        return logger_objects.PrometheusLogger(**logger_arguments)
     else:
-        return logger
+        raise ValueError()
 
 
-def _extract_functions_config(server_config):
-    functions_config = defaultdict(lambda: defaultdict(str))
+def get_pipeline_logging_configs(
+    server_config: ServerConfig,
+) -> List[PipelineLoggingConfig]:
+    """
+    Create a list of PipelineDataLoggingConfig models (one per each endpoint) from ServerConfig
+
+    :param server_config: a Server configuration model
+    :return: a list of PipelineDataLoggingConfig models
+    """
+    pipeline_data_logging_configs = []
     endpoints = server_config.endpoints
     for endpoint in endpoints:
-        name = endpoint.name or endpoint.task
-        if functions_config.get(name) is not None:
-            raise ValueError()
-        if endpoint.data_logging is not None:
-            functions_config[name] = endpoint.data_logging
+        pipeline_data_logging_configs.append(
+            PipelineLoggingConfig(
+                name=endpoint.name or endpoint.task, targets=endpoint.data_logging
+            )
+        )
 
-    return functions_config
+    pipeline_names = [config.name for config in pipeline_data_logging_configs]
+    from collections import Counter
 
+    counter = Counter(pipeline_names)
+    [(k, v) for k, v in counter.items()]
 
-def _substitute_func_str_for_callables(functions_config):
-    for endpoint, data_logging_config in functions_config.items():
-        for target, target_logging_config in data_logging_config.items():
-            for function_config in target_logging_config:
-                function_config["func"] = _parse_func_name(name=function_config["func"])
-
-    return functions_config
-
-
-def _parse_func_name(name: str):  # -> Callable[[np.array], np.array]:
-    if name.startswith("torch."):
-        return getattr(torch, name.split(".")[1])
-    if name.startswith("numpy."):
-        return getattr(numpy, name.split(".")[1])
-    if name.startswith("builtins:"):
-        return name
-        # return getattr(<our_builtins module>, name.split(".")[1])
-    # assume its a dynamic import function of the form '<path>:<name>'
-    # path, func_name = name.split(":")
-    # module = dynamic_import(path)
-    # return getattr(module, func_name)
-    return name
-
-
-# def _build_logger_from_parsed_config(logger_param_config):
-#    pass
+    return pipeline_data_logging_configs
