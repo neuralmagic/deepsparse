@@ -36,7 +36,7 @@ class MultiLogger(BaseLogger):
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
-        Collect information from the pipeline and pass is to all the
+        Collect information from the pipeline and pass it to all the
         children loggers
 
         :param identifier: The name of the thing that is being logged.

@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
-from deepsparse.loggers.configs import TargetLoggingConfig
+from deepsparse.loggers.config import TargetLoggingConfig
 from deepsparse.tasks import SupportedTasks
 
 
@@ -73,7 +73,7 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
-    data_logging: List[TargetLoggingConfig]
+    data_logging: Optional[List[TargetLoggingConfig]]
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,

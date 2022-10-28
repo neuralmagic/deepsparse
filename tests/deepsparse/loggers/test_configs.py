@@ -15,14 +15,14 @@
 import yaml
 
 import pytest
-from deepsparse.loggers import (
-    FunctionLoggingConfig,
+from deepsparse.loggers.config import (
+    MetricFunctionConfig,
     PipelineLoggingConfig,
     TargetLoggingConfig,
 )
 
 
-function_logging_config_yaml = """
+metric_function_config_yaml = """
   func: builtins:identity
   frequency: 50"""
 
@@ -54,7 +54,7 @@ pipeline_logging_config_yaml = """
 @pytest.mark.parametrize(
     "string_config_yaml, base_model",
     [
-        (function_logging_config_yaml, FunctionLoggingConfig),
+        (metric_function_config_yaml, MetricFunctionConfig),
         (target_logging_config_yaml, TargetLoggingConfig),
         (pipeline_logging_config_yaml, PipelineLoggingConfig),
     ],

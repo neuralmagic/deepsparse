@@ -12,29 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import yaml
+
 import pytest
 from deepsparse import FunctionLogger, Pipeline, PythonLogger
+from deepsparse.loggers.config import PipelineLoggingConfig, TargetLoggingConfig
 from tests.utils import mock_engine
 
 
-CONFIG_1 = {"pipeline_inputs": [{"function": "identity_1", "frequency": 3}]}
+CONFIG_1 = {
+    "target": "pipeline_inputs",
+    "mappings": [{"func": "builtins:identity", "frequency": 3}],
+}
 
 CONFIG_2 = {
-    "pipeline_inputs": [
-        {"function": "identity_1", "frequency": 3},
-        {"function": "identity_2", "frequency": 5},
-    ]
+    "target": "pipeline_inputs",
+    "mappings": [
+        {"func": "builtins:identity", "frequency": 3},
+        {
+            "func": "tests/server/server_data/metric_function.py:user_defined_identity",
+            "frequency": 5,
+        },
+    ],
 }
 
-CONFIG_3 = {
-    "pipeline_inputs": [
-        {"function": "identity_1", "frequency": 3},
-        {"function": "identity_2", "frequency": 5},
-    ],
-    "pipeline_outputs": [{"function": "identity_1", "frequency": 4}],
-}
+CONFIG_3 = [
+    {
+        "target": "pipeline_inputs",
+        "mappings": [
+            {"func": "builtins:identity", "frequency": 3},
+            {
+                "func": "tests/server/server_data/metric_function.py:user_defined_identity",  # noqa E501
+                "frequency": 5,
+            },
+        ],
+    },
+    {
+        "target": "pipeline_outputs",
+        "mappings": [{"func": "builtins:identity", "frequency": 4}],
+    },
+]
 
 CONFIG_4 = "tests/deepsparse/loggers/test_data/function_config.yaml"
+
+CONFIG_5 = """
+  name: token_classification
+  targets:
+    - target: pipeline_inputs
+      mappings:
+        - func: builtins:identity
+          frequency: 3
+        - func: tests/server/server_data/metric_function.py:user_defined_identity
+          frequency: 5
+    - target: pipeline_outputs
+      mappings:
+        - func: builtins:identity
+          frequency: 4"""
+
 
 """
 if for some target (e.g. "pipeline_inputs") we have
@@ -48,10 +82,26 @@ logging will occur on iterations
 @pytest.mark.parametrize(
     "config,num_iterations,expected_logs_count",
     [
-        (CONFIG_1, 14, {"pipeline_inputs": 5}),
+        # config from TargetLoggingConfig
+        (TargetLoggingConfig(**CONFIG_1), 14, {"pipeline_inputs": 5}),
+        # config from a dictionary
         (CONFIG_2, 14, {"pipeline_inputs": 8}),
-        (CONFIG_3, 14, {"pipeline_inputs": 8, "pipeline_outputs": 4}),
+        # config from PipelineLoggingConfig (List[Dict[str, Any])
+        (
+            PipelineLoggingConfig(
+                targets=[TargetLoggingConfig(**obj) for obj in CONFIG_3]
+            ),
+            14,
+            {"pipeline_inputs": 8, "pipeline_outputs": 4},
+        ),
+        # config from string path to the .yaml file
         (CONFIG_4, 14, {"pipeline_inputs": 8, "pipeline_outputs": 4}),
+        # config from PipelineLoggingConfig (yaml str)
+        (
+            PipelineLoggingConfig(**yaml.safe_load(CONFIG_5)),
+            14,
+            {"pipeline_inputs": 8, "pipeline_outputs": 4},
+        ),
     ],
 )
 @mock_engine(rng_seed=0)
@@ -67,6 +117,7 @@ def test_function_logger(engine, config, num_iterations, expected_logs_count, ca
         pipeline("all_your_base_are_belong_to_us")
         all_messages += [message for message in capsys.readouterr().out.split("\n")]
     for target_name, logs_count in expected_logs_count.items():
+        # assert the proper log count for every data log
         assert (
             len(
                 [
@@ -77,6 +128,11 @@ def test_function_logger(engine, config, num_iterations, expected_logs_count, ca
             )
             == logs_count
         )
+    # assert no superfluous data logs
+    assert len([m for m in all_messages if "Category: data" in m]) == sum(
+        expected_logs_count.values()
+    )
+    # assert the proper log count for system logs
     assert (
         len([m for m in all_messages if "Category: system" in m]) == num_iterations * 4
     )

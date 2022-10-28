@@ -22,8 +22,12 @@ from typing import Any, Dict, List, Optional, Union
 import yaml
 
 from deepsparse.loggers import BaseLogger, MetricCategories
-from deepsparse.loggers.configs import PipelineLoggingConfig, TargetLoggingConfig
-from deepsparse.loggers.metric_functions import apply_function
+from deepsparse.loggers.config import (
+    MetricFunctionConfig,
+    MultiplePipelinesLoggingConfig,
+    PipelineLoggingConfig,
+    TargetLoggingConfig,
+)
 
 
 __all__ = ["FunctionLogger"]
@@ -35,54 +39,57 @@ class FunctionLogger(BaseLogger):
     according to the specified config file
 
     :param logger: A DeepSparse Logger object
-    :param config: A configuration dictionary that specifies the mapping between
-        the target name and the functions to be applied to raw log values
+    :param config: A data structure that specifies the configuration
+        of the Logger. Can be one of the following:
 
-        `config` can be specified as a dictionary type:
-        e.g.
+        1. MultiplePipelinesLoggingConfig
+        2. PipelineLoggingConfig
+        3. TargetLoggingConfig
+        4. A dictionary, e.g.
+            {"target": "pipeline_inputs",
+             "mappings": [{"func": "builtins:some_func_1",
+                          "frequency": 3
+                          },
+                          {"func": ".../custom_functions.py:some_func_2",
+                          frequency": 5,
+                          }]
+             }
 
-        {"pipeline_inputs":
-            [{"function": "some_function_1",
-              "frequency": 3},
+            Note: To specify multiple targets, use PipelineLoggingConfig model
 
-            [{"function": "some_function_2",
-              "frequency": 5}],
-
-         "pipeline_outputs":
-            [{"function": "some_function_1",
-            "frequency": 4}]
-        }
-
-        or a a yaml file:
-        e.g.
-
-        ```yaml
-        pipeline_inputs:
-            - function: some_function_1
-              frequency: 3
-            - function: some_function_2
-              frequency: 5
-        pipeline_outputs:
-            - function: some_function_1
-              frequency: 4
-        ```
+        5. String path to the yaml file, e.g.
+            ```yaml
+            targets:
+            - target: pipeline_inputs
+              mappings:
+               - func: builtins:some_func_1
+                 frequency: 3
+               - func: .../custom_functions.py:some_func_2
+                 frequency: 5
+            - target: pipeline_outputs
+              mappings:
+               - func: builtins:some_func_3
+                 frequency: 4
+            ```
     """
 
     def __init__(
         self,
         logger: BaseLogger,
-        config: Union[List[PipelineLoggingConfig], List[TargetLoggingConfig]],
+        config: Union[
+            MultiplePipelinesLoggingConfig,
+            PipelineLoggingConfig,
+            TargetLoggingConfig,
+            Dict[str, Dict[str, Any]],
+            str,
+        ],
     ):
 
         self.logger = logger
-        self.config = config
-        # self.config = (
-        #     config
-        #     if isinstance(config, dict)
-        #     else yaml.safe_load(Path(config).read_text())
-        # )
-
-        self.function_call_counter = self._create_frequency_counter(config)
+        self.config = self._parse_config(config)
+        self.frequency_counter = defaultdict(
+            lambda: (defaultdict(lambda: defaultdict(int)))
+        )
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
@@ -93,9 +100,10 @@ class FunctionLogger(BaseLogger):
         if category == MetricCategories.DATA:
             # logging data information
             pipeline_name, *target = identifier.split(".")
+            target = ".".join(target)
             self._log_data(
                 pipeline_name=pipeline_name,
-                target=".".join(target),
+                target=target,
                 value=value,
                 category=category,
             )
@@ -114,42 +122,106 @@ class FunctionLogger(BaseLogger):
         value: Any,
         category: MetricCategories,
     ):
-        list_target_functions = self.config.get(target)
-        if list_target_functions is None:
-            # no function to apply to the given target
+        metric_functions = self._match(pipeline_name=pipeline_name, target=target)
+        if metric_functions is None:
             return
 
-        for function_dict in list_target_functions:
-            function = function_dict.get("function")
-            logging_frequency = function_dict.get("frequency")
+        for metric_function in metric_functions:
+            function = metric_function.func
+            function_name = metric_function.function_name
+            logging_frequency = metric_function.frequency
 
-            if self.function_call_counter[target][function] % logging_frequency == 0:
-                # reset the counter
-                self.function_call_counter[target][function] = 0
+            counts = self._get_frequency_counts(
+                pipeline_name=pipeline_name, target=target, function_name=function_name
+            )
 
-                # fetch the function and apply it to the value
-                mapped_value = apply_function(value=value, function=function)
+            if counts % logging_frequency == 0:
+
+                mapped_value = function(value)
 
                 self.logger.log(
-                    identifier=f"{pipeline_name}.{target}.{function}",
+                    identifier=f"{pipeline_name}.{target}.{function_name}",
                     value=mapped_value,
                     category=category,
                 )
 
+                # reset the counter
+                self.frequency_counter[pipeline_name][target][function_name] = 0
+
             # increment the counter
-            self.function_call_counter[target][function] += 1
+            self.frequency_counter[pipeline_name][target][function_name] += 1
+
+    def _match(
+        self, pipeline_name: str, target: str
+    ) -> Optional[List[MetricFunctionConfig]]:
+        # given the pipeline_name and target, try (if possible) to match them
+        # with the appropriate list of metric functions
+        for pipeline_logging_config in self.config.pipelines:
+            expected_pipeline_name = pipeline_logging_config.name
+            if (
+                # if `expected_pipeline_name` specified
+                # and does not match with the `pipeline_name`
+                # skip to another PipelineLoggingConfig
+                expected_pipeline_name is not None
+                and pipeline_name != expected_pipeline_name
+            ):
+                continue
+            for target_logging_config in pipeline_logging_config.targets:
+                expected_target = target_logging_config.target
+                # if `expected_target` does not match
+                # with the `target`
+                # skip to another TargetLoggingConfig
+                if expected_target != target:
+                    continue
+                else:
+                    return target_logging_config.mappings
+        # no matches found
+        return None
+
+    def _get_frequency_counts(
+        self, pipeline_name: str, target: str, function_name: str
+    ) -> int:
+        # get the number of times the function was called in the context of
+        # the pipeline and target
+        counts = (
+            self.frequency_counter.get(pipeline_name, {})
+            .get(target, {})
+            .get(function_name)
+        )
+        if not counts:
+            counts = 0
+            self.frequency_counter[pipeline_name][target][function_name] = counts
+        return counts
 
     @staticmethod
-    def _create_frequency_counter(config: List[PipelineLoggingConfig]):
-        function_call_counter = defaultdict(
-            lambda: defaultdict(lambda: defaultdict(str))
-        )
-        for pipeline_logging_config in config:
-            targets = pipeline_logging_config.targets
-            for target in targets:
-                for mapping in target.mappings:
-                    function_call_counter[pipeline_logging_config.name][target.target][
-                        mapping.function_name
-                    ] = 0
+    def _parse_config(
+        config: Union[
+            MultiplePipelinesLoggingConfig,
+            PipelineLoggingConfig,
+            TargetLoggingConfig,
+            Dict[str, Dict[str, Any]],
+            str,
+        ]
+    ) -> MultiplePipelinesLoggingConfig:
+        # covert all the possible config inputs
+        # to MultiplePipelinesLoggingConfig representation
 
-        return function_call_counter
+        if isinstance(config, MultiplePipelinesLoggingConfig):
+            return config
+        elif isinstance(config, PipelineLoggingConfig):
+            return MultiplePipelinesLoggingConfig(pipelines=[config])
+        else:
+            if isinstance(config, str):
+                return MultiplePipelinesLoggingConfig(
+                    pipelines=[
+                        PipelineLoggingConfig(
+                            **yaml.safe_load(Path(config).read_text())
+                        )
+                    ]
+                )
+            if isinstance(config, dict):
+                config = TargetLoggingConfig(**config)
+
+            return MultiplePipelinesLoggingConfig(
+                pipeline_logging_configs=[PipelineLoggingConfig(targets=[config])]
+            )

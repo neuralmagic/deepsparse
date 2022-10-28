@@ -23,17 +23,8 @@ __all__ = ["PrometheusLogger"]
 
 
 class PrometheusLogger(BaseLogger):
-    """ """
-
     def __init__(self, port):
         self.port = port
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
-        """
-        Collect information from the pipeline and pipe it them to the stdout
-
-        :param identifier: The name of the thing that is being logged.
-        :param value: The data structure that the logger is logging
-        :param category: The metric category that the log belongs to
-        """
         raise NotImplementedError()

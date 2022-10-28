@@ -17,14 +17,14 @@ import os
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import Any, List
+from typing import List
 
 import yaml
 
 import uvicorn
 from deepsparse.engine import Context
+from deepsparse.loggers import ManagerLogger
 from deepsparse.pipeline import Pipeline
-from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import (
     INTEGRATION_LOCAL,
     INTEGRATION_SAGEMAKER,
@@ -33,6 +33,7 @@ from deepsparse.server.config import (
     ServerConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
+from deepsparse.server.helpers import default_logger_manager, logger_manager_from_config
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -118,7 +119,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     _LOGGER.info(f"Built ThreadPoolExecutor with {executor._max_workers} workers")
 
     app = FastAPI()
-    pipeline_logger = build_logger(server_config)
+    pipeline_logger = _initialize_loggers(server_config)
 
     @app.get("/", include_in_schema=False)
     def _home():
@@ -207,7 +208,7 @@ def _add_endpoint(
     endpoint_config: EndpointConfig,
     executor: ThreadPoolExecutor,
     context: Context,
-    pipeline_logger: Any,
+    pipeline_logger: ManagerLogger,
 ):
     pipeline_config = endpoint_config.to_pipeline_config()
     pipeline_config.kwargs["executor"] = executor
@@ -225,7 +226,7 @@ def _add_pipeline_endpoint(
     app: FastAPI,
     endpoint_config: EndpointConfig,
     pipeline: Pipeline,
-    pipeline_logger: Any,
+    pipeline_logger: ManagerLogger,
     integration: str = INTEGRATION_LOCAL,
 ):
     input_schema = pipeline.input_schema
@@ -276,3 +277,20 @@ def _add_pipeline_endpoint(
             tags=["predict"],
         )
         _LOGGER.info(f"Added '{route}' endpoint")
+
+
+def _initialize_loggers(server_config: ServerConfig) -> ManagerLogger:
+    loggers_config = server_config.loggers
+    if loggers_config is None:
+        return ManagerLogger([])
+    if isinstance(loggers_config, str):
+        if not loggers_config == "default":
+            raise ValueError(
+                f"given string {loggers_config} for ServerConfig.loggers only "
+                "supported string is 'default', other configs should be specified "
+                "with a dict literal of logging integration to their initialization "
+                "kwargs"
+            )
+        else:
+            return default_logger_manager()
+    return logger_manager_from_config(server_config.loggers)
