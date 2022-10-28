@@ -53,7 +53,7 @@ endpoints:
           mappings:
            - func: builtins:identity
              frequency: 2
-           - func: tests/server/server_data/metric_function.py:user_defined_identity
+           - func: tests/server/server_data/metric_functions.py:user_defined_identity
              frequency: 3
         - target: engine_outputs
           mappings:
@@ -67,7 +67,7 @@ PIPELINE_CONFIG_1 = """
       mappings:
        - func: builtins:identity
          frequency: 2
-       - func: tests/server/server_data/metric_function.py:user_defined_identity
+       - func: tests/server/server_data/metric_functions.py:user_defined_identity
          frequency: 3
     - target: engine_outputs
       mappings:
@@ -96,7 +96,7 @@ endpoints:
           mappings:
            - func: builtins:identity
              frequency: 2
-           - func: tests/server/server_data/metric_function.py:user_defined_identity
+           - func: tests/server/server_data/metric_functions.py:user_defined_identity
              frequency: 3
     - task: question_answering
       route: /unpruned/predict
@@ -115,7 +115,7 @@ PIPELINE_CONFIG_2 = """- name: question_answering
       mappings:
        - func: builtins:identity
          frequency: 2
-       - func: tests/server/server_data/metric_function.py:user_defined_identity
+       - func: tests/server/server_data/metric_functions.py:user_defined_identity
          frequency: 3
 - name: question_answering_
   targets:

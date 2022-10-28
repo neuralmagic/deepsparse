@@ -30,7 +30,7 @@ CONFIG_2 = {
     "mappings": [
         {"func": "builtins:identity", "frequency": 3},
         {
-            "func": "tests/server/server_data/metric_function.py:user_defined_identity",
+            "func": "tests/server/server_data/metric_functions.py:user_defined_identity",  # noqa E501
             "frequency": 5,
         },
     ],
@@ -42,7 +42,7 @@ CONFIG_3 = [
         "mappings": [
             {"func": "builtins:identity", "frequency": 3},
             {
-                "func": "tests/server/server_data/metric_function.py:user_defined_identity",  # noqa E501
+                "func": "tests/server/server_data/metric_functions.py:user_defined_identity",  # noqa E501
                 "frequency": 5,
             },
         ],
@@ -62,7 +62,7 @@ CONFIG_5 = """
       mappings:
         - func: builtins:identity
           frequency: 3
-        - func: tests/server/server_data/metric_function.py:user_defined_identity
+        - func: tests/server/server_data/metric_functions.py:user_defined_identity
           frequency: 5
     - target: pipeline_outputs
       mappings:

@@ -161,7 +161,7 @@ class FunctionLogger(BaseLogger):
             if (
                 # if `expected_pipeline_name` specified
                 # and does not match with the `pipeline_name`
-                # skip to another PipelineLoggingConfig
+                # skip to the next PipelineLoggingConfig
                 expected_pipeline_name is not None
                 and pipeline_name != expected_pipeline_name
             ):
@@ -223,5 +223,5 @@ class FunctionLogger(BaseLogger):
                 config = TargetLoggingConfig(**config)
 
             return MultiplePipelinesLoggingConfig(
-                pipeline_logging_configs=[PipelineLoggingConfig(targets=[config])]
+                pipelines=[PipelineLoggingConfig(targets=[config])]
             )

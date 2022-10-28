@@ -14,8 +14,9 @@
 """
 Pydantic Models for Logging Configs
 """
+
 import importlib
-from typing import Any, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 import numpy
 from pydantic import BaseModel, Field
@@ -24,12 +25,17 @@ import deepsparse.loggers.metric_functions.built_ins as built_ins
 import torch
 
 
-__all__ = ["MetricFunctionConfig", "TargetLoggingConfig", "PipelineLoggingConfig"]
+__all__ = [
+    "MetricFunctionConfig",
+    "TargetLoggingConfig",
+    "PipelineLoggingConfig",
+    "MultiplePipelinesLoggingConfig",
+]
 
 
 def get_function_and_function_name(
     function_identifier: str,
-):  # -> Callable[[np.array], np.array]:
+) -> Tuple[Callable[[Any], Any], str]:
     """
     Parse function identifier and return the function as well as its name
 
@@ -47,7 +53,7 @@ def get_function_and_function_name(
 
     :return: A tuple (function, function name)
     """
-    # TODO: Add return type
+
     if function_identifier.startswith("torch."):
         func_name = function_identifier.split(".")[1]
         return getattr(torch, func_name), func_name
@@ -73,7 +79,7 @@ class MetricFunctionConfig(BaseModel):
     Holds logging configuration for a metric function
     """
 
-    func: Any = Field(description="Metric function object")  # TODO: Specify it
+    func: Callable[[Any], Any] = Field(description="Metric function object")
     function_name: str = Field(description="Name of the metric function")
     frequency: int = Field(
         description="Specifies how often the function should be applied"
@@ -84,17 +90,17 @@ class MetricFunctionConfig(BaseModel):
         # automatically extract function and function name
         # from the function_identifier
         func, function_name = get_function_and_function_name(function_identifier)
-        data["func"] = func
-        data["function_name"] = function_name
+        data["func"], data["function_name"] = func, function_name
         super().__init__(**data)
 
 
 class TargetLoggingConfig(BaseModel):
     """
-    Holds logging configuration for a target
+    Holds configuration for a single data logging target
     """
 
     target: str = Field(description="Name of the target.")
+
     mappings: List[MetricFunctionConfig] = Field(
         description="List of MetricFunctionConfigs pertaining to the target"
     )
@@ -102,7 +108,7 @@ class TargetLoggingConfig(BaseModel):
 
 class PipelineLoggingConfig(BaseModel):
     """
-    Holds logging configuration for a single pipeline/endpoint
+    Holds logging configuration for a single data logging pipeline/endpoint
     """
 
     name: Optional[str] = Field(

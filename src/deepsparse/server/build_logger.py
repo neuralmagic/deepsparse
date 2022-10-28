@@ -28,7 +28,7 @@ from deepsparse.server.config import ServerConfig
 
 __all__ = ["build_logger"]
 
-SUPPORTED_LOGGER_NAMES = ["prometheus", "python"]
+SUPPORTED_LOGGER_NAMES = ["python"]
 
 
 def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
@@ -39,7 +39,7 @@ def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
 
     First: the "leaf" loggers are being built.
     Second: if there are multiple "leaf" loggers,
-            they are wrapped inside the MultiLogger.
+            they are wrapped inside the MultiLogger. (TODO)
             else: we continue with the single "leaf" logger.
     Third: if specified in the ServerConfig, the resulting logger is wrapped inside
             the FunctionLogger.
@@ -70,9 +70,8 @@ def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
 
         loggers.append(leaf_logger)
 
-    logger = logger_objects.MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
-    if isinstance(logger, logger_objects.MultiLogger):
-        raise NotImplementedError()
+    # logger = logger_objects.MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
+    logger = loggers[0]
     logger = (
         logger_objects.FunctionLogger(logger=logger, config=multi_pipelines_logging)
         if multi_pipelines_logging
@@ -104,13 +103,13 @@ def get_multiple_pipelines_logging_config(
         )
     if not pipeline_logging_configs:
         return None
-    else:
-        return MultiplePipelinesLoggingConfig(pipelines=pipeline_logging_configs)
+
+    return MultiplePipelinesLoggingConfig(pipelines=pipeline_logging_configs)
 
 
 def _build_single_logger(
     logger_name: str, logger_arguments: Optional[Dict[str, Any]] = None
-) -> Union[logger_objects.PythonLogger, logger_objects.PrometheusLogger]:
+) -> Union[logger_objects.PythonLogger]:
     if logger_name == "python":
         if logger_arguments:
             raise ValueError(
@@ -120,9 +119,6 @@ def _build_single_logger(
             )
         return logger_objects.PythonLogger()
 
-    if logger_name == "prometheus":
-        return logger_objects.PrometheusLogger(**logger_arguments)
-    else:
         raise ValueError(
             "Attempting to create a DeepSparse Logger with "
             f"an unknown logger_name: {logger_name}. "
