@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
 
-
-__all__ = ["apply_function"]
-
-
-def apply_function(value: Any, function: str):
-    if function not in ["identity_1", "identity_2"]:
-        raise NotImplementedError()
-    else:
-        return value
+def user_defined_identity(x):
+    return x

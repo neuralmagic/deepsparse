@@ -1,8 +1,11 @@
-pipeline_inputs:
-  - function: identity_1
-    frequency: 3
-  - function: identity_2
-    frequency: 5
-pipeline_outputs:
-  - function: identity_1
-    frequency: 4
+targets:
+- target: pipeline_inputs
+  mappings:
+   - func: builtins:identity
+     frequency: 3
+   - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity
+     frequency: 5
+- target: pipeline_outputs
+  mappings:
+   - func: builtins:identity
+     frequency: 4
