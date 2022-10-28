@@ -30,7 +30,7 @@ CONFIG_2 = {
     "mappings": [
         {"func": "builtins:identity", "frequency": 3},
         {
-            "func": "tests/server/server_data/metric_functions.py:user_defined_identity",  # noqa E501
+            "func": "tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity",  # noqa E501
             "frequency": 5,
         },
     ],
@@ -42,7 +42,7 @@ CONFIG_3 = [
         "mappings": [
             {"func": "builtins:identity", "frequency": 3},
             {
-                "func": "tests/server/server_data/metric_functions.py:user_defined_identity",  # noqa E501
+                "func": "tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity",  # noqa E501
                 "frequency": 5,
             },
         ],
@@ -55,20 +55,20 @@ CONFIG_3 = [
 
 CONFIG_4 = "tests/deepsparse/loggers/test_data/function_config.yaml"
 
-CONFIG_5 = """
+
+CONFIG_5 = """ 
   name: token_classification
   targets:
     - target: pipeline_inputs
       mappings:
         - func: builtins:identity
           frequency: 3
-        - func: tests/server/server_data/metric_functions.py:user_defined_identity
+        - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity 
           frequency: 5
     - target: pipeline_outputs
       mappings:
         - func: builtins:identity
-          frequency: 4"""
-
+          frequency: 4"""  # noqa E501
 
 """
 if for some target (e.g. "pipeline_inputs") we have
