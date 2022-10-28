@@ -55,7 +55,6 @@ CONFIG_3 = [
 
 CONFIG_4 = "tests/deepsparse/loggers/test_data/function_config.yaml"
 
-
 CONFIG_5 = """ 
   name: token_classification
   targets:
@@ -69,6 +68,7 @@ CONFIG_5 = """
       mappings:
         - func: builtins:identity
           frequency: 4"""  # noqa E501
+
 
 """
 if for some target (e.g. "pipeline_inputs") we have

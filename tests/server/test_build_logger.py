@@ -27,8 +27,7 @@ YAML_CONFIG_1 = """endpoints:
     - task: question_answering
       route: /unpruned/predict
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-      batch_size: 1
-"""
+      batch_size: 1"""  # noqa E501
 LOGGER_1 = None
 
 YAML_CONFIG_2 = """loggers:
@@ -37,8 +36,7 @@ endpoints:
     - task: question_answering
       route: /unpruned/predict
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-      batch_size: 1
-"""
+      batch_size: 1"""  # noqa E501
 LOGGER_2 = logger_objects.PythonLogger()
 
 YAML_CONFIG_3 = """loggers:
@@ -58,7 +56,7 @@ endpoints:
         - target: engine_outputs
           mappings:
            - func: np.mean
-             frequency: 4"""
+             frequency: 4"""  # noqa E501
 
 PIPELINE_CONFIG_1 = """
 - name: question_answering
@@ -72,7 +70,7 @@ PIPELINE_CONFIG_1 = """
     - target: engine_outputs
       mappings:
        - func: np.mean
-         frequency: 4"""
+         frequency: 4"""  # noqa E501
 
 LOGGER_3 = logger_objects.FunctionLogger(
     logger=logger_objects.PythonLogger(),
@@ -96,7 +94,7 @@ endpoints:
           mappings:
            - func: builtins:identity
              frequency: 2
-           - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity 
+           - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity
              frequency: 3
     - task: question_answering
       route: /unpruned/predict
@@ -107,7 +105,7 @@ endpoints:
         - target: engine_outputs
           mappings:
            - func: np.mean
-             frequency: 4"""
+             frequency: 4"""  # noqa E501
 
 PIPELINE_CONFIG_2 = """- name: question_answering
   targets:
@@ -115,14 +113,14 @@ PIPELINE_CONFIG_2 = """- name: question_answering
       mappings:
        - func: builtins:identity
          frequency: 2
-       - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity 
+       - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity
          frequency: 3
 - name: question_answering_
   targets:
     - target: engine_outputs
       mappings:
        - func: np.mean
-         frequency: 4"""
+         frequency: 4"""  # noqa E501
 
 LOGGER_4 = logger_objects.FunctionLogger(
     logger=logger_objects.PythonLogger(),

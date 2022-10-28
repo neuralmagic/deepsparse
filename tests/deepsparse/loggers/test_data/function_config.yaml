@@ -3,11 +3,7 @@ targets:
   mappings:
    - func: builtins:identity
      frequency: 3
-<<<<<<< HEAD
-   - func: tests/server/server_data/metric_functions.py:user_defined_identity
-=======
    - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity
->>>>>>> origin/feature/damian/function_logger
      frequency: 5
 - target: pipeline_outputs
   mappings:
