@@ -189,6 +189,7 @@ class Pipeline(ABC):
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
         timer = Timer()
+
         timer.start(InferencePhases.TOTAL_INFERENCE)
 
         # ------ PREPROCESSING ------
