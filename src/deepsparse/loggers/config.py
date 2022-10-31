@@ -19,7 +19,7 @@ import importlib
 from typing import Any, Callable, List, Optional, Tuple
 
 import numpy
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 import deepsparse.loggers.metric_functions.built_ins as built_ins
 import torch
@@ -82,7 +82,7 @@ class MetricFunctionConfig(BaseModel):
     func: Callable[[Any], Any] = Field(description="Metric function object")
     function_name: str = Field(description="Name of the metric function")
     frequency: int = Field(
-        description="Specifies how often the function should be applied"
+        default=1, description="Specifies how often the function should be applied"
     )
 
     def __init__(self, **data):
@@ -92,6 +92,15 @@ class MetricFunctionConfig(BaseModel):
         func, function_name = get_function_and_function_name(function_identifier)
         data["func"], data["function_name"] = func, function_name
         super().__init__(**data)
+
+    @validator("frequency")
+    def name_must_contain_space(cls, frequency):
+        if frequency <= 0:
+            raise ValueError(
+                f"Passed frequency: {frequency}, but "
+                "frequency must be a positive integer greater equal 1"
+            )
+        return frequency
 
 
 class TargetLoggingConfig(BaseModel):
