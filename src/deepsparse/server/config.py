@@ -15,7 +15,7 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
 from deepsparse.loggers.config import TargetLoggingConfig
@@ -73,7 +73,7 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
-    data_logging: Optional[List[TargetLoggingConfig]]
+    data_logging: Optional[List[TargetLoggingConfig]] = Field(default=None)
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,
@@ -154,6 +154,13 @@ class ServerConfig(BaseModel):
             "Set to None for no loggers. Default is `None`."
         ),
     )
+
+    @validator("endpoints")
+    def set_unique_endpoint_names(cls, endpoints):
+        for idx, endpoint_config in enumerate(endpoints):
+            if endpoint_config.name is None:
+                endpoint_config.name = f"{endpoint_config.task}-{idx}"
+        return endpoints
 
 
 def endpoint_diff(

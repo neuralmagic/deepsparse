@@ -532,6 +532,7 @@ class Pipeline(ABC):
         cls,
         config: Union["PipelineConfig", str, Path],
         context: Optional[Context] = None,
+        logger: Optional[BaseLogger] = None,
     ) -> "Pipeline":
         """
         :param config: PipelineConfig object, filepath to a json serialized
@@ -541,6 +542,7 @@ class Pipeline(ABC):
             other runtime information that will be used across instances of the
             MultiModelEngine to provide optimal performance when running
             multiple models concurrently
+        :param logger: ...
         :return: loaded Pipeline object from the config
         """
         if isinstance(config, Path) or (
@@ -562,6 +564,7 @@ class Pipeline(ABC):
             input_shapes=config.input_shapes,
             alias=config.alias,
             context=context,
+            logger=logger,
             **config.kwargs,
         )
 

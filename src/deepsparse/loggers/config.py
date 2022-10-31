@@ -19,7 +19,7 @@ import importlib
 from typing import Any, Callable, List, Optional, Tuple
 
 import numpy
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, root_validator, validator
 
 import deepsparse.loggers.metric_functions.built_ins as built_ins
 import torch
@@ -113,6 +113,22 @@ class TargetLoggingConfig(BaseModel):
     mappings: List[MetricFunctionConfig] = Field(
         description="List of MetricFunctionConfigs pertaining to the target"
     )
+
+    @root_validator
+    def unique_mapping_names_per_endpoint(cls, data):
+        target, mappings = data["target"], data["mappings"]
+        potential_duplicates = set()
+        for mapping_count, mapping in enumerate(mappings):
+            potential_duplicates.add(mapping.function_name)
+            if len(potential_duplicates) != mapping_count + 1:
+                raise ValueError(
+                    f"For target : {target} - found multiple "
+                    "metric functions with the same "
+                    f"name: {mapping.function_name}. Make sure "
+                    f"that that there are no duplicated metric "
+                    f"functions being applied to the same target."
+                )
+        return data
 
 
 class PipelineLoggingConfig(BaseModel):

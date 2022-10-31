@@ -93,7 +93,7 @@ def get_multiple_pipelines_logging_config(
     pipeline_logging_configs = []
     endpoints = server_config.endpoints
     for endpoint in endpoints:
-        name = endpoint.name or endpoint.task
+        name = endpoint.name
         targets = endpoint.data_logging
         if not targets:
             continue
