@@ -205,23 +205,12 @@ class FunctionLogger(BaseLogger):
     ) -> MultiplePipelinesLoggingConfig:
         # covert all the possible config inputs
         # to MultiplePipelinesLoggingConfig representation
-
-        if isinstance(config, MultiplePipelinesLoggingConfig):
-            return config
-        elif isinstance(config, PipelineLoggingConfig):
-            return MultiplePipelinesLoggingConfig(pipelines=[config])
-        else:
-            if isinstance(config, str):
-                return MultiplePipelinesLoggingConfig(
-                    pipelines=[
-                        PipelineLoggingConfig(
-                            **yaml.safe_load(Path(config).read_text())
-                        )
-                    ]
-                )
-            if isinstance(config, dict):
-                config = TargetLoggingConfig(**config)
-
-            return MultiplePipelinesLoggingConfig(
-                pipelines=[PipelineLoggingConfig(targets=[config])]
-            )
+        if isinstance(config, dict):
+            config = TargetLoggingConfig(**config)
+        if isinstance(config, str):
+            config = PipelineLoggingConfig(**yaml.safe_load(Path(config).read_text()))
+        if isinstance(config, TargetLoggingConfig):
+            config = PipelineLoggingConfig(targets=[config])
+        if isinstance(config, PipelineLoggingConfig):
+            config = MultiplePipelinesLoggingConfig(pipelines=[config])
+        return config
