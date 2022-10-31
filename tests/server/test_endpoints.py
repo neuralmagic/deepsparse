@@ -19,7 +19,6 @@ import requests
 from pydantic import BaseModel
 
 import pytest
-from deepsparse.loggers import ManagerLogger
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI, UploadFile
@@ -80,7 +79,7 @@ class TestMockEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
         server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[], loggers=None
+            num_cores=1, num_workers=1, endpoints=[], loggers=["python"]
         )
         yield server_config
 
@@ -95,14 +94,11 @@ class TestMockEndpoints:
     def test_add_model_endpoint(self, app: FastAPI, client: TestClient):
         # create mock pipeline that overrides run_with_monitoring
         mock_pipeline = Mock(input_schema=StrSchema, output_schema=int)
-        mock_pipeline.run_with_monitoring = Mock(
-            side_effect=lambda val: [parse(val)] * 4
-        )
+
         _add_pipeline_endpoint(
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=mock_pipeline,
-            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-1].path == "/predict/parse_int"
         assert app.routes[-1].response_model is int
@@ -119,7 +115,6 @@ class TestMockEndpoints:
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
-            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-2].path == "/predict/parse_int"
         assert app.routes[-2].endpoint.__annotations__ == {"request": FromFilesSchema}
@@ -135,7 +130,6 @@ class TestMockEndpoints:
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
             integration="sagemaker",
-            pipeline_logger=ManagerLogger([]),
         )
         assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
@@ -147,7 +141,6 @@ class TestMockEndpoints:
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
             integration="sagemaker",
-            pipeline_logger=ManagerLogger([]),
         )
         assert len(app.routes) == num_routes + 1
         assert app.routes[-1].path == "/invocations"
@@ -158,7 +151,6 @@ class TestMockEndpoints:
             app,
             endpoint_config=Mock(route=None),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
-            pipeline_logger=ManagerLogger([]),
         )
         assert app.routes[-1].path == "/predict"
 
