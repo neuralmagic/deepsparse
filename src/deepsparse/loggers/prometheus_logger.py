@@ -27,6 +27,7 @@ from prometheus_client import REGISTRY, Summary, start_http_server, write_to_tex
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
+SUPPORTED_DATA_TYPES = [int, float]
 
 
 class PrometheusLogger(BaseLogger):
@@ -38,18 +39,18 @@ class PrometheusLogger(BaseLogger):
     def __init__(
         self,
         port: int = 6100,
-        text_log_save_dir_frequency: int = 50,
+        text_log_save_frequency: int = 50,
         text_log_save_dir: str = os.getcwd(),
         text_log_file_name: Optional[str] = None,
     ):
 
         self.port = port
         # until we have done research into persistent logs, lets save logs as .txt files
-        self.text_log_save_dir_frequency = text_log_save_dir_frequency
-        self.text_log_file_name = os.path.join(
+        self.text_log_save_frequency = text_log_save_frequency
+        self.text_log_file_path = os.path.join(
             text_log_save_dir, text_log_file_name or "prometheus_logger_logs.prom"
         )
-        self.prometheus_metrics = defaultdict(str)
+        self._prometheus_metrics = defaultdict(str)
 
         self._setup_client()
         self._counter = 0
@@ -63,17 +64,14 @@ class PrometheusLogger(BaseLogger):
         :param category: The metric category that the log belongs to
         """
 
-        value = self._validate(value)
-        if value is None:
-            return
-        formatted_identifier = identifier.replace(".", ":")
-        prometheus_metric = self.prometheus_metrics.get(formatted_identifier)
+        formatted_identifier = identifier.replace(".", "__")
+        prometheus_metric = self._prometheus_metrics.get(formatted_identifier)
         if prometheus_metric is None:
             prometheus_metric = self._add_metric_to_registry(
                 formatted_identifier, category
             )
-        prometheus_metric.observe(value)
-        self._conditionally_export_metrics_to_textfile()
+        prometheus_metric.observe(self._validate(value))
+        self._try_export_metrics_to_textfile()
 
     def _add_metric_to_registry(self, identifier: str, category: str) -> Summary:
         description = (
@@ -84,28 +82,23 @@ class PrometheusLogger(BaseLogger):
             description.format(identifier=identifier, category=category),
             registry=REGISTRY,
         )
-        self.prometheus_metrics[identifier] = prometheus_metric
+        self._prometheus_metrics[identifier] = prometheus_metric
         return prometheus_metric
 
-    def _conditionally_export_metrics_to_textfile(self):
-        if self._counter % self.text_log_save_dir_frequency == 0:
-            text_log_file_name = os.path.join(
-                self.text_log_save_dir, self.text_log_file_name
-            )
-            write_to_textfile(text_log_file_name, REGISTRY)
+    def _try_export_metrics_to_textfile(self):
+        if self._counter % self.text_log_save_frequency == 0:
+            write_to_textfile(self.text_log_file_path, REGISTRY)
             self._counter = 0
         self._counter += 1
 
     def _setup_client(self):
-        """
-        Starts the Prometheus client
-        """
+        # starts the Prometheus client
         start_http_server(port=self.port)
         _LOGGER.info(f"Prometheus client: started. Using port: {self.port}.")
 
-    def _validate(self, value):
-        from pydantic import BaseModel
-
-        if isinstance(value, BaseModel) or isinstance(value, list):
-            return None
+    def _validate(self, value: Any):
+        # make sure we are passing a value that can be
+        # read by prometheus client
+        if not any(isinstance(value, datatype) for datatype in SUPPORTED_DATA_TYPES):
+            raise ValueError()
         return value

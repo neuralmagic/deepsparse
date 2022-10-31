@@ -15,23 +15,41 @@
 
 import requests
 
-import pytest
-from deepsparse import Pipeline, PrometheusLogger
+from deepsparse import FunctionLogger, Pipeline, PrometheusLogger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
 
 @mock_engine(rng_seed=0)
-def test_python_logger(engine, capsys):
+def test_python_logger(engine, capsys, tmp_path):
+    config = {
+        "target": "pipeline_inputs",
+        "mappings": [
+            {
+                "func": "tests/deepsparse/loggers/test_data/metric_functions.py:return_one",
+                "frequency": 2,
+            }
+        ],
+    }
+
     port = find_free_port()
     pipeline = Pipeline.create(
         "token_classification",
         batch_size=1,
-        logger=PrometheusLogger(port=port),
+        logger=FunctionLogger(
+            PrometheusLogger(
+                port=port, text_log_save_frequency=1, text_log_save_dir=tmp_path
+            ),
+            config=config,
+        ),
     )
 
     for _ in range(20):
         pipeline("all_your_base_are_belong_to_us")
     response = requests.get(f"http://0.0.0.0:{port}").text
-    request_log_lines = [x for x in response.split("\n")]
+    request_log_lines = [x for x in response.split("\n") if "pipeline_inputs" in x]
+    count_request = float(request_log_lines[2].split(" ")[1])
+
+    text = None
+    request_text_lines = None
     pass
