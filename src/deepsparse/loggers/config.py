@@ -16,7 +16,7 @@ Pydantic Models for Logging Configs
 """
 
 import importlib
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy
 from pydantic import BaseModel, Field, root_validator, validator
@@ -115,16 +115,23 @@ class TargetLoggingConfig(BaseModel):
     )
 
     @root_validator
-    def unique_mapping_names_per_endpoint(cls, data):
+    def unique_mapping_names_per_endpoint(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Make sure that for each target, two mappings with the same name
+        are not applied.
+
+        :param data:
+        :return:
+        """
         target, mappings = data["target"], data["mappings"]
         potential_duplicates = set()
-        for mapping_count, mapping in enumerate(mappings):
-            potential_duplicates.add(mapping.function_name)
+        for mapping_count, mapping_cfg in enumerate(mappings):
+            potential_duplicates.add(mapping_cfg.function_name)
             if len(potential_duplicates) != mapping_count + 1:
                 raise ValueError(
-                    f"For target : {target} - found multiple "
+                    f"For target - {target} - found multiple "
                     "metric functions with the same "
-                    f"name: {mapping.function_name}. Make sure "
+                    f"name: {mapping_cfg.function_name}. Make sure "
                     f"that that there are no duplicated metric "
                     f"functions being applied to the same target."
                 )

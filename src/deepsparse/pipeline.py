@@ -542,7 +542,8 @@ class Pipeline(ABC):
             other runtime information that will be used across instances of the
             MultiModelEngine to provide optimal performance when running
             multiple models concurrently
-        :param logger: ...
+        :param logger: An optional DeepSparse Logger object for inference
+            logging. Default is None
         :return: loaded Pipeline object from the config
         """
         if isinstance(config, Path) or (
