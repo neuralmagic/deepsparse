@@ -35,7 +35,7 @@ except Exception as _transformers_import_err:
 _LOGGER = _logging.getLogger(__name__)
 _NM_TRANSFORMERS_TAR_TEMPLATE = (
     "https://github.com/neuralmagic/transformers/releases/download/"
-    "{version}/transformers-4.18.0.dev0-py3-none-any.whl"
+    "{version}/transformers-4.23.1-py3-none-any.whl"
 )
 _NM_TRANSFORMERS_NIGHTLY = _NM_TRANSFORMERS_TAR_TEMPLATE.format(version="nightly")
 
