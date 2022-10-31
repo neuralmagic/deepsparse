@@ -12,10 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base_logger import *
 
-# flake8: noqa
-from .constants import *
-from .function_logger import *
-from .prometheus_logger import *
-from .python_logger import *
+import requests
+
+import pytest
+from deepsparse import Pipeline, PrometheusLogger
+from tests.helpers import find_free_port
+from tests.utils import mock_engine
+
+
+@mock_engine(rng_seed=0)
+def test_python_logger(engine, capsys):
+    port = find_free_port()
+    pipeline = Pipeline.create(
+        "token_classification",
+        batch_size=1,
+        logger=PrometheusLogger(port=port),
+    )
+
+    for _ in range(20):
+        pipeline("all_your_base_are_belong_to_us")
+    response = requests.get(f"http://0.0.0.0:{port}").text
+    request_log_lines = [x for x in response.split("\n")]
+    pass
