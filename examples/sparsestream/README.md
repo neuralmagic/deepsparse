@@ -55,7 +55,7 @@ This will download sparse-optimized models and initialize two NLP inference pipe
 
 ## `STREAM WHILE YOU EAT SOME POPCORN 🍿`
 
-Tweets should now be streaming in you terminal, and you should see three objects per tweet:
+Tweets should now be streaming in your terminal, and you should see three objects per tweet:
 
 - `tweet`: The tweet received from the Twitter API.
 - `sentiment`: The tweet's sentiment: `Bullish` or `Bearish` or `Neutral`
