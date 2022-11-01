@@ -28,7 +28,7 @@ from deepsparse.server.config import ServerConfig
 
 __all__ = ["build_logger"]
 
-SUPPORTED_LOGGER_NAMES = ["python"]
+SUPPORTED_LOGGER_NAMES = ["python", "prometheus"]
 
 
 def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
@@ -118,6 +118,11 @@ def _build_single_logger(
                 f"Attempting to pass arguments: {logger_arguments}"
             )
         return logger_objects.PythonLogger()
+
+    elif logger_name == "prometheus":
+        return logger_objects.PrometheusLogger(**logger_arguments)
+
+    else:
 
         raise ValueError(
             "Attempting to create a DeepSparse Logger with "

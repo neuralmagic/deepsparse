@@ -34,21 +34,31 @@ class PrometheusLogger(BaseLogger):
     """
     DeepSparse logger that continuously exposes the collected logs over the
     Prometheus python client at the specified port.
+
+    :param port: the port used by the client. Default is 6100
+    :param text_log_save_frequency: the frequency of saving the text log
+        files. E.g. if `text_log_save_frequency` = 10, text logs are dumped
+        after every tenth forward pass. Default set to 10
+    :param text_log_save_dir: the directory where the text log files
+        are saved. By default, the python working directory
+    :param text_log_file_name: the name of the text log file.
+        Default: `prometheus_logs.prom`
     """
 
     def __init__(
         self,
         port: int = 6100,
-        text_log_save_frequency: int = 50,
+        text_log_save_frequency: int = 10,
         text_log_save_dir: str = os.getcwd(),
         text_log_file_name: Optional[str] = None,
     ):
 
         self.port = port
-        # until we have done research into persistent logs, lets save logs as .txt files
+        # until we have done research into persistent
+        # logs, lets save logs as .prom files
         self.text_log_save_frequency = text_log_save_frequency
         self.text_log_file_path = os.path.join(
-            text_log_save_dir, text_log_file_name or "prometheus_logger_logs.prom"
+            text_log_save_dir, text_log_file_name or "prometheus_logs.prom"
         )
         self._prometheus_metrics = defaultdict(str)
 
@@ -64,6 +74,8 @@ class PrometheusLogger(BaseLogger):
         :param category: The metric category that the log belongs to
         """
 
+        # needs to adhere to
+        # https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
         formatted_identifier = identifier.replace(".", "__")
         prometheus_metric = self._prometheus_metrics.get(formatted_identifier)
         if prometheus_metric is None:
@@ -96,9 +108,9 @@ class PrometheusLogger(BaseLogger):
         start_http_server(port=self.port)
         _LOGGER.info(f"Prometheus client: started. Using port: {self.port}.")
 
-    def _validate(self, value: Any):
+    def _validate(self, value: Any) -> Any:
         # make sure we are passing a value that can be
-        # read by prometheus client
+        # logged by prometheus client
         if not any(isinstance(value, datatype) for datatype in SUPPORTED_DATA_TYPES):
-            raise ValueError()
+            raise ValueError
         return value
