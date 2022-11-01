@@ -42,7 +42,7 @@ pip install -r requirements.txt
 
 ## `CONFIGURING API`
 
-In order to connect with the Twitter streaming API, you will need to get access to the `consumer key`, `consumer secret`, `access token` and `access token secret` which you’ll receive after applying for a Twitter app via the [Twitter developer site](https://developer.twitter.com/en). You'll get access to these tokens after your app is approved by Twitter. Afterwards, add these four tokens to the `config.yaml` file before starting your stream.
+In order to connect with the Twitter streaming API, access to the `consumer key`, `consumer secret`, `access token` and `access token secret` is required before getting started. These tokens will be available after applying for a Twitter app via the [Twitter developer site](https://developer.twitter.com/en). Afterwards, add these four tokens to the `config.yaml` file before starting the stream.
 
 ## `START STREAM`
 
