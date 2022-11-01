@@ -40,11 +40,11 @@ cd deepsparse/examples/sparsestream
 pip install -r requirements.txt
 ```
 
-## `Config`
+## `CONFIGURING API`
 
-In order to connect with the Twitter streaming API, you will need to get access to the `consumer key`, `consumer secret`, `access token` and `access token secret` which you’ll receive after applying for a Twitter app via the [Twitter developer site](https://developer.twitter.com/en). Access to these tokens are free and the only requirement one needs is to own a Twitter account. After getting approved by Twitter for your app, generate and paste the 4 tokens to the `config.yaml` file.
+In order to connect with the Twitter streaming API, you will need to get access to the `consumer key`, `consumer secret`, `access token` and `access token secret` which you’ll receive after applying for a Twitter app via the [Twitter developer site](https://developer.twitter.com/en). You'll get access to these tokens after your app is approved by Twitter. Afterwards, add these four tokens to the `config.yaml` file before starting your stream.
 
-## <div>`START STREAM`</div>
+## `START STREAM`
 
 In a terminal, start a Twitter stream with:
 ```bash
@@ -53,7 +53,7 @@ python stream.py
 
 This will download sparse-optimized models and initialize two NLP inference pipelines for the financial text classification task: one pipeline for sentiment classification and the other for topic classification.
 
-## <div>`STREAM WHILE YOU EAT SOME POPCORN 🍿`</div>
+## `STREAM WHILE YOU EAT SOME POPCORN 🍿`
 
 Tweets should now be streaming in you terminal, and you should see three objects per tweet:
 
