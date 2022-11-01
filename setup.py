@@ -51,7 +51,7 @@ _PACKAGE_NAME = (
 )
 
 # File regexes for binaries to include in package_data
-binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin", "licenses/*"]
+binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
 
 def _parse_requirements_file(file_path):
