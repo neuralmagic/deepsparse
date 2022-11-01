@@ -15,26 +15,22 @@ limitations under the License.
 -->
 
 
-                ____  ___   ____  ____  ____  ____  ____  ___  ____  ____  ____  _  _ 
-                [__   |__]  |__|  |__/  [__   |___  [__    |   |__/  |___  |__|  |\/| 
-                ___]  |     |  |  |  \  ___]  |___  ___]   |   |  \  |___  |  |  |  | 
-                                                                                            
+               ____  ___   ____  ____  ____  ____  ____  ___  ____  ____  ____  _  _ 
+               [__   |__]  |__|  |__/  [__   |___  [__    |   |__/  |___  |__|  |\/| 
+               ___]  |     |  |  |  \  ___]  |___  ___]   |   |  \  |___  |  |  |  | 
+                                                                                          
       *** SparseStream classifies the sentiment and topic of finance-related tweets in a real-time stream. ***
 
 
-## <div>`INTRO`</div>
+## `INTRO`
 
-<samp>
-
-<div>
 The purpose of this app is for you to familiarize yourself with the high performance inference speeds of sparse models in a streaming environment. You will be able to use this app to classify tweets in a real-time stream.
-</div>
 
 <br />
 
 [Getting Started with the DeepSparse Engine](https://github.com/neuralmagic/deepsparse)
 
-## <div>`INSTALL`</div>
+## `INSTALL`
 
 Supports Python >= 3.7
 
@@ -43,6 +39,11 @@ git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/sparsestream
 pip install -r requirements.txt
 ```
+
+## `Config`
+
+In order to connect with the Twitter streaming API, you will need to get access to the `consumer key`, `consumer secret`, `access token` and `access token secret` which you’ll receive after applying for a Twitter app via the [Twitter developer site](https://developer.twitter.com/en). Access to these tokens are free and the only requirement one needs is to own a Twitter account. After getting approved by Twitter for your app, generate and paste the 4 tokens to the `config.yaml` file.
+
 ## <div>`START STREAM`</div>
 
 In a terminal, start a Twitter stream with:
