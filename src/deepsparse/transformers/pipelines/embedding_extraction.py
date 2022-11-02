@@ -100,7 +100,7 @@ class ExtractionStrategy(str, Enum):
     task_aliases=[],
     default_model_path=(
         "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        "wikipedia_bookcorpus/12layer_pruned80_quant-none-vnni"
+        "wikipedia_bookcorpus/pruned80_quant-none-vnni"
     ),
 )
 class EmbeddingExtractionPipeline(TransformersPipeline):
