@@ -42,7 +42,9 @@ pip install -r requirements.txt
 ```
 ### Model Configuration
 
-To add a different sparse model or alter its configuration, edit the pipeline object in the `app.py` file found in the `/lambda-deepsparse/app` directory.
+To use a different sparse model please edit the model zoo stub in the `Dockerfile`. 
+To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in the `app.py` file.
+Both files can be found in the `/lambda-deepsparse/app` directory.
 
 ### Create Endpoint
 
@@ -58,7 +60,7 @@ After the endpoint has been staged (~3 minute), AWS SAM will provide your API Ga
 ```python
 from client import LambdaClient
 
-LC = LambdaClient("https://k6fc51kcr1.execute-api.us-east-1.amazonaws.com/inference")
+LC = LambdaClient("https://#########.execute-api.us-east-1.amazonaws.com/inference")
 answer = LC.client({"sequences": "i like pizza"})
 
 print(answer)
