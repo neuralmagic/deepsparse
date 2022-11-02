@@ -167,8 +167,8 @@ def main():
 
     results = benchmark_model(
         (
-            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet-augmented/"
-            "pruned_quant-aggressive"
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+            "pruned95_quant-none"
         ),
         sample_inputs,
         batch_size=batch_size,
@@ -176,7 +176,7 @@ def main():
         num_iterations=num_iterations,
         num_warmup_iterations=num_warmup_iterations,
     )
-    print(f"ResNet-50 v1 Pruned Aggressive INT8 {results}")
+    print(f"ResNet-50 v1 Pruned 95 INT8 {results}")
 
 
 if __name__ == "__main__":
