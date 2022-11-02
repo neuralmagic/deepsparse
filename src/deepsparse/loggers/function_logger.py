@@ -26,14 +26,15 @@ __all__ = ["FunctionLogger"]
 
 class FunctionLogger(BaseLogger):
     """
-    DeepSparse logger that applies functions to raw log values
-    according to the specified config file
+    DeepSparse logger that applies functions to raw,
+    logged values (collected in the log() method)
+    according to FunctionLogger's attributes
 
     :param logger: A child DeepSparse Logger object
     :param identifier: The string that needs to match the
-        `identifier` argument to log() method so that the
-        FunctionLogger applies the metric function
-        and logs the data
+        `identifier` (argument to the log() method),
+        so that the FunctionLogger applies
+        the metric function and logs the data
     :param function_name: Name of the metric function
     :param function: The metric function to be applied
     :param frequency: The frequency with which the metric
@@ -63,12 +64,12 @@ class FunctionLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        is_match, sub_identifier = match(
+        is_match, identifier_reminder = match(
             template=self.identifier, identifier=identifier
         )
         if is_match:
             if self._counts % self.frequency == 0:
-                value = possibly_extract_value(value, sub_identifier)
+                value = possibly_extract_value(value, identifier_reminder)
                 mapped_value = self.function(value)
                 self.logger.log(
                     identifier=identifier, value=mapped_value, category=category
