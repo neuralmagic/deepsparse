@@ -28,28 +28,14 @@ class LambdaClient:
         self.url = url
         self.headers = {"Content-Type": "application/json"}
 
-    def qa_client(self, question: str, context: str) -> bytes:
+    def client(self, payload) -> bytes:
         """
-        Client for question answering task.
+        Client for calling the DeepSparse Pipeline for NLP tasks.
 
-        :param question: question input to the model pipeline.
-        :param context: context input to the model pipeline.
+        :param payload: input to the model pipeline.
         :return: json output from Lambda
         """
 
-        obj = {"question": question, "context": context}
-        response = requests.post(self.url, headers=self.headers, json=obj)
-
+        response = requests.post(self.url, headers=self.headers, json=payload)
         return json.loads(response.content)
 
-    def sa_client(self, context: str) -> bytes:
-        """
-        Client for sentiment analysis task.
-
-        :param context: context input to the model pipeline.
-        """
-
-        obj = {"sequences": context}
-        response = requests.post(self.url, headers=self.headers, json=obj)
-
-        return json.loads(response.content)

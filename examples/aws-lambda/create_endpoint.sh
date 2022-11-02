@@ -1,14 +1,18 @@
 #!/bin/bash
 
-account=$(aws sts get-caller-identity --query Account | sed -e 's/^"//' -e 's/"$//')
+region=$1
+stackname=$2
+imagename=$3
 capabilities=CAPABILITY_IAM
-ecr_account=${account}.dkr.ecr.$1.amazonaws.com
+
+account=$(aws sts get-caller-identity --query Account | sed -e 's/^"//' -e 's/"$//')
+ecr_account=$account.dkr.ecr.$region.amazonaws.com
 aws ecr get-login-password --region $region | docker login --username AWS --password-stdin $ecr_account
 
 cd lambda-deepsparse
 sam build
 sam deploy \
-    --region $1 \
-    --stack-name $2 \
-    --image-repository $ecr_account/$3 \
+    --region $region \
+    --stack-name $stackname \
+    --image-repository $ecr_account/$imagename \
     --capabilities $capabilities

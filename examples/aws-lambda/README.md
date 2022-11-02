@@ -25,7 +25,7 @@ The scope of this application encompasses:
 4. The creation of the appropriate IAM permissions for handling Lambda.
 5. The creation of a Lambda function alongside an API Gateway in a Cloudformation stack. 
 
-### Requirements
+## Requirements
 The following credentials, tools, and libraries are also required:
 * The [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) version 2.X that is [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html). Double check if the `region` that is configured in your AWS CLI matches the region passed in the SparseLambda class found in the `endpoint.py` file. Currently, the default region being used is `us-east-1`.
 * The AWS Serverless Application Model [(AWS SAM)](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html), an open-source CLI framework used for building serverless applications on AWS.
@@ -33,13 +33,18 @@ The following credentials, tools, and libraries are also required:
 * The `boto3` python AWS SDK: `pip install boto3`.
 
 
-### Quick Start
+## Quick Start
 
 ```bash 
 git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/aws-lambda
 pip install -r requirements.txt
 ```
+### Model Configuration
+
+To add a different sparse model or alter its configuration, edit the `config.yaml` file in the `/lambda-deepsparse/app` directory.
+
+### Create Endpoint
 
 Run the following command to build your Lambda endpoint.
 
@@ -49,11 +54,12 @@ python endpoint.py create
 
 After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
 
+### Call the Endpoint
 ```python
 from client import LambdaClient
 
 LC = LambdaClient("https://1zkckuuw1c.execute-api.us-east-1.amazonaws.com/inference")
-answer = LC.sa_client("I like pizza.")
+answer = LC.client("I like pizza.")
 
 print(answer)
 ```
@@ -62,7 +68,7 @@ answer: `{'Answer': ['positive']}`
 
 On your first cold start, it will take a ~30 seconds to get your first inference, but afterwards, it should be in milliseconds.
 
-
+### Delete Endpoint
 If you want to delete your Lambda endpoint, run:
 
 ```bash

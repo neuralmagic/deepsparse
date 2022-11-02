@@ -1,5 +1,0 @@
-task: sentiment_analysis
-model_path: ./model
-batch_size: 1
-kwargs:
-        sequence_length: 128
