@@ -32,7 +32,6 @@ The following credentials, tools, and libraries are also required:
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
 * The `boto3` python AWS SDK: `pip install boto3`.
 
-
 ## Quick Start
 
 ```bash 
@@ -42,9 +41,7 @@ pip install -r requirements.txt
 ```
 ### Model Configuration
 
-To use a different sparse model please edit the model zoo stub in the `Dockerfile`. 
-To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in the `app.py` file.
-Both files can be found in the `/lambda-deepsparse/app` directory.
+To use a different sparse model please edit the model zoo stub in the `Dockerfile`. To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in the `app.py` file. Both files can be found in the `/lambda-deepsparse/app` directory.
 
 ### Create Endpoint
 
@@ -53,10 +50,10 @@ Run the following command to build your Lambda endpoint.
 ```bash
 python endpoint.py create
 ```
+### Call the Endpoint
 
 After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
 
-### Call the Endpoint
 ```python
 from client import LambdaClient
 

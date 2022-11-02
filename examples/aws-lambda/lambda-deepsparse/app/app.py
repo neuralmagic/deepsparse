@@ -25,7 +25,7 @@ pipeline = Pipeline.create(
 def lambda_handler(event, context):
 
     payload = json.loads(event["body"])
-    inference = pipeline(payload["sequences"])
+    inference = pipeline(**payload)
 
     return {
         "statusCode": 200,
