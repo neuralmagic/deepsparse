@@ -53,22 +53,36 @@ def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
     if loggers_config is None:
         return loggers_config
 
-    multi_pipelines_logging = get_multiple_pipelines_logging_config(server_config)
+    leaf_loggers = _build_leaf_loggers(loggers_config)
 
     loggers = []
-    for logger_config in loggers_config:
-        if isinstance(logger_config, str):
-            # instantiating a logger without arguments
-            logger_name = logger_config
-            leaf_logger = _build_single_logger(logger_name=logger_name)
-        else:
-            # instantiating a logger with arguments
-            logger_name, logger_arguments = tuple(logger_config.items())[0]
-            leaf_logger = _build_single_logger(
-                logger_name=logger_name, logger_arguments=logger_arguments
-            )
+    for endpoint in server_config.endpoints:
+        if endpoint.data_logging is None:
+            continue
+        for target in endpoint.data_logging:
+            for metric in target.metrics:
+                for leaf_logger_name, leaf_logger in leaf_loggers.items():
+                    # I do not want to have another layer of MultiLoggers here.
+                    # Leaving the option to filter the leaf loggers per target
+                    # If required
+                    identifier = f"{endpoint.name or endpoint.task}.target"
+                    loggers.append(logger_objects.FunctionLogger(
+                                                  logger = leaf_logger,
+                                                  identifier = identifier,
+                                                  function_name = metric.function_name,
+                                                  function = metric.func,
+                                                  frequency = metric.frequency))
+    if not loggers:
+        loggers = leaf_loggers
+    return logger_objects.MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
 
-        loggers.append(leaf_logger)
+
+
+
+
+
+
+
 
     # logger = logger_objects.MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
     logger = loggers[0]
@@ -80,31 +94,47 @@ def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
 
     return logger
 
+def _build_leaf_loggers(loggers_config):
+    loggers = {}
+    for logger_config in loggers_config:
+        if isinstance(logger_config, str):
+            # instantiating a logger without arguments
+            logger_name = logger_config
+            leaf_logger = _build_single_logger(logger_name=logger_name)
+        else:
+            # instantiating a logger with arguments
+            logger_name, logger_arguments = tuple(logger_config.items())[0]
+            leaf_logger = _build_single_logger(
+                logger_name=logger_name, logger_arguments=logger_arguments
+            )
+        loggers.update(leaf_logger)
+    return loggers
 
-def get_multiple_pipelines_logging_config(
-    server_config: ServerConfig,
-) -> MultiplePipelinesLoggingConfig:
-    """
-    Create a MultiplePipelinesLoggingConfig from the ServerConfig
 
-    :param server_config: the Server configuration model
-    :return: a MultiplePipelinesLoggingConfig model
-    """
-    pipeline_logging_configs = []
-    endpoints = server_config.endpoints
-    for endpoint in endpoints:
-        name = endpoint.name or endpoint.task
-        targets = endpoint.data_logging
-        if not targets:
-            continue
-
-        pipeline_logging_configs.append(
-            PipelineLoggingConfig(name=name, targets=targets)
-        )
-    if not pipeline_logging_configs:
-        return None
-
-    return MultiplePipelinesLoggingConfig(pipelines=pipeline_logging_configs)
+# def get_multiple_pipelines_logging_config(
+#     server_config: ServerConfig,
+# ) -> MultiplePipelinesLoggingConfig:
+#     """
+#     Create a MultiplePipelinesLoggingConfig from the ServerConfig
+#
+#     :param server_config: the Server configuration model
+#     :return: a MultiplePipelinesLoggingConfig model
+#     """
+#     pipeline_logging_configs = []
+#     endpoints = server_config.endpoints
+#     for endpoint in endpoints:
+#         name = endpoint.name or endpoint.task
+#         targets = endpoint.data_logging
+#         if not targets:
+#             continue
+#
+#         pipeline_logging_configs.append(
+#             PipelineLoggingConfig(name=name, targets=targets)
+#         )
+#     if not pipeline_logging_configs:
+#         return None
+#
+#     return MultiplePipelinesLoggingConfig(pipelines=pipeline_logging_configs)
 
 
 def _build_single_logger(
@@ -117,7 +147,7 @@ def _build_single_logger(
                 "The logger takes no arguments. "
                 f"Attempting to pass arguments: {logger_arguments}"
             )
-        return logger_objects.PythonLogger()
+        return {logger_name: logger_objects.PythonLogger()}
 
         raise ValueError(
             "Attempting to create a DeepSparse Logger with "

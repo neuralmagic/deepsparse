@@ -110,7 +110,7 @@ class TargetLoggingConfig(BaseModel):
 
     target: str = Field(description="Name of the target.")
 
-    mappings: List[MetricFunctionConfig] = Field(
+    metrics: List[MetricFunctionConfig] = Field(
         description="List of MetricFunctionConfigs pertaining to the target"
     )
 
