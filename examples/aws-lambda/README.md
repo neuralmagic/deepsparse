@@ -42,7 +42,7 @@ pip install -r requirements.txt
 ```
 ### Model Configuration
 
-To add a different sparse model or alter its configuration, edit the `config.yaml` file in the `/lambda-deepsparse/app` directory.
+To add a different sparse model or alter its configuration, edit the pipeline object in the `app.py` file found in the `/lambda-deepsparse/app` directory.
 
 ### Create Endpoint
 
@@ -58,13 +58,13 @@ After the endpoint has been staged (~3 minute), AWS SAM will provide your API Ga
 ```python
 from client import LambdaClient
 
-LC = LambdaClient("https://1zkckuuw1c.execute-api.us-east-1.amazonaws.com/inference")
-answer = LC.client("I like pizza.")
+LC = LambdaClient("https://k6fc51kcr1.execute-api.us-east-1.amazonaws.com/inference")
+answer = LC.client({"sequences": "i like pizza"})
 
 print(answer)
 ```
 
-answer: `{'Answer': ['positive']}`
+answer: `{'labels': ['positive'], 'scores': [0.9990884065628052]}`
 
 On your first cold start, it will take a ~30 seconds to get your first inference, but afterwards, it should be in milliseconds.
 
