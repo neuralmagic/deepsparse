@@ -38,4 +38,3 @@ class LambdaClient:
 
         response = requests.post(self.url, headers=self.headers, json=payload)
         return json.loads(response.content)
-

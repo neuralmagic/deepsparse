@@ -16,11 +16,11 @@ import json
 
 from deepsparse import Pipeline
 
+
 pipeline = Pipeline.create(
-    task="sentiment_analysis",
-    model_path="./model/deployment",
-    batch_size=1
+    task="sentiment_analysis", model_path="./model/deployment", batch_size=1
 )
+
 
 def lambda_handler(event, context):
 
