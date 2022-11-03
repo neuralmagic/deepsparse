@@ -276,9 +276,9 @@ data_logging:
 </details>
 
 ## Examples
-- [Server with Prometheus / Grafana](/tutorial-prometheus-server)
-- [Pipeline with Prometheus / Grafana](/tutorial-prometheus-pipeline)
-- [Monitoring while running Kubernetes](/tutorial-prometheus-kubernetes)
+- [Server with Prometheus / Grafana](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-server-prometheus)
+- [Pipeline with Prometheus / Grafana](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-pipeline-prometheus)
+- [Monitoring while running Kubernetes](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-kubernetes-prometheus)
 
 ## DeepSparse Enterprise
 
