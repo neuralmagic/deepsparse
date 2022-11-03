@@ -9,7 +9,7 @@ This tutorial will show you how to connect DeepSparse Logging to the Prometheus/
 - Point Prometheus to the appropriate endpoint to scape the data at a specified interval
 - Visualize data in Prometheus with dashboarding tool like Grafana
 
-## 0. Get Set UP
+## 0. Setting Up
 #### Installation
 
 To run this tutorial, you need Docker, Docker Compose, and DeepSparse Server
@@ -78,6 +78,32 @@ To validate that metrics are being properly exposed, visit `localhost:6100`. It 
 ## 2. Setup Prometheus/Grafana Stack
 
 For simplicity, we have provided a `docker-compose` file that automatically spins up the containerized Prometheus/Grafana stack.
+
+<details>
+    <summary>Click to see the docker compose file</summary>
+
+```yaml    
+version: "3"
+
+services:
+  prometheus:
+    image: prom/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"     # allow a direct connection from container to the local machine
+    ports:
+      - "9090:9090" # the default port used by Prometheus
+    volumes:
+      - ${PWD}/prometheus.yaml:/etc/prometheus/prometheus.yml # mount Prometheus config file
+
+  grafana:
+    image: grafana/grafana:latest
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000" # the default port used by Grafana
+
+```
+</details>
 
 Note: in the `docker-compose` file we are passing an appropriate [config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) `prometheus.yaml` to the Prometheus container.
 The configuration file defines dynamic parameters of the Prometheus service. In our example, those are scraping jobs - e.g. pointing to the instances that are to be scraped.
