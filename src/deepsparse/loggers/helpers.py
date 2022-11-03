@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from typing import Any, Optional, Tuple
 
 from pydantic import BaseModel
@@ -21,69 +22,73 @@ from pydantic import BaseModel
 Helpers functions for logging
 """
 
-__all__ = ["possibly_extract_value", "match"]
+__all__ = ["match_and_extract"]
 
 
-def possibly_extract_value(
-    value: Any, identifier_reminder: Optional[str] = None
-) -> Any:
+def match_and_extract(template: str, identifier: str, value: Any) -> Optional[Any]:
     """
-    Given a string of ("."-separated) sub_identifiers, access the items
-    inside `value`.
+    Attempts to match the template against the identifier. If successful,
+    uses the remainder to extract the item of interest inside `value` data structure.
+
+    :param template: A string that defines the matching criteria
+    :param identifier: A string that will be compared with the template
+    :param value: Raw value from the logger
+    :return: (Optional) Value of interest
+    """
+    is_match, remainder = check_identifier_match(template, identifier)
+    return possibly_extract_value(value, remainder) if is_match else None
+
+
+def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
+    """
+    Given a remainder (string of "."-separated strings), try to
+    access the items inside `value` data structure.
 
     :param value: A data structure that may potentially hold "nested" values
         of interest.
-    :param sub_identifiers: A string of "."-separated keys that are used to
+    :param remainder: A string of "."-separated keys that are used to
         access "nested" value of interest inside`value`.
     :return: Value of interest
     """
-    if not identifier_reminder:
+    if not remainder:
         return value
 
     value = dict(value) if isinstance(value, BaseModel) else value
 
-    for reminder in identifier_reminder.split("."):
-        # TODO: Add the support for slicing
-        # e.g. pipeline_inputs.images[0,0,0,0]
-        value = value[reminder]
+    for sub_remainders in remainder.split("."):
+        value = value[sub_remainders]
+
     return value
 
 
-def match(template: str, identifier: str) -> Tuple[bool, Optional[str]]:
+def check_identifier_match(
+    template: str, identifier: str
+) -> Tuple[bool, Optional[str]]:
     """
     Match the template against the identifier
 
-    :param template: A string in format:
-        <pipeline_name>.<target_name>.<reminder>
+    :param template: A string the in format:
+        <string_n-t>.<string_n-t+1)>.<...>.<string_n>(optionally).<remainder>
         or
-        <target_name>.<reminder>
-    :param identifier: A string in format <pipeline_name>.<target_name>
+        a regex pattern
+
+    :param identifier: A string in the format:
+
+        1.  <string_n-t>.<string_n-t+1)>.<...>.<string_n>
+        2.
+            if template and identifier do not share any first
+            <string_n-t+k> components, there is no match
+
     :return: A tuple that consists of:
         - a boolean (True if match, False otherwise)
-        - an optional reminder (string if matched, None otherwise)
+        - an optional remainder (string if matched, None otherwise)
     """
-    pipeline, target = identifier.split(".")
-
-    # assume template is "<target_name>.<...>"
-    t_target, *t_other = template.split(".")
-    if _match_two_strings(t_target, target):
-        return True, ".".join(t_other) if t_other else None
-    # if template is just <target_name>, no match made
-    if not t_other:
-        return False, None
-    # assume template is "<pipeline_name>.<target_name>.<..>"
-    else:
-        # assume template is "<pipeline_name>.<target_name>.<..>"
-        t_pipeline, t_target, *t_other = template.split(".")
-        if _match_two_strings(t_pipeline, pipeline):
-            if _match_two_strings(t_target, target):
-                return True, ".".join(t_other) if t_other else None
+    if template == identifier:
+        return True, None
+    if template.startswith(identifier):
+        return True, template.replace(identifier, "")[1:]
+    if template[:3] == "re:":
+        pattern = template[3:]
+        return re.match(pattern, identifier) is not None, None
 
     return False, None
-
-
-def _match_two_strings(goal_string: str, string: str) -> bool:
-    # TODO: possible regex logic will end up here
-    if goal_string == string:
-        return True
-    return False

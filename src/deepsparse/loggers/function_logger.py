@@ -18,7 +18,7 @@ Implementation of the Function Logger
 from typing import Any, Callable
 
 from deepsparse.loggers import BaseLogger, MetricCategories
-from deepsparse.loggers.helpers import match, possibly_extract_value
+from deepsparse.loggers.helpers import match_and_extract
 
 
 __all__ = ["FunctionLogger"]
@@ -44,14 +44,14 @@ class FunctionLogger(BaseLogger):
     def __init__(
         self,
         logger: BaseLogger,
-        identifier: str,
-        function_name: Any,
+        target_identifier: str,
+        function_name: str,
         function: Callable[[Any], Any],
-        frequency: int,
+        frequency: int = 1,
     ):
 
         self.logger = logger
-        self.identifier = identifier
+        self.target_identifier = target_identifier
         self.function_name = function_name
         self.frequency = frequency
         self.function = function
@@ -60,17 +60,16 @@ class FunctionLogger(BaseLogger):
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
-        :param identifier: The name of the thing that is being logged.
+        :param identifier: The name of the item that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        is_match, identifier_reminder = match(
-            template=self.identifier, identifier=identifier
+        extracted_value = match_and_extract(
+            template=self.target_identifier, identifier=identifier, value=value
         )
-        if is_match:
+        if extracted_value:
             if self._counts % self.frequency == 0:
-                value = possibly_extract_value(value, identifier_reminder)
-                mapped_value = self.function(value)
+                mapped_value = self.function(extracted_value)
                 self.logger.log(
                     identifier=identifier, value=mapped_value, category=category
                 )

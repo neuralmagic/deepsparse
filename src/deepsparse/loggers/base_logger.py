@@ -32,7 +32,7 @@ class BaseLogger(ABC):
         and then possibly process the information and pass it to
         the monitoring service
 
-        :param identifier: The name of the thing that is being logged.
+        :param identifier: The name of the item that is being logged.
         :param value: The data structure that is logged
         :param category: The metric category that the log belongs to
         """

@@ -29,14 +29,21 @@ def _return_number(x):
     "identifier, function_name, frequency, function, num_iterations, expected_log_content",  # noqa E501
     [
         (
-            "pipeline_inputs.inputs",
+            "token_classification.pipeline_inputs.inputs",
             "identity",
             2,
             _identity,
             5,
             "all_your_base_are_belong_to_us",
         ),
-        ("engine_inputs", "return_one", 1, _return_number, 5, "1234"),
+        (
+            "token_classification.engine_inputs",
+            "return_one",
+            1,
+            _return_number,
+            5,
+            "1234",
+        ),
     ],
 )
 def test_function_logger(
@@ -51,7 +58,7 @@ def test_function_logger(
     logger = PythonLogger()
     function_logger = FunctionLogger(
         logger=logger,
-        identifier=identifier,
+        target_identifier=identifier,
         function_name=function_name,
         frequency=frequency,
         function=function,

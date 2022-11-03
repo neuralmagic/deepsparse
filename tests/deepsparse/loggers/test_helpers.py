@@ -13,29 +13,22 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.helpers import match
+from deepsparse.loggers.helpers import check_identifier_match
 
 
 @pytest.mark.parametrize(
     "template, identifier, expected_output",
     [
-        ("engine_inputs", "image_classification.engine_inputs", (True, None)),
+        ("string_1.string_2", "string_1.string_2", (True, None)),
+        ("string_1.string_3", "string_1.string_2", (False, None)),
         (
-            "image_classification.engine_inputs",
-            "image_classification.engine_inputs",
-            (True, None),
+            "string_1.string_2.string_3.string_4",
+            "string_1.string_2",
+            (True, "string_3.string_4"),
         ),
-        (
-            "pipeline_inputs.images",
-            "image_classification.pipeline_inputs",
-            (True, "images"),
-        ),
-        (
-            "image_classification.pipeline_inputs.images.something",
-            "image_classification.pipeline_inputs",
-            (True, "images.something"),
-        ),
+        ("re:string_*..*.string.*", "string_1.string_2", (True, None)),
+        ("re:string_*..*.string.*", "string_3.string_4", (True, None)),
     ],
 )
 def test_match(template, identifier, expected_output):
-    assert match(template, identifier) == expected_output
+    assert check_identifier_match(template, identifier) == expected_output
