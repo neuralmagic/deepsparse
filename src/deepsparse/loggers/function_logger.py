@@ -31,7 +31,7 @@ class FunctionLogger(BaseLogger):
     according to FunctionLogger's attributes
 
     :param logger: A child DeepSparse Logger object
-    :param identifier: The string that needs to match the
+    :param target identifier: The string that needs to match the
         `identifier` (argument to the log() method),
         so that the FunctionLogger applies
         the metric function and logs the data
