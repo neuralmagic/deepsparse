@@ -1,39 +1,37 @@
-# DeepSparse Server Monitoring via Prometheus/Grafana
+# Monitoring with DeepSparse + Prometheus/Grafana
 
-One of the features of the [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) is its compatibility with the monitoring services popular among ML practitioners. 
+DeepSparse Logging is compatible with Prometheus/Grafana, making it easy to stand up a model monitoring service.
 
-This tutorial will show you how to monitor the DeepSparse server using the Prometheus/Grafana stack.
-You will learn how to quickly configure DeepSparse Server and Prometheus, to continuously and seamlessly monitor the Server.
+This tutorial will show you how to connect DeepSparse Logging to the Prometheus/Grafana stack.
 
-#### In the nutshell: 
-Once configured, the Server exposes `metrics` endpoint, which in turn is scraped by Prometheus - different logs are being collected, aggregated, and stored. 
-Prometheus allows external entities (like Grafana) to access these aggregated logs via the query language PromQL. 
-The role of Grafana is to allow users to visualize these metrics by creating dashboards.
+#### There are three steps:
+- Configure DeepSparse Logging to log metrics in Prometheus format to a REST endpoint
+- Point Prometheus to the appropriate endpoint to scape the data at a specified interval
+- Visualize data in Prometheus with dashboarding tool like Grafana
 
-## Prerequisites
-### Structure of the Repository
-The repository has the following structure:
+## 0. Get Set UP
+#### Installation
+
+To run this tutorial, you need Docker, Docker Compose, and DeepSparse Server
+- [Docker Installation](https://docs.docker.com/engine/install/)
+- [Docker Compose Installation](https://docs.docker.com/compose/install/)
+- DeepSparse Server is installed via PyPi (`pip install deepsparse server`)
+
+#### Code
+The repository contains all the code you need:
 
 ```bash
 .
 ├── client 
-│   ├── client.py # simple client application
+│   ├── client.py           # simple client application for interacting with Server
 │   └── piglet.jpg 
-├── server_config.yaml # specifies the configuration of the DeepSparse server
-├── docker # specifies the configuration of the containerized Prometheus/Grafana stack
+├── server_config.yaml      # specifies the configuration of the DeepSparse server
+├── docker                  # specifies the configuration of the containerized Prometheus/Grafana stack
 │   ├── docker-compose.yaml
 │   └── prometheus.yaml
-└── grafana # specifies the design of the Grafana dashboard
+└── grafana                 # specifies the design of the Grafana dashboard
     └── dashboard.json
 ```
-### Installing DeepSparse Server
-
-Install the server using the following command:
-
-```bash
-pip install deepsparse[server]
-```
-
 ## 1. Spin up the DeepSparse Server
 
 `server_config.yaml` specifies the config of the DeepSparse Server, including for logging. 
@@ -64,7 +62,7 @@ endpoints:
 ```
 </details>
 
-`server_config.yaml` instructs the server to create an image classification pipeline. Additionally, Prometheus logs are declared to be exposed on port `6100`, system logging is turned on, and several data logs have been specified.
+The config file instructs the server to create an image classification pipeline. Prometheus logs are declared to be exposed on port `6100`, system logging is turned on, and several data logs have been specified.
 
 Thus, once launched, the Server also exposes two endpoints:
 - port `6100`: exposes the `metrics` endpoint through [Prometheus python client](https://github.com/prometheus/client_python).
