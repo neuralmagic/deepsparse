@@ -44,24 +44,11 @@ from deepsparse import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 __all__ = [
-    "AggregationStrategy",
     "MaskingInput",
     "MaskingResult",
     "MaskingOutput",
     "MaskingPipeline",
 ]
-
-
-class AggregationStrategy(ExplicitEnum):
-    """
-    Valid aggregation strategies for postprocessing in the MaskingPipeline
-    """
-
-    NONE = "none"
-    SIMPLE = "simple"
-    FIRST = "first"
-    AVERAGE = "average"
-    MAX = "max"
 
 
 class MaskingInput(BaseModel):
@@ -122,7 +109,7 @@ class MaskingOutput(BaseModel):
 )
 class MaskingPipeline(TransformersPipeline):
     """
-    transformers masking pipeline
+    This pipeline will enable to use to [MASK] tokens and generate relevant information from it.
 
     example instantiation:
     ```python
@@ -132,6 +119,35 @@ class MaskingPipeline(TransformersPipeline):
         batch_size=BATCH_SIZE,
     )
     ```
+    Example code:
+    ```python
+    from deepsparse.transformers import pipeline
+    masking_pipeline = pipeline(
+        task="masking",
+        model_path= "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/wikipedia_bookcorpus/12layer_pruned80_quant-none-vnni",
+        batch_size=2,
+        top_k=2
+    )
+    token_classes = masking_pipeline(["I am [MASK] boy", "I am [MASK] guitar at [MASK]."])
+    print(token_classes)
+    ```
+    Output:
+    [[MaskingResult(sentence_id=0, mask_token_id=3, topK_tokens=['a', 'my'], topK_token_ids=[1037, 2026],
+    topK_logits=[9.532556533813477, 9.05823802947998])], [MaskingResult(sentence_id=1, mask_token_id=3,
+    topK_tokens=['playing', 'bass'], topK_token_ids=[2652, 3321], topK_logits=[9.855772972106934, 9.259352684020996]),
+    MaskingResult(sentence_id=1, mask_token_id=6, topK_tokens=['home', 'sea'], topK_token_ids=[2188, 2712],
+    topK_logits=[6.91043758392334, 6.050468921661377])]]
+
+
+    The output will be returning list of list based on the batch size. The output will be storing list of
+    MaskingResult object.
+    MaskingResult will be returning:
+        - sentence_id: sentence id
+        - mask_token_id: position of mask token
+        - topK_tokens: List of tokens that can be replaced with MASK token for that position.
+        - topK_token_ids: List of token ids
+        - topK_logits: List of logit values representing to tokens
+
 
     :param model_path: sparsezoo stub to a transformers model or (preferred) a
         directory containing a model.onnx, tokenizer config, and model config
@@ -150,32 +166,19 @@ class MaskingPipeline(TransformersPipeline):
         If a list of lengths is provided, then for each length, a model and
         tokenizer will be compiled capable of handling that sequence length
         (also known as a bucket). Default is 128
-    :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
-        include 'none', 'simple', 'first', 'average', and 'max'. Default is None
+    :param top_k: Number of tokens to retrieve for a given mask position
 
     """
 
     def __init__(
             self,
             *,
-            aggregation_strategy: AggregationStrategy = AggregationStrategy.NONE,
+            top_k: int = 3,
             **kwargs,
     ):
 
-        if isinstance(aggregation_strategy, str):
-            aggregation_strategy = aggregation_strategy.strip().lower()
-        self._aggregation_strategy = AggregationStrategy(aggregation_strategy)
-
+        self.top_k = top_k
         super().__init__(**kwargs)
-
-    @property
-    def aggregation_strategy(self) -> str:
-        """
-        :return: how to aggregate tokens in postprocessing. Options
-            include 'none', 'simple', 'first', 'average', and 'max'
-        """
-        return self._aggregation_strategy.value
-
 
     @property
     def input_schema(self) -> Type[BaseModel]:
@@ -287,7 +290,6 @@ class MaskingPipeline(TransformersPipeline):
             format of this pipeline
         """
 
-        topK = 10
         tokens = kwargs["tokens"]
         token_ids = tokens["input_ids"]
         masked_positions = (token_ids == self.tokenizer.mask_token_id).nonzero()
@@ -299,7 +301,7 @@ class MaskingPipeline(TransformersPipeline):
             sentence_output = engine_outputs[0][sentence_index]
             masked_values = sentence_output[mask_position[index]]
             sorted_token_ids = numpy.argsort(masked_values)[::-1]
-            topK_token_ids = list(sorted_token_ids[:topK])
+            topK_token_ids = list(sorted_token_ids[:self.top_k])
             topK_logits = list(masked_values[topK_token_ids])
             topK_tokens = self.tokenizer.batch_decode(topK_token_ids)
             output = MaskingResult(sentence_id=sentence_index,
