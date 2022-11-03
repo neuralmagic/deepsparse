@@ -16,7 +16,7 @@ This tutorial will show you how to connect DeepSparse Logging to the Prometheus/
 To run this tutorial, you need Docker, Docker Compose, and DeepSparse Server
 - [Docker Installation](https://docs.docker.com/engine/install/)
 - [Docker Compose Installation](https://docs.docker.com/compose/install/)
-- DeepSparse Server is installed via PyPi (`pip install deepsparse server`)
+- DeepSparse Server is installed via PyPi (`pip install deepsparse[server]`)
 
 #### Code
 The repository contains all the code you need:
