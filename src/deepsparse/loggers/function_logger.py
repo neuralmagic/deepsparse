@@ -71,7 +71,7 @@ class FunctionLogger(BaseLogger):
             if self._counts % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
                 self.logger.log(
-                    identifier=identifier, value=mapped_value, category=category
+                    identifier=f"{identifier}.{self.function_name}", value=mapped_value, category=category
                 )
                 self._counts = 0
             self._counts += 1
