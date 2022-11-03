@@ -4,9 +4,10 @@ DeepSparse Logging is compatible with Prometheus/Grafana, making it easy to stan
 
 This tutorial will show you how to connect DeepSparse Logging to the Prometheus/Grafana stack.
 
-#### There are three steps:
+#### There are four steps:
 - Configure DeepSparse Logging to log metrics in Prometheus format to a REST endpoint
 - Point Prometheus to the appropriate endpoint to scape the data at a specified interval
+- Run the toy client to perform inference
 - Visualize data in Prometheus with dashboarding tool like Grafana
 
 ## 0. Setting Up
@@ -77,12 +78,14 @@ To validate that metrics are being properly exposed, visit `localhost:6100`. It 
 
 ## 2. Setup Prometheus/Grafana Stack
 
-For simplicity, we have provided a `docker-compose` file that automatically spins up the containerized Prometheus/Grafana stack.
+For simplicity, we have provided `docker-compose.yaml` that spins up the containerized Prometheus/Grafana stack. In that file, we instruct `prometheus.yaml` (a [Prometheus config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)to be passed to the Prometheus container. Inside `prometheus.yaml`, the `scrape_config` has the information about the `metrics` endpoint exposed by the server on port `6100`.
 
 <details>
-    <summary>Click to see the docker compose file</summary>
+    <summary>Click to see Docker Compose File</summary>
 
 ```yaml    
+# docker-compose.yaml
+    
 version: "3"
 
 services:
@@ -105,9 +108,23 @@ services:
 ```
 </details>
 
-Note: in the `docker-compose` file we are passing an appropriate [config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) `prometheus.yaml` to the Prometheus container.
-The configuration file defines dynamic parameters of the Prometheus service. In our example, those are scraping jobs - e.g. pointing to the instances that are to be scraped.
-Inside the file `prometheus.yaml`, the `scrape_config` has the information about the `metrics` endpoint exposed by the server on port `6100`.
+<details>
+    <summary>Click to see Prometheus Config File</summary>
+    
+```yaml
+# prometheus.yaml
+    
+global:
+  scrape_interval: 15s                      # how often to scrape from endpoint
+  evaluation_interval: 30s                  # time between each evaluation of Prometheus' alerting rules
+
+scrape_configs:
+  - job_name: prometheus_logs               # your project name
+    static_configs:
+      - targets:
+          - 'host.docker.internal:6100'     # should match the port exposed by the PrometheusLogger in the DeepSparse Server config file 
+```
+</details>
 
 To start up a Prometheus stack to monitor the DeepSparse Server, run:
 
@@ -118,14 +135,14 @@ docker-compose up
 
 ## 3. Launch the Python Client and Run Inference
 
-Run:
+`client.py` is a simple client, that periodically sends requests to the Server. The client simulates the behavior of some application, 
+that sends the raw inputs to the inference server and receives the outputs. 
+
+Run the following to start inference:
 
 ```bash
 python client/client.py client/piglet.jpg 5543
 ```
-
-to instantiate a simple client, that periodically sends requests to the Server. 
-The client simulates the behavior of some application, that sends the raw inputs to the inference server and receives the outputs.
 The first argument is the path to the sample image, while the second argument is the port number that matches the inference endpoint of the Server.
 
 Note: It is very easy to create your own custom client, that communicates with the DeepSparse Server. 
@@ -148,6 +165,3 @@ Now you should be ready to create/import your dashboard. If you decide to import
 paste its contents using Grafana's `import` functionality.
 
 ![img.png](images/img_2.png)
-
-
-
