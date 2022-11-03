@@ -81,7 +81,7 @@ To validate that metrics are being properly exposed, visit `localhost:6100`. It 
 For simplicity, we have provided `docker-compose.yaml` that spins up the containerized Prometheus/Grafana stack. In that file, we instruct `prometheus.yaml` (a [Prometheus config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)to be passed to the Prometheus container. Inside `prometheus.yaml`, the `scrape_config` has the information about the `metrics` endpoint exposed by the server on port `6100`.
 
 <details>
-    <summary>Click to see Docker Compose File</summary>
+    <summary>Click to see Docker Compose file looks like</summary>
 
 ```yaml    
 # docker-compose.yaml
@@ -109,7 +109,7 @@ services:
 </details>
 
 <details>
-    <summary>Click to see Prometheus Config File</summary>
+    <summary>Click to see Prometheus Config file looks like</summary>
     
 ```yaml
 # prometheus.yaml
