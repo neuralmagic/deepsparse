@@ -45,8 +45,8 @@ class FunctionLogger(BaseLogger):
         self,
         logger: BaseLogger,
         target_identifier: str,
-        function_name: str,
         function: Callable[[Any], Any],
+        function_name: str = None,
         frequency: int = 1,
     ):
 
