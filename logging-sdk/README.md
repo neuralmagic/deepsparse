@@ -276,9 +276,9 @@ data_logging:
 </details>
 
 ## Examples
-- [Server with Prometheus / Grafana](/tutorial_prometheus_server/README.md)
-- [Pipeline with Prometheus / Grafana](/tutorial_prometheus_pipeline/README.md)
-- [Monitoring while running Kubernetes](/tutorial_prometheus_kubernetes/README.md)
+- [Server with Prometheus / Grafana](/tutorial-prometheus-server/README.md)
+- [Pipeline with Prometheus / Grafana](/tutorial-prometheus-pipeline/README.md)
+- [Monitoring while running Kubernetes](/tutorial-prometheus-kubernetes/README.md)
 
 ## DeepSparse Enterprise
 
