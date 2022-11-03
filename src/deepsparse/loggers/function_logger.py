@@ -52,7 +52,7 @@ class FunctionLogger(BaseLogger):
 
         self.logger = logger
         self.target_identifier = target_identifier
-        self.function_name = function_name
+        self.function_name = function_name or function.__name__
         self.frequency = frequency
         self.function = function
 
