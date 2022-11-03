@@ -36,7 +36,10 @@ pip install deepsparse[server]
 
 ## 1. Spin up the DeepSparse Server
 
-`server_config.yaml` specifies the config of the DeepSparse Server. It looks like the following:
+`server_config.yaml` specifies the config of the DeepSparse Server, including for logging. 
+
+<details>
+    <summary>Click to see what the config file looks like</summary>
 
 ```yaml
 # server_config.yaml
@@ -59,11 +62,12 @@ endpoints:
         pipeline_inputs:
         ...
 ```
+</details>
 
-`server_config.yaml` instructs the server to create an image classification pipeline. There are three items relevant to logging. We can see that Prometheus logs are declared to be exposed on port `6100`, system logging is turned on, and several data logs have been specified.
+`server_config.yaml` instructs the server to create an image classification pipeline. Additionally, Prometheus logs are declared to be exposed on port `6100`, system logging is turned on, and several data logs have been specified.
 
 Thus, once launched, the Server also exposes two endpoints:
-- port `6100`: exposes the `metrics` endpoint through [Prometheus python client](https://github.com/prometheus/client_python). This is the endpoint that the Prometheus service is to scrape for logs.
+- port `6100`: exposes the `metrics` endpoint through [Prometheus python client](https://github.com/prometheus/client_python).
 - port `5543`: exposes the endpoint for inference.
 
 To spin up the Server execute:
