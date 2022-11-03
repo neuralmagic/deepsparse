@@ -276,7 +276,7 @@ data_logging:
 </details>
 
 ## Examples
-- [Server with Prometheus / Grafana](link)
+- [Server with Prometheus / Grafana](/tutorial_prometheus)
 - [Pipeline with Prometheus / Grafana](link)
 - [Monitoring while running Kubernetes](link)
 
