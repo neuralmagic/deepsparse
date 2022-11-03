@@ -1,4 +1,4 @@
-# Monitoring with DeepSparse + Prometheus/Grafana
+# DeepSparse Server + Prometheus/Grafana
 
 DeepSparse Logging is compatible with Prometheus/Grafana, making it easy to stand up a model monitoring service.
 
