@@ -1,4 +1,4 @@
-# Tutorial: DeepSparse Server Monitoring via Prometheus/Grafana
+# DeepSparse Server Monitoring via Prometheus/Grafana
 
 One of the features of the [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) is its compatibility with the monitoring services popular among ML practitioners. 
 
