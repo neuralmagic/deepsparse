@@ -37,11 +37,30 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
     - task: question_answering
       route: /unpruned/predict
       model: zoo:some/zoo/stub
+      name: question_answering_pipeline_1
     - task: question_answering
       route: /pruned/predict
       model: /path/to/local/model
+      name: question_answering_pipeline_2
   \```
-
+  
+  Optionally, to manually specify the set of loggers, define a 
+  dictionary that maps loggers' names to their initialization arguments:
+  
+  \```yaml
+  num_cores: 2
+  num_workers: 2
+  loggers:
+    prometheus:
+        port: 6100
+        text_log_save_dir: /home/deepsparse-server/prometheus
+        text_log_save_freq: 30
+  endpoints:
+    - task: question_answering
+      ...
+  ...
+  \```
+  
 Options:
   --help  Show this message and exit.
 
