@@ -19,7 +19,7 @@ The repository has the following structure:
 ├── client 
 │   ├── client.py # simple client application
 │   └── piglet.jpg 
-├── deepsparse_server_config.yaml # specifies the configuration of the DeepSparse server
+├── server_config.yaml # specifies the configuration of the DeepSparse server
 ├── docker # specifies the configuration of the containerized Prometheus/Grafana stack
 │   ├── docker-compose.yaml
 │   └── prometheus.yaml
@@ -36,21 +36,46 @@ pip install deepsparse[server]
 
 ## 1. Spin up the DeepSparse Server
 
-The file `deepsparse_server_config.yaml` specifies the configuration of the DeepSparse Server. Once the Server is launched, 
-it creates a sample `image_classification` pipeline that runs the sparsified model from SparseZoo. The Server also exposes two endpoints:
+`server_config.yaml` specifies the config of the DeepSparse Server. It looks like the following:
 
+```yaml
+# server_config.yaml
+
+num_cores: 2
+num_workers: 2
+
+loggers:                        # << relevant to logging
+  prometheus:           
+    port: 6100
+    
+system_logging: on              # << relevant to logging
+
+endpoints:
+  - task: image_classification
+    batch_size: 1
+    model: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
+    name: image_classification_pipeline
+    data_logging:               # << relevant to logging
+        pipeline_inputs:
+        ...
+```
+
+`server_config.yaml` instructs the server to create an image classification pipeline. There are three items relevant to logging. We can see that Prometheus logs are declared to be exposed on port `6100`, system logging is turned on, and several data logs have been specified.
+
+Thus, once launched, the Server also exposes two endpoints:
 - port `6100`: exposes the `metrics` endpoint through [Prometheus python client](https://github.com/prometheus/client_python). This is the endpoint that the Prometheus service is to scrape for logs.
 - port `5543`: exposes the endpoint for inference.
 
 To spin up the Server execute:
 ```
-deepsparse.server config deepsparse_server_config.yaml
+deepsparse.server --config server_config.yaml
 ```
 
-To validate, that metrics are being properly exposed, visit `localhost:6100`. It should contain logs in the specific format meant to be used by the PromQL query language.
+To validate that metrics are being properly exposed, visit `localhost:6100`. It should contain logs in the specific format meant to be used by the PromQL query language.
+
 ## 2. Setup Prometheus/Grafana Stack
 
-For simplicity, we are providing a `docker-compose` file, that automatically spins up the containerized Prometheus/Grafana stack.
+For simplicity, we have provided a `docker-compose` file that automatically spins up the containerized Prometheus/Grafana stack.
 
 Note: in the `docker-compose` file we are passing an appropriate [config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) `prometheus.yaml` to the Prometheus container.
 The configuration file defines dynamic parameters of the Prometheus service. In our example, those are scraping jobs - e.g. pointing to the instances that are to be scraped.
