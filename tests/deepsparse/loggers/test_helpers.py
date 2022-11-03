@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.helpers import check_identifier_match
+from deepsparse.loggers.helpers import check_identifier_match, possibly_extract_value
 
 
 @pytest.mark.parametrize(
@@ -30,5 +30,19 @@ from deepsparse.loggers.helpers import check_identifier_match
         ("re:string_*..*.string.*", "string_3.string_4", (True, None)),
     ],
 )
-def test_match(template, identifier, expected_output):
+def test_check_identifier_match(template, identifier, expected_output):
     assert check_identifier_match(template, identifier) == expected_output
+
+
+@pytest.mark.parametrize(
+    "value, remainder, expected_value",
+    [
+        ({"key_1": {"key_2": [0, 1, 2, 3]}}, "key_1.key_2[2]", 2),
+        ({"key_1": {"key_2": [0, 1, 2, 3]}}, "key_1.key_2[0:3]", [0, 1, 2]),
+        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, 0:3]", [0, 1, 2]),
+        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, -1]", 3),
+        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, -1]", 3),
+    ],
+)
+def test_possibly_extract_value(value, remainder, expected_value):
+    assert expected_value == possibly_extract_value(value=value, remainder=remainder)

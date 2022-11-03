@@ -55,8 +55,22 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
 
     value = dict(value) if isinstance(value, BaseModel) else value
 
-    for sub_remainders in remainder.split("."):
-        value = value[sub_remainders]
+    for sub_remainder in remainder.split("."):
+        brackets = re.search(r"\[(.*?)\]", sub_remainder)
+        if brackets:
+            sub_remainder = sub_remainder.split("[")[0]
+        value = value[sub_remainder]
+
+        if brackets:
+            brackets_contents = brackets.group(1)
+            for slicing_operation in brackets_contents.split(","):
+                if ":" in slicing_operation:
+                    i, j = re.findall(r"-?\d+", slicing_operation)
+                    i, j = int(i), int(j)
+                    value = value.__getitem__(slice(i, j))
+                else:
+                    i = int(slicing_operation)
+                    value = value.__getitem__(i)
 
     return value
 
