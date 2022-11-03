@@ -9,7 +9,9 @@ Version 2.0, an Apache-compatible license.
 * For a copy of the Apache License Version 2.0, please see LICENSE
   as included in the top-level directory of the deepsparse GitHub repository.
 
-* For a copy of the Neural Magic Engine License (which governs the DeepSparse Community Edition only), please see LICENSE-NEURALMAGIC as included in the top-level directory of the deepsparse GitHub repository.
+The Community Edition of the project's binary containing the DeepSparse Engine is licensed under the Neural Magic Engine License (https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC). Example files and scripts included in the deepsparse GitHub repository are licensed under the Apache License Version 2.0 (https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
+
+The Enterprise Edition of the DeepSparse Engine (https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or can be fully licensed (https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
 
 * For a copy of all other Apache-compatible licenses and notices,
   they will be referenced below.
