@@ -169,7 +169,7 @@ class TokenClassificationPipeline(TransformersPipeline):
     :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
         include 'none', 'simple', 'first', 'average', and 'max'. Default is None
     :param ignore_labels: list of label names to ignore in output. Default is
-        ['0'] which ignores the default known class label
+        ['O'] which ignores the default known class label
     """
 
     def __init__(
@@ -183,7 +183,7 @@ class TokenClassificationPipeline(TransformersPipeline):
         if isinstance(aggregation_strategy, str):
             aggregation_strategy = aggregation_strategy.strip().lower()
         self._aggregation_strategy = AggregationStrategy(aggregation_strategy)
-        self._ignore_labels = ["0"] if ignore_labels is None else ignore_labels
+        self._ignore_labels = ["O"] if ignore_labels is None else ignore_labels
 
         super().__init__(**kwargs)
 

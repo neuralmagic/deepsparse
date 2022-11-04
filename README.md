@@ -52,7 +52,7 @@ limitations under the License.
   </div>
 </div>
 
-A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read more about sparsification [here](https://docs.neuralmagic.com/main/source/getstarted.html#sparsification).
+A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read [more about sparsification](https://docs.neuralmagic.com/user-guide/sparsification).
 
 Neural Magic's DeepSparse Engine is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. 
 ONNX gives the flexibility to serve your model in a framework-agnostic environment. 
@@ -70,7 +70,7 @@ The DeepSparse Engine is available in two editions:
 
 ## 🧰 Hardware Support and System Requirements
 
-Review [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html) to understand system requirements. 
+Review [Supported Hardware for the DeepSparse Engine](https://docs.neuralmagic.com/user-guide/deepsparse-engine/hardware-support) to understand system requirements. 
 The DeepSparse Engine works natively on Linux; Mac and Windows require running Linux in a Docker or virtual machine; it will not run natively on those operating systems.
 
 The DeepSparse Engine is tested on Python 3.7-3.10, ONNX 1.5.0-1.12.0, ONNX opset version 11+, and manylinux compliant. 
@@ -84,7 +84,7 @@ Install the DeepSparse Community Edition as follows:
 pip install deepsparse
 ```
 
-To trial or inquire about licensing for DeepSparse Enterprise Edition, see the [DeepSparse Enterprise documentation](https://docs.neuralmagic.com/products/deepsparse-ent).
+To install the DeepSparse Enterprise Edition, trial or inquire about licensing for DeepSparse Enterprise Edition, see the [DeepSparse Enterprise documentation](https://docs.neuralmagic.com/products/deepsparse-ent).
 
 ## Features
 
