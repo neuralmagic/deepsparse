@@ -15,9 +15,6 @@
 import re
 from typing import Any, Optional, Tuple
 
-from pydantic import BaseModel
-
-
 """
 Helpers functions for logging
 """
@@ -53,10 +50,8 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
     if not remainder:
         return value
 
-    value = dict(value) if isinstance(value, BaseModel) else value
-
     for sub_remainders in remainder.split("."):
-        value = value[sub_remainders]
+        value = value.__getattribute__(sub_remainders)
 
     return value
 
