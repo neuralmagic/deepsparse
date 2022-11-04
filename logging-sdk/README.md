@@ -22,11 +22,11 @@ DeepSparse Logging is designed to provide maximum flexibility for users to extra
 ## Metrics 
 DeepSparse Logging provides access to two types of metrics:
 - **System Logging Metrics** give operations teams access to granual performance metrics, diagnosing and isolating deployment system health. Examples include CPU utilization and query latency.
-     - [List of Available System Logging Metrics](/system-logging-metrics.md)
+     - [List of Available System Logging Metrics](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/system-logging-metrics.md)
 
 - **Data Logging Metrics** give ML teams access to data at each stage of an ML pipeline, supporting downsteam tasks like measuring accuracy and data drift. Examples include raw inputs and projections thereof such as mean pixel value.
-     - [List of Predefined Data Logging Functions](/data-logging-functions#predefined-functions.md)
-     - [Guide on Custom Data Logging Function](/data-logging-functions#custom-functions.md)    
+     - [List of Built-in Data Logging Functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions)
+     - [Guide on Custom Data Logging Function](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) 
 
 ## Configuration
 DeepSparse Logging is configured via YAML files.
