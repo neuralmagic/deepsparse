@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  python3.8
+
+  SparseLambda                                          
+Resources:
+  DeepSparseEndpoint:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      MemorySize: 2000
+      Timeout: 300
+      Events:
+        ApiEndpoint:
+          Type: HttpApi
+          Properties:
+            Path: /inference
+            Method: post
+            TimeoutInMillis: 29000
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: ./app
+      DockerTag: python3.8-v1
+
+Outputs:
+  InferenceApi:
+    Description: "API Gateway endpoint URL for Prod stage for inference function"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/inference"
