@@ -76,8 +76,8 @@ There are 4 `targets` in the inference pipeline where Data Logging can occur:
 
 |Stage         |Pipeline Inputs      |Engine Inputs  |Engine Outputs     |Pipeline Outputs   |
 |--------------|---------------------|---------------|-------------------|-------------------|
-|*Description* |Inputs passed by user|Preprocessed tensors passed to model|Outputs from model (logits)|Postprocessed output returned to user|
-|*`target`*    |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
+|**Description** |Inputs passed by user|Preprocessed tensors passed to model|Outputs from model (logits)|Postprocessed output returned to user|
+|**`target`**    |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
     
 The following format is used to apply a list of [pre-defined](link) and/or [custom functions](link) to a Pipeline `target`:
  
@@ -134,6 +134,8 @@ This configuration does the following at each stage of the Pipeline:
 
 ## Loggers
 DeepSparse Logging provides users with ability to log to Prometheus out-of-the-box as well as the ability to add custom loggers.
+
+[TBD] - what should we say about high dimensional (images/vectors) vs metrics
 
 [@DAMIAN] - need your help here
 
