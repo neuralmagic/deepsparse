@@ -68,6 +68,7 @@ answer: `{'labels': ['positive'], 'scores': [0.9990884065628052]}`
 On your first cold start, it will take a ~30 seconds to get your first inference, but afterwards, it should be in milliseconds.
 
 ## Delete Endpoint
+
 If you want to delete your Lambda endpoint, run:
 
 ```bash
