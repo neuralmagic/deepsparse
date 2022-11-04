@@ -71,7 +71,30 @@ Built-in functions are predefined in DeepSparse. They are applied in the form `f
 
 ## Custom Functions
 
-Users can defined custom functions in Python in a file, for example named `custom.py`. They are applied in the form `func: path/to/custom.py:function_name`.
+Users can defined custom functions in Python in a file, for example named `custom.py`. The custom functions are then specified in the YAML configuration file in the form `func: path/to/custom.py:function_name`.
   
-An example Python file looks as follows.
+An example Python file looks as follows:
+  
+```python
+# custom.py
 
+import numpy as np
+
+def my_function(engine_inputs: np.array) -> float:
+  return np.mean(engine_inputs)
+```
+The YAML file would look as follows:
+``` yaml
+# config.yaml
+  
+loggers:
+  prometheus:
+    port:5555
+  
+data_logging:
+  pipeline_inputs:
+    mapping:
+      - func: path/to/custom.py:my_function
+      - frequency: 1000
+      - target: prometheus
+```
