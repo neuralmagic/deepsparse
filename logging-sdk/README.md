@@ -22,11 +22,11 @@ DeepSparse Logging is designed to provide maximum flexibility for users to extra
 ## Metrics 
 DeepSparse Logging provides access to two types of metrics:
 - **System Logging Metrics** give operations teams access to granual performance metrics, diagnosing and isolating deployment system health. Examples include CPU utilization and query latency.
-     - [List of Available System Logging Metrics](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/system-logging-metrics.md)
+     - [System Logging Metrics](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/system-logging-metrics.md)
 
 - **Data Logging Metrics** give ML teams access to data at each stage of an ML pipeline, supporting downsteam tasks like measuring accuracy and data drift. Examples include raw inputs and projections thereof such as mean pixel value.
-     - [List of Built-in Data Logging Functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions)
-     - [Guide on Custom Data Logging Function](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) 
+     - [Built-in Data Logging Functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions)
+     - [Custom Data Logging Function](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) 
 
 ## Configuration
 DeepSparse Logging is configured via YAML files.
@@ -75,14 +75,14 @@ In this example, system logging is turned on globally. The Deployment Details, R
         
 Data Logging is *disabled* by default. A YAML configuration file is used to specify which data or functions thereof to log.
 
-There are 4 `targets` in the inference pipeline where Data Logging can occur:
+There are 4 `stages` in the inference pipeline where Data Logging can occur:
 
-|Stage         |Pipeline Inputs      |Engine Inputs  |Engine Outputs     |Pipeline Outputs   |
-|--------------|---------------------|---------------|-------------------|-------------------|
-|**Description** |Inputs passed by user|Preprocessed tensors passed to model|Outputs from model (logits)|Postprocessed output returned to user|
-|**`target`**    |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
+|Stage            |Pipeline Inputs      |Engine Inputs  |Engine Outputs     |Pipeline Outputs   |
+|--------------   |---------------------|---------------|-------------------|-------------------|
+|**Description**  |Inputs passed by user|Preprocessed tensors passed to model|Outputs from model (logits)|Postprocessed output returned to user|
+|**`stage`**      |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
     
-The following format is used to apply a list of [pre-defined](link) and/or [custom functions](link) to a Pipeline `target`:
+The following format is used to apply a list of [built-in](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions) and/or [custom functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) to a Pipeline `stage`:
  
 ```yaml     
 pipeline_inputs:                    # options: pipeline_inputs, engine_inputs, engine_outputs, pipeline_outputs
@@ -133,9 +133,17 @@ This configuration does the following at each stage of the Pipeline:
 ## Loggers
 DeepSparse Logging provides users with ability to log to Prometheus out-of-the-box as well as the ability to add custom loggers.
 
+### Built-In Loggers
+
 [TBD] - what should we say about high dimensional (images/vectors) vs metrics
 
 [@DAMIAN] - need your help here
+
+### Custom Loggers
+
+[@DAMIAN] - need your help here
+
+There is a [tutorial creating a custom logger to an S3 Bucket](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-custom-logger) as an example.
 
 ## Usage 
 
@@ -280,6 +288,7 @@ There are serveral examples integrating Prometheus and DeepSparse logging availa
 - [Server with Prometheus / Grafana](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-server-prometheus)
 - [Pipeline with Prometheus / Grafana](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-pipeline-prometheus)
 - [Monitoring while running Kubernetes](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-kubernetes-prometheus)
+- [Custom Logger (S3 Bucket)](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-custom-logger)
 
 ## DeepSparse Enterprise
 
