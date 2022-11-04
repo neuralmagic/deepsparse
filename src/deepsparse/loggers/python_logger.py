@@ -33,12 +33,7 @@ class PythonLogger(BaseLogger):
         """
         Collect information from the pipeline and pipe it them to the stdout
 
-        :param identifier: The identifier of the log
-             By default should consist of at least one string (name of the pipeline):
-                e.g. identifier = "pipeline_name"
-            If identifier is to be more complex, optional strings are to be concatenated
-            using dot as a separator:
-                e.g. identifier = "pipeline_name.some_argument_1.some_argument_2"
+        :param identifier: The name of the item that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
@@ -46,4 +41,4 @@ class PythonLogger(BaseLogger):
             f" Identifier: {identifier} | Category: {category.value} "
             f"| Logged Data: {value}"
         )
-        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + msg)
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f") + msg)

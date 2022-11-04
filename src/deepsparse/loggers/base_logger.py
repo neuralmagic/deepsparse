@@ -32,12 +32,7 @@ class BaseLogger(ABC):
         and then possibly process the information and pass it to
         the monitoring service
 
-        :param identifier: The identifier of the log
-             By default should consist of at least one string (name of the pipeline):
-                e.g. identifier = "pipeline_name"
-            If identifier is to be more complex, optional strings are to be concatenated
-            using dot as a separator:
-                e.g. identifier = "pipeline_name.some_argument_1.some_argument_2"
+        :param identifier: The name of the item that is being logged.
         :param value: The data structure that is logged
         :param category: The metric category that the log belongs to
         """
