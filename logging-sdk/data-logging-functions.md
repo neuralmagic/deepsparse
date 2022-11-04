@@ -98,3 +98,7 @@ data_logging:
       - frequency: 1000
       - target: prometheus
 ```
+
+In this way, user
+  
+[@DAMIAN] - can users pass arguments as well?
