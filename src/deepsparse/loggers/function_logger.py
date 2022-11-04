@@ -64,6 +64,7 @@ class FunctionLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
+
         extracted_value = match_and_extract(
             template=self.target_identifier, identifier=identifier, value=value
         )
