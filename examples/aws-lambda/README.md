@@ -39,18 +39,18 @@ git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/aws-lambda
 pip install -r requirements.txt
 ```
-### Model Configuration
+## Model Configuration
 
 To use a different sparse model please edit the model zoo stub in the `Dockerfile`. To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in the `app.py` file. Both files can be found in the `/lambda-deepsparse/app` directory.
 
-### Create Endpoint
+## Create Endpoint
 
 Run the following command to build your Lambda endpoint.
 
 ```bash
 python endpoint.py create
 ```
-### Call the Endpoint
+## Call Endpoint
 
 After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
 
@@ -67,7 +67,7 @@ answer: `{'labels': ['positive'], 'scores': [0.9990884065628052]}`
 
 On your first cold start, it will take a ~30 seconds to get your first inference, but afterwards, it should be in milliseconds.
 
-### Delete Endpoint
+## Delete Endpoint
 If you want to delete your Lambda endpoint, run:
 
 ```bash
