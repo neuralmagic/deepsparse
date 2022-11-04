@@ -1,4 +1,24 @@
-# Prometheus Operator in Kubernetes
+# DeepSparse + Kubernetes + Prometheus/Grafana
+
+DeepSparse runs fast on commodity CPUs. Free from hardware accelerators, DeepSparse deployments can take advantage of the simplicity and scalability of software. For example, users can scale DeepSparse deployments elastically with Kubernetes just like any other workload, simplifying deployment and saving money. :money_mouth_face:
+
+Additionally, we have already seen DeepSparse Loggings's compatibility with Prometheus in [other tutorials](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-pipeline-prometheus), which simplifies the process of standing up a model monitoring service and helping easy the ops burden of running ML in production.
+
+But, what if you wanted to monitor a DeepSparse deployment running in a Kubernetes cluster? :scream: :scream: :scream: 
+
+This tutorial shows you how to do it with Prometheus.
+
+**There are five steps:**
+- Build the DeepSparse Server Docker Image
+- Setup Kubernetes Cluster
+- Create Kubernetes Resources for the Cluster
+- Enable External Communication with the Cluster
+- Spin Up the Clients
+- Checkout the Info in Grafana
+
+# 0. Get Set Up
+
+This ty
 
 ## Architecture
 ![img_4.png](images/img_1.png)
