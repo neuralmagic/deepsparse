@@ -14,6 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .annotate import *
 from .data import *
 from .onnx import *
