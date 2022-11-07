@@ -29,7 +29,6 @@ __all__ = [
     "MetricFunctionConfig",
     "TargetLoggingConfig",
     "PipelineLoggingConfig",
-    "MultiplePipelinesLoggingConfig",
 ]
 
 
@@ -84,6 +83,7 @@ class MetricFunctionConfig(BaseModel):
     frequency: int = Field(
         default=1, description="Specifies how often the function should be applied"
     )
+    logger: Optional[List[str]] = Field(default=None)
 
     def __init__(self, **data):
         function_identifier = data.get("func")
@@ -110,7 +110,7 @@ class TargetLoggingConfig(BaseModel):
 
     target: str = Field(description="Name of the target.")
 
-    metrics: List[MetricFunctionConfig] = Field(
+    mappings: List[MetricFunctionConfig] = Field(
         description="List of MetricFunctionConfigs pertaining to the target"
     )
 
@@ -149,11 +149,3 @@ class PipelineLoggingConfig(BaseModel):
     targets: List[TargetLoggingConfig] = Field(
         description="List of TargetLoggingConfigs pertaining to the pipeline/endpoint"
     )
-
-
-class MultiplePipelinesLoggingConfig(BaseModel):
-    """
-    Holds multiple PipelineLoggingConfigs
-    """
-
-    pipelines: List[PipelineLoggingConfig]

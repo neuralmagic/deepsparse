@@ -15,53 +15,49 @@ import math
 
 import pytest
 from deepsparse import FunctionLogger, Pipeline, PythonLogger
+from deepsparse.loggers.config import MetricFunctionConfig, TargetLoggingConfig
 
 
-def _identity(x):
-    return x
-
-
-def _return_number(x):
-    return 1234
+METRIC_FUNCTION_CONFIG_1 = MetricFunctionConfig(func="builtins:identity", frequency=2)
+METRIC_FUNCTION_CONFIG_2 = MetricFunctionConfig(
+    func="tests/deepsparse/loggers/test_data/metric_functions.py:return_number",
+    frequency=1,
+)
 
 
 @pytest.mark.parametrize(
-    "identifier, function_name, frequency, function, num_iterations, expected_log_content",  # noqa E501
+    "target_logging_configs, num_iterations, expected_log_content, frequency",  # noqa E501
     [
         (
-            "token_classification.pipeline_inputs.inputs",
-            "identity",
-            2,
-            _identity,
+            [
+                TargetLoggingConfig(
+                    target="token_classification.pipeline_inputs.inputs",
+                    mappings=[METRIC_FUNCTION_CONFIG_1],
+                )
+            ],
             5,
             "all_your_base_are_belong_to_us",
+            2,
         ),
         (
-            "token_classification.engine_inputs",
-            "return_one",
-            1,
-            _return_number,
+            [
+                TargetLoggingConfig(
+                    target="token_classification.engine_inputs",
+                    mappings=[METRIC_FUNCTION_CONFIG_2],
+                )
+            ],
             5,
             "1234",
+            1,
         ),
     ],
 )
 def test_function_logger(
-    capsys,
-    identifier,
-    function_name,
-    frequency,
-    function,
-    num_iterations,
-    expected_log_content,
+    capsys, target_logging_configs, num_iterations, expected_log_content, frequency
 ):
     logger = PythonLogger()
     function_logger = FunctionLogger(
-        logger=logger,
-        target_identifier=identifier,
-        function_name=function_name,
-        frequency=frequency,
-        function=function,
+        logger=logger, target_logging_configs=target_logging_configs
     )
     pipeline = Pipeline.create(
         "token_classification", batch_size=1, logger=function_logger

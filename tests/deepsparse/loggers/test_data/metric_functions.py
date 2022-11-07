@@ -15,3 +15,7 @@
 
 def user_defined_identity(x):
     return x
+
+
+def return_number(x):
+    return 1234
