@@ -20,7 +20,7 @@ from deepsparse.loggers.config import MetricFunctionConfig, TargetLoggingConfig
 
 METRIC_FUNCTION_CONFIG_1 = MetricFunctionConfig(func="builtins:identity", frequency=2)
 METRIC_FUNCTION_CONFIG_2 = MetricFunctionConfig(
-    func="tests/deepsparse/loggers/test_data/metric_functions.py:return_number",
+    func="tests/test_data/metric_functions.py:return_number",
     frequency=1,
 )
 
@@ -32,7 +32,7 @@ METRIC_FUNCTION_CONFIG_2 = MetricFunctionConfig(
             [
                 TargetLoggingConfig(
                     target="token_classification.pipeline_inputs.inputs",
-                    mappings=[METRIC_FUNCTION_CONFIG_1],
+                    functions=[METRIC_FUNCTION_CONFIG_1],
                 )
             ],
             5,
@@ -43,7 +43,7 @@ METRIC_FUNCTION_CONFIG_2 = MetricFunctionConfig(
             [
                 TargetLoggingConfig(
                     target="token_classification.engine_inputs",
-                    mappings=[METRIC_FUNCTION_CONFIG_2],
+                    functions=[METRIC_FUNCTION_CONFIG_2],
                 )
             ],
             5,

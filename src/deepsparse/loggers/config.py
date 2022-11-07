@@ -28,7 +28,6 @@ import torch
 __all__ = [
     "MetricFunctionConfig",
     "TargetLoggingConfig",
-    "PipelineLoggingConfig",
 ]
 
 
@@ -56,14 +55,17 @@ def get_function_and_function_name(
     if function_identifier.startswith("torch."):
         func_name = function_identifier.split(".")[1]
         return getattr(torch, func_name), func_name
+
     if function_identifier.startswith("numpy.") or function_identifier.startswith(
         "np."
     ):
         func_name = function_identifier.split(".")[1]
         return getattr(numpy, func_name), func_name
+
     if function_identifier.startswith("builtins:"):
         func_name = function_identifier.split(":")[1]
         return getattr(built_ins, func_name), func_name
+
     # assume a dynamic import function of the form
     # '<path_to_the_python_script>:<function_name>'
     path, func_name = function_identifier.split(":")
@@ -78,23 +80,38 @@ class MetricFunctionConfig(BaseModel):
     Holds logging configuration for a metric function
     """
 
-    func: Callable[[Any], Any] = Field(description="Metric function object")
+    func: str = Field(description="Identifier of the metric function")
+    function: Callable[[Any], Any] = Field(description="The metric function callable")
     function_name: str = Field(description="Name of the metric function")
     frequency: int = Field(
-        default=1, description="Specifies how often the function should be applied"
+        default=1,
+        description="Specifies how often the function should be applied"
+        "(measured in numbers of inference calls",
     )
-    logger: Optional[List[str]] = Field(default=None)
+    logger: Optional[List[str]] = Field(
+        default=None,
+        description="Overrides the global logger configuration in "
+        "the context of the DeepSparse server. "
+        "If not None, this configuration stops logging data "
+        "to globally specified loggers, and will only use "
+        "the subset of loggers "
+        "(specified by a list of their names)",
+    )
 
     def __init__(self, **data):
+        if data.get("function"):
+            raise ValueError()
+        if data.get("function_name"):
+            raise ValueError()
         function_identifier = data.get("func")
         # automatically extract function and function name
         # from the function_identifier
-        func, function_name = get_function_and_function_name(function_identifier)
-        data["func"], data["function_name"] = func, function_name
+        function, function_name = get_function_and_function_name(function_identifier)
+        data["function"], data["function_name"] = function, function_name
         super().__init__(**data)
 
     @validator("frequency")
-    def name_must_contain_space(cls, frequency):
+    def non_zero_frequency(cls, frequency):
         if frequency <= 0:
             raise ValueError(
                 f"Passed frequency: {frequency}, but "
@@ -109,8 +126,7 @@ class TargetLoggingConfig(BaseModel):
     """
 
     target: str = Field(description="Name of the target.")
-
-    mappings: List[MetricFunctionConfig] = Field(
+    functions: List[MetricFunctionConfig] = Field(
         description="List of MetricFunctionConfigs pertaining to the target"
     )
 
@@ -119,33 +135,17 @@ class TargetLoggingConfig(BaseModel):
         """
         Make sure that for each target, two mappings with the same name
         are not applied.
-
-        :param data:
-        :return:
         """
-        target, mappings = data["target"], data["mappings"]
+        target, functions = data["target"], data["functions"]
         potential_duplicates = set()
-        for mapping_count, mapping_cfg in enumerate(mappings):
-            potential_duplicates.add(mapping_cfg.function_name)
-            if len(potential_duplicates) != mapping_count + 1:
+        for functions_count, cfg in enumerate(functions):
+            potential_duplicates.add(cfg.function_name)
+            if len(potential_duplicates) != functions_count + 1:
                 raise ValueError(
                     f"For target - {target} - found multiple "
                     "metric functions with the same "
-                    f"name: {mapping_cfg.function_name}. Make sure "
+                    f"name: {cfg.function_name}. Make sure "
                     f"that that there are no duplicated metric "
                     f"functions being applied to the same target."
                 )
         return data
-
-
-class PipelineLoggingConfig(BaseModel):
-    """
-    Holds logging configuration for a single data logging pipeline/endpoint
-    """
-
-    name: Optional[str] = Field(
-        default=None, description="Name of the pipeline/endpoint."
-    )
-    targets: List[TargetLoggingConfig] = Field(
-        description="List of TargetLoggingConfigs pertaining to the pipeline/endpoint"
-    )

@@ -51,6 +51,7 @@ def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
 
     leaf_loggers = build_leaf_loggers(loggers_config)
     loggers = []
+
     for name, leaf_logger in leaf_loggers.items():
         target_logging_configs = _get_target_logging_configs(name, server_config)
 
@@ -62,6 +63,7 @@ def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
             logger = leaf_logger
 
         loggers.append(logger)
+
     return logger_objects.MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
 
 
@@ -97,43 +99,43 @@ def build_leaf_loggers(
 def _get_target_logging_configs(
     leaf_logger_name: str, server_config: ServerConfig
 ) -> List[TargetLoggingConfig]:
-    list_target_logging_configs = []
+    list_target_logging_cfgs = []
     # iterate over all endpoints
     for endpoint in server_config.endpoints:
         if endpoint.data_logging is None:
             continue
         # if endpoint has data logging information,
         # iterate over endpoint's target logging config
-        for target_logging_config in endpoint.data_logging:
+        for target_logging_cfg in endpoint.data_logging:
             # new target name is a composition of the endpoint name and target name
-            target_identifier = f"{endpoint.name}.{target_logging_config.target}"
+            target_identifier = f"{endpoint.name}.{target_logging_cfg.target}"
             # get metric logging config corresponding to the leaf logger
             metric_function_configs = _get_metric_function_configs(
-                leaf_logger_name, target_logging_config.mappings
+                leaf_logger_name, target_logging_cfg.functions
             )
             # append to the result
-            list_target_logging_configs.append(
+            list_target_logging_cfgs.append(
                 TargetLoggingConfig(
-                    target=target_identifier, mappings=metric_function_configs
+                    target=target_identifier, functions=metric_function_configs
                 )
             )
-    return list_target_logging_configs
+    return list_target_logging_cfgs
 
 
 def _get_metric_function_configs(
-    leaf_logger_name: str, metric_function_configs: List[MetricFunctionConfig]
+    leaf_logger_name: str, metric_function_cfgs: List[MetricFunctionConfig]
 ) -> List[MetricFunctionConfig]:
-    list_metric_logging_configs = []
+    list_metric_function_cfgs = []
     # iterate over all metric function configs
-    for metric_logging_config in metric_function_configs:
-        if metric_logging_config.logger is not None:
+    for metric_function_cfg in metric_function_cfgs:
+        if metric_function_cfg.logger is not None:
             # check whether a metric function is specified to log
             # only to a set of specific leaf loggers
-            if leaf_logger_name not in metric_logging_config.logger:
+            if leaf_logger_name not in metric_function_cfg.logger:
                 continue
 
-        list_metric_logging_configs.append(metric_logging_config)
-    return list_metric_logging_configs
+        list_metric_function_cfgs.append(metric_function_cfg)
+    return list_metric_function_cfgs
 
 
 def _build_single_logger(

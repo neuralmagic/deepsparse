@@ -15,12 +15,7 @@
 import yaml
 
 import pytest
-from deepsparse.loggers.config import (
-    MetricFunctionConfig,
-    MultiplePipelinesLoggingConfig,
-    PipelineLoggingConfig,
-    TargetLoggingConfig,
-)
+from deepsparse.loggers.config import MetricFunctionConfig, TargetLoggingConfig
 
 
 metric_function_config_yaml = """
@@ -29,27 +24,10 @@ metric_function_config_yaml = """
 
 target_logging_config_yaml = """
     target: pipeline_outputs
-    mappings:
+    functions:
         - func: builtins:identity
-          frequency: 50
         - func: np.max
           frequency: 50"""
-
-pipeline_logging_config_yaml = """
-    name: question_answering
-    targets:
-        - target: pipeline_inputs
-          mappings:
-            - func: builtins:identity
-              frequency: 50
-            - func: np.max
-              frequency: 50
-        - target: pipeline_outputs
-          mappings:
-            - func: builtins:identity
-              frequency: 50
-            - func: np.max
-              frequency: 50"""
 
 
 @pytest.mark.parametrize(
@@ -57,26 +35,8 @@ pipeline_logging_config_yaml = """
     [
         (metric_function_config_yaml, MetricFunctionConfig),
         (target_logging_config_yaml, TargetLoggingConfig),
-        (pipeline_logging_config_yaml, PipelineLoggingConfig),
     ],
 )
 def test_function_logging_config(string_config_yaml, base_model):
     obj = yaml.safe_load(string_config_yaml)
     assert base_model(**obj)
-
-
-@pytest.mark.parametrize(
-    "string_config_yaml, base_model, base_model_component",
-    [
-        (
-            pipeline_logging_config_yaml,
-            MultiplePipelinesLoggingConfig,
-            PipelineLoggingConfig,
-        ),
-    ],
-)
-def test_multiple_pipelines_logging_config(
-    string_config_yaml, base_model, base_model_component
-):
-    obj = yaml.safe_load(string_config_yaml)
-    assert base_model(pipelines=[base_model_component(**obj)])

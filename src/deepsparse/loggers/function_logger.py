@@ -34,13 +34,12 @@ class FunctionLogger(BaseLogger):
 
     :param logger: A child DeepSparse Logger object
     :param target_logging_configs: A list of TargetLoggingConfig objects
-
     """
 
     def __init__(
         self,
         logger: BaseLogger,
-        target_logging_configs: List["TargetLoggingConfig"], # noqa F821
+        target_logging_configs: List["TargetLoggingConfig"],  # noqa F821
     ):
 
         self.logger = logger
@@ -60,13 +59,13 @@ class FunctionLogger(BaseLogger):
 
         for target_cfg in self.target_logging_configs:
             target_identifier = target_cfg.target
-            target_mappings = target_cfg.mappings
+            functions_cfgs = target_cfg.functions
 
-            for metric_func_cfg in target_mappings:
+            for function_cfg in functions_cfgs:
 
-                frequency = metric_func_cfg.frequency
-                function = metric_func_cfg.func
-                function_name = metric_func_cfg.function_name
+                frequency = function_cfg.frequency
+                function = function_cfg.function
+                function_name = function_cfg.function_name
 
                 extracted_value = match_and_extract(
                     template=target_identifier, identifier=identifier, value=value

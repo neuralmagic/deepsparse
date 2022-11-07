@@ -32,15 +32,15 @@ endpoints:
       batch_size: 1
       data_logging:
         - target: pipeline_outputs
-          mappings:
+          functions:
            - func: builtins:identity
              frequency: 5
-           - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity
+           - func: tests/test_data/metric_functions.py:user_defined_identity
              frequency: 5
         - target: engine_outputs
-          mappings:
+          functions:
            - func: np.mean
-             frequency: 3""" # noqa E501
+             frequency: 3"""  # noqa E501
 
 yaml_config_2 = """
 num_cores: 2

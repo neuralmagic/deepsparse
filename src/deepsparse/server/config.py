@@ -73,7 +73,9 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
-    data_logging: Optional[List[TargetLoggingConfig]] = Field(default=None)
+    data_logging: Optional[List[TargetLoggingConfig]] = Field(
+        default=None, description="Specifies the rules for the data logging"
+    )
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,
