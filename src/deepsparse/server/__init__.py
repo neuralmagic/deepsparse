@@ -18,5 +18,5 @@
 DeepSparse server implementation to serve ONNX files and pipelines through
 the DeepSparse Engine.
 """
-# commenting out for now to be able to run tests
-# from .cli import main
+
+from .cli import main
