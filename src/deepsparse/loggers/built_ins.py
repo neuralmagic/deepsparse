@@ -41,6 +41,7 @@ def mean_pixels_per_channel(
 ) -> Union[Tuple[float, float, float], Tuple[float]]:
     """
     Return the mean pixel value per image channel
+
     :param img: An image represented as a numpy array or a torch tensor.
         Assumptions:
             - 3 dimensional or 4 dimensional (num_batches in zeroth dimension) tensor/array
@@ -53,7 +54,7 @@ def mean_pixels_per_channel(
     num_dims, channel_dim = _check_valid_image(img_numpy)
     dims = numpy.arange(0, num_dims, 1)
     dims = numpy.delete(dims, channel_dim)
-    return tuple(numpy.mean(img_numpy, axis=tuple(dims)).tolist())
+    return tuple(numpy.mean(img_numpy, axis=tuple(dims)))
 
 
 def std_pixels_per_channel(
@@ -73,7 +74,7 @@ def std_pixels_per_channel(
     num_dims, channel_dim = _check_valid_image(img)
     dims = numpy.arange(0, num_dims, 1)
     dims = numpy.delete(dims, channel_dim)
-    return tuple(numpy.std(img_numpy, axis=tuple(dims)).tolist())
+    return tuple(numpy.std(img_numpy, axis=tuple(dims)))
 
 
 def max_pixels_per_channel(
@@ -93,7 +94,7 @@ def max_pixels_per_channel(
     num_dims, channel_dim = _check_valid_image(img)
     dims = numpy.arange(0, num_dims, 1)
     dims = numpy.delete(dims, channel_dim)
-    return tuple(numpy.max(img_numpy, axis=tuple(dims)).tolist())
+    return tuple(numpy.max(img_numpy, axis=tuple(dims)))
 
 
 def fraction_zeros(img: Union[numpy.ndarray, torch.tensor]) -> float:
@@ -127,6 +128,7 @@ def num_bounding_boxes(
     """
     if not bboxes:
         return 0
+    # checking if
     while not (len(bboxes[0]) == 4 and isinstance(bboxes[0][0], float)):
         bboxes = bboxes[0]
         if not bboxes:
@@ -140,6 +142,14 @@ def num_bounding_boxes(
 
 
 def token_count(tokens: numpy.ndarray) -> Dict[str, int]:
+    count = {}
+    for batch_size, token_sequence in enumerate(tokens):
+        unique, counts = numpy.unique(token_sequence, return_counts=True)
+        count[batch_size] = dict(zip(unique, counts))
+    return count
+
+
+def top_5_classes():
     pass
 
 
