@@ -15,9 +15,10 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
+from deepsparse.loggers.config import TargetLoggingConfig
 from deepsparse.tasks import SupportedTasks
 
 
@@ -71,6 +72,8 @@ class EndpointConfig(BaseModel):
     batch_size: int = Field(
         default=1, description="The batch size to compile the model for."
     )
+
+    data_logging: Optional[List[TargetLoggingConfig]] = Field(default=None)
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,
@@ -144,15 +147,35 @@ class ServerConfig(BaseModel):
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
-    loggers: Union[Dict[str, Dict[str, Any]], str, None] = Field(
+    loggers: Optional[List[Union[str, Dict[str, Dict[str, Any]]]]] = Field(
         default=None,
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
-            " Set to 'default' for default logger based on deployment. Set to None for"
-            " no loggers. Default is `None`. Example: "
-            "{'prometheus': {'port': 8001}}."
+            "Set to None for no loggers. Default is `None`."
         ),
     )
+
+    @validator("endpoints")
+    def set_unique_endpoint_names(
+        cls, endpoints: List[EndpointConfig]
+    ) -> List[EndpointConfig]:
+        """
+        Make sure that the endpoints in ServerConfig have unique names.
+        If endpoint does not have a `name` specified, the endpoint is
+        named `{task_name}-{idx}`.
+
+        :param endpoints: configuration of server's endpoints
+        :return: configuration of server's endpoints
+        """
+        counter_task_name_used = {endpoint.task: 0 for endpoint in endpoints}
+        # make sure that the endpoints in ServerConfig have unique names.
+        for endpoint_config in endpoints:
+            if endpoint_config.name is None:
+                task_name = endpoint_config.task
+                idx = counter_task_name_used[task_name]
+                counter_task_name_used[task_name] += 1
+                endpoint_config.name = f"{endpoint_config.task}-{idx}"
+        return endpoints
 
 
 def endpoint_diff(
