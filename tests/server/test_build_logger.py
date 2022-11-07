@@ -33,7 +33,7 @@ endpoints:
       data_logging:
         - target: pipeline_outputs
           functions:
-           - func: builtins:identity
+           - func: identity
              frequency: 5
            - func: tests/test_data/metric_functions.py:user_defined_identity
              frequency: 5

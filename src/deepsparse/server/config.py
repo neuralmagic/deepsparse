@@ -15,10 +15,9 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
-from deepsparse.loggers.config import TargetLoggingConfig
 from deepsparse.tasks import SupportedTasks
 
 
@@ -46,6 +45,16 @@ class SequenceLengthsConfig(BaseModel):
 class ImageSizesConfig(BaseModel):
     image_sizes: List[Tuple[int, int]] = Field(
         description="The list of image sizes the model should accept"
+    )
+
+
+class TargetLoggingConfig(BaseModel):
+    target: str = Field(
+        description="Name of the target to apply the metric functions to."
+    )
+    functions: List[Dict[str, Any]] = Field(
+        description="A list of key-value pairs that specify the properties"
+        "of the metric function."
     )
 
 
@@ -156,28 +165,6 @@ class ServerConfig(BaseModel):
             "Set to None for no loggers. Default is `None`."
         ),
     )
-
-    @validator("endpoints")
-    def set_unique_endpoint_names(
-        cls, endpoints: List[EndpointConfig]
-    ) -> List[EndpointConfig]:
-        """
-        Make sure that the endpoints in ServerConfig have unique names.
-        If endpoint does not have a `name` specified, the endpoint is
-        named `{task_name}-{idx}`.
-
-        :param endpoints: configuration of server's endpoints
-        :return: configuration of server's endpoints
-        """
-        counter_task_name_used = {endpoint.task: 0 for endpoint in endpoints}
-        # make sure that the endpoints in ServerConfig have unique names.
-        for endpoint_config in endpoints:
-            if endpoint_config.name is None:
-                task_name = endpoint_config.task
-                idx = counter_task_name_used[task_name]
-                counter_task_name_used[task_name] += 1
-                endpoint_config.name = f"{endpoint_config.task}-{idx}"
-        return endpoints
 
 
 def endpoint_diff(

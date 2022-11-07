@@ -15,28 +15,36 @@
 import yaml
 
 import pytest
-from deepsparse.loggers.config import MetricFunctionConfig, TargetLoggingConfig
+from deepsparse.loggers.config import MetricFunctionConfig
 
 
-metric_function_config_yaml = """
-  func: builtins:identity
-  frequency: 50"""
+metric_function_config_yaml_1 = """
+  func: identity
+  frequency: 5
+  loggers:
+    - python"""
 
-target_logging_config_yaml = """
-    target: pipeline_outputs
-    functions:
-        - func: builtins:identity
-        - func: np.max
-          frequency: 50"""
+metric_function_config_yaml_2 = """
+  func: numpy.max"""
+
+
+metric_function_config_yaml_3 = """
+  func: numpy.max
+  frequency: 0"""
 
 
 @pytest.mark.parametrize(
-    "string_config_yaml, base_model",
+    "config_yaml, should_fail, instance_type",
     [
-        (metric_function_config_yaml, MetricFunctionConfig),
-        (target_logging_config_yaml, TargetLoggingConfig),
+        (metric_function_config_yaml_1, False, MetricFunctionConfig),
+        (metric_function_config_yaml_2, False, MetricFunctionConfig),
+        (metric_function_config_yaml_3, True, MetricFunctionConfig),
     ],
 )
-def test_function_logging_config(string_config_yaml, base_model):
-    obj = yaml.safe_load(string_config_yaml)
-    assert base_model(**obj)
+def test_function_logging_config(config_yaml, should_fail, instance_type):
+    obj = yaml.safe_load(config_yaml)
+    if should_fail:
+        with pytest.raises(Exception):
+            MetricFunctionConfig.from_server(**obj)
+    else:
+        assert MetricFunctionConfig.from_server(**obj)

@@ -15,11 +15,68 @@
 Helpers functions for logging
 """
 
+import importlib
+import os.path
 import re
-from typing import Any, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
+
+import numpy
+
+import deepsparse.loggers.metric_functions.built_ins as built_ins
+import torch
 
 
-__all__ = ["match_and_extract"]
+__all__ = ["match_and_extract", "get_function_and_function_name"]
+
+
+def get_function_and_function_name(
+    function_identifier: str,
+) -> Tuple[Callable[[Any], Any], str]:
+    """
+    Parse function identifier and return the function as well as its name
+
+    :param function_identifier: Can be one of the following:
+
+        1. framework function, e.g.
+            "torch.mean" or "numpy.max"
+
+        2. built-in function, e.g.
+            "function_name"
+            note: function needs to be available in the module
+            with built-in functions, see the imports above)
+
+        3. user-defined function in the form of
+           '<path_to_the_python_script>:<function_name>', e.g.
+           "{...}/script_name.py:function_name"
+
+    :return: A tuple (function, function name)
+    """
+
+    if function_identifier.startswith("torch."):
+        func_name = function_identifier.split(".")[1]
+        return getattr(torch, func_name), func_name
+
+    if function_identifier.startswith("numpy.") or function_identifier.startswith(
+        "np."
+    ):
+        func_name = function_identifier.split(".")[1]
+        return getattr(numpy, func_name), func_name
+
+    if len(function_identifier.split(":")) == 2:
+        # assume a dynamic import function of the form
+        # '<path_to_the_python_script>:<function_name>'
+        path, func_name = function_identifier.split(":")
+        if not os.path.exists(path):
+            raise ValueError(f"Path to the python script {path} does not exist")
+        spec = importlib.util.spec_from_file_location(
+            "user_defined_metric_functions", path
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return getattr(module, func_name), func_name
+
+    func_name = function_identifier
+    return getattr(built_ins, func_name), func_name
 
 
 def match_and_extract(template: str, identifier: str, value: Any) -> Optional[Any]:

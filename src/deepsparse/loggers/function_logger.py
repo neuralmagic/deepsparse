@@ -17,9 +17,9 @@ Implementation of the Function Logger
 """
 
 from collections import defaultdict
-from typing import Any, List
+from typing import Any, Dict, List
 
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import BaseLogger
 from deepsparse.loggers.helpers import match_and_extract
 
 
@@ -33,20 +33,25 @@ class FunctionLogger(BaseLogger):
     according to FunctionLogger's attributes
 
     :param logger: A child DeepSparse Logger object
-    :param target_logging_configs: A list of TargetLoggingConfig objects
+    :param target_to_metric_function_configs: A mapping from target identifier to
+        a list of MetricFunctionConfig objects
     """
 
     def __init__(
         self,
         logger: BaseLogger,
-        target_logging_configs: List["TargetLoggingConfig"],  # noqa F821
+        target_to_metric_function_configs: Dict[
+            str, List["MetricFunctionConfig"]  # noqa F821
+        ],
     ):
 
         self.logger = logger
-        self.target_logging_configs = target_logging_configs
+        self.target_to_metric_function_configs = target_to_metric_function_configs
         self._function_call_counter = defaultdict(lambda: defaultdict(int))
 
-    def log(self, identifier: str, value: Any, category: MetricCategories):
+    def log(
+        self, identifier: str, value: Any, category: "MetricCategories"  # noqa F821
+    ):
         """
         Collect information from the pipeline and:
         1) Filter it according to the `self.target_logging_configs`
@@ -56,33 +61,34 @@ class FunctionLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
+        for (
+            target_identifier,
+            metric_function_cfgs,
+        ) in self.target_to_metric_function_configs.items():
+            extracted_value = match_and_extract(
+                template=target_identifier, identifier=identifier, value=value
+            )
+            if extracted_value is not None:
+                for metric_function_cfg in metric_function_cfgs:
 
-        for target_cfg in self.target_logging_configs:
-            target_identifier = target_cfg.target
-            functions_cfgs = target_cfg.functions
-
-            for function_cfg in functions_cfgs:
-
-                frequency = function_cfg.frequency
-                function = function_cfg.function
-                function_name = function_cfg.function_name
-
-                extracted_value = match_and_extract(
-                    template=target_identifier, identifier=identifier, value=value
-                )
-
-                if extracted_value is not None:
                     if self._should_counter_log(
-                        target_identifier, function_name, frequency
+                        target_identifier,
+                        metric_function_cfg.function_name,
+                        metric_function_cfg.frequency,
                     ):
-                        mapped_value = function(extracted_value)
+                        mapped_value = metric_function_cfg.function(extracted_value)
                         self.logger.log(
-                            identifier=f"{identifier}.{function_name}",
+                            identifier=f"{identifier}."
+                            f"{metric_function_cfg.function_name}",
                             value=mapped_value,
                             category=category,
                         )
-                        self._reset_counter(target_identifier, function_name)
-                    self._increment_counter(target_identifier, function_name)
+                        self._reset_counter(
+                            target_identifier, metric_function_cfg.function_name
+                        )
+                    self._increment_counter(
+                        target_identifier, metric_function_cfg.function_name
+                    )
 
     def _should_counter_log(
         self, target_identifier: str, function_name: str, frequency: int
