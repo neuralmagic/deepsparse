@@ -70,7 +70,7 @@ import click
 
 import cv2
 from deepsparse.pipeline import Pipeline
-from deepsparse.utils import (
+from deepsparse.utils.annotate import (
     annotate,
     get_annotations_save_dir,
     get_image_loader_and_saver,
