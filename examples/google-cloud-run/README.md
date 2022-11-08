@@ -50,12 +50,17 @@ python endpoint.py create
 ```
 ## Call Endpoint
 
-After the endpoint has been staged (~3 minute), gcloud CLI will output your API endpoint URL. You can start making requests by passing this URL into the CloudRunClient object. Afterwards, you can run inference by passing in your text input:
+After the endpoint has been staged (~3 minute), gcloud CLI will output your API Service URL. You can start making requests by passing this URL AND its route into the CloudRunClient object. The route can be configured in the `config.yaml`. 
+
+For example, if your Service URL is `https://deepsparse-cloudrun-qsi36y4uoa-ue.a.run.app` and your route is `/inference`, the complete URL passed into the client would be: `https://deepsparse-cloudrun-qsi36y4uoa-ue.a.run.app/inference`
+
+
+Afterwards, you can call your endpoint by passing in your text input:
 
 ```python
 from client import CloudRunClient
 
-CR = CloudRunClient("https://sparserun-xxxxxxxxxx-xx.a.run.app")
+CR = CloudRunClient("https://sparserun-xxxxxxxxxx-xx.a.run.app/{ROUTE}")
 answer = CR.client("Drive from California to Texas!")
 print(answer)
 ```
@@ -66,7 +71,22 @@ print(answer)
 {'entity': 'LABEL_5','word': 'texas', ...}, 
 {'entity': 'LABEL_0','word': '!', ...}]`
 
-On your first cold start, it will take a ~60 seconds to get your first inference, but afterwards, it should be in milliseconds.
+Additionally, you can also call the endpoint via a cURL command:
+
+```bash
+curl -X 'POST' \
+  'https://sparserun-xxxxxxxxxx-xx.a.run.app/{ROUTE}' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "inputs": [
+    "Drive from California to Texas!"
+  ],
+  "is_split_into_words": false
+}'
+```
+
+FYI, on your first cold start, it will take a ~60 seconds to get your first inference, but afterwards, it should be in milliseconds.
 
 ## Delete Endpoint
 
