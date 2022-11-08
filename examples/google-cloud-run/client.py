@@ -28,11 +28,11 @@ class CloudRunClient:
         self.url = url
         self.headers = {"Content-Type": "application/json"}
 
-    def client(self, **kwargs):
+    def client(self, payload):
         """
         Client for NLP tasks.
         """
 
-        response = requests.post(self.url, headers=self.headers, json=kwargs)
+        response = requests.post(self.url, headers=self.headers, json=payload)
 
         return json.loads(response.content)
