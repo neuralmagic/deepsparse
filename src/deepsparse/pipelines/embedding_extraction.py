@@ -216,6 +216,7 @@ class EmbeddingExtractionPipeline(Pipeline):
         """
         return self.base_pipeline.process_inputs(inputs)
 
+    # TODO @rahul-tuli: this assumes extra information from transformers need to make this generic
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
