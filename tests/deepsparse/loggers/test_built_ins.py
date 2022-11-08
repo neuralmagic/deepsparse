@@ -17,11 +17,11 @@ import numpy
 import pytest
 import torch
 from deepsparse.loggers.built_ins import (
+    bounding_box_count,
     fraction_zeros,
     image_shape,
     max_pixels_per_channel,
     mean_pixels_per_channel,
-    num_bounding_boxes,
     std_pixels_per_channel,
 )
 
@@ -143,13 +143,22 @@ def test_percentage_zeros_per_channel(image, expected_percentage):
 
 
 @pytest.mark.parametrize(
-    "bboxes, expected_num_bboxes",
+    "bboxes, expected_num_bboxes, should_raise_error",
     [
-        ([BBOX, BBOX, BBOX, BBOX, BBOX], 5),
-        ([[BBOX, BBOX, BBOX]], 3),
-        ([[]], 0),
-        ([], 0),
+        ([[]], 0, False),
+        ([], 0, False),
+        ([[BBOX, BBOX, BBOX], [BBOX, BBOX, BBOX, BBOX]], {0: 3, 1: 4}, False),
+        ([[BBOX, BBOX, BBOX]], {0: 3}, False),
+        ([[[10, 10, 10, 10]]], None, True),
+        ([[BBOX[:3]]], None, True),
+        ([["string"]], None, True),
+        (["string"], None, True),
     ],
 )
-def test_num_bounding_boxes(bboxes, expected_num_bboxes):
-    assert expected_num_bboxes == num_bounding_boxes(bboxes)
+def test_num_bounding_boxes(bboxes, expected_num_bboxes, should_raise_error):
+    if should_raise_error:
+        with pytest.raises(ValueError):
+            bounding_box_count(bboxes)
+        return
+
+    assert expected_num_bboxes == bounding_box_count(bboxes)

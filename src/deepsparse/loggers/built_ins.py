@@ -12,11 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
 import torch
+
+
+__all__ = [
+    "image_shape",
+    "mean_pixels_per_channel",
+    "std_pixels_per_channel",
+    "max_pixels_per_channel",
+    "fraction_zeros",
+    "bounding_box_count",
+]
 
 
 def image_shape(img: Union[numpy.ndarray, torch.tensor]) -> Tuple[int, int, int]:
@@ -25,7 +35,8 @@ def image_shape(img: Union[numpy.ndarray, torch.tensor]) -> Tuple[int, int, int]
 
     :param img: An image represented as a numpy array or a torch tensor.
         Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension) tensor/array
+            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
+              tensor/array
             - the image has 3 or 1 channels
     :return: Tuple containing the image shape; three integers
     """
@@ -44,7 +55,8 @@ def mean_pixels_per_channel(
 
     :param img: An image represented as a numpy array or a torch tensor.
         Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension) tensor/array
+            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
+              tensor/array
             - the image has 3 or 1 channels
     :return: Tuple containing the mean pixel values:
         - 3 floats if image has 3 channels
@@ -64,7 +76,8 @@ def std_pixels_per_channel(
     Return the standard deviation of pixel values per image channel
     :param img: An image represented as a numpy array or a torch tensor.
         Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension) tensor/array
+            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
+              tensor/array
             - the image has 3 or 1 channels
     :return: Tuple containing the standard deviation of pixel values:
         - 3 floats if image has 3 channels
@@ -84,7 +97,8 @@ def max_pixels_per_channel(
     Return the max pixel value per image channel
     :param img: An image represented as a numpy array or a torch tensor.
         Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension) tensor/array
+            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
+              tensor/array
             - the image has 3 or 1 channels
     :return: Tuple containing the max pixel values:
         - 3 floats if image has 3 channels
@@ -104,7 +118,8 @@ def fraction_zeros(img: Union[numpy.ndarray, torch.tensor]) -> float:
 
     :param img: An image represented as a numpy array or a torch tensor.
        Assumptions:
-           - 3 dimensional or 4 dimensional (num_batches in zeroth dimension) tensor/array
+           - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
+             tensor/array
            - the image has 3 or 1 channels
     :return: A float in range from 0. to 1.
     """
@@ -113,44 +128,30 @@ def fraction_zeros(img: Union[numpy.ndarray, torch.tensor]) -> float:
     return (image_numpy.size - numpy.count_nonzero(image_numpy)) / image_numpy.size
 
 
-def num_bounding_boxes(
-    bboxes: Union[
-        List[List[float, float, float, float]], List[List[List[float, float, float]]]
-    ]
-) -> int:
+def bounding_box_count(bboxes: List[List[Optional[List[float]]]]) -> Dict[int, int]:
     """
-    Extract the number of bounding boxes from the (nested) list
-    of bbox corners
+    Extract the number of bounding boxes from the (nested) list of bbox corners
 
     :param bboxes: A (nested) list, where the leaf list has length four and contains
         float values (top left and bottom right coordinates of the bounding box corners)
-    :return: Number of bounding boxes
+    :return: Dictionary, where the keys are image indices within
+        a batch and the values are the bbox counts
     """
-    if not bboxes:
+    if not bboxes or _is_nested_list_empty(bboxes):
         return 0
-    # checking if
-    while not (len(bboxes[0]) == 4 and isinstance(bboxes[0][0], float)):
-        bboxes = bboxes[0]
-        if not bboxes:
-            return 0
-    if not all((len(bbox) == 4 for bbox in bboxes)):
+
+    if not (isinstance(bboxes[0][0][0], float) and len(bboxes[0][0]) == 4):
         raise ValueError(
-            "Expected a single bounding box to be represented "
-            "by a list containing four floating-point numbers"
+            "A valid argument `bboxes` should be of "
+            "type: List[List[Optional[List[float]]]])."
         )
-    return len(bboxes)
 
+    bboxes_count = {}
+    for batch_idx, bboxes_ in enumerate(bboxes):
+        num_bboxes = len(bboxes_)
+        bboxes_count[batch_idx] = num_bboxes
 
-def token_count(tokens: numpy.ndarray) -> Dict[str, int]:
-    count = {}
-    for batch_size, token_sequence in enumerate(tokens):
-        unique, counts = numpy.unique(token_sequence, return_counts=True)
-        count[batch_size] = dict(zip(unique, counts))
-    return count
-
-
-def top_5_classes():
-    pass
+    return bboxes_count
 
 
 def _check_valid_image(img: numpy.ndarray) -> Tuple[int, int]:
@@ -174,7 +175,15 @@ def _check_valid_image(img: numpy.ndarray) -> Tuple[int, int]:
     return num_dims, channel_dim if num_dims == 3 else channel_dim + 1
 
 
-def _assert_numpy_image(img):
+def _assert_numpy_image(img: Union[numpy.ndarray, torch.Tensor]) -> numpy.ndarray:
     if isinstance(img, torch.Tensor):
         img = img.numpy()
     return img
+
+
+def _is_nested_list_empty(nested_list: List) -> bool:
+    if not nested_list:
+        return True
+    if isinstance(nested_list[0], list):
+        return _is_nested_list_empty(nested_list[0])
+    return False
