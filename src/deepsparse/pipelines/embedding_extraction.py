@@ -12,21 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# postprocessing adapted from huggingface/transformers
-
-# Copyright 2021 The HuggingFace Team. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 """
 Pipeline implementation and pydantic models for embedding extraction transformers
@@ -39,31 +24,18 @@ from typing import List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
-from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
 from deepsparse.log import get_main_logger
 from deepsparse.transformers.helpers import truncate_transformer_onnx_model
-from deepsparse.transformers.pipelines import TransformersPipeline
 
 
 __all__ = [
-    "EmbeddingExtractionInput",
     "EmbeddingExtractionOutput",
     "EmbeddingExtractionPipeline",
 ]
 
 _LOGGER = get_main_logger()
-
-
-class EmbeddingExtractionInput(BaseModel):
-    """
-    Schema for inputs to embedding_extraction pipelines
-    """
-
-    inputs: Union[str, List[str]] = Field(
-        description="A list of sequences from which to get embeddings"
-    )
 
 
 class EmbeddingExtractionOutput(BaseModel):
@@ -96,78 +68,38 @@ class ExtractionStrategy(str, Enum):
 
 
 @Pipeline.register(
-    # TODO: will likely want to delete this
-    #  before we do need to check that the new pipeline works with existing
-    #  examples and integrations such as haystack
-    task="transformers_embedding_extraction",
+    task="embedding_extraction",
     task_aliases=[],
-    default_model_path=(
-        "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        "wikipedia_bookcorpus/pruned80_quant-none-vnni"
-    ),
+    default_model_path="",  # TODO determine what goes here
 )
-class EmbeddingExtractionPipeline(TransformersPipeline):
+class EmbeddingExtractionPipeline(Pipeline):
     """
-    embedding extraction pipeline for extracting intermediate layer embeddings
-    from transformer models
+    LIFECYCLE:
 
-    example instantiation:
-    ```python
-    embedding_extraction_pipeline = Pipeline.create(
-        task="embedding_extraction",
-        model_path="masked_language_modeling_model_dir/",
-    )
-    results = embedding_extraction_pipeline(
-        [
-            "the warriors have won the nba finals"
-            "the warriors are the greatest basketball team ever"
-        ]
-    )
-    emb_1, emb_2 = results.embeddings
-    # (expect emb_1 and emb_2 to have high cosine similiarity)
-    ```
+    Initialize:
+        1. create base pipeline stopping before engine initailization
+        2. extract onnx file path from base pipeline and truncate
+        3. finish base pipeline engine initialization
 
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param emb_extraction_layer: if an int, the transformer layer number from
-        which the embeddings will be extracted. If a string, the name of last
-        ONNX node in model to draw embeddings from. If None, leave the model
-        unchanged. Default is -1 (last transformer layer before prediction head)
-    :param model_size: size of transformer model (size of hidden layer per token
-        if the model is cut). Default is 768
-    :param extraction_strategy: method of pooling embedding values. Currently
-        supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
-        Default is 'per_token'
-    :param return_numpy: return embeddings a list of numpy arrays, list of lists
-        of floats otherwise. Default is True
-    :param context: context for engine. If None, then the engine will be initialized
-        with 2 streams to make use of parallel inference of labels. Default is None
+    __call__:
+        1. input schema defers to base pipeline
+        2. pre-processing deferes to base pipeline
+        3. engine_forward runs truncated model
+        4. post processing runs embedding aggregation
+        5. output schema contains the possibly aggregated embeddings
     """
 
     def __init__(
         self,
         *,
+        base_task: str,
         emb_extraction_layer: Union[int, str, None] = -1,
         model_size: int = 768,
         extraction_strategy: ExtractionStrategy = "per_token",
         return_numpy: bool = True,
-        **kwargs,
+        **base_pipeline_args,
     ):
+        self._base_task = base_task
         self._emb_extraction_layer = emb_extraction_layer
         self._model_size = model_size
         self._extraction_strategy = extraction_strategy
@@ -178,14 +110,56 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 f"Unsupported extraction_strategy {self._extraction_strategy}"
             )
 
+        self.base_pipeline = Pipeline.create(
+            task=base_task,
+            _delay_engine_initialize=True,  # engine initialized after model truncate
+            **base_pipeline_args,
+        )
+
+        # TODO @rahul-tuli: IMPORTANT - extract keyword arg keys from deepsparse.pipeline
+        # should only incldue these out of **base_pipeline_args
+        # keeping in kwargs for now so it will definitely fail until we do this
         super().__init__(**kwargs)
+
+        self.base_pipeline.onnx_file_path = self.onnx_file_path
+        self.base_pipeline._initialize_engine()
+
+    @property
+    def base_task(self) -> str:
+        """
+        :return: base task to extract embeddings of
+        """
+        return self._base_task
+
+    @property
+    def emb_extraction_layer(self) -> Union[int, str, None]:
+        """
+        :return: index or name of layer to extract embeddings at, if None
+            outputs of full model are treated as model embeddings
+        """
+        return self._emb_extraction_layer
+
+    @property
+    def extraction_strategy(self) -> ExtractionStrategy:
+        """
+        :return: aggregation method used for final embeddings
+        """
+        return self._extraction_strategy
+
+    @property
+    def return_numpy(self) -> bool:
+        """
+        :return: if True returns embeddings as numpy arrays, uses lists of=
+            floats otherwise
+        """
+        return self._return_numpy
 
     @property
     def input_schema(self) -> Type[BaseModel]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return EmbeddingExtractionInput
+        return self.base_pipeline.input_schema
 
     @property
     def output_schema(self) -> Type[BaseModel]:
@@ -201,8 +175,11 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
 
         :return: file path to the processed ONNX file for the engine to compile
         """
-        onnx_path = super().setup_onnx_file_path()
+        onnx_path = self.base_pipeline.onnx_file_path
 
+        # TODO: use truncate_onnx_model, not truncate_transformer_onnx_model
+        # potentially find a way to keep transformers specific helpers
+        # basically want to copy the UX here so we can push
         if self._emb_extraction_layer is not None:
             (
                 onnx_path,
@@ -214,7 +191,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
                 hidden_layer_size=self._model_size,
             )
         else:
-            _LOGGER.info("Skipping model truncation")
+            _LOGGER.info("EmbeddingExtractionPipeline - skipping model truncation")
 
         return onnx_path
 
@@ -227,23 +204,9 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             schema if necessary. If an instance of the `input_schema` is provided
             it will be returned
         """
-        if args and kwargs:
-            raise ValueError(
-                f"{self.__class__} only support args OR kwargs. Found "
-                f" {len(args)} args and {len(kwargs)} kwargs"
-            )
+        return self.base_pipeline.parse_inputs(*args, **kwargs)
 
-        if not args:
-            return self.input_schema(**kwargs)
-        if isinstance(args, str):
-            return self.input_schema(inputs=[args[0]])
-        if len(args) != 1:
-            return self.input_schema(inputs=args)
-        if isinstance(args[0], self.input_schema):
-            return args[0]
-        return self.input_schema(inputs=args[0])
-
-    def process_inputs(self, inputs: EmbeddingExtractionInput) -> List[numpy.ndarray]:
+    def process_inputs(self, inputs: BaseModel) -> List[numpy.ndarray]:
         """
         Tokenizes input
 
@@ -251,26 +214,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        if isinstance(inputs.inputs, str):
-            inputs.inputs = [inputs.inputs]
-
-        # tokenization matches https://github.com/texttron/tevatron
-        tokens = self.tokenizer(
-            inputs.inputs,
-            add_special_tokens=True,
-            padding=PaddingStrategy.MAX_LENGTH.value,
-            truncation=TruncationStrategy.LONGEST_FIRST.value,
-            return_tensors="np",
-        )
-
-        # mask padding and cls_token
-        pad_masks = tokens["input_ids"] == self.tokenizer.pad_token_id
-        cls_masks = tokens["input_ids"] == self.tokenizer.cls_token_id
-
-        return self.tokens_to_engine_input(tokens), {
-            "pad_masks": pad_masks,
-            "cls_masks": cls_masks,
-        }
+        return self.base_pipeline.process_inputs(inputs)
 
     def process_engine_outputs(
         self,
@@ -321,26 +265,6 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
             embeddings.append(embedding)
 
         return self.output_schema(embeddings=embeddings)
-
-    @staticmethod
-    def route_input_to_bucket(
-        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
-    ) -> Pipeline:
-        """
-        :param input_schema: The schema representing an input to the pipeline
-        :param pipelines: Different buckets to be used
-        :return: The correct Pipeline object (or Bucket) to route input to
-        """
-        tokenizer = pipelines[0].tokenizer
-        tokens = tokenizer(
-            input_schema.inputs,
-            add_special_tokens=True,
-            return_tensors="np",
-            padding=False,
-            truncation=False,
-        )
-        input_seq_len = max(map(len, tokens["input_ids"]))
-        return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     def _remove_1d_mask(
         self, array: numpy.ndarray, mask: numpy.ndarray
