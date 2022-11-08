@@ -142,6 +142,7 @@ class Pipeline(ABC):
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
+        _delay_engine_initialize: bool = False,  # internal use only
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -173,7 +174,11 @@ class Pipeline(ABC):
             self._engine_args["scheduler"] = scheduler
 
         self.onnx_file_path = self.setup_onnx_file_path()
-        self.engine = self._initialize_engine()
+
+        if _delay_engine_initiaze:
+            self.engine = None
+        else:
+            self.engine = self._initialize_engine()
 
         self._batch_size = self._batch_size or 1
 
