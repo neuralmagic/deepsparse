@@ -291,6 +291,9 @@ def truncate_onnx_model(
         defaults to [None] for each output and leads to slight performance loss
     :return: None
     """
+    # TODO @rahul-tuli: we can keep this function exactly, but should make a UX
+    # friendly wrapper similar to truncate_transformer_onnx_model that handles
+    # node indices, pointers to temporary files, etc. we can sync on this further when ready
     if graph_output_shapes is None:
         graph_output_shapes = [[None]] * len(final_node_names)
 
