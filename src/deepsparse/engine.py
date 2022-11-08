@@ -291,6 +291,13 @@ class Engine(object):
         return self._scheduler
 
     @property
+    def fraction_of_supported_ops(self) -> float:
+        """
+        :return: The portion of the network supported by optimized runtime.
+        """
+        return round(self._eng_net.fraction_of_supported_ops(), 4)
+
+    @property
     def cpu_avx_type(self) -> str:
         """
         :return: The detected cpu avx type that neural magic is running with.
@@ -590,6 +597,7 @@ class Engine(object):
             "num_cores": self.num_cores,
             "num_streams": self.num_streams,
             "scheduler": self.scheduler,
+            "fraction_of_supported_ops": self.fraction_of_supported_ops,
             "cpu_avx_type": self.cpu_avx_type,
             "cpu_vnni": self.cpu_vnni,
         }
