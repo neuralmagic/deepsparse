@@ -800,6 +800,25 @@ class BucketingPipeline(object):
     def __call__(self, *args, **kwargs):
         bucket, parsed_inputs = self._choose_bucket(*args, **kwargs)
         return bucket(parsed_inputs)
+    
+    def run_with_monitoring(
+        self, *args, **kwargs
+    ) -> Tuple[BaseModel, BaseModel, Any, InferenceTimingSchema]:
+        """
+        Run the inference forward pass and additionally
+        return extra monitoring information
+
+        :return:
+            pipeline_outputs: outputs from the inference pipeline
+            pipeline_inputs: inputs to the inference pipeline
+            engine_inputs: direct input to the inference engine
+            inference_timing: BaseModel, that contains the information about time
+                elapsed during the inference steps: pre-processing,
+                engine-forward, post-processing, as well as
+                the total elapsed time
+        """
+        bucket, parsed_inputs = self._choose_bucket(*args, **kwargs)
+        return bucket.run_with_monitoring(parsed_inputs)
 
     def _choose_bucket(self, *args, **kwargs):
         parsed_inputs = self._pipelines[-1].parse_inputs(*args, **kwargs)
