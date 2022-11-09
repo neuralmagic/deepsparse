@@ -16,7 +16,7 @@
 Helpers functions for logging
 """
 import re
-from typing import Any, Optional, Sequence, Tuple
+from typing import Any, Optional, Sequence, Tuple, Union
 
 
 __all__ = ["match_and_extract"]
@@ -69,7 +69,10 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
     return value
 
 
-def do_slicing_and_indexing(value: Sequence, square_brackets: str) -> Any:
+def do_slicing_and_indexing(
+    value: Union[Sequence, "numpy.ndarray", "torch.tensor"],
+    square_brackets: str,  # noqa F821
+) -> Any:
     """
     Perform slicing and/or indexing on the provided value
 
@@ -78,7 +81,7 @@ def do_slicing_and_indexing(value: Sequence, square_brackets: str) -> Any:
     - slicing: e.g value[0:2] or value[1:-3]
     - a composition of both: e.g value[0:2, 0] or value[1:-3, -1]
 
-    :param value: A sequential type variable to be indexed and/or sliced
+    :param value: A sequential/tensor/array type variable to be indexed and/or sliced
     :param square_brackets: The string that contains the indexing and/or slicing
         information inside square brackets
     :return: The value of interest
