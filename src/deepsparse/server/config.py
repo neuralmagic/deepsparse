@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
+from deepsparse.loggers.config import MetricFunctionConfig
 from deepsparse.tasks import SupportedTasks
 
 
@@ -48,16 +49,6 @@ class ImageSizesConfig(BaseModel):
     )
 
 
-class TargetLoggingConfig(BaseModel):
-    target: str = Field(
-        description="Name of the target to apply the metric functions to."
-    )
-    functions: List[Dict[str, Any]] = Field(
-        description="A list of dictionaries; each dictionary specifies the "
-        "properties of a single metric function."
-    )
-
-
 class EndpointConfig(BaseModel):
     name: Optional[str] = Field(
         default=None,
@@ -82,9 +73,9 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
-    data_logging: Optional[List[TargetLoggingConfig]] = Field(
-        default=None, description="Specifies the rules for the data logging"
-    )
+    data_logging: Optional[
+        List[Dict[str, Union[List[MetricFunctionConfig], str]]]
+    ] = Field(default=None, description="Specifies the rules for the data logging")
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,
@@ -158,7 +149,7 @@ class ServerConfig(BaseModel):
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
-    loggers: Dict[str, Dict[str, Any]] = Field(
+    loggers: Dict[str, Optional[Dict[str, Any]]] = Field(
         default={},
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."

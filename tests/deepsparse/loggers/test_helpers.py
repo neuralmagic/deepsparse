@@ -12,8 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy
+
 import pytest
-from deepsparse.loggers.helpers import check_identifier_match
+import torch
+from deepsparse.loggers.helpers import (
+    check_identifier_match,
+    get_function_and_function_name,
+)
+from deepsparse.loggers.metric_functions import identity
+from tests.test_data.metric_functions import user_defined_identity
+
+
+@pytest.mark.parametrize(
+    "func, expected_function, expected_function_name",
+    [
+        ("torch.mean", torch.mean, "mean"),
+        ("numpy.max", numpy.max, "max"),
+        (
+            "torch.distributions.categorical",
+            torch.distributions.categorical,
+            "distributions.categorical",
+        ),
+        ("numpy.linalg.norm", numpy.linalg.norm, "linalg.norm"),
+        (
+            "tests/test_data/metric_functions.py:user_defined_identity",
+            user_defined_identity,
+            "user_defined_identity",
+        ),
+        ("identity", identity, "identity"),
+    ],
+)
+def test_get_function_and_function_name(
+    func, expected_function, expected_function_name
+):
+    assert get_function_and_function_name(func) == (
+        expected_function,
+        expected_function_name,
+    )
 
 
 @pytest.mark.parametrize(
