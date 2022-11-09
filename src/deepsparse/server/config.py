@@ -53,8 +53,8 @@ class TargetLoggingConfig(BaseModel):
         description="Name of the target to apply the metric functions to."
     )
     functions: List[Dict[str, Any]] = Field(
-        description="A list of key-value pairs that specify the properties"
-        "of the metric function."
+        description="A list of dictionaries; each dictionary specifies the "
+        "properties of a single metric function."
     )
 
 
@@ -158,11 +158,11 @@ class ServerConfig(BaseModel):
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
-    loggers: Optional[List[Union[str, Dict[str, Dict[str, Any]]]]] = Field(
-        default=None,
+    loggers: Dict[str, Dict[str, Any]] = Field(
+        default={},
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
-            "Set to None for no loggers. Default is `None`."
+            "Set to {} for no loggers. Default is {}."
         ),
     )
 

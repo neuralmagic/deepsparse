@@ -15,11 +15,9 @@
 """
 Implementation of the Function Logger
 """
+from typing import Any, Callable
 
-from collections import defaultdict
-from typing import Any, Dict, List
-
-from deepsparse.loggers import BaseLogger
+from deepsparse.loggers import BaseLogger, MetricCategories
 from deepsparse.loggers.helpers import match_and_extract
 
 
@@ -28,81 +26,64 @@ __all__ = ["FunctionLogger"]
 
 class FunctionLogger(BaseLogger):
     """
-    DeepSparse logger that applies functions to raw,
-    logged values (collected in the log() method)
-    according to FunctionLogger's attributes
+    DeepSparse logger that applies a metric function to
+    a raw, values (received in the log() method) and then
+    passes it to a child logger.
 
     :param logger: A child DeepSparse Logger object
-    :param target_to_metric_function_configs: A mapping from target identifier to
-        a list of MetricFunctionConfig objects
+    :param target_identifier: Needs to match the
+        `identifier` (argument to the log() method).
+        Only then the FunctionLogger applies
+        the metric function and logs the data
+    :param function_name: Name of the metric function
+    :param function: The metric function to be applied
+    :param frequency: The frequency with which the metric
+        name is to be applied
     """
 
     def __init__(
         self,
         logger: BaseLogger,
-        target_to_metric_function_configs: Dict[
-            str, List["MetricFunctionConfig"]  # noqa F821
-        ],
+        target_identifier: str,
+        function: Callable[[Any], Any],
+        function_name: str = None,
+        frequency: int = 1,
     ):
 
+        if frequency < 1:
+            raise ValueError(
+                f"Passed frequency: {frequency}. "
+                "Frequency must be a positive integer greater equal 1"
+            )
         self.logger = logger
-        self.target_to_metric_function_configs = target_to_metric_function_configs
-        self._function_call_counter = defaultdict(lambda: defaultdict(int))
+        self.target_identifier = target_identifier
+        self.function = function
+        self.function_name = function_name or function.__name__
+        self.frequency = frequency
 
-    def log(
-        self, identifier: str, value: Any, category: "MetricCategories"  # noqa F821
-    ):
+        self._function_call_counter = 0
+
+    def log(self, identifier: str, value: Any, category: MetricCategories):
         """
-        Collect information from the pipeline and:
-        1) Filter it according to the `self.target_logging_configs`
-        2) Apply metric functions according to the `self.target_logging_configs`
+        If the identifier matches the target identifier, the value of interest
+        is being extracted and the metric function is applied to the extracted value.
+        The result is then logged to the child logger with the appropriate
+        frequency
 
         :param identifier: The name of the item that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        for (
-            target_identifier,
-            metric_function_cfgs,
-        ) in self.target_to_metric_function_configs.items():
-            extracted_value = match_and_extract(
-                template=target_identifier, identifier=identifier, value=value
-            )
-            if extracted_value is not None:
-                for metric_function_cfg in metric_function_cfgs:
-
-                    if self._should_counter_log(
-                        target_identifier,
-                        metric_function_cfg.function_name,
-                        metric_function_cfg.frequency,
-                    ):
-                        mapped_value = metric_function_cfg.function(extracted_value)
-                        self.logger.log(
-                            identifier=f"{identifier}."
-                            f"{metric_function_cfg.function_name}",
-                            value=mapped_value,
-                            category=category,
-                        )
-                        self._reset_counter(
-                            target_identifier, metric_function_cfg.function_name
-                        )
-                    self._increment_counter(
-                        target_identifier, metric_function_cfg.function_name
-                    )
-
-    def _should_counter_log(
-        self, target_identifier: str, function_name: str, frequency: int
-    ) -> bool:
-        count = self._function_call_counter.get(target_identifier, {}).get(
-            function_name
+        extracted_value = match_and_extract(
+            template=self.target_identifier, identifier=identifier, value=value
         )
-        if not count:
-            count = 0
-            self._function_call_counter[target_identifier][function_name] = count
-        return count % frequency == 0
-
-    def _reset_counter(self, target_identifier: str, function_name: str):
-        self._function_call_counter[target_identifier][function_name] = 0
-
-    def _increment_counter(self, target_identifier: str, function_name: str):
-        self._function_call_counter[target_identifier][function_name] += 1
+        if extracted_value is not None:
+            if self._function_call_counter % self.frequency == 0:
+                mapped_value = self.function(extracted_value)
+                self.logger.log(
+                    identifier=f"{identifier}.{self.function_name}",
+                    value=mapped_value,
+                    category=category,
+                )
+                self._function_call_counter = 0
+            self._function_call_counter += 1

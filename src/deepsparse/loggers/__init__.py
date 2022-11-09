@@ -17,4 +17,5 @@ from .base_logger import *
 # flake8: noqa
 from .constants import *
 from .function_logger import *
+from .multi_logger import *
 from .python_logger import *

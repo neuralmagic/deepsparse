@@ -15,7 +15,7 @@
 import yaml
 
 import pytest
-from deepsparse import FunctionLogger, PythonLogger
+from deepsparse import FunctionLogger, MultiLogger
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig
 
@@ -24,7 +24,7 @@ yaml_config_1 = """
 num_cores: 2
 num_workers: 2
 loggers:
-    - python
+    python: {}
 endpoints:
     - task: question_answering
       route: /unpruned/predict
@@ -46,7 +46,7 @@ yaml_config_2 = """
 num_cores: 2
 num_workers: 2
 loggers:
-    - python
+    python: {}
 endpoints:
     - task: question_answering
       route: /unpruned/predict
@@ -62,23 +62,50 @@ endpoints:
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1"""
 
+yaml_config_4 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    python: {}
+endpoints:
+    - task: question_answering
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1
+      data_logging:
+        - target: pipeline_outputs
+          functions:
+           - func: tests/test_data/metric_functions.py:user_defined_identity
+             frequency: 2
+             target_loggers: python
+        - target: engine_outputs
+          functions:
+           - func: np.mean
+             frequency: 3"""
+
 
 @pytest.mark.parametrize(
-    "yaml_config, with_function_logger, is_logger",
+    "yaml_config, returns_logger, is_top_logger_multilogger, num_function_loggers",
     [
-        (yaml_config_1, True, True),
-        (yaml_config_2, False, True),
-        (yaml_config_3, None, False),
+        (yaml_config_1, True, True, 3),
+        (yaml_config_2, True, False, 0),
+        (yaml_config_3, False, None, None),
+        (yaml_config_4, True, True, 2),
     ],
 )
-def test_build_logger(yaml_config, with_function_logger, is_logger):
+def test_build_logger(
+    yaml_config, returns_logger, is_top_logger_multilogger, num_function_loggers
+):
     obj = yaml.safe_load(yaml_config)
     server_config = ServerConfig(**obj)
     logger = build_logger(server_config)
-    if is_logger:
-        if with_function_logger:
-            assert isinstance(logger, FunctionLogger)
-            logger = logger.logger
-        assert isinstance(logger, PythonLogger)
-    else:
-        assert logger is None
+    assert bool(logger) == returns_logger
+    if not returns_logger:
+        return
+
+    assert is_top_logger_multilogger == isinstance(logger, MultiLogger)
+
+    if num_function_loggers:
+        assert len(logger.loggers) == num_function_loggers
+        return
+    assert not isinstance(logger, FunctionLogger)

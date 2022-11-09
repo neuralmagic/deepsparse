@@ -76,6 +76,8 @@ def get_function_and_function_name(
         return getattr(module, func_name), func_name
 
     func_name = function_identifier
+    if not hasattr(built_ins, func_name):
+        raise ValueError(f"Built-in function {func_name} not found")
     return getattr(built_ins, func_name), func_name
 
 

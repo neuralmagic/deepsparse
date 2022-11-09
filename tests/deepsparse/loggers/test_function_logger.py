@@ -15,45 +15,53 @@ import math
 
 import pytest
 from deepsparse import FunctionLogger, Pipeline, PythonLogger
-from deepsparse.loggers.config import MetricFunctionConfig
 
 
-METRIC_FUNCTION_CONFIG_1 = MetricFunctionConfig.from_server(
-    func="identity", frequency=2
-)
-METRIC_FUNCTION_CONFIG_2 = MetricFunctionConfig.from_server(
-    func="tests/test_data/metric_functions.py:return_number"
-)
+def _identity(x):
+    return x
+
+
+def _return_number(x):
+    return 1234
 
 
 @pytest.mark.parametrize(
-    "target_to_metric_function_configs, num_iterations, expected_log_content, frequency",  # noqa E501
+    "identifier, function_name, frequency, function, num_iterations, expected_log_content",  # noqa E501
     [
         (
-            {"token_classification.pipeline_inputs.inputs": [METRIC_FUNCTION_CONFIG_1]},
+            "token_classification.pipeline_inputs.inputs",
+            "identity",
+            2,
+            _identity,
             5,
             "all_your_base_are_belong_to_us",
-            2,
         ),
         (
-            {"token_classification.engine_inputs": [METRIC_FUNCTION_CONFIG_2]},
+            "token_classification.engine_inputs",
+            "return_one",
+            1,
+            _return_number,
             5,
             "1234",
-            1,
         ),
     ],
 )
 def test_function_logger(
     capsys,
-    target_to_metric_function_configs,
+    identifier,
+    function_name,
+    frequency,
+    function,
     num_iterations,
     expected_log_content,
-    frequency,
 ):
     logger = PythonLogger()
     function_logger = FunctionLogger(
         logger=logger,
-        target_to_metric_function_configs=target_to_metric_function_configs,
+        target_identifier=identifier,
+        function_name=function_name,
+        frequency=frequency,
+        function=function,
     )
     pipeline = Pipeline.create(
         "token_classification", batch_size=1, logger=function_logger
