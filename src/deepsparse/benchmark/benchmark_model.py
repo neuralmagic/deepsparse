@@ -48,7 +48,7 @@ optional arguments:
                         stream/multi-stream scenarios. Elastic is a newer
                         scenario that behaves similarly to the async scenario
                         but uses a different scheduling backend. Default value
-                        is async.
+                        is sync.
   -t TIME, --time TIME  The number of seconds the benchmark will run. Default
                         is 10 seconds.
   -w WARMUP_TIME, --warmup_time WARMUP_TIME
@@ -167,7 +167,7 @@ def parse_args():
             "Choose between using the async, sync and elastic scenarios. Sync and "
             "async are similar to the single-stream/multi-stream scenarios. Elastic "
             "is a newer scenario that behaves similarly to the async scenario "
-            "but uses a different scheduling backend. Default value is async."
+            "but uses a different scheduling backend. Default value is sync."
         ),
     )
     parser.add_argument(
