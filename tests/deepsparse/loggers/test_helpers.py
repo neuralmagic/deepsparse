@@ -41,7 +41,9 @@ def test_check_identifier_match(template, identifier, expected_output):
         ({"key_1": {"key_2": [0, 1, 2, 3]}}, "key_1.key_2[0:3]", [0, 1, 2]),
         ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, 0:3]", [0, 1, 2]),
         ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, -1]", 3),
-        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, -1]", 3),
+        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, 0:3, 2]", 2),
+        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, 0:3, 2]", 2),
+        ({"key_1": {"key_2": [0, 1, 2, 3, 4]}}, "key_1.key_2[1:-2, 0]", 1),
     ],
 )
 def test_possibly_extract_value(value, remainder, expected_value):

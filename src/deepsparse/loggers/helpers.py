@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import re
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 from pydantic import BaseModel
 
@@ -55,23 +55,49 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
 
     value = dict(value) if isinstance(value, BaseModel) else value
 
+    # splits remainder into separate strings.
+    # each string can access the new nesting depth and optionally
+    # do indexing and slicing at this depth
     for sub_remainder in remainder.split("."):
-        brackets = re.search(r"\[(.*?)\]", sub_remainder)
-        if brackets:
+        square_brackets = re.search(r"\[(.*?)\]", sub_remainder)
+        if square_brackets:
+            # retrieve the string without the square brackets
             sub_remainder = sub_remainder.split("[")[0]
+        # access the new nesting depth
         value = value[sub_remainder]
 
-        if brackets:
-            brackets_contents = brackets.group(1)
-            for slicing_operation in brackets_contents.split(","):
-                if ":" in slicing_operation:
-                    i, j = re.findall(r"-?\d+", slicing_operation)
-                    i, j = int(i), int(j)
-                    value = value.__getitem__(slice(i, j))
-                else:
-                    i = int(slicing_operation)
-                    value = value.__getitem__(i)
+    if square_brackets:
+        return do_slicing_and_indexing(
+            value=value, square_brackets=square_brackets.group(1)
+        )
 
+    return value
+
+
+def do_slicing_and_indexing(value: Sequence, square_brackets: str) -> Any:
+    """
+    Perform slicing and/or indexing on the provided value
+
+    Supported operations:
+    - indexing: e.g value[0] or value[-2]
+    - slicing: e.g value[0:2] or value[1:-3]
+    - a composition of both: e.g value[0:2][0] or value[1:-3][-1]
+
+    :param value: A sequential type variable to be indexed and/or sliced
+    :param square_brackets: The string that contains the indexing and/or slicing
+        information inside square brackets
+    :return: The value of interest
+    """
+    for string_operator in square_brackets.split(","):
+        if ":" in string_operator:
+            # slicing
+            i, j = re.findall(r"-?\d+", string_operator)
+            i, j = int(i), int(j)
+            value = value.__getitem__(slice(i, j))
+        else:
+            # indexing
+            i = int(string_operator)
+            value = value.__getitem__(i)
     return value
 
 
