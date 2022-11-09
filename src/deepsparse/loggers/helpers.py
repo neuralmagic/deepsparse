@@ -18,6 +18,7 @@ Helpers functions for logging
 import importlib
 import os.path
 import re
+from types import ModuleType
 from typing import Any, Callable, Optional, Tuple
 
 import numpy
@@ -55,22 +56,18 @@ def get_function_and_function_name(
     """
 
     if function_identifier.startswith("torch."):
-        func_attributes = function_identifier.split(".")[1:]
-        module = torch
-        for attribute in func_attributes:
-            module = getattr(module, attribute)
-        attribute = module
-        return attribute, ".".join(func_attributes)
+        function, function_name = _get_function_and_function_name_from_framework(
+            framework=torch, function_identifier=function_identifier
+        )
+        return function, function_name
 
     if function_identifier.startswith("numpy.") or function_identifier.startswith(
         "np."
     ):
-        func_attributes = function_identifier.split(".")[1:]
-        module = numpy
-        for attribute in func_attributes:
-            module = getattr(module, attribute)
-        attribute = module
-        return attribute, ".".join(func_attributes)
+        function, function_name = _get_function_and_function_name_from_framework(
+            framework=numpy, function_identifier=function_identifier
+        )
+        return function, function_name
 
     if len(function_identifier.split(":")) == 2:
         # assume a dynamic import function of the form
@@ -159,3 +156,14 @@ def check_identifier_match(
         return re.match(pattern, identifier) is not None, None
 
     return False, None
+
+
+def _get_function_and_function_name_from_framework(
+    framework: ModuleType, function_identifier: str
+) -> Tuple[Callable[[Any], Any], str]:
+    func_attributes = function_identifier.split(".")[1:]
+    module = framework
+    for attribute in func_attributes:
+        module = getattr(module, attribute)
+    attribute = module
+    return attribute, ".".join(func_attributes)
