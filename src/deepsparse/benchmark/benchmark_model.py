@@ -161,7 +161,7 @@ def parse_args():
         "-s",
         "--scenario",
         type=str,
-        default="async",
+        default="sync",
         choices=["async", "sync", "elastic"],
         help=(
             "Choose between using the async, sync and elastic scenarios. Sync and "
