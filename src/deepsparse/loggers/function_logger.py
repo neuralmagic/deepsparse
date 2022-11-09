@@ -27,7 +27,7 @@ __all__ = ["FunctionLogger"]
 class FunctionLogger(BaseLogger):
     """
     DeepSparse logger that applies a metric function to
-    a raw, values (received in the log() method) and then
+    a raw value (received in the log() method) and then
     passes it to a child logger.
 
     :param logger: A child DeepSparse Logger object
