@@ -165,5 +165,4 @@ def _get_function_and_function_name_from_framework(
     module = framework
     for attribute in func_attributes:
         module = getattr(module, attribute)
-    attribute = module
-    return attribute, ".".join(func_attributes)
+    return module, ".".join(func_attributes)
