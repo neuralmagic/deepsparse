@@ -16,6 +16,7 @@
 Specifies the mapping from the ServerConfig to the DeepSparse Logger
 """
 
+import logging
 from typing import Any, Dict, List
 
 from deepsparse import BaseLogger, FunctionLogger, MultiLogger, PythonLogger
@@ -24,6 +25,8 @@ from deepsparse.server.config import ServerConfig
 
 
 __all__ = ["build_logger"]
+
+_LOGGER = logging.getLogger(__name__)
 
 _LOGGER_MAPPING = {"python": PythonLogger}
 
@@ -56,6 +59,7 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     if not loggers:
         loggers = list(leaf_loggers.values())
 
+    _LOGGER.info("Created logger from the config")
     return MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
 
 
@@ -93,9 +97,7 @@ def build_function_loggers(
             continue
         for target_logging_cfg in endpoint.data_logging:
             target = target_logging_cfg.target
-            target_identifier = _get_target_identifier(
-                endpoint.name or endpoint.task, target
-            )
+            target_identifier = _get_target_identifier(endpoint.name, target)
             function_cfgs = target_logging_cfg.functions
             for function_cfg in function_cfgs:
                 function_loggers.append(
