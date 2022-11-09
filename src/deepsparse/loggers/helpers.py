@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-from typing import Any, Optional, Sequence, Tuple
-
-from pydantic import BaseModel
-
-
 """
 Helpers functions for logging
 """
+import re
+from typing import Any, Optional, Sequence, Tuple
+
 
 __all__ = ["match_and_extract"]
 
@@ -53,8 +50,6 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
     if not remainder:
         return value
 
-    value = dict(value) if isinstance(value, BaseModel) else value
-
     # splits remainder into separate strings.
     # each string can access the new nesting depth and optionally
     # do indexing and slicing at this depth
@@ -64,7 +59,7 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
             # retrieve the string without the square brackets
             sub_remainder = sub_remainder.split("[")[0]
         # access the new nesting depth
-        value = value[sub_remainder]
+        value = value.__getattribute__(sub_remainder)
 
     if square_brackets:
         return do_slicing_and_indexing(
@@ -81,7 +76,7 @@ def do_slicing_and_indexing(value: Sequence, square_brackets: str) -> Any:
     Supported operations:
     - indexing: e.g value[0] or value[-2]
     - slicing: e.g value[0:2] or value[1:-3]
-    - a composition of both: e.g value[0:2][0] or value[1:-3][-1]
+    - a composition of both: e.g value[0:2, 0] or value[1:-3, -1]
 
     :param value: A sequential type variable to be indexed and/or sliced
     :param square_brackets: The string that contains the indexing and/or slicing
@@ -98,6 +93,7 @@ def do_slicing_and_indexing(value: Sequence, square_brackets: str) -> Any:
             # indexing
             i = int(string_operator)
             value = value.__getitem__(i)
+
     return value
 
 

@@ -31,7 +31,7 @@ class FunctionLogger(BaseLogger):
     according to FunctionLogger's attributes
 
     :param logger: A child DeepSparse Logger object
-    :param identifier: The string that needs to match the
+    :param target_identifier: The string that needs to match the
         `identifier` (argument to the log() method),
         so that the FunctionLogger applies
         the metric function and logs the data
@@ -52,11 +52,11 @@ class FunctionLogger(BaseLogger):
 
         self.logger = logger
         self.target_identifier = target_identifier
-        self.function_name = function_name
+        self.function_name = function_name or function.__name__
         self.frequency = frequency
         self.function = function
 
-        self._counts = 0
+        self._function_call_counter = 0
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
@@ -68,10 +68,12 @@ class FunctionLogger(BaseLogger):
             template=self.target_identifier, identifier=identifier, value=value
         )
         if extracted_value:
-            if self._counts % self.frequency == 0:
+            if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
                 self.logger.log(
-                    identifier=identifier, value=mapped_value, category=category
+                    identifier=f"{identifier}.{self.function_name}",
+                    value=mapped_value,
+                    category=category,
                 )
-                self._counts = 0
-            self._counts += 1
+                self._function_call_counter = 0
+            self._function_call_counter += 1

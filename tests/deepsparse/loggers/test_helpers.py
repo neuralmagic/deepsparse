@@ -12,8 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
+
+from pydantic import BaseModel
+
 import pytest
 from deepsparse.loggers.helpers import check_identifier_match, possibly_extract_value
+
+
+class MockModel_(BaseModel):
+    key_2: Any
+
+
+class MockModel(BaseModel):
+    key_1: MockModel_
 
 
 @pytest.mark.parametrize(
@@ -37,14 +49,15 @@ def test_check_identifier_match(template, identifier, expected_output):
 @pytest.mark.parametrize(
     "value, remainder, expected_value",
     [
-        ({"key_1": {"key_2": [0, 1, 2, 3]}}, "key_1.key_2[2]", 2),
-        ({"key_1": {"key_2": [0, 1, 2, 3]}}, "key_1.key_2[0:3]", [0, 1, 2]),
-        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, 0:3]", [0, 1, 2]),
-        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, -1]", 3),
-        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, 0:3, 2]", 2),
-        ({"key_1": {"key_2": [[0, 1, 2, 3]]}}, "key_1.key_2[0, 0:3, 2]", 2),
-        ({"key_1": {"key_2": [0, 1, 2, 3, 4]}}, "key_1.key_2[1:-2, 0]", 1),
+        ([0, 1, 2, 3], "key_1.key_2[2]", 2),
+        ([0, 1, 2, 3], "key_1.key_2[0:3]", [0, 1, 2]),
+        ([[0, 1, 2, 3]], "key_1.key_2[0, 0:3]", [0, 1, 2]),
+        ([[0, 1, 2, 3]], "key_1.key_2[0, -1]", 3),
+        ([[0, 1, 2, 3]], "key_1.key_2[0, 0:3, 2]", 2),
+        ([[0, 1, 2, 3]], "key_1.key_2[0, 0:3, 2]", 2),
+        ([0, 1, 2, 3, 4], "key_1.key_2[1:-2, 0]", 1),
     ],
 )
 def test_possibly_extract_value(value, remainder, expected_value):
+    value = MockModel(key_1=MockModel_(key_2=value))
     assert expected_value == possibly_extract_value(value=value, remainder=remainder)
