@@ -203,24 +203,22 @@ to kick off the sparsification process with a single command line call.
 
 In this example, we will use dense [XXX] as the starting point and the pre-made sparsification recipe for [XXX]. 
 You can use the `sparsezoo_stub` to identify the sparsification recipe:
-```
-zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant-aggressive_95 # [XXX] << update with the right stub
+```bashe
+# add the new stub
 ```
 
 The following CLI command downloads the sparsification recipe from the SparseZoo and 
-kicks off the sparsification process, fine-tuning onto the COCO dataset:
-```
-sparseml.yolov5.train \                 # [XXX] << update with new pathway
-  --weights [xxx] \
-  --data coco.yaml \
-  --hyp data/hyps/hyp.scratch.yaml \
-  --recipe [zoo-stub]
+kicks off the sparsification process, fine-tuning onto the COCO dataset. (Note: this example uses a SparseZoo stub, 
+but you can also pass a local path to a `recipe`).
+
+
+```bash
+# add the new code
 ```
 
-Used the `sparse_zoo` stub in this example, but you can also pass a local path to a `recipe`.
 
-In general, deep neural networks are overparameterized, meaning we can remove weights and reduce
-precision with very little loss of accuracy. In this example, we achieve [**XX**]% recovery of the accuracy 
+DNNs are overparameterized, meaning we can remove weights and reduce
+precision with little loss of accuracy. In this example, we achieve [**XX**]% recovery of the accuracy 
 for the dense baseline. The majority of layers are pruned between [**XX**]% and [**XX**]%, with some more 
 senstive layers pruned to [**XX**]%. On our training run, final accuracy is [**XX**] mAP@0.5 as 
 reported by the Ultralytics training script.
@@ -238,3 +236,6 @@ sparseml.yolov5.export_onnx \           # [XXX] << update with new pathway
    --weights path/to/weights.pt \
    --dynamic
 ```
+
+You have created a sparse version of YOLOv5 and exported to ONNX! Be sure to run with a sparsity-aware runtime to 
+gain a performance speedup.
