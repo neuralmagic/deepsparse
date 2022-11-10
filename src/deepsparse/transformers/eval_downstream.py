@@ -101,8 +101,12 @@ def qa_eval(args, dataset_name="squad"):
             context=sample["context"],
         )
 
+        predictions = [{"prediction_text": pred.answer, "id": sample["id"]}]
+        if question_answer.version_2_with_negative:
+            predictions[0]["no_answer_probability"] = 0.0
+
         qa_metrics.add_batch(
-            predictions=[{"prediction_text": pred.answer, "id": sample["id"]}],
+            predictions=predictions,
             references=[{"answers": sample["answers"], "id": sample["id"]}],
         )
 
