@@ -23,11 +23,11 @@ Similiar to typical transfer learning you might be familiar with, Sparse Transfe
 With proper pruning, you can set [XX]% of YOLOv5-l weights to 0 and retain [XX]% of the dense model's accuracy. 
 See [Sparsifying YOLOv5](Ultralytics-Sparsify-README.md) for more details.
 
-Sparse Transfer Learning saves you the GPU-hours and hyperparemeter expertise needed to create a sparse YOLOv5 from scratch.
+Sparse Transfer Learning enables you to train a sparse model on your dataset with just one command line call.
 
 ## :mag_right: How It Works
 
-There are four simple steps to sparse transfer learning with SparseML:
+There are four simple steps to Sparse Transfer Learning with SparseML:
 1. Select a Pre-Sparsified Model
 2. Create Dataset
 3. Run Sparse Transfer Learning Algorithm
@@ -77,7 +77,7 @@ For Sparse Transfer Learning, the key **Modifiers** in the recipe are:
 
 For example, in the [XXX Transfer Learning recipe UPDATE LINK](link), the following lines are included in the recipe:
 
-```
+```yaml
 pruning_modifiers:
   - !ConstantPruningModifier
     start_epoch: 0.0
@@ -97,15 +97,9 @@ We will Sparse Transfer Learn **pruned-quantized XXX** onto the VOC dataset.
 The `xxx` CLI command downloads the model and VOC dataset (using the download script from `VOC.yaml`) and kicks off the training process using the pre-made recipe from SparseZoo.
 
 ```bash
-sparseml.yolov5.train \     # update with new pathway
-    --data VOC.yaml \
-    --cfg models_v5.0/yolov5l.yaml \
-    --hyp data/hyps/hyp.finetune.yaml \
-    --weights zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant-aggressive_95?recipe_type=transfer \
-    --recipe zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned_quant-aggressive_95?recipe_type=transfer
+# update with the new pathway
 ```
   - `--data` is the config file for the dataset
-  - `--cfg` / `--hyp` XXX
   - `--weights` identifies the base pre-sparsfied model for the transfer learning. It can be a SparseZoo stub or a path to a local model
   - `--recipe` identifies the transfer learning recipe. It can be SparseZoo stub or a path to a local recipe
 
@@ -125,3 +119,6 @@ sparseml.yolov5.export_onnx \
    --weights path/to/weights.pt \
    --dynamic
 ```
+
+You have successfully created an inference-optimized sparse version of YOLOv5 trained on custom data! Be sure to deploy with a sparsity-aware runtime
+to gain a performance speedup!
