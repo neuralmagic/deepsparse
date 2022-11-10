@@ -237,5 +237,5 @@ sparseml.yolov5.export_onnx \           # [XXX] << update with new pathway
    --dynamic
 ```
 
-You have created a sparse version of YOLOv5 and exported to ONNX! Be sure to run with a sparsity-aware runtime to 
+You have created a sparse version of YOLOv5 and exported to ONNX! Now, use a sparsity-aware runtime to 
 gain a performance speedup.
