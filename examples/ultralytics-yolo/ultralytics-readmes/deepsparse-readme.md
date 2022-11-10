@@ -1,6 +1,6 @@
 # YOLOv5 :rocket: Deployments on CPUs with DeepSparse
 
-:books: Learn how to deploy YOLOv5 with **realtime latency on CPUs** utilizing Neural Magic's DeepSparse:bangbang: 
+:books: Learn how to deploy YOLOv5 with **realtime latency on CPUs** using Neural Magic's DeepSparse:bangbang: 
 
 ## DeepSparse Overview
 
@@ -32,16 +32,16 @@ wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 Run the following. We recommend you use a virtual enviornment.
 
 ```bash
-pip install deepsparse[server]
+pip install deepsparse[server,yolo]
 ```
 
 ### 🔍 Collect an ONNX File
 
-DeepSparse accepts a model in the ONNX format.
+DeepSparse accepts a model in the ONNX format and complies it to machine code with many optimizations.
 
 The `model_path` argument in the commands below tells DeepSparse where the ONNX file is. It can be one of two options:   
 - `sparsezoo_stub` which identifies a pre-sparsified model in [SparseZoo](https://sparsezoo.neuralmagic.com)
-- `local_path` to `[model_name].onnx` in a local filesystem. ONNX files can be generated through SparseML's [export pathway - UPDATE LINK](link.md#4-exporting-to-onnx)
+- `local_path` to `[model_name].onnx` in a filesystem. ONNX files can be generated through SparseML's [export pathway - UPDATE LINK](link.md#4-exporting-to-onnx)
 
 In the example below, we will use the **pruned-quantized** [XXX] from the SparseZoo, identified by the following stub:
 ```
