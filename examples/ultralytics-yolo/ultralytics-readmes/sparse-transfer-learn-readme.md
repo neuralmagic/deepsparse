@@ -120,5 +120,4 @@ sparseml.yolov5.export_onnx \
    --dynamic
 ```
 
-You have successfully created an inference-optimized sparse version of YOLOv5 trained on custom data! Be sure to deploy with a sparsity-aware runtime
-to gain a performance speedup!
+You have successfully created and exported a inference-optimized sparse version of YOLOv5 trained on custom data! Be sure to deploy with a sparsity-aware runtime to gain a performance speedup!
