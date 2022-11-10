@@ -36,8 +36,6 @@ the weights closest to zero are iteratively removed over several epochs or train
 The remaining non-zero weights are then fine-tuned to the objective function. This iterative process enables 
 the model to slowly adjust to a new optimization space after pathways are removed before pruning again.
 
-SparseML enables you to run GMP on YOLOv5 with a single command line call.
-
 </details>
         
 <details>
@@ -50,8 +48,6 @@ are wrapped with fake quantization operators. The fake quantization operators in
 the weights and activations down to `INT8` on the forward pass but enable a full update of 
 the weights at `FP32` on the backward pass. This allows the model to adapt to the loss of 
 information from quantization on the forward pass. 
-
-SparseML enables you to run QAT on YOLOv5 with a single command line call.
     
 </details>
     
@@ -65,14 +61,13 @@ The easiest way to create a Recipe for usage with SparseML is downloading a pre-
 from the open-source SparseZoo model repo. SparseZoo has a recipe available for each version of YOLOv5 and 
 YOLOv5p. Checkout them out [here **UPDATE LINK**](https://sparsezoo.neuralmagic.com/).
 
-Some users may want to tweak a Recipe or create one from scratch. We will explain the `Modifiers` 
-used in the Recipes for **GMP** and **QAT**. 
-
 >:rotating_light: **Pro-Tip:** The pre-made Recipes in SparseZoo are state-of-the-art. Try the pre-made recipes
 >and tweak as needed.
 
 >:rotating_light: **Pro-Tip:** Consider using [Sparse Transfer Learning **UPDATE LINK**](Ultralytics-STL-README.md). 
 >It is an easier way to create a sparse model trained on your data.
+
+We will explain the `Modifiers` used in the Recipes for **GMP** and **QAT**. 
 
 <details>
     <summary><b>:scissors: GMP Modifiers</b></summary>
@@ -84,7 +79,7 @@ An example `recipe.yaml` file for GMP is the following:
 # gmp-recipe.yaml
    
 modifiers:
-    !GlobalMagnitudePruningModifier
+    - !GlobalMagnitudePruningModifier
         init_sparsity: 0.05
         final_sparsity: 0.8
         start_epoch: 0.0
@@ -92,18 +87,18 @@ modifiers:
         update_frequency: 1.0
         params: __ALL_PRUNABLE__
 
-    !SetLearningRateModifier
+    - !SetLearningRateModifier
         start_epoch: 0.0
         learning_rate: 0.05
 
-    !LearningRateFunctionModifier
+    - !LearningRateFunctionModifier
         start_epoch: 30.0
         end_epoch: 50.0
         lr_func: cosine
         init_lr: 0.05
         final_lr: 0.001
 
-    !EpochRangeModifier
+    - !EpochRangeModifier
         start_epoch: 0.0
         end_epoch: 50.0
 ```
