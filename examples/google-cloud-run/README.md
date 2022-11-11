@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Deploying the DeepSparse Server with GCP's Cloud Run
+# Deploying the DeepSparse Server in GCP's Cloud Run
 
 [GCP's Cloud Run](https://cloud.google.com/run) is a serverless, event-driven environment for making quick deployments for various applications including machine learning in various programming languages. The most convenient Cloud Run feature is delegating server management to GCP's infrastructure allowing the developer to focus on the deployment with minimal management.
 
@@ -22,48 +22,49 @@ limitations under the License.
 
 ## Requirements
 
-The listed steps can be easily completed using `Python` and `Bash`. The following
-credentials, tools, and libraries are also required:
+The listed steps can be easily completed using `Python` and `Bash`. The following tools, and libraries are also required:
 * The [gcloud CLI](https://cloud.google.com/sdk/gcloud)
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
 
-**Before starting, replace the `billing_id` PLACEHOLDER string with your GCP billing ID at the bottom of the SparseRun class in the `endpoint.py` file. Your billing id, can be found in the `BILLING` menu of your GCP console. It should be alphanumeric and look something like this:** `XXXXX-XXXXX-XXXXX`
+**Before starting, replace the `billing_id` PLACEHOLDER with your own GCP billing ID at the bottom of the SparseRun class in the `endpoint.py` file. It should be alphanumeric and look something like this: `XXXXX-XXXXX-XXXXX`.**
 
+**Your billing id can be found in the `BILLING` menu of your GCP console or you can run the following `gcloud` command to get a list of all of your billing ids:**
 
+```bash
+gcloud beta billing accounts list
+```
 
-## Quick Start
-
+## Installation
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/google-cloud-run
 ```
 
 ## Model Configuration
-
-They current server configuration is running `token classification`. To alter the model, task or other parameters (i.e., num. of cores, workers, batch size etc.), please edit the `config.yaml` file.
+The current server configuration is running `token classification`. To alter the model, task or other parameters (e.g., num. of cores, workers, routes, batch size etc.), please edit the `config.yaml` file.
 
 ## Create Endpoint
-Run the following command to build your Cloud Run endpoint.
+Run the following command to build the Cloud Run endpoint.
 
 ```bash
 python endpoint.py create
 ```
 ## Call Endpoint
+After the endpoint has been staged (~3 minutes), gcloud CLI will output the API Service URL. You can start making requests by passing this URL **AND** its route (found in `config.yaml`) into the CloudRunClient object.
 
-After the endpoint has been staged (~3 minute), gcloud CLI will output your API Service URL. You can start making requests by passing this URL AND its route into the CloudRunClient object. The route can be configured in the `config.yaml`. 
-
-For example, if your Service URL is `https://deepsparse-cloudrun-qsi36y4uoa-ue.a.run.app` and your route is `/inference`, the complete URL passed into the client would be: `https://deepsparse-cloudrun-qsi36y4uoa-ue.a.run.app/inference`
+For example, if the Service URL is `https://deepsparse-cloudrun-qsi36y4uoa-ue.a.run.app` and the route is `/inference`, the URL passed into the client would be: `https://deepsparse-cloudrun-qsi36y4uoa-ue.a.run.app/inference`
 
 
-Afterwards, you can call your endpoint by passing in your text input:
+Afterwards, call your endpoint by passing in the text input:
 
 ```python
 from client import CloudRunClient
 
-CR = CloudRunClient("https://sparserun-xxxxxxxxxx-xx.a.run.app/{ROUTE}")
+CR = CloudRunClient("https://deepsparse-cloudrun-qsi36y4uoa-ue.a.run.app/inference")
 answer = CR.client("Drive from California to Texas!")
 print(answer)
 ```
+
 `[{'entity': 'LABEL_0','word': 'drive', ...}, 
 {'entity': 'LABEL_0','word': 'from', ...}, 
 {'entity': 'LABEL_5','word': 'california', ...}, 
@@ -86,11 +87,10 @@ curl -X 'POST' \
 }'
 ```
 
-FYI, on your first cold start, it will take a ~60 seconds to get your first inference, but afterwards, it should be in milliseconds.
+FYI, on the first cold start, it will take a ~60 seconds to get your first inference, but afterwards, it should be in milliseconds.
 
 ## Delete Endpoint
-
-If you want to delete your Cloud Run endpoint, run:
+If you want to delete the Cloud Run endpoint, run:
 
 ```bash
 python endpoint.py destroy
