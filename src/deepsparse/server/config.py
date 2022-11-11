@@ -111,9 +111,13 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
-    data_logging: Optional[
-        List[Dict[str, Union[List[MetricFunctionConfig], str]]]
-    ] = Field(default=None, description="Specifies the rules for the data logging")
+    data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(
+        default=None,
+        description="Specifies the rules for the data logging. "
+        "It relates a key (name of the logging target) "
+        "to a list of metric functions that are to be applied"
+        "to this target prior to logging.",
+    )
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,

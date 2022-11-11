@@ -30,14 +30,12 @@ endpoints:
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
       data_logging:
-        - target: pipeline_outputs
-          functions:
+        pipeline_outputs:
            - func: identity
              frequency: 5
            - func: tests/test_data/metric_functions.py:user_defined_identity
              frequency: 5
-        - target: engine_outputs
-          functions:
+        engine_outputs:
            - func: np.mean
              frequency: 3"""  # noqa E501
 
@@ -72,14 +70,12 @@ endpoints:
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
       data_logging:
-        - target: pipeline_outputs
-          functions:
+        pipeline_outputs:
            - func: tests/test_data/metric_functions.py:user_defined_identity
              frequency: 2
              target_loggers:
                 - python
-        - target: engine_outputs
-          functions:
+        engine_outputs:
            - func: np.mean
              frequency: 3"""
 
@@ -105,10 +101,9 @@ endpoints:
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
       data_logging:
-        - target: re:*_outputs
-          functions:
-           - func: tests/test_data/metric_functions.py:user_defined_identity
-             frequency: 2"""
+        re:*_outputs:
+          - func: tests/test_data/metric_functions.py:user_defined_identity
+            frequency: 2"""
 
 
 @pytest.mark.parametrize(

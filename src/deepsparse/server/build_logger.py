@@ -96,16 +96,13 @@ def build_function_loggers(
     for endpoint in endpoints:
         if endpoint.data_logging is None:
             continue
-        for target_logging_dict in endpoint.data_logging:
-            target = target_logging_dict["target"]
+        for target, metric_functions in endpoint.data_logging.items():
             target_identifier = _get_target_identifier(
                 endpoint.name or endpoint.task, target
             )
-            for metric_function_cfg in target_logging_dict["functions"]:
+            for metric_function in metric_functions:
                 function_loggers.append(
-                    _build_function_logger(
-                        metric_function_cfg, target_identifier, loggers
-                    )
+                    _build_function_logger(metric_function, target_identifier, loggers)
                 )
     return function_loggers
 
