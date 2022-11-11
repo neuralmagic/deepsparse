@@ -15,10 +15,9 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
-from deepsparse.loggers.config import TargetLoggingConfig
 from deepsparse.tasks import SupportedTasks
 
 
@@ -49,6 +48,45 @@ class ImageSizesConfig(BaseModel):
     )
 
 
+class MetricFunctionConfig(BaseModel):
+    """
+    Holds logging configuration for a metric function
+    """
+
+    func: str = Field(
+        description="The name that specifies the metric function to be applied. "
+        "It can be: "
+        "1) a built-in function name "
+        "2) a dynamic import function of the form "
+        "'<path_to_the_python_script>:<function_name>' "
+        "3) a framework function (e.g. np.mean or torch.mean)"
+    )
+
+    frequency: int = Field(
+        description="Specifies how often the function should be applied"
+        "(measured in numbers of inference calls).",
+        default=1,
+    )
+
+    target_loggers: Optional[List[str]] = Field(
+        default=None,
+        description="Overrides the global logger configuration in "
+        "the context of the DeepSparse server. "
+        "If not None, this configuration stops logging data "
+        "to globally specified loggers, and will only use "
+        "the subset of loggers (specified here by a list of their names).",
+    )
+
+    @validator("frequency")
+    def non_zero_frequency(cls, frequency: int) -> int:
+        if frequency <= 0:
+            raise ValueError(
+                f"Passed frequency: {frequency}, but "
+                "frequency must be a positive integer greater equal 1"
+            )
+        return frequency
+
+
 class EndpointConfig(BaseModel):
     name: Optional[str] = Field(
         default=None,
@@ -73,7 +111,13 @@ class EndpointConfig(BaseModel):
         default=1, description="The batch size to compile the model for."
     )
 
-    data_logging: Optional[List[TargetLoggingConfig]]
+    data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(
+        default=None,
+        description="Specifies the rules for the data logging. "
+        "It relates a key (name of the logging target) "
+        "to a list of metric functions that are to be applied"
+        "to this target prior to logging.",
+    )
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
         default=None,
@@ -147,11 +191,11 @@ class ServerConfig(BaseModel):
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
-    loggers: Optional[List[Union[str, Dict[str, Dict[str, Any]]]]] = Field(
-        default=None,
+    loggers: Dict[str, Optional[Dict[str, Any]]] = Field(
+        default={},
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
-            "Set to None for no loggers. Default is `None`."
+            "Set to {} for no loggers. Default is {}."
         ),
     )
 

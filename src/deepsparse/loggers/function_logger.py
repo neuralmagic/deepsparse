@@ -18,7 +18,7 @@ Implementation of the Function Logger
 from typing import Any, Callable
 
 from deepsparse.loggers import BaseLogger, MetricCategories
-from deepsparse.loggers.helpers import match_and_extract
+from deepsparse.loggers.helpers import NO_MATCH, match_and_extract
 
 
 __all__ = ["FunctionLogger"]
@@ -26,14 +26,14 @@ __all__ = ["FunctionLogger"]
 
 class FunctionLogger(BaseLogger):
     """
-    DeepSparse logger that applies functions to raw,
-    logged values (collected in the log() method)
-    according to FunctionLogger's attributes
+    DeepSparse logger that applies a metric function to
+    a raw value (received in the log() method) and then
+    passes it to a child logger.
 
     :param logger: A child DeepSparse Logger object
-    :param target_identifier: The string that needs to match the
-        `identifier` (argument to the log() method),
-        so that the FunctionLogger applies
+    :param target_identifier: Needs to match the
+        `identifier` (argument to the log() method).
+        Only then the FunctionLogger applies
         the metric function and logs the data
     :param function_name: Name of the metric function
     :param function: The metric function to be applied
@@ -52,14 +52,19 @@ class FunctionLogger(BaseLogger):
 
         self.logger = logger
         self.target_identifier = target_identifier
+        self.function = function
         self.function_name = function_name or function.__name__
         self.frequency = frequency
-        self.function = function
 
         self._function_call_counter = 0
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
+        If the identifier matches the target identifier, the value of interest
+        is being extracted and the metric function is applied to the extracted value.
+        The result is then logged to the child logger with the appropriate
+        frequency
+
         :param identifier: The name of the item that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
@@ -67,7 +72,9 @@ class FunctionLogger(BaseLogger):
         extracted_value = match_and_extract(
             template=self.target_identifier, identifier=identifier, value=value
         )
-        if extracted_value:
+        # `None` can be a valid, extracted value.
+        #  Hence, we check for `NO_MATCH` flag
+        if extracted_value != NO_MATCH:
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
                 self.logger.log(

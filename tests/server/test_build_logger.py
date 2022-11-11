@@ -1,3 +1,4 @@
+# to be filled
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,141 +15,117 @@
 import yaml
 
 import pytest
-from deepsparse import loggers as logger_objects
-from deepsparse.loggers.config import (
-    MultiplePipelinesLoggingConfig,
-    PipelineLoggingConfig,
-)
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig
 
 
-YAML_CONFIG_1 = """endpoints:
-    - task: question_answering
-      route: /unpruned/predict
-      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-      batch_size: 1"""  # noqa E501
-LOGGER_1 = None
-
-YAML_CONFIG_2 = """loggers:
-    - python
-endpoints:
-    - task: question_answering
-      route: /unpruned/predict
-      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
-      batch_size: 1"""  # noqa E501
-LOGGER_2 = logger_objects.PythonLogger()
-
-YAML_CONFIG_3 = """loggers:
-    - python
+yaml_config_1 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    python:
 endpoints:
     - task: question_answering
       route: /unpruned/predict
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
       data_logging:
-        - target: pipeline_outputs
-          mappings:
-           - func: builtins:identity
-             frequency: 2
-           - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity 
-             frequency: 3
-        - target: engine_outputs
-          mappings:
+        pipeline_outputs:
+           - func: identity
+             frequency: 5
+           - func: tests/test_data/metric_functions.py:user_defined_identity
+             frequency: 5
+        engine_outputs:
            - func: np.mean
-             frequency: 4"""  # noqa E501
+             frequency: 3"""  # noqa E501
 
-PIPELINE_CONFIG_1 = """
-- name: question_answering
-  targets:
-    - target: pipeline_outputs
-      mappings:
-       - func: builtins:identity
-         frequency: 2
-       - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity 
-         frequency: 3
-    - target: engine_outputs
-      mappings:
-       - func: np.mean
-         frequency: 4"""  # noqa E501
+yaml_config_2 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    python: {}
+endpoints:
+    - task: question_answering
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1"""
 
-LOGGER_3 = logger_objects.FunctionLogger(
-    logger=logger_objects.PythonLogger(),
-    config=MultiplePipelinesLoggingConfig(
-        pipelines=[
-            PipelineLoggingConfig(**pipeline_config)
-            for pipeline_config in yaml.safe_load(PIPELINE_CONFIG_1)
-        ]
-    ),
-)
+yaml_config_3 = """
+num_cores: 2
+num_workers: 2
+endpoints:
+    - task: question_answering
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1"""
 
-YAML_CONFIG_4 = """loggers:
-    - python
+yaml_config_4 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    python:
 endpoints:
     - task: question_answering
       route: /unpruned/predict
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
       data_logging:
-        - target: pipeline_outputs
-          mappings:
-           - func: builtins:identity
+        pipeline_outputs:
+           - func: tests/test_data/metric_functions.py:user_defined_identity
              frequency: 2
-           - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity
-             frequency: 3
+             target_loggers:
+                - python
+        engine_outputs:
+           - func: np.mean
+             frequency: 3"""
+
+yaml_config_5 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    invalid_logger_name:
+endpoints:
+    - task: question_answering
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1"""
+
+yaml_config_6 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    python:
+endpoints:
     - task: question_answering
       route: /unpruned/predict
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
-      name: question_answering_
       data_logging:
-        - target: engine_outputs
-          mappings:
-           - func: np.mean
-             frequency: 4"""  # noqa E501
-
-PIPELINE_CONFIG_2 = """- name: question_answering
-  targets:
-    - target: pipeline_outputs
-      mappings:
-       - func: builtins:identity
-         frequency: 2
-       - func: tests/deepsparse/loggers/test_data/metric_functions.py:user_defined_identity
-         frequency: 3
-- name: question_answering_
-  targets:
-    - target: engine_outputs
-      mappings:
-       - func: np.mean
-         frequency: 4"""  # noqa E501
-
-LOGGER_4 = logger_objects.FunctionLogger(
-    logger=logger_objects.PythonLogger(),
-    config=MultiplePipelinesLoggingConfig(
-        pipelines=[
-            PipelineLoggingConfig(**pipeline_config)
-            for pipeline_config in yaml.safe_load(PIPELINE_CONFIG_2)
-        ]
-    ),
-)
+        re:*_outputs:
+          - func: tests/test_data/metric_functions.py:user_defined_identity
+            frequency: 2"""
 
 
 @pytest.mark.parametrize(
-    "yaml_server_config,expected_logger",
+    "yaml_config, raises_error, returns_logger,num_function_loggers",
     [
-        (YAML_CONFIG_1, LOGGER_1),
-        (YAML_CONFIG_2, LOGGER_2),
-        (YAML_CONFIG_3, LOGGER_3),
-        (YAML_CONFIG_4, LOGGER_4),
+        (yaml_config_1, False, True, 3),
+        (yaml_config_2, False, True, 0),
+        (yaml_config_3, False, False, None),
+        (yaml_config_4, False, True, 2),
+        (yaml_config_5, True, None, None),
+        (yaml_config_6, False, True, 1),
     ],
 )
-def test_build_logger(yaml_server_config, expected_logger):
-    obj = yaml.safe_load(yaml_server_config)
+def test_build_logger(yaml_config, raises_error, returns_logger, num_function_loggers):
+    obj = yaml.safe_load(yaml_config)
     server_config = ServerConfig(**obj)
+    if raises_error:
+        with pytest.raises(ValueError):
+            build_logger(server_config)
+        return
     logger = build_logger(server_config)
-    _is_equal(logger, expected_logger)
-
-
-def _is_equal(logger, expected_logger):
-    # figure out a smart way to test here
-    assert True
+    assert bool(logger) == returns_logger
+    if not returns_logger:
+        return
+    assert len(logger.loggers) == num_function_loggers

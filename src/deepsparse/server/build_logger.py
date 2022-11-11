@@ -16,116 +16,128 @@
 Specifies the mapping from the ServerConfig to the DeepSparse Logger
 """
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from deepsparse import loggers as logger_objects
-from deepsparse.loggers.config import (
-    MultiplePipelinesLoggingConfig,
-    PipelineLoggingConfig,
-)
+from deepsparse import BaseLogger, FunctionLogger, MultiLogger, PythonLogger
+from deepsparse.loggers.helpers import get_function_and_function_name
 from deepsparse.server.config import ServerConfig
 
 
 __all__ = ["build_logger"]
 
-SUPPORTED_LOGGER_NAMES = ["python", "prometheus"]
+_LOGGER_MAPPING = {"python": PythonLogger}
 
 
-def build_logger(server_config: ServerConfig) -> logger_objects.BaseLogger:
+def build_logger(server_config: ServerConfig) -> BaseLogger:
     """
     Builds a DeepSparse logger from the ServerConfig.
 
-    The process follows the following tree-like hierarchy:
+    The process follows the following hierarchy:
 
-    First: the "leaf" loggers are being built.
-    Second: if there are multiple "leaf" loggers,
-            they are wrapped inside the MultiLogger. (TODO)
-            else: we continue with the single "leaf" logger.
-    Third: if specified in the ServerConfig, the resulting logger is wrapped inside
-            the FunctionLogger.
-    Fourth: lastly, the resulting loggers is wrapped inside the SubprocessLogger (TODO)
+    First: if global logger config is provided,
+        the "leaf" loggers are built.
+
+    Second: if data logging config is specified, a set of
+        function loggers wraps around the appropriate "leaf" loggers.
+
+    Third: The resulting loggers are wrapped inside a MultiLogger.
 
     :param server_config: the Server configuration model
     :return: a DeepSparse logger instance
     """
 
     loggers_config = server_config.loggers
-    if loggers_config is None:
-        return loggers_config
-
-    multi_pipelines_logging = get_multiple_pipelines_logging_config(server_config)
-
-    loggers = []
-    for logger_config in loggers_config:
-        if isinstance(logger_config, str):
-            # instantiating a logger without arguments
-            logger_name = logger_config
-            leaf_logger = _build_single_logger(logger_name=logger_name)
-        else:
-            # instantiating a logger with arguments
-            logger_name, logger_arguments = tuple(logger_config.items())[0]
-            leaf_logger = _build_single_logger(
-                logger_name=logger_name, logger_arguments=logger_arguments
-            )
-
-        loggers.append(leaf_logger)
-
-    # logger = logger_objects.MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
-    logger = loggers[0]
-    logger = (
-        logger_objects.FunctionLogger(logger=logger, config=multi_pipelines_logging)
-        if multi_pipelines_logging
-        else logger
-    )
-
-    return logger
-
-
-def get_multiple_pipelines_logging_config(
-    server_config: ServerConfig,
-) -> MultiplePipelinesLoggingConfig:
-    """
-    Create a MultiplePipelinesLoggingConfig from the ServerConfig
-
-    :param server_config: the Server configuration model
-    :return: a MultiplePipelinesLoggingConfig model
-    """
-    pipeline_logging_configs = []
-    endpoints = server_config.endpoints
-    for endpoint in endpoints:
-        name = endpoint.name or endpoint.task
-        targets = endpoint.data_logging
-        if not targets:
-            continue
-
-        pipeline_logging_configs.append(
-            PipelineLoggingConfig(name=name, targets=targets)
-        )
-    if not pipeline_logging_configs:
+    if not loggers_config:
         return None
 
-    return MultiplePipelinesLoggingConfig(pipelines=pipeline_logging_configs)
+    leaf_loggers = build_leaf_loggers(loggers_config)
+    loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
+    return MultiLogger(loggers)
 
 
-def _build_single_logger(
-    logger_name: str, logger_arguments: Optional[Dict[str, Any]] = None
-) -> Union[logger_objects.PythonLogger]:
-    if logger_name == "python":
-        if logger_arguments:
+def build_leaf_loggers(
+    loggers_config: Dict[str, Optional[Dict[str, Any]]]
+) -> Dict[str, BaseLogger]:
+    """
+    Instantiate a set of leaf loggers according to the configuration
+
+    :param loggers_config: Config; specifies the leaf loggers to be instantiated
+    :return: A dictionary that contains a mapping from a logger's name to its instance
+    """
+    loggers = {}
+    for logger_name, logger_arguments in loggers_config.items():
+
+        logger_to_instantiate = _LOGGER_MAPPING.get(logger_name)
+        if logger_to_instantiate is None:
             raise ValueError(
-                "Attempting to create PythonLogger. "
-                "The logger takes no arguments. "
-                f"Attempting to pass arguments: {logger_arguments}"
+                f"Unknown logger name: {logger_name}. "
+                f"supported logger names: {list(_LOGGER_MAPPING.keys())}"
             )
-        return logger_objects.PythonLogger()
+        logger_arguments = {} if logger_arguments is None else logger_arguments
+        leaf_logger = logger_to_instantiate(**logger_arguments)
+        loggers.update({logger_name: leaf_logger})
+    return loggers
 
-    elif logger_name == "prometheus":
-        return logger_objects.PrometheusLogger(**logger_arguments)
 
+def build_function_loggers(
+    endpoints: List["EndpointConfig"], loggers: Dict[str, BaseLogger]  # noqa F821
+) -> List[FunctionLogger]:
+    """
+    Build a set of function loggers according to the configuration.
+
+    :param endpoints: A list of server's endpoint configurations;
+        the configurations contain the information about the metric
+        functions (MetricFunctionConfig objects)
+        and the targets that the functions are to be applied to
+    :param loggers: The created "leaf" loggers
+    :return: A list of FunctionLogger instances
+    """
+    function_loggers = []
+    for endpoint in endpoints:
+        if endpoint.data_logging is None:
+            continue
+        for target, metric_functions in endpoint.data_logging.items():
+            target_identifier = _get_target_identifier(
+                endpoint.name or endpoint.task, target
+            )
+            for metric_function in metric_functions:
+                function_loggers.append(
+                    _build_function_logger(metric_function, target_identifier, loggers)
+                )
+    return function_loggers
+
+
+def _build_function_logger(
+    metric_function_cfg: "MetricFunctionConfig",  # noqa F821
+    target_identifier: str,
+    loggers: Dict[str, BaseLogger],
+) -> FunctionLogger:
+    # automatically extract function and function name
+    # from the function_identifier
+    function, function_name = get_function_and_function_name(metric_function_cfg.func)
+    # if metric function has attribute `target_loggers`,
+    # override the global logger configuration
+    if metric_function_cfg.target_loggers:
+        target_loggers = [
+            leaf_logger
+            for name, leaf_logger in loggers.items()
+            if name in metric_function_cfg.target_loggers
+        ]
     else:
+        target_loggers = list(loggers.values())
 
-        raise ValueError(
-            "Attempting to create a DeepSparse Logger with "
-            f"an unknown logger_name: {logger_name}. "
-            f"Supported names are: {SUPPORTED_LOGGER_NAMES}"
-        )
+    return FunctionLogger(
+        logger=MultiLogger(loggers=target_loggers),
+        target_identifier=target_identifier,
+        function=function,
+        function_name=function_name,
+        frequency=metric_function_cfg.frequency,
+    )
+
+
+def _get_target_identifier(endpoint_name: str, target_name: str) -> str:
+    if target_name.startswith("re:"):
+        # if target name starts with "re:", it is a regex,
+        # and we don't need to add the endpoint name to it
+        return target_name
+    return f"{endpoint_name}.{target_name}"
