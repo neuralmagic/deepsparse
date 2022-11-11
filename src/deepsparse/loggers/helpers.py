@@ -11,18 +11,88 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Helpers functions for logging
 """
+import importlib
+import os.path
 import re
-from typing import Any, Optional, Sequence, Tuple, Union
+from types import ModuleType
+from typing import Any, Callable, Optional, Sequence, Tuple, Union
+
+import numpy
+
+import deepsparse.loggers.metric_functions.built_ins as built_ins
+import torch
 
 
-__all__ = ["match_and_extract", "do_slicing_and_indexing"]
+__all__ = [
+    "match_and_extract",
+    "get_function_and_function_name",
+    "NO_MATCH",
+    "do_slicing_and_indexing",
+]
+
+NO_MATCH = "NO_MATCH"
 
 
-def match_and_extract(template: str, identifier: str, value: Any) -> Optional[Any]:
+def get_function_and_function_name(
+    function_identifier: str,
+) -> Tuple[Callable[[Any], Any], str]:
+    """
+    Parse function identifier and return the function as well as its name
+
+    :param function_identifier: Can be one of the following:
+
+        1. framework function, e.g.
+            "torch.mean" or "numpy.max"
+
+        2. built-in function, e.g.
+            "function_name"
+            note: function needs to be available in the module
+            with built-in functions, see the imports above)
+
+        3. user-defined function in the form of
+           '<path_to_the_python_script>:<function_name>', e.g.
+           "{...}/script_name.py:function_name"
+
+    :return: A tuple (function, function name)
+    """
+
+    if function_identifier.startswith("torch."):
+        function, function_name = _get_function_and_function_name_from_framework(
+            framework=torch, function_identifier=function_identifier
+        )
+        return function, function_name
+
+    if function_identifier.startswith("numpy.") or function_identifier.startswith(
+        "np."
+    ):
+        function, function_name = _get_function_and_function_name_from_framework(
+            framework=numpy, function_identifier=function_identifier
+        )
+        return function, function_name
+
+    if len(function_identifier.split(":")) == 2:
+        # assume a dynamic import function of the form
+        # '<path_to_the_python_script>:<function_name>'
+        path, func_name = function_identifier.split(":")
+        if not os.path.exists(path):
+            raise ValueError(f"Path to the metric function file {path} does not exist")
+        spec = importlib.util.spec_from_file_location(
+            "user_defined_metric_functions", path
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return getattr(module, func_name), func_name
+
+    func_name = function_identifier
+    if not hasattr(built_ins, func_name):
+        raise ValueError(f"Metric function {func_name} not found")
+    return getattr(built_ins, func_name), func_name
+
+
+def match_and_extract(template: str, identifier: str, value: Any) -> Any:
     """
     Attempts to match the template against the identifier. If successful,
     uses the remainder to extract the item of interest inside `value` data structure.
@@ -30,10 +100,13 @@ def match_and_extract(template: str, identifier: str, value: Any) -> Optional[An
     :param template: A string that defines the matching criteria
     :param identifier: A string that will be compared with the template
     :param value: Raw value from the logger
-    :return: (Optional) Value of interest
+    :return: Value of interest or string flag that indicates that there was no match
     """
     is_match, remainder = check_identifier_match(template, identifier)
-    return possibly_extract_value(value, remainder) if is_match else None
+    if is_match:
+        return possibly_extract_value(value, remainder)
+    else:
+        return NO_MATCH
 
 
 def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
@@ -88,7 +161,7 @@ def _check_square_brackets(sub_remainder: str) -> Tuple[str, str]:
 
 
 def do_slicing_and_indexing(
-    value: Union[Sequence, "numpy.ndarray", "torch.Tensor"],  # noqa: F821
+    value: Union[Sequence, numpy.ndarray, torch.Tensor],
     square_brackets: str,
 ) -> Any:
     """
@@ -147,3 +220,13 @@ def check_identifier_match(
         return re.match(pattern, identifier) is not None, None
 
     return False, None
+
+
+def _get_function_and_function_name_from_framework(
+    framework: ModuleType, function_identifier: str
+) -> Tuple[Callable[[Any], Any], str]:
+    func_attributes = function_identifier.split(".")[1:]
+    module = framework
+    for attribute in func_attributes:
+        module = getattr(module, attribute)
+    return module, ".".join(func_attributes)

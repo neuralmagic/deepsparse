@@ -12,10 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base_logger import *
+import json
 
-# flake8: noqa
-from .constants import *
-from .function_logger import *
-from .multi_logger import *
-from .python_logger import *
+from deepsparse import Pipeline
+
+
+pipeline = Pipeline.create(
+    task="sentiment_analysis", model_path="./model/deployment", batch_size=1
+)
+
+
+def lambda_handler(event, context):
+
+    payload = json.loads(event["body"])
+    inference = pipeline(**payload)
+
+    return {
+        "statusCode": 200,
+        "body": inference.json(),
+    }
