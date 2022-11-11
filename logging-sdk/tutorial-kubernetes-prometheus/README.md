@@ -15,8 +15,9 @@ This tutorial demonstrates how to monitor a DeepSparse in a Kubernetes cluster w
 #### Installation 
 
 This tutotial requires the following:
-- Docker
-- Minikube
+- `docker`
+- `minikube`
+- `kubectl`
 
 #### Code 
 
