@@ -153,14 +153,62 @@ See created services:
 kubectl get svc --namespace default
 ```
 
-### 3. Add Prometheus
+## 3. Add Prometheus Monitoring
+
+### Prometheus Operator
+
+We will use the Prometheus Operator. For more info, see [here](https://blog.container-solutions.com/prometheus-operator-beginners-guide).
 
 Clone and setup the Prometheus Operator using [`kube-prometheus`](https://github.com/prometheus-operator/kube-prometheus)
 ```bash
 git clone https://github.com/prometheus-operator/kube-prometheus.git --depth 1
 kubectl create -f kube-prometheus/manifests/setup
 kubectl create -f kube-prometheus/manifests/
+kubectl get svc --namespace monitoring # displays the services
 ```
+As you can see, server services are now up and running. This includes alert managers and things like Grafana. We care about `prometheus-k8s` and `grafana`.
+
+### ServiceMonitor
+
+The `ServiceMonitor` custom resource defintion allows you to declare how a dynamic set of services should be monitored with desired configuration defined using label selection. Let's take a look at how the `ServiceMonitor` is declared in `image_classification_deployment.yaml`:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: image-classification-service
+
+# ... same as above
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-classification
+
+# ... same as above
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: image-classification-monitor  # the name of the monitor
+  labels:
+    app: image-classification
+spec:
+  selector:
+    matchLabels:
+      app: image-classification       # the name of the service this monitor should observe
+  endpoints:
+    - interval: 5s                    # scraping frequency
+      port: monitoring
+```
+
+We included this `ServiceMonitor` in the `deployment.yaml` files, so it is running within our default namespace.
+
+Run the following to see which `ServiceMonitors` are running:
+```bash
+kubectl get servicemonitor
+```
+
 
 Enable External Communication with the Cluster
 ```bash
@@ -169,7 +217,7 @@ minikube tunnel
 ```
 
 ### Architecture
-We will create a cluster with the following architecture:
+We now have a cluster with the following architecture.
 
 <img width="50%" src="images/img_1.png"/>
 
