@@ -1,0 +1,13 @@
+# config.yaml
+
+loggers:                      
+  prometheus:           
+    port: 6100
+    
+# all system logs on (all are pre-defined)
+system_logging: on
+
+# specify which data logs to perform
+data_logging:
+    pipeline_inputs:
+    # to be updated once we have code landed
