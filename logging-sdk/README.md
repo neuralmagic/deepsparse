@@ -22,103 +22,86 @@ DeepSparse Logging is designed to provide maximum flexibility for users to extra
 ## Metrics 
 DeepSparse Logging provides access to two types of metrics:
 - **System Logging Metrics** give operations teams access to granual performance metrics, diagnosing and isolating deployment system health. Examples include CPU utilization and query latency.
-     - [List of System Logging Metrics](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/system-logging-metrics.md)
+     - See [below](system-logging-metrics) for a full list of available metrics.
 
 - **Data Logging Metrics** give ML teams access to data at each stage of an ML pipeline, supporting downsteam tasks like measuring accuracy and data drift. Examples include raw inputs and projections thereof such as mean pixel value.
-     - [List of Built-in Data Logging Functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions)
-     - [Custom Data Logging Functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) 
+     - See [below](data-logging-functions) for a full list of built-in functions and how to create a custom function
 
 ## Configuration
 DeepSparse Logging is configured via YAML files.
 
-<details>
-    <summary><b>System Logging</b></summary>
-    </br>
-
-System Logging is *enabled* by default and all metrics are pre-defined. System Logging can be disabled 
-globally or at the Group level by adding the key-value pairs with `on` or `off` status.
-
-The following format is used:
+**System Logging** is *enabled* by default and all metrics are pre-defined. It can be disabled 
+globally or at the group level by adding the key-value pairs with `on` or `off` status.
 
 ```yaml
-# system_logging: on/off            # [OPTIONAL] flag to turn all system logging on/off; note: if omitted, defaults to on
+# system_logging: on/off    # flag to turn all system logging on/off; defaults to on
 
 system_logging:
-    deployment_details: on/off      # [OPTIONAL] flag to turn off deployment details group; if omitted, defaults to on
-    request_details: on/off         # [OPTIONAL] flag to turn off request details group; if omitted, defaults to on
-    prediction_latency: on/off      # [OPTIONAL] flag to turn off prediction latency group; if omitted, defaults to on
-    dynamic_batch_latency: on/off   # [OPTIONAL] flag to turn off dynamic batch latency group; if omitted, defaults to on
-    resource_utilization: on/off    # [OPTIONAL] flag to turn off resource utilization group; if omitted, defaults to on     
+    group: on/off           # flag to turn off a group; if omitted, defaults to on
 ```
 
-A tangible example YAML snippit is below:
+<details>
+     <summary>Click for a tangible example YAML snippit</summary>
 
 ```yaml
-# system_logging: off                << note: optional flag to turn off everything
-
 system_logging:
     deployment_details: off
     request_details: off
     prediction_latency: on 
     dynamic_batch_latency: off
-    # resource_utilization: on      << note: omitted groups are turned on by default
+    # resource_utilization: on      << omitted groups are turned on by default
 ```
 In this example, system logging is turned on globally. The Deployment Details, Request Details, and Dynamic Batch Latency groups are turned off while Prediction Latency and Resource Utilization groups are turned on.
 
 </details>
-
-> :warning: System Logging is ***enabled*** by default
-
-<details>
-    <summary><b>Data Logging</b></summary>
-    </br>
         
-Data Logging is *disabled* by default. A YAML configuration file is used to specify which data or functions thereof to log.
-
+**Data Logging** is *disabled* by default. A YAML configuration file is used to specify which data or functions thereof to log. 
 There are 4 `stages` in the inference pipeline where Data Logging can occur:
 
 |Stage            |Pipeline Inputs      |Engine Inputs  |Engine Outputs     |Pipeline Outputs   |
 |--------------   |---------------------|---------------|-------------------|-------------------|
 |**Description**  |Inputs passed by user|Preprocessed tensors passed to model|Outputs from model (logits)|Postprocessed output returned to user|
-|`stage`      |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
+|`stage`       |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
     
-The following format is used to apply a list of [built-in](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions) and/or [custom functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) to a Pipeline `stage`:
+The following format is used to apply a list of functions to a `stage`:
  
-```yaml     
-stage:                              # options: pipeline_inputs, engine_inputs, engine_outputs, pipeline_outputs
-  mapping:
-    # first function
-    - func: builtins/identity       # [REQUIRED STR] function identifier  (built-in or path to custom)
-      frequency: 1000               # [OPTIONAL INT] logging frequency    (default: 1000 - logs once per 1000 predictions)
-      target: all                   # [OPTIONAL STR] logger               (default: all)
-    # second function
-    - func: path/to/custom.py:my_fn  
-      frequency: 10000
-      target: prometheus
-  
-  # ... list of as many functions as desired
+```yaml
+data_logging:
+    stage:
+      mapping:
+        # first function
+        - func: builtins:foo            # [REQUIRED STR] function identifier  (built-in or path to custom)
+          frequency: 1000               # [OPTIONAL INT] logging frequency    (default: 1000 - logs once per 1000 predictions)
+          target: all                   # [OPTIONAL STR] logger               (default: all)
+        # second function
+        - func: path/to/custom.py:bar  
+          frequency: 10000
+          target: prometheus
+        # ... list of as many functions as desired
 ```
 
-A tangible example YAML snippit is below:
+<details>
+     <summary>Click for a tangible example YAML snippit</summary>
 
 ```yaml
-pipeline_inputs:
-  mapping:
-    - func: builtins/identity                   # built-in function (logs raw data)
-      frequency: 100                            # logs raw data once per 100 predictions
-      target: prometheus                        # only logs to prometheus
-    - func: /path/to/logging_fns.py:my_fn       # custom function
-      # frequency:                              # not specified, defaults to once per 1000 predictions
-      # target:                                 # not specified, defaults to all loggers
+data_logging:
+     pipeline_inputs:
+       mapping:
+         - func: builtins/max                        # built-in function (logs raw data)
+           frequency: 100                            # logs raw data once per 100 predictions
+           target: prometheus                        # only logs to prometheus
+         - func: /path/to/logging_fns.py:my_fn       # custom function
+           # frequency:                              # not specified, defaults to once per 1000 predictions
+           # target:                                 # not specified, defaults to all loggers
 
-engine_inputs:
-  mapping:
-    - func: builtins/channel-mean               # pre-defined function (logs per channel mean pixel)
-      frequency: 10                             # logs channel-mean once per 10 predictions
-      # target:                                 # not specified, defaults to all loggers
+     engine_inputs:
+       mapping:
+         - func: builtins/channel-mean               # pre-defined function (logs per channel mean pixel)
+           frequency: 10                             # logs channel-mean once per 10 predictions
+           # target:                                 # not specified, defaults to all loggers
 
-# engine_outputs:                             # not specified, so not logged
-# pipeline_outputs:                           # not specified, so not logged
+     # engine_outputs:                             # not specified, so not logged
+     # pipeline_outputs:                           # not specified, so not logged
 ```
 This configuration does the following at each stage of the Pipeline:
 - **Pipeline Inputs**: Raw data (from the `identity` function) is logged to Prometheus once every 100 predictions and a custom function called `my_fn` is applied once every 1000 predictions and is logged to all loggers.
@@ -128,18 +111,14 @@ This configuration does the following at each stage of the Pipeline:
 
 </details>
 
-> :warning: Data Logging is ***disabled*** by default
-
 ## Loggers
 DeepSparse Logging provides users with ability to log to Prometheus out-of-the-box as well as the ability to add custom loggers.
 
-### Built-In Loggers
-
-[TBD] - what should we say about high dimensional (images/vectors) vs metrics
+### Prometheus Logger
 
 [@DAMIAN] - need your help here
 
-### Custom Loggers
+### Custom Logger
 
 [@DAMIAN] - need your help here
 
@@ -149,9 +128,7 @@ There is a [tutorial creating a custom logger to an S3 Bucket](https://github.co
 
 Both the `Server` and `Pipeline` interfaces can run with logging.
 
-<details> 
-    <summary><b>Server Usage</b></summary>
-    </br>
+### Server Usage
 
 The startup command (`deepsparse.server`), accepts an optional YAML configuration file (which contains both logging-specific and general configuration details) via the `--config` argument. For example:
 
@@ -159,8 +136,11 @@ The startup command (`deepsparse.server`), accepts an optional YAML configuratio
 deepsparse.server --config config.yaml
 ```
 
-The logging is configured as described above. System Logging is defined globally at the `Server` level while Data Logging is defined at the `Endpoint` level. In the example below, we create a `Server` with two `Endpoints` (one with a dense BERT model and one with a sparse BERT model). We can see that System Logging is defined globally and Data Logging is defined per `Endpoint`.
+The logging is configured as described above. System Logging is defined globally at the `Server` level while Data Logging is defined at the `Endpoint` level. In the example below, we create a `Server` with two `Endpoints` (one with a dense and one with a sparse BERT model).
 
+<details>
+    <summary>Click to see the config file</summary>
+       
 ```yaml
 # config.yaml
 
@@ -188,9 +168,11 @@ endpoints:
                 - func: builtins:sequence_length
                   frequency: 500
                   target: prometheus
+                  
                 - func: path/to/custom/metrics.py:fn2
                   # frequency:                    < not specified, so logs at default rate of 1/1000 inferences
                   # target:                       < not specified, so logs to all
+                  
              - target: engine_inputs
                 mappings:
                 - func: buildins:identity
@@ -208,11 +190,9 @@ endpoints:
 
 </details>
 
-<details> 
-    <summary><b>Pipeline Usage</b></summary>
-    </br>
+### Pipeline Usage
 
-The `ManagerLogger` class will handles logging for a `Pipeline`. It is passed as the `logger` argument to a `Pipeline`. `ManagerLogger` is initialized with the `config` argument, which is a path to a local logging configuration file in the format described above. 
+The `ManagerLogger` class handles logging for a `Pipeline`. It is passed as the `logger` argument to a `Pipeline`. `ManagerLogger` is initialized with the `config` argument, which is a path to a local logging configuration file in the format described above. 
 
 If no `ManagerLogger` is passed to a `Pipeline`, then logging is disabled.
 
@@ -239,6 +219,9 @@ pipeline = Pipeline.create(
 my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
 
+<details> 
+    <summary>Click to see the config file</summary>
+    
 ```yaml
 # logging-config.yaml
 
@@ -281,6 +264,31 @@ There are serveral examples integrating Prometheus and DeepSparse logging availa
 - [Monitoring while running Kubernetes](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-kubernetes-prometheus)
 - [Custom Logger (S3 Bucket)](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-custom-logger)
 
+## System Logging Metrics
+
+**TO BE UPDATED** ONCE WE HAVE THE LIST OF METRICS FOR 1.3
+
+### Groups
+The following metric groups are enabled by default:
+|Group                |Description  |Identifier in YAML Config Files|
+|---------------------|-------------|-------------------------------|
+|Deployment Details   |Details of the configuration|`deployment_details`           |
+|Request Details      |Number of inferences |`request_details`              |
+|Prediction Latency   |Latency of each prediction by pipeline stage |`prediction_latency`|
+|Resource Utilizaiton |Utilization of CPU and memory|`resource_utilization`|
+
+### Full List of Metrics
+The following metrics are logged for each group:
+
+#### Prediction Latency
+Metric           |Metric Name              |Description                              |Granularity    |Usage  |Frequency      |
+|---------------- |-------------------------|-----------------------------------------|---------------|-------|---------------|
+|Total Time       |`sl_pl_total_time`       |End-to-end prediction time               |Per Pipeline   |All    |Per Prediction |
+|Preprocess Time  |`sl_pl_preprocess_time`  |Time spent in pre-processing step        |Per Pipeline   |All    |Per Prediction |
+|Engine Time      |`sl_pl_engine_time`      |Time spent in engine forward pass        |Per Pipeline   |All    |Per Prediction |
+|Postprocess Time |`sl_pl_postprocess_time` |Time spent in post-processing step       |Per Pipeline   |All    |Per Prediction |
+
+
 ##  Data Logging Functions
 
 **TO BE UPDATED** ONCE WE HAVE LIST FOR 1.3
@@ -289,11 +297,11 @@ There are serveral examples integrating Prometheus and DeepSparse logging availa
 
 Built-in functions are predefined in DeepSparse. 
    
-|Function Name  |Description                        |Compatible Loggers |Compatible Pipelines |Compatible Targets |
-|---------------|-----------------------------------|-------------------|---------------------|-------------------|
-|`mean_pixel_1` |Mean pixel value in first channel  |Prometheus         |Computer Vision      |`pipeline_inputs`  |
-|`mean_pixel_2` |Mean pixel value in second channel |Prometheus         |Computer Vision      |`pipeline_inputs`  |
-|`mean_pixel_3` |Mean pixel value in third channel  |Prometheus         |Computer Vision      |`pipeline_inputs`  |  
+|Function Name  |Description                        |
+|---------------|-----------------------------------|
+|`mean_pixel_1` |Mean pixel value in first channel  |
+|`mean_pixel_2` |Mean pixel value in second channel |
+|`mean_pixel_3` |Mean pixel value in third channel  |
 
 They are applied in the form `func: builtins/function_name`. The YAML file would look as follows:
 ``` yaml
@@ -313,11 +321,7 @@ data_logging:
 
 ### Custom Functions
 
-Users can defined custom functions in Python in a file, for example `custom.py`, which should be stored in the filesystem of the application. 
-  
-The custom functions are then specified in the YAML configuration file in the form `func: path/to/custom.py:function_name`.
-  
-An example Python file looks as follows:
+Users can define custom functions in Python in a file, for example `custom.py`.
   
 ```python
 # custom.py
@@ -327,7 +331,8 @@ import numpy as np
 def my_function(engine_inputs: np.array) -> float:
   return np.mean(engine_inputs)
 ```
-The YAML file would look as follows:
+
+The custom functions are then specified in the YAML configuration file in the form `func: path/to/custom.py:function_name`:
 ``` yaml
 # config.yaml
   
@@ -342,34 +347,3 @@ data_logging:
       - frequency: 1000
       - target: prometheus
 ``` 
-
-## System Logging Metrics
-
-**TO BE UPDATED** ONCE WE HAVE THE LIST OF METRICS FOR 1.3
-
-Below is the list and details details on the System Logging Metrics.
-
-### Groups
-The following metric groups are enabled by default:
-|Group                |Description  |Identifier in YAML Config Files|
-|---------------------|-------------|-------------------------------|
-|Deployment Details   |xxx          |`deployment_details`           |
-|Request Details      |xxx          |`request_details`              |
-|Prediction Latency   |xxx          |`prediction_latency`           |
-|Engine Batch Latency |xxx          |`batch_latency`                |
-|Resource Utilizaiton |xxx          |`resource_utilization`         |
-
-### Full List of Metrics
-The following metrics are logged for each group:
-
-|Group              |Metric           |Metric Name              |Description                              |Granularity    |Usage  |Frequency      |
-|-------------------|---------------- |-------------------------|-----------------------------------------|---------------|-------|---------------|
-|Prediction Latency |Total Time       |`sl_pl_total_time`       |End-to-end prediction time               |Per Pipeline   |All    |Per Prediction |
-|Prediction Latency |Preprocess Time  |`sl_pl_preprocess_time`  |Time spent in pre-processing step        |Per Pipeline   |All    |Per Prediction |
-|Prediction Latency |Queue Time       |`sl_pl_queue_time`       |Time spent in queue (waiting for engine) |Per Pipeline   |All    |Per Prediction |
-|Prediction Latency |Engine Time      |`sl_pl_engine_time`      |Time spent in engine forward pass        |Per Pipeline   |All    |Per Prediction |
-|Prediction Latency |Postprocess Time |`sl_pl_postprocess_time` |Time spent in post-processing step       |Per Pipeline   |All    |Per Prediction |
-
-## DeepSparse Enterprise
-
-Interested in running in production? [Try DeepSparse Enterprise for 90 days free](link/to/trial/page).
