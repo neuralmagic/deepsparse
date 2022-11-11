@@ -6,7 +6,7 @@ DeepSparse is also integrated with Prometheus, which simplifies the process of s
 
 This tutorial demonstrates how to monitor a DeepSparse in a Kubernetes cluster.
 
-**There are five steps:**
+**There are four steps:**
 - Build the DeepSparse Server Docker Image
 - Create Kubernetes Cluster + Enable External Communication
 - Spin Up the Clients
