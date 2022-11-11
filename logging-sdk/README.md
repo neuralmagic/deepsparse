@@ -32,40 +32,24 @@ DeepSparse Logging is configured via YAML files.
 
 **System Logging** is *enabled* by default and all metrics are pre-defined. It can be disabled 
 globally or at the group level by adding the key-value pairs with `on` or `off` status.
-
-```yaml
-# system_logging: on/off    # flag to turn all system logging on/off; defaults to on
-
-system_logging:
-    group: on/off           # flag to turn off a group; if omitted, defaults to on
-```
-
-<details>
-     <summary>Click for a tangible example YAML snippit</summary>
-
-```yaml
-system_logging:
-    deployment_details: off
-    request_details: off
-    prediction_latency: on 
-    dynamic_batch_latency: off
-    # resource_utilization: on      << omitted groups are turned on by default
-```
-In this example, system logging is turned on globally. The Deployment Details, Request Details, and Dynamic Batch Latency groups are turned off while Prediction Latency and Resource Utilization groups are turned on.
-
-</details>
         
 **Data Logging** is *disabled* by default. A YAML configuration file is used to specify which data or functions thereof to log. 
 There are 4 `stages` in the inference pipeline where Data Logging can occur:
 
-|Stage            |Pipeline Inputs      |Engine Inputs  |Engine Outputs     |Pipeline Outputs   |
-|--------------   |---------------------|---------------|-------------------|-------------------|
-|**Description**  |Inputs passed by user|Preprocessed tensors passed to model|Outputs from model (logits)|Postprocessed output returned to user|
-|`stage`       |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
-    
-The following format is used to apply a list of functions to a `stage`:
- 
+````
+stages: pipeline_inputs >> engine_inputs >> engine_outputs >> pipeline_outputs
+````
+
+The following YAML format is used to specify the configuration:
 ```yaml
+loggers:
+     - prometheus
+     - custom_logger
+
+# system_logging: on/off    # flag to turn all system logging on/off; defaults to on
+system_logging:
+    group: on/off           # flag to turn off a group; if omitted, defaults to on
+    
 data_logging:
     stage:
       mapping:
@@ -84,12 +68,24 @@ data_logging:
      <summary>Click for a tangible example YAML snippit</summary>
 
 ```yaml
+loggers:
+    - prometheus
+    - custom_logger
+
+system_logging:
+    deployment_details: off
+    request_details: off
+    prediction_latency: on 
+    dynamic_batch_latency: off
+    # resource_utilization: on      << omitted groups are turned on by default
+    
 data_logging:
      pipeline_inputs:
        mapping:
-         - func: builtins/max                        # built-in function (logs raw data)
-           frequency: 100                            # logs raw data once per 100 predictions
-           target: prometheus                        # only logs to prometheus
+         - func: builtins/max                        # built-in function
+           frequency: 100                            # logs once per 100 predictions
+           target: prometheus                        # logs to prometheus
+           
          - func: /path/to/logging_fns.py:my_fn       # custom function
            # frequency:                              # not specified, defaults to once per 1000 predictions
            # target:                                 # not specified, defaults to all loggers
@@ -97,17 +93,20 @@ data_logging:
      engine_inputs:
        mapping:
          - func: builtins/channel-mean               # pre-defined function (logs per channel mean pixel)
-           frequency: 10                             # logs channel-mean once per 10 predictions
+           frequency: 10                             # logs once per 10 predictions
            # target:                                 # not specified, defaults to all loggers
 
-     # engine_outputs:                             # not specified, so not logged
-     # pipeline_outputs:                           # not specified, so not logged
+     # engine_outputs:                               # not specified, so not logged
+     # pipeline_outputs:                             # not specified, so not logged
 ```
-This configuration does the following at each stage of the Pipeline:
-- **Pipeline Inputs**: Raw data (from the `identity` function) is logged to Prometheus once every 100 predictions and a custom function called `my_fn` is applied once every 1000 predictions and is logged to all loggers.
-- **Engine Inputs**: The `channel-mean` function is applied once per 10 predictions and is logged to all loggers.
-- **Engine Outputs**: No logging occurs at this stage
-- **Pipeline Outputs**: No logging occurs at this stage
+This configuration does the following system logging:
+- Deployment Details, Request Details, and Dynamic Batch Latency groups are turned off 
+- Prediction Latency and Resource Utilization groups are turned on
+
+This configuration does the following data logging at each respective stage of the pipeline:
+- Pipeline Inputs: `xxx` data is logged to Prometheus once every 100 predictions and a custom function called `my_fn` is applied once every 1000 predictions and is logged to all loggers.
+- Engine Inputs: The `xxx` function is applied once per 10 predictions and is logged to all loggers.
+- Engine Outputs + Pipeline Outputs: No logging occurs at this stage
 
 </details>
 
@@ -153,9 +152,7 @@ system_logging:
      request_details: off
      prediction_latency: on 
      dynamic_batch_latency: off
-     # resource_utilization:                      < not specified, so enabled by default
-
-# system_logging: off                             < optional flag to turn off all system logging
+     # resource_utilization:                    < not specified, so enabled by default
 
 endpoints:
      - task: question_answering
@@ -163,29 +160,30 @@ endpoints:
        model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
        batch_size: 1
        data_logging:
-          - target: pipeline_inputs
+          - pipeline_inputs
                mappings:
                 - func: builtins:sequence_length
                   frequency: 500
                   target: prometheus
                   
                 - func: path/to/custom/metrics.py:fn2
-                  # frequency:                    < not specified, so logs at default rate of 1/1000 inferences
-                  # target:                       < not specified, so logs to all
+                  # frequency:                  < defaults to every 1000 inferences
+                  # target:                     < defaults to all
                   
-             - target: engine_inputs
+             - engine_inputs
                 mappings:
                 - func: buildins:identity
                   frequency: 1000
                   target: custom_logger
-             # - target: engine_outputs           < not specified, so nothing logged at this target
-             # - target: pipeline_outputs         < not specified, so nothing logged at this target
+                  
+             # - engine_outputs                 < nothing logged
+             # - pipeline_outputs               < nothing logged
              
      - task: question_answering
        route: /sparse/predict
        model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none
        batch_size: 1
-       # data_logging:                            < not specified, so no data logging for this endpoint
+       # data_logging:                          < nothing logged at this endpoint 
 ```
 
 </details>
@@ -232,24 +230,24 @@ system_logging:
      dynamic_batch_latency: off
      # resource_utilization:               < not specified, so enabled by default
 
-# system_logging: on                       < optional flag to turn off all system logging; OPTIONS: [ON/OFF]
-
 data_logging:
-  - target: pipeline_inputs
+  - pipeline_inputs
        mappings:
         - func: builtins:sequence_length
           frequency: 500
           target: prometheus
         - func: path/to/custom/metrics.py:fn2
-          # frequency:                    < not specified, so logs at default rate of 1/1000 inferences
-          # target:                       < not specified, so logs to all
-     - target: engine_inputs
+          # frequency:                    < defaults to 1/1000 inferences
+          # target:                       < defaults to all loggers
+   
+   - engine_inputs
         mappings:
         - func: buildins:identity
           frequency: 1000
           target: custom_logger
-     # - target: engine_outputs           < not specified, so nothing logged at this target
-     # - target: pipeline_outputs         < not specified, so nothing logged at this target
+          
+     # - engine_outputs           < not specified, so nothing logged at this target
+     # - pipeline_outputs         < not specified, so nothing logged at this target
 ```
 </details>
 
