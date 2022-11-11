@@ -48,7 +48,7 @@ In this tutorial, we will create two model endpoints, one for Image Classificati
 
 We have provided a `Dockerfile`, which downloads DeepSparse and launches a DeepSparse Server with a config file.
 
-We have provided the pre-made `config` files for an image classification and a sentiment analysis endpoint:
+We have provided the pre-made `config` files for an image classification and a sentiment analysis Server:
 - `image_classification_server_config.yaml`
 - `sentiment_analysis_server_config.yaml`
 
