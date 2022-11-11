@@ -199,6 +199,28 @@ class ServerConfig(BaseModel):
         ),
     )
 
+    @validator("endpoints")
+    def set_unique_endpoint_names(
+        cls, endpoints: List[EndpointConfig]
+    ) -> List[EndpointConfig]:
+        """
+        Assert that the endpoints in ServerConfig have unique names.
+        If endpoint does not have a `name` specified, the endpoint is
+        named `{task_name}-{idx}`.
+
+        :param endpoints: configuration of server's endpoints
+        :return: configuration of server's endpoints
+        """
+        counter_task_name_used = {endpoint.task: 0 for endpoint in endpoints}
+        # make sure that the endpoints in ServerConfig have unique names.
+        for endpoint_config in endpoints:
+            if endpoint_config.name is None:
+                task_name = endpoint_config.task
+                idx = counter_task_name_used[task_name]
+                counter_task_name_used[task_name] += 1
+                endpoint_config.name = f"{endpoint_config.task}-{idx}"
+        return endpoints
+
 
 def endpoint_diff(
     old_cfg: ServerConfig, new_cfg: ServerConfig

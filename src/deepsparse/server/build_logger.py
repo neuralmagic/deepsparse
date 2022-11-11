@@ -103,9 +103,7 @@ def build_function_loggers(
         if endpoint.data_logging is None:
             continue
         for target, metric_functions in endpoint.data_logging.items():
-            target_identifier = _get_target_identifier(
-                endpoint.name or endpoint.task, target
-            )
+            target_identifier = _get_target_identifier(endpoint.name, target)
             for metric_function in metric_functions:
                 function_loggers.append(
                     _build_function_logger(metric_function, target_identifier, loggers)
