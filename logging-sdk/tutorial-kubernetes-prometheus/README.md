@@ -191,11 +191,23 @@ kubectl get svc --namespace default
 ```
 
 
-Enable External Communication with the Cluster
+Enable External Communication with the Cluster. Open up a new terminal and run:
 ```bash
 # create a route to deployed services and sets their Ingress to their ClusterIP
-minikube tunnel
+minikube tunnel --cleanup
+
+>> Status:	
+>>	machine: minikube
+>>	pid: 53825
+>>	route: 10.96.0.0/12 -> 192.168.49.2
+>>	minikube: Running
+>>	services: [image-classification-service, sentiment-analysis-service]
+>>    errors: 
+>>		minikube: no errors
+>>		router: no errors
+>>		loadbalancer emulator: no errors
 ```
+Note that the `tunnel` does not return. You must keep this process running.
 
 ### Architecture
 We now have a cluster with the following architecture.
