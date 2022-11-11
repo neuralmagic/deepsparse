@@ -1,0 +1,2 @@
+https://github.com/neuralmagic/transformers/releases/download/v1.2/transformers-4.18.0.dev0-py3-none-any.whl
+deepsparse>=1.2.0
