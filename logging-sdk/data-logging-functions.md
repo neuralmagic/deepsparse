@@ -71,7 +71,7 @@ Built-in functions are predefined in DeepSparse. They are applied in the form `f
 
 ## Custom Functions
 
-Users can defined custom functions in Python in a file, for example named `custom.py`, which should be stored in the filesystem of the application. 
+Users can defined custom functions in Python in a file, for example `custom.py`, which should be stored in the filesystem of the application. 
   
 The custom functions are then specified in the YAML configuration file in the form `func: path/to/custom.py:function_name`.
   
