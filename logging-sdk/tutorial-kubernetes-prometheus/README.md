@@ -16,9 +16,7 @@ This tutorial demonstrates how to monitor a DeepSparse in a Kubernetes cluster w
 
 This tutotial requires the following:
 - Docker
-- Docker Compose
 - Minikube
-- DeepSparse Server (`pip install deepsparse[server]`)
 
 #### Code 
 
