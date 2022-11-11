@@ -21,8 +21,6 @@ from typing import Any, Optional, Sequence, Tuple, Union
 
 __all__ = ["match_and_extract", "do_slicing_and_indexing"]
 
-NO_MATCH = ""
-
 
 def match_and_extract(template: str, identifier: str, value: Any) -> Optional[Any]:
     """
@@ -72,7 +70,11 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
 
 
 def _check_square_brackets(sub_remainder: str) -> Tuple[str, str]:
+    # split the sub_remainder into two parts:
+    # 1. the sub_remainder string
+    # 2. a list of consecutive indexing/slicing operations
     sub_remainder, *square_brackets = sub_remainder.split("[")
+    # join the list of consecutive indexing/slicing operations
     square_brackets = ",".join(
         [re.search(r"(.*?)\]", x).group(1) for x in square_brackets]
     )
@@ -87,7 +89,7 @@ def _check_square_brackets(sub_remainder: str) -> Tuple[str, str]:
 
 def do_slicing_and_indexing(
     value: Union[Sequence, "numpy.ndarray", "torch.Tensor"],  # noqa: F821
-    square_brackets: str,  # noqa F821
+    square_brackets: str,
 ) -> Any:
     """
     Perform slicing and/or indexing on the provided value
