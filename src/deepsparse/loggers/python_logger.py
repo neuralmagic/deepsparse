@@ -18,7 +18,7 @@ Implementation of the Python Logger that logs to the stdout
 from datetime import datetime
 from typing import Any
 
-from deepsparse.loggers import BaseLogger, MetricCategories, validate_identifier
+from deepsparse.loggers import BaseLogger, MetricCategories
 
 
 __all__ = ["PythonLogger"]
@@ -29,7 +29,6 @@ class PythonLogger(BaseLogger):
     Python logger that writes the collected logs to stdout
     """
 
-    @validate_identifier
     def log(self, identifier: str, value: Any, category: MetricCategories):
         """
         Collect information from the pipeline and pipe it them to the stdout

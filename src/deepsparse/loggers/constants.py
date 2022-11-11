@@ -37,6 +37,14 @@ class MetricCategories(Enum):
 
 
 def validate_identifier(identifier: str):
+    """
+    Makes sure that the identifier does not contain any
+    of the characters that would introduce ambiguity
+    when parsing the identifier
+
+    :param identifier: a string that is used
+        to identify a log
+    """
     for char in UNSUPPORTED_IDENTIFIER_CHARS:
         if char in identifier:
             raise ValueError(
