@@ -1,5 +1,7 @@
 # Data Logging Functions
 
+**TO BE UPDATED** ONCE WE HAVE LIST FOR 1.3
+
 This page provides an overview of the data logging capabilities in DeepSparse Logging, including:
 - List of predefined built-in functions that can be applied at each stage
 - User guide for creating custom functions that can be applied at each stage
@@ -66,8 +68,6 @@ Built-in functions are predefined in DeepSparse. They are applied in the form `f
 |`mean_pixel_1` |Mean pixel value in first channel  |Prometheus         |Computer Vision      |`pipeline_inputs`  |
 |`mean_pixel_2` |Mean pixel value in second channel |Prometheus         |Computer Vision      |`pipeline_inputs`  |
 |`mean_pixel_3` |Mean pixel value in third channel  |Prometheus         |Computer Vision      |`pipeline_inputs`  |  
-  
-[@DAMIAN] - need help filling out this section
 
 ## Custom Functions
 
