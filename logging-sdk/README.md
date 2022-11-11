@@ -22,11 +22,11 @@ DeepSparse Logging is designed to provide maximum flexibility for users to extra
 ## Metrics 
 DeepSparse Logging provides access to two types of metrics:
 - **System Logging Metrics** give operations teams access to granual performance metrics, diagnosing and isolating deployment system health. Examples include CPU utilization and query latency.
-     - [System Logging Metrics](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/system-logging-metrics.md)
+     - [List of System Logging Metrics](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/system-logging-metrics.md)
 
 - **Data Logging Metrics** give ML teams access to data at each stage of an ML pipeline, supporting downsteam tasks like measuring accuracy and data drift. Examples include raw inputs and projections thereof such as mean pixel value.
-     - [Built-in Data Logging Functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions)
-     - [Custom Data Logging Function](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) 
+     - [List of Built-in Data Logging Functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions)
+     - [Custom Data Logging Functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) 
 
 ## Configuration
 DeepSparse Logging is configured via YAML files.
@@ -280,6 +280,95 @@ There are serveral examples integrating Prometheus and DeepSparse logging availa
 - [Pipeline with Prometheus / Grafana](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-pipeline-prometheus)
 - [Monitoring while running Kubernetes](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-kubernetes-prometheus)
 - [Custom Logger (S3 Bucket)](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-custom-logger)
+
+##  Data Logging Functions
+
+**TO BE UPDATED** ONCE WE HAVE LIST FOR 1.3
+  
+### Built-in Functions
+
+Built-in functions are predefined in DeepSparse. 
+   
+|Function Name  |Description                        |Compatible Loggers |Compatible Pipelines |Compatible Targets |
+|---------------|-----------------------------------|-------------------|---------------------|-------------------|
+|`mean_pixel_1` |Mean pixel value in first channel  |Prometheus         |Computer Vision      |`pipeline_inputs`  |
+|`mean_pixel_2` |Mean pixel value in second channel |Prometheus         |Computer Vision      |`pipeline_inputs`  |
+|`mean_pixel_3` |Mean pixel value in third channel  |Prometheus         |Computer Vision      |`pipeline_inputs`  |  
+
+They are applied in the form `func: builtins/function_name`. The YAML file would look as follows:
+``` yaml
+# config.yaml
+  
+loggers:
+  prometheus:
+    port:5555
+  
+data_logging:
+  pipeline_inputs:
+    mapping:
+      - func: builtin:function
+      - frequency: 1000
+      - target: prometheus
+``` 
+
+### Custom Functions
+
+Users can defined custom functions in Python in a file, for example `custom.py`, which should be stored in the filesystem of the application. 
+  
+The custom functions are then specified in the YAML configuration file in the form `func: path/to/custom.py:function_name`.
+  
+An example Python file looks as follows:
+  
+```python
+# custom.py
+
+import numpy as np
+
+def my_function(engine_inputs: np.array) -> float:
+  return np.mean(engine_inputs)
+```
+The YAML file would look as follows:
+``` yaml
+# config.yaml
+  
+loggers:
+  prometheus:
+    port:5555
+  
+data_logging:
+  pipeline_inputs:
+    mapping:
+      - func: path/to/custom.py:my_function
+      - frequency: 1000
+      - target: prometheus
+``` 
+
+## System Logging Metrics
+
+**TO BE UPDATED** ONCE WE HAVE THE LIST OF METRICS FOR 1.3
+
+Below is the list and details details on the System Logging Metrics.
+
+### Groups
+The following metric groups are enabled by default:
+|Group                |Description  |Identifier in YAML Config Files|
+|---------------------|-------------|-------------------------------|
+|Deployment Details   |xxx          |`deployment_details`           |
+|Request Details      |xxx          |`request_details`              |
+|Prediction Latency   |xxx          |`prediction_latency`           |
+|Engine Batch Latency |xxx          |`batch_latency`                |
+|Resource Utilizaiton |xxx          |`resource_utilization`         |
+
+### Full List of Metrics
+The following metrics are logged for each group:
+
+|Group              |Metric           |Metric Name              |Description                              |Granularity    |Usage  |Frequency      |
+|-------------------|---------------- |-------------------------|-----------------------------------------|---------------|-------|---------------|
+|Prediction Latency |Total Time       |`sl_pl_total_time`       |End-to-end prediction time               |Per Pipeline   |All    |Per Prediction |
+|Prediction Latency |Preprocess Time  |`sl_pl_preprocess_time`  |Time spent in pre-processing step        |Per Pipeline   |All    |Per Prediction |
+|Prediction Latency |Queue Time       |`sl_pl_queue_time`       |Time spent in queue (waiting for engine) |Per Pipeline   |All    |Per Prediction |
+|Prediction Latency |Engine Time      |`sl_pl_engine_time`      |Time spent in engine forward pass        |Per Pipeline   |All    |Per Prediction |
+|Prediction Latency |Postprocess Time |`sl_pl_postprocess_time` |Time spent in post-processing step       |Per Pipeline   |All    |Per Prediction |
 
 ## DeepSparse Enterprise
 
