@@ -191,7 +191,7 @@ class ServerConfig(BaseModel):
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
-    loggers: Dict[str, Dict[str, Any]] = Field(
+    loggers: Dict[str, Optional[Dict[str, Any]]] = Field(
         default={},
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
