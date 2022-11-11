@@ -99,8 +99,4 @@ data_logging:
       - func: path/to/custom.py:my_function
       - frequency: 1000
       - target: prometheus
-```
-
-In this way, user
-  
-[@DAMIAN] - can users pass arguments as well?
+``` 
