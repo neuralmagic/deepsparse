@@ -13,37 +13,9 @@
 # limitations under the License.
 
 
-from unittest import mock
-
-from deepsparse.loggers import ManagerLogger, PrometheusLogger
-from deepsparse.server.helpers import logger_manager_from_config
-from tests.helpers import find_free_port
+from deepsparse.loggers import PythonLogger
+from deepsparse.server.helpers import default_logger
 
 
-@mock.patch.object(PrometheusLogger, "_setup_client", lambda _: None)
-def test_logger_manager_from_config(tmp_path):
-    port = find_free_port()
-    text_log_save_dir = "/home/deepsparse-server/prometheus"
-    text_log_save_freq = 30
-
-    yaml_str = f"""
-    prometheus:
-        port: {port}
-        text_log_save_dir: {text_log_save_dir}
-        text_log_save_freq: {text_log_save_freq}
-    """
-    config_path = tmp_path / "loggers.yaml"
-    with open(config_path, "w") as config_writer:
-        config_writer.write(yaml_str)
-
-    logger_manager = logger_manager_from_config(str(config_path))
-    assert isinstance(logger_manager, ManagerLogger)
-
-    loggers = logger_manager.loggers
-    assert len(loggers) == 1
-    assert "prometheus" in loggers
-    logger = loggers["prometheus"]
-    assert isinstance(logger, PrometheusLogger)
-    assert logger.port == port
-    assert logger.text_log_save_dir == text_log_save_dir
-    assert logger.text_log_save_freq == text_log_save_freq
+def test_default_logger(tmp_path):
+    assert isinstance(default_logger(), PythonLogger)

@@ -143,7 +143,14 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     def _add_endpoint_endpoint(cfg: EndpointConfig):
         if cfg.name is None:
             cfg.name = f"endpoint-{len(app.routes)}"
-        _add_endpoint(app, server_config, cfg, executor, context, server_logger)
+        _add_endpoint(
+            app,
+            server_config,
+            cfg,
+            executor,
+            context,
+            server_logger,
+        )
         # force regeneration of the docs
         app.openapi_schema = None
         return True
@@ -161,7 +168,12 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     # create pipelines & endpoints
     for endpoint_config in server_config.endpoints:
         _add_endpoint(
-            app=app, server_config=server_config, endpoint_config=endpoint_config, executor=executor, context=context, server_logger = server_logger
+            app=app,
+            server_config=server_config,
+            endpoint_config=endpoint_config,
+            executor=executor,
+            context=context,
+            server_logger=server_logger,
         )
 
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")

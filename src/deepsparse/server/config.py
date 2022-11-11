@@ -47,6 +47,7 @@ class ImageSizesConfig(BaseModel):
         description="The list of image sizes the model should accept"
     )
 
+
 class MetricFunctionConfig(BaseModel):
     """
     Holds logging configuration for a metric function
@@ -116,7 +117,6 @@ class EndpointConfig(BaseModel):
         "It relates a key (name of the logging target) "
         "to a list of metric functions that are to be applied"
         "to this target prior to logging.",
-
     )
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
@@ -191,7 +191,7 @@ class ServerConfig(BaseModel):
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
-    loggers: Dict[str, Dict[str, Any]] = Field(
+    loggers: Dict[str, Optional[Dict[str, Any]]] = Field(
         default={},
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
