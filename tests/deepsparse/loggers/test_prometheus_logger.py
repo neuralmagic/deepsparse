@@ -16,50 +16,53 @@
 import requests
 
 import pytest
-from deepsparse import FunctionLogger, Pipeline, PrometheusLogger
+from deepsparse import PrometheusLogger
+from deepsparse.loggers import MetricCategories
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
 
-CONFIG = {
-    "target": "pipeline_inputs",
-    "mappings": [
-        {
-            "func": "tests/deepsparse/loggers/test_data/metric_functions.py:return_one",
-            "frequency": 2,
-        }
-    ],
-}
-
-PORT = find_free_port()
-
-
 @pytest.mark.parametrize(
-    "config,port, no_iterations, expected_log_count, target",
-    [(CONFIG, PORT, 20, 10, CONFIG["target"])],
+    "identifier, no_iterations, value, text_log_save_frequency, should_fail",
+    [
+        ("dummy.identifier_1", 20, 1.0, 1, False),
+        ("dummy.identifier.2", 20, 1, 5, False),
+        ("dummy.identifier.3", 20, [1.0], 10, True),
+    ],
 )
 @mock_engine(rng_seed=0)
-def test_python_logger(
-    engine, capsys, tmp_path, config, port, no_iterations, expected_log_count, target
+def test_prometheus_logger(
+    engine,
+    capsys,
+    tmp_path,
+    identifier,
+    no_iterations,
+    value,
+    text_log_save_frequency,
+    should_fail,
 ):
-    logger = FunctionLogger(
-        PrometheusLogger(
-            port=port, text_log_save_frequency=1, text_log_save_dir=tmp_path
-        ),
-        config=config,
+    port = find_free_port()
+    logger = PrometheusLogger(
+        port=port,
+        text_log_save_frequency=text_log_save_frequency,
+        text_log_save_dir=tmp_path,
     )
-    pipeline = Pipeline.create("token_classification", batch_size=1, logger=logger)
 
-    for _ in range(no_iterations):
-        pipeline("all_your_base_are_belong_to_us")
+    for idx in range(no_iterations):
+        if should_fail:
+            with pytest.raises(ValueError):
+                logger.log(identifier, value, MetricCategories.SYSTEM)
+                return
+            return
+        logger.log(identifier, value, MetricCategories.SYSTEM)
 
     response = requests.get(f"http://0.0.0.0:{port}").text
-    request_log_lines = [x for x in response.split("\n") if target in x]
-    count_request_request = float(request_log_lines[2].split(" ")[1])
+    request_log_lines = response.split("\n")
+    # line 38 is where we get '{identifier}_count {no_iterations}'
+    count_request_request = float(request_log_lines[38].split(" ")[1])
 
-    with open(pipeline.logger.logger.text_log_file_path) as f:
+    with open(logger.text_log_file_path) as f:
         text_log_lines = f.readlines()
-    text_log_lines = [x for x in text_log_lines if target in x]
-    count_request_text = float(text_log_lines[2].split(" ")[1])
+    count_request_text = float(text_log_lines[38].split(" ")[1])
 
-    assert count_request_request == count_request_text
+    assert count_request_request == count_request_text == no_iterations

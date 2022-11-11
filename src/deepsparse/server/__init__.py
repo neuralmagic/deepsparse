@@ -19,5 +19,4 @@ DeepSparse server implementation to serve ONNX files and pipelines through
 the DeepSparse Engine.
 """
 
-# disabling for now to run tests on the script `build_loggers` in the submodule
 # from .cli import main

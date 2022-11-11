@@ -27,7 +27,7 @@ from prometheus_client import REGISTRY, Summary, start_http_server, write_to_tex
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
-SUPPORTED_DATA_TYPES = [int, float]
+SUPPORTED_DATA_TYPES = (int, float)
 
 
 class PrometheusLogger(BaseLogger):
@@ -37,8 +37,8 @@ class PrometheusLogger(BaseLogger):
 
     :param port: the port used by the client. Default is 6100
     :param text_log_save_frequency: the frequency of saving the text log
-        files. E.g. if `text_log_save_frequency` = 10, text logs are dumped
-        after every tenth forward pass. Default set to 10
+        files. E.g. if `text_log_save_frequency` = 10, text logs are
+        exported after every tenth forward pass. Default set to 10
     :param text_log_save_dir: the directory where the text log files
         are saved. By default, the python working directory
     :param text_log_file_name: the name of the text log file.
@@ -54,8 +54,6 @@ class PrometheusLogger(BaseLogger):
     ):
 
         self.port = port
-        # until we have done research into persistent
-        # logs, lets save logs as .prom files
         self.text_log_save_frequency = text_log_save_frequency
         self.text_log_file_path = os.path.join(
             text_log_save_dir, text_log_file_name or "prometheus_logs.prom"
@@ -83,7 +81,15 @@ class PrometheusLogger(BaseLogger):
                 formatted_identifier, category
             )
         prometheus_metric.observe(self._validate(value))
-        self._try_export_metrics_to_textfile()
+        self._export_metrics_to_textfile()
+
+    def _export_metrics_to_textfile(self):
+        # export the metrics to a text file with
+        # the specified frequency
+        if self._counter % self.text_log_save_frequency == 0:
+            write_to_textfile(self.text_log_file_path, REGISTRY)
+            self._counter = 0
+        self._counter += 1
 
     def _add_metric_to_registry(self, identifier: str, category: str) -> Summary:
         description = (
@@ -97,20 +103,17 @@ class PrometheusLogger(BaseLogger):
         self._prometheus_metrics[identifier] = prometheus_metric
         return prometheus_metric
 
-    def _try_export_metrics_to_textfile(self):
-        if self._counter % self.text_log_save_frequency == 0:
-            write_to_textfile(self.text_log_file_path, REGISTRY)
-            self._counter = 0
-        self._counter += 1
-
     def _setup_client(self):
         # starts the Prometheus client
         start_http_server(port=self.port)
         _LOGGER.info(f"Prometheus client: started. Using port: {self.port}.")
 
     def _validate(self, value: Any) -> Any:
-        # make sure we are passing a value that can be
-        # logged by prometheus client
-        if not any(isinstance(value, datatype) for datatype in SUPPORTED_DATA_TYPES):
-            raise ValueError
+        # make sure we are passing a value that is
+        # a valid metric by prometheus client's standards
+        if not isinstance(value, SUPPORTED_DATA_TYPES):
+            raise ValueError(
+                "Prometheus logger expects the incoming values "
+                f"to be one of the type: {SUPPORTED_DATA_TYPES}"
+            )
         return value
