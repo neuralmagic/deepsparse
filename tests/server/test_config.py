@@ -18,6 +18,7 @@ import pytest
 from deepsparse.server.config import (
     EndpointConfig,
     ImageSizesConfig,
+    MetricFunctionConfig,
     SequenceLengthsConfig,
     ServerConfig,
 )
@@ -139,3 +140,38 @@ def test_yaml_load_config(tmp_path):
         obj = yaml.load(fp, Loader=yaml.Loader)
     server_config2 = ServerConfig(**obj)
     assert server_config == server_config2
+
+
+metric_function_config_yaml_1 = """
+  func: identity
+  frequency: 5
+  loggers:
+    - python"""
+
+metric_function_config_yaml_2 = """
+  func: numpy.max"""
+
+metric_function_config_yaml_3 = """
+  func: numpy.max
+  frequency: 0"""
+
+
+@pytest.mark.parametrize(
+    "config_yaml, should_fail, instance_type",
+    [
+        (metric_function_config_yaml_1, False, MetricFunctionConfig),
+        (metric_function_config_yaml_2, False, MetricFunctionConfig),
+        (
+            metric_function_config_yaml_3,
+            True,
+            MetricFunctionConfig,
+        ),  # frequency cannot be zero
+    ],
+)
+def test_function_logging_config(config_yaml, should_fail, instance_type):
+    obj = yaml.safe_load(config_yaml)
+    if should_fail:
+        with pytest.raises(Exception):
+            MetricFunctionConfig(**obj)
+    else:
+        assert MetricFunctionConfig(**obj)
