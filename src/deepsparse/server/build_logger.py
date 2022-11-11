@@ -18,14 +18,20 @@ Specifies the mapping from the ServerConfig to the DeepSparse Logger
 
 from typing import Any, Dict, List, Optional
 
-from deepsparse import BaseLogger, FunctionLogger, MultiLogger, PythonLogger
+from deepsparse import (
+    BaseLogger,
+    FunctionLogger,
+    MultiLogger,
+    PrometheusLogger,
+    PythonLogger,
+)
 from deepsparse.loggers.helpers import get_function_and_function_name
 from deepsparse.server.config import ServerConfig
 
 
 __all__ = ["build_logger"]
 
-_LOGGER_MAPPING = {"python": PythonLogger}
+_LOGGER_MAPPING = {"python": PythonLogger, "prometheus": PrometheusLogger}
 
 
 def build_logger(server_config: ServerConfig) -> BaseLogger:
