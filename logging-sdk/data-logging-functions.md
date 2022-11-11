@@ -6,16 +6,16 @@ This page provides an overview of the data logging capabilities in DeepSparse Lo
 - List of predefined built-in functions that can be applied at each stage
 - User guide for creating custom functions that can be applied at each stage
 
-As a reminder, DeepSparse Pipelines have 4 `targets` for logging.
+As a reminder, DeepSparse Pipelines have 4 `stages` for logging.
 - `pipeline-inputs`: this stage is the raw inputs passed to the pipeline by the user
 - `engine-inputs`: this stage is the tensors passed to the model (the output of pre-processing)
 - `engine-outputs`: this stage is the raw output from the model
 - `pipeline-outputs`: this stage is the post-processed data returned to the user
 
-At each `target`, a list of functions can be applied in the form:
+At each `stage`, a list of functions can be applied in the form:
 
 ```yaml
-target:
+satge:
   mapping:
     # list of functions
     - func:       [REQUIRED STR: name of the function] << builtins/function_name OR path/to/custom.py:function_name
