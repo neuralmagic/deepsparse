@@ -92,7 +92,10 @@ class TestMockEndpoints:
 
     def test_add_model_endpoint(self, app: FastAPI, client: TestClient):
         mock_pipeline = Mock(
-            input_schema=StrSchema, output_schema=int, logger=MultiLogger([])
+            side_effect=parse,
+            input_schema=StrSchema,
+            output_schema=int,
+            logger=MultiLogger([]),
         )
         _add_pipeline_endpoint(
             app,
