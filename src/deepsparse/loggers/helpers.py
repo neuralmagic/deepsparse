@@ -19,7 +19,9 @@ import re
 from typing import Any, Optional, Sequence, Tuple, Union
 
 
-__all__ = ["match_and_extract"]
+__all__ = ["match_and_extract", "do_slicing_and_indexing"]
+
+NO_MATCH = ""
 
 
 def match_and_extract(template: str, identifier: str, value: Any) -> Optional[Any]:
@@ -50,27 +52,41 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
     if not remainder:
         return value
 
-    # splits remainder into separate strings.
-    # each string can access the new nesting depth and optionally
-    # do indexing and slicing at this depth
     for sub_remainder in remainder.split("."):
-        square_brackets = re.search(r"\[(.*?)\]", sub_remainder)
-        if square_brackets:
-            # retrieve the string without the square brackets
-            sub_remainder = sub_remainder.split("[")[0]
-        # access the new nesting depth
-        value = value.__getattribute__(sub_remainder)
+        # check whether sub_remainder contains square brackets
+        # and thus needs slicing/indexing e.g. `some_key[0:2, 0]`
+        square_brackets, sub_remainder = _check_square_brackets(sub_remainder)
+        if not hasattr(value, sub_remainder):
+            raise ValueError(
+                "Attempting to access an non existing "
+                f"attribute {sub_remainder} of an object {value}"
+            )
+        value = getattr(value, sub_remainder)
 
-    if square_brackets:
-        return do_slicing_and_indexing(
-            value=value, square_brackets=square_brackets.group(1)
-        )
+        if square_brackets:
+            value = do_slicing_and_indexing(
+                value=value, square_brackets=square_brackets
+            )
 
     return value
 
 
+def _check_square_brackets(sub_remainder: str) -> Tuple[str, str]:
+    sub_remainder, *square_brackets = sub_remainder.split("[")
+    square_brackets = ",".join(
+        [re.search(r"(.*?)\]", x).group(1) for x in square_brackets]
+    )
+    if square_brackets:
+        # "some_value[0,2:4]" -> ("0,2:4", "some_value")
+        # "some_value[0][1:3]" -> ("0,1:3", "some_value")
+        return square_brackets, sub_remainder
+    else:
+        # "some_value" -> ("", "some_value")
+        return "", sub_remainder
+
+
 def do_slicing_and_indexing(
-    value: Union[Sequence, "numpy.ndarray", "torch.tensor"],
+    value: Union[Sequence, "numpy.ndarray", "torch.Tensor"],  # noqa: F821
     square_brackets: str,  # noqa F821
 ) -> Any:
     """
@@ -89,14 +105,12 @@ def do_slicing_and_indexing(
     for string_operator in square_brackets.split(","):
         if ":" in string_operator:
             # slicing
-            i, j = re.findall(r"-?\d+", string_operator)
-            i, j = int(i), int(j)
-            value = value.__getitem__(slice(i, j))
+            operator = slice(*map(int, re.findall(r"-?\d+", string_operator)))
         else:
             # indexing
-            i = int(string_operator)
-            value = value.__getitem__(i)
+            operator = int(string_operator)
 
+        value = value.__getitem__(operator)
     return value
 
 
