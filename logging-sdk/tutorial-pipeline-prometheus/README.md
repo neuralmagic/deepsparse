@@ -32,7 +32,7 @@ The repository contains all the code you need:
 └── grafana                 # specifies the design of the Grafana dashboard
     └── dashboard.json
 ```
-## 1. Create a Logging Config.
+## 1. Create a Logging Config
 
 `config.yaml` will be used by the `ManagerLogger` to configure DeepSparse Logging.
 
