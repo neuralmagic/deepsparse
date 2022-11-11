@@ -76,7 +76,7 @@ Additionally, you can also call the endpoint via a cURL command:
 
 ```bash
 curl -X 'POST' \
-  'https://sparserun-xxxxxxxxxx-xx.a.run.app/{ROUTE}' \
+  'https://deepsparse-cloudrun-qsi36y4uoa-ue.a.run.app/inference' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
