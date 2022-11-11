@@ -43,9 +43,6 @@ The repository contains all the code you need:
 ```yaml
 # server_config.yaml
 
-num_cores: 2
-num_workers: 2
-
 loggers:                        # << relevant to logging
   prometheus:           
     port: 6100
@@ -78,7 +75,7 @@ To validate that metrics are being properly exposed, visit `localhost:6100`. It 
 
 ## 2. Setup Prometheus/Grafana Stack
 
-For simplicity, we have provided `docker-compose.yaml` that spins up the containerized Prometheus/Grafana stack. In that file, we instruct `prometheus.yaml` (a [Prometheus config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)to be passed to the Prometheus container. Inside `prometheus.yaml`, the `scrape_config` has the information about the `metrics` endpoint exposed by the server on port `6100`.
+For simplicity, we have provided `docker-compose.yaml` that spins up the containerized Prometheus/Grafana stack. In that file, we instruct `prometheus.yaml` (a [Prometheus config file](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)) to be passed to the Prometheus container. Inside `prometheus.yaml`, the `scrape_config` has the information about the `metrics` endpoint exposed by the server on port `6100`.
 
 <details>
     <summary>Click to see Docker Compose file looks like</summary>
