@@ -169,7 +169,7 @@ def test_file_monitoring(delete_mock, post_mock, tmp_path: Path):
 def test_hot_reload_config_with_start_server(
     watcher_patch: mock.Mock, run_patch: mock.Mock, tmp_path: Path
 ):
-    cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers=None)
+    cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers={})
     cfg_path = str(tmp_path / "cfg.yaml")
     with open(cfg_path, "w") as fp:
         yaml.safe_dump(cfg.dict(), fp)
