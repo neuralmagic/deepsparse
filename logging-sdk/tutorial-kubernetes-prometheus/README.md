@@ -64,17 +64,43 @@ For the image classification model (task two):
 docker build -f Dockerfile --build-arg PORT=5544 --build-arg CONFIG='./image_classification_server_config.yaml` -t image_classification:latest .
 ```
 
-## 2. Create the Kubernetes Cluster
+## 2. Create the Kubernetes Cluster with Prometheus Operator
 
 The first step is to create two DeepSparse services with the image classification and sentiment analysis servers that are deployed to the Kubernetes cluster.
 
-First, run the Kuberenetes cluster.
+First, create the Kuberenetes cluster.
 
 ```bash
 eval $(minikube docker-env)
 minikube delete
 minkube start
 ```
+
+### Prometheus Operator
+
+We will use the Prometheus Operator. For more info, see [here](https://blog.container-solutions.com/prometheus-operator-beginners-guide).
+
+Clone and setup the Prometheus Operator using [`kube-prometheus`](https://github.com/prometheus-operator/kube-prometheus)
+```bash
+git clone https://github.com/prometheus-operator/kube-prometheus.git --depth 1
+kubectl create -f kube-prometheus/manifests/setup
+kubectl create -f kube-prometheus/manifests/
+kubectl get svc --namespace monitoring # displays the services
+```
+As you can see, server services are now up and running. This includes alert managers and things like Grafana. We care about `prometheus-k8s` and `grafana`.
+
+### ServiceMonitor
+
+The `ServiceMonitor` custom resource defintion allows you to declare how a dynamic set of services should be monitored with desired configuration defined using label selection. Let's take a look at how the `ServiceMonitor` is declared in `image_classification_deployment.yaml`:
+
+We included this `ServiceMonitor` in the `deployment.yaml` files, so it is running within our default namespace.
+
+Run the following to see which `ServiceMonitors` are running:
+```bash
+kubectl get servicemonitor
+```
+
+## 3. Launch DeepSparse Server Resources.
 
 Load the local docker images for boath apps into minikube. (Note: this may take a minute or two to complete).
 ```bash
@@ -137,54 +163,6 @@ spec:
             - name: monitoring
               containerPort: 6100   # monitoring port on 6100 (for prometheus)
 ---
-```
-
-Let's confirm Kubernetes set them up properly:
-
-See created pods:
-```
-kubectl get pods --namespace default
-```
-
-See created services:
-```
-kubectl get svc --namespace default
-```
-
-## 3. Add Prometheus Monitoring
-
-### Prometheus Operator
-
-We will use the Prometheus Operator. For more info, see [here](https://blog.container-solutions.com/prometheus-operator-beginners-guide).
-
-Clone and setup the Prometheus Operator using [`kube-prometheus`](https://github.com/prometheus-operator/kube-prometheus)
-```bash
-git clone https://github.com/prometheus-operator/kube-prometheus.git --depth 1
-kubectl create -f kube-prometheus/manifests/setup
-kubectl create -f kube-prometheus/manifests/
-kubectl get svc --namespace monitoring # displays the services
-```
-As you can see, server services are now up and running. This includes alert managers and things like Grafana. We care about `prometheus-k8s` and `grafana`.
-
-### ServiceMonitor
-
-The `ServiceMonitor` custom resource defintion allows you to declare how a dynamic set of services should be monitored with desired configuration defined using label selection. Let's take a look at how the `ServiceMonitor` is declared in `image_classification_deployment.yaml`:
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: image-classification-service
-
-# ... same as above
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: image-classification
-
-# ... same as above
----
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -200,11 +178,16 @@ spec:
       port: monitoring
 ```
 
-We included this `ServiceMonitor` in the `deployment.yaml` files, so it is running within our default namespace.
+Let's confirm Kubernetes set them up properly:
 
-Run the following to see which `ServiceMonitors` are running:
-```bash
-kubectl get servicemonitor
+See created pods:
+```
+kubectl get pods --namespace default
+```
+
+See created services:
+```
+kubectl get svc --namespace default
 ```
 
 
