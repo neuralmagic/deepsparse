@@ -25,7 +25,7 @@ __all__ = ["log_system_info", "default_logger"]
 _LOGGER = logging.getLogger(__name__)
 
 
-def default_logger() -> PythonLogger:
+def default_logger() -> BaseLogger:
     """
     :return: default PythonLogger object for the deployment scenario
     """
