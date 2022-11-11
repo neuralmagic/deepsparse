@@ -1,5 +1,7 @@
 # System Logging Metrics
 
+**TO BE UPDATED** ONCE WE HAVE THE LIST OF METRICS FOR 1.3
+
 This page includes details on the individual System Logging Metrics.
 
 ### Groups
