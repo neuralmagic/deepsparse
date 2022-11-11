@@ -1,5 +1,3 @@
-# flake8: noqa
-
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .data import *
-from .onnx import *
+import json
+
+from deepsparse import Pipeline
+
+
+pipeline = Pipeline.create(
+    task="sentiment_analysis", model_path="./model/deployment", batch_size=1
+)
+
+
+def lambda_handler(event, context):
+
+    payload = json.loads(event["body"])
+    inference = pipeline(**payload)
+
+    return {
+        "statusCode": 200,
+        "body": inference.json(),
+    }

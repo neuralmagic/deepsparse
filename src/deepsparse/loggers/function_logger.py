@@ -18,7 +18,7 @@ Implementation of the Function Logger
 from typing import Any, Callable
 
 from deepsparse.loggers import BaseLogger, MetricCategories
-from deepsparse.loggers.helpers import match_and_extract
+from deepsparse.loggers.helpers import NO_MATCH, match_and_extract
 
 
 __all__ = ["FunctionLogger"]
@@ -50,11 +50,6 @@ class FunctionLogger(BaseLogger):
         frequency: int = 1,
     ):
 
-        if frequency < 1:
-            raise ValueError(
-                f"Passed frequency: {frequency}. "
-                "Frequency must be a positive integer greater equal 1"
-            )
         self.logger = logger
         self.target_identifier = target_identifier
         self.function = function
@@ -77,7 +72,9 @@ class FunctionLogger(BaseLogger):
         extracted_value = match_and_extract(
             template=self.target_identifier, identifier=identifier, value=value
         )
-        if extracted_value is not None:
+        # `None` can be a valid, extracted value.
+        #  Hence, we check for `NO_MATCH` flag
+        if extracted_value != NO_MATCH:
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
                 self.logger.log(

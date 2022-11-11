@@ -16,8 +16,7 @@
 Specifies the mapping from the ServerConfig to the DeepSparse Logger
 """
 
-import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from deepsparse import BaseLogger, FunctionLogger, MultiLogger, PythonLogger
 from deepsparse.loggers.helpers import get_function_and_function_name
@@ -25,8 +24,6 @@ from deepsparse.server.config import ServerConfig
 
 
 __all__ = ["build_logger"]
-
-_LOGGER = logging.getLogger(__name__)
 
 _LOGGER_MAPPING = {"python": PythonLogger}
 
@@ -43,8 +40,7 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     Second: if data logging config is specified, a set of
         function loggers wraps around the appropriate "leaf" loggers.
 
-    Third: if required, the list of resulting loggers is wrapped inside a
-        MultiLogger.
+    Third: The resulting loggers are wrapped inside a MultiLogger.
 
     :param server_config: the Server configuration model
     :return: a DeepSparse logger instance
@@ -53,18 +49,14 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     loggers_config = server_config.loggers
     if not loggers_config:
         return None
+
     leaf_loggers = build_leaf_loggers(loggers_config)
-
     loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
-    if not loggers:
-        loggers = list(leaf_loggers.values())
-
-    _LOGGER.info("Created logger from the config")
-    return MultiLogger(loggers) if len(loggers) > 1 else loggers[0]
+    return MultiLogger(loggers)
 
 
 def build_leaf_loggers(
-    loggers_config: Dict[str, Dict[str, Any]]
+    loggers_config: Dict[str, Optional[Dict[str, Any]]]
 ) -> Dict[str, BaseLogger]:
     """
     Instantiate a set of leaf loggers according to the configuration
@@ -74,7 +66,15 @@ def build_leaf_loggers(
     """
     loggers = {}
     for logger_name, logger_arguments in loggers_config.items():
-        leaf_logger = _LOGGER_MAPPING[logger_name](**logger_arguments)
+
+        logger_to_instantiate = _LOGGER_MAPPING.get(logger_name)
+        if logger_to_instantiate is None:
+            raise ValueError(
+                f"Unknown logger name: {logger_name}. "
+                f"supported logger names: {list(_LOGGER_MAPPING.keys())}"
+            )
+        logger_arguments = {} if logger_arguments is None else logger_arguments
+        leaf_logger = logger_to_instantiate(**logger_arguments)
         loggers.update({logger_name: leaf_logger})
     return loggers
 
@@ -87,7 +87,8 @@ def build_function_loggers(
 
     :param endpoints: A list of server's endpoint configurations;
         the configurations contain the information about the metric
-        functions and the targets that the functions are to be applied to
+        functions (MetricFunctionConfig objects)
+        and the targets that the functions are to be applied to
     :param loggers: The created "leaf" loggers
     :return: A list of FunctionLogger instances
     """
@@ -95,48 +96,46 @@ def build_function_loggers(
     for endpoint in endpoints:
         if endpoint.data_logging is None:
             continue
-        for target_logging_cfg in endpoint.data_logging:
-            target = target_logging_cfg.target
+        for target, metric_functions in endpoint.data_logging.items():
             target_identifier = _get_target_identifier(endpoint.name, target)
-            function_cfgs = target_logging_cfg.functions
-            for function_cfg in function_cfgs:
+            for metric_function in metric_functions:
                 function_loggers.append(
-                    _build_function_logger(function_cfg, target_identifier, loggers)
+                    _build_function_logger(metric_function, target_identifier, loggers)
                 )
     return function_loggers
 
 
 def _build_function_logger(
-    function_cfg: Dict[str, Any], target_identifier: str, loggers=Dict[str, BaseLogger]
+    metric_function_cfg: "MetricFunctionConfig",  # noqa F821
+    target_identifier: str,
+    loggers: Dict[str, BaseLogger],
 ) -> FunctionLogger:
     # automatically extract function and function name
     # from the function_identifier
-    function, function_name = get_function_and_function_name(function_cfg["func"])
+    function, function_name = get_function_and_function_name(metric_function_cfg.func)
     # if metric function has attribute `target_loggers`,
     # override the global logger configuration
-    if function_cfg.get("target_loggers"):
+    if metric_function_cfg.target_loggers:
         target_loggers = [
             leaf_logger
             for name, leaf_logger in loggers.items()
-            if name in function_cfg["target_loggers"]
+            if name in metric_function_cfg.target_loggers
         ]
     else:
         target_loggers = list(loggers.values())
 
-    # if `target loggers` is a list len > 1, wrap it inside a MultiLogger
-    target_logger = (
-        MultiLogger(loggers=target_loggers)
-        if len(target_loggers) > 1
-        else target_loggers[0]
-    )
     return FunctionLogger(
-        logger=target_logger,
+        logger=MultiLogger(loggers=target_loggers),
         target_identifier=target_identifier,
         function=function,
         function_name=function_name,
-        frequency=function_cfg["frequency"],
+        frequency=metric_function_cfg.frequency,
     )
 
 
 def _get_target_identifier(endpoint_name: str, target_name: str) -> str:
+    if target_name.startswith("re:"):
+        # if target name starts with "re:", it is a regex,
+        # and we don't need to add the endpoint name to it
+        return target_name
     return f"{endpoint_name}.{target_name}"

@@ -18,6 +18,7 @@ Helpers functions for logging
 import importlib
 import os.path
 import re
+from types import ModuleType
 from typing import Any, Callable, Optional, Tuple
 
 import numpy
@@ -26,7 +27,9 @@ import deepsparse.loggers.metric_functions.built_ins as built_ins
 import torch
 
 
-__all__ = ["match_and_extract", "get_function_and_function_name"]
+__all__ = ["match_and_extract", "get_function_and_function_name", "NO_MATCH"]
+
+NO_MATCH = "NO_MATCH"
 
 
 def get_function_and_function_name(
@@ -53,21 +56,25 @@ def get_function_and_function_name(
     """
 
     if function_identifier.startswith("torch."):
-        func_name = function_identifier.split(".")[1]
-        return getattr(torch, func_name), func_name
+        function, function_name = _get_function_and_function_name_from_framework(
+            framework=torch, function_identifier=function_identifier
+        )
+        return function, function_name
 
     if function_identifier.startswith("numpy.") or function_identifier.startswith(
         "np."
     ):
-        func_name = function_identifier.split(".")[1]
-        return getattr(numpy, func_name), func_name
+        function, function_name = _get_function_and_function_name_from_framework(
+            framework=numpy, function_identifier=function_identifier
+        )
+        return function, function_name
 
     if len(function_identifier.split(":")) == 2:
         # assume a dynamic import function of the form
         # '<path_to_the_python_script>:<function_name>'
         path, func_name = function_identifier.split(":")
         if not os.path.exists(path):
-            raise ValueError(f"Path to the python script {path} does not exist")
+            raise ValueError(f"Path to the metric function file {path} does not exist")
         spec = importlib.util.spec_from_file_location(
             "user_defined_metric_functions", path
         )
@@ -77,11 +84,11 @@ def get_function_and_function_name(
 
     func_name = function_identifier
     if not hasattr(built_ins, func_name):
-        raise ValueError(f"Built-in function {func_name} not found")
+        raise ValueError(f"Metric function {func_name} not found")
     return getattr(built_ins, func_name), func_name
 
 
-def match_and_extract(template: str, identifier: str, value: Any) -> Optional[Any]:
+def match_and_extract(template: str, identifier: str, value: Any) -> Any:
     """
     Attempts to match the template against the identifier. If successful,
     uses the remainder to extract the item of interest inside `value` data structure.
@@ -89,10 +96,13 @@ def match_and_extract(template: str, identifier: str, value: Any) -> Optional[An
     :param template: A string that defines the matching criteria
     :param identifier: A string that will be compared with the template
     :param value: Raw value from the logger
-    :return: (Optional) Value of interest
+    :return: Value of interest or string flag that indicates that there was no match
     """
     is_match, remainder = check_identifier_match(template, identifier)
-    return possibly_extract_value(value, remainder) if is_match else None
+    if is_match:
+        return possibly_extract_value(value, remainder)
+    else:
+        return NO_MATCH
 
 
 def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
@@ -146,3 +156,13 @@ def check_identifier_match(
         return re.match(pattern, identifier) is not None, None
 
     return False, None
+
+
+def _get_function_and_function_name_from_framework(
+    framework: ModuleType, function_identifier: str
+) -> Tuple[Callable[[Any], Any], str]:
+    func_attributes = function_identifier.split(".")[1:]
+    module = framework
+    for attribute in func_attributes:
+        module = getattr(module, attribute)
+    return module, ".".join(func_attributes)
