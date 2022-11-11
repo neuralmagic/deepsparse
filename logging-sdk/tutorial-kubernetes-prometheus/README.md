@@ -75,8 +75,7 @@ minikube delete
 minkube start
 ```
 
-Load the local docker images for boath apps into minikube.
-
+Load the local docker images for boath apps into minikube. (Note: this may take a minute or two to complete).
 ```bash
 minikube image load sentiment_analysis:latest
 minikube image load image_classification:latest
