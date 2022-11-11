@@ -168,12 +168,12 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     # create pipelines & endpoints
     for endpoint_config in server_config.endpoints:
         _add_endpoint(
-            app=app,
-            server_config=server_config,
-            endpoint_config=endpoint_config,
-            executor=executor,
-            context=context,
-            server_logger=server_logger,
+            app,
+            server_config,
+            endpoint_config,
+            executor,
+            context,
+            server_logger,
         )
 
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
