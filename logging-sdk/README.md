@@ -80,12 +80,12 @@ There are 4 `stages` in the inference pipeline where Data Logging can occur:
 |Stage            |Pipeline Inputs      |Engine Inputs  |Engine Outputs     |Pipeline Outputs   |
 |--------------   |---------------------|---------------|-------------------|-------------------|
 |**Description**  |Inputs passed by user|Preprocessed tensors passed to model|Outputs from model (logits)|Postprocessed output returned to user|
-|**`stage`**      |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
+|`stage`      |`pipeline_inputs`    |`engine_inputs`|`engine_outputs`   |`pipeline_outputs` |
     
 The following format is used to apply a list of [built-in](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#built-in-functions) and/or [custom functions](https://github.com/neuralmagic/deepsparse/blob/rs-logging-sdk/logging-sdk/data-logging-functions.md#custom-functions) to a Pipeline `stage`:
  
 ```yaml     
-pipeline_inputs:                    # options: pipeline_inputs, engine_inputs, engine_outputs, pipeline_outputs
+stage:                              # options: pipeline_inputs, engine_inputs, engine_outputs, pipeline_outputs
   mapping:
     # first function
     - func: builtins/identity       # [REQUIRED STR] function identifier  (built-in or path to custom)
@@ -104,9 +104,9 @@ A tangible example YAML snippit is below:
 ```yaml
 pipeline_inputs:
   mapping:
-    - func: builtins/identity                   # pre-defined function (logs raw data)
-      target: prometheus                        # only logs to prometheus
+    - func: builtins/identity                   # built-in function (logs raw data)
       frequency: 100                            # logs raw data once per 100 predictions
+      target: prometheus                        # only logs to prometheus
     - func: /path/to/logging_fns.py:my_fn       # custom function
       # frequency:                              # not specified, defaults to once per 1000 predictions
       # target:                                 # not specified, defaults to all loggers
@@ -164,28 +164,25 @@ The logging is configured as described above. System Logging is defined globally
 ```yaml
 # config.yaml
 
-num_cores: 16
-num_workers: 8
-
 loggers:
      -prometheus
      -custom_logger
 
-system_logging:                                   # ** System Logging configured globally at Server level **
+system_logging:
      deployment_details: off
      request_details: off
      prediction_latency: on 
      dynamic_batch_latency: off
      # resource_utilization:                      < not specified, so enabled by default
 
-# system_logging: on                              < optional flag to turn off all system logging; OPTIONS: [ON/OFF]
+# system_logging: off                             < optional flag to turn off all system logging
 
 endpoints:
      - task: question_answering
        route: /dense/predict
        model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
        batch_size: 1
-       data_logging:                              # ** Data Logging configured at Endpoint level **
+       data_logging:
           - target: pipeline_inputs
                mappings:
                 - func: builtins:sequence_length
@@ -219,13 +216,7 @@ The `ManagerLogger` class will handles logging for a `Pipeline`. It is passed as
 
 If no `ManagerLogger` is passed to a `Pipeline`, then logging is disabled.
 
-[@DAMIAN] - how does it work with a multi-model engine?
-
-[@DAMIAN] - how does it work with a custom pipeline?
-
-[@DAMIAN] - is system logging enabled or disabled if not passed a Manager Logger?
-
-[@DAMIAN] - how does Prometheus scape from the endpoint?
+[@DAMIAN] - how does it work with a custom-pipeline + multi-model engine?
 
 For example, with the QA pipeline:
 
