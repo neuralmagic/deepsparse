@@ -112,7 +112,7 @@ This configuration does the following at each stage of the Pipeline:
 </details>
 
 ## Loggers
-DeepSparse Logging provides users with ability to log to Prometheus out-of-the-box as well as the ability to add custom loggers.
+Logging to Prometheus works out-of-the-box and users can add custom loggers.
 
 ### Prometheus Logger
 
@@ -130,16 +130,16 @@ Both the `Server` and `Pipeline` interfaces can run with logging.
 
 ### Server Usage
 
-The startup command (`deepsparse.server`), accepts an optional YAML configuration file (which contains both logging-specific and general configuration details) via the `--config` argument. For example:
+The startup command (`deepsparse.server`), accepts an optional YAML configuration file (which contains both logging-specific and general configuration details) via the `--config-file` argument. For example:
 
 ```bash
-deepsparse.server --config config.yaml
+deepsparse.server --config-file server-config.yaml
 ```
 
 The logging is configured as described above. System Logging is defined globally at the `Server` level while Data Logging is defined at the `Endpoint` level. In the example below, we create a `Server` with two `Endpoints` (one with a dense and one with a sparse BERT model).
 
 <details>
-    <summary>Click to see the config file</summary>
+    <summary>Click to see server-config.yaml </summary>
        
 ```yaml
 # config.yaml
@@ -192,11 +192,7 @@ endpoints:
 
 ### Pipeline Usage
 
-The `ManagerLogger` class handles logging for a `Pipeline`. It is passed as the `logger` argument to a `Pipeline`. `ManagerLogger` is initialized with the `config` argument, which is a path to a local logging configuration file in the format described above. 
-
-If no `ManagerLogger` is passed to a `Pipeline`, then logging is disabled.
-
-[@DAMIAN] - how does it work with a custom-pipeline + multi-model engine?
+The `ManagerLogger` class handles logging and is passed as the `logger` argument to a `Pipeline`. `ManagerLogger` is initialized with the `config` argument, which is a path to a configuration file in the format described above. 
 
 For example, with the QA pipeline:
 
@@ -207,7 +203,7 @@ from deepsparse import Pipeline
 model_path = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 
 # logger object referencing the local logging config file
-logger = ManagerLogger(config="logging-config.yaml")
+logger = ManagerLogger(config="pipeline-logging-config.yaml")
 
 # pipeline instantiated with the config file
 pipeline = Pipeline.create(
@@ -220,10 +216,10 @@ my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
 
 <details> 
-    <summary>Click to see the config file</summary>
+    <summary>Click to see pipeline-logging-config.yaml</summary>
     
 ```yaml
-# logging-config.yaml
+# pipeline-logging-config.yaml
 
 loggers:
      -prometheus
@@ -257,6 +253,8 @@ data_logging:
 ```
 </details>
 
+If no `ManagerLogger` is passed to a `Pipeline`, then logging is disabled.
+
 ## Tutorials
 There are serveral examples integrating Prometheus and DeepSparse logging available:
 - [Server with Prometheus / Grafana](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-server-prometheus)
@@ -268,16 +266,11 @@ There are serveral examples integrating Prometheus and DeepSparse logging availa
 
 **TO BE UPDATED** ONCE WE HAVE THE LIST OF METRICS FOR 1.3
 
-### Groups
-The following metric groups are enabled by default:
-|Group                |Description  |Identifier in YAML Config Files|
-|---------------------|-------------|-------------------------------|
-|Deployment Details   |Details of the configuration|`deployment_details`           |
-|Request Details      |Number of inferences |`request_details`              |
-|Prediction Latency   |Latency of each prediction by pipeline stage |`prediction_latency`|
-|Resource Utilizaiton |Utilization of CPU and memory|`resource_utilization`|
-
-### Full List of Metrics
+### Metric Groups
+The following metric groups are available:
+- Prediction Latency (`prediction_latency`)
+     
+### Metrics
 The following metrics are logged for each group:
 
 #### Prediction Latency
