@@ -212,7 +212,7 @@ Note that the `tunnel` does not return. You must keep this process running.
 ### Architecture
 We now have a cluster with the following architecture.
 
-<img width="50%" src="images/img_1.png"/>
+<img width="50%" src="img/img_1.png"/>
 
 ## 3. Spin up the Clients
 Every client script takes three arguments (in the order):
@@ -233,13 +233,13 @@ To be continued
 # (optionally) expose the port to validate on localhost: 9090 that everything has been properly setup in Prometheus
 kubectl --namespace monitoring port-forward svc/prometheus-k8s 9090
 ```
-![img.png](images/img.png)
+![img.png](img/img.png)
 ```bash
 # expose the port 3000 to interact with the Grafana on localhost:3000
 # note: 
 kubectl --namespace monitoring port-forward svc/grafana 3000
 ```
-![img_5.png](images/img_2.png)
+![img_5.png](img/img_2.png)
 
 Note: When setting up Prometheus data source in Grafana, we need to either:
 - manually change it to: http://prometheus-k8s.monitoring.svc:9090 
