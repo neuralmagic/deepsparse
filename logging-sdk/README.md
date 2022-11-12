@@ -22,10 +22,10 @@ DeepSparse Logging is designed to provide maximum flexibility for users to extra
 ## Metrics 
 DeepSparse Logging provides access to two types of metrics:
 - **System Logging Metrics** give operations teams access to granual performance metrics, diagnosing and isolating deployment system health. Examples include CPU utilization and query latency.
-     - See [below](system-logging-metrics) for a full list of available metrics.
+     - See [below - UPDATE LINK](system-logging-metrics) for a full list of available metrics.
 
 - **Data Logging Metrics** give ML teams access to data at each stage of an ML pipeline, supporting downsteam tasks like measuring accuracy and data drift. Examples include raw inputs and projections thereof such as mean pixel value.
-     - See [below](data-logging-functions) for a full list of built-in functions and how to create a custom function
+     - See [below - UPDATE LINK](data-logging-functions) for a full list of built-in functions and how to create a custom function
 
 ## Configuration
 DeepSparse Logging is configured via YAML files.
