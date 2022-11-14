@@ -64,9 +64,11 @@ import json
 from cProfile import Profile
 from pstats import Stats
 
+import numpy
 from tqdm.auto import tqdm
 
 from deepsparse import Pipeline
+from deepsparse.transformers.metrics import PrecisionRecallF1
 
 
 from datasets import load_dataset, load_metric  # isort: skip
@@ -365,6 +367,48 @@ def conll2003_eval(args):
     return conll2003_metrics
 
 
+def go_emotions_eval(args):
+    # load go_emotions validation dataset and eval tool
+    go_emotions = load_dataset("go_emotions")["validation"]
+    num_labels = 28
+
+    # load pipeline
+    text_classify = Pipeline.create(
+        task="text-classification",
+        model_path=args.onnx_filepath,
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+        top_k=num_labels,
+    )
+    print(f"Engine info: {text_classify.engine}")
+
+    go_emotions_metrics = PrecisionRecallF1(id_to_label=text_classify.config.id2label)
+    ordered_labels = [text_classify.config.id2label[idx] for idx in range(num_labels)]
+
+    for idx, sample in _enumerate_progress(go_emotions, args.max_samples):
+        pred = text_classify(sample["text"])
+
+        # order scores by label index and threshold
+        label_to_scores = dict(zip(pred.labels[0], pred.scores[0]))
+        predictions = numpy.array([label_to_scores[label] for label in ordered_labels])
+        predictions = (predictions > 0.3).astype(int)  # threshold used in paper
+
+        # one hot encode targets
+        targets = numpy.zeros(num_labels)
+        targets[sample["labels"]] = 1
+
+        go_emotions_metrics.add_batch(
+            predictions=predictions,
+            targets=targets,
+        )
+
+        if args.max_samples and idx >= args.max_samples:
+            break
+
+    return go_emotions_metrics
+
+
 def _enumerate_progress(dataset, max_steps):
     progress_bar = tqdm(dataset, total=max_steps) if max_steps else tqdm(dataset)
     return enumerate(progress_bar)
@@ -396,6 +440,7 @@ SUPPORTED_DATASETS = {
     "sst2_zero_shot": sst2_zero_shot_eval,
     "imdb": imdb_eval,
     "conll2003": conll2003_eval,
+    "go_emotions": go_emotions_eval,
 }
 
 
