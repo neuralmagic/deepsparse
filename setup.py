@@ -103,12 +103,11 @@ _dev_deps = [
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
-    "fastapi>=0.70.0",
+    "fastapi>=0.70.0,<0.87.0",
     "pydantic>=1.8.2",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
     "prometheus-client>=0.14.1",
-    "httpx >=0.23.0,<0.24.0",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
