@@ -368,7 +368,7 @@ def conll2003_eval(args):
 
 
 def go_emotions_eval(args):
-    # load sst2 validation dataset and eval tool
+    # load go_emotions validation dataset and eval tool
     go_emotions = load_dataset("go_emotions")["validation"]
     num_labels = 28
 
