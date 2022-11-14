@@ -24,6 +24,7 @@ from deepsparse.tasks import SupportedTasks
 __all__ = [
     "ServerConfig",
     "EndpointConfig",
+    "MetricFunctionConfig",
     "SequenceLengthsConfig",
     "ImageSizesConfig",
 ]

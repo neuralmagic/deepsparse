@@ -15,6 +15,7 @@
 import yaml
 
 import pytest
+from deepsparse.loggers import MetricCategories
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig
 from tests.helpers import find_free_port
@@ -147,4 +148,11 @@ def test_build_logger(yaml_config, raises_error, returns_logger, num_function_lo
     assert bool(logger) == returns_logger
     if not returns_logger:
         return
-    assert len(logger.loggers) == num_function_loggers
+    assert len(logger.loggers) == num_function_loggers + 1
+    # check for system logger
+    system_logger = logger.loggers[-1]
+    assert system_logger.target_identifier == (
+        f"category:{MetricCategories.SYSTEM.value}"
+    )
+    assert system_logger.function_name == "identity"
+    assert system_logger.frequency == 1
