@@ -1,225 +1,311 @@
-## README
+# DeepSparse + Milvus: Text-Search with BERT
 
-This project uses Milvus and Bert to build a Text Search Engine. In this project, Bert is used to convert the text into a fixed-length vector and store it in Milvus, and then combine Milvus to search for similar text in the text entered by the user.
+This example demonstrates how to create a semantic search engine using FastAPI, DeepSparse, Milvus, and MySQL.
 
-### Data source
+We will create 4 services:
+- Milvus Server - vector database used to hold the embeddings of the article dataset and perform the search queries
+- MySQL Server - holds the mapping from Milvus ids to original article data
+- DeepSparse Server - inference runtime used to generate the embeddings for the queries
+- Application Server - endpoint called by the client side with queries for searching
 
-The dataset needed for this system is a **CSV** format file which needs to contain a column of titles and a column of texts.
+We will demonstrate running on a local machine as well as in a VPC on AWS with independent-scaling of the App, Database, and Model Serving Components.
 
-## Deployment
+## Application Architecture
 
-This project can be deployed in two ways:
-* Deploying with Docker Compose
-* Deploying with Source Code
+We have provided a sample dataset in `client/example.csv`. These data are articles about various topics, in `(title,text)` pairs. We will create an application that will allow users to upload arbitrary `text` and find the 10 most similiar articles using semantic search.
 
-## Option 1: Deploying with Docker Compose
+The app server is built on FastAPI and exposes a both `/load` and `/search` endpoints. 
 
-The text search engine with Milvus, MySQL, WebServer and WebClient services. We can start these containers with one click through [docker-compose.yaml](./docker-compose.yaml).
+The `/load` endpoint accepts a csv file with `(title, text)` representing a series of articles. On `/load`, we project the `text` into the embedding space with BERT running on DeepSparse. We then store each embedding in Milvus with a primary key `id` and store the `(id,title,text)` tripes in MySQL.
 
-- Modify docker-compose.yaml to map your data directory to the docker container of WebServer
+The `/search` endpoint enables clients to send `text` to the server. The app server sends the `text` to DeepSparse Server, which returns the embedding of the query. This embedding is sent to Milvus, which searches for the 10 most similiar vectors in the database and returns their `ids` to the app server. The app server then looks up the `(title,text)` in MySQL and returns them back to the client.
+
+As such, we can scale the app server, databases, and model service independently!
+
+## Running Locally
+
+### Start the Server
+
+#### Installation:
+- Milvus and Postgres are installed using Docker containers. [Install Docker](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/install/linux/).
+- DeepSparse is installed via PyPI. Create a virtual enviornment and run `pip install -r server/deepsparse-requirements.txt`.
+- The App Server is based on FastAPI. Create a virtual enviornment and run `pip install -r server/app-requirements.txt`.
+
+#### 1. Start Milvus
+
+Milvus has a convient `docker-compose` file which can be downloaded with `wget` that launches the necessary services needed for Milvus. 
+
+``` bash
+cd server/database-server
+wget https://raw.githubusercontent.com/milvus-io/milvus/master/deployments/docker/standalone/docker-compose.yml -O docker-compose.yml
+sudo docker-compose up
+cd ..
+
+```
+This command should create `milvus-etcd`, `milvus-minio`, and `milvus-standalone`.
+
+#### 2. Start MySQL
+
+MySQL can be started with the base MySQL image available on Docker Hub. Simply run the following command.
+
 ```bash
-$ git clone https://github.com/milvus-io/bootcamp.git
-$ cd solutions/text_search_engine/quick_deploy/
-$ vim docker-compose.yaml
+docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 -d mysql:5.7
 ```
 
-- Create containers & start servers with docker-compose.yaml
+#### 3. Start DeepSparse Server
+
+DeepSparse not only includes high performance runtime on CPUs, but also comes with tooling that simplify the process of adding inference to an application. Once example of this is the Server functionality, which makes it trivial to stand up a model service using DeepSparse.
+
+We have provided a configuration file in `/server/deepsparse-server/server-config-deepsparse.yaml`, which sets up an embedding extraction endpoint running a sparse version of BERT from SparseZoo. You can edit this file to adjust the number of workers you want (this is the number of concurrent inferences that can occur). Generally, its a fine starting point to use `num_cores/2`.
+
+Here's what the config file looks like.
+
+```yaml
+num_workers: 4  # number of streams - should be tuned, num_cores / 2 is good place to start
+
+endpoints: 
+  - task: embedding_extraction
+    model: zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/wikipedia_bookcorpus/pruned80_quant-none-vnni
+    route: /predict
+    name: embedding_extraction_pipeline
+    kwargs:
+      return_numpy: False
+      extraction_strategy: reduce_mean
+      sequence_length: 512
+      engine_type: deepsparse
+```
+
+To start DeepSparse, run the following:
+
 ```bash
-$ docker-compose up -d
+deepsparse.server --config_file server/deepsparse-server/server-config-deepsparse.yaml
 ```
 
-Containers will be created after a while.
+TO BE REMOVED --- hack to remove bug in Server
+
+- Run `vim deepsparse-env/lib/python3.8/site-packages/deepsparse/server/server.py`
+- In `_add_pipeline_endpoint()`, udpate `app.add_api_route` by commenting out `response_model=output_schema`.
+
+ESC-I enters insert mode; ESC Exits insert mode. :wq writes file and quits.
+
+**Potential Improvements**
+
+There is both a throughput-focused step (`load`) where we need to process a large number of embeddings at once with no latency requirements and there is a latency-focused step (`search`) where we need to process one embedding and return to the user as fast as possible. For simplicity, we currently only use one configuration of DeepSparse with `batch_size=1`, which is a latency-oriented setup.
+
+An extension to this project would be configuring DeepSparse to have multiple endpoints or adding another DeepSparse Server instance with a configuration for high throughput.
+
+#### 4. Start The App Server
+
+The App Server is built on `FastAPI` and `uvicorn` and orchestrates DeepSparse, Milvus, and MySQL to create a search engine. 
+
+Run the following to launch.
 
 ```bash
-Creating network "host" with driver "bridge"
-Creating milvus-etcd           ... done
-Creating text-search-mysql     ... done
-Creating text-search-webclient ... done
-Creating milvus-minio          ... done
-Creating milvus-standalone     ... done
-Creating text-search-webserver ... done
+python3 server/app-server/src/app.py
 ```
 
-You can list all containers with `docker ps`.
+### Use the Search Engine!
+
+We have provided both a Jupyter notebook and latency testing script to interact with the server. 
+
+#### Jupyter Notebook
+The Jupyter notebook is self-documenting and is a good starting point to play around with the application.
+
+You can run with the following command:
+`juptyer notebook example-client.ipynb`
+
+#### Latency Testing Script
+The latency testing script generates multiple clients to test response time from the server. It provides metrics on both overall query latency as well as metrics on the model serving query latency (the end to end time from the app server querying DeepSparse until a response is returned.) 
+
+You can run with the following command:
+```bash
+python3 client/latency-test-client.py --url http://localhost:5000/ --dataset_path client/example.csv --num_clients 8
+```
+- `--url` is the location of the app server
+- `--dataset_path` is the location of the dataset path on client side
+- `--num_clients` is the number of clients that will be created to send requests concurrently
+
+## Running in an AWS VPC with Independent-Scaling
+
+### Create a VPC
+
+First, we will create a VPC that houses our instances and enables us to communicate between the App Server, Milvus, MySQL, and DeepSparse.
+
+- Navigate to `Create VPC` in the AWS console
+- Select `VPC and more`. Name it `semantic-search-demo-vpc`
+- Make sure you have `IPv4 CIDR block` set. We use `10.0.0.0/16` in the example.
+- Number of AZs to 1, Number of Public Subnets to 1, and Number of Private Subnets to 0.
+
+When we create our services, we will add them to the VPC and only enable communication to the backend model service and databases from within the VPC, isloating the model and database services from the internet.
+
+### Create a Database Instance
+
+Launch an EC2 Instance.
+- Navigate to EC2 > Instances > Launch an Instance
+- Name the instance `database-server`
+- Select Amazon Linux
+
+Edit the `Network Setting`.
+- Put the `app-server` into the `semantic-search-demo-vpc` VPC
+- Choose the public subnet
+- Set `Auto-Assign Public IP` to `Enabled`.
+- Add a `Custom TCP` security group rule with port `19530` with `source-type` of `Custom` and Source equal to the CIDR of the VPC (in our case `10.0.0.0/16`). This is how the App Server will Talk to Milvus
+- Add a `Custom TCP` security group rule with port `3306` with `source-type` of `Custom` and Source equal to the CIDR of the VPC (in our case `10.0.0.0/16`). This is how the App Server will Talk to MySQL
+
+Launch the instance and then SSH into your newly created instance and start-up the app server.
+```
+ssh -i path/to/your/private-key.pem ec2-user@your-instance-public-ip
+```
+Install Docker/Docker Compose and add group membership for the default ec2-user:
+```
+sudo yum update -y
+sudo yum install docker -y
+sudo usermod -a -G docker ec2-user
+id ec2-user
+newgrp docker
+pip3 install --user docker-compose
+```
+
+Start Docker and Check it is running with the following:
+```
+sudo service docker start
+docker container ls
+```
+
+Download Milvus Docker Image and Launch Milvus with `docker-compose`:
+```
+wget https://raw.githubusercontent.com/milvus-io/milvus/master/deployments/docker/standalone/docker-compose.yml -O docker-compose.yml
+docker-compose up
+```
+
+SSH from another terminal into the same instance to setup MySQL.
+```
+ssh -i path/to/your/private-key.pem ec2-user@your-instance-public-ip
+```
+
+Run the following to launch MySQL:
+```bash
+docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 -d mysql:5.7
+```
+
+Your databases are up and running!
+
+### Create the Application Server
+
+Launch an EC2 Instance.
+- Navigate to EC2 > Instances > Launch an Instance
+- Name the instance `app-server`
+- Select Amazon Linux
+
+Edit the `Network Setting` to expose the App Endpoint to the Internet while still giving access to the backend database and model service.
+- Put the `app-server` into the `semantic-search-demo-vpc` VPC
+- Choose the public subnet
+- Set `Auto-Assign Public IP` to `Enabled`.
+- Add a `Custom TCP` security group rule with port `5000` with `source-type` of `Anywhere`. This exposes the app to the internet.
+
+Click Launch Instance and SSH into your newly created instance and launch the app server.
+
+From the command line run:
+```
+ssh -i path/to/your/private-key.pem ec2-user@your-instance-public-ip
+```
+
+Clone this repo with Git:
+```bash
+sudo yum update -y
+sudo yum install git -y
+sudo git clone https://github.com/rsnm2/deepsparse-milvus.git
+```
+
+Install App Requirements in a virutal enviornment.
+```bash
+python3 -m venv app-env
+source app-env/bin/activate
+pip3 install -r deepsparse-milvus/text-search-engine/server/app-requirements.txt
+```
+
+Run the following to activate.
+```bash
+python3 deepsparse-milvus/text-search-engine/server/app-server/src/app.py --database host private.ip.of.database.server --model_host private.ip.of.model.server
+```
+
+Your App Server is up and Running!
+
+### Create DeepSparse AWS Instance
+
+Launch an EC2 Instance.
+- Navigate to EC2 > Instances > Launch an Instance
+- Name the instance `database-server`
+- Select Amazon Linux and a `c6i.4xlarge` instance type
+
+Edit the `Network Setting` to expose the App Endpoint to the Internet while still giving access to the backend database and model service.
+- Put the `app-server` into the `semantic-search-demo-vpc` VPC
+- Choose the public subnet
+- Set `Auto-Assign Public IP` to `Enabled`.
+- Add a `Custom TCP` security group rule with port `5543` with `source-type` of `Custom` and Source equal to the CIDR of the VPC (in our case `10.0.0.0/16`). This is how the App Server will Talk to DeepSparse
+
+Click Launch Instance and SSH into your newly created instance and launch the DeepSparse Server.
+```
+ssh -i path/to/your/private-key.pem ec2-user@your-instance-public-ip
+```
+
+Clone this repo with Git:
+```bash
+sudo yum update -y
+sudo yum install git -y
+git clone https://github.com/rsnm2/deepsparse-milvus.git
+```
+
+Install App Requirements in a virutal enviornment.
+```bash
+python3 -m venv deepsparse-env
+source deepsparse-env/bin/activate
+pip3 install -r deepsparse-milvus/text-search-engine/server/deepsparse-requirements.txt
+```
+
+TO BE REMOVED --- hack to remove bug in Server
+
+- Run `vim deepsparse-env/lib/python3.7/site-packages/deepsparse/server/server.py`
+- In `_add_pipeline_endpoint()`, udpate `app.add_api_route` by commenting out `response_model=output_schema`.
+
+
+Run the following to start a model server with DeepSparse as the runtime engine. 
+```bash
+deepsparse.server --config-file deepsparse-milvus/text-search-engine/server/deepsparse-server/server-config-onnxruntime.yaml```
+```
+
+You should see a Uvicorn server running!
+
+We have also provided a config file with ONNX as the runtime engine for performance comparison. 
+You can launch a server with ONNX Runtime with the following:
+```bash
+deepsparse.server --config-file deepsparse-milvus/text-search-engine/server/deepsparse-server/server-config-onnx.yaml
+```
+**Note: you should have either DeepSparse or ONNXRuntime running but not both***
+
+### Benchmark Performance
+
+From your local machine, run the following, which creates 4 clients that continously make requests to the server.
 
 ```bash
-CONTAINER ID   IMAGE                                         COMMAND                  CREATED          STATUS                             PORTS                               NAMES
-4cc6e60eb295   milvusbootcamp/text-search-webserver:new   "/bin/sh -c 'python3…"   56 seconds ago   Up 55 seconds                      0.0.0.0:5000->5000/tcp                 text-search-webserver
-40f4ea99fd22   milvusdb/milvus:v2.0.0-rc8-20211104-d1f4106   "/tini -- milvus run…"   57 seconds ago   Up 55 seconds                      0.0.0.0:19530->19530/tcp  milvus-standalone
-60ed080afac1   minio/minio:RELEASE.2020-12-03T00-03-10Z      "/usr/bin/docker-ent…"   57 seconds ago   Up 56 seconds (healthy)            9000/tcp                            milvus-minio
-5d9cdfba872b   mysql:5.7                                     "docker-entrypoint.s…"   57 seconds ago   Up 56 seconds                      0.0.0.0:3306->3306/tcp, 33060/tcp   text-search-mysql
-56a2922b5c00   milvusbootcamp/text-search-webclient:2.0          "/bin/bash -c '/usr/…"   57 seconds ago   Up 56 seconds (health: starting)   0.0.0.0:8001->80/tcp     text-search-webclient
-647d848989e4   quay.io/coreos/etcd:v3.5.0                    "etcd -advertise-cli…"   57 seconds ago   Up 56 seconds                      2379-2380/tcp                       milvus-etcd
+python3 client/latency-test-client.py --url http://app-server-public-ip:5000/ --dataset_path client/example.csv --num_clients 4 --iters_per_client 25
 ```
 
-You can also, for example, get the logs of **server** container with:
-
-```docker logs text-search-webserver```
-
-If everything goes well, your web server will be available at:
-
-<http://0.0.0.0:5000>
-
-and your web UI client:
-
-<http://0.0.0.0:8001>
-
-
-## Option 2: Deploying with Source code
-
-### 1. Start Milvus and MySQL
-
-The system will use Milvus to store and search the feature vector data, and Mysql is used to store the correspondence between the ids returned by Milvus and the text data  , then you need to start Milvus and Mysql first.
-
-- **Start Milvus v2.0**
-
-First, you are supposed to refer to the Install Milvus v2.0 for how to run Milvus docker.
+With DeepSparse running in the Model Server, the latency looks like this, where Model Latency is the time it takes to process
+a request by Model Server and Query Latency is the full end to end time on the client side (Network Latency + Model Latency + Database Latency).
 
 ```
-$ wget https://raw.githubusercontent.com/milvus-io/milvus/master/deployments/docker/standalone/docker-compose.yml -O docker-compose.yml
-$ sudo docker-compose up -d
-Docker Compose is now in the Docker CLI, try `docker compose up`
-Creating milvus-etcd  ... done
-Creating milvus-minio ... done
-Creating milvus-standalone ... done
+Model Latency Stats:
+{'count': 100,
+ 'mean': 97.6392858400186,
+ 'median': 97.46583750006721,
+ 'std': 0.7766356131548698}
 
+Query Latency Stats:
+{'count': 100,
+ 'mean': 425.1315195999632,
+ 'median': 425.0526745017851,
+ 'std': 34.73163016766087}
 ```
 
-> Note the version of Milvus.
-
-- **Start MySQL**
-
-```
-$ docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 -d mysql:5.7
-```
-
-### 2. Start Server
-
-The next step is to start the system server. It provides HTTP backend services, and there are two ways to start: running with Docker or source code.
-
-#### 2.2 Run source code
-
-- **Install the Python packages**
-
-```
-$ cd server
-$ pip install -r requirements.txt
-```
-
-- **Download the model**
-
-Install the sentence-transformers model as follows
-
-```
-# Download model
-$ cd server/src/model
-$ wget https://public.ukp.informatik.tu-darmstadt.de/reimers/sentence-transformers/v0.2/paraphrase-mpnet-base-v2.zip
-$ unzip paraphrase-mpnet-base-v2.zip -d paraphrase-mpnet-base-v2/
-
-```
-
-- **Set configuration**
-
-```
-$ vim server/src/config.py
-```
-
-Please modify the parameters according to your own environment. Here listing some parameters that need to be set, for more information please refer to [config.py](https://github.com/miia12/bootcamp/blob/master/solutions/reverse_image_search/quick_deploy/server/src/config.py).
-
-| **Parameter**    | **Description**                                       | **Default setting** |
-| ---------------- | ----------------------------------------------------- | ------------------- |
-| MILVUS_HOST      | The IP address of Milvus, you can get it by ifconfig. | 127.0.0.1           |
-| MILVUS_PORT      | Port of Milvus.                                       | 19530               |
-| VECTOR_DIMENSION | Dimension of the vectors.                             | 2048                |
-| MYSQL_HOST       | The IP address of Mysql.                              | 127.0.0.1           |
-| MYSQL_PORT       | Port of Milvus.                                       | 3306                |
-| DEFAULT_TABLE    | The milvus and mysql default collection name.         | text_search         |
-
-```
-$ export Milvus_HOST='127.0.0.1'
-$ export Milvus_PORT='19530'
-$ export Mysql_HOST='127.0.0.1'
-```
-
-- **Run the code**
-
-Then start the server with Fastapi.
-
-```
-$ cd src
-$ python main.py
-```
-- **Code  structure**
-
-  If you are interested in our code or would like to contribute code, feel free to learn more about our code structure.
-
-  ```
-  └───server
-  │   │   Dockerfile
-  │   │   requirement.txt # Related dependent environment
-  │   │   main.py  # File for starting the program.
-  │   │
-  │   └───src
-  │       │   config.py  # Configuration file.
-  │       │   encode.py  # Convert image/video/questions/... to embeddings.
-  │       │   milvus_helpers.py  # Connect to Milvus server and insert/drop/query vectors in Milvus.
-  │       │   mysql_helpers.py   # Connect to MySQL server, and add/delete/query IDs and object information.
-  │       │   
-  │       └───operations # Call methods in milvus.py and mysql.py to insert/query/delete objects.
-  │               │   load.py
-  │               │   query.py
-  │               │   delete.py
-  │               │   count.py
-  ```
-
-
-- **API docs** 
-
-Visit 127.0.0.1:5001/docs in your browser to use all the APIs.
-
-![1](pic/1.png)
-
-**/text/load_data**
-
-This API imports datasets into the system.
-
-**/text/search**
-
-This API gets similar texts in the system.
-
-**/text/count**
-
-This API gets the number of the titles in the system.
-
-**/text/drop**
-
-This API deletes a specified collection.
-
-
-### 3. Start the UI client
-
-* Check `Constants.ts` and make sure that `let endpoint` points to the correct Milvus server endpoint.
-
-* Install  [Node.js 12+](https://nodejs.org/en/download/) and [Yarn](https://classic.yarnpkg.com/en/docs/install/).
-
-```
-$ cd client 
-$ yarn install    # install dependencies
-$ yarn start      # start yarn 
-```
-
-The UI client will be available at <http://localhost:3000>.
-
-### 4. The interface display
-
-* Upload a **csv** file that contains a list of titles and texts. You may use the `example.csv` file in `text_search_engine/data`.
-
-
-* Visit the search page on 127.0.0.1:3000 and enter the search query.
-
-
-![1](./pic/3.png)
-
-* Get the search results of the input text, as shown in the figure below.
-
-![2](./pic/2.png)
+**RS Note: when scaling this out with more clients, the rest of the system becomes the bottleneck for scaling. So, need to investigate a bit more how to show off the performance of DeepSparse**
