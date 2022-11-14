@@ -34,12 +34,12 @@ python endpoint.py destroy
 """
 
 import subprocess
-from random import randint
+from datetime import datetime
 
 import click
 
 
-RAND_ID = randint(10000, 99999)
+now = datetime.now()
 
 
 class SparseRun:
@@ -48,7 +48,7 @@ class SparseRun:
     Object for auto generating a docker image with the deepsparse server,
     pushing the image to GCP and generating a Cloud Run inference endpoint
 
-    :param billind_id: Your GCP's account Billind ID
+    :param billing_id: Your GCP's account Billing ID
     :param service_name: Name of the cloud run app
     :param image_name: Name of Docker image to be created
     :param region_name: Name of cloud region to use
@@ -63,7 +63,7 @@ class SparseRun:
         self.image = image_name
         self.region = region_name
 
-        self.project_id = "deepsparse" + str(RAND_ID)
+        self.project_id = "deepsparse-" + now.strftime("%d-%m-%Y-%H-%M-%S").lower()
         self.endpoint_script = "./create_endpoint.sh"
 
         self.del_api = [

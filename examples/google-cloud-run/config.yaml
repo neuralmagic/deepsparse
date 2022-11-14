@@ -6,4 +6,4 @@ endpoints:
       model: zoo:nlp/token_classification/obert-base/pytorch/huggingface/conll2003/pruned90_quant-none
       batch_size: 1
       bucketing:
-        sequence_lengths: [384]
+        sequence_lengths: [128]
