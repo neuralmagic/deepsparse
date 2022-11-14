@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base_logger import *
-
 # flake8: noqa
+# isort: skip_file
+
+# base modules
+from .base_logger import *
 from .constants import *
+
+# logger implementations
+from .async_logger import *
 from .function_logger import *
 from .multi_logger import *
 from .prometheus_logger import *

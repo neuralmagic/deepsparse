@@ -18,7 +18,8 @@ Specifies the mapping from the ServerConfig to the DeepSparse Logger
 
 from typing import Any, Dict, List, Optional
 
-from deepsparse import (
+from deepsparse.loggers import (
+    AsyncLogger,
     BaseLogger,
     FunctionLogger,
     MultiLogger,
@@ -58,7 +59,10 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
 
     leaf_loggers = build_leaf_loggers(loggers_config)
     loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
-    return MultiLogger(loggers)
+    return AsyncLogger(
+        logger=MultiLogger(loggers),  # wrap all loggers to async log call
+        max_workers=1,
+    )
 
 
 def build_leaf_loggers(
