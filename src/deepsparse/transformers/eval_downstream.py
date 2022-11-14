@@ -75,10 +75,10 @@ DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 
-def squad_eval(args):
-    # load squad validation dataset and eval tool
-    squad = load_dataset("squad")["validation"]
-    squad_metrics = load_metric("squad")
+def qa_eval(args, dataset_name="squad"):
+    # load validation dataset and eval tool
+    dataset = load_dataset(dataset_name)["validation"]
+    qa_metrics = load_metric(dataset_name)
 
     # load QA pipeline
     question_answer = Pipeline.create(
@@ -91,24 +91,29 @@ def squad_eval(args):
         n_best_size=args.n_best_size,
         pad_to_max_length=args.pad_to_max_length,
         output_dir=args.output_dir,
+        version_2_with_negative=dataset_name == "squad_v2",
     )
     print(f"Engine info: {question_answer.engine}")
-    for idx, sample in _enumerate_progress(squad, args.max_samples):
+    for idx, sample in _enumerate_progress(dataset, args.max_samples):
         pred = question_answer(
             id=sample["id"],
             question=sample["question"],
             context=sample["context"],
         )
 
-        squad_metrics.add_batch(
-            predictions=[{"prediction_text": pred.answer, "id": sample["id"]}],
+        predictions = [{"prediction_text": pred.answer, "id": sample["id"]}]
+        if question_answer.version_2_with_negative:
+            predictions[0]["no_answer_probability"] = 0.0
+
+        qa_metrics.add_batch(
+            predictions=predictions,
             references=[{"answers": sample["answers"], "id": sample["id"]}],
         )
 
         if args.max_samples and idx >= args.max_samples:
             break
 
-    return squad_metrics
+    return qa_metrics
 
 
 def mnli_eval(args):
@@ -383,7 +388,8 @@ def _split_train_val(train_dataset, val_ratio, seed=42):
 
 # Register all the supported downstream datasets here
 SUPPORTED_DATASETS = {
-    "squad": squad_eval,
+    "squad": lambda args: qa_eval(args, dataset_name="squad"),
+    "squad_v2": lambda args: qa_eval(args, dataset_name="squad_v2"),
     "mnli": mnli_eval,
     "qqp": qqp_eval,
     "sst2": sst2_eval,
