@@ -17,6 +17,7 @@ import yaml
 import pytest
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig
+from tests.helpers import find_free_port
 
 
 yaml_config_1 = """
@@ -105,9 +106,26 @@ endpoints:
           - func: tests/test_data/metric_functions.py:user_defined_identity
             frequency: 2"""
 
+yaml_config_7 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    python:
+    prometheus:
+        port: {port}
+endpoints:
+    - task: question_answering
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1
+      data_logging:
+        re:*_outputs:
+          - func: tests/test_data/metric_functions.py:user_defined_identity
+            frequency: 2"""
+
 
 @pytest.mark.parametrize(
-    "yaml_config, raises_error, returns_logger,num_function_loggers",
+    "yaml_config, raises_error, returns_logger, num_function_loggers",
     [
         (yaml_config_1, False, True, 3),
         (yaml_config_2, False, True, 0),
@@ -115,6 +133,7 @@ endpoints:
         (yaml_config_4, False, True, 2),
         (yaml_config_5, True, None, None),
         (yaml_config_6, False, True, 1),
+        (yaml_config_7.format(port=find_free_port()), False, True, 1),
     ],
 )
 def test_build_logger(yaml_config, raises_error, returns_logger, num_function_loggers):

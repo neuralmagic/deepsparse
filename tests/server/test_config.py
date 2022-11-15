@@ -129,7 +129,7 @@ def test_yaml_load_config(tmp_path):
                 bucketing=SequenceLengthsConfig(sequence_lengths=[5, 6, 7]),
             ),
         ],
-        loggers="path/to/logging/config.yaml",
+        loggers={},
     )
 
     path = tmp_path / "config.yaml"
