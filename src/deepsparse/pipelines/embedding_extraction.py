@@ -194,8 +194,8 @@ class EmbeddingExtractionPipeline(Pipeline):
         onnx_path = self.base_pipeline.onnx_file_path
 
         # TODO: use truncate_onnx_model, not truncate_transformer_onnx_model
-        # potentially find a way to keep transformers specific helpers
-        # basically want to copy the UX here so we can push
+        #  potentially find a way to keep transformers specific helpers
+        #  basically want to copy the UX here so we can push
         if self._emb_extraction_layer is not None:
             (
                 onnx_path,
