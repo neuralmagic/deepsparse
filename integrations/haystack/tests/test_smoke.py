@@ -12,24 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import subprocess
 import sys
 
 import pytest
 from deepsparse.transformers.haystack import DeepSparseEmbeddingRetriever
-from subprocess import PIPE, STDOUT, CompletedProcess, run
-
 
 from haystack.document_stores import InMemoryDocumentStore  # isort:skip
 from haystack.pipelines import DocumentSearchPipeline  # isort:skip
 
 
-def run_command(command: List[str]) -> CompletedProcess:
+def run_command(command):
     """
     Run given command with custom config and return the completed process.
     :param command: command to be executed (formatted as `subprocess.run` expects)
     :return: completed process as received from `subprocess.run`
     """
-    return run(command, stdout=PIPE, stderr=STDOUT, check=False, encoding="utf-8")
+    return subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+        encoding="utf-8",
+    )
 
 
 @pytest.fixture(scope="session", autouse=True)
