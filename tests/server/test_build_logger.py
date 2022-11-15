@@ -15,8 +15,10 @@
 import yaml
 
 import pytest
+from deepsparse.loggers import MetricCategories
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig
+from tests.helpers import find_free_port
 
 
 yaml_config_1 = """
@@ -105,9 +107,26 @@ endpoints:
           - func: tests/test_data/metric_functions.py:user_defined_identity
             frequency: 2"""
 
+yaml_config_7 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    python:
+    prometheus:
+        port: {port}
+endpoints:
+    - task: question_answering
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1
+      data_logging:
+        re:*_outputs:
+          - func: tests/test_data/metric_functions.py:user_defined_identity
+            frequency: 2"""
+
 
 @pytest.mark.parametrize(
-    "yaml_config, raises_error, returns_logger,num_function_loggers",
+    "yaml_config, raises_error, returns_logger, num_function_loggers",
     [
         (yaml_config_1, False, True, 3),
         (yaml_config_2, False, True, 0),
@@ -115,6 +134,7 @@ endpoints:
         (yaml_config_4, False, True, 2),
         (yaml_config_5, True, None, None),
         (yaml_config_6, False, True, 1),
+        (yaml_config_7.format(port=find_free_port()), False, True, 1),
     ],
 )
 def test_build_logger(yaml_config, raises_error, returns_logger, num_function_loggers):
@@ -128,4 +148,11 @@ def test_build_logger(yaml_config, raises_error, returns_logger, num_function_lo
     assert bool(logger) == returns_logger
     if not returns_logger:
         return
-    assert len(logger.loggers) == num_function_loggers
+    assert len(logger.loggers) == num_function_loggers + 1
+    # check for system logger
+    system_logger = logger.loggers[-1]
+    assert system_logger.target_identifier == (
+        f"category:{MetricCategories.SYSTEM.value}"
+    )
+    assert system_logger.function_name == "identity"
+    assert system_logger.frequency == 1

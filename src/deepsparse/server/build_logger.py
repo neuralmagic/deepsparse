@@ -18,14 +18,21 @@ Specifies the mapping from the ServerConfig to the DeepSparse Logger
 
 from typing import Any, Dict, List, Optional
 
-from deepsparse import BaseLogger, FunctionLogger, MultiLogger, PythonLogger
+from deepsparse import (
+    BaseLogger,
+    FunctionLogger,
+    MultiLogger,
+    PrometheusLogger,
+    PythonLogger,
+)
+from deepsparse.loggers import MetricCategories
 from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.server.config import ServerConfig
+from deepsparse.server.config import MetricFunctionConfig, ServerConfig
 
 
 __all__ = ["build_logger"]
 
-_LOGGER_MAPPING = {"python": PythonLogger}
+_LOGGER_MAPPING = {"python": PythonLogger, "prometheus": PrometheusLogger}
 
 
 def build_logger(server_config: ServerConfig) -> BaseLogger:
@@ -50,9 +57,16 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     if not loggers_config:
         return None
 
+    # base level loggers that log raw values for monitoring. ie python, prometheus
     leaf_loggers = build_leaf_loggers(loggers_config)
-    loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
-    return MultiLogger(loggers)
+
+    # loggers that match to logged identifiers and apply transforms before leaf logging
+    function_loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
+
+    # add logger to ensure leaf level logging of all system (timing) logs
+    function_loggers.append(_create_system_logger(leaf_loggers))
+
+    return MultiLogger(function_loggers)
 
 
 def build_leaf_loggers(
@@ -97,14 +111,24 @@ def build_function_loggers(
         if endpoint.data_logging is None:
             continue
         for target, metric_functions in endpoint.data_logging.items():
-            target_identifier = _get_target_identifier(
-                endpoint.name or endpoint.task, target
-            )
+            target_identifier = _get_target_identifier(endpoint.name, target)
             for metric_function in metric_functions:
                 function_loggers.append(
                     _build_function_logger(metric_function, target_identifier, loggers)
                 )
     return function_loggers
+
+
+def _create_system_logger(loggers: Dict[str, BaseLogger]) -> FunctionLogger:
+    # returns a function logger that matches to all system logs, logging
+    # every system call to each leaf logger
+    return _build_function_logger(
+        metric_function_cfg=MetricFunctionConfig(
+            func="identity", frequency=1, target_loggers=None
+        ),
+        target_identifier=f"category:{MetricCategories.SYSTEM.value}",
+        loggers=loggers,
+    )
 
 
 def _build_function_logger(
