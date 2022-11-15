@@ -56,12 +56,11 @@ class EmbeddingExtractionOutput(BaseModel):
     task_aliases=[],
 )
 class EmbeddingExtractionPipeline(Pipeline):
-    # TODO: documentation
     """
     LIFECYCLE:
 
     Initialize:
-        1. create base pipeline stopping before engine initailization
+        1. create base pipeline stopping before engine initialization
         2. extract onnx file path from base pipeline and truncate
         3. finish base pipeline engine initialization
 
@@ -93,10 +92,26 @@ class EmbeddingExtractionPipeline(Pipeline):
             **base_pipeline_args,
         )
 
-        # TODO @rahul-tuli: IMPORTANT - extract keyword arg keys from deepsparse.pipeline
-        # should only incldue these out of **base_pipeline_args
-        # keeping in kwargs for now so it will definitely fail until we do this
-        super().__init__(**kwargs)
+        pipeline_keyword_names = {  # TODO: change to inspect
+            "model_path",
+            "engine_type",
+            "batch_size",
+            "num_cores",
+            "scheduler",
+            "input_shapes",
+            "alias",
+            "context",
+            "executor",
+            "_delay_engine_initialize",
+        }
+
+        pipeline_kwargs = {
+            key: base_pipeline_args[key]
+            for key in pipeline_keyword_names
+            if key in base_pipeline_args
+        }
+
+        super().__init__(**pipeline_kwargs)
 
         self.base_pipeline.onnx_file_path = self.onnx_file_path
         self.base_pipeline._initialize_engine()
@@ -116,7 +131,6 @@ class EmbeddingExtractionPipeline(Pipeline):
         """
         return self._emb_extraction_layer
 
-    @property
     def return_numpy(self) -> bool:
         """
         :return: if True returns embeddings as numpy arrays, uses lists of=
@@ -150,6 +164,7 @@ class EmbeddingExtractionPipeline(Pipeline):
         # TODO: use truncate_onnx_model, not truncate_transformer_onnx_model
         # potentially find a way to keep transformers specific helpers
         # basically want to copy the UX here so we can push
+
         if self._emb_extraction_layer is not None:
             (
                 onnx_path,
