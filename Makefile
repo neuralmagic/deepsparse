@@ -54,6 +54,11 @@ test:
 	@echo "Running python tests";
 	@SPARSEZOO_TEST_MODE="true" pytest ./tests/ $(PYTEST_ARGS);
 
+# run integrations tests for the repo
+test_integrations:
+	@echo "Running package integrations tests";
+	@SPARSEZOO_TEST_MODE="true" pytest ./integrations/ $(PYTEST_ARGS);
+
 # create docs
 docs:
 	@echo "Running docs creation";

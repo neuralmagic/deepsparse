@@ -46,6 +46,7 @@ def install_reqs():
     )
 
 
+@pytest.mark.smoke
 def test_embedding_retriever():
 
     document_store = InMemoryDocumentStore(
