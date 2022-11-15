@@ -34,7 +34,7 @@ def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLog
 
     :param custom_logger_identifier: string in the form of
            '<path_to_the_python_script>:<custom_logger_class_name>
-    :return: Custom logger class object
+    :return: custom logger class object
     """
     path, logger_object_name = custom_logger_identifier.split(":")
     spec = importlib.util.spec_from_file_location("user_defined_custom_logger", path)
