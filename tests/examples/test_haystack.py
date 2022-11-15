@@ -12,15 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import pytest
 from deepsparse.transformers.haystack import DeepSparseEmbeddingRetriever
+from tests.helpers import run_command
 
 
 from haystack.document_stores import InMemoryDocumentStore  # isort:skip
 from haystack.pipelines import DocumentSearchPipeline  # isort:skip
 
 
-@pytest.mark.smoke
+@pytest.fixture(scope="session", autouse=True)
+def install_reqs():
+    run_command(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "deepsparse[haystack]",
+        ]
+    )
+    run_command(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "farm-haystack[all]==1.4.0",
+            "--no-dependencies",
+        ]
+    )
+
+
 def test_embedding_retriever():
 
     document_store = InMemoryDocumentStore(
