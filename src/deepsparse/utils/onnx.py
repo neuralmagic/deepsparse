@@ -16,7 +16,8 @@ import contextlib
 import logging
 import os
 import tempfile
-from typing import List, Optional, Union
+from tempfile import NamedTemporaryFile
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -45,6 +46,7 @@ __all__ = [
     "override_onnx_batch_size",
     "override_onnx_input_shapes",
     "truncate_onnx_model",
+    "truncate_onnx_embedding_model",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -361,24 +363,18 @@ def get_sorted_layer_init_names(model: ModelProto) -> List[str]:
     """
 
 
-
-
-def truncate_onnx(
+def truncate_onnx_embedding_model(
     model_path: str,
     emb_extraction_layer: Union[int, str] = -1,
-    hidden_layer_size: Optional[int] = None,
     output_name: str = "embedding",
-    output_path: Optional[str] = None,
-):
+    output_filepath: Optional[str] = None,
+) -> Tuple[str, Optional[NamedTemporaryFile]]:
     """
      :param model_path: path of onnx file to be cut
     :param emb_extraction_layer: if an int, last bert layer to include. If a
         string, then the name of the last node in the truncated graph.
         default -1 (last layer)
-    :param hidden_layer_size: guess for the number of embedded values per token
-        in provided model. Used by deepsparse engine to optimize memory allocation
-    :param output_name: name of graph output, default "embedding"
-    :param output_path: path to write resulting onnx file. If not provided,
+    :param output_filepath: path to write resulting onnx file. If not provided,
         will create a temporary file path that will be destroyed on program end
     :return: if no output path, a tuple of the saved path to the model, list of
         model output names, and reference to the tempfile object will be returned
@@ -386,39 +382,29 @@ def truncate_onnx(
         output names, and None
     """
 
-    """
-    onnx_filepath: str,
-    output_filepath: str,
-    final_node_names: List[str],
-    graph_output_names: List[str],
-    graph_output_shapes: Optional[List[List[int]]] = None,
-    """
-    output_filepath = output_path
-
+    tmp_file = None
     if output_filepath is None:
-        output_filepath = tempfile.NamedTemporaryFile().name
+        tmp_file = NamedTemporaryFile()
+        output_filepath = tmp_file.name
 
     # determine where to cut the model
-    final_node_name = (
-        emb_extraction_layer if isinstance(emb_extraction_layer, str) else None
-    )
-
-    if final_node_name is None:
+    if isinstance(emb_extraction_layer, str):
+        final_node_name = emb_extraction_layer
+    else:
         model = onnx.load(model_path)
+        final_node_name = model.graph.node[emb_extraction_layer].name
 
-        try:
-            sorted_layer_init_names = get_sorted_layer_init_names(model)
-        except Exception as exception:
-            raise RuntimeError(f"Failed to truncate onnx model: {exception}")
+        if final_node_name is None:
+            raise ValueError(f"Node at index {emb_extraction_layer} does not have a name set")
 
     truncate_onnx_model(
         onnx_filepath=model_path,
         output_filepath=output_filepath,
         final_node_names=[final_node_name],
         graph_output_names=[output_name],
-        graph_output_shapes=[[None, hidden_layer_size]],
+        graph_output_shapes=None,
     )
 
-    return output_filepath
+    return output_filepath, tmp_file
 
 

@@ -111,6 +111,8 @@ class EmbeddingExtractionPipeline(Pipeline):
             if key in base_pipeline_args
         }
 
+        self._temp_model_directory = None
+
         super().__init__(**pipeline_kwargs)
 
         self.base_pipeline.onnx_file_path = self.onnx_file_path
@@ -161,19 +163,9 @@ class EmbeddingExtractionPipeline(Pipeline):
         """
         onnx_path = self.base_pipeline.onnx_file_path
 
-        # TODO: use truncate_onnx_model, not truncate_transformer_onnx_model
-        # potentially find a way to keep transformers specific helpers
-        # basically want to copy the UX here so we can push
-
         if self._emb_extraction_layer is not None:
-            (
-                onnx_path,
-                self.onnx_output_names,
-                self._temp_model_directory,
-            ) = truncate_transformer_onnx_model(
-                onnx_path,
-                emb_extraction_layer=self._emb_extraction_layer,
-                hidden_layer_size=self._model_size,
+            onnx_path, self._temp_model_directory = truncate_onnx_embedding_model(
+                onnx_path, emb_extraction_layer=self._emb_extraction_layer
             )
         else:
             _LOGGER.info("EmbeddingExtractionPipeline - skipping model truncation")
