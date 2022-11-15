@@ -175,7 +175,7 @@ class Pipeline(ABC):
 
         self.onnx_file_path = self.setup_onnx_file_path()
 
-        if _delay_engine_initiaze:
+        if _delay_engine_initialize:
             self.engine = None
         else:
             self.engine = self._initialize_engine()

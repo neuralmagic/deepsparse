@@ -77,15 +77,15 @@ class EmbeddingExtractionPipeline(Pipeline):
     LIFECYCLE:
 
     Initialize:
-        1. create base pipeline stopping before engine initailization
+        1. create base pipeline stopping before engine initialization
         2. extract onnx file path from base pipeline and truncate
         3. finish base pipeline engine initialization
 
     __call__:
         1. input schema defers to base pipeline
-        2. pre-processing deferes to base pipeline
+        2. pre-processing defers to base pipeline
         3. engine_forward runs truncated model
-        4. post processing runs embedding aggregation
+        4. post-processing runs embedding aggregation
         5. output schema contains the possibly aggregated embeddings
     """
 
@@ -116,10 +116,26 @@ class EmbeddingExtractionPipeline(Pipeline):
             **base_pipeline_args,
         )
 
-        # TODO @rahul-tuli: IMPORTANT - extract keyword arg keys from deepsparse.pipeline
-        # should only incldue these out of **base_pipeline_args
-        # keeping in kwargs for now so it will definitely fail until we do this
-        super().__init__(**kwargs)
+        pipeline_keyword_names = {
+            "model_path",
+            "engine_type",
+            "batch_size",
+            "num_cores",
+            "scheduler",
+            "input_shapes",
+            "alias",
+            "context",
+            "executor",
+            "_delay_engine_initialize",
+        }
+
+        pipeline_kwargs = {
+            key: base_pipeline_args[key]
+            for key in pipeline_keyword_names
+            if key in base_pipeline_args
+        }
+
+        super().__init__(**pipeline_kwargs)
 
         self.base_pipeline.onnx_file_path = self.onnx_file_path
         self.base_pipeline._initialize_engine()
@@ -216,7 +232,8 @@ class EmbeddingExtractionPipeline(Pipeline):
         """
         return self.base_pipeline.process_inputs(inputs)
 
-    # TODO @rahul-tuli: this assumes extra information from transformers need to make this generic
+    # TODO @rahul-tuli: this assumes extra information from transformers need to make
+    #  this generic
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
