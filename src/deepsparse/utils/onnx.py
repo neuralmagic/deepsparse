@@ -22,7 +22,7 @@ import numpy
 import onnx
 
 from deepsparse.utils.extractor import Extractor
-
+from onnx import ModelProto
 
 try:
     from sparsezoo import File, Model
@@ -286,7 +286,6 @@ def truncate_onnx_model(
         outputs of the graph
     :param graph_output_names: list of names to call the graph outputs. Names
         correspond with the outputs specified in final_node_names
-    :param graph_output_types: list of numpy dtypes
     :param graph_output_shapes: list of shapes for each output. If not provided,
         defaults to [None] for each output and leads to slight performance loss
     :return: None
@@ -348,3 +347,78 @@ def truncate_onnx_model(
     # save and check model
     onnx.save(extracted_model, output_filepath)
     onnx.checker.check_model(output_filepath)
+
+
+def get_sorted_layer_init_names(model: ModelProto) -> List[str]:
+    """
+    Attempts to find the names of the initializers corresponding to the last nodes
+    in a  layer. Throws RuntimeError if cannot find initializer
+    names matching the expected formats.
+
+    :param model: initialized onnx model
+    :return: a list of initializer names belonging to nodes at the end of the
+        transformer layer
+    """
+
+
+
+
+def truncate_onnx(
+    model_path: str,
+    emb_extraction_layer: Union[int, str] = -1,
+    hidden_layer_size: Optional[int] = None,
+    output_name: str = "embedding",
+    output_path: Optional[str] = None,
+):
+    """
+     :param model_path: path of onnx file to be cut
+    :param emb_extraction_layer: if an int, last bert layer to include. If a
+        string, then the name of the last node in the truncated graph.
+        default -1 (last layer)
+    :param hidden_layer_size: guess for the number of embedded values per token
+        in provided model. Used by deepsparse engine to optimize memory allocation
+    :param output_name: name of graph output, default "embedding"
+    :param output_path: path to write resulting onnx file. If not provided,
+        will create a temporary file path that will be destroyed on program end
+    :return: if no output path, a tuple of the saved path to the model, list of
+        model output names, and reference to the tempfile object will be returned
+        otherwise, a tuple containing the given output_path argument, the model
+        output names, and None
+    """
+
+    """
+    onnx_filepath: str,
+    output_filepath: str,
+    final_node_names: List[str],
+    graph_output_names: List[str],
+    graph_output_shapes: Optional[List[List[int]]] = None,
+    """
+    output_filepath = output_path
+
+    if output_filepath is None:
+        output_filepath = tempfile.NamedTemporaryFile().name
+
+    # determine where to cut the model
+    final_node_name = (
+        emb_extraction_layer if isinstance(emb_extraction_layer, str) else None
+    )
+
+    if final_node_name is None:
+        model = onnx.load(model_path)
+
+        try:
+            sorted_layer_init_names = get_sorted_layer_init_names(model)
+        except Exception as exception:
+            raise RuntimeError(f"Failed to truncate onnx model: {exception}")
+
+    truncate_onnx_model(
+        onnx_filepath=model_path,
+        output_filepath=output_filepath,
+        final_node_names=[final_node_name],
+        graph_output_names=[output_name],
+        graph_output_shapes=[[None, hidden_layer_size]],
+    )
+
+    return output_filepath
+
+
