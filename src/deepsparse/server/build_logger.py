@@ -147,7 +147,7 @@ def _build_function_logger(
 
 def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
     # gets the identifier from logger arguments and simultaneously
-    # remove the identifier from the arguments
+    # removes the identifier from the arguments
     custom_logger_identifier = logger_arguments.pop("path")
     logger = custom_logger_from_identifier(custom_logger_identifier)(**logger_arguments)
     if not isinstance(logger, BaseLogger):
