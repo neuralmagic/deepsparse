@@ -175,7 +175,7 @@ class Engine(object):
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int,
+        batch_size: int = 1,
         num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
@@ -250,7 +250,7 @@ class Engine(object):
 
         return "{}.{}:\n{}".format(
             self.__class__.__module__,
-            self.__class__.__name__,
+            self.__class__.__qualname__,
             "\n".join(formatted_props),
         )
 
