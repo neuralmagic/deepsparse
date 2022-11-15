@@ -14,7 +14,7 @@
 
 import logging
 import time
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional
 
 import numpy
 
@@ -88,10 +88,10 @@ class ORTEngine(object):
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int,
-        num_cores: Union[None, int],
-        input_shapes: List[List[int]] = None,
-        providers: List[str] = None,
+        batch_size: int = 1,
+        num_cores: Optional[int] = None,
+        input_shapes: Optional[List[List[int]]] = None,
+        providers: Optional[List[str]] = None,
     ):
         _validate_ort_import()
 
@@ -115,10 +115,8 @@ class ORTEngine(object):
             # Warn about num_cores usage for non-CPU providers
             if any(p != "CPUExecutionProvider" for p in providers):
                 _LOGGER.warn(
-                    (
-                        "Using ORTEngine with providers {} may not respect num_cores={},"
-                        " please specify CPUExecutionProvider"
-                    ).format(providers, num_cores)
+                    f"Using ORTEngine with providers {providers} may not respect"
+                    f" num_cores={num_cores}, please specify CPUExecutionProvider"
                 )
 
         # TODO (michael): Unfortunately we are stacking overrides here, this can be
@@ -182,7 +180,7 @@ class ORTEngine(object):
         ]
 
         return "{}:\n{}".format(
-            self.__class__.__name__,
+            self.__class__.__qualname__,
             "\n".join(formatted_props),
         )
 
