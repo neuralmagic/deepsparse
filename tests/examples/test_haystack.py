@@ -45,7 +45,10 @@ def test_embedding_retriever():
 
     retriever = DeepSparseEmbeddingRetriever(
         document_store,
-        "zoo:nlp/masked_language_modeling/distilbert-none/pytorch/huggingface/wikipedia_bookcorpus/pruned80_quant-none-vnni",
+        (
+            "zoo:nlp/masked_language_modeling/distilbert-none/pytorch/huggingface"
+            "/wikipedia_bookcorpus/pruned80_quant-none-vnni"
+        ),
         pooling_strategy="reduce_mean",
     )
     document_store.update_embeddings(retriever)
