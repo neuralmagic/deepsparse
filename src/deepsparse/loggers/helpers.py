@@ -170,7 +170,7 @@ def access_nested_value(
     - indexing: e.g value[0] or value[-2]
     - slicing: e.g value[0:2] or value[1:-3]
     - dictionary access e.g. value["key"] or value["key1"]["key2"]
-    - a composition of both:
+    - a composition of the above:
         e.g value[0:2][0]
             value[1:-3, -1]
             value["key1"][0]["key2"]
@@ -182,6 +182,8 @@ def access_nested_value(
     :return: The value of interest
     """
     for string_operator in square_brackets.split(","):
+        # check whether `string_operator` contains at least one character
+        # -> must be a dictionary key
         if string_operator.upper().isupper():
             # dictionary access
             operator = string_operator.replace("'", "").replace(
