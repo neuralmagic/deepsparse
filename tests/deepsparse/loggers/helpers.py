@@ -79,3 +79,14 @@ class SleepLogger(BaseLogger):
     def log(self, identifier: str, value: Any, category: MetricCategories):
         sleep(self.sleep_time)
         self.logger.log(identifier=identifier, value=value, category=category)
+
+
+class CustomLogger(BaseLogger):
+    # mock custom logger for testing purposes
+
+    def __init__(self, arg1, arg2):
+        self.arg1 = arg1
+        self.arg2 = arg2
+
+    def log(self, identifier: str, value: Any, category: MetricCategories):
+        pass

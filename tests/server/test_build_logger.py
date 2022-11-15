@@ -15,7 +15,8 @@
 import yaml
 
 import pytest
-from deepsparse.loggers import AsyncLogger, MultiLogger
+
+from deepsparse.loggers import AsyncLogger, MetricCategories, MultiLogger
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig
 from tests.helpers import find_free_port
@@ -124,6 +125,24 @@ endpoints:
           - func: tests/test_data/metric_functions.py:user_defined_identity
             frequency: 2"""
 
+yaml_config_8 = """
+num_cores: 2
+num_workers: 2
+loggers:
+    custom_logger:
+        path: tests/deepsparse/loggers/helpers.py:CustomLogger
+        arg1: 1
+        arg2: some_string
+endpoints:
+    - task: question_answering
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1
+      data_logging:
+        engine_outputs:
+           - func: np.mean
+             frequency: 3"""
+
 
 @pytest.mark.parametrize(
     "yaml_config, raises_error, returns_logger, num_function_loggers",
@@ -135,6 +154,7 @@ endpoints:
         (yaml_config_5, True, None, None),
         (yaml_config_6, False, True, 1),
         (yaml_config_7.format(port=find_free_port()), False, True, 1),
+        (yaml_config_8, False, True, 1),
     ],
 )
 def test_build_logger(yaml_config, raises_error, returns_logger, num_function_loggers):
@@ -152,3 +172,13 @@ def test_build_logger(yaml_config, raises_error, returns_logger, num_function_lo
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)
     assert len(logger.logger.loggers) == num_function_loggers
+
+    assert len(logger.logger.loggers) == num_function_loggers + 1
+
+    # check for system logger
+    system_logger = logger.logger.loggers[-1]
+    assert system_logger.target_identifier == (
+        f"category:{MetricCategories.SYSTEM.value}"
+    )
+    assert system_logger.function_name == "identity"
+    assert system_logger.frequency == 1
