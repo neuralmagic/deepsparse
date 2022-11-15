@@ -20,8 +20,8 @@ from pydantic import BaseModel
 import pytest
 import torch
 from deepsparse.loggers.helpers import (
+    access_nested_value,
     check_identifier_match,
-    do_slicing_and_indexing,
     get_function_and_function_name,
     possibly_extract_value,
 )
@@ -89,6 +89,9 @@ class MockModel(BaseModel):
 
 value_1 = MockModel(key_1=MockModel_(key_2=[0, 1, 2, 3]))
 value_2 = MockModel(key_1=[[MockModel_(key_2=[0, MockModel__(key_3=5)])]])
+value_3 = MockModel(
+    key_1=[[MockModel_(key_2={"key_3": [{"key_4": [0, 1, 2, 3, 4, 5]}, 0]})]]
+)
 
 
 @pytest.mark.parametrize(
@@ -97,6 +100,7 @@ value_2 = MockModel(key_1=[[MockModel_(key_2=[0, MockModel__(key_3=5)])]])
         (value_1, "key_1.key_2[2]", 2),
         (value_2, "key_1[0][0].key_2[1].key_3", 5),
         (value_2, "key_1[0][0].key_2[0:2][1].key_3", 5),
+        (value_3, "key_1[0][0].key_2['key_3'][0]['key_4'][2:4]", [2, 3]),
     ],
 )
 def test_possibly_extract_value(value, remainder, expected_value):
@@ -116,19 +120,19 @@ def test_possibly_extract_value(value, remainder, expected_value):
         ([[0, 1, 2, 3, 4]], "0, 1:-1:1", [1, 2, 3]),
         (numpy.array([[0, 1, 2, 3, 4]]), "0, 1:-1:1", numpy.array([1, 2, 3])),
         (torch.tensor([[0, 1, 2, 3, 4]]), "0, 1:-1:1", torch.tensor([1, 2, 3])),
+        ({"key_1": {"key_2": [3]}}, "'key_1','key_2',0", 3),
+        ({"key_1": [0, 1, {"key_2": [3, 4, 5]}]}, "'key_1',2,'key_2',0", 3),
     ],
 )
-def test_do_slicing_and_indexing(value, square_brackets, expected_value):
+def test_access_nested_value(value, square_brackets, expected_value):
     if isinstance(expected_value, numpy.ndarray):
         assert numpy.array_equal(
-            expected_value, do_slicing_and_indexing(value, square_brackets)
+            expected_value, access_nested_value(value, square_brackets)
         )
         return
     if isinstance(expected_value, torch.Tensor):
-        assert torch.equal(
-            expected_value, do_slicing_and_indexing(value, square_brackets)
-        )
+        assert torch.equal(expected_value, access_nested_value(value, square_brackets))
         return
-    assert expected_value == do_slicing_and_indexing(
+    assert expected_value == access_nested_value(
         value=value, square_brackets=square_brackets
     )
