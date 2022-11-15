@@ -34,6 +34,7 @@ package_path = os.path.join(
 )
 (
     is_release,
+    is_enterprise,
     version,
     version_major,
     version_minor,
@@ -41,7 +42,21 @@ package_path = os.path.join(
 ) = get_release_and_version(package_path)
 version_base = f"{version_major}.{version_minor}.0"
 
-_PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
+_PACKAGE_NAME = (
+    "deepsparse-ent"
+    if is_enterprise
+    else "deepsparse"
+    if is_release
+    else "deepsparse-nightly"
+)
+
+if is_enterprise:
+    # do not include the LICENSE-NEURALMAGIC file
+    # in the deepsparse-ent installation folder
+    license_nm_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "LICENSE-NEURALMAGIC"
+    )
+    os.remove(license_nm_path)
 
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
@@ -60,7 +75,7 @@ _deps = [
     "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
-    "protobuf>=3.12.2,<4",
+    "protobuf>=3.12.2,<=3.20.1",
     "click~=8.0.0",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
@@ -88,7 +103,7 @@ _dev_deps = [
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
-    "fastapi>=0.70.0",
+    "fastapi>=0.70.0,<0.87.0",
     "pydantic>=1.8.2",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
@@ -149,7 +164,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [6, 7, 8, 9, 10]
+    supported_minor = [7, 8, 9, 10]
 
     if (
         sys.version_info[0] != supported_major
@@ -272,12 +287,11 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.6, <3.11",
+    python_requires=">=3.7, <3.11",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

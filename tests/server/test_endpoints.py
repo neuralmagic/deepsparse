@@ -24,6 +24,7 @@ from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
+from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
 
@@ -270,9 +271,14 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
 
 class TestDefaultLoggingServer:
     @pytest.fixture(scope="class")
-    def server_config(self):
+    def prometheus_port(self):
+        yield find_free_port()
+
+    @pytest.fixture(scope="class")
+    def server_config(self, prometheus_port):
         server_config = ServerConfig(
-            num_cores=1, num_workers=1, endpoints=[], loggers="default"
+            endpoints=[],
+            loggers={"prometheus": {"port": prometheus_port}},
         )
         yield server_config
 
@@ -280,7 +286,7 @@ class TestDefaultLoggingServer:
     def client(self, server_config):
         yield TestClient(_build_app(server_config))
 
-    def test_prometheus_server_running(self, server_config, client):
+    def test_prometheus_server_running(self, server_config, client, prometheus_port):
         # check positive ping to expected prometheus server on port 6100
-        response = requests.get("http://127.0.0.1:6100")
+        response = requests.get(f"http://127.0.0.1:{prometheus_port}")
         assert response.status_code == 200
