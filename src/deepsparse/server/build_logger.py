@@ -27,7 +27,9 @@ from deepsparse import (
 )
 from deepsparse.loggers import MetricCategories
 from deepsparse.loggers.helpers import get_function_and_function_name
+from deepsparse.server.helpers import custom_logger_from_identifier
 from deepsparse.server.config import MetricFunctionConfig, ServerConfig
+
 
 
 __all__ = ["build_logger"]
@@ -80,15 +82,20 @@ def build_leaf_loggers(
     """
     loggers = {}
     for logger_name, logger_arguments in loggers_config.items():
-
-        logger_to_instantiate = _LOGGER_MAPPING.get(logger_name)
-        if logger_to_instantiate is None:
-            raise ValueError(
-                f"Unknown logger name: {logger_name}. "
-                f"supported logger names: {list(_LOGGER_MAPPING.keys())}"
-            )
-        logger_arguments = {} if logger_arguments is None else logger_arguments
-        leaf_logger = logger_to_instantiate(**logger_arguments)
+        path_custom_logger = logger_arguments.get("path")
+        if path_custom_logger:
+            # if `path` argument is provided, use the custom logger
+            leaf_logger = _build_custom_logger(logger_arguments)
+        else:
+            # otherwise, use the built-in logger
+            logger_to_instantiate = _LOGGER_MAPPING.get(logger_name)
+            if logger_to_instantiate is None:
+                raise ValueError(
+                    f"Unknown logger name: {logger_name}. "
+                    f"supported logger names: {list(_LOGGER_MAPPING.keys())}"
+                )
+            logger_arguments = {} if logger_arguments is None else logger_arguments
+            leaf_logger = logger_to_instantiate(**logger_arguments)
         loggers.update({logger_name: leaf_logger})
     return loggers
 
@@ -132,7 +139,7 @@ def _create_system_logger(loggers: Dict[str, BaseLogger]) -> FunctionLogger:
 
 
 def _build_function_logger(
-    metric_function_cfg: "MetricFunctionConfig",  # noqa F821
+    metric_function_cfg: MetricFunctionConfig,
     target_identifier: str,
     loggers: Dict[str, BaseLogger],
 ) -> FunctionLogger:
@@ -157,6 +164,19 @@ def _build_function_logger(
         function_name=function_name,
         frequency=metric_function_cfg.frequency,
     )
+
+
+def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
+    # gets the identifier from logger arguments and simultaneously
+    # removes the identifier from the arguments
+    custom_logger_identifier = logger_arguments.pop("path")
+    logger = custom_logger_from_identifier(custom_logger_identifier)(**logger_arguments)
+    if not isinstance(logger, BaseLogger):
+        raise ValueError(
+            f"Custom logger must be a subclass of BaseLogger. "
+            f"Got {type(logger)} instead."
+        )
+    return logger
 
 
 def _get_target_identifier(endpoint_name: str, target_name: str) -> str:
