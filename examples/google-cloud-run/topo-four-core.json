@@ -1,0 +1,182 @@
+{
+  "architecture": "x86_64",
+  "hardware_threads": [
+    {
+      "available": true,
+      "caches": [
+        {
+          "cache_id": 0,
+          "coherency_line_size": 64,
+          "index": 0,
+          "level": 1,
+          "size": 32768,
+          "type": "data"
+        },
+        {
+          "cache_id": 0,
+          "coherency_line_size": 64,
+          "index": 1,
+          "level": 1,
+          "size": 32768,
+          "type": "instruction"
+        },
+        {
+          "cache_id": 0,
+          "coherency_line_size": 64,
+          "index": 2,
+          "level": 2,
+          "size": 262144,
+          "type": "data"
+        },
+        {
+          "cache_id": 0,
+          "coherency_line_size": 64,
+          "index": 3,
+          "level": 3,
+          "size": 6291456,
+          "type": "data"
+        }
+      ],
+      "core_id": 0,
+      "index": 0,
+      "l3_index": 0,
+      "numa_node": 0,
+      "socket_id": 0,
+      "thread_id": 0
+    },
+    {
+      "available": true,
+      "caches": [
+        {
+          "cache_id": 1,
+          "coherency_line_size": 64,
+          "index": 0,
+          "level": 1,
+          "size": 32768,
+          "type": "data"
+        },
+        {
+          "cache_id": 1,
+          "coherency_line_size": 64,
+          "index": 1,
+          "level": 1,
+          "size": 32768,
+          "type": "instruction"
+        },
+        {
+          "cache_id": 1,
+          "coherency_line_size": 64,
+          "index": 2,
+          "level": 2,
+          "size": 262144,
+          "type": "data"
+        },
+        {
+          "cache_id": 0,
+          "coherency_line_size": 64,
+          "index": 3,
+          "level": 3,
+          "size": 6291456,
+          "type": "data"
+        }
+      ],
+      "core_id": 1,
+      "index": 1,
+      "l3_index": 0,
+      "numa_node": 0,
+      "socket_id": 0,
+      "thread_id": 1
+    },
+    {
+      "available": true,
+      "caches": [
+        {
+          "cache_id": 2,
+          "coherency_line_size": 64,
+          "index": 0,
+          "level": 1,
+          "size": 32768,
+          "type": "data"
+        },
+        {
+          "cache_id": 2,
+          "coherency_line_size": 64,
+          "index": 1,
+          "level": 1,
+          "size": 32768,
+          "type": "instruction"
+        },
+        {
+          "cache_id": 2,
+          "coherency_line_size": 64,
+          "index": 2,
+          "level": 2,
+          "size": 262144,
+          "type": "data"
+        },
+        {
+          "cache_id": 0,
+          "coherency_line_size": 64,
+          "index": 3,
+          "level": 3,
+          "size": 6291456,
+          "type": "data"
+        }
+      ],
+      "core_id": 2,
+      "index": 2,
+      "l3_index": 0,
+      "numa_node": 0,
+      "socket_id": 0,
+      "thread_id": 2
+    },
+    {
+      "available": true,
+      "caches": [
+        {
+          "cache_id": 3,
+          "coherency_line_size": 64,
+          "index": 0,
+          "level": 1,
+          "size": 32768,
+          "type": "data"
+        },
+        {
+          "cache_id": 3,
+          "coherency_line_size": 64,
+          "index": 1,
+          "level": 1,
+          "size": 32768,
+          "type": "instruction"
+        },
+        {
+          "cache_id": 3,
+          "coherency_line_size": 64,
+          "index": 2,
+          "level": 2,
+          "size": 262144,
+          "type": "data"
+        },
+        {
+          "cache_id": 0,
+          "coherency_line_size": 64,
+          "index": 3,
+          "level": 3,
+          "size": 6291456,
+          "type": "data"
+        }
+      ],
+      "core_id": 3,
+      "index": 3,
+      "l3_index": 0,
+      "numa_node": 0,
+      "socket_id": 0,
+      "thread_id": 3
+    }
+  ],
+  "isa": "avx2",
+  "vendor": "GenuineIntel",
+  "vendor_id": "Intel",
+  "vendor_model": "Intel(R) Core(TM) i9-7980XE CPU @ 2.60GHz",
+  "vnni": false
+}
