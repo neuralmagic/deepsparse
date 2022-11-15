@@ -18,7 +18,8 @@ Specifies the mapping from the ServerConfig to the DeepSparse Logger
 
 from typing import Any, Dict, List, Optional
 
-from deepsparse import (
+from deepsparse.loggers import (
+    AsyncLogger,
     BaseLogger,
     FunctionLogger,
     MultiLogger,
@@ -61,13 +62,15 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     # base level loggers that log raw values for monitoring. ie python, prometheus
     leaf_loggers = build_leaf_loggers(loggers_config)
 
-    # loggers that match to logged identifiers and apply transforms before leaf logging
     function_loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
-
+    
     # add logger to ensure leaf level logging of all system (timing) logs
     function_loggers.append(_create_system_logger(leaf_loggers))
-
-    return MultiLogger(function_loggers)
+    
+    return AsyncLogger(
+        logger=MultiLogger(function_loggers),  # wrap all loggers to async log call
+        max_workers=1,
+    )
 
 
 def build_leaf_loggers(
