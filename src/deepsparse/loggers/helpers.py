@@ -25,6 +25,7 @@ import numpy
 
 import deepsparse.loggers.metric_functions.built_ins as built_ins
 import torch
+from deepsparse.loggers import MetricCategories
 
 
 __all__ = ["match_and_extract", "get_function_and_function_name", "NO_MATCH"]
@@ -88,17 +89,28 @@ def get_function_and_function_name(
     return getattr(built_ins, func_name), func_name
 
 
-def match_and_extract(template: str, identifier: str, value: Any) -> Any:
+def match_and_extract(
+    template: str,
+    identifier: str,
+    value: Any,
+    category: Optional[MetricCategories] = None,
+) -> Any:
     """
     Attempts to match the template against the identifier. If successful,
     uses the remainder to extract the item of interest inside `value` data structure.
 
     :param template: A string that defines the matching criteria
-    :param identifier: A string that will be compared with the template
+    :param identifier: A string that will be compared with the template, may
+        be a full string to match to a logged target with access to properties
+        and indices, a regex pattern to match to prefixed by `re:`, or a
+        MetricCategory to match to prefixed by `category:`
     :param value: Raw value from the logger
+    :param category: optional MetricCategory of the value
     :return: Value of interest or string flag that indicates that there was no match
     """
-    is_match, remainder = check_identifier_match(template, identifier)
+    is_match, remainder = check_identifier_match(
+        template, identifier, category=category
+    )
     if is_match:
         return possibly_extract_value(value, remainder)
     else:
@@ -126,15 +138,15 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
 
 
 def check_identifier_match(
-    template: str, identifier: str
+    template: str, identifier: str, category: Optional[MetricCategories] = None
 ) -> Tuple[bool, Optional[str]]:
     """
     Match the template against the identifier
 
     :param template: A string the in format:
-        <string_n-t>.<string_n-t+1)>.<...>.<string_n>(optionally).<remainder>
-        or
-        a regex pattern
+        <string_n-t>.<string_n-t+1)>.<...>.<string_n>(optionally).<remainder>,
+        a regex pattern prefixed by `re:`, or a MetricCategory value prefixed
+        by `category:`
 
     :param identifier: A string in the format:
 
@@ -143,17 +155,24 @@ def check_identifier_match(
             if template and identifier do not share any first
             <string_n-t+k> components, there is no match
 
+    :param category: optional MetricCategory of the value logged value
+
     :return: A tuple that consists of:
         - a boolean (True if match, False otherwise)
         - an optional remainder (string if matched, None otherwise)
     """
+    if template[:3] == "re:":
+        pattern = template[3:]
+        return re.match(pattern, identifier) is not None, None
+    if template.startswith("category:") and category is not None:
+        template_category = template[9:]
+        template_category = MetricCategories(template_category)  # parse into Enum
+        category = MetricCategories(category)  # ensure in Enum form
+        return template_category == category, None
     if template == identifier:
         return True, None
     if template.startswith(identifier):
         return True, template.replace(identifier, "")[1:]
-    if template[:3] == "re:":
-        pattern = template[3:]
-        return re.match(pattern, identifier) is not None, None
 
     return False, None
 
