@@ -27,9 +27,8 @@ from deepsparse import (
 )
 from deepsparse.loggers import MetricCategories
 from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.server.helpers import custom_logger_from_identifier
+from deepsparse.server.helpers import custom_logger_from_identifier, default_logger
 from deepsparse.server.config import MetricFunctionConfig, ServerConfig
-
 
 
 __all__ = ["build_logger"]
@@ -57,7 +56,7 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
 
     loggers_config = server_config.loggers
     if not loggers_config:
-        return None
+        return default_logger()
 
     # base level loggers that log raw values for monitoring. ie python, prometheus
     leaf_loggers = build_leaf_loggers(loggers_config)

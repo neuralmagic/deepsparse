@@ -175,3 +175,48 @@ def test_function_logging_config(config_yaml, should_fail, instance_type):
             MetricFunctionConfig(**obj)
     else:
         assert MetricFunctionConfig(**obj)
+
+
+
+def _create_server_config(task_name, endpoint_1_name, endpoint_2_name):
+    return ServerConfig(
+        endpoints=[
+            EndpointConfig(
+                name=endpoint_1_name,
+                task=task_name,
+                model="hjkl",
+            ),
+            EndpointConfig(
+                name=endpoint_2_name,
+                task=task_name,
+                model="hjkl",
+            )
+    ])
+@pytest.mark.parametrize(
+    "task_name, endpoint_1_name, endpoint_2_name, raise_error",
+    [
+        ("some_task", None, None, False),
+        ("some_task", "name_1", None, False),
+        ("some_task", "name_1", "name_2", False),
+        ("some_task", "name_1", "name_1", True),
+    ],
+)
+def test_unique_endpoint_names(task_name, endpoint_1_name, endpoint_2_name, raise_error):
+    if raise_error:
+        with pytest.raises(ValueError):
+            _create_server_config(task_name, endpoint_1_name, endpoint_2_name)
+            return
+        return
+    server_config = _create_server_config(task_name, endpoint_1_name, endpoint_2_name)
+
+
+    if not endpoint_1_name and not endpoint_2_name:
+        assert server_config.endpoints[0].name == task_name + "-0"
+        assert server_config.endpoints[1].name == task_name + "-1"
+    elif endpoint_1_name and not endpoint_2_name:
+        assert server_config.endpoints[0].name == endpoint_1_name
+        assert server_config.endpoints[1].name == task_name + "-0"
+    else:
+        assert server_config.endpoints[0].name == endpoint_1_name
+        assert server_config.endpoints[1].name == endpoint_2_name
+
