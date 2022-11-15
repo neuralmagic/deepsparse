@@ -14,7 +14,7 @@
 
 import logging
 import time
-from typing import Dict, List, Tuple, Union, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
