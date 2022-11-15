@@ -19,7 +19,6 @@ tasks
 """
 
 
-from enum import Enum
 from typing import List, Type, Union
 
 import numpy
@@ -52,27 +51,12 @@ class EmbeddingExtractionOutput(BaseModel):
         arbitrary_types_allowed = True
 
 
-class ExtractionStrategy(str, Enum):
-    """
-    Schema for supported extraction strategies
-    """
-
-    per_token = "per_token"
-    reduce_mean = "reduce_mean"
-    reduce_max = "reduce_max"
-    cls_token = "cls_token"
-
-    @classmethod
-    def to_list(cls) -> List[str]:
-        return cls._value2member_map_
-
-
 @Pipeline.register(
     task="embedding_extraction",
     task_aliases=[],
-    default_model_path="",  # TODO determine what goes here
 )
 class EmbeddingExtractionPipeline(Pipeline):
+    # TODO: documentation
     """
     LIFECYCLE:
 
@@ -95,20 +79,13 @@ class EmbeddingExtractionPipeline(Pipeline):
         base_task: str,
         emb_extraction_layer: Union[int, str, None] = -1,
         model_size: int = 768,
-        extraction_strategy: ExtractionStrategy = "per_token",
         return_numpy: bool = True,
         **base_pipeline_args,
     ):
         self._base_task = base_task
         self._emb_extraction_layer = emb_extraction_layer
         self._model_size = model_size
-        self._extraction_strategy = extraction_strategy
         self._return_numpy = return_numpy
-
-        if self._extraction_strategy not in ExtractionStrategy.to_list():
-            raise ValueError(
-                f"Unsupported extraction_strategy {self._extraction_strategy}"
-            )
 
         self.base_pipeline = Pipeline.create(
             task=base_task,
@@ -138,13 +115,6 @@ class EmbeddingExtractionPipeline(Pipeline):
             outputs of full model are treated as model embeddings
         """
         return self._emb_extraction_layer
-
-    @property
-    def extraction_strategy(self) -> ExtractionStrategy:
-        """
-        :return: aggregation method used for final embeddings
-        """
-        return self._extraction_strategy
 
     @property
     def return_numpy(self) -> bool:
@@ -216,66 +186,19 @@ class EmbeddingExtractionPipeline(Pipeline):
         """
         return self.base_pipeline.process_inputs(inputs)
 
-    # TODO @rahul-tuli: this assumes extra information from transformers need to make this generic
     def process_engine_outputs(
         self,
         engine_outputs: List[numpy.ndarray],
-        pad_masks: numpy.ndarray,
-        cls_masks: numpy.ndarray,
+        **_,  # do not remove - these kwargs will be propagated from base pipeline
     ) -> BaseModel:
         """
-        Implements extraction_strategy from the intermediate layer and returns its value
+        Returns raw embedding outputs from model forward pass
 
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        :param pad_masks: mask of the padding token for each engine input
-        :param cls_masks: mask of the cls token for each engine input
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        if isinstance(engine_outputs, list):
-            engine_outputs = engine_outputs[0]
-
-        embeddings = []
-        assert len(engine_outputs) == len(pad_masks) == len(cls_masks)
-        for engine_output, pad_mask, cls_mask in zip(
-            engine_outputs, pad_masks, cls_masks
-        ):
-            # extraction strategy
-            if self._extraction_strategy == ExtractionStrategy.per_token:
-                embedding = engine_output
-            if self._extraction_strategy == ExtractionStrategy.reduce_mean:
-                masked_output = self._remove_1d_mask(
-                    engine_output, mask=(pad_mask | cls_mask)
-                )
-                embedding = masked_output.mean(axis=0)
-            if self._extraction_strategy == ExtractionStrategy.reduce_max:
-                masked_output = self._remove_1d_mask(
-                    engine_output, mask=(pad_mask | cls_mask)
-                )
-                embedding = masked_output.max(axis=0)
-            if self._extraction_strategy == ExtractionStrategy.cls_token:
-                embedding = engine_output[numpy.where(cls_mask)[0][0]]
-
-            # flatten
-            embedding = embedding.flatten()
-
-            if not self._return_numpy:
-                embedding = embedding.tolist()
-
-            embeddings.append(embedding)
-
-        return self.output_schema(embeddings=embeddings)
-
-    def _remove_1d_mask(
-        self, array: numpy.ndarray, mask: numpy.ndarray
-    ) -> numpy.ndarray:
-        # Helper function to mask out values from a 1 dimensional mask
-
-        # :param array: array containing values to be masked out
-        # :param mask: 1 dimensional mask
-        # :return: numpy masked array
-        array_masked = numpy.ma.masked_array(array)
-        array_masked[mask] = numpy.ma.masked
-
-        return array_masked
+        if not self.return_numpy:
+            engine_outputs = [array.tolist() for array in engine_outputs]
+        return self.output_schema(embeddings=engine_outputs)
