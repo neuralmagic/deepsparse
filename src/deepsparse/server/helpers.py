@@ -29,18 +29,18 @@ _LOGGER = logging.getLogger(__name__)
 
 def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLogger]:
     """
-    Parse the custom logger identifier and import a custom logger class object
-    from the user-specified script
+    Parse the custom logger identifier in order to import a custom logger class object
+    from the user-specified python script
 
     :param custom_logger_identifier: string in the form of
            '<path_to_the_python_script>:<custom_logger_class_name>
     :return: Custom logger class object
     """
-    path, logger_name = custom_logger_identifier.split(":")
+    path, logger_object_name = custom_logger_identifier.split(":")
     spec = importlib.util.spec_from_file_location("user_defined_custom_logger", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return getattr(module, logger_name)
+    return getattr(module, logger_object_name)
 
 
 def default_logger() -> BaseLogger:
