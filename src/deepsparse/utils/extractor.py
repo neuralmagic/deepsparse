@@ -119,6 +119,7 @@ class Extractor:
         if not hasattr(self.model, "functions"):
             # model.functions added in onnx v1.10, skip if not included in model
             return []
+
         # a node in a model graph may refer a function.
         # a function contains nodes, some of which may in turn refer a function.
         # we need to find functions referred by graph nodes and
