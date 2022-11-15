@@ -70,7 +70,10 @@ class FunctionLogger(BaseLogger):
         :param category: The metric category that the log belongs to
         """
         extracted_value = match_and_extract(
-            template=self.target_identifier, identifier=identifier, value=value
+            template=self.target_identifier,
+            identifier=identifier,
+            value=value,
+            category=category,
         )
         # `None` can be a valid, extracted value.
         #  Hence, we check for `NO_MATCH` flag
