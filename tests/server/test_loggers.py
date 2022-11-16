@@ -22,6 +22,8 @@ from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import EndpointConfig, MetricFunctionConfig, ServerConfig
 from deepsparse.server.server import _add_endpoint, _build_app
 from fastapi.testclient import TestClient
+from tests.helpers import find_free_port
+from tests.utils import mock_engine
 
 
 LIST_LOGGER_IDENTIFIER = "tests/deepsparse/loggers/helpers.py:ListLogger"
@@ -154,3 +156,23 @@ class TestLoggers:
                 0
             ]  # -> MultiLogger -> FunctionLogger -> MultiLogger
             _test_logger_contents(leaf_logger, expected_logs_content)
+
+
+@mock_engine(rng_seed=0)
+def test_instantiate_prometheus(tmp_path):
+    client = TestClient(
+        _build_app(
+            ServerConfig(
+                endpoints=[EndpointConfig(task="text_classification", model="default")],
+                loggers=dict(
+                    prometheus={
+                        "port": find_free_port(),
+                        "text_log_save_dir": str(tmp_path),
+                        "text_log_save_frequency": 30,
+                    }
+                ),
+            )
+        )
+    )
+    r = client.post("/predict", json=dict(sequences="asdf"))
+    assert r.status_code == 200
