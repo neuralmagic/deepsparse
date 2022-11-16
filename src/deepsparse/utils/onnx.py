@@ -23,7 +23,6 @@ import numpy
 import onnx
 
 from deepsparse.utils.extractor import Extractor
-from onnx import ModelProto
 
 try:
     from sparsezoo import File, Model
@@ -33,7 +32,6 @@ except Exception as sparsezoo_err:
     Model = object
     File = object
     sparsezoo_import_error = sparsezoo_err
-
 
 __all__ = [
     "ONNX_TENSOR_TYPE_MAP",
@@ -292,9 +290,6 @@ def truncate_onnx_model(
         defaults to [None] for each output and leads to slight performance loss
     :return: None
     """
-    # TODO @rahul-tuli: we can keep this function exactly, but should make a UX
-    # friendly wrapper similar to truncate_transformer_onnx_model that handles
-    # node indices, pointers to temporary files, etc. we can sync on this further when ready
     if graph_output_shapes is None:
         graph_output_shapes = [[None]] * len(final_node_names)
 
@@ -335,6 +330,8 @@ def truncate_onnx_model(
 
     # use extractor to create and write subgraph
     original_num_nodes = len(model.graph.node)
+    # TODO: modified non-transformer models fail during shape inference
+    #  @rahul-tuli
     extractor = Extractor(model)
     extracted_model = extractor.extract_model(
         input_names=graph_input_names, output_names=graph_output_names
@@ -351,18 +348,6 @@ def truncate_onnx_model(
     onnx.checker.check_model(output_filepath)
 
 
-def get_sorted_layer_init_names(model: ModelProto) -> List[str]:
-    """
-    Attempts to find the names of the initializers corresponding to the last nodes
-    in a  layer. Throws RuntimeError if cannot find initializer
-    names matching the expected formats.
-
-    :param model: initialized onnx model
-    :return: a list of initializer names belonging to nodes at the end of the
-        transformer layer
-    """
-
-
 def truncate_onnx_embedding_model(
     model_path: str,
     emb_extraction_layer: Union[int, str] = -1,
@@ -374,6 +359,7 @@ def truncate_onnx_embedding_model(
     :param emb_extraction_layer: if an int, last bert layer to include. If a
         string, then the name of the last node in the truncated graph.
         default -1 (last layer)
+    :param output_name: name of graph output, default "embedding"
     :param output_filepath: path to write resulting onnx file. If not provided,
         will create a temporary file path that will be destroyed on program end
     :return: if no output path, a tuple of the saved path to the model, list of
@@ -395,7 +381,8 @@ def truncate_onnx_embedding_model(
         final_node_name = model.graph.node[emb_extraction_layer].name
 
         if final_node_name is None:
-            raise ValueError(f"Node at index {emb_extraction_layer} does not have a name set")
+            raise ValueError(
+                f"Node at index {emb_extraction_layer} does not have a name set")
 
     truncate_onnx_model(
         onnx_filepath=model_path,
@@ -406,5 +393,3 @@ def truncate_onnx_embedding_model(
     )
 
     return output_filepath, tmp_file
-
-

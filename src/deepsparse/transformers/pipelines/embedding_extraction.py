@@ -50,7 +50,7 @@ from deepsparse.transformers.pipelines import TransformersPipeline
 __all__ = [
     "EmbeddingExtractionInput",
     "EmbeddingExtractionOutput",
-    "EmbeddingExtractionPipeline",
+    "TransformersEmbeddingExtractionPipeline",
 ]
 
 _LOGGER = get_main_logger()
@@ -58,7 +58,7 @@ _LOGGER = get_main_logger()
 
 class EmbeddingExtractionInput(BaseModel):
     """
-    Schema for inputs to embedding_extraction pipelines
+    Schema for inputs to transformers_embedding_extraction pipelines
     """
 
     inputs: Union[str, List[str]] = Field(
@@ -68,7 +68,8 @@ class EmbeddingExtractionInput(BaseModel):
 
 class EmbeddingExtractionOutput(BaseModel):
     """
-    Schema for embedding_extraction pipeline output. Values are in batch order
+    Schema for transformers_embedding_extraction pipeline output.
+    Values are in batch order
     """
 
     embeddings: Union[List[List[float]], List[numpy.ndarray]] = Field(
@@ -96,9 +97,6 @@ class ExtractionStrategy(str, Enum):
 
 
 @Pipeline.register(
-    # TODO: will likely want to delete this
-    #  before we do need to check that the new pipeline works with existing
-    #  examples and integrations such as haystack
     task="transformers_embedding_extraction",
     task_aliases=[],
     default_model_path=(
@@ -106,18 +104,18 @@ class ExtractionStrategy(str, Enum):
         "wikipedia_bookcorpus/pruned80_quant-none-vnni"
     ),
 )
-class EmbeddingExtractionPipeline(TransformersPipeline):
+class TransformersEmbeddingExtractionPipeline(TransformersPipeline):
     """
     embedding extraction pipeline for extracting intermediate layer embeddings
     from transformer models
 
     example instantiation:
     ```python
-    embedding_extraction_pipeline = Pipeline.create(
-        task="embedding_extraction",
+    transformers_embedding_extraction_pipeline = Pipeline.create(
+        task="transformers_embedding_extraction",
         model_path="masked_language_modeling_model_dir/",
     )
-    results = embedding_extraction_pipeline(
+    results = transformers_embedding_extraction_pipeline(
         [
             "the warriors have won the nba finals"
             "the warriors are the greatest basketball team ever"

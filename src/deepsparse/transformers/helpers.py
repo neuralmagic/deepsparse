@@ -270,7 +270,6 @@ def truncate_transformer_onnx_model(
         otherwise, a tuple containing the given output_path argument, the model
         output names, and None
     """
-    # TODO @rahul-tuli: just adding a pointer here to the file
 
     # determine where to cut the model
     final_node_name = (

@@ -175,11 +175,7 @@ class Pipeline(ABC):
 
         self.onnx_file_path = self.setup_onnx_file_path()
 
-<<<<<<< HEAD
-        if _delay_engine_initiaze:
-=======
         if _delay_engine_initialize:
->>>>>>> c34a3334264b7764e4199bdbdde934b402820044
             self.engine = None
         else:
             self.engine = self._initialize_engine()
@@ -1276,7 +1272,7 @@ def haystack_pipeline(*args, **kwargs) -> "Pipeline":
         specify Haystack node arguments
     :param retriever_kwargs: keyword arguments to be passed to retriever. If
         the retriever is a deepsparse retriever, then these arguments will also
-        be passed to the EmbeddingExtractionPipeline of the retriever
+        be passed to the TransformersEmbeddingExtractionPipeline of the retriever
     """
     return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
 

@@ -17,8 +17,7 @@
 Pipeline implementation and pydantic models for embedding extraction transformers
 tasks
 """
-
-
+import inspect
 from typing import List, Type, Union
 
 import numpy
@@ -26,13 +25,14 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
 from deepsparse.log import get_main_logger
-from deepsparse.transformers.helpers import truncate_transformer_onnx_model
+from deepsparse.utils import truncate_onnx_embedding_model
 
 
 __all__ = [
     "EmbeddingExtractionOutput",
     "EmbeddingExtractionPipeline",
 ]
+
 
 _LOGGER = get_main_logger()
 
@@ -57,19 +57,29 @@ class EmbeddingExtractionOutput(BaseModel):
 )
 class EmbeddingExtractionPipeline(Pipeline):
     """
-    LIFECYCLE:
+    embedding extraction pipeline for extracting intermediate layer embeddings
 
-    Initialize:
-        1. create base pipeline stopping before engine initialization
-        2. extract onnx file path from base pipeline and truncate
-        3. finish base pipeline engine initialization
-
-    __call__:
-        1. input schema defers to base pipeline
-        2. pre-processing deferes to base pipeline
-        3. engine_forward runs truncated model
-        4. post processing runs embedding aggregation
-        5. output schema contains the possibly aggregated embeddings
+    :param model_path: sparsezoo stub to a transformers model or (preferred) a
+        directory containing a model.onnx, tokenizer config, and model config
+    :param engine_type: inference engine to use. Currently supported values include
+        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
+    :param batch_size: static batch size to use for inference. Default is 1
+    :param num_cores: number of CPU cores to allocate for inference engine. None
+        specifies all available cores. Default is None
+    :param scheduler: (deepsparse only) kind of scheduler to execute with.
+        Pass None for the default
+    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+        to use model as-is. Default is None
+    :param alias: optional name to give this pipeline instance, useful when
+        inferencing with multiple models. Default is None
+    :param emb_extraction_layer: if an int, the layer number from which
+        the embeddings will be extracted. If a string, the name of last
+        ONNX node in model to draw embeddings from. If None, leave the model
+        unchanged. Default is -1 (last layer before prediction head)
+    :param model_size: size of hidden layer per input if the model is cut.
+        Default is 768
+    :param return_numpy: return embeddings a list of numpy arrays, list of lists
+        of floats otherwise. Default is True
     """
 
     def __init__(
@@ -77,7 +87,7 @@ class EmbeddingExtractionPipeline(Pipeline):
         *,
         base_task: str,
         emb_extraction_layer: Union[int, str, None] = -1,
-        model_size: int = 768,
+        model_size: int = 768,  # TODO: confirm with @bfineran
         return_numpy: bool = True,
         **base_pipeline_args,
     ):
@@ -86,25 +96,14 @@ class EmbeddingExtractionPipeline(Pipeline):
         self._model_size = model_size
         self._return_numpy = return_numpy
 
+        # initialize engine after model truncate
         self.base_pipeline = Pipeline.create(
             task=base_task,
-            _delay_engine_initialize=True,  # engine initialized after model truncate
+            _delay_engine_initialize=True,
             **base_pipeline_args,
         )
 
-        pipeline_keyword_names = {  # TODO: change to inspect
-            "model_path",
-            "engine_type",
-            "batch_size",
-            "num_cores",
-            "scheduler",
-            "input_shapes",
-            "alias",
-            "context",
-            "executor",
-            "_delay_engine_initialize",
-        }
-
+        pipeline_keyword_names = inspect.signature(Pipeline).parameters.keys()
         pipeline_kwargs = {
             key: base_pipeline_args[key]
             for key in pipeline_keyword_names
