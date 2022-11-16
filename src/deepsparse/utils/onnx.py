@@ -292,7 +292,7 @@ def truncate_onnx_model(
     :return: None
     """
     if graph_output_shapes is None:
-        graph_output_shapes = [[None]] * len(final_node_names)
+        graph_output_shapes = [None] * len(final_node_names)
 
     if len(final_node_names) != len(graph_output_names) != len(graph_output_shapes):
         raise ValueError(
@@ -352,7 +352,6 @@ def truncate_onnx_model(
 def truncate_onnx_embedding_model(
     model_path: str,
     emb_extraction_layer: Union[int, str] = -1,
-    output_name: str = "embedding",
     output_filepath: Optional[str] = None,
 ) -> Tuple[str, Optional[NamedTemporaryFile]]:
     """
@@ -360,7 +359,6 @@ def truncate_onnx_embedding_model(
     :param emb_extraction_layer: if an int, last bert layer to include. If a
         string, then the name of the last node in the truncated graph.
         default -1 (last layer)
-    :param output_name: name of graph output, default "embedding"
     :param output_filepath: path to write resulting onnx file. If not provided,
         will create a temporary file path that will be destroyed on program end
     :return: if no output path, a tuple of the saved path to the model, list of
@@ -380,6 +378,7 @@ def truncate_onnx_embedding_model(
     else:
         model = onnx.load(model_path)
         final_node_name = model.graph.node[emb_extraction_layer].name
+        graph_output_name = model.graph.node[emb_extraction_layer].output[0]
 
         if final_node_name is None:
             raise ValueError(
@@ -390,7 +389,7 @@ def truncate_onnx_embedding_model(
         onnx_filepath=model_path,
         output_filepath=output_filepath,
         final_node_names=[final_node_name],
-        graph_output_names=[output_name],
+        graph_output_names=[graph_output_name],
         graph_output_shapes=None,
     )
 

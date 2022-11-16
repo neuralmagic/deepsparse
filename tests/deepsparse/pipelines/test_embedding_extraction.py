@@ -18,24 +18,33 @@ import pytest
 from deepsparse import Pipeline
 
 
-@pytest.fixture(scope="session")
-def stub_and_task():
-    yield (
-        "zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/"
-        "imagenet/pruned_quant-moderate",
-        "image_classification",
-    )
-
-
-# TODO: fix failing test
-def test_embedding_extraction_pipeline(stub_and_task):
-    stub, task = stub_and_task
+@pytest.mark.parametrize(
+    "model_path,task,input_kwargs_lambda",
+    [
+        (
+            "zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/"
+            "imagenet/pruned_quant-moderate",
+            "image_classification",
+            lambda: dict(images=numpy.random.random((1, 3, 224, 224))),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "emb_extraction_layer",
+    [1, None],
+)
+def test_embedding_extraction_pipeline(
+    model_path, task, input_kwargs_lambda, emb_extraction_layer
+):
     pipeline = Pipeline.create(
         task="embedding_extraction",
-        model_path=stub,
+        model_path=model_path,
         base_task=task,
+        emb_extraction_layer=-1,
     )
 
-    inputs = numpy.random.random((3, 224, 224))
-    embeddings = pipeline(inputs)
-    assert embeddings
+    input_kwargs = input_kwargs_lambda()
+    outputs = pipeline(**input_kwargs)
+    assert outputs
+    assert len(outputs.embeddings) > 0
+    assert isinstance(outputs.embeddings[0], numpy.ndarray)

@@ -75,7 +75,7 @@ class EmbeddingExtractionPipeline(Pipeline):
     :param emb_extraction_layer: if an int, the layer number from which
         the embeddings will be extracted. If a string, the name of last
         ONNX node in model to draw embeddings from. If None, leave the model
-        unchanged. Default is -1 (last layer before prediction head)
+        unchanged. Default is None
     :param model_size: size of hidden layer per input if the model is cut.
         Default is 768
     :param return_numpy: return embeddings a list of numpy arrays, list of lists
@@ -86,7 +86,7 @@ class EmbeddingExtractionPipeline(Pipeline):
         self,
         *,
         base_task: str,
-        emb_extraction_layer: Union[int, str, None] = -1,
+        emb_extraction_layer: Union[int, str, None] = None,
         model_size: int = 768,  # TODO: confirm with @bfineran
         return_numpy: bool = True,
         **base_pipeline_args,
