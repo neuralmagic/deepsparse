@@ -195,30 +195,28 @@ def _create_server_config(task_name, endpoint_1_name, endpoint_2_name):
 
 
 @pytest.mark.parametrize(
-    "task_name, endpoint_1_name, endpoint_2_name, raise_error",
+    "task_name, endpoint_1_name, endpoint_2_name, raise_error, expected_endpoint_1_name, expected_endpoint_2_name",  # noqa: E501
     [
-        ("some_task", None, None, False),
-        ("some_task", "name_1", None, False),
-        ("some_task", "name_1", "name_2", False),
-        ("some_task", "name_1", "name_1", True),
+        ("some_task", None, None, False, "some_task-0", "some_task-1"),
+        ("some_task", "name_1", None, "name_1", "some_task-0"),
+        ("some_task", "name_1", "name_2", False, "name_1", "name_2"),
+        ("some_task", "name_1", "name_1", True, None, None),
     ],
 )
 def test_unique_endpoint_names(
-    task_name, endpoint_1_name, endpoint_2_name, raise_error
+    task_name,
+    endpoint_1_name,
+    endpoint_2_name,
+    raise_error,
+    expected_endpoint_1_name,
+    expected_endpoint_2_name,
 ):
     if raise_error:
         with pytest.raises(ValueError):
             _create_server_config(task_name, endpoint_1_name, endpoint_2_name)
             return
         return
-    server_config = _create_server_config(task_name, endpoint_1_name, endpoint_2_name)
 
-    if not endpoint_1_name and not endpoint_2_name:
-        assert server_config.endpoints[0].name == task_name + "-0"
-        assert server_config.endpoints[1].name == task_name + "-1"
-    elif endpoint_1_name and not endpoint_2_name:
-        assert server_config.endpoints[0].name == endpoint_1_name
-        assert server_config.endpoints[1].name == task_name + "-0"
-    else:
-        assert server_config.endpoints[0].name == endpoint_1_name
-        assert server_config.endpoints[1].name == endpoint_2_name
+    server_config = _create_server_config(task_name, endpoint_1_name, endpoint_2_name)
+    assert server_config.endpoints[0].name == expected_endpoint_1_name
+    assert server_config.endpoints[1].name == expected_endpoint_2_name
