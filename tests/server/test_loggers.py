@@ -11,92 +11,146 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 
-from deepsparse.server.config import EndpointConfig, ServerConfig
-from deepsparse.server.server import _build_app
-from fastapi.testclient import TestClient
+import copy
 from concurrent.futures import ThreadPoolExecutor
-from tests.helpers import find_free_port
-from deepsparse.engine import Context
-from tests.utils import mock_engine
+
 import pytest
-
-"""
-END2END Testing Plan
-1. Test that the server can be ran without any loggers runs default loggers # i think this is important
-2. Test that custom loggers can be specified # covered in build_logger tests
-3. Test one specific target # really capture the logs from the server
-4. Test multiple targets # really capture the logs from the server
-5. Test regex # really capture the logs from the server
-9. One function metric with target loggers # really capture the logs from the server
-10. Test prometheus client in the server # really capture the logs from the server
-
-"""
-from tests.server.test_endpoints import parse, StrSchema
+from deepsparse import PythonLogger
+from deepsparse.engine import Context
 from deepsparse.server.build_logger import build_logger
-from deepsparse.server.server import _add_endpoint
-from deepsparse import BaseLogger
-from deepsparse.server.config import MetricFunctionConfig
-from unittest.mock import Mock
-import copy
+from deepsparse.server.config import EndpointConfig, MetricFunctionConfig, ServerConfig
+from deepsparse.server.server import _add_endpoint, _build_app
+from fastapi.testclient import TestClient
 
-class SinkLogger(BaseLogger):
-    def __init__(self):
-        self.calls = []
-    def log(self, identifier, value, category):
-        self.calls.append(f"identifier:{identifier}, value:{value}, category:{category}")
+
+LIST_LOGGER_IDENTIFIER = "tests/deepsparse/loggers/helpers.py:ListLogger"
+
+EXPECTED_LOGS_SYSTEM = {"category:MetricCategories.SYSTEM": 8}
+EXPECTED_LOGS_REGEX = {"pipeline_inputs.identity": 2, "pipeline_outputs.identity": 2}
+EXPECTED_LOGS_MULTIPLE_TARGETS = {
+    "pipeline_inputs.sequences.identity": 2,
+    "engine_inputs.identity": 2,
+}
+EXPECTED_LOGS_TARGET_LOGGER = [
+    {**EXPECTED_LOGS_SYSTEM, **EXPECTED_LOGS_MULTIPLE_TARGETS},
+    {
+        **EXPECTED_LOGS_SYSTEM,
+        **{"pipeline_inputs.sequences.identity": 0, "engine_inputs.identity": 2},
+    },
+]
+
+DATA_LOGGER_CONFIG_REGEX = {"re:.*pipeline*.": [MetricFunctionConfig(func="identity")]}
+DATA_LOGGER_CONFIG_MULTIPLE_TARGETS = {
+    "pipeline_inputs.sequences": [MetricFunctionConfig(func="identity")],
+    "engine_inputs": [MetricFunctionConfig(func="identity")],
+}
+DATA_LOGGER_CONFIG_TARGET_LOGGER = {
+    "pipeline_inputs.sequences": [
+        MetricFunctionConfig(func="identity", target_loggers=["logger_1"])
+    ],
+    "engine_inputs": [MetricFunctionConfig(func="identity")],
+}
+
+
+def _test_logger_contents(leaf_logger, expected_logs):
+    for expected_log_content in list(expected_logs.keys()):
+        i = 0
+        for log in leaf_logger.calls:
+            if expected_log_content in log:
+                i += 1
+        assert expected_logs[expected_log_content] == i
+
 
 @pytest.mark.parametrize(
-    "loggers, data_logger_config, expected_calls",
+    "loggers, data_logger_config, expected_logs_content",
     [
-        # ({"sink_logger": {"path": "tests/server/test_loggers.py:SinkLogger"}}, [], None) # Make sure that we can only have system logs
-        ({"sink_logger": {"path": "tests/server/test_loggers.py:SinkLogger"}}, {"re:pipeline_*": [MetricFunctionConfig(func = "identity")]}, None) # Test regex
+        ({}, [], None),  # Test default logger (no `loggers` specified)
+        (
+            {"logger_1": {"path": LIST_LOGGER_IDENTIFIER}},
+            [],
+            EXPECTED_LOGS_SYSTEM,
+        ),  # Make sure that we log system logs only
+        (
+            {"logger_1": {"path": LIST_LOGGER_IDENTIFIER}},
+            DATA_LOGGER_CONFIG_REGEX,
+            {**EXPECTED_LOGS_SYSTEM, **EXPECTED_LOGS_REGEX},
+        ),  # Make sure we can use regex to target specific identifiers
+        (
+            {"logger_1": {"path": LIST_LOGGER_IDENTIFIER}},
+            DATA_LOGGER_CONFIG_MULTIPLE_TARGETS,
+            EXPECTED_LOGS_MULTIPLE_TARGETS,
+        ),  # Test multiple targets
+        (
+            {
+                "logger_1": {"path": LIST_LOGGER_IDENTIFIER},
+                "logger_2": {"path": LIST_LOGGER_IDENTIFIER},
+            },
+            DATA_LOGGER_CONFIG_TARGET_LOGGER,
+            EXPECTED_LOGS_TARGET_LOGGER,
+        ),  # One function metric with target loggers
     ],
 )
-
 class TestLoggers:
     @pytest.fixture()
-    def setup(self, loggers, data_logger_config, expected_calls):
+    def setup(self, loggers, data_logger_config, expected_logs_content):
+
         stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"
-        server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[
+        task = "text-classification"
+        name = "endpoint_name"
+
+        server_config = ServerConfig(
+            endpoints=[
                 EndpointConfig(
-                    route="/predict1",
-                    task="text-classification",
-                    data_logging=data_logger_config,
-                    model=stub)], loggers=loggers)
-        a = copy.deepcopy(server_config)
-        b = build_logger(a)
+                    task=task, data_logging=data_logger_config, name=name, model=stub
+                )
+            ],
+            loggers=loggers,
+        )
+
+        # create a duplicate of `server_logger` to later add it together
+        # with a separate endpoint. The goal is to have access to the
+        # `server_logger` and inspect its state change during server inference
+        server_logger = build_logger(copy.deepcopy(server_config))
+
+        app = _build_app(server_config)
         context = Context(
-            num_cores=server_config.num_cores,
-            num_streams=server_config.num_workers,
+            num_cores=server_config.num_cores, num_streams=server_config.num_workers
         )
         executor = ThreadPoolExecutor(max_workers=context.num_streams)
+        _add_endpoint(
+            app=app,
+            context=context,
+            executor=executor,
+            server_config=server_config,
+            server_logger=server_logger,
+            endpoint_config=EndpointConfig(
+                route="/predict_",
+                task=task,
+                name=name,
+                data_logging=data_logger_config,
+                model=stub,
+            ),
+        )
 
-        with mock_engine(rng_seed=0):
-            app = _build_app(server_config)
-            _add_endpoint(app=app,
-                          context = context,
-                          executor = executor,
-                          server_config = server_config,
-                          endpoint_config =
-                EndpointConfig(
-                    route="/predict",
-                    task="text-classification",
-                    data_logging=data_logger_config,
-                    model=stub),
-                          server_logger = b,
-                          )
         client = TestClient(app)
 
-        yield app, client, b
+        yield client, server_logger, expected_logs_content
 
-    def test_add_model_endpoint(self, setup):
-        app, client, server_logger = setup
+    def test_logger_contents(self, setup):
+        client, server_logger, expected_logs_content = setup
+        for _ in range(2):
+            client.post("/predict_", json={"sequences": "today is great"})
 
-        for _ in range(5):
-            response = client.post("/predict", json={"sequences": "today is great"})
-        assert response.status_code == 200
-        assert response.json() == int("5678")
+        if expected_logs_content is None:
+            assert isinstance(server_logger, PythonLogger)
 
-
+        elif isinstance(expected_logs_content, list):
+            leaf_loggers = server_logger.logger.loggers[1].logger.loggers
+            for idx, leaf_logger in enumerate(leaf_loggers):
+                _test_logger_contents(leaf_logger, expected_logs_content[idx])
+        else:
+            leaf_logger = server_logger.logger.loggers[0].logger.loggers[
+                0
+            ]  # -> MultiLogger -> FunctionLogger -> MultiLogger
+            _test_logger_contents(leaf_logger, expected_logs_content)

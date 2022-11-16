@@ -15,7 +15,6 @@
 import yaml
 
 import pytest
-
 from deepsparse.loggers import AsyncLogger, MetricCategories, MultiLogger
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig
@@ -172,7 +171,6 @@ def test_build_logger(yaml_config, raises_error, returns_logger, num_function_lo
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)
     assert len(logger.logger.loggers) == num_function_loggers
-
     assert len(logger.logger.loggers) == num_function_loggers + 1
 
     # check for system logger

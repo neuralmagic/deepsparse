@@ -112,9 +112,9 @@ def match_and_extract(
         template, identifier, category=category
     )
     if is_match:
-        return possibly_extract_value(value, remainder)
+        return possibly_extract_value(value, remainder), remainder
     else:
-        return NO_MATCH
+        return NO_MATCH, remainder
 
 
 def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:

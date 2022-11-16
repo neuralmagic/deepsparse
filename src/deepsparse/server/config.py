@@ -200,7 +200,16 @@ class ServerConfig(BaseModel):
         ),
     )
 
-
+    @validator("endpoints")
+    def assert_unique_endpoint_names(
+        cls, endpoints: List[EndpointConfig]
+    ) -> List[EndpointConfig]:
+        names = [endpoint.name for endpoint in endpoints if endpoint.name is not None]
+        if len(names) != len(set(names)):
+            raise ValueError(
+                "Endpoint names must be unique if specified. "
+                "Found endpoint names: {}".format(names)
+            )
 
     @validator("endpoints")
     def set_unique_endpoint_names(
@@ -214,12 +223,6 @@ class ServerConfig(BaseModel):
         :param endpoints: configuration of server's endpoints
         :return: configuration of server's endpoints
         """
-
-        names = [endpoint.name for endpoint in endpoints if endpoint.name is not None]
-        if len(names) != len(set(names)):
-            raise ValueError("Endpoint names must be unique if specified. "
-                             "Found endpoint names: {}".format(names))
-
         counter_task_name_used = {endpoint.task: 0 for endpoint in endpoints}
         # make sure that the endpoints in ServerConfig have unique names.
         for endpoint_config in endpoints:

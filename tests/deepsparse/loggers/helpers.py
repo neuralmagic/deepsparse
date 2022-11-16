@@ -90,3 +90,14 @@ class CustomLogger(BaseLogger):
 
     def log(self, identifier: str, value: Any, category: MetricCategories):
         pass
+
+
+class ListLogger(BaseLogger):
+    # leaf logger that aggregates its log in a list
+    def __init__(self):
+        self.calls = []
+
+    def log(self, identifier, value, category):
+        self.calls.append(
+            f"identifier:{identifier}, value:{value}, category:{category}"
+        )
