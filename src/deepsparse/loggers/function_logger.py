@@ -81,10 +81,12 @@ class FunctionLogger(BaseLogger):
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
                 identifier = (
-                    f"{identifier}.{remainder}" if remainder is not None else identifier
+                    f"{identifier}.{remainder.split('[')[0]}"
+                    if remainder is not None
+                    else identifier
                 )
                 self.logger.log(
-                    identifier=f"{self.target_identifier}__{self.function_name}",
+                    identifier=f"{identifier}__{self.function_name}",
                     value=mapped_value,
                     category=category,
                 )

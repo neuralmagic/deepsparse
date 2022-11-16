@@ -100,7 +100,7 @@ def test_regex_target_logging():
         client.post("/predict", json={"sequences": "today is great"})
     _test_logger_contents(
         server_logger.logger.loggers[0].logger.loggers[0],
-        {"pipeline_inputs.identity": 2, "pipeline_outputs.identity": 2},
+        {"pipeline_inputs__identity": 2, "pipeline_outputs__identity": 2},
     )
 
 
@@ -133,8 +133,8 @@ def test_multiple_targets_logging():
     _test_logger_contents(
         server_logger.logger.loggers[0].logger.loggers[0],
         {
-            "pipeline_inputs.sequences.identity": 2,
-            "engine_inputs.identity": 2,
+            "pipeline_inputs.sequences__identity": 2,
+            "engine_inputs__identity": 2,
             "category:MetricCategories.SYSTEM": 8,
         },
     )
@@ -147,7 +147,7 @@ def test_function_metric_with_target_loggers():
                 task=task,
                 name=name,
                 data_logging={
-                    "pipeline_inputs.sequences": [
+                    "pipeline_inputs.sequences[0]": [
                         MetricFunctionConfig(
                             func="identity", target_loggers=["logger_1"]
                         )
@@ -175,16 +175,16 @@ def test_function_metric_with_target_loggers():
     _test_logger_contents(
         server_logger.logger.loggers[1].logger.loggers[0],
         {
-            "pipeline_inputs.sequences.identity": 2,
-            "engine_inputs.identity": 2,
+            "pipeline_inputs.sequences__identity": 2,
+            "engine_inputs__identity": 2,
             "category:MetricCategories.SYSTEM": 8,
         },
     )
     _test_logger_contents(
         server_logger.logger.loggers[1].logger.loggers[1],
         {
-            "pipeline_inputs.sequences.identity": 0,
-            "engine_inputs.identity": 2,
+            "pipeline_inputs.sequences__identity": 0,
+            "engine_inputs__identity": 2,
             "category:MetricCategories.SYSTEM": 8,
         },
     )
