@@ -21,7 +21,23 @@ from collections import defaultdict
 from typing import Any, Optional
 
 from deepsparse.loggers import BaseLogger, MetricCategories
-from prometheus_client import REGISTRY, Summary, start_http_server, write_to_textfile
+
+
+try:
+    from prometheus_client import (
+        REGISTRY,
+        Summary,
+        start_http_server,
+        write_to_textfile,
+    )
+
+    prometheus_import_error = None
+except Exception as prometheus_import_err:
+    REGISTRY = None
+    Summary = None
+    start_http_server = None
+    write_to_textfile = None
+    prometheus_import_error = prometheus_import_err
 
 
 __all__ = ["PrometheusLogger"]
@@ -52,6 +68,7 @@ class PrometheusLogger(BaseLogger):
         text_log_save_dir: str = os.getcwd(),
         text_log_file_name: Optional[str] = None,
     ):
+        _check_prometheus_import()
 
         self.port = port
         self.text_log_save_frequency = text_log_save_frequency
@@ -117,3 +134,12 @@ class PrometheusLogger(BaseLogger):
                 f"to be one of the type: {SUPPORTED_DATA_TYPES}"
             )
         return value
+
+
+def _check_prometheus_import():
+    if prometheus_import_error is not None:
+        _LOGGER.error(
+            "Attempting to instantiate a PrometheusLogger object but unable to import "
+            "prometheus. Check that prometheus requirements have been installed"
+        )
+        raise prometheus_import_error
