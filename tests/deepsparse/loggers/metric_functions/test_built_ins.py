@@ -15,7 +15,6 @@
 import numpy
 
 import pytest
-import torch
 from deepsparse.loggers.metric_functions import (
     bounding_box_count,
     fraction_zeros,
@@ -43,7 +42,6 @@ BBOX = [500.0, 500.0, 400.0, 400.0]
         (numpy.random.rand(2, 3, 16, 16), (3, 16, 16)),
         (numpy.random.rand(2, 16, 16, 3), (16, 16, 3)),
         (numpy.random.rand(16, 16, 1), (16, 16, 1)),
-        (torch.rand(2, 3, 16, 16), (3, 16, 16)),
     ],
 )
 def test_image_shape(image, expected_shape):
@@ -73,10 +71,6 @@ def test_image_shape(image, expected_shape):
             numpy.full(fill_value=0.5, shape=(3, 16, 16)),
             numpy.full(fill_value=0.5, shape=3),
         ),
-        (
-            torch.full(fill_value=120, size=(16, 16, 3)),
-            numpy.full(fill_value=120, shape=3),
-        ),
     ],
 )
 def test_mean_pixel_per_channel(image, expected_means):
@@ -91,7 +85,6 @@ def test_mean_pixel_per_channel(image, expected_means):
         (numpy.full(fill_value=0.5, shape=(1, 16, 16)), numpy.zeros(1)),
         (numpy.full(fill_value=0.5, shape=(16, 16, 1)), numpy.zeros(1)),
         (numpy.full(fill_value=0.5, shape=(3, 16, 16)), numpy.zeros(3)),
-        (torch.full(fill_value=120, size=(16, 16, 3)), numpy.zeros(3)),
     ],
 )
 def test_std_pixels_per_channel(image, expected_stds):
@@ -114,10 +107,6 @@ def test_std_pixels_per_channel(image, expected_stds):
         (
             numpy.full(fill_value=120, shape=(16, 16, 1)),
             numpy.full(fill_value=120, shape=1),
-        ),
-        (
-            torch.full(fill_value=0.5, size=(3, 16, 16, 3)),
-            numpy.full(fill_value=0.5, shape=3),
         ),
     ],
 )

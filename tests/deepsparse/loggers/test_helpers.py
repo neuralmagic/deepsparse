@@ -18,7 +18,6 @@ import numpy
 from pydantic import BaseModel
 
 import pytest
-import torch
 from deepsparse.loggers import MetricCategories
 from deepsparse.loggers.helpers import (
     access_nested_value,
@@ -33,13 +32,7 @@ from tests.test_data.metric_functions import user_defined_identity
 @pytest.mark.parametrize(
     "func, expected_function, expected_function_name",
     [
-        ("torch.mean", torch.mean, "mean"),
         ("numpy.max", numpy.max, "max"),
-        (
-            "torch.distributions.categorical",
-            torch.distributions.categorical,
-            "distributions.categorical",
-        ),
         ("numpy.linalg.norm", numpy.linalg.norm, "linalg.norm"),
         (
             "tests/test_data/metric_functions.py:user_defined_identity",
@@ -121,7 +114,6 @@ def test_possibly_extract_value(value, remainder, expected_value):
         ([0, 1, 2, 3, 4], "1:-2, 0", 1),
         ([[0, 1, 2, 3, 4]], "0, 1:-1:1", [1, 2, 3]),
         (numpy.array([[0, 1, 2, 3, 4]]), "0, 1:-1:1", numpy.array([1, 2, 3])),
-        (torch.tensor([[0, 1, 2, 3, 4]]), "0, 1:-1:1", torch.tensor([1, 2, 3])),
         ({"key_1": {"key_2": [3]}}, "'key_1','key_2',0", 3),
         ({"key_1": [0, 1, {"key_2": [3, 4, 5]}]}, "'key_1',2,'key_2',0", 3),
     ],
@@ -132,9 +124,7 @@ def test_access_nested_value(value, square_brackets, expected_value):
             expected_value, access_nested_value(value, square_brackets)
         )
         return
-    if isinstance(expected_value, torch.Tensor):
-        assert torch.equal(expected_value, access_nested_value(value, square_brackets))
-        return
+
     assert expected_value == access_nested_value(
         value=value, square_brackets=square_brackets
     )
