@@ -228,13 +228,13 @@ def check_identifier_match(
     Match the template against the identifier
 
     :param template: A string the in format:
-        <string_n-t>.<string_n-t+1)>.<...>.<string_n>(optionally).<remainder>,
+        <string_n-t>/<string_n-t+1)>/<...>/<string_n>(optionally).<remainder>,
         a regex pattern prefixed by `re:`, or a MetricCategory value prefixed
         by `category:`
 
     :param identifier: A string in the format:
 
-        1.  <string_n-t>.<string_n-t+1)>.<...>.<string_n>
+        1.  <string_n-t>/<string_n-t+1)>/<...>/<string_n>
         2.
             if template and identifier do not share any first
             <string_n-t+k> components, there is no match

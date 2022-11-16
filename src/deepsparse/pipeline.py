@@ -703,10 +703,11 @@ class Pipeline(ABC):
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
+        identifier = f"{self.alias or self.task}/{identifier}"
         validate_identifier(identifier)
         if self.logger:
             self.logger.log(
-                identifier=f"{self.alias or self.task}.{identifier}",
+                identifier=identifier,
                 value=value,
                 category=category,
             )
