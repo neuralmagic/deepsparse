@@ -16,7 +16,7 @@ from typing import List, Optional, Union
 
 import numpy
 from haystack.document_stores import BaseDocumentStore
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, BaseReader
+from haystack.nodes import BaseReader, DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Answer, Document
