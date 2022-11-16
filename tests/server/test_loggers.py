@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import copy
+import unittest
 from concurrent.futures import ThreadPoolExecutor
+from unittest import mock
 
 import pytest
 from deepsparse import PythonLogger
@@ -104,7 +106,11 @@ class TestLoggers:
         server_config = ServerConfig(
             endpoints=[
                 EndpointConfig(
-                    task=task, data_logging=data_logger_config, name=name, model=stub
+                    task=task,
+                    data_logging=data_logger_config,
+                    name=name,
+                    model=stub,
+                    route="/predict_",
                 )
             ],
             loggers=loggers,
@@ -115,25 +121,10 @@ class TestLoggers:
         # `server_logger` and inspect its state change during server inference
         server_logger = build_logger(copy.deepcopy(server_config))
 
-        app = _build_app(server_config)
-        context = Context(
-            num_cores=server_config.num_cores, num_streams=server_config.num_workers
-        )
-        executor = ThreadPoolExecutor(max_workers=context.num_streams)
-        _add_endpoint(
-            app=app,
-            context=context,
-            executor=executor,
-            server_config=server_config,
-            server_logger=server_logger,
-            endpoint_config=EndpointConfig(
-                route="/predict_",
-                task=task,
-                name=name,
-                data_logging=data_logger_config,
-                model=stub,
-            ),
-        )
+        with mock.patch(
+            "deepsparse.server.server.build_logger", return_value=server_logger
+        ), mock_engine(rng_seed=0):
+            app = _build_app(server_config)
 
         client = TestClient(app)
 
