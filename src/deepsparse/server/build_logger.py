@@ -193,4 +193,4 @@ def _get_target_identifier(endpoint_name: str, target_name: str) -> str:
         # if target name starts with "re:", it is a regex,
         # and we don't need to add the endpoint name to it
         return target_name
-    return f"{endpoint_name}.{target_name}"
+    return f"{endpoint_name}/{target_name}"
