@@ -31,7 +31,7 @@ from deepsparse import Pipeline
 )
 @pytest.mark.parametrize(
     "emb_extraction_layer",
-    [1, None],
+    [-1, None],
 )
 def test_embedding_extraction_pipeline(
     model_path, task, input_kwargs_lambda, emb_extraction_layer
@@ -40,7 +40,9 @@ def test_embedding_extraction_pipeline(
         task="embedding_extraction",
         model_path=model_path,
         base_task=task,
-        emb_extraction_layer=-1,
+        emb_extraction_layer=emb_extraction_layer,
+        flatten_outputs=True,
+        return_numpy=True,
     )
 
     input_kwargs = input_kwargs_lambda()

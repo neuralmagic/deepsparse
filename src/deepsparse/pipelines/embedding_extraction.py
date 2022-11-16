@@ -76,6 +76,8 @@ class EmbeddingExtractionPipeline(Pipeline):
         the embeddings will be extracted. If a string, the name of last
         ONNX node in model to draw embeddings from. If None, leave the model
         unchanged. Default is None
+    :param flatten_outputs: if True, embeddings will be flattened along the batch (0)
+        dimension. Default False
     :param return_numpy: return embeddings a list of numpy arrays, list of lists
         of floats otherwise. Default is True
     """
@@ -86,11 +88,13 @@ class EmbeddingExtractionPipeline(Pipeline):
         base_task: str,
         emb_extraction_layer: Union[int, str, None] = None,
         return_numpy: bool = True,
+        flatten_outputs: bool = False,
         **base_pipeline_args,
     ):
         self._base_task = base_task
         self._emb_extraction_layer = emb_extraction_layer
         self._return_numpy = return_numpy
+        self._flatten_outputs = flatten_outputs
 
         # initialize engine after model truncate
         self.base_pipeline = Pipeline.create(
@@ -128,12 +132,21 @@ class EmbeddingExtractionPipeline(Pipeline):
         """
         return self._emb_extraction_layer
 
+    @property
     def return_numpy(self) -> bool:
+        """
+        :return: if True, embeddings will be flattened along the batch (0)
+            dimension
+        """
+        return self._return_numpy
+
+    @property
+    def flatten_outputs(self) -> bool:
         """
         :return: if True returns embeddings as numpy arrays, uses lists of=
             floats otherwise
         """
-        return self._return_numpy
+        return self._flatten_outputs
 
     @property
     def input_schema(self) -> Type[BaseModel]:
@@ -201,6 +214,10 @@ class EmbeddingExtractionPipeline(Pipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
+        if self.flatten_outputs:
+            engine_outputs = [
+                array.reshape(array.shape[0], -1) for array in engine_outputs
+            ]
         if not self.return_numpy:
             engine_outputs = [array.tolist() for array in engine_outputs]
         return self.output_schema(embeddings=engine_outputs)
