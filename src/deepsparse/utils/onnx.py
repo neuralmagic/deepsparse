@@ -24,6 +24,7 @@ import onnx
 
 from deepsparse.utils.extractor import Extractor
 
+
 try:
     from sparsezoo import File, Model
 
@@ -382,7 +383,8 @@ def truncate_onnx_embedding_model(
 
         if final_node_name is None:
             raise ValueError(
-                f"Node at index {emb_extraction_layer} does not have a name set")
+                f"Node at index {emb_extraction_layer} does not have a name set"
+            )
 
     truncate_onnx_model(
         onnx_filepath=model_path,
