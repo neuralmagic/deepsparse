@@ -29,7 +29,7 @@ def test_instantiate_prometheus(tmp_path):
                     prometheus={
                         "port": find_free_port(),
                         "text_log_save_dir": str(tmp_path),
-                        "text_log_save_freq": 30,
+                        "text_log_save_frequency": 30,
                     }
                 ),
             )

@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 import pytest
 import torch
+from deepsparse.loggers import MetricCategories
 from deepsparse.loggers.helpers import (
     access_nested_value,
     check_identifier_match,
@@ -58,21 +59,25 @@ def test_get_function_and_function_name(
 
 
 @pytest.mark.parametrize(
-    "template, identifier, expected_output",
+    "template, identifier, category, expected_output",
     [
-        ("string_1.string_2", "string_1.string_2", (True, None)),
-        ("string_1.string_3", "string_1.string_2", (False, None)),
+        ("string_1.string_2", "string_1.string_2", None, (True, None)),
+        ("string_1.string_3", "string_1.string_2", None, (False, None)),
         (
             "string_1.string_2.string_3.string_4",
             "string_1.string_2",
+            None,
             (True, "string_3.string_4"),
         ),
-        ("re:string_*..*.string.*", "string_1.string_2", (True, None)),
-        ("re:string_*..*.string.*", "string_3.string_4", (True, None)),
+        ("re:string_*..*.string.*", "string_1.string_2", None, (True, None)),
+        ("re:string_*..*.string.*", "string_3.string_4", None, (True, None)),
+        ("category:system", "string_3.string_4", MetricCategories.SYSTEM, (True, None)),
+        ("category:system", "string_3.string_4", MetricCategories.DATA, (False, None)),
+        ("category:system", "string_3.string_4", None, (False, None)),
     ],
 )
-def test_check_identifier_match(template, identifier, expected_output):
-    assert check_identifier_match(template, identifier) == expected_output
+def test_check_identifier_match(template, identifier, category, expected_output):
+    assert check_identifier_match(template, identifier, category) == expected_output
 
 
 class MockModel__(BaseModel):
