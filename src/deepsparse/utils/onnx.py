@@ -331,8 +331,6 @@ def truncate_onnx_model(
 
     # use extractor to create and write subgraph
     original_num_nodes = len(model.graph.node)
-    # TODO: modified non-transformer models fail during shape inference
-    #  @rahul-tuli
     extractor = Extractor(model)
     extracted_model = extractor.extract_model(
         input_names=graph_input_names, output_names=graph_output_names
