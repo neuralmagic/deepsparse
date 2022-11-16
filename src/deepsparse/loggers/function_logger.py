@@ -84,7 +84,7 @@ class FunctionLogger(BaseLogger):
                     f"{identifier}.{remainder}" if remainder is not None else identifier
                 )
                 self.logger.log(
-                    identifier=f"{identifier}.{self.function_name}",
+                    identifier=f"{self.target_identifier}__{self.function_name}",
                     value=mapped_value,
                     category=category,
                 )
