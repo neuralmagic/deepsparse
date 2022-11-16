@@ -94,7 +94,7 @@ retriever = DeepSparseEmbeddingRetriever(
 DeepSparse Nodes are a set of classes that leverage the embedding extraction pipeline to generate document embeddings using the DeepSparse engine. These embeddings can then be used for information retrieval and other haystack tasks.
 
 ### DeepSparseEmbeddingRetriever ###
-This class implements Haystack's `EmbeddingRetriever` class with DeepSparse inference using the `EmbeddingExtractionPipeline`. The embedding extraction pipeline takes the passed model path, truncates the ONNX to a transformer layer, then uses those model outputs as embeddings. The embedded representation of the document can be then compared to the embedded representation of the query. Query embeddings and document embeddings that have a high dot_product/cosine similiarity are deemed to be relevant by the `DocumentSearchPipeline`
+This class implements Haystack's `EmbeddingRetriever` class with DeepSparse inference using the `TransformersEmbeddingExtractionPipeline`. The embedding extraction pipeline takes the passed model path, truncates the ONNX to a transformer layer, then uses those model outputs as embeddings. The embedded representation of the document can be then compared to the embedded representation of the query. Query embeddings and document embeddings that have a high dot_product/cosine similiarity are deemed to be relevant by the `DocumentSearchPipeline`
 ``` python3
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipelines import DocumentSearchPipeline
@@ -129,7 +129,7 @@ results = pipeline.run(query="Where does my lover stand?", params={"Retriever": 
 ```
 
 ### DeepSparseDensePassageRetriever ###
-This class implements Haystack's `DensePassageRetriever` class with DeepSparse inference using two instances of the  `EmbeddingExtractionPipeline` with shared context. This node takes `query_model_path` and `passage_model_path` as arguments and produces document and query embeddings using their respective models.
+This class implements Haystack's `DensePassageRetriever` class with DeepSparse inference using two instances of the  `TransformersEmbeddingExtractionPipeline` with shared context. This node takes `query_model_path` and `passage_model_path` as arguments and produces document and query embeddings using their respective models.
 
 Dense passage retrieval requires biencoder models to use. For more support, contact support@neuralmagic.com.
 

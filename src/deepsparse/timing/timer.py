@@ -13,43 +13,46 @@
 # limitations under the License.
 
 import time
-from typing import Dict
 
 
-__all__ = ["TimingBuilder"]
+__all__ = ["Timer"]
 
 
-class TimingBuilder:
+class Timer:
     """
     This object aggregates the durations
     (time deltas in seconds) of various components of the inference
     pipeline.
-    Once all the desired time deltas are aggregated, the
-    object may build the data structure that summarizes the
-    collected information.
-
     Example flow:
 
     ```
-    builder = TimingBuilder()
+    timer = Timer()
 
-    builder.start("total_inference")
+    timer.start("total_inference")
 
-    builder.start("pre_process")
+    timer.start("pre_process")
     do_something()
-    builder.stop("pre_process")
+    timer.stop("pre_process")
 
-    builder.start("engine_forward")
+    # time delta can we fetched directly after
+    # record the stop time of the event
+    pre_process_time_delta = timer.time_delta("pre_process")
+
+    timer.start("engine_forward")
     do_something()
-    builder.stop("engine_forward")
+    timer.stop("engine_forward")
 
-    builder.start("post_process")
+    timer.start("post_process")
     do_something()
-    builder.stop("post_process")
+    timer.stop("post_process")
 
-    builder.stop("total_inference")
-    ...
-    summary = builder.build()
+    timer.stop("total_inference")
+
+    # alternatively, time delta can we fetched later if convenient
+
+    engine_forward_time_delta = timer.time_delta("engine_forward")
+    post_process_time_delta = timer.time_delta("post_process")
+    total_inference_time_delta = timer.time_delta("total_inference")
     ```
     The object may time the duration of an arbitrary number
     of events (phases). Choice of naming for phases is left
@@ -91,20 +94,26 @@ class TimingBuilder:
             )
         self._stop_times[phase_name] = time.perf_counter()
 
-    def build(self) -> Dict[str, float]:
+    def time_delta(self, phase_name: str) -> float:
         """
-        Aggregate the collected measurements and return them as a
-        dictionary
-        :return: Mapping from the phase name to the phase duration in seconds.
-        """
-        return self._compute_time_deltas()
+        If available, get the time delta (in seconds) of the event (phase).
 
-    def _compute_time_deltas(self) -> Dict[str, float]:
-        deltas = {}
-        phases = self._start_times.keys()
-        for phase_name in phases:
-            phase_start = self._start_times[phase_name]
-            phase_stop = self._stop_times[phase_name]
-            time_delta = phase_stop - phase_start
-            deltas[phase_name] = time_delta
-        return deltas
+        :param phase_name: The name of an event (phase), which time delta
+            we want to get
+        :return: the time delta (in seconds) of the specified phase
+        """
+        phase_start = self._start_times.get(phase_name)
+        phase_stop = self._stop_times.get(phase_name)
+
+        if not phase_start:
+            raise ValueError(
+                f"Attempting to fetch the duration of the phase: {phase_name}, but"
+                f"its start time and stop time were not recorded"
+            )
+        elif not phase_stop:
+            raise ValueError(
+                f"Attempting to fetch the duration of the phase: {phase_name}, but"
+                f"its stop time was not recorded"
+            )
+        else:
+            return phase_stop - phase_start

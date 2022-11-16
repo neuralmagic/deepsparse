@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
 
-from .inference_phases import *
-from .timer import *
+def user_defined_identity(x):
+    return x
+
+
+def return_number(x):
+    return 1234
