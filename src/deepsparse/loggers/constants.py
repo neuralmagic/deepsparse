@@ -18,7 +18,9 @@ Holds logging-related objects with constant values
 from enum import Enum
 
 
-__all__ = ["MetricCategories"]
+__all__ = ["MetricCategories", "validate_identifier"]
+
+UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
 
 
 class MetricCategories(Enum):
@@ -32,3 +34,20 @@ class MetricCategories(Enum):
     # Categories
     SYSTEM = "system"
     DATA = "data"
+
+
+def validate_identifier(identifier: str):
+    """
+    Makes sure that the identifier does not contain any
+    of the characters that would introduce ambiguity
+    when parsing the identifier
+
+    :param identifier: a string that is used
+        to identify a log
+    """
+    for char in UNSUPPORTED_IDENTIFIER_CHARS:
+        if char in identifier:
+            raise ValueError(
+                f"Logging identifier: {identifier} "
+                f"contains unsupported character {char}"
+            )

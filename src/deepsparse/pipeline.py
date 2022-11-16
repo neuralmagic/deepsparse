@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import BaseLogger, MetricCategories, validate_identifier
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
 from deepsparse.timing import InferencePhases, Timer
 
@@ -703,6 +703,7 @@ class Pipeline(ABC):
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
+        validate_identifier(identifier)
         if self.logger:
             self.logger.log(
                 identifier=f"{self.alias or self.task}.{identifier}",
