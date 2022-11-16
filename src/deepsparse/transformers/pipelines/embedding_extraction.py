@@ -35,7 +35,7 @@ tasks
 
 
 from enum import Enum
-from typing import List, Type, Union
+from typing import Any, List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -72,7 +72,8 @@ class EmbeddingExtractionOutput(BaseModel):
     Values are in batch order
     """
 
-    embeddings: Union[List[List[float]], List[numpy.ndarray]] = Field(
+    # List[Any] is for accepting numpy arrays
+    embeddings: Union[List[List[float]], List[Any]] = Field(
         description="The output of the model which is an embedded "
         "representation of the input"
     )
@@ -152,7 +153,7 @@ class TransformersEmbeddingExtractionPipeline(TransformersPipeline):
         supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
         Default is 'per_token'
     :param return_numpy: return embeddings a list of numpy arrays, list of lists
-        of floats otherwise. Default is True
+        of floats otherwise. Default is False
     :param context: context for engine. If None, then the engine will be initialized
         with 2 streams to make use of parallel inference of labels. Default is None
     """
@@ -163,7 +164,7 @@ class TransformersEmbeddingExtractionPipeline(TransformersPipeline):
         emb_extraction_layer: Union[int, str, None] = -1,
         model_size: int = 768,
         extraction_strategy: ExtractionStrategy = "per_token",
-        return_numpy: bool = True,
+        return_numpy: bool = False,  # to support Pydantic Validation
         **kwargs,
     ):
         self._emb_extraction_layer = emb_extraction_layer

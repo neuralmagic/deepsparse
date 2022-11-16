@@ -351,14 +351,14 @@ def truncate_onnx_model(
 
 def truncate_onnx_embedding_model(
     model_path: str,
-    emb_extraction_layer: Union[int, str] = -1,
+    emb_extraction_layer: Union[int, str, None] = None,
     output_filepath: Optional[str] = None,
 ) -> Tuple[str, Optional[NamedTemporaryFile]]:
     """
      :param model_path: path of onnx file to be cut
-    :param emb_extraction_layer: if an int, last bert layer to include. If a
+    :param emb_extraction_layer: if an int, last layer to include. If a
         string, then the name of the last node in the truncated graph.
-        default -1 (last layer)
+        default is None.
     :param output_filepath: path to write resulting onnx file. If not provided,
         will create a temporary file path that will be destroyed on program end
     :return: if no output path, a tuple of the saved path to the model, list of
