@@ -142,6 +142,7 @@ class Pipeline(ABC):
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
+        _delay_engine_initialize: bool = False,  # internal use only
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -173,7 +174,11 @@ class Pipeline(ABC):
             self._engine_args["scheduler"] = scheduler
 
         self.onnx_file_path = self.setup_onnx_file_path()
-        self.engine = self._initialize_engine()
+
+        if _delay_engine_initialize:
+            self.engine = None
+        else:
+            self.engine = self._initialize_engine()
 
         self._batch_size = self._batch_size or 1
 
@@ -1267,7 +1272,7 @@ def haystack_pipeline(*args, **kwargs) -> "Pipeline":
         specify Haystack node arguments
     :param retriever_kwargs: keyword arguments to be passed to retriever. If
         the retriever is a deepsparse retriever, then these arguments will also
-        be passed to the EmbeddingExtractionPipeline of the retriever
+        be passed to the TransformersEmbeddingExtractionPipeline of the retriever
     """
     return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
 

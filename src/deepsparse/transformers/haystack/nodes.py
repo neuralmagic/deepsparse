@@ -39,7 +39,7 @@ _LOGGER = get_main_logger()
 class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
     """
     Deepsparse implementation of Haystack EmbeddingRetriever
-    Utilizes EmbeddingExtractionPipeline to create embeddings
+    Utilizes TransformersEmbeddingExtractionPipeline to create embeddings
 
     example integration into haystack pipeline:
     ```python
@@ -75,7 +75,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         This approach is also used in the TableTextRetriever paper and is likely
         to improve  performance if your titles contain meaningful information for
         retrieval (topic, entities etc.).
-    :param kwargs: extra arguments passed to EmbeddingExtractionPipeline
+    :param kwargs: extra arguments passed to TransformersEmbeddingExtractionPipeline
     """
 
     def __init__(
@@ -132,8 +132,8 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 class DeepSparseDensePassageRetriever(DensePassageRetriever):
     """
     Deepsparse implementation of Haystack DensePassageRetriever
-    Utilizes two instances of EmbeddingExtractionPipeline to perform query model
-    and passage model inference
+    Utilizes two instances of TransformersEmbeddingExtractionPipeline to
+    perform query model and passage model inference
 
     example integration into haystack pipeline:
     ```python
@@ -179,7 +179,8 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param context: context shared between query and passage models. If None
         is provided, then a new context with 4 streams will be created. Default
         is None
-    :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
+    :param pipeline_kwargs: extra arguments passed to
+        `TransformersEmbeddingExtractionPipeline`
     """
 
     def __init__(
@@ -245,7 +246,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
 
         _LOGGER.info("Creating query pipeline")
         self.query_pipeline = Pipeline.create(
-            "embedding_extraction",
+            "transformers_embedding_extraction",
             query_model_path,
             batch_size=batch_size,
             sequence_length=max_seq_len_query,
@@ -257,7 +258,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         )
         _LOGGER.info("Creating passage pipeline")
         self.passage_pipeline = Pipeline.create(
-            "embedding_extraction",
+            "transformers_embedding_extraction",
             passage_model_path,
             batch_size=batch_size,
             sequence_length=max_seq_len_passage,
@@ -320,12 +321,13 @@ class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     Deepsparse implementation of Haystack EmbeddingEncoder
 
     :param retriever: retriever that uses this encoder
-    :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
+    :param pipeline_kwargs: extra arguments passed to
+        `TransformersEmbeddingExtractionPipeline`
     """
 
     def __init__(self, retriever: DeepSparseEmbeddingRetriever, pipeline_kwargs):
         self.embedding_pipeline = Pipeline.create(
-            "embedding_extraction",
+            "transformers_embedding_extraction",
             model_path=retriever.model_path,
             batch_size=retriever.batch_size,
             sequence_length=retriever.max_seq_len,
