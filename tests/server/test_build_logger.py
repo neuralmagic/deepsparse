@@ -15,7 +15,6 @@
 import yaml
 
 import pytest
-
 from deepsparse.loggers import AsyncLogger, MetricCategories, MultiLogger
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig

@@ -22,15 +22,14 @@ from deepsparse.loggers import (
     AsyncLogger,
     BaseLogger,
     FunctionLogger,
+    MetricCategories,
     MultiLogger,
     PrometheusLogger,
     PythonLogger,
 )
-from deepsparse.loggers import MetricCategories
 from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.server.helpers import custom_logger_from_identifier
 from deepsparse.server.config import MetricFunctionConfig, ServerConfig
-
+from deepsparse.server.helpers import custom_logger_from_identifier
 
 
 __all__ = ["build_logger"]
@@ -64,10 +63,10 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     leaf_loggers = build_leaf_loggers(loggers_config)
 
     function_loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
-    
+
     # add logger to ensure leaf level logging of all system (timing) logs
     function_loggers.append(_create_system_logger(leaf_loggers))
-    
+
     return AsyncLogger(
         logger=MultiLogger(function_loggers),  # wrap all loggers to async log call
         max_workers=1,

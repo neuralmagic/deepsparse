@@ -14,12 +14,11 @@
 """
 Helpers functions for logging
 """
-
 import importlib
 import os.path
 import re
 from types import ModuleType
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import numpy
 
@@ -28,7 +27,12 @@ import torch
 from deepsparse.loggers import MetricCategories
 
 
-__all__ = ["match_and_extract", "get_function_and_function_name", "NO_MATCH"]
+__all__ = [
+    "match_and_extract",
+    "get_function_and_function_name",
+    "NO_MATCH",
+    "access_nested_value",
+]
 
 NO_MATCH = "NO_MATCH"
 
@@ -131,8 +135,85 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
     if not remainder:
         return value
 
-    for sub_remainders in remainder.split("."):
-        value = value.__getattribute__(sub_remainders)
+    for sub_remainder in remainder.split("."):
+        # check whether sub_remainder contains square brackets
+        # and thus needs slicing/indexing e.g. `some_key[0:2, 0]`
+        square_brackets, sub_remainder = _check_square_brackets(sub_remainder)
+        if not hasattr(value, sub_remainder):
+            raise ValueError(
+                "Attempting to access an non existing "
+                f"attribute {sub_remainder} of an object {value}"
+            )
+        value = getattr(value, sub_remainder)
+
+        if square_brackets:
+            value = access_nested_value(value=value, square_brackets=square_brackets)
+
+    return value
+
+
+def _check_square_brackets(sub_remainder: str) -> Tuple[str, str]:
+    # split the sub_remainder into two parts:
+    # 1. the sub_remainder string
+    # 2. a list of consecutive indexing/slicing operations
+    sub_remainder, *square_brackets = sub_remainder.split("[")
+    # join the list of consecutive indexing/slicing operations
+    square_brackets = ",".join(
+        [re.search(r"(.*?)\]", x).group(1) for x in square_brackets]
+    )
+    if square_brackets:
+        # "some_value[0,2:4]" -> ("0,2:4", "some_value")
+        # "some_value[0][1:3]" -> ("0,1:3", "some_value")
+        return square_brackets, sub_remainder
+    else:
+        # "some_value" -> ("", "some_value")
+        return "", sub_remainder
+
+
+def access_nested_value(
+    value: Union[Sequence, numpy.ndarray, torch.Tensor, Dict[str, Any]],
+    square_brackets: str,
+) -> Any:
+    """
+    Use the contents of the `square_brackets` to access
+    the item nested inside `value`.
+
+    Supported operations:
+    - indexing: e.g value[0] or value[-2]
+    - slicing: e.g value[0:2] or value[1:-3]
+    - dictionary access e.g. value["key"] or value["key1"]["key2"]
+    - a composition of the above:
+        e.g value[0:2][0]
+            value[1:-3, -1]
+            value["key1"][0]["key2"]
+            value["key1"][0:2]["key2"]
+
+    :param value: A sequential/tensor/array type variable to be indexed and/or sliced
+    :param square_brackets: The string that contains the indexing and/or slicing,
+        and/or dictionary access information
+    :return: The value of interest
+    """
+    for string_operator in square_brackets.split(","):
+        # check whether `string_operator` contains at least one character
+        # -> must be a dictionary key
+        if string_operator.upper().isupper():
+            # dictionary access
+            operator = string_operator.replace("'", "").replace(
+                '"', ""
+            )  # remove the quotes
+            if not isinstance(value, dict):
+                raise ValueError(
+                    f"Attempting to access a dictionary key {operator} "
+                    f"of a non-dictionary object {value}"
+                )
+        elif ":" in string_operator:
+            # slicing
+            operator = slice(*map(int, re.findall(r"-?\d+", string_operator)))
+        else:
+            # indexing
+            operator = int(string_operator)
+
+        value = value.__getitem__(operator)
 
     return value
 
