@@ -15,7 +15,7 @@
 import yaml
 
 import pytest
-from deepsparse.loggers import AsyncLogger, MetricCategories, MultiLogger
+from deepsparse.loggers import AsyncLogger, MetricCategories, MultiLogger, PythonLogger
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import ServerConfig
 from tests.helpers import find_free_port
@@ -144,19 +144,19 @@ endpoints:
 
 
 @pytest.mark.parametrize(
-    "yaml_config, raises_error, returns_logger, num_function_loggers",
+    "yaml_config, raises_error, default_logger, num_function_loggers",
     [
-        (yaml_config_1, False, True, 3),
-        (yaml_config_2, False, True, 0),
-        (yaml_config_3, False, False, None),
-        (yaml_config_4, False, True, 2),
+        (yaml_config_1, False, False, 3),
+        (yaml_config_2, False, False, 0),
+        (yaml_config_3, False, True, None),
+        (yaml_config_4, False, False, 2),
         (yaml_config_5, True, None, None),
-        (yaml_config_6, False, True, 1),
-        (yaml_config_7.format(port=find_free_port()), False, True, 1),
-        (yaml_config_8, False, True, 1),
+        (yaml_config_6, False, False, 1),
+        (yaml_config_7.format(port=find_free_port()), False, False, 1),
+        (yaml_config_8, False, False, 1),
     ],
 )
-def test_build_logger(yaml_config, raises_error, returns_logger, num_function_loggers):
+def test_build_logger(yaml_config, raises_error, default_logger, num_function_loggers):
     obj = yaml.safe_load(yaml_config)
     server_config = ServerConfig(**obj)
     if raises_error:
@@ -164,14 +164,11 @@ def test_build_logger(yaml_config, raises_error, returns_logger, num_function_lo
             build_logger(server_config)
         return
     logger = build_logger(server_config)
-    assert bool(logger) == returns_logger
-    if not returns_logger:
-        return
-
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)
-    assert len(logger.logger.loggers) == num_function_loggers
-
+    if default_logger:
+        assert isinstance(logger.logger.loggers, PythonLogger)
+        return
     assert len(logger.logger.loggers) == num_function_loggers + 1
 
     # check for system logger

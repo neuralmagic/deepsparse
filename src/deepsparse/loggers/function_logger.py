@@ -69,7 +69,7 @@ class FunctionLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        extracted_value = match_and_extract(
+        extracted_value, remainder = match_and_extract(
             template=self.target_identifier,
             identifier=identifier,
             value=value,
@@ -80,8 +80,13 @@ class FunctionLogger(BaseLogger):
         if extracted_value != NO_MATCH:
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
+                identifier = (
+                    f"{identifier}.{remainder.split('[')[0]}"
+                    if remainder is not None
+                    else identifier
+                )
                 self.logger.log(
-                    identifier=f"{identifier}.{self.function_name}",
+                    identifier=f"{identifier}__{self.function_name}",
                     value=mapped_value,
                     category=category,
                 )

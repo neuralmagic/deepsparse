@@ -113,7 +113,7 @@ def test_yaml_load_config(tmp_path):
                 bucketing=None,
             ),
             EndpointConfig(
-                name="asdf",
+                name="asdfd",
                 route="qwer",
                 task="uiop",
                 model="hjkl",
@@ -121,7 +121,7 @@ def test_yaml_load_config(tmp_path):
                 bucketing=ImageSizesConfig(image_sizes=[(1, 1), (2, 2)]),
             ),
             EndpointConfig(
-                name="asdf",
+                name="asdfde",
                 route="qwer",
                 task="uiop",
                 model="hjkl",
@@ -175,3 +175,48 @@ def test_function_logging_config(config_yaml, should_fail, instance_type):
             MetricFunctionConfig(**obj)
     else:
         assert MetricFunctionConfig(**obj)
+
+
+def _create_server_config(task_name, endpoint_1_name, endpoint_2_name):
+    return ServerConfig(
+        endpoints=[
+            EndpointConfig(
+                name=endpoint_1_name,
+                task=task_name,
+                model="hjkl",
+            ),
+            EndpointConfig(
+                name=endpoint_2_name,
+                task=task_name,
+                model="hjkl",
+            ),
+        ]
+    )
+
+
+@pytest.mark.parametrize(
+    "task_name, endpoint_1_name, endpoint_2_name, raise_error, expected_endpoint_1_name, expected_endpoint_2_name",  # noqa: E501
+    [
+        ("some_task", None, None, False, "some_task-0", "some_task-1"),
+        ("some_task", "name_1", None, False, "name_1", "some_task-0"),
+        ("some_task", "name_1", "name_2", False, "name_1", "name_2"),
+        ("some_task", "name_1", "name_1", True, None, None),
+    ],
+)
+def test_unique_endpoint_names(
+    task_name,
+    endpoint_1_name,
+    endpoint_2_name,
+    raise_error,
+    expected_endpoint_1_name,
+    expected_endpoint_2_name,
+):
+    if raise_error:
+        with pytest.raises(ValueError):
+            _create_server_config(task_name, endpoint_1_name, endpoint_2_name)
+            return
+        return
+
+    server_config = _create_server_config(task_name, endpoint_1_name, endpoint_2_name)
+    assert server_config.endpoints[0].name == expected_endpoint_1_name
+    assert server_config.endpoints[1].name == expected_endpoint_2_name

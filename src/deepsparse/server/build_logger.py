@@ -29,7 +29,7 @@ from deepsparse.loggers import (
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
 from deepsparse.server.config import MetricFunctionConfig, ServerConfig
-from deepsparse.server.helpers import custom_logger_from_identifier
+from deepsparse.server.helpers import custom_logger_from_identifier, default_logger
 
 
 __all__ = ["build_logger"]
@@ -57,7 +57,10 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
 
     loggers_config = server_config.loggers
     if not loggers_config:
-        return None
+        return AsyncLogger(
+            logger=MultiLogger(default_logger()),  # wrap all loggers to async log call
+            max_workers=1,
+        )
 
     # base level loggers that log raw values for monitoring. ie python, prometheus
     leaf_loggers = build_leaf_loggers(loggers_config)
@@ -84,7 +87,11 @@ def build_leaf_loggers(
     """
     loggers = {}
     for logger_name, logger_arguments in loggers_config.items():
-        path_custom_logger = logger_arguments.get("path")
+        path_custom_logger = (
+            logger_arguments.get("path")
+            if logger_arguments is not None
+            else logger_arguments
+        )
         if path_custom_logger:
             # if `path` argument is provided, use the custom logger
             leaf_logger = _build_custom_logger(logger_arguments)

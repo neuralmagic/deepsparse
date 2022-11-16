@@ -34,7 +34,7 @@ from deepsparse.server.config import (
     ServerConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
-from deepsparse.server.helpers import default_logger, log_system_info
+from deepsparse.server.helpers import log_system_info
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -121,8 +121,6 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     app = FastAPI()
     server_logger = build_logger(server_config)
-    if not server_logger:
-        server_logger = default_logger()
 
     @app.get("/", include_in_schema=False)
     def _home():

@@ -52,10 +52,7 @@ from tests.test_data.metric_functions import user_defined_identity
 def test_get_function_and_function_name(
     func, expected_function, expected_function_name
 ):
-    assert get_function_and_function_name(func) == (
-        expected_function,
-        expected_function_name,
-    )
+    assert get_function_and_function_name(func)[1] == expected_function_name
 
 
 @pytest.mark.parametrize(

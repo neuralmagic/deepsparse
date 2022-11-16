@@ -98,7 +98,7 @@ def match_and_extract(
     identifier: str,
     value: Any,
     category: Optional[MetricCategories] = None,
-) -> Any:
+) -> Tuple[Any, Optional[str]]:
     """
     Attempts to match the template against the identifier. If successful,
     uses the remainder to extract the item of interest inside `value` data structure.
@@ -110,15 +110,17 @@ def match_and_extract(
         MetricCategory to match to prefixed by `category:`
     :param value: Raw value from the logger
     :param category: optional MetricCategory of the value
-    :return: Value of interest or string flag that indicates that there was no match
+    :return: Tuple:
+        - Value of interest or string flag that indicates that there was no match
+        - An optional remainder string
     """
     is_match, remainder = check_identifier_match(
         template, identifier, category=category
     )
     if is_match:
-        return possibly_extract_value(value, remainder)
+        return possibly_extract_value(value, remainder), remainder
     else:
-        return NO_MATCH
+        return NO_MATCH, remainder
 
 
 def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:

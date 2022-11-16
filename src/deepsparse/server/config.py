@@ -201,6 +201,23 @@ class ServerConfig(BaseModel):
     )
 
     @validator("endpoints")
+    def assert_unique_endpoint_names(
+        cls, endpoints: List[EndpointConfig]
+    ) -> List[EndpointConfig]:
+        name_list = []
+        for endpoint in endpoints:
+            name = endpoint.name
+            if name is None:
+                continue
+            if name in name_list:
+                raise ValueError(
+                    "Endpoint names must be unique if specified. "
+                    "Found a duplicated endpoint name: {}".format(name)
+                )
+            name_list.append(name)
+        return endpoints
+
+    @validator("endpoints")
     def set_unique_endpoint_names(
         cls, endpoints: List[EndpointConfig]
     ) -> List[EndpointConfig]:
