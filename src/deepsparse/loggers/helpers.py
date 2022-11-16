@@ -61,6 +61,7 @@ def get_function_and_function_name(
 
     if function_identifier.startswith("torch."):
         import torch
+
         function, function_name = _get_function_and_function_name_from_framework(
             framework=torch, function_identifier=function_identifier
         )
@@ -173,7 +174,7 @@ def _check_square_brackets(sub_remainder: str) -> Tuple[str, str]:
 
 
 def access_nested_value(
-    value: Union[Sequence, numpy.ndarray, "torch.Tensor", Dict[str, Any]],
+    value: Union[Sequence, numpy.ndarray, "torch.Tensor", Dict[str, Any]],  # noqa F821
     square_brackets: str,
 ) -> Any:
     """

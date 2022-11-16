@@ -40,7 +40,9 @@ def identity(x: Any):
     return x
 
 
-def image_shape(img: Union[numpy.ndarray, "torch.tensor"]) -> Tuple[int, int, int]:
+def image_shape(
+    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+) -> Tuple[int, int, int]:
     """
     Return the shape of the image.
 
@@ -59,7 +61,7 @@ def image_shape(img: Union[numpy.ndarray, "torch.tensor"]) -> Tuple[int, int, in
 
 
 def mean_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]
+    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
 ) -> Union[Tuple[float, float, float], Tuple[float]]:
     """
     Return the mean pixel value per image channel
@@ -81,7 +83,7 @@ def mean_pixels_per_channel(
 
 
 def std_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]
+    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
 ) -> Union[Tuple[float, float, float], Tuple[float]]:
     """
     Return the standard deviation of pixel values per image channel
@@ -102,7 +104,7 @@ def std_pixels_per_channel(
 
 
 def max_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]
+    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
 ) -> Union[Tuple[float, float, float], Tuple[float]]:
     """
     Return the max pixel value per image channel
@@ -122,7 +124,7 @@ def max_pixels_per_channel(
     return tuple(numpy.max(img_numpy, axis=tuple(dims)))
 
 
-def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:
+def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa F821
     """
     Return the float the represents the fraction of zeros in the
     image tensor/array
@@ -186,7 +188,9 @@ def _check_valid_image(img: numpy.ndarray) -> Tuple[int, int]:
     return num_dims, channel_dim if num_dims == 3 else channel_dim + 1
 
 
-def _assert_numpy_image(img: Union[numpy.ndarray, "torch.tensor"]) -> numpy.ndarray:
+def _assert_numpy_image(
+    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+) -> numpy.ndarray:
     if hasattr(img, "numpy"):
         img = img.numpy()
     return img
