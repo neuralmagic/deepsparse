@@ -198,7 +198,7 @@ def _create_server_config(task_name, endpoint_1_name, endpoint_2_name):
     "task_name, endpoint_1_name, endpoint_2_name, raise_error, expected_endpoint_1_name, expected_endpoint_2_name",  # noqa: E501
     [
         ("some_task", None, None, False, "some_task-0", "some_task-1"),
-        ("some_task", "name_1", None, "name_1", "some_task-0"),
+        ("some_task", "name_1", None, False, "name_1", "some_task-0"),
         ("some_task", "name_1", "name_2", False, "name_1", "name_2"),
         ("some_task", "name_1", "name_1", True, None, None),
     ],
