@@ -16,7 +16,7 @@ import numpy
 
 import pytest
 import torch
-from deepsparse.loggers.built_ins import (
+from deepsparse.loggers.metric_functions import (
     bounding_box_count,
     fraction_zeros,
     image_shape,

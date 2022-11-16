@@ -97,7 +97,7 @@ class TestLoggers:
     @pytest.fixture()
     def setup(self, loggers, data_logger_config, expected_logs_content):
 
-        stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"
+        stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"  # noqa E501
         task = "text-classification"
         name = "endpoint_name"
 
@@ -145,7 +145,7 @@ class TestLoggers:
             client.post("/predict_", json={"sequences": "today is great"})
 
         if expected_logs_content is None:
-            assert isinstance(server_logger, PythonLogger)
+            assert isinstance(server_logger.logger.loggers, PythonLogger)
 
         elif isinstance(expected_logs_content, list):
             leaf_loggers = server_logger.logger.loggers[1].logger.loggers

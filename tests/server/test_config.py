@@ -113,7 +113,7 @@ def test_yaml_load_config(tmp_path):
                 bucketing=None,
             ),
             EndpointConfig(
-                name="asdf",
+                name="asdfd",
                 route="qwer",
                 task="uiop",
                 model="hjkl",
@@ -121,7 +121,7 @@ def test_yaml_load_config(tmp_path):
                 bucketing=ImageSizesConfig(image_sizes=[(1, 1), (2, 2)]),
             ),
             EndpointConfig(
-                name="asdf",
+                name="asdfde",
                 route="qwer",
                 task="uiop",
                 model="hjkl",
