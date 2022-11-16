@@ -1,6 +1,3 @@
-"""
-Base implementation of the logger
-"""
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,25 +12,32 @@ Base implementation of the logger
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
-from typing import Any, Optional
+"""
+Implementation of the Multi Logger that serves as a
+container for holding multiple loggers
+"""
+from typing import Any, List
+
+from deepsparse.loggers import BaseLogger, MetricCategories
 
 
-class BaseLogger(ABC):
+__all__ = ["MultiLogger"]
+
+
+class MultiLogger(BaseLogger):
     """
-    Generic BaseLogger abstract class meant to define interfaces
-    for the loggers that support various monitoring services APIs.
+    A logger that holds a list of loggers and logs to all of them.
     """
 
-    @abstractmethod
-    def log(self, identifier: str, value: Any, category: Optional[str] = None):
+    def __init__(self, loggers: List[BaseLogger]):
+        self.loggers = loggers
+
+    def log(self, identifier: str, value: Any, category: MetricCategories):
         """
-        The main method to collect information from the pipeline
-        and then possibly process the information and pass it to
-        the monitoring service
 
         :param identifier: The name of the item that is being logged.
-        :param value: The data structure that is logged
+        :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        raise NotImplementedError()
+        for logger in self.loggers:
+            logger.log(identifier, value, category)

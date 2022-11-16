@@ -11,86 +11,46 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Helper functions for deepsparse.server
 """
 
-
+import importlib
 import logging
-from typing import Any, Dict, Union
+from typing import Type
 
-import yaml
-
-from deepsparse.loggers import ManagerLogger, PrometheusLogger
+from deepsparse import BaseLogger, PythonLogger
 
 
-__all__ = [
-    "default_logger_manager",
-    "logger_manager_from_config",
-]
-
+__all__ = ["log_system_info", "default_logger", "custom_logger_from_identifier"]
 
 _LOGGER = logging.getLogger(__name__)
-_SUPPORTED_LOGGERS = {"prometheus": PrometheusLogger}
 
 
-def default_logger_manager() -> ManagerLogger:
+def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLogger]:
     """
-    :return: default ManagerLogger object for the deployment scenario
+    Parse the custom logger identifier in order to import a custom logger class object
+    from the user-specified python script
+
+    :param custom_logger_identifier: string in the form of
+           '<path_to_the_python_script>:<custom_logger_class_name>
+    :return: custom logger class object
     """
-    # always return prometheus logger for now
-    logger = PrometheusLogger()
-    _LOGGER.info(f"Created default logger {logger}")
-    return ManagerLogger(logger)
+    path, logger_object_name = custom_logger_identifier.split(":")
+    spec = importlib.util.spec_from_file_location("user_defined_custom_logger", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, logger_object_name)
 
 
-def logger_manager_from_config(
-    config: Union[str, Dict[str, Dict[str, Any]]]
-) -> ManagerLogger:
+def default_logger() -> BaseLogger:
     """
-    Initializes a ManagerLogger from loggers defined by a yaml config file
-    or loaded dictionary
-
-    Config should be a logger integration name, followed by its initialization
-    kwargs as a dict
-
-    supported logger integrations:
-    ["prometheus"]
-
-    example config:
-
-    ```yaml
-    prometheus:
-        port: 8001
-        text_log_save_dir: /home/deepsparse-server/prometheus
-        text_log_save_freq: 30
-    ```
-
-    :param config: path to YAML config file or dictionary config
-    :return: constructed ManagerLogger object
+    :return: default PythonLogger object for the deployment scenario
     """
-    if isinstance(config, str):
-        with open(config) as config_reader:
-            config = yaml.safe_load(config_reader)
+    logger = PythonLogger()
+    _LOGGER.info("Created default logger: PythonLogger")
+    return logger
 
-        if not isinstance(config, dict):
-            raise ValueError(
-                "Loggers config must be a yaml dict, loaded object of "
-                f"type {type(config)}"
-            )
 
-    loggers = []
-
-    for integration, logger_kwargs in config.items():
-        logger_class = _SUPPORTED_LOGGERS.get(integration.lower())
-        if logger_class is None:
-            raise ValueError(
-                f"Unknown logger integration {integration}. Supported integrations: "
-                f"{list(_SUPPORTED_LOGGERS)}"
-            )
-        logger = logger_class(**logger_kwargs)
-        _LOGGER.info(f"Created logger {logger}")
-        loggers.append(logger)
-
-    return ManagerLogger(loggers=loggers)
+def log_system_info(server_logger: BaseLogger):
+    pass

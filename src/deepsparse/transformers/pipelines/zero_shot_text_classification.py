@@ -181,17 +181,20 @@ class ZeroShotTextClassificationPipeline(TransformersPipeline):
         model_scheme: str = ModelSchemes.mnli.value,
         **kwargs,
     ):
+        pipeline = None
         if model_scheme == ModelSchemes.mnli:
             from deepsparse.transformers.pipelines.mnli_text_classification import (
                 MnliTextClassificationPipeline,
             )
 
-            return MnliTextClassificationPipeline(model_path, **kwargs)
+            pipeline = MnliTextClassificationPipeline(model_path, **kwargs)
         else:
             raise ValueError(
                 f"Unknown model_scheme {model_scheme}. Currently supported model "
                 f"schemes are {ModelSchemes.to_list()}"
             )
+        pipeline.task = cls.task
+        return pipeline
 
 
 class ZeroShotTextClassificationInputBase(BaseModel):
