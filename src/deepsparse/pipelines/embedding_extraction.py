@@ -76,8 +76,6 @@ class EmbeddingExtractionPipeline(Pipeline):
         the embeddings will be extracted. If a string, the name of last
         ONNX node in model to draw embeddings from. If None, leave the model
         unchanged. Default is None
-    :param model_size: size of hidden layer per input if the model is cut.
-        Default is 768
     :param return_numpy: return embeddings a list of numpy arrays, list of lists
         of floats otherwise. Default is True
     """
@@ -87,13 +85,11 @@ class EmbeddingExtractionPipeline(Pipeline):
         *,
         base_task: str,
         emb_extraction_layer: Union[int, str, None] = None,
-        model_size: int = 768,  # TODO: confirm with @bfineran
         return_numpy: bool = True,
         **base_pipeline_args,
     ):
         self._base_task = base_task
         self._emb_extraction_layer = emb_extraction_layer
-        self._model_size = model_size
         self._return_numpy = return_numpy
 
         # initialize engine after model truncate
