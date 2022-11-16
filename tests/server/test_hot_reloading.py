@@ -185,14 +185,14 @@ def test_hot_reload_config_with_start_server(
     assert watcher_patch.call_count == 1
 
 
-@mock.patch("deepsparse.server.server.start_server")
+@mock.patch("deepsparse.server.cli.start_server")
 def test_task_cli_hot_reload(start_server):
     runner = CliRunner()
 
     # no flag sets hot_reload_config to False
     runner.invoke(task, ["qa"])
     _, kwargs = start_server.call_args
-    # assert kwargs["hot_reload_config"] is False
+    assert kwargs["hot_reload_config"] is False
 
     # using flag sets hot_reload_config to True
     runner.invoke(task, ["qa", "--hot-reload-config"])
