@@ -12,49 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import unittest
-from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
-import pytest
 from deepsparse import PythonLogger
-from deepsparse.engine import Context
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import EndpointConfig, MetricFunctionConfig, ServerConfig
-from deepsparse.server.server import _add_endpoint, _build_app
+from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
 
-LIST_LOGGER_IDENTIFIER = "tests/deepsparse/loggers/helpers.py:ListLogger"
-
-EXPECTED_LOGS_SYSTEM = {"category:MetricCategories.SYSTEM": 8}
-EXPECTED_LOGS_REGEX = {"pipeline_inputs.identity": 2, "pipeline_outputs.identity": 2}
-EXPECTED_LOGS_MULTIPLE_TARGETS = {
-    "pipeline_inputs.sequences.identity": 2,
-    "engine_inputs.identity": 2,
-}
-EXPECTED_LOGS_TARGET_LOGGER = [
-    {**EXPECTED_LOGS_SYSTEM, **EXPECTED_LOGS_MULTIPLE_TARGETS},
-    {
-        **EXPECTED_LOGS_SYSTEM,
-        **{"pipeline_inputs.sequences.identity": 0, "engine_inputs.identity": 2},
-    },
-]
-
-DATA_LOGGER_CONFIG_REGEX = {"re:.*pipeline*.": [MetricFunctionConfig(func="identity")]}
-DATA_LOGGER_CONFIG_MULTIPLE_TARGETS = {
-    "pipeline_inputs.sequences": [MetricFunctionConfig(func="identity")],
-    "engine_inputs": [MetricFunctionConfig(func="identity")],
-}
-DATA_LOGGER_CONFIG_TARGET_LOGGER = {
-    "pipeline_inputs.sequences": [
-        MetricFunctionConfig(func="identity", target_loggers=["logger_1"])
-    ],
-    "engine_inputs": [MetricFunctionConfig(func="identity")],
-}
+logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
+stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"  # noqa E501
+task = "text-classification"
+name = "endpoint_name"
 
 
 def _test_logger_contents(leaf_logger, expected_logs):
@@ -66,87 +38,156 @@ def _test_logger_contents(leaf_logger, expected_logs):
         assert expected_logs[expected_log_content] == i
 
 
-@pytest.mark.parametrize(
-    "loggers, data_logger_config, expected_logs_content",
-    [
-        ({}, [], None),  # Test default logger (no `loggers` specified)
-        (
-            {"logger_1": {"path": LIST_LOGGER_IDENTIFIER}},
-            [],
-            EXPECTED_LOGS_SYSTEM,
-        ),  # Make sure that we log system logs only
-        (
-            {"logger_1": {"path": LIST_LOGGER_IDENTIFIER}},
-            DATA_LOGGER_CONFIG_REGEX,
-            {**EXPECTED_LOGS_SYSTEM, **EXPECTED_LOGS_REGEX},
-        ),  # Make sure we can use regex to target specific identifiers
-        (
-            {"logger_1": {"path": LIST_LOGGER_IDENTIFIER}},
-            DATA_LOGGER_CONFIG_MULTIPLE_TARGETS,
-            EXPECTED_LOGS_MULTIPLE_TARGETS,
-        ),  # Test multiple targets
-        (
-            {
-                "logger_1": {"path": LIST_LOGGER_IDENTIFIER},
-                "logger_2": {"path": LIST_LOGGER_IDENTIFIER},
-            },
-            DATA_LOGGER_CONFIG_TARGET_LOGGER,
-            EXPECTED_LOGS_TARGET_LOGGER,
-        ),  # One function metric with target loggers
-    ],
-)
-class TestLoggers:
-    @pytest.fixture()
-    def setup(self, loggers, data_logger_config, expected_logs_content):
+def test_default_logger():
+    server_config = ServerConfig(
+        endpoints=[EndpointConfig(task=task, name=name, model=stub)],
+        loggers={},
+    )
+    server_logger = build_logger(server_config)
+    with mock.patch(
+        "deepsparse.server.server.build_logger", return_value=server_logger
+    ), mock_engine(rng_seed=0):
+        app = _build_app(server_config)
+    client = TestClient(app)
 
-        stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"  # noqa E501
-        task = "text-classification"
-        name = "endpoint_name"
+    for _ in range(2):
+        client.post("/predict", json={"sequences": "today is great"})
+    assert isinstance(server_logger.logger.loggers, PythonLogger)
 
-        server_config = ServerConfig(
-            endpoints=[
-                EndpointConfig(
-                    task=task,
-                    data_logging=data_logger_config,
-                    name=name,
-                    model=stub,
-                    route="/predict_",
-                )
-            ],
-            loggers=loggers,
-        )
 
-        # create a duplicate of `server_logger` to later add it together
-        # with a separate endpoint. The goal is to have access to the
-        # `server_logger` and inspect its state change during server inference
-        server_logger = build_logger(copy.deepcopy(server_config))
+def test_logging_only_system_info():
+    server_config = ServerConfig(
+        endpoints=[EndpointConfig(task=task, name=name, model=stub)],
+        loggers={"logger_1": {"path": logger_identifier}},
+    )
+    server_logger = build_logger(server_config)
+    with mock.patch(
+        "deepsparse.server.server.build_logger", return_value=server_logger
+    ), mock_engine(rng_seed=0):
+        app = _build_app(server_config)
+    client = TestClient(app)
 
-        with mock.patch(
-            "deepsparse.server.server.build_logger", return_value=server_logger
-        ), mock_engine(rng_seed=0):
-            app = _build_app(server_config)
+    for _ in range(2):
+        client.post("/predict", json={"sequences": "today is great"})
+    _test_logger_contents(
+        server_logger.logger.loggers[0].logger.loggers[0],
+        {"category:MetricCategories.SYSTEM": 8},
+    )
 
-        client = TestClient(app)
 
-        yield client, server_logger, expected_logs_content
+def test_regex_target_logging():
+    server_config = ServerConfig(
+        endpoints=[
+            EndpointConfig(
+                task=task,
+                name=name,
+                data_logging={
+                    "re:.*pipeline*.": [MetricFunctionConfig(func="identity")]
+                },
+                model=stub,
+            )
+        ],
+        loggers={"logger_1": {"path": logger_identifier}},
+    )
+    server_logger = build_logger(server_config)
+    with mock.patch(
+        "deepsparse.server.server.build_logger", return_value=server_logger
+    ), mock_engine(rng_seed=0):
+        app = _build_app(server_config)
+    client = TestClient(app)
 
-    def test_logger_contents(self, setup):
-        client, server_logger, expected_logs_content = setup
-        for _ in range(2):
-            client.post("/predict_", json={"sequences": "today is great"})
+    for _ in range(2):
+        client.post("/predict", json={"sequences": "today is great"})
+    _test_logger_contents(
+        server_logger.logger.loggers[0].logger.loggers[0],
+        {"pipeline_inputs.identity": 2, "pipeline_outputs.identity": 2},
+    )
 
-        if expected_logs_content is None:
-            assert isinstance(server_logger.logger.loggers, PythonLogger)
 
-        elif isinstance(expected_logs_content, list):
-            leaf_loggers = server_logger.logger.loggers[1].logger.loggers
-            for idx, leaf_logger in enumerate(leaf_loggers):
-                _test_logger_contents(leaf_logger, expected_logs_content[idx])
-        else:
-            leaf_logger = server_logger.logger.loggers[0].logger.loggers[
-                0
-            ]  # -> MultiLogger -> FunctionLogger -> MultiLogger
-            _test_logger_contents(leaf_logger, expected_logs_content)
+def test_multiple_targets_logging():
+    server_config = ServerConfig(
+        endpoints=[
+            EndpointConfig(
+                task=task,
+                name=name,
+                data_logging={
+                    "pipeline_inputs.sequences": [
+                        MetricFunctionConfig(func="identity")
+                    ],
+                    "engine_inputs": [MetricFunctionConfig(func="identity")],
+                },
+                model=stub,
+            )
+        ],
+        loggers={"logger_1": {"path": logger_identifier}},
+    )
+    server_logger = build_logger(server_config)
+    with mock.patch(
+        "deepsparse.server.server.build_logger", return_value=server_logger
+    ), mock_engine(rng_seed=0):
+        app = _build_app(server_config)
+    client = TestClient(app)
+
+    for _ in range(2):
+        client.post("/predict", json={"sequences": "today is great"})
+    _test_logger_contents(
+        server_logger.logger.loggers[0].logger.loggers[0],
+        {
+            "pipeline_inputs.sequences.identity": 2,
+            "engine_inputs.identity": 2,
+            "category:MetricCategories.SYSTEM": 8,
+        },
+    )
+
+
+def test_function_metric_with_target_loggers():
+    server_config = ServerConfig(
+        endpoints=[
+            EndpointConfig(
+                task=task,
+                name=name,
+                data_logging={
+                    "pipeline_inputs.sequences": [
+                        MetricFunctionConfig(
+                            func="identity", target_loggers=["logger_1"]
+                        )
+                    ],
+                    "engine_inputs": [MetricFunctionConfig(func="identity")],
+                },
+                model=stub,
+            )
+        ],
+        loggers={
+            "logger_1": {"path": logger_identifier},
+            "logger_2": {"path": logger_identifier},
+        },
+    )
+    server_logger = build_logger(server_config)
+    with mock.patch(
+        "deepsparse.server.server.build_logger", return_value=server_logger
+    ), mock_engine(rng_seed=0):
+        app = _build_app(server_config)
+    client = TestClient(app)
+
+    for _ in range(2):
+        client.post("/predict", json={"sequences": "today is great"})
+
+    _test_logger_contents(
+        server_logger.logger.loggers[1].logger.loggers[0],
+        {
+            "pipeline_inputs.sequences.identity": 2,
+            "engine_inputs.identity": 2,
+            "category:MetricCategories.SYSTEM": 8,
+        },
+    )
+    _test_logger_contents(
+        server_logger.logger.loggers[1].logger.loggers[1],
+        {
+            "pipeline_inputs.sequences.identity": 0,
+            "engine_inputs.identity": 2,
+            "category:MetricCategories.SYSTEM": 8,
+        },
+    )
 
 
 @mock_engine(rng_seed=0)
