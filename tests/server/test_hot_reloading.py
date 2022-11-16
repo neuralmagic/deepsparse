@@ -190,12 +190,12 @@ def test_task_cli_hot_reload(start_server):
     runner = CliRunner()
 
     # no flag sets hot_reload_config to False
-    runner.invoke(task, ["qa"])
+    assert runner.invoke(task, ["qa"]).exception is None
     _, kwargs = start_server.call_args
     assert kwargs["hot_reload_config"] is False
 
     # using flag sets hot_reload_config to True
-    runner.invoke(task, ["qa", "--hot-reload-config"])
+    assert runner.invoke(task, ["qa", "--hot-reload-config"]).exception is None
     _, kwargs = start_server.call_args
     assert kwargs["hot_reload_config"] is True
 
@@ -205,11 +205,13 @@ def test_config_cli_hot_reload(start_server, tmp_path: Path):
     runner = CliRunner()
 
     # no flag sets hot_reload_config to False
-    runner.invoke(config, [str(tmp_path)])
+    assert runner.invoke(config, [str(tmp_path)]).exception is None
     _, kwargs = start_server.call_args
     assert kwargs["hot_reload_config"] is False
 
     # using flag sets hot_reload_config to True
-    runner.invoke(config, [str(tmp_path), "--hot-reload-config"])
+    assert (
+        runner.invoke(config, [str(tmp_path), "--hot-reload-config"]).exception is None
+    )
     _, kwargs = start_server.call_args
     assert kwargs["hot_reload_config"] is True
