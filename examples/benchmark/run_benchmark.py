@@ -59,6 +59,7 @@ from deepsparse.utils import (
     generate_random_inputs,
     get_input_names,
     get_output_names,
+    model_to_path,
     override_onnx_batch_size,
     verify_outputs,
 )
@@ -110,7 +111,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    onnx_filepath = args.onnx_filepath
+    onnx_filepath = model_to_path(args.onnx_filepath)
     batch_size = args.batch_size
     num_iterations = args.num_iterations
     num_warmup_iterations = args.num_warmup_iterations
