@@ -9,9 +9,10 @@ In order to ensure the proper installation, please install with python version 3
 Install `farm-haystack`'s dependencies via deepsparse extras
 ```bash
 pip install deepsparse[haystack]
+pip install farm-haystack[all]==1.10.0 --no-dependencies
 ```
 
-After this is done, importing assets from `deepsparse.transformers.haystack` will trigger an auto-installation of Neural Magic's fork of `transformers` as well as `farm-haystack[all]==1.4.0`. These auto-installations can be controlled by setting the environment variables `NM_NO_AUTOINSTALL_TRANSFORMERS` and `NM_NO_AUTOINSTALL_HAYSTACK` respectively.
+After this is done, importing assets from `deepsparse.transformers.haystack` will trigger an auto-installation of Neural Magic's fork of `transformers` as well as `farm-haystack[all]==1.10.0`. These auto-installations can be controlled by setting the environment variables `NM_NO_AUTOINSTALL_TRANSFORMERS` and `NM_NO_AUTOINSTALL_HAYSTACK` respectively.
 
 ## Haystack ##
 [Haystack](https://haystack.deepset.ai/overview/intro) is an open source framework developed by Deepset for building document search systems. The library implements classes that handle operations such as document storage, index search, embedding generation, and document search (formally known as information retrieval).
