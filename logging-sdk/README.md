@@ -2,7 +2,7 @@
 
 DeepSparse Logging provides operational teams with access to the telemetry needed to monitor a deployment. 
 
-For users seeking to put ML into production, these data are the raw materials that underpin the monitoring processes needed to create a system with consistently fresh and accurate predictions.
+For users seeking to put ML into production, these data underpin the monitoring processes needed to create a system with consistently fresh and accurate predictions.
 
 <p align="center">
      <img src="continual-learning.png"
