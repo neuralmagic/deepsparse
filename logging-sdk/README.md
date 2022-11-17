@@ -123,7 +123,6 @@ This endpoint may be then  scraped by a Prometheus service.
 
 The users are not limited to the set of default loggers. They can easily create their own loggers to accommodate any particular need.
 Through the Custom Logger interface, the user may route the logs to any destination they choose.
-```python
 
 There is a [tutorial creating a custom logger to an S3 Bucket](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-custom-logger) as an example.
 
