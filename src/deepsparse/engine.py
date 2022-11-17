@@ -175,7 +175,7 @@ class Engine(object):
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int,
+        batch_size: int = 1,
         num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
@@ -250,7 +250,7 @@ class Engine(object):
 
         return "{}.{}:\n{}".format(
             self.__class__.__module__,
-            self.__class__.__name__,
+            self.__class__.__qualname__,
             "\n".join(formatted_props),
         )
 
@@ -289,6 +289,13 @@ class Engine(object):
         :return: The kind of scheduler to execute with
         """
         return self._scheduler
+
+    @property
+    def fraction_of_supported_ops(self) -> float:
+        """
+        :return: The portion of the network supported by optimized runtime.
+        """
+        return round(self._eng_net.fraction_of_supported_ops(), 4)
 
     @property
     def cpu_avx_type(self) -> str:
@@ -590,6 +597,7 @@ class Engine(object):
             "num_cores": self.num_cores,
             "num_streams": self.num_streams,
             "scheduler": self.scheduler,
+            "fraction_of_supported_ops": self.fraction_of_supported_ops,
             "cpu_avx_type": self.cpu_avx_type,
             "cpu_vnni": self.cpu_vnni,
         }

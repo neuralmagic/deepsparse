@@ -218,8 +218,16 @@ class TextClassificationPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
+        sequences = inputs.sequences
+        if isinstance(sequences, List) and all(
+            isinstance(sequence, List) and len(sequence) == 1 for sequence in sequences
+        ):
+            # if batch items contain only one sequence but are wrapped in lists, unwrap
+            # for use as tokenizer input
+            sequences = [sequence[0] for sequence in sequences]
+
         tokens = self.tokenizer(
-            inputs.sequences,
+            sequences,
             add_special_tokens=True,
             return_tensors="np",
             padding=PaddingStrategy.MAX_LENGTH.value,

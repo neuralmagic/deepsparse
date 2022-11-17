@@ -73,7 +73,7 @@ import cv2
 from deepsparse.image_classification.constants import IMAGENET_LABELS
 from deepsparse.image_classification.utils import annotate_image
 from deepsparse.pipeline import Pipeline
-from deepsparse.utils import (
+from deepsparse.utils.annotate import (
     annotate,
     get_annotations_save_dir,
     get_image_loader_and_saver,
