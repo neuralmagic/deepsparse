@@ -115,11 +115,15 @@ Logging to Prometheus works out-of-the-box and users can add custom loggers.
 
 ### Prometheus Logger
 
-[@DAMIAN] - need your help here
+Prometheus Logger allows the users to interface with the Prometheus monitoring system. The logger sends the logs (in a form Prometheus metrics) 
+from the DeepSparse pipeline to an HTTP endpoint using [prometheus python client](https://github.com/prometheus/client_python). 
+This endpoint may be then  scraped by a Prometheus service.
 
 ### Custom Logger
 
-[@DAMIAN] - need your help here
+The users are not limited to the set of default loggers. They can easily create their own loggers to accommodate any particular need.
+Through the Custom Logger interface, the user may route the logs to any destination they choose.
+```python
 
 There is a [tutorial creating a custom logger to an S3 Bucket](https://github.com/neuralmagic/deepsparse/tree/rs-logging-sdk/logging-sdk/tutorial-custom-logger) as an example.
 
