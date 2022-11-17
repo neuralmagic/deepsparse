@@ -4,7 +4,7 @@
 # deepsparse[haystack]. This is done to ensure that farm-haystack has all of its
 # dependencies without installing dependencies that conflict with NM.
 #
-# This file lists dependencies for farm-haystack[all]==1.4.0, excluding the following
+# This file lists dependencies for farm-haystack[all]==1.10.0, excluding the following
 # which conflict with deepsparse dependencies:
 # [transformers]
 # the following versions have been updated to match deepsparse and sparseml versioning
@@ -16,7 +16,7 @@
 # deepsparse/transformers/haystack/__init__.py
 
 importlib-metadata
-torch==1.9.1
+torch==1.12.1
 requests
 pydantic
 nltk
@@ -27,7 +27,7 @@ networkx
 mmh3
 quantulum3
 posthog
-azure-ai-formrecognizer==3.2.0b2
+azure-ai-formrecognizer>=3.2.0b2
 azure-core<1.23
 more_itertools
 python-docx
