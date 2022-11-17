@@ -65,6 +65,6 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev,server,haystack] opencv-python
+        run: pip3 install .[dev,server,haystack] opencv-python && pip3 install farm-haystack[all]==1.4.0
       - name: Run integrations tests
         run: make test_integrations

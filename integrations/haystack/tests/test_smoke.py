@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import subprocess
-import sys
-
 import pytest
 from deepsparse.transformers.haystack import (
     DeepSparseEmbeddingRetriever,
@@ -26,44 +23,6 @@ from haystack.pipelines import (
     DocumentSearchPipeline,
     ExtractiveQAPipeline,
 )  # isort:skip
-
-
-def run_command(command):
-    """
-    Run given command with custom config and return the completed process.
-    :param command: command to be executed (formatted as `subprocess.run` expects)
-    :return: completed process as received from `subprocess.run`
-    """
-    return subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-        encoding="utf-8",
-    )
-
-
-@pytest.fixture(scope="session", autouse=True)
-def install_reqs():
-    run_command(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "deepsparse[haystack]",
-        ]
-    )
-    run_command(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "farm-haystack[all]==1.4.0",
-            "--no-dependencies",
-        ]
-    )
 
 
 @pytest.mark.smoke
