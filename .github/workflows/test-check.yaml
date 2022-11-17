@@ -51,3 +51,20 @@ jobs:
         run: pip3 install .[dev,server]
       - name: Run CLI smoke tests
         run: PYTEST_ARGS="-m smoke" make test TARGETS=cli,nobase
+  integrations-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: "neuralmagic/sparsezoo"
+          path: "sparsezoo"
+          ref: ${{needs.test-setup.outputs.branch}}
+      - name: "⚙️ Install sparsezoo dependencies"
+        run: pip3 install -U pip && pip3 install setuptools sparsezoo/
+      - name: "Clean sparsezoo directory"
+        run: rm -r sparsezoo/
+      - name: ⚙️ Install dependencies
+        run: pip3 install .[dev,server,haystack] opencv-python
+      - name: Run integrations tests
+        run: make test_integrations

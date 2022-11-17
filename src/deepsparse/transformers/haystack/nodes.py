@@ -16,20 +16,25 @@ from typing import List, Optional, Union
 
 import numpy
 from haystack.document_stores import BaseDocumentStore
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes import BaseReader, DensePassageRetriever, EmbeddingRetriever
 from haystack.nodes.retriever._embedding_encoder import _BaseEmbeddingEncoder
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.schema import Document
+from haystack.schema import Answer, Document
 
 from deepsparse import Pipeline
 from deepsparse.engine import Context
 from deepsparse.log import get_main_logger
+from deepsparse.transformers.pipelines.question_answering import (
+    QuestionAnsweringOutput,
+    QuestionAnsweringPipeline,
+)
 
 
 __all__ = [
     "DeepSparseEmbeddingRetriever",
     "DeepSparseDensePassageRetriever",
     "DeepSparseEmbeddingEncoder",
+    "DeepSparseReader",
 ]
 
 
@@ -39,7 +44,7 @@ _LOGGER = get_main_logger()
 class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
     """
     Deepsparse implementation of Haystack EmbeddingRetriever
-    Utilizes EmbeddingExtractionPipeline to create embeddings
+    Utilizes TransformersEmbeddingExtractionPipeline to create embeddings
 
     example integration into haystack pipeline:
     ```python
@@ -75,7 +80,7 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
         This approach is also used in the TableTextRetriever paper and is likely
         to improve  performance if your titles contain meaningful information for
         retrieval (topic, entities etc.).
-    :param kwargs: extra arguments passed to EmbeddingExtractionPipeline
+    :param kwargs: extra arguments passed to TransformersEmbeddingExtractionPipeline
     """
 
     def __init__(
@@ -132,8 +137,8 @@ class DeepSparseEmbeddingRetriever(EmbeddingRetriever):
 class DeepSparseDensePassageRetriever(DensePassageRetriever):
     """
     Deepsparse implementation of Haystack DensePassageRetriever
-    Utilizes two instances of EmbeddingExtractionPipeline to perform query model
-    and passage model inference
+    Utilizes two instances of TransformersEmbeddingExtractionPipeline to
+    perform query model and passage model inference
 
     example integration into haystack pipeline:
     ```python
@@ -179,7 +184,8 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
     :param context: context shared between query and passage models. If None
         is provided, then a new context with 4 streams will be created. Default
         is None
-    :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
+    :param pipeline_kwargs: extra arguments passed to
+        `TransformersEmbeddingExtractionPipeline`
     """
 
     def __init__(
@@ -245,7 +251,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
 
         _LOGGER.info("Creating query pipeline")
         self.query_pipeline = Pipeline.create(
-            "embedding_extraction",
+            "transformers_embedding_extraction",
             query_model_path,
             batch_size=batch_size,
             sequence_length=max_seq_len_query,
@@ -257,7 +263,7 @@ class DeepSparseDensePassageRetriever(DensePassageRetriever):
         )
         _LOGGER.info("Creating passage pipeline")
         self.passage_pipeline = Pipeline.create(
-            "embedding_extraction",
+            "transformers_embedding_extraction",
             passage_model_path,
             batch_size=batch_size,
             sequence_length=max_seq_len_passage,
@@ -320,12 +326,13 @@ class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
     Deepsparse implementation of Haystack EmbeddingEncoder
 
     :param retriever: retriever that uses this encoder
-    :param pipeline_kwargs: extra arguments passed to EmbeddingExtractionPipeline
+    :param pipeline_kwargs: extra arguments passed to
+        `TransformersEmbeddingExtractionPipeline`
     """
 
     def __init__(self, retriever: DeepSparseEmbeddingRetriever, pipeline_kwargs):
         self.embedding_pipeline = Pipeline.create(
-            "embedding_extraction",
+            "transformers_embedding_extraction",
             model_path=retriever.model_path,
             batch_size=retriever.batch_size,
             sequence_length=retriever.max_seq_len,
@@ -374,3 +381,72 @@ class DeepSparseEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
         passages = [d.content for d in docs]
         return self.embed(passages)
+
+
+class DeepSparseReader(BaseReader):
+    def __init__(
+        self,
+        model_path: str,
+        top_k=10,
+        top_k_per_candidate=3,
+        max_seq_len=256,
+        doc_stride=128,
+        context_window: Union[str, int] = "passage",
+        **kwargs,
+    ):
+        super().__init__()
+        self.top_k = top_k
+        self.context_window = context_window
+        self.pipeline = QuestionAnsweringPipeline(
+            model_path=model_path,
+            doc_stride=doc_stride,
+            sequence_length=max_seq_len,
+            n_best_size=top_k_per_candidate,
+            max_answer_length=64,
+            **kwargs,
+        )
+
+    def predict(self, query: str, documents: List[Document], top_k):
+        answers = []
+        for doc in documents:
+            out: QuestionAnsweringOutput = self.pipeline(
+                context=doc.content, question=query
+            )
+            if self.context_window == "passage":
+                start = doc.content.rfind("\n\n", 0, out.start)
+                if start < 0:
+                    start = doc.content.rfind("\n", 0, out.start)
+                if start < 0:
+                    start = out.start
+
+                end = doc.content.find("\n\n", out.end, len(doc.content))
+                if end < 0:
+                    end = doc.content.find("\n", out.end, len(doc.content))
+                if end < 0:
+                    end = out.end
+
+            else:
+                assert isinstance(self.context_window, int)
+                start = max(0, out.start - self.context_window)
+                end = min(len(doc.content), out.end + self.context_window)
+            assert start >= 0 and end >= 0 and end > start, (start, end)
+            context = doc.content[start:end].strip()
+
+            answers.append(
+                Answer(
+                    answer=out.answer,
+                    type="extractive",
+                    score=out.score,
+                    context=context,
+                    document_id=doc.id,
+                    meta=doc.meta,
+                )
+            )
+
+        # sort answers by their `score` and select top-k
+        answers = sorted(answers, reverse=True)
+        answers = answers[: self.top_k]
+        return {"query": query, "answers": answers}
+
+    def predict_batch(self, *args, **kwargs):
+        raise NotImplementedError

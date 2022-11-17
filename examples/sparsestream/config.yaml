@@ -1,0 +1,7 @@
+consumer_key: <"PLACEHOLDER">
+consumer_secret: <"PLACEHOLDER">
+access_token: <"PLACEHOLDER">
+access_token_secret: <"PLACEHOLDER">
+
+sent_model: "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/twitter_financial_news_sentiment/pruned80_quant-none-vnni" 
+topic_model: "zoo:nlp/text_classification/bert-base/pytorch/huggingface/twitter_financial_news_topic/pruned80_quant-none-vnni"

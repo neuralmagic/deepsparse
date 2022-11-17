@@ -14,5 +14,5 @@
 
 # flake8: noqa
 
-from .timing_builder import *
-from .timing_schema import *
+from .inference_phases import *
+from .timer import *

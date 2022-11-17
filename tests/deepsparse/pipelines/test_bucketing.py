@@ -38,7 +38,7 @@ def test_question_answering_choose_bucket(engine_mock):
     [
         "text_classification",
         "token_classification",
-        "embedding_extraction",
+        "transformers_embedding_extraction",
         "zero_shot_text_classification",
     ],
 )

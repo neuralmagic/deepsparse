@@ -50,6 +50,14 @@ _PACKAGE_NAME = (
     else "deepsparse-nightly"
 )
 
+if is_enterprise:
+    # do not include the LICENSE-NEURALMAGIC file
+    # in the deepsparse-ent installation folder
+    license_nm_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "LICENSE-NEURALMAGIC"
+    )
+    os.remove(license_nm_path)
+
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
@@ -95,7 +103,7 @@ _dev_deps = [
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
-    "fastapi>=0.70.0",
+    "fastapi>=0.70.0,<0.87.0",
     "pydantic>=1.8.2",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
