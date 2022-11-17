@@ -20,7 +20,7 @@ limitations under the License.
     <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />
     &nbsp;&nbsp;DeepSparse
   </h1>
-  <h3> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application. </h3>
+  <h3> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h3>
   <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap">
     <a href="https://docs.neuralmagic.com/deepsparse/">
       <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="25" />
