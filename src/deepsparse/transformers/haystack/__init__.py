@@ -26,7 +26,7 @@ import os as _os
 import deepsparse as _deepsparse
 
 
-_HAYSTACK_PREFERRED_VERSION = "1.4.0"
+_HAYSTACK_PREFERRED_VERSION = "1.10.0"
 _HAYSTACK_EXTRAS = "[all]"
 
 
