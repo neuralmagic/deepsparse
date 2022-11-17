@@ -268,7 +268,8 @@ setup(
     author="Neuralmagic, Inc.",
     author_email="support@neuralmagic.com",
     description=(
-        "An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application"
+        "An inference runtime offering GPU-class performance on CPUs"
+        "and APIs to integrate ML into your application"
     ),
     long_description=_setup_long_description()[0],
     long_description_content_type=_setup_long_description()[1],
