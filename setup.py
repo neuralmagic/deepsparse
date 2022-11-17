@@ -137,7 +137,7 @@ def _check_supported_system():
     if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
         # windows is not supported, raise error on install
         raise OSError(
-            "Native Windows is currently unsupported for the DeepSparse Engine. "
+            "Native Windows is currently unsupported for DeepSparse. "
             "Please run on a Linux system or within a Linux container on Windows. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -146,7 +146,7 @@ def _check_supported_system():
     if sys.platform.startswith("darwin"):
         # mac is not supported, raise error on install
         raise OSError(
-            "Native Mac is currently unsupported for the DeepSparse Engine. "
+            "Native Mac is currently unsupported for DeepSparse. "
             "Please run on a Linux system or within a Linux container on Mac. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -155,7 +155,7 @@ def _check_supported_system():
     # unknown system, raise error on install
     raise OSError(
         f"Unknown OS given of {sys.platform}; "
-        "it is unsupported for the DeepSparse Engine. "
+        "it is unsupported for DeepSparse. "
         "Please run on a Linux system. "
         "More info can be found in our docs here: "
         "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -172,7 +172,7 @@ def _check_supported_python_version():
     ):
         raise EnvironmentError(
             f"Python {supported_major}.{supported_minor} "
-            f"is only supported for the DeepSparse Engine; found {sys.version}. "
+            f"is only supported for DeepSparse; found {sys.version}. "
             "Please run on a system with the proper Python version installed. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -268,8 +268,8 @@ setup(
     author="Neuralmagic, Inc.",
     author_email="support@neuralmagic.com",
     description=(
-        "Neural network inference engine that delivers GPU-class performance "
-        "for sparsified models on CPUs"
+        "An inference runtime offering GPU-class performance on CPUs"
+        "and APIs to integrate ML into your application"
     ),
     long_description=_setup_long_description()[0],
     long_description_content_type=_setup_long_description()[1],
@@ -278,7 +278,7 @@ setup(
         "sparse, inference engine, cpu, runtime, deepsparse, computer vision, "
         "object detection, sparsity"
     ),
-    license="Neural Magic Engine License, Apache",
+    license="Neural Magic DeepSparse Community License, Apache",
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),
     include_package_data=True,
