@@ -130,7 +130,7 @@ Finally, after your `config.yaml` file is built, run the server with the config 
 deepsparse.server config config.yaml
 ```
 
-[Getting Started with the DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) for more info.
+[Getting Started with DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) for more info.
 
 ### 📜 DeepSparse Benchmark
 
