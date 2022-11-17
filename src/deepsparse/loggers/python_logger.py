@@ -1,6 +1,3 @@
-"""
-Base implementation of the logger
-"""
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,25 +12,33 @@ Base implementation of the logger
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
-from typing import Any, Optional
+"""
+Implementation of the Python Logger that logs to the stdout
+"""
+from datetime import datetime
+from typing import Any
+
+from deepsparse.loggers import BaseLogger, MetricCategories
 
 
-class BaseLogger(ABC):
+__all__ = ["PythonLogger"]
+
+
+class PythonLogger(BaseLogger):
     """
-    Generic BaseLogger abstract class meant to define interfaces
-    for the loggers that support various monitoring services APIs.
+    Python logger that writes the collected logs to stdout
     """
 
-    @abstractmethod
-    def log(self, identifier: str, value: Any, category: Optional[str] = None):
+    def log(self, identifier: str, value: Any, category: MetricCategories):
         """
-        The main method to collect information from the pipeline
-        and then possibly process the information and pass it to
-        the monitoring service
+        Collect information from the pipeline and pipe it them to the stdout
 
         :param identifier: The name of the item that is being logged.
-        :param value: The data structure that is logged
+        :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        raise NotImplementedError()
+        msg = (
+            f" Identifier: {identifier} | Category: {category.value} "
+            f"| Logged Data: {value}"
+        )
+        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f") + msg)
