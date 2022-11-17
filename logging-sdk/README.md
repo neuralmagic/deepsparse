@@ -11,7 +11,7 @@ For users seeking to put ML into production, these data underpin the monitoring 
      />
 </p>
 
-There are many types of downstream monitoring tasks that ML teams may want to perform. Some are easier to do (such as looking at system performance) and some are harder (looking at model accuracy requires manually labeling some data afterwards). Examples include:
+There are many types of downstream monitoring tasks that ML teams may want to perform. The difficulty of the tasks varies from relatively easy (simple system performance analysis ) to challenging (assessing the accuracy of the system in the wild by manually labeling the input data distribution post-factum).  Examples include:
 - **System performance:** what is the latency/throughput of a query?
 - **Data quality:** is there an error in the model pipeline?
 - **Data distribution shift:** are the inputs and outputs from the system expected?
