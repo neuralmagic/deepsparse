@@ -65,6 +65,6 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev,server,haystack] && pip3 install farm-haystack[all]==1.10.0 --no-dependencies
+        run: pip3 install .[dev,server,haystack]
       - name: Run integrations tests
         run: make test_integrations
