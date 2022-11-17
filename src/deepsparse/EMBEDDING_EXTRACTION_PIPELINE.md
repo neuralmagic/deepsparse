@@ -2,9 +2,6 @@
 
 This page explains how to create and deploy an Embedding Extraction Pipeline with DeepSparse. 
 
-DeepSparse allows accelerated inference, serving, and benchmarking of sparse, inference-optimized models.
-This Pipeline enables you to Extract Embeddings from input with GPU-class performance directly on the CPU.
-
 ## Installation Requirements
 
 This section requires the [DeepSparse Server Install](/get-started/install/deepsparse).
@@ -20,19 +17,16 @@ The Embedding Extraction Pipeline is a general Pipeline, meaning you can pass an
 for any domain. The Embedding Extraction Pipeline (optionally) removes the projection head from the model, 
 making it easy to re-use SparseZoo models and models you have trained for Embedding Extraction.
 
-There are two options to creating the model in ONNX format:
+The model can be provided in two formats:
 - Pass a Local ONNX File (see task Use Cases pages for usage in each domain)
-- Pass a SparseZoo Stub
+- Pass a SparseZoo Stub (which identifies the ONNX file on the SparseZoo)
 
-The examples below use option 2. However, you can swap for a local path for the 
-SparseZoo stub in any example below.
+The examples below use option 2.
 
 ## Deployment APIs
 
-DeepSparse provides both a Python `Pipeline` API and an out-of-the-box model
-server that can be used for end-to-end inference in either Python
-workflows or as an HTTP endpoint. Both options provide similar specifications
-for configurations.
+DeepSparse provides both a Python `Pipeline` API and an out-of-the-box
+HTTP Server. Both options provide similar specifications for configurations.
 
 ### Python API
 
