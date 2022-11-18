@@ -11,3 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from typing import List
+
+import numpy
+from pydantic import BaseModel
+
+from deepsparse.pipelines.computer_vision import ComputerVisionSchema
+
+
+__all__ = [
+    "OpenPifPafInput",
+    "OpenPifPafOutput",
+]
+
+
+class OpenPifPafInput(ComputerVisionSchema):
+    pass
+
+
+class OpenPifPafOutput(BaseModel):
+    out: List[numpy.ndarray]
+
+    class Config:
+        arbitrary_types_allowed = True
