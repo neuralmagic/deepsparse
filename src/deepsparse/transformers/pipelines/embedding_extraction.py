@@ -35,7 +35,7 @@ tasks
 
 
 from enum import Enum
-from typing import List, Type, Union
+from typing import Any, List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -50,7 +50,7 @@ from deepsparse.transformers.pipelines import TransformersPipeline
 __all__ = [
     "EmbeddingExtractionInput",
     "EmbeddingExtractionOutput",
-    "EmbeddingExtractionPipeline",
+    "TransformersEmbeddingExtractionPipeline",
 ]
 
 _LOGGER = get_main_logger()
@@ -58,7 +58,7 @@ _LOGGER = get_main_logger()
 
 class EmbeddingExtractionInput(BaseModel):
     """
-    Schema for inputs to embedding_extraction pipelines
+    Schema for inputs to transformers_embedding_extraction pipelines
     """
 
     inputs: Union[str, List[str]] = Field(
@@ -68,10 +68,12 @@ class EmbeddingExtractionInput(BaseModel):
 
 class EmbeddingExtractionOutput(BaseModel):
     """
-    Schema for embedding_extraction pipeline output. Values are in batch order
+    Schema for transformers_embedding_extraction pipeline output.
+    Values are in batch order
     """
 
-    embeddings: Union[List[List[float]], List[numpy.ndarray]] = Field(
+    # List[Any] is for accepting numpy arrays
+    embeddings: Union[List[List[float]], List[Any]] = Field(
         description="The output of the model which is an embedded "
         "representation of the input"
     )
@@ -96,25 +98,25 @@ class ExtractionStrategy(str, Enum):
 
 
 @Pipeline.register(
-    task="embedding_extraction",
+    task="transformers_embedding_extraction",
     task_aliases=[],
     default_model_path=(
         "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        "wikipedia_bookcorpus/12layer_pruned80_quant-none-vnni"
+        "wikipedia_bookcorpus/pruned80_quant-none-vnni"
     ),
 )
-class EmbeddingExtractionPipeline(TransformersPipeline):
+class TransformersEmbeddingExtractionPipeline(TransformersPipeline):
     """
     embedding extraction pipeline for extracting intermediate layer embeddings
     from transformer models
 
     example instantiation:
     ```python
-    embedding_extraction_pipeline = Pipeline.create(
-        task="embedding_extraction",
+    transformers_embedding_extraction_pipeline = Pipeline.create(
+        task="transformers_embedding_extraction",
         model_path="masked_language_modeling_model_dir/",
     )
-    results = embedding_extraction_pipeline(
+    results = transformers_embedding_extraction_pipeline(
         [
             "the warriors have won the nba finals"
             "the warriors are the greatest basketball team ever"
@@ -151,7 +153,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
         Default is 'per_token'
     :param return_numpy: return embeddings a list of numpy arrays, list of lists
-        of floats otherwise. Default is True
+        of floats otherwise. Default is False
     :param context: context for engine. If None, then the engine will be initialized
         with 2 streams to make use of parallel inference of labels. Default is None
     """
@@ -162,7 +164,7 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         emb_extraction_layer: Union[int, str, None] = -1,
         model_size: int = 768,
         extraction_strategy: ExtractionStrategy = "per_token",
-        return_numpy: bool = True,
+        return_numpy: bool = False,  # to support Pydantic Validation
         **kwargs,
     ):
         self._emb_extraction_layer = emb_extraction_layer
@@ -330,18 +332,14 @@ class EmbeddingExtractionPipeline(TransformersPipeline):
         """
         tokenizer = pipelines[0].tokenizer
         tokens = tokenizer(
-            " ".join(input_schema.inputs),
+            input_schema.inputs,
             add_special_tokens=True,
             return_tensors="np",
             padding=False,
             truncation=False,
         )
-        current_seq_len = len(tokens)
-
-        for pipeline in pipelines:
-            if pipeline.sequence_length > current_seq_len:
-                return pipeline
-        return pipelines[-1]
+        input_seq_len = max(map(len, tokens["input_ids"]))
+        return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
 
     def _remove_1d_mask(
         self, array: numpy.ndarray, mask: numpy.ndarray

@@ -175,7 +175,7 @@ class Engine(object):
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int,
+        batch_size: int = 1,
         num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
@@ -250,7 +250,7 @@ class Engine(object):
 
         return "{}.{}:\n{}".format(
             self.__class__.__module__,
-            self.__class__.__name__,
+            self.__class__.__qualname__,
             "\n".join(formatted_props),
         )
 
@@ -289,6 +289,13 @@ class Engine(object):
         :return: The kind of scheduler to execute with
         """
         return self._scheduler
+
+    @property
+    def fraction_of_supported_ops(self) -> float:
+        """
+        :return: The portion of the network supported by optimized runtime.
+        """
+        return round(self._eng_net.fraction_of_supported_ops(), 4)
 
     @property
     def cpu_avx_type(self) -> str:
@@ -370,9 +377,9 @@ class Engine(object):
             are setup correctly for the DeepSparse Engine
         :return: The list of outputs from the model after executing over the inputs
         """
-        start = time.time()
+        start = time.perf_counter()
         out = self.run(inp, val_inp)
-        end = time.time()
+        end = time.perf_counter()
 
         return out, end - start
 
@@ -497,9 +504,9 @@ class Engine(object):
         while completed_iterations < num_warmup_iterations + num_iterations:
             for batch in loader:
                 # run benchmark
-                start = time.time()
+                start = time.perf_counter()
                 out = self.run(batch)
-                end = time.time()
+                end = time.perf_counter()
 
                 if completed_iterations >= num_warmup_iterations:
                     # update results if warmup iterations are completed
@@ -522,6 +529,47 @@ class Engine(object):
             progress_bar.close()
 
         return results
+
+    def analyze(
+        self,
+        inp: List[numpy.ndarray],
+        num_iterations: int = 20,
+        num_warmup_iterations: int = 5,
+        optimization_level: int = 1,
+        imposed_as: Optional[float] = None,
+        imposed_ks: Optional[float] = None,
+    ):
+        """
+        Function to analyze a model's performance in the DeepSparse Engine.
+
+        Note 1: Analysis is currently only supported on a single socket.
+
+        :param inp: The list of inputs to pass to the engine for analyzing inference.
+            The expected order is the inputs order as defined in the ONNX graph.
+        :param num_iterations: The number of times to repeat execution of the model
+            while analyzing, default is 20
+        :param num_warmup_iterations: The number of times to repeat execution of the model
+            before analyzing, default is 5
+        :param optimization_level: The amount of graph optimizations to perform.
+            The current choices are either 0 (minimal) or 1 (all), default is 1
+        :param imposed_as: Imposed activation sparsity, defaults to None.
+            Will force the activation sparsity from all ReLu layers in the graph
+            to match this desired sparsity level (percentage of 0's in the tensor).
+            Beneficial for seeing how AS affects the performance of the model.
+        :param imposed_ks: Imposed kernel sparsity, defaults to None.
+            Will force all prunable layers in the graph to have weights with
+            this desired sparsity level (percentage of 0's in the tensor).
+            Beneficial for seeing how pruning affects the performance of the model.
+        :return: the analysis structure containing the performance details of each layer
+        """
+        return self._eng_net.benchmark(
+            inp,
+            num_iterations,
+            num_warmup_iterations,
+            optimization_level,
+            imposed_as,
+            imposed_ks,
+        )
 
     def _validate_inputs(self, inp: List[numpy.ndarray]):
         if isinstance(inp, str) or not isinstance(inp, List):
@@ -549,6 +597,7 @@ class Engine(object):
             "num_cores": self.num_cores,
             "num_streams": self.num_streams,
             "scheduler": self.scheduler,
+            "fraction_of_supported_ops": self.fraction_of_supported_ops,
             "cpu_avx_type": self.cpu_avx_type,
             "cpu_vnni": self.cpu_vnni,
         }
@@ -596,6 +645,9 @@ class Context(object):
     @property
     def scheduler(self):
         return self._scheduler
+
+    def __repr__(self) -> str:
+        return f"Context(num_cores={self.num_cores}, num_streams={self.num_streams}, scheduler={self.scheduler})"
 
 
 class MultiModelEngine(Engine):
@@ -816,11 +868,11 @@ def analyze_model(
         input_shapes=input_shapes,
     )
 
-    return model._eng_net.benchmark(
+    return model.analyze(
         inp,
-        num_iterations,
-        num_warmup_iterations,
-        optimization_level,
-        imposed_as,
-        imposed_ks,
+        num_iterations=num_iterations,
+        num_warmup_iterations=num_warmup_iterations,
+        optimization_level=optimization_level,
+        imposed_as=imposed_as,
+        imposed_ks=imposed_ks,
     )

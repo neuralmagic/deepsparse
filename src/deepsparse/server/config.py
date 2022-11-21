@@ -12,152 +12,327 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Configurations for serving models in the DeepSparse inference server
-"""
 
-import json
-import os
-from functools import lru_cache
-from typing import List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
-from deepsparse import PipelineConfig
-from deepsparse.cpu import cpu_architecture
+from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
+from deepsparse.tasks import SupportedTasks
 
 
 __all__ = [
-    "ENV_DEEPSPARSE_SERVER_CONFIG",
-    "ENV_SINGLE_PREFIX",
     "ServerConfig",
+    "EndpointConfig",
+    "MetricFunctionConfig",
+    "SequenceLengthsConfig",
+    "ImageSizesConfig",
 ]
 
+# these are stored as global variables instead of enum because in order
+# to save/load enums using yaml, you have to enable arbitrary code
+# execution.
+INTEGRATION_LOCAL = "local"
+INTEGRATION_SAGEMAKER = "sagemaker"
+INTEGRATIONS = [INTEGRATION_LOCAL, INTEGRATION_SAGEMAKER]
 
-ENV_DEEPSPARSE_SERVER_CONFIG = "DEEPSPARSE_SERVER_CONFIG"
-ENV_SINGLE_PREFIX = "DEEPSPARSE_SINGLE_MODEL:"
+
+class SequenceLengthsConfig(BaseModel):
+    sequence_lengths: List[int] = Field(
+        description="The sequence lengths the model should accept"
+    )
+
+
+class ImageSizesConfig(BaseModel):
+    image_sizes: List[Tuple[int, int]] = Field(
+        description="The list of image sizes the model should accept"
+    )
+
+
+class MetricFunctionConfig(BaseModel):
+    """
+    Holds logging configuration for a metric function
+    """
+
+    func: str = Field(
+        description="The name that specifies the metric function to be applied. "
+        "It can be: "
+        "1) a built-in function name "
+        "2) a dynamic import function of the form "
+        "'<path_to_the_python_script>:<function_name>' "
+        "3) a framework function (e.g. np.mean or torch.mean)"
+    )
+
+    frequency: int = Field(
+        description="Specifies how often the function should be applied"
+        "(measured in numbers of inference calls).",
+        default=1,
+    )
+
+    target_loggers: Optional[List[str]] = Field(
+        default=None,
+        description="Overrides the global logger configuration in "
+        "the context of the DeepSparse server. "
+        "If not None, this configuration stops logging data "
+        "to globally specified loggers, and will only use "
+        "the subset of loggers (specified here by a list of their names).",
+    )
+
+    @validator("frequency")
+    def non_zero_frequency(cls, frequency: int) -> int:
+        if frequency <= 0:
+            raise ValueError(
+                f"Passed frequency: {frequency}, but "
+                "frequency must be a positive integer greater equal 1"
+            )
+        return frequency
+
+
+class EndpointConfig(BaseModel):
+    name: Optional[str] = Field(
+        default=None,
+        description=(
+            "Name of the model used for logging & metric purposes. "
+            "If not specified 'endpoint-<index>' will be used."
+        ),
+    )
+
+    route: Optional[str] = Field(
+        default=None,
+        description="Optional url to use for this endpoint. E.g. '/predict'. "
+        "If there are multiple endpoints, all routes must be specified. "
+        "If there is a single endpoint, '/predict' is default if not specified.",
+    )
+
+    task: str = Field(description="Task this endpoint performs")
+
+    model: str = Field(description="Location of the underlying model to use.")
+
+    batch_size: int = Field(
+        default=1, description="The batch size to compile the model for."
+    )
+
+    data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(
+        default=None,
+        description="Specifies the rules for the data logging. "
+        "It relates a key (name of the logging target) "
+        "to a list of metric functions that are to be applied"
+        "to this target prior to logging.",
+    )
+
+    bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
+        default=None,
+        description=(
+            "What input shapes this model can accept."
+            "Example for multiple sequence lengths in yaml: "
+            "```yaml\n"
+            "bucketing:\n"
+            "  sequence_lengths: [16, 32, 64]\n"
+            "```\n"
+        ),
+    )
+
+    kwargs: Dict[str, Any] = Field(
+        default={}, description="Additional arguments to pass to the Pipeline"
+    )
+
+    def to_pipeline_config(self) -> PipelineConfig:
+        input_shapes, kwargs = _unpack_bucketing(self.task, self.bucketing)
+
+        kwargs.update(self.kwargs)
+
+        engine_type = kwargs.pop("engine_type", DEEPSPARSE_ENGINE)
+
+        return PipelineConfig(
+            task=self.task,
+            model_path=self.model,
+            engine_type=engine_type,
+            batch_size=self.batch_size,
+            num_cores=None,  # this will be set from Context
+            alias=self.name,
+            input_shapes=input_shapes,
+            kwargs=kwargs,
+        )
 
 
 class ServerConfig(BaseModel):
-    """
-    A configuration for serving models in the DeepSparse inference server
-    """
+    num_cores: Optional[int] = Field(
+        description="The number of cores available for model execution. "
+        "Defaults to all available cores.",
+        default=None,
+    )
 
-    models: List[PipelineConfig] = Field(
-        default=[],
-        description=(
-            "The models to serve in the server defined by PipelineConfig objects"
-        ),
+    num_workers: Optional[int] = Field(
+        description="The number of workers to split the available cores between. "
+        "Defaults to half of the num_cores set",
+        default=None,
     )
-    workers: str = Field(
-        default=max(1, cpu_architecture().num_available_physical_cores // 2),
-        description=(
-            "The number of maximum workers to use for processing pipeline requests. "
-            "Defaults to the number of physical cores on the device."
-        ),
-    )
+
     integration: str = Field(
-        default="default",
+        default=INTEGRATION_LOCAL,
+        description="The kind of integration to use. local|sagemaker",
+    )
+
+    engine_thread_pinning: str = Field(
+        default="core",
         description=(
-            "Name of deployment integration that this server will be deployed to "
-            "Currently supported options are None for default inference and "
-            "'sagemaker' for inference deployment with AWS Sagemaker"
+            "Enable binding threads to cores ('core' the default), "
+            "threads to cores on sockets ('numa'), or disable ('none')"
         ),
     )
 
+    pytorch_num_threads: Optional[int] = Field(
+        default=1,
+        description=(
+            "Configures number of threads that pytorch is allowed to use during"
+            "pre and post-processing. Useful to reduce resource contention. "
+            "Set to `None` to place no restrictions on pytorch."
+        ),
+    )
 
-@lru_cache()
-def server_config_from_env(env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG):
+    endpoints: List[EndpointConfig] = Field(description="The models to serve.")
+
+    loggers: Dict[str, Optional[Dict[str, Any]]] = Field(
+        default={},
+        description=(
+            "Optional dictionary of logger integration names to initialization kwargs."
+            "Set to {} for no loggers. Default is {}."
+        ),
+    )
+
+    @validator("endpoints")
+    def assert_unique_endpoint_names(
+        cls, endpoints: List[EndpointConfig]
+    ) -> List[EndpointConfig]:
+        name_list = []
+        for endpoint in endpoints:
+            name = endpoint.name
+            if name is None:
+                continue
+            if name in name_list:
+                raise ValueError(
+                    "Endpoint names must be unique if specified. "
+                    "Found a duplicated endpoint name: {}".format(name)
+                )
+            name_list.append(name)
+        return endpoints
+
+    @validator("endpoints")
+    def set_unique_endpoint_names(
+        cls, endpoints: List[EndpointConfig]
+    ) -> List[EndpointConfig]:
+        """
+        Assert that the endpoints in ServerConfig have unique names.
+        If endpoint does not have a `name` specified, the endpoint is
+        named `{task_name}-{idx}`.
+
+        :param endpoints: configuration of server's endpoints
+        :return: configuration of server's endpoints
+        """
+        counter_task_name_used = {endpoint.task: 0 for endpoint in endpoints}
+        # make sure that the endpoints in ServerConfig have unique names.
+        for endpoint_config in endpoints:
+            if endpoint_config.name is None:
+                task_name = endpoint_config.task
+                idx = counter_task_name_used[task_name]
+                counter_task_name_used[task_name] += 1
+                endpoint_config.name = f"{endpoint_config.task}-{idx}"
+        return endpoints
+
+
+def endpoint_diff(
+    old_cfg: ServerConfig, new_cfg: ServerConfig
+) -> Tuple[List[EndpointConfig], List[EndpointConfig]]:
     """
-    Load a server configuration from the targeted environment variable given by env_key.
-
-    :param env_key: the environment variable to load the configuration from.
-        Defaults to ENV_DEEPSPARSE_SERVER_CONFIG
-    :return: the loaded configuration file
+    - Added endpoint: the endpoint's route is **not** present in `old_cfg`,
+        and present in `new_cfg`.
+    - Removed endpoint: the endpoint's route is present in `old_cfg`, and
+        **not** present in `new_cfg`.
+    - Modified endpoint: Any field of the endpoint changed. In this case
+        the endpoint will be present in both returned lists (it is both
+        added and removed).
+    :return: Tuple of (added endpoints, removed endpoints).
     """
-    config_file = os.environ[env_key]
+    routes_in_old = {
+        endpoint.route: endpoint
+        for endpoint in old_cfg.endpoints
+        if endpoint.route is not None
+    }
+    routes_in_new = {
+        endpoint.route: endpoint
+        for endpoint in new_cfg.endpoints
+        if endpoint.route is not None
+    }
 
-    if not config_file:
-        raise ValueError(
-            "environment variable for deepsparse server config not found at "
-            f"{env_key}"
-        )
+    added_routes = set(routes_in_new) - set(routes_in_old)
+    removed_routes = set(routes_in_old) - set(routes_in_new)
 
-    if config_file.startswith(ENV_SINGLE_PREFIX):
-        config_dict = json.loads(config_file.replace(ENV_SINGLE_PREFIX, ""))
-        config = ServerConfig()
-        config.models.append(
-            PipelineConfig(
-                task=config_dict["task"],
-                model_path=config_dict["model_path"],
-                batch_size=config_dict["batch_size"],
-            )
-        )
-    else:
-        with open(config_file) as file:
-            config_dict = yaml.safe_load(file.read())
-        config_dict["models"] = (
-            [PipelineConfig(**model) for model in config_dict["models"]]
-            if "models" in config_dict
-            else []
-        )
-        config = ServerConfig(**config_dict)
+    # for any routes that are in both, check if the config object is different.
+    # if so, then we do modification by adding the route to both remove & add
+    for route in set(routes_in_new) & set(routes_in_old):
+        if routes_in_old[route] != routes_in_new[route]:
+            removed_routes.add(route)
+            added_routes.add(route)
 
-    if len(config.models) == 0:
-        raise ValueError(
-            "There must be at least one model to serve in the configuration "
-            "for the deepsparse inference server"
-        )
-
-    return config
+    added_endpoints = [
+        endpoint for endpoint in new_cfg.endpoints if endpoint.route in added_routes
+    ]
+    removed_endpoints = [
+        endpoint for endpoint in old_cfg.endpoints if endpoint.route in removed_routes
+    ]
+    return added_endpoints, removed_endpoints
 
 
-def server_config_to_env(
-    config_file: str,
-    task: str,
-    model_path: str,
-    batch_size: int,
-    integration: str,
-    env_key: str = ENV_DEEPSPARSE_SERVER_CONFIG,
-):
+def _unpack_bucketing(
+    task: str, bucketing: Optional[Union[SequenceLengthsConfig, ImageSizesConfig]]
+) -> Tuple[Optional[List[int]], Dict[str, Any]]:
     """
-    Put a server configuration in an environment variable given by env_key.
-    If config_file is given, ignores task, model_path, and batch_size.
-    Otherwise, creates a configuration file from task, model_path, and batch_size
-    for serving a single model.
-
-    :param config_file: the path to the config file to store in the environment
-    :param task: the task the model_path is serving such as question_answering.
-        If config_file is supplied, this is ignored.
-    :param model_path: the path to a model.onnx file, a model folder containing
-        the model.onnx and supporting files, or a SparseZoo model stub.
-        If config_file is supplied, this is ignored.
-    :param batch_size: the batch size to serve the model from model_path with.
-        If config_file is supplied, this is ignored.
-    :param integration: name of deployment integration that this server will be
-        deployed to. Supported options include None for default inference and
-        sagemaker for inference deployment on AWS Sagemaker
-    :param env_key: the environment variable to set the configuration in.
-        Defaults to ENV_DEEPSPARSE_SERVER_CONFIG
+    :return: (input_shapes, kwargs) which are passed to PipelineConfig
     """
-    if config_file is not None:
-        config = config_file
-    else:
-        if task is None or model_path is None:
+    if bucketing is None:
+        return None, {}
+
+    if isinstance(bucketing, SequenceLengthsConfig):
+        if not SupportedTasks.is_nlp(task):
+            raise ValueError(f"SequenceLengthConfig specified for non-nlp task {task}")
+
+        return _unpack_nlp_bucketing(bucketing)
+    elif isinstance(bucketing, ImageSizesConfig):
+        if not SupportedTasks.is_cv(task):
             raise ValueError(
-                "config_file not given, model_path and task both must be supplied "
-                "for serving"
+                f"ImageSizeConfig specified for non computer vision task {task}"
             )
 
-        single_str = json.dumps(
-            {
-                "task": task,
-                "model_path": model_path,
-                "batch_size": batch_size,
-                "integration": integration,
-            }
-        )
-        config = f"{ENV_SINGLE_PREFIX}{single_str}"
+        return _unpack_cv_bucketing(bucketing)
+    else:
+        raise ValueError(f"Unknown bucket config {bucketing}")
 
-    os.environ[env_key] = config
+
+def _unpack_nlp_bucketing(cfg: SequenceLengthsConfig):
+    if len(cfg.sequence_lengths) == 0:
+        raise ValueError("Must specify at least one sequence length under bucketing")
+
+    if len(cfg.sequence_lengths) == 1:
+        input_shapes = None
+        kwargs = {"sequence_length": cfg.sequence_lengths[0]}
+    else:
+        input_shapes = None
+        kwargs = {"sequence_length": cfg.sequence_lengths}
+
+    return input_shapes, kwargs
+
+
+def _unpack_cv_bucketing(cfg: ImageSizesConfig):
+    if len(cfg.image_sizes) == 0:
+        raise ValueError("Must specify at least one image size under bucketing")
+
+    if len(cfg.image_sizes) == 1:
+        # NOTE: convert from List[Tuple[int, int]] to List[List[int]]
+        input_shapes = [list(cfg.image_sizes[0])]
+        kwargs = {}
+    else:
+        raise NotImplementedError(
+            "Multiple image size buckets is currently unsupported"
+        )
+
+    return input_shapes, kwargs

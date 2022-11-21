@@ -35,14 +35,14 @@ tasks
 """
 
 
-from typing import Generator, Iterable, List, Type, Union
+import warnings
+from typing import List, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse import Pipeline
-from deepsparse.pipelines import Joinable, Splittable
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -53,7 +53,7 @@ __all__ = [
 ]
 
 
-class TextClassificationInput(BaseModel, Splittable):
+class TextClassificationInput(BaseModel):
     """
     Schema for inputs to text_classification pipelines
     """
@@ -63,37 +63,8 @@ class TextClassificationInput(BaseModel, Splittable):
         "text_classification task"
     )
 
-    def split(self) -> Generator["TextClassificationInput", None, None]:
-        """
-        Split a current `TextClassificationInput` object with a batch size b, into a
-        generator of b smaller objects with batch size 1, the returned
-        object can be iterated on.
 
-        :return: A Generator of smaller `TextClassificationInput` objects each
-            representing an input of batch-size 1
-        """
-
-        sequences = self.sequences
-
-        # case 1: do nothing if single input of batch_size 1
-        if isinstance(sequences, str):
-            yield self
-
-        elif (
-            isinstance(sequences, list)
-            and len(sequences)
-            and isinstance(sequences[0], (str, list))
-        ):
-            # case 2: List[str] -> multi-batches of size 1 Or batch-size 1 multi-inputs
-            # case 3: List[List[str]] -> Each List[str] is a multi-input batch of
-            # size 1
-            for sequence in sequences:
-                yield TextClassificationInput(sequences=sequence)
-        else:
-            raise ValueError(f"Could not breakdown {self} into smaller batches")
-
-
-class TextClassificationOutput(BaseModel, Joinable):
+class TextClassificationOutput(BaseModel):
     """
     Schema for text_classification pipeline output. Values are in batch order
     """
@@ -104,24 +75,6 @@ class TextClassificationOutput(BaseModel, Joinable):
     scores: List[Union[float, List[float]]] = Field(
         description="The corresponding probability for each label in the batch"
     )
-
-    @staticmethod
-    def join(
-        outputs: Iterable["TextClassificationOutput"],
-    ) -> "TextClassificationOutput":
-        """
-        Takes in ab Iterable of `TextClassificationOutput` objects and combines
-        them into one object representing a bigger batch size
-
-        :return: A new `TextClassificationOutput` object that represents a bigger batch
-        """
-        labels = list()
-        scores = list()
-        for output in outputs:
-            labels.extend(output.labels)
-            scores.extend(output.scores)
-
-        return TextClassificationOutput(labels=labels, scores=scores)
 
 
 @Pipeline.register(
@@ -134,7 +87,10 @@ class TextClassificationOutput(BaseModel, Joinable):
 )
 class TextClassificationPipeline(TransformersPipeline):
     """
-    transformers text classification pipeline
+    transformers text classification pipeline.
+    Scores are returned as sigmoid over logits if one label is given or
+    the model config is set to "multi_label_classification". Softmax
+    returned otherwise
 
     example instantiation:
     ```python
@@ -180,7 +136,9 @@ class TextClassificationPipeline(TransformersPipeline):
         If a list of lengths is provided, then for each length, a model and
         tokenizer will be compiled capable of handling that sequence length
         (also known as a bucket). Default is 128
-    :param return_all_scores: if True, instead of returning the prediction as the
+    :param top_k: number of labels with the highest score to return. Default is 1
+    :param return_all_scores: [DEPRECATED] set top_k to desired value instead.
+        If True, instead of returning the prediction as the
         argmax of model class predictions, will return all scores and labels as
         a list for each result in the batch. Default is False
     """
@@ -188,12 +146,21 @@ class TextClassificationPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
+        top_k: int = 1,
         return_all_scores: bool = False,
         **kwargs,
     ):
+        super().__init__(**kwargs)
+
+        self._top_k = _get_top_k(top_k, return_all_scores, self.config.num_labels)
         self._return_all_scores = return_all_scores
 
-        super().__init__(**kwargs)
+    @property
+    def top_k(self) -> int:
+        """
+        :return: number of labels with the highest score to return
+        """
+        return self._top_k
 
     @property
     def return_all_scores(self) -> str:
@@ -251,8 +218,16 @@ class TextClassificationPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
+        sequences = inputs.sequences
+        if isinstance(sequences, List) and all(
+            isinstance(sequence, List) and len(sequence) == 1 for sequence in sequences
+        ):
+            # if batch items contain only one sequence but are wrapped in lists, unwrap
+            # for use as tokenizer input
+            sequences = [sequence[0] for sequence in sequences]
+
         tokens = self.tokenizer(
-            inputs.sequences,
+            sequences,
             add_special_tokens=True,
             return_tensors="np",
             padding=PaddingStrategy.MAX_LENGTH.value,
@@ -271,25 +246,26 @@ class TextClassificationPipeline(TransformersPipeline):
         if isinstance(outputs, list):
             outputs = outputs[0]
 
+        use_sigmoid = self.config.num_labels == 1 or (
+            self.config.problem_type == "multi_label_classification"
+        )
         scores = (
             1.0 / (1.0 + numpy.exp(-outputs))
-            if self.config.num_labels == 1
+            if use_sigmoid
             else numpy.exp(outputs) / numpy.exp(outputs).sum(-1, keepdims=True)
         )
 
-        if not self._return_all_scores:
-            # return only argmax of scores for each item in batch
-            labels = []
-            label_scores = []
-            for score in scores:
+        labels = []
+        label_scores = []
+        for score in scores:
+            if self._top_k == 1:
                 labels.append(self.config.id2label[score.argmax()])
                 label_scores.append(score.max().item())
-        else:
-            # return all scores and labels for each item in batch
-            labels = [
-                [self.config.id2label[idx] for idx in range(scores.shape[1])]
-            ] * len(scores)
-            label_scores = [score.reshape(-1).tolist() for score in scores]
+            else:
+                ranked_idxs = (-score.reshape(-1)).argsort()[: self.top_k]
+                score = score.reshape(-1).tolist()
+                labels.append([self.config.id2label[idx] for idx in ranked_idxs])
+                label_scores.append([score[idx] for idx in ranked_idxs])
 
         return self.output_schema(
             labels=labels,
@@ -313,5 +289,30 @@ class TextClassificationPipeline(TransformersPipeline):
             padding=False,
             truncation=False,
         )
-        input_seq_len = len(tokens)
+        input_seq_len = max(map(len, tokens["input_ids"]))
         return TransformersPipeline.select_bucket_by_seq_len(input_seq_len, pipelines)
+
+
+def _get_top_k(top_k: int, return_all_scores: bool, num_labels: int) -> int:
+    # handle deprecations of return_all_scores
+    if top_k <= 0:
+        raise ValueError(f"text_classification top_k must be > 0. found {top_k}")
+    if return_all_scores and top_k not in [1, num_labels]:
+        # top_k is not set to default, but does not match num_labels
+        # for return_all_scores
+        raise ValueError(
+            f"Mismatch: return_all_scores set to {return_all_scores} with "
+            f"{num_labels} in model config, but top_k set to {top_k}. "
+            "return_all_scores is deprecated, set top_k instead"
+        )
+
+    if top_k == 1 and return_all_scores:
+        # set top_k to num_labels from config and warn
+        warnings.warn(
+            f"return_all_scores deprecated, set {top_k} instead. setting "
+            f"top_k to num_lables from config: {num_labels}",
+            category=DeprecationWarning,
+        )
+        top_k = num_labels
+
+    return top_k

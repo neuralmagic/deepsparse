@@ -16,9 +16,15 @@
 Classes and implementations for supported tasks in the DeepSparse pipeline and system
 """
 
+import importlib
+import logging
+import os
+import sys
 from collections import namedtuple
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["SupportedTasks", "AliasedTask"]
 
@@ -75,7 +81,7 @@ class SupportedTasks:
             "text_classification",
             "token_classification",
             "zero_shot_text_classification",
-            "embedding_extraction",
+            "transformers_embedding_extraction",
         ],
     )(
         question_answering=AliasedTask("question_answering", ["qa"]),
@@ -84,7 +90,9 @@ class SupportedTasks:
         ),
         token_classification=AliasedTask("token_classification", ["ner"]),
         zero_shot_text_classification=AliasedTask("zero_shot_text_classification", []),
-        embedding_extraction=AliasedTask("embedding_extraction", []),
+        transformers_embedding_extraction=AliasedTask(
+            "transformers_embedding_extraction", []
+        ),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(
@@ -106,8 +114,20 @@ class SupportedTasks:
             "information_retrieval_haystack", ["haystack"]
         ),
     )
+    embedding_extraction = namedtuple("embedding_extraction", ["embedding_extraction"])(
+        embedding_extraction=AliasedTask(
+            "embedding_extraction", ["embedding_extraction"]
+        ),
+    )
 
-    all_task_categories = [nlp, image_classification, yolo, yolact, haystack]
+    all_task_categories = [
+        nlp,
+        image_classification,
+        yolo,
+        yolact,
+        haystack,
+        embedding_extraction,
+    ]
 
     @classmethod
     def check_register_task(
@@ -144,6 +164,11 @@ class SupportedTasks:
             # register with Pipeline.register
             import deepsparse.transformers.haystack  # noqa: F401
 
+        elif cls.is_embedding_extraction(task):
+            # trigger embedding_extraction pipelines to register with
+            #  Pipeline.register
+            import deepsparse.pipelines.embedding_extraction  # noqa :F401
+
         all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
         if task not in all_tasks:
             raise ValueError(
@@ -159,6 +184,14 @@ class SupportedTasks:
         :return: True if it is an nlp task, False otherwise
         """
         return any([nlp_task.matches(task) for nlp_task in cls.nlp])
+
+    @classmethod
+    def is_cv(cls, task: str) -> bool:
+        return (
+            cls.is_yolo(task)
+            or cls.is_yolact(task)
+            or cls.is_image_classification(task)
+        )
 
     @classmethod
     def is_image_classification(cls, task: str) -> bool:
@@ -196,6 +229,18 @@ class SupportedTasks:
         return any([haystack_task.matches(task) for haystack_task in cls.haystack])
 
     @classmethod
+    def is_embedding_extraction(cls, task):
+        """
+        :param task: the name of the task to check whether it is an
+            embedding_extraction task
+        :return: True if it is an embedding_extraction task, False otherwise
+        """
+        return any(
+            embedding_extraction_task.matches(task)
+            for embedding_extraction_task in cls.embedding_extraction
+        )
+
+    @classmethod
     def task_names(cls):
         task_names = ["custom"]
         for task_category in cls.all_task_categories:
@@ -205,3 +250,76 @@ class SupportedTasks:
                 )
                 task_names += (task._name, *unique_aliases)
         return task_names
+
+
+def dynamic_import_task(module_or_path: str) -> str:
+    """
+    Dynamically imports `module` with importlib, and returns the `TASK`
+    attribute on the module (something like `importlib.import_module(module).TASK`).
+
+    Example contents of `module`:
+    ```python
+    from deepsparse.pipeline import Pipeline
+    from deepsparse.transformers.pipelines.question_answering import (
+        QuestionAnsweringPipeline,
+    )
+
+    TASK = "my_qa_task"
+    Pipeline.register(TASK)(QuestionAnsweringPipeline)
+    ```
+
+    NOTE: this modifies `sys.path`.
+
+    :raises FileNotFoundError: if path does not exist
+    :raises RuntimeError: if the imported module does not contain `TASK`
+    :raises RuntimeError: if the module doesn't register the task
+    :return: The task from the imported module.
+    """
+    parent_dir, module_name = _split_dir_and_name(module_or_path)
+    if not os.path.exists(os.path.join(parent_dir, module_name + ".py")):
+        raise FileNotFoundError(
+            f"Unable to find file for {module_or_path}. "
+            f"Looked for {module_name}.py under {parent_dir if parent_dir else '.'}"
+        )
+
+    # add parent_dir to sys.path so we can import the file as a module
+    sys.path.append(os.curdir)
+    if parent_dir:
+        _LOGGER.info(f"Adding {parent_dir} to sys.path")
+        sys.path.append(parent_dir)
+
+    # do the import
+    _LOGGER.info(f"Importing '{module_name}'")
+    module_or_path = importlib.import_module(module_name)
+
+    if not hasattr(module_or_path, "TASK"):
+        raise RuntimeError(
+            "When using --task import:<module>, "
+            "module must set the `TASK` attribute."
+        )
+
+    task = getattr(module_or_path, "TASK")
+    _LOGGER.info(f"Using task={repr(task)}")
+
+    return task
+
+
+def _split_dir_and_name(module_or_path: str) -> Tuple[str, str]:
+    """
+    Examples:
+    - `a` -> `("", "a")`
+    - `a.b` -> `("a", "b")`
+    - `a.b.c` -> `("a/b", "c")`
+
+    :return: module split into directory & name
+    """
+    if module_or_path.endswith(".py"):
+        # assume path
+        split_char = os.sep
+        module_or_path = module_or_path.replace(".py", "")
+    else:
+        # assume module
+        split_char = "."
+    *dirs, module_name = module_or_path.split(split_char)
+    parent_dir = os.sep if dirs == [""] else os.sep.join(dirs)
+    return parent_dir, module_name

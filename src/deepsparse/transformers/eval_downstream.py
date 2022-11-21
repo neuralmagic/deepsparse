@@ -64,9 +64,11 @@ import json
 from cProfile import Profile
 from pstats import Stats
 
+import numpy
 from tqdm.auto import tqdm
 
 from deepsparse import Pipeline
+from deepsparse.transformers.metrics import PrecisionRecallF1
 
 
 from datasets import load_dataset, load_metric  # isort: skip
@@ -75,10 +77,10 @@ DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 
-def squad_eval(args):
-    # load squad validation dataset and eval tool
-    squad = load_dataset("squad")["validation"]
-    squad_metrics = load_metric("squad")
+def qa_eval(args, dataset_name="squad"):
+    # load validation dataset and eval tool
+    dataset = load_dataset(dataset_name)["validation"]
+    qa_metrics = load_metric(dataset_name)
 
     # load QA pipeline
     question_answer = Pipeline.create(
@@ -91,24 +93,29 @@ def squad_eval(args):
         n_best_size=args.n_best_size,
         pad_to_max_length=args.pad_to_max_length,
         output_dir=args.output_dir,
+        version_2_with_negative=dataset_name == "squad_v2",
     )
     print(f"Engine info: {question_answer.engine}")
-    for idx, sample in _enumerate_progress(squad, args.max_samples):
+    for idx, sample in _enumerate_progress(dataset, args.max_samples):
         pred = question_answer(
             id=sample["id"],
             question=sample["question"],
             context=sample["context"],
         )
 
-        squad_metrics.add_batch(
-            predictions=[{"prediction_text": pred.answer, "id": sample["id"]}],
+        predictions = [{"prediction_text": pred.answer, "id": sample["id"]}]
+        if question_answer.version_2_with_negative:
+            predictions[0]["no_answer_probability"] = 0.0
+
+        qa_metrics.add_batch(
+            predictions=predictions,
             references=[{"answers": sample["answers"], "id": sample["id"]}],
         )
 
         if args.max_samples and idx >= args.max_samples:
             break
 
-    return squad_metrics
+    return qa_metrics
 
 
 def mnli_eval(args):
@@ -360,6 +367,48 @@ def conll2003_eval(args):
     return conll2003_metrics
 
 
+def go_emotions_eval(args):
+    # load go_emotions validation dataset and eval tool
+    go_emotions = load_dataset("go_emotions")["validation"]
+    num_labels = 28
+
+    # load pipeline
+    text_classify = Pipeline.create(
+        task="text-classification",
+        model_path=args.onnx_filepath,
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+        top_k=num_labels,
+    )
+    print(f"Engine info: {text_classify.engine}")
+
+    go_emotions_metrics = PrecisionRecallF1(id_to_label=text_classify.config.id2label)
+    ordered_labels = [text_classify.config.id2label[idx] for idx in range(num_labels)]
+
+    for idx, sample in _enumerate_progress(go_emotions, args.max_samples):
+        pred = text_classify(sample["text"])
+
+        # order scores by label index and threshold
+        label_to_scores = dict(zip(pred.labels[0], pred.scores[0]))
+        predictions = numpy.array([label_to_scores[label] for label in ordered_labels])
+        predictions = (predictions > 0.3).astype(int)  # threshold used in paper
+
+        # one hot encode targets
+        targets = numpy.zeros(num_labels)
+        targets[sample["labels"]] = 1
+
+        go_emotions_metrics.add_batch(
+            predictions=predictions,
+            targets=targets,
+        )
+
+        if args.max_samples and idx >= args.max_samples:
+            break
+
+    return go_emotions_metrics
+
+
 def _enumerate_progress(dataset, max_steps):
     progress_bar = tqdm(dataset, total=max_steps) if max_steps else tqdm(dataset)
     return enumerate(progress_bar)
@@ -383,13 +432,15 @@ def _split_train_val(train_dataset, val_ratio, seed=42):
 
 # Register all the supported downstream datasets here
 SUPPORTED_DATASETS = {
-    "squad": squad_eval,
+    "squad": lambda args: qa_eval(args, dataset_name="squad"),
+    "squad_v2": lambda args: qa_eval(args, dataset_name="squad_v2"),
     "mnli": mnli_eval,
     "qqp": qqp_eval,
     "sst2": sst2_eval,
     "sst2_zero_shot": sst2_zero_shot_eval,
     "imdb": imdb_eval,
     "conll2003": conll2003_eval,
+    "go_emotions": go_emotions_eval,
 }
 
 

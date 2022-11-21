@@ -16,10 +16,9 @@
 Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
-import concurrent.futures
 import os
 from abc import ABC, abstractmethod
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -29,8 +28,9 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.pipelines import Joinable, Splittable
-from deepsparse.tasks import SupportedTasks
+from deepsparse.loggers import BaseLogger, MetricCategories, validate_identifier
+from deepsparse.tasks import SupportedTasks, dynamic_import_task
+from deepsparse.timing import InferencePhases, Timer
 
 
 __all__ = [
@@ -130,6 +130,8 @@ class Pipeline(ABC):
         synchronous execution - if running in dynamic batch mode a default
         ThreadPoolExecutor with default workers equal to the number of available
         cores / 2
+    :param logger: An optional DeepSparse Logger object for inference logging.
+        Default is None
     """
 
     def __init__(
@@ -143,6 +145,8 @@ class Pipeline(ABC):
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
+        logger: Optional[BaseLogger] = None,
+        _delay_engine_initialize: bool = False,  # internal use only
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -150,6 +154,7 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
+        self.logger = logger
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -174,24 +179,177 @@ class Pipeline(ABC):
             self._engine_args["scheduler"] = scheduler
 
         self.onnx_file_path = self.setup_onnx_file_path()
-        self.engine = self._initialize_engine()
 
-    def __call__(self, *args, **kwargs) -> Union[BaseModel, Future]:
-        _default_key_val = ("_DEFAULT",)
-        executor = kwargs.get("executor", _default_key_val)
-
-        if executor is _default_key_val:  # do not use ==
-            # use executor created during initialization
-            executor = self.executor
+        if _delay_engine_initialize:
+            self.engine = None
         else:
-            # use passed in executor
-            executor = kwargs.pop("executor")
+            self.engine = self._initialize_engine()
 
-        return (
-            executor.submit(self._run, *args, **kwargs)  # Non-Blocking call
-            if executor and not self.use_dynamic_batch()
-            else self._run(*args, **kwargs)  # Blocking call
+        self._batch_size = self._batch_size or 1
+
+    def __call__(self, *args, monitoring: bool = False, **kwargs) -> BaseModel:
+        if "engine_inputs" in kwargs:
+            raise ValueError(
+                "invalid kwarg engine_inputs. engine inputs determined "
+                f"by {self.__class__.__qualname__}.parse_inputs"
+            )
+        timer = Timer()
+
+        timer.start(InferencePhases.TOTAL_INFERENCE)
+
+        # ------ PREPROCESSING ------
+        timer.start(InferencePhases.PRE_PROCESS)
+        # parse inputs into input_schema
+        pipeline_inputs = self.parse_inputs(*args, **kwargs)
+
+        self.log(
+            identifier="pipeline_inputs",
+            value=pipeline_inputs,
+            category=MetricCategories.DATA,
         )
+
+        if not isinstance(pipeline_inputs, self.input_schema):
+            raise RuntimeError(
+                f"Unable to parse {self.__class__} inputs into a "
+                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
+            )
+        # batch size of the inputs may be `> self._batch_size` at this point
+        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
+        if isinstance(engine_inputs, tuple):
+            engine_inputs, postprocess_kwargs = engine_inputs
+        else:
+            postprocess_kwargs = {}
+        timer.stop(InferencePhases.PRE_PROCESS)
+
+        self.log(
+            identifier="engine_inputs",
+            value=engine_inputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.PRE_PROCESS,
+            value=timer.time_delta(InferencePhases.PRE_PROCESS),
+            category=MetricCategories.SYSTEM,
+        )
+
+        # ------ INFERENCE ------
+        # split inputs into batches of size `self._batch_size`
+        timer.start(InferencePhases.ENGINE_FORWARD)
+        batches = self.split_engine_inputs(engine_inputs, self._batch_size)
+
+        # submit split batches to engine threadpool
+        batch_outputs = list(self.executor.map(self.engine_forward, batches))
+
+        # join together the batches of size `self._batch_size`
+        engine_outputs = self.join_engine_outputs(batch_outputs)
+        timer.stop(InferencePhases.ENGINE_FORWARD)
+
+        self.log(
+            identifier="engine_outputs",
+            value=engine_outputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.ENGINE_FORWARD,
+            value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
+            category=MetricCategories.SYSTEM,
+        )
+
+        # ------ POSTPROCESSING ------
+        timer.start(InferencePhases.POST_PROCESS)
+        pipeline_outputs = self.process_engine_outputs(
+            engine_outputs, **postprocess_kwargs
+        )
+        if not isinstance(pipeline_outputs, self.output_schema):
+            raise ValueError(
+                f"Outputs of {self.__class__} must be instances of "
+                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
+            )
+        timer.stop(InferencePhases.POST_PROCESS)
+        timer.stop(InferencePhases.TOTAL_INFERENCE)
+
+        self.log(
+            identifier="pipeline_outputs",
+            value=pipeline_outputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.POST_PROCESS,
+            value=timer.time_delta(InferencePhases.POST_PROCESS),
+            category=MetricCategories.SYSTEM,
+        )
+        self.log(
+            identifier=InferencePhases.TOTAL_INFERENCE,
+            value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
+            category=MetricCategories.SYSTEM,
+        )
+
+        return pipeline_outputs
+
+    @staticmethod
+    def split_engine_inputs(
+        items: List[numpy.ndarray], batch_size: int
+    ) -> List[List[numpy.ndarray]]:
+        """
+        Splits each item into numpy arrays with the first dimension == `batch_size`.
+
+        For example, if `items` has three numpy arrays with the following
+        shapes: `[(4, 32, 32), (4, 64, 64), (4, 128, 128)]`
+
+        Then with `batch_size==4` the output would be:
+        ```
+        [[(4, 32, 32), (4, 64, 64), (4, 128, 128)]]
+        ```
+
+        Then with `batch_size==2` the output would be:
+        ```
+        [
+            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
+            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
+        ]
+        ```
+
+        Then with `batch_size==1` the output would be:
+        ```
+        [
+            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+        ]
+        ```
+        """
+        # if not all items here are numpy arrays, there's an internal
+        # but in the processing code
+        assert all(isinstance(item, numpy.ndarray) for item in items)
+
+        # if not all items have the same batch size, there's an
+        # internal bug in the processing code
+        total_batch_size = items[0].shape[0]
+        assert all(item.shape[0] == total_batch_size for item in items)
+
+        if total_batch_size % batch_size != 0:
+            raise RuntimeError(
+                f"batch size of {total_batch_size} passed into pipeline "
+                f"is not divisible by model batch size of {batch_size}"
+            )
+
+        batches = []
+        for i_batch in range(total_batch_size // batch_size):
+            start = i_batch * batch_size
+            batches.append([item[start : start + batch_size] for item in items])
+        return batches
+
+    @staticmethod
+    def join_engine_outputs(
+        batch_outputs: List[List[numpy.ndarray]],
+    ) -> List[numpy.ndarray]:
+        """
+        Joins list of engine outputs together into one list using `numpy.concatenate`.
+
+        This is the opposite of `Pipeline.split_engine_inputs`.
+        """
+        return list(map(numpy.concatenate, zip(*batch_outputs)))
 
     @staticmethod
     def _get_task_constructor(task: str) -> Type["Pipeline"]:
@@ -199,17 +357,23 @@ class Pipeline(ABC):
         This function retrieves the class previously registered via `Pipeline.register`
         for `task`.
 
+        If `task` starts with "import:", it is treated as a module to be imported,
+        and retrieves the task via the `TASK` attribute of the imported module.
+
         If `task` starts with "custom", then it is mapped to the "custom" task.
 
         :param task: The task name to get the constructor for
         :return: The class registered to `task`
         :raises ValueError: if `task` was not registered via `Pipeline.register`.
         """
-        task = task.lower().replace("-", "_")
-
-        # support any task that has "custom" at the beginning via the "custom" task
-        if task.startswith("custom"):
+        if task.startswith("import:"):
+            # dynamically import the task from a file
+            task = dynamic_import_task(module_or_path=task.replace("import:", ""))
+        elif task.startswith("custom"):
+            # support any task that has "custom" at the beginning via the "custom" task
             task = "custom"
+        else:
+            task = task.lower().replace("-", "_")
 
         # extra step to register pipelines for a given task domain
         # for cases where imports should only happen once a user specifies
@@ -242,7 +406,7 @@ class Pipeline(ABC):
     ) -> "Pipeline":
         """
         :param task: name of task to create a pipeline for. Use "custom" for
-            custom tasks. See `CustomTaskPipeline`.
+            custom tasks (see `CustomTaskPipeline`).
         :param model_path: path on local system or SparseZoo stub to load the model
             from. Some tasks may have a default model path
         :param engine_type: inference engine to use. Currently supported values
@@ -268,7 +432,7 @@ class Pipeline(ABC):
         pipeline_constructor = Pipeline._get_task_constructor(task)
 
         if (
-            model_path is None
+            (model_path is None or model_path == "default")
             and hasattr(pipeline_constructor, "default_model_path")
             and pipeline_constructor.default_model_path
         ):
@@ -373,6 +537,7 @@ class Pipeline(ABC):
         cls,
         config: Union["PipelineConfig", str, Path],
         context: Optional[Context] = None,
+        logger: Optional[BaseLogger] = None,
     ) -> "Pipeline":
         """
         :param config: PipelineConfig object, filepath to a json serialized
@@ -382,6 +547,8 @@ class Pipeline(ABC):
             other runtime information that will be used across instances of the
             MultiModelEngine to provide optimal performance when running
             multiple models concurrently
+        :param logger: An optional DeepSparse Logger object for inference
+            logging. Default is None
         :return: loaded Pipeline object from the config
         """
         if isinstance(config, Path) or (
@@ -403,6 +570,7 @@ class Pipeline(ABC):
             input_shapes=config.input_shapes,
             alias=config.alias,
             context=context,
+            logger=logger,
             **config.kwargs,
         )
 
@@ -501,18 +669,6 @@ class Pipeline(ABC):
         """
         return self._engine_type
 
-    def use_dynamic_batch(self) -> bool:
-        """
-        :return: True if pipeline should be run in dynamic batch mode else
-            False
-        """
-        return (
-            self._batch_size is None
-            and self.executor
-            and issubclass(self.input_schema, Splittable)
-            and issubclass(self.output_schema, Joinable)
-        )
-
     def to_config(self) -> "PipelineConfig":
         """
         :return: PipelineConfig that can be used to reload this object
@@ -544,6 +700,24 @@ class Pipeline(ABC):
             kwargs=kwargs,
         )
 
+    def log(self, identifier: str, value: Any, category: str):
+        """
+        Pass the logged data to the DeepSparse logger object (if present)
+
+        :param identifier: The string name assigned to the logged value
+        :param value: The logged data structure
+        :param category: The metric category that the log belongs to
+        """
+        identifier = f"{self.alias or self.task}/{identifier}"
+        validate_identifier(identifier)
+        if self.logger:
+            self.logger.log(
+                identifier=identifier,
+                value=value,
+                category=category,
+            )
+        return
+
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """
         :param args: ordered arguments to pipeline, only an input_schema object
@@ -573,73 +747,6 @@ class Pipeline(ABC):
         :return: result of forward pass to Pipeline engine
         """
         return self.engine(engine_inputs)
-
-    def _run(self, *args, **kwargs):
-        if "engine_inputs" in kwargs:
-            raise ValueError(
-                "invalid kwarg engine_inputs. engine inputs determined "
-                f"by {self.__class__.__qualname__}.parse_inputs"
-            )
-
-        # parse inputs into input_schema schema if necessary
-        pipeline_inputs = self.parse_inputs(*args, **kwargs)
-        if isinstance(pipeline_inputs, tuple):
-            pipeline_inputs, split_kwargs = pipeline_inputs
-        else:
-            split_kwargs = {}
-
-        if not isinstance(pipeline_inputs, self.input_schema):
-            raise RuntimeError(
-                f"Unable to parse {self.__class__} inputs into a "
-                f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
-            )
-
-        # run pipeline
-        if self.use_dynamic_batch():
-            return self._run_with_dynamic_batch(pipeline_inputs, split_kwargs)
-
-        pipeline_outputs = self._run_with_static_batch(pipeline_inputs)
-        return pipeline_outputs
-
-    def _run_with_dynamic_batch(
-        self,
-        pipeline_inputs: BaseModel,
-        split_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> BaseModel:
-
-        if split_kwargs is None:
-            split_kwargs = {}
-
-        pipeline_inputs = pipeline_inputs.split(**split_kwargs)
-        futures = [
-            self.executor.submit(self._run_with_static_batch, _input)
-            for _input in pipeline_inputs
-        ]
-        # wait for all inferences to complete before joining outputs
-        concurrent.futures.wait(futures)
-        outputs = [future.result() for future in futures]
-        return self.output_schema.join(outputs)
-
-    def _run_with_static_batch(self, pipeline_inputs: BaseModel) -> BaseModel:
-        engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
-        if isinstance(engine_inputs, tuple):
-            engine_inputs, postprocess_kwargs = engine_inputs
-        else:
-            postprocess_kwargs = {}
-
-        engine_outputs: List[numpy.ndarray] = self.engine_forward(engine_inputs)
-        pipeline_outputs = self.process_engine_outputs(
-            engine_outputs, **postprocess_kwargs
-        )
-
-        # validate outputs format
-        if not isinstance(pipeline_outputs, self.output_schema):
-            raise ValueError(
-                f"Outputs of {self.__class__} must be instances of "
-                f"{self.output_schema} found output of type {type(pipeline_outputs)}"
-            )
-
-        return pipeline_outputs
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
@@ -685,7 +792,7 @@ class PipelineConfig(BaseModel):
             "'deepsparse' and 'onnxruntime'. Default is 'deepsparse'"
         ),
     )
-    batch_size: int = Field(
+    batch_size: Optional[int] = Field(
         default=1,
         description=("static batch size to use for inference. Default is 1"),
     )
@@ -742,13 +849,17 @@ class BucketingPipeline(object):
         self._pipeline_class = pipelines[0].__class__
         self._validate_pipeline_class()
 
-    def __call__(self, **inputs):
-        parsed_inputs = self._pipelines[-1].parse_inputs(**inputs)
-        pipeline = self._pipeline_class.route_input_to_bucket(
+    def __call__(self, *args, **kwargs):
+        bucket, parsed_inputs = self._choose_bucket(*args, **kwargs)
+        return bucket(parsed_inputs)
+
+    def _choose_bucket(self, *args, **kwargs):
+        parsed_inputs = self._pipelines[-1].parse_inputs(*args, **kwargs)
+        bucket = self._pipeline_class.route_input_to_bucket(
             input_schema=parsed_inputs,
             pipelines=self._pipelines,
         )
-        return pipeline(parsed_inputs)
+        return bucket, parsed_inputs
 
     def __getattr__(self, item):
         value = getattr(self._pipelines[0].__class__, item)
@@ -849,7 +960,7 @@ def _initialize_executor_and_workers(
             f" but got {workers_or_executor} of type {type(workers_or_executor)}"
         )
     else:
-        executor = None
+        executor = ThreadPoolExecutor(max_workers=1)
         num_async_workers = 1
 
     if batch_size is None and executor is None:
@@ -1208,7 +1319,7 @@ def haystack_pipeline(*args, **kwargs) -> "Pipeline":
         specify Haystack node arguments
     :param retriever_kwargs: keyword arguments to be passed to retriever. If
         the retriever is a deepsparse retriever, then these arguments will also
-        be passed to the EmbeddingExtractionPipeline of the retriever
+        be passed to the TransformersEmbeddingExtractionPipeline of the retriever
     """
     return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
 
@@ -1300,7 +1411,6 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     ```python
     zero_shot_text_classifier = Pipeline.create(
         task="zero_shot_text_classification",
-        batch_size=3,
         model_scheme="mnli",
         model_config={"hypothesis_template": "This text is related to {}"},
         model_path="mnli_model_dir/",
@@ -1325,12 +1435,8 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         directory containing a model.onnx, tokenizer config, and model config
     :param engine_type: inference engine to use. Currently supported values include
         'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: if static labels are given, then batch_size must be
-        num_sequences * num_labels. Otherwise, batch_size must be 1. Default is 1
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
+    :param batch_size: batch size must divide sequences * labels, regardless of
+        whether using dynamic or static labels. Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
@@ -1339,6 +1445,10 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        If a list of lengths is provided, then for each length, a model and
+        tokenizer will be compiled capable of handling that sequence length
+        (also known as a bucket). Default is 128
     :param default_model_name: huggingface transformers model name to use to
         load a tokenizer and model config when none are provided in the `model_path`.
         Default is "bert-base-uncased"

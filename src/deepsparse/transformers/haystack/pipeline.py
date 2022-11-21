@@ -247,7 +247,7 @@ class HaystackPipeline(Pipeline):
         specify Haystack node arguments
     :param retriever_kwargs: keyword arguments to be passed to retriever. If
         the retriever is a deepsparse retriever, then these arguments will also
-        be passed to the EmbeddingExtractionPipeline of the retriever
+        be passed to the TransformersEmbeddingExtractionPipeline of the retriever
     """
 
     def __init__(

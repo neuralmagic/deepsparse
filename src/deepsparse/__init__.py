@@ -31,7 +31,9 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
+from .timing import *
 from .pipeline import *
+from .loggers import *
 from .version import __version__, is_release
 
 try:

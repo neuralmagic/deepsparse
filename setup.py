@@ -34,6 +34,7 @@ package_path = os.path.join(
 )
 (
     is_release,
+    is_enterprise,
     version,
     version_major,
     version_minor,
@@ -41,7 +42,21 @@ package_path = os.path.join(
 ) = get_release_and_version(package_path)
 version_base = f"{version_major}.{version_minor}.0"
 
-_PACKAGE_NAME = "deepsparse" if is_release else "deepsparse-nightly"
+_PACKAGE_NAME = (
+    "deepsparse-ent"
+    if is_enterprise
+    else "deepsparse"
+    if is_release
+    else "deepsparse-nightly"
+)
+
+if is_enterprise:
+    # do not include the LICENSE-NEURALMAGIC file
+    # in the deepsparse-ent installation folder
+    license_nm_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "LICENSE-NEURALMAGIC"
+    )
+    os.remove(license_nm_path)
 
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
@@ -60,7 +75,7 @@ _deps = [
     "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
-    "protobuf>=3.12.2,<4",
+    "protobuf>=3.12.2,<=3.20.1",
     "click~=8.0.0",
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
@@ -88,10 +103,11 @@ _dev_deps = [
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
-    "fastapi>=0.70.0",
+    "fastapi>=0.70.0,<0.87.0",
     "pydantic>=1.8.2",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
+    "prometheus-client>=0.14.1",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
@@ -121,7 +137,7 @@ def _check_supported_system():
     if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
         # windows is not supported, raise error on install
         raise OSError(
-            "Native Windows is currently unsupported for the DeepSparse Engine. "
+            "Native Windows is currently unsupported for DeepSparse. "
             "Please run on a Linux system or within a Linux container on Windows. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -130,7 +146,7 @@ def _check_supported_system():
     if sys.platform.startswith("darwin"):
         # mac is not supported, raise error on install
         raise OSError(
-            "Native Mac is currently unsupported for the DeepSparse Engine. "
+            "Native Mac is currently unsupported for DeepSparse. "
             "Please run on a Linux system or within a Linux container on Mac. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -139,7 +155,7 @@ def _check_supported_system():
     # unknown system, raise error on install
     raise OSError(
         f"Unknown OS given of {sys.platform}; "
-        "it is unsupported for the DeepSparse Engine. "
+        "it is unsupported for DeepSparse. "
         "Please run on a Linux system. "
         "More info can be found in our docs here: "
         "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -148,7 +164,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [6, 7, 8, 9, 10]
+    supported_minor = [7, 8, 9, 10]
 
     if (
         sys.version_info[0] != supported_major
@@ -156,7 +172,7 @@ def _check_supported_python_version():
     ):
         raise EnvironmentError(
             f"Python {supported_major}.{supported_minor} "
-            f"is only supported for the DeepSparse Engine; found {sys.version}. "
+            f"is only supported for DeepSparse; found {sys.version}. "
             "Please run on a system with the proper Python version installed. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -231,11 +247,13 @@ def _setup_entry_points() -> Dict:
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
-            "deepsparse.server=deepsparse.server.main:start_server",
+            "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
+            "deepsparse.license=deepsparse.license:main",
+            "deepsparse.validate_license=deepsparse.license:validate_license_cli",
         ]
     }
 
@@ -250,8 +268,8 @@ setup(
     author="Neuralmagic, Inc.",
     author_email="support@neuralmagic.com",
     description=(
-        "Neural network inference engine that delivers GPU-class performance "
-        "for sparsified models on CPUs"
+        "An inference runtime offering GPU-class performance on CPUs"
+        "and APIs to integrate ML into your application"
     ),
     long_description=_setup_long_description()[0],
     long_description_content_type=_setup_long_description()[1],
@@ -260,7 +278,7 @@ setup(
         "sparse, inference engine, cpu, runtime, deepsparse, computer vision, "
         "object detection, sparsity"
     ),
-    license="Neural Magic Engine License, Apache",
+    license="Neural Magic DeepSparse Community License, Apache",
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),
     include_package_data=True,
@@ -269,12 +287,11 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.6, <3.11",
+    python_requires=">=3.7, <3.11",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

@@ -16,7 +16,7 @@
 # deepsparse/transformers/haystack/__init__.py
 
 importlib-metadata
-torch==1.9.1
+torch==1.12.1
 requests
 pydantic
 nltk
@@ -27,7 +27,7 @@ networkx
 mmh3
 quantulum3
 posthog
-azure-ai-formrecognizer==3.2.0b2
+azure-ai-formrecognizer>=3.2.0b2
 azure-core<1.23
 more_itertools
 python-docx
@@ -45,7 +45,7 @@ jsonschema
 sqlalchemy>=1.4.2,<2
 sqlalchemy_utils
 psycopg2-binary
-faiss-cpu>=1.6.3,<2
+faiss-cpu==1.7.2
 pymilvus<2.0.0
 weaviate-client==3.3.3
 pinecone-client

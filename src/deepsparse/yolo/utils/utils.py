@@ -133,6 +133,7 @@ def postprocess_nms(
     outputs: Union[torch.Tensor, numpy.ndarray],
     iou_thres: float = 0.25,
     conf_thres: float = 0.45,
+    multi_label: bool = False,
 ) -> List[numpy.ndarray]:
     """
     :param outputs: Tensor of post-processed model outputs
@@ -144,7 +145,7 @@ def postprocess_nms(
     if isinstance(outputs, numpy.ndarray):
         outputs = torch.from_numpy(outputs)
     nms_outputs = _non_max_suppression(
-        outputs, conf_thres=conf_thres, iou_thres=iou_thres
+        outputs, conf_thres=conf_thres, iou_thres=iou_thres, multi_label=multi_label
     )
     return [output.cpu().numpy() for output in nms_outputs]
 
@@ -181,7 +182,7 @@ def _non_max_suppression(
     multi_label &= nc > 1  # multiple labels per box (adds 0.5ms/img)
     merge = False  # use merge-NMS
 
-    t = time.time()
+    t = time.perf_counter()
     output = [torch.zeros((0, 6), device=prediction.device)] * prediction.shape[0]
     for xi, x in enumerate(prediction):  # image index, image inference
         # Apply constraints
@@ -247,7 +248,7 @@ def _non_max_suppression(
                 i = i[iou.sum(1) > 1]  # require redundancy
 
         output[xi] = x[i]
-        if (time.time() - t) > time_limit:
+        if (time.perf_counter() - t) > time_limit:
             print(f"WARNING: NMS time limit {time_limit}s exceeded")
             break  # time limit exceeded
 
