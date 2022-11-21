@@ -279,6 +279,12 @@ setup(
         "object detection, sparsity"
     ),
     license="Neural Magic DeepSparse Community License, Apache",
+    license_files=[
+        "NOTICE",
+        "LICENSE*",
+        "licenses/*",
+        "src/deepsparse/licenses/*",
+    ],
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),
     include_package_data=True,
