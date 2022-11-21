@@ -40,7 +40,7 @@ __all__ = ["OpenPifPafPipeline"]
 
 @Pipeline.register(
     task="open_pif_paf",
-    default_model_path=("/home/damian/pifpaf/openpifpaf-resnet50.onnx"),
+    default_model_path=("openpifpaf-resnet50.onnx"),
 )
 class OpenPifPafPipeline(Pipeline):
     def __init__(self, **kwargs):
@@ -94,7 +94,7 @@ class OpenPifPafPipeline(Pipeline):
                 # add batch dimension and convert to numpy
                 images.append(image.numpy())
 
-        return [numpy.stack(images)], {"original_images": copy.deepcopy(images)}
+        return [numpy.stack(images)], {"original_images": copy.deepcopy(inputs.images)}
 
     def process_engine_outputs(self, fields, **kwargs):
         """
@@ -102,7 +102,7 @@ class OpenPifPafPipeline(Pipeline):
         (B,17,5,13,17) (CIF) and (B,19,8,13,17) (CAF).
         The processor maps fields into the actual list of pose annotations
         """
-        for (idx, cif, caf) in enumerate(zip(fields)):
+        for idx, (cif, caf) in enumerate(zip(*fields)):
             annotations = self.processor._mappable_annotations(
                 [torch.tensor(cif), torch.tensor(caf)], None, None
             )
@@ -114,6 +114,7 @@ class OpenPifPafPipeline(Pipeline):
     @staticmethod
     def _simple_plot(img, annotation):
         for keypoint in annotation:
+            color = tuple(c.item() * 255 for c in torch.rand(3))
             data = keypoint.data
             for x, y, _ in data:  # last value is confidence of a keypoint
                 x = int(x)
@@ -123,12 +124,7 @@ class OpenPifPafPipeline(Pipeline):
                     img,
                     (x, y),
                     radius,
-                    tuple(
-                        c.item() * 255
-                        for c in torch.rand(
-                            3,
-                        )
-                    ),
+                    color,
                     thickness=-1,
                 )
         return img
