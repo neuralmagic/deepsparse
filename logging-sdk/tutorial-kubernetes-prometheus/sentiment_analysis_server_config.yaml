@@ -1,8 +1,8 @@
 num_cores: 2
 num_workers: 2
-loggers:
-  prometheus:
-    port: 6100
+# loggers:
+#   prometheus:
+#     port: 6100
 endpoints:
   - task: sentiment_analysis
     batch_size: 1
