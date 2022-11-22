@@ -27,12 +27,6 @@ import torch
 from deepsparse.open_pif_paf.schemas import OpenPifPafInput, OpenPifPafOutput
 from deepsparse.pipeline import Pipeline
 from openpifpaf import decoder, network
-from openpifpaf.transforms import (
-    CenterPadTight,
-    Compose,
-    ImageTransform,
-    NormalizeAnnotations,
-)
 
 
 __all__ = ["OpenPifPafPipeline"]
@@ -55,17 +49,11 @@ class OpenPifPafPipeline(Pipeline):
         self.processor = decoder.factory(self.model_cpu.head_metas)
 
         # input image gets pre_processed before it is passed to the model
-        self.pre_process_transformations = Compose(
+        self.pre_process_transformations = torchvision.transforms.Compose(
             [
-                NormalizeAnnotations(),
-                CenterPadTight(16),
-                NormalizeAnnotations(),
-                ImageTransform(torchvision.transforms.ToTensor()),
-                ImageTransform(
-                    # ImageNet normalization
-                    torchvision.transforms.Normalize(
-                        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                    ),
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                 ),
             ]
         )
@@ -87,10 +75,7 @@ class OpenPifPafPipeline(Pipeline):
         for image_path in inputs.images:
             with open(image_path, "rb") as f:
                 image = PIL.Image.open(f).convert("RGB")
-                # second and third arguments are optional:
-                #    - gt annotation
-                #    - image metadata
-                image, _, _ = self.pre_process_transformations(image, [], {})
+                image = self.pre_process_transformations(image)
                 # add batch dimension and convert to numpy
                 images.append(image.numpy())
 
