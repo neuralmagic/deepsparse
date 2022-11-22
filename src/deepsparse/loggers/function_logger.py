@@ -80,13 +80,20 @@ class FunctionLogger(BaseLogger):
         if extracted_value != NO_MATCH:
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
+                # append remainder to the identifier
                 identifier = (
                     f"{identifier}.{remainder.split('[')[0]}"
                     if remainder is not None
                     else identifier
                 )
+                # append function name to the identifier
+                identifier = (
+                    identifier
+                    if category == MetricCategories.SYSTEM
+                    else f"{identifier}__{self.function_name}"
+                )
                 self.logger.log(
-                    identifier=f"{identifier}__{self.function_name}",
+                    identifier=identifier,
                     value=mapped_value,
                     category=category,
                 )

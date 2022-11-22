@@ -142,12 +142,13 @@ def possibly_extract_value(value: Any, remainder: Optional[str] = None) -> Any:
         # check whether sub_remainder contains square brackets
         # and thus needs slicing/indexing e.g. `some_key[0:2, 0]`
         square_brackets, sub_remainder = _check_square_brackets(sub_remainder)
-        if not hasattr(value, sub_remainder):
-            raise ValueError(
-                "Attempting to access an non existing "
-                f"attribute {sub_remainder} of an object {value}"
-            )
-        value = getattr(value, sub_remainder)
+        if sub_remainder:
+            if not hasattr(value, sub_remainder):
+                raise ValueError(
+                    "Attempting to access an non existing "
+                    f"attribute {sub_remainder} of an object {value}"
+                )
+            value = getattr(value, sub_remainder)
 
         if square_brackets:
             value = access_nested_value(value=value, square_brackets=square_brackets)
@@ -256,7 +257,8 @@ def check_identifier_match(
     if template == identifier:
         return True, None
     if template.startswith(identifier):
-        return True, template.replace(identifier, "")[1:]
+        remainder = template.replace(identifier, "")
+        return True, remainder if remainder.startswith("[") else remainder[1:]
 
     return False, None
 
