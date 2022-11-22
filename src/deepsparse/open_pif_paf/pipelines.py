@@ -48,16 +48,6 @@ class OpenPifPafPipeline(Pipeline):
         self.model_cpu, _ = network.Factory().factory(head_metas=None)
         self.processor = decoder.factory(self.model_cpu.head_metas)
 
-        # input image gets pre_processed before it is passed to the model
-        self.pre_process_transformations = torchvision.transforms.Compose(
-            [
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-            ]
-        )
-
     @property
     def input_schema(self) -> Type[OpenPifPafInput]:
         return OpenPifPafInput
