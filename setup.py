@@ -61,6 +61,16 @@ if is_enterprise:
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
+# regexes for things to include as license files in the .dist-info
+# see https://github.com/pypa/setuptools/blob/v65.6.0/docs/references/keywords.rst
+# for more info
+license_files = [
+    "NOTICE",
+    "LICENSE*",
+    "licenses/*",
+    "src/deepsparse/licenses/*",
+]
+
 
 def _parse_requirements_file(file_path):
     with open(file_path, "r") as requirements_file:
@@ -279,6 +289,7 @@ setup(
         "object detection, sparsity"
     ),
     license="Neural Magic DeepSparse Community License, Apache",
+    license_files=license_files,
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),
     include_package_data=True,
