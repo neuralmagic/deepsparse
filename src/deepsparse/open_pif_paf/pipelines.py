@@ -75,9 +75,12 @@ class OpenPifPafPipeline(Pipeline):
         for image_path in inputs.images:
             with open(image_path, "rb") as f:
                 image = PIL.Image.open(f).convert("RGB")
-                image = self.pre_process_transformations(image)
-                # add batch dimension and convert to numpy
-                images.append(image.numpy())
+                image = numpy.asarray(image) / 255.0
+                # maybe we should use the same preprocessing as in the original repo
+                # but does not seem to make a difference
+                image = image.astype(numpy.float32).transpose(2, 0, 1)
+                image = numpy.ascontiguousarray(image)
+                images.append(image)
 
         return [numpy.stack(images)], {"original_images": copy.deepcopy(inputs.images)}
 
