@@ -91,7 +91,9 @@ class PrometheusLogger(BaseLogger):
 
         # needs to adhere to
         # https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
-        formatted_identifier = identifier.replace(".", "__")
+        formatted_identifier = (
+            identifier.replace(".", "__").replace("-", "__").replace("/", "__")
+        )
         prometheus_metric = self._prometheus_metrics.get(formatted_identifier)
         if prometheus_metric is None:
             prometheus_metric = self._add_metric_to_registry(
@@ -128,6 +130,8 @@ class PrometheusLogger(BaseLogger):
     def _validate(self, value: Any) -> Any:
         # make sure we are passing a value that is
         # a valid metric by prometheus client's standards
+        if hasattr(value, "is_integer"):
+            value = int(value)
         if not isinstance(value, SUPPORTED_DATA_TYPES):
             raise ValueError(
                 "Prometheus logger expects the incoming values "
