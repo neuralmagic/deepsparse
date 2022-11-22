@@ -9,9 +9,13 @@ def run_inference(text, port, ip):
     obj = {"sequences": text}
 
     while True:
+<<<<<<< HEAD
         print("going to sleep")
         sleep(5)
         print("waking up + making request")
+=======
+        sleep(5)
+>>>>>>> 3b3a9e91032d3fd44ef2fa05d572a92532bdf476
         r = requests.post(url=url, json=obj)
         print(r.text)
 

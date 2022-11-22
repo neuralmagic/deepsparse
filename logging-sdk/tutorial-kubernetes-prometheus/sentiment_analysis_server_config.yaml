@@ -1,8 +1,14 @@
 num_cores: 2
 num_workers: 2
+<<<<<<< HEAD
 # loggers:
 #   prometheus:
 #     port: 6100
+=======
+loggers:
+  prometheus:
+    port: 6100
+>>>>>>> 3b3a9e91032d3fd44ef2fa05d572a92532bdf476
 endpoints:
   - task: sentiment_analysis
     batch_size: 1

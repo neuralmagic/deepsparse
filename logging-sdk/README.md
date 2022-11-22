@@ -2,7 +2,11 @@
 
 DeepSparse Logging provides operational teams with access to the telemetry needed to monitor a deployment. 
 
+<<<<<<< HEAD
 For users seeking to put ML into production, these data are the raw materials that underpin the monitoring processes needed to create a system with consistently fresh and accurate predictions.
+=======
+For users seeking to put ML into production, these data underpin the monitoring processes needed to create a system with consistently fresh and accurate predictions.
+>>>>>>> 3b3a9e91032d3fd44ef2fa05d572a92532bdf476
 
 <p align="center">
      <img src="continual-learning.png"
@@ -11,21 +15,37 @@ For users seeking to put ML into production, these data are the raw materials th
      />
 </p>
 
+<<<<<<< HEAD
 There are many types of downstream monitoring tasks that ML teams may want to perform. Some are easier to do (such as looking at system performance) and some are harder (looking at model accuracy requires manually labeling some data afterwards). Examples include:
 - **System performance:** what is the latency/throughput of a query?
 - **Data quality:** is there an error in the model pipeline?
 - **Data distribution shift:** are the inputs and outputs from the system expected?
 - **Model accuracy:** what is the accuracy of the predictions vs human-labeled?
+=======
+There are many types of downstream monitoring tasks that ML teams may want to perform. The difficulty of the tasks varies from relatively easy (simple system performance analysis ) to challenging (assessing the accuracy of the system in the wild by manually labeling the input data distribution post-factum).  Examples include:
+- **System performance:** what is the latency/throughput of a query?
+- **Data quality:** is there an issue getting data to my model?
+- **Data distribution shift:** does the input data distribution deviates over time to the point where the model stops to deliver reliable predictions?
+- **Model accuracy:** what is the percentage of correct predictions that a model achieves?
+>>>>>>> 3b3a9e91032d3fd44ef2fa05d572a92532bdf476
 
 DeepSparse Logging is designed to provide maximum flexibility for users to extract whatever data is needed from a production inference pipeline into the logging system of their choice. 
 
 ## Metrics 
 DeepSparse Logging provides access to two types of metrics:
+<<<<<<< HEAD
 - **System Logging Metrics** give operations teams access to granual performance metrics, diagnosing and isolating deployment system health. Examples include CPU utilization and query latency.
      - See [below - UPDATE LINK](system-logging-metrics) for a full list of available metrics.
 
 - **Data Logging Metrics** give ML teams access to data at each stage of an ML pipeline, supporting downsteam tasks like measuring accuracy and data drift. Examples include raw inputs and projections thereof such as mean pixel value.
      - See [below - UPDATE LINK](data-logging-functions) for a full list of built-in functions and how to create a custom function
+=======
+- **System Logging Metrics** give MLOps teams access to granular performance metrics for quick and efficient diagnosis of deployment system health. Examples may include CPU utilization and query latency.
+     - See below for a full list of available metrics.
+
+- **Data Logging Metrics** give ML teams access to the data that flows through each stage of an ML pipeline. This facilitates inspection of the data, understanding of its properties, detecting edge cases and possible data drift. Examples include logging raw data distribution, projections thereof (e.g. mean pixel value of an image batch), and features distribution.
+     - See below for a full list of built-in functions and how to create a custom function
+>>>>>>> 3b3a9e91032d3fd44ef2fa05d572a92532bdf476
 
 ## Configuration
 DeepSparse Logging is configured via YAML files.
