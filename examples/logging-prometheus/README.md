@@ -24,7 +24,7 @@ The repository contains all the code you need:
 ├── client 
 │   ├── client.py           # simple client application for interacting with Server
 │   └── goldfish.jpeg       # photo of a goldfish
-|   └── all_black.jpeg      # photo with just black pixes
+|   └── all_black.jpeg      # photo with just black pixels
 ├── server-config.yaml      # specifies the configuration of the DeepSparse server
 ├── custom-fn.py            # custom function used for the logging
 ├── docker                  # specifies the configuration of the containerized Prometheus/Grafana stack
