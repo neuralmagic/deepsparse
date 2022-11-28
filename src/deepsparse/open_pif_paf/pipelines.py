@@ -15,18 +15,13 @@
 """
 OpenPifPafPipeline
 """
-import copy
 from typing import Type
 
 import numpy
 import PIL
-import torchvision
 
-import cv2
-import torch
 from deepsparse.open_pif_paf.schemas import OpenPifPafInput, OpenPifPafOutput
 from deepsparse.pipeline import Pipeline
-from openpifpaf import decoder, network
 
 
 __all__ = ["OpenPifPafPipeline"]
@@ -34,19 +29,11 @@ __all__ = ["OpenPifPafPipeline"]
 
 @Pipeline.register(
     task="open_pif_paf",
-    default_model_path=("openpifpaf-resnet50.onnx"),
+    default_model_path="openpifpaf-resnet50.onnx",
 )
 class OpenPifPafPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        """
-        Those two lines of code below are needed to invoke a processor.
-        It is an object that translates raw network outputs into annotations.
-        This is a hack to quickly instantiate a processor without having to
-        write tons of boilerplate code for now.
-        """
-        self.model_cpu, _ = network.Factory().factory(head_metas=None)
-        self.processor = decoder.factory(self.model_cpu.head_metas)
 
     @property
     def input_schema(self) -> Type[OpenPifPafInput]:
@@ -62,17 +49,23 @@ class OpenPifPafPipeline(Pipeline):
     def process_inputs(self, inputs):
         images = []
 
-        for image_path in inputs.images:
-            with open(image_path, "rb") as f:
-                image = PIL.Image.open(f).convert("RGB")
-                image = numpy.asarray(image) / 255.0
-                # maybe we should use the same preprocessing as in the original repo
-                # but does not seem to make a difference
-                image = image.astype(numpy.float32).transpose(2, 0, 1)
-                image = numpy.ascontiguousarray(image)
-                images.append(image)
+        for image in inputs.images:
+            if isinstance(image, str):
+                image_path = image
+                with open(image_path, "rb") as f:
+                    image = PIL.Image.open(f).convert("RGB")
+            image = numpy.asarray(image) / 255.0
+            # maybe we should use the same preprocessing as in the original repo
+            # but does not seem to make a difference
+            image = (
+                image.astype(numpy.float32).transpose(2, 0, 1)
+                if image.shape[-1] == 3
+                else image.astype(numpy.float32)
+            )
+            image = numpy.ascontiguousarray(image)
+            images.append(image)
 
-        return [numpy.stack(images)], {"original_images": copy.deepcopy(inputs.images)}
+        return [numpy.stack(images)]
 
     def process_engine_outputs(self, fields, **kwargs):
         """
@@ -80,29 +73,4 @@ class OpenPifPafPipeline(Pipeline):
         (B,17,5,13,17) (CIF) and (B,19,8,13,17) (CAF).
         The processor maps fields into the actual list of pose annotations
         """
-        for idx, (cif, caf) in enumerate(zip(*fields)):
-            annotations = self.processor._mappable_annotations(
-                [torch.tensor(cif), torch.tensor(caf)], None, None
-            )
-            img = cv2.imread(kwargs["original_images"][idx])
-            img = self._simple_plot(img, annotations)
-            cv2.imwrite(f"output_{idx}.jpg", img)
-        return OpenPifPafOutput(out=None)
-
-    @staticmethod
-    def _simple_plot(img, annotation):
-        for keypoint in annotation:
-            color = tuple(c.item() * 255 for c in torch.rand(3))
-            data = keypoint.data
-            for x, y, _ in data:  # last value is confidence of a keypoint
-                x = int(x)
-                y = int(y)
-                radius = 2
-                img = cv2.circle(
-                    img,
-                    (x, y),
-                    radius,
-                    color,
-                    thickness=-1,
-                )
-        return img
+        return OpenPifPafOutput(cif=fields[0], caf=fields[1])

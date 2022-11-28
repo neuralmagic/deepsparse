@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
-
+import numpy
 from pydantic import BaseModel
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -30,7 +29,8 @@ class OpenPifPafInput(ComputerVisionSchema):
 
 
 class OpenPifPafOutput(BaseModel):
-    out: Any
+    cif: numpy.ndarray
+    caf: numpy.ndarray
 
     class Config:
         arbitrary_types_allowed = True
