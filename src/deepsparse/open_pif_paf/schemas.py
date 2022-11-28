@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
@@ -25,12 +25,26 @@ __all__ = [
 
 
 class OpenPifPafInput(ComputerVisionSchema):
+    """
+    Input model for Open Pif Paf
+    """
+
     pass
 
 
 class OpenPifPafOutput(BaseModel):
-    cif: numpy.ndarray
-    caf: numpy.ndarray
+    """
+    Output model for Open Pif Paf
+    """
+
+    cif: numpy.ndarray = Field(
+        description="CIF field with 17 x 5 channels "
+        "(resulting array has dimensions: (B,17,5,13,17))"
+    )
+    caf: numpy.ndarray = Field(
+        description="CIF field with 19 x 8 channels "
+        "(resulting array has dimensions: (B,19,8,13,17))"
+    )
 
     class Config:
         arbitrary_types_allowed = True

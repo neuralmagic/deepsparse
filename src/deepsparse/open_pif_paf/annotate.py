@@ -30,7 +30,7 @@ Options:
                                   'torch'. Default is 'deepsparse'
   --image_shape, --image_shape INTEGER
                                   Image shape to use for inference, must be
-                                  two integers  [default: ..., ...]
+                                  two integers  [default: 384, 384]
   --num_cores, --num-cores INTEGER
                                   The number of physical cores to run the
                                   annotations with, defaults to using all
@@ -62,28 +62,23 @@ Examples:
 3) deepsparse.open_pif_paf.annotate --source 0
 4) deepsparse.open_pif_paf.annotate --source PATH/TO/IMAGE_DIR
 """
-import copy
 import logging
 from typing import Optional, Tuple
 
 import click
-import numpy
 
 import cv2
-import torch
+from deepsparse.open_pif_paf.utils import annotate_image
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils.annotate import (
     annotate,
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
-from deepsparse.yolo.utils.cli_helpers import create_dir_callback
-from deepsparse.yolo.utils.utils import _plot_fps
-from openpifpaf import decoder, network, show
+from deepsparse.utils.cli_helpers import create_dir_callback
 
 
 open_pif_paf_default_stub = (
-    # "/home/ubuntu/damian/deepsparse_copy/openpifpaf-resnet50_pruned50.onnx"
     "/home/ubuntu/damian/deepsparse_copy/openpifpaf-resnet50.onnx"
 )
 
@@ -184,7 +179,7 @@ def main(
     no_save: bool,
 ) -> None:
     """
-    Annotation Script for YOLACT with DeepSparse
+    Annotation Script for OpenPifPaf with DeepSparse
     """
     save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
@@ -208,48 +203,18 @@ def main(
         num_cores=num_cores,
     )
 
-    def annotate_image_func(image, prediction, images_per_sec):
-        cafs, cifs = prediction.caf, prediction.cif
-        # we expect to have received batch = 1 from the pipeline
-        assert cafs.shape[0] == 1 and cifs.shape[0] == 1
-        annotations = processor._mappable_annotations(
-            [torch.tensor(cifs[0]), torch.tensor(cafs[0])], None, None
-        )
-        image_res = copy.deepcopy(image)
-        image_res = cv2.resize(image_res, (384, 384))
-
-        painter = show.AnnotationPainter()
-        with show.image_canvas(image_res) as ax:
-            painter.annotations(ax, annotations)
-        ax.figure.canvas.draw()
-        image_ = numpy.frombuffer(ax.figure.canvas.tostring_rgb(), dtype=numpy.uint8)
-        image_ = image_.reshape(ax.figure.canvas.get_width_height()[::-1] + (3,))
-        image_ = cv2.resize(image_, (image.shape[1], image.shape[0]))
-
-        if images_per_sec is not None:
-            image_ = _plot_fps(
-                img_res=image_,
-                images_per_sec=images_per_sec,
-                x=20,
-                y=30,
-                font_scale=0.9,
-                thickness=2,
-            )
-        return image_
-
-    model_cpu, _ = network.Factory().factory(head_metas=None)
-    processor = decoder.factory(model_cpu.head_metas)
-
     for iteration, (input_image, source_image) in enumerate(loader):
-        print(f"{len(loader)}/{iteration}")
+        if iteration % 5 != 0:
+            continue
         # annotate
         annotated_image = annotate(
             pipeline=open_pif_paf_pipeline,
-            annotation_func=annotate_image_func,
+            annotation_func=annotate_image,
             image=input_image,
             target_fps=target_fps,
             calc_fps=is_video,
             original_image=source_image,
+            model_resolution=image_shape,
         )
 
         if is_webcam:
