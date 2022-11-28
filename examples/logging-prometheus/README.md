@@ -142,7 +142,8 @@ Run the following to start inference:
 ```bash
 python client/client.py
 ```
-The first argument is the path to the sample image, while the second argument is the port number that matches the inference endpoint of the Server.
+
+It prints out which image was sent to the server.
 
 ## 4. Inspecting the Prometheus/Grafana Stack
 
