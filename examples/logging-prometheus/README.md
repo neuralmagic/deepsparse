@@ -5,7 +5,7 @@ This is a simple example that shows you how to connect DeepSparse Logging to the
 #### There are four steps:
 - Configure DeepSparse Logging to log metrics in Prometheus format to a REST endpoint
 - Point Prometheus to the appropriate endpoint to scape the data at a specified interval
-- Run the toy client to perform inference
+- Run the client script simulating a data quality/drift issue
 - Visualize data in Prometheus with dashboarding tool like Grafana
 
 ## 0. Setting Up
