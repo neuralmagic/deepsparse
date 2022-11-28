@@ -169,8 +169,9 @@ You should see the following:
 
 ![prometheus-dashboard.png](image/prometheus-dashboard.png)
 
-This graph shows the percentage of 0's. As the "corrupted" all black images were 
-sent to the server in increasing probability, we can clearly see a spike in the graph, alerting us
+This graph shows the percentage of 0 pixels in the images sent to the server. 
+As the "corrupted" all black images were sent to the server in increasing probability, 
+we can clearly see a spike in the graph, alerting us
 that something strange is happening with the provided input.
 
 For more details on working with the Prometheus Query Language PromQL, 
@@ -195,7 +196,7 @@ docker container ls
 >>> c611c80ae05e   prom/prometheus          "/bin/prometheus --c…"   About an hour ago   Up About an hour   0.0.0.0:9090->9090/tcp, :::9090->9090/tcp   docker_prometheus_1
 ```
 
-Run the following to lookup the IP address (replace `docker_prometheus_1` with your containers name):
+Run the following to lookup the IP address (replace `docker_prometheus_1` with your container's name):
 ```
 docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' docker_prometheus_1
 >>> 172.18.0.2
@@ -210,7 +211,7 @@ Click `Save & Test`. We should get a green check saying "Data Source Is Working"
 Now you should be ready to create/import your dashboard. 
 
 Grafana's interface for adding metrics is very intuitive (and you can use PromQL), 
-but we have a simple pre-made dashboard for this use case. 
+but we have provided a simple pre-made dashboard for this use case. 
 
 Click `Dashboard` -> `Import` on the left-hand side bar. You should see an option to upload a file.
 Upload `grafana/dashboard.json` and save. Then, you should see the following dashboard:
