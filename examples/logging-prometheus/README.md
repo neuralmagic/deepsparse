@@ -186,11 +186,17 @@ Setup the Prometheus data source (`Add your first data source` -> `Prometheus`).
 need to update the `url` section. Since Grafana and Prometheus are running separate docker containers, 
 put we need to put the IP address of the Prometheus container.
 
-Run `docker container ls` to lookup the `name` of the Prometheus container. It should be something like `docker_prometheus_1`.
-
-Run the following to lookup the IP address:
+Run the following to lookup the `name` of your Prometheus container:
 ```
-docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' container_name_or_id
+docker container ls
+>>> CONTAINER ID   IMAGE                    COMMAND                  CREATED             STATUS             PORTS                                       NAMES
+>>> 997521854d84   grafana/grafana:latest   "/run.sh"                About an hour ago   Up About an hour   0.0.0.0:3000->3000/tcp, :::3000->3000/tcp   docker_grafana_1
+>>> c611c80ae05e   prom/prometheus          "/bin/prometheus --c…"   About an hour ago   Up About an hour   0.0.0.0:9090->9090/tcp, :::9090->9090/tcp   docker_prometheus_1
+```
+
+Run the following to lookup the IP address (replace `docker_prometheus_1` with your containers name):
+```
+docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' docker_prometheus_1
 >>> 172.18.0.2
 ```
 
