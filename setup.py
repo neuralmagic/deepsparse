@@ -116,6 +116,10 @@ _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.12.0",
     "opencv-python",
 ]
+_openpifpaf_integration_deps = [
+    "openpifpaf",
+    "opencv-python",
+]
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
 _haystack_requirements_file_path = os.path.join(
@@ -249,6 +253,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
+            "deepsparse.pose_estimation.annotate=deepsparse.openpifpaf.annotate:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
