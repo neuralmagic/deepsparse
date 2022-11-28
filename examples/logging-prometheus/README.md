@@ -1,8 +1,6 @@
-# DeepSparse Server + Prometheus/Grafana
+# DeepSparse + Prometheus/Grafana
 
-DeepSparse Logging is compatible with Prometheus/Grafana, making it easy to stand up a model monitoring service.
-
-This tutorial will show you how to connect DeepSparse Logging to the Prometheus/Grafana stack.
+This is a simple example that shows you how to connect DeepSparse Logging to the Prometheus/Grafana stack.
 
 #### There are four steps:
 - Configure DeepSparse Logging to log metrics in Prometheus format to a REST endpoint
