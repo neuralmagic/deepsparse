@@ -60,7 +60,7 @@ endpoints:
             - prometheus
 ```
 
-The config file instructs the server to create an image classification pipeline. Prometheus logs are declared to be exposed on port `6100`, system logging is turned on, and we will log the mean pixel of the red channel as well as the percentage of pixels that are 0 for each image sent to the server..
+The config file instructs the server to create an image classification pipeline. Prometheus logs are declared to be exposed on port `6100`, system logging is turned on, and we will log the mean pixel of the red channel (a custom function) as well as the percentage of pixels that are 0 (a built-in function) for each image sent to the server.
 
 Thus, once launched, the Server exposes two endpoints:
 - port `6100`: exposes the `metrics` endpoint through [Prometheus python client](https://github.com/prometheus/client_python).
