@@ -166,7 +166,7 @@ rate(image_classification__0__pipeline_inputs__images__fraction_zeros_count[30s]
 ```
 Toggle from `Table` to `Graph`. You should see the following:
 
-![prometheus-log.png](image/prometheus-log.png)
+![prometheus-dashboard.png](image/prometheus-dashboard.png)
 
 This graph shows the percentage of 0's. A the "corrupted" all black images were 
 sent to the server in increasing numbers, we can clearly see a spike in the graph, alerting us
