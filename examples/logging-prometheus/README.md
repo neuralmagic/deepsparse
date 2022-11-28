@@ -208,4 +208,4 @@ but we have a simple pre-made dashboard for this use case.
 Click `Dashboard` -> `Import` on the left-hand side bar. You should see an option to upload a file.
 Upload `grafana/dashboard.json` and save. Then, you should see the following dashboard:
 
-![img.png](images/grafana-dashboard.png)
+![img.png](image/grafana-dashboard.png)
