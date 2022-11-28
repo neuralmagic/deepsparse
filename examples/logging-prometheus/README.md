@@ -164,12 +164,13 @@ rate(image_classification__0__pipeline_inputs__images__fraction_zeros_sum[30s])
 /
 rate(image_classification__0__pipeline_inputs__images__fraction_zeros_count[30s])
 ```
-Toggle from `Table` to `Graph`. You should see the following:
+
+You should see the following:
 
 ![prometheus-dashboard.png](image/prometheus-dashboard.png)
 
-This graph shows the percentage of 0's. A the "corrupted" all black images were 
-sent to the server in increasing numbers, we can clearly see a spike in the graph, alerting us
+This graph shows the percentage of 0's. As the "corrupted" all black images were 
+sent to the server in increasing probability, we can clearly see a spike in the graph, alerting us
 that something strange is happening with the provided input.
 
 For more details on working with the Prometheus Query Language PromQL, 
