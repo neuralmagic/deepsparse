@@ -89,7 +89,11 @@ TORCH_ENGINE = "torch"
 _LOGGER = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command(
+    context_settings=dict(
+        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
+    ),
+)
 @click.option(
     "--model_filepath",
     "--model-filepath",
