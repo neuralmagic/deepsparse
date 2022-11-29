@@ -16,14 +16,15 @@
 OpenPifPafPipeline
 """
 
-from typing import List, Type
+from typing import List, Tuple, Type, Union
 
 import numpy
-import PIL
 
+import cv2
 import torch
 from deepsparse.open_pif_paf.schemas import OpenPifPafInput, OpenPifPafOutput
 from deepsparse.pipeline import Pipeline
+from deepsparse.yolact.utils import preprocess_array
 from openpifpaf import decoder, network
 
 
@@ -54,9 +55,13 @@ class OpenPifPafPipeline(Pipeline):
         mapping class ids to class labels. Default is None
     """
 
-    def __init__(self, **kwargs):
+    def __init__(
+        self, *, image_size: Union[int, Tuple[int, int]] = (384, 384), **kwargs
+    ):
         super().__init__(**kwargs)
-
+        self._image_size = (
+            image_size if isinstance(image_size, Tuple) else (image_size, image_size)
+        )
         # necessary openpifpaf dependencies for now
         model_cpu, _ = network.Factory().factory(head_metas=None)
         self.processor = decoder.factory(model_cpu.head_metas)
@@ -86,33 +91,17 @@ class OpenPifPafPipeline(Pipeline):
         return self.model_path
 
     def process_inputs(self, inputs: OpenPifPafInput) -> List[numpy.ndarray]:
-        images = []
-        if not isinstance(inputs.images, list):
-            inputs.images = [inputs.images]
 
-        for image in inputs.images:
-            if isinstance(image, str):
-                image_path = image
-                with open(image_path, "rb") as f:
-                    image = PIL.Image.open(f).convert("RGB")
+        images = inputs.images
 
-            if image.shape[-1] == 3:
-                if image.ndim == 4:
-                    image = image.transpose(0, 3, 1, 2)
-                else:
-                    image = image.transpose(2, 0, 1)
+        if not isinstance(images, list):
+            images = [images]
 
-            if image.dtype == numpy.uint8:
-                image = numpy.asarray(image) / 255.0
+        image_batch = list(self.executor.map(self._preprocess_image, images))
 
-            image = numpy.ascontiguousarray(image)
-            image = image.astype(numpy.float32)
-            if image.ndim == 4:
-                return [image]
-            else:
-                images.append(image)
+        image_batch = numpy.concatenate(image_batch, axis=0)
 
-        return [numpy.stack(images)]
+        return [image_batch]
 
     def process_engine_outputs(
         self, fields: List[numpy.ndarray], **kwargs
@@ -142,3 +131,9 @@ class OpenPifPafPipeline(Pipeline):
             scores=scores_batch,
             keypoints=keypoints_batch,
         )
+
+    def _preprocess_image(self, image) -> numpy.ndarray:
+        if isinstance(image, str):
+            image = cv2.imread(image)
+
+        return preprocess_array(image, input_image_size=self._image_size)

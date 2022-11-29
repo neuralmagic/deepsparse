@@ -78,9 +78,7 @@ from deepsparse.utils.annotate import (
 from deepsparse.utils.cli_helpers import create_dir_callback
 
 
-open_pif_paf_default_stub = (
-    "/home/ubuntu/damian/deepsparse_copy/openpifpaf-resnet50.onnx"
-)
+open_pif_paf_default_stub = None
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
