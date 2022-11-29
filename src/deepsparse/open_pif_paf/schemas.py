@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
+from typing import List, Tuple
+
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -37,13 +38,25 @@ class OpenPifPafOutput(BaseModel):
     Output model for Open Pif Paf
     """
 
-    cif: numpy.ndarray = Field(
-        description="CIF field with 17 x 5 channels "
-        "(resulting array has dimensions: (B,17,5,13,17))"
+    data: List[List[List[List[float]]]] = Field(
+        description="List of list-formatted arrays "
+        "(one array per prediction) of shape (N, 3) "
+        "where N is the number of keypoints (joints). "
+        "Each array contains the x coordinate, y coordinate, "
+        "and confidence values for each joint."
     )
-    caf: numpy.ndarray = Field(
-        description="CIF field with 19 x 8 channels "
-        "(resulting array has dimensions: (B,19,8,13,17))"
+    keypoints: List[List[List[str]]] = Field(
+        description="List of names of skelethon joints, "
+        "one list for each prediction."
+    )
+    scores: List[List[float]] = Field(
+        description="List of pose (skelethon) detection probabilities, "
+        "one value for each prediction."
+    )
+    skeletons: List[List[List[Tuple[int, int]]]] = Field(
+        description="List of skelethon body part connections. "
+        "For every prediction, it is a list of tuples of body "
+        "part indices. "
     )
 
     class Config:

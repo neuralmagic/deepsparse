@@ -21,8 +21,10 @@ from typing import List, Type
 import numpy
 import PIL
 
+import torch
 from deepsparse.open_pif_paf.schemas import OpenPifPafInput, OpenPifPafOutput
 from deepsparse.pipeline import Pipeline
+from openpifpaf import decoder, network
 
 
 __all__ = ["OpenPifPafPipeline"]
@@ -54,6 +56,10 @@ class OpenPifPafPipeline(Pipeline):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        # necessary openpifpaf dependencies for now
+        model_cpu, _ = network.Factory().factory(head_metas=None)
+        self.processor = decoder.factory(model_cpu.head_metas)
 
     @property
     def input_schema(self) -> Type[OpenPifPafInput]:
@@ -118,4 +124,21 @@ class OpenPifPafPipeline(Pipeline):
         :return: Outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        return OpenPifPafOutput(cif=fields[0], caf=fields[1])
+
+        data_batch, skeletons_batch, scores_batch, keypoints_batch = [], [], [], []
+
+        for idx, (cif, caf) in enumerate(zip(*fields)):
+            annotations = self.processor._mappable_annotations(
+                [torch.tensor(cif), torch.tensor(caf)], None, None
+            )
+            data_batch.append([annotation.data.tolist() for annotation in annotations])
+            skeletons_batch.append([annotation.skeleton for annotation in annotations])
+            scores_batch.append([annotation.score for annotation in annotations])
+            keypoints_batch.append([annotation.keypoints for annotation in annotations])
+
+        return OpenPifPafOutput(
+            data=data_batch,
+            skeletons=skeletons_batch,
+            scores=scores_batch,
+            keypoints=keypoints_batch,
+        )

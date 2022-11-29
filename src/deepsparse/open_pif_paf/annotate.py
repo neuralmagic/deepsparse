@@ -78,7 +78,9 @@ from deepsparse.utils.annotate import (
 from deepsparse.utils.cli_helpers import create_dir_callback
 
 
-open_pif_paf_default_stub = None
+open_pif_paf_default_stub = (
+    "/home/ubuntu/damian/deepsparse_copy/openpifpaf-resnet50.onnx"
+)
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
@@ -202,8 +204,6 @@ def main(
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
-        if iteration % 5 != 0:
-            continue
         # annotate
         annotated_image = annotate(
             pipeline=open_pif_paf_pipeline,

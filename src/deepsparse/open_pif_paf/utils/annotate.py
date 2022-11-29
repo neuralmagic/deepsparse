@@ -12,21 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    import openpifpaf
-
-    openpifpaf_error = None
-except ModuleNotFoundError as openpifpaf_import_error:
-    openpifpaf = None
-    openpifpaf_error = openpifpaf_import_error
-
 import logging
 from typing import List, Optional, Tuple
 
 import numpy
 
 import cv2
-import torch
 from deepsparse.open_pif_paf.schemas import OpenPifPafOutput
 from deepsparse.yolact.utils.annotate import (
     _get_text_size,
@@ -66,53 +57,80 @@ def annotate_image(
     image: numpy.ndarray,
     prediction: OpenPifPafOutput,
     images_per_sec: Optional[float] = None,
+    confidence_threshold: float = 0.5,
     **kwargs,
 ) -> numpy.ndarray:
+    """
+    Annotate an image with the pose estimation results
 
-    cafs, cifs = prediction.caf, prediction.cif
-    # we expect to have received batch = 1 from the pipeline
-    if not (cafs.shape[0] == 1 and cifs.shape[0] == 1):
-        raise ValueError("Expected batch size of 1, got {}".format(cafs.shape[0]))
-    annotations = processor._mappable_annotations(
-        [torch.tensor(cifs[0]), torch.tensor(cafs[0])], None, None
-    )
-
+    :param image: original image to annotate
+    :param prediction: predictions returned by the inference pipeline
+    :param images_per_sec: optional fps value to annotate the left corner
+        of the image (video) with
+    :param confidence_threshold: minimum confidence of skelethon to be drawn
+    :return: the original image annotated with the pose estimation results
+    """
     input_image_resolution = image.shape[:2]
     scale = numpy.flipud(
         numpy.divide(input_image_resolution, kwargs["model_resolution"])
     )
 
-    for annotation in annotations:
-        data = numpy.multiply(annotation.data[:, :2], scale)
-        keypoints = annotation.keypoints
-        image = _draw_skelethon(image, annotation.skeleton, data, keypoints)
-        image = _draw_joints(image, data)
-        image = _draw_confidence(image, data[0], annotation.score)
-        if images_per_sec:
-            image = _plot_fps(
-                img_res=image,
-                images_per_sec=images_per_sec,
-                x=20,
-                y=30,
-                font_scale=0.9,
-                thickness=2,
-            )
+    if not len(prediction.keypoints) == 1:
+        raise ValueError(
+            f"Expecting only one image in the batch, "
+            f"received {len(prediction.keypoints)}"
+        )
+
+    keypoints = prediction.keypoints[0]
+    data = prediction.data[0]
+    skeletons = prediction.skeletons[0]
+    scores = prediction.scores[0]
+
+    # preprocess one skelethon detection at a time
+    for skeleton, score, data_, keypoints_ in zip(skeletons, scores, data, keypoints):
+        coords = numpy.multiply(numpy.array(data_)[:, :2], scale)
+        # filter out low confidence detections
+        if score < confidence_threshold:
+            continue
+        image = _draw_skelethon(image, skeleton, coords, keypoints_)
+        image = _draw_joints(image, coords)
+        image = _draw_confidence(image, coords, score)
+
+    if images_per_sec:
+        image = _plot_fps(
+            img_res=image,
+            images_per_sec=images_per_sec,
+            x=20,
+            y=30,
+            font_scale=0.9,
+            thickness=2,
+        )
     return image
 
 
 def _draw_confidence(
-    image: numpy.ndarray, coords: numpy.ndarray, score: float
+    image: numpy.ndarray, data: numpy.ndarray, score: float
 ) -> numpy.ndarray:
     """
     Draw the confidence score of the pose estimation
     """
+    left, top = None, None
+    for coord in data:
+        # find the first valid coordinate
+        if all(coord):
+            left, top = coord
+            break
+    # if no valid coordinates found, return the image as is
+    if left is None or top is None:
+        return image
+
     annotation_text = f"{score:.0%}"
     text_width, text_height = _get_text_size(annotation_text)
     image = _put_annotation_text(
         image=image,
         annotation_text=annotation_text,
-        left=coords[0],
-        top=coords[1],
+        left=left,
+        top=top,
         color=CONFIDENCE_BOX_COLOR,
         text_width=text_width,
         text_height=text_height,
@@ -123,13 +141,15 @@ def _draw_confidence(
 def _draw_joints(
     image: numpy.ndarray,
     data: numpy.ndarray,
-    joint_thickness: int = 8,
+    joint_thickness: int = 6,
     trace_thickness: int = 2,
 ) -> numpy.ndarray:
     """
     Draw the joints of the pose estimation
     """
     for joint in data:
+        if all(joint) is False:
+            continue
         x, y = joint
         image = cv2.circle(
             image, (int(x), int(y)), joint_thickness + trace_thickness, (0, 0, 0), -1
@@ -145,7 +165,7 @@ def _draw_skelethon(
     skelethon: List[Tuple[int, int]],
     data: numpy.ndarray,
     keypoints: List[str],
-    connection_thickness: int = 8,
+    connection_thickness: int = 6,
     trace_thickness: int = 2,
 ) -> numpy.ndarray:
     """
