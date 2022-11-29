@@ -51,8 +51,9 @@ class OpenPifPafPipeline(Pipeline):
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
-    :param class_names: Optional dict, or json file of class names to use for
-        mapping class ids to class labels. Default is None
+     :param image_size: optional image size to override with model shape. Can
+        be an int which will be the size for both dimensions, or a 2-tuple
+        of the width and height sizes. Default does not modify model image shape
     """
 
     def __init__(

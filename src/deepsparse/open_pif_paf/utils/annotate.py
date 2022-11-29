@@ -24,14 +24,9 @@ from deepsparse.yolact.utils.annotate import (
     _plot_fps,
     _put_annotation_text,
 )
-from openpifpaf import decoder, network
 
 
 _LOGGER = logging.getLogger(__name__)
-
-# necessary openpifpaf dependencies for now
-model_cpu, _ = network.Factory().factory(head_metas=None)
-processor = decoder.factory(model_cpu.head_metas)
 
 
 def _get_color():
