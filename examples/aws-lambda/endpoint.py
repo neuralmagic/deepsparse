@@ -100,8 +100,9 @@ class SparseLambda:
 
         response = self._lambda.list_functions()
 
+        print("*** These are your Lambda functions: ***\n")
         for function in response["Functions"]:
-            print("*** These are your Lambda functions: ***\n")
+
             print("Function name: " + function["FunctionName"], "\n")
 
     def destroy_endpoint(self):
