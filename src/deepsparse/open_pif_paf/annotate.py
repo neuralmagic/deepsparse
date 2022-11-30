@@ -94,11 +94,9 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "--model_filepath",
-    "--model-filepath",
     type=str,
     default=open_pif_paf_default_stub,
     help="Path/SparseZoo stub to the model file to be used for annotation",
-    show_default=True,
 )
 @click.option(
     "--source",
@@ -116,32 +114,26 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "--image_shape",
-    "--image-shape",
     type=int,
     nargs=2,
     default=(384, 384),
     help="Image shape to use for inference, must be two integers",
-    show_default=True,
 )
 @click.option(
     "--num_cores",
-    "--num-cores",
     type=int,
     default=None,
     help="The number of physical cores to run the annotations with, "
     "defaults to using all physical cores available on the system."
     " For DeepSparse benchmarks, this value is the number of cores "
     "per socket",
-    show_default=True,
 )
 @click.option(
     "--save_dir",
-    "--save-dir",
     type=click.Path(dir_okay=True, file_okay=False),
     default="annotation-results",
     callback=create_dir_callback,
     help="The path to the directory for saving results",
-    show_default=True,
 )
 @click.option(
     "--name",
@@ -152,22 +144,18 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "--target_fps",
-    "--target-fps",
     type=float,
     default=None,
     help="Target FPS when writing video files. Frames will be dropped to "
     "closely match target FPS. --source must be a video file and if "
     "target-fps is greater than the source video fps then it "
     "will be ignored",
-    show_default=True,
 )
 @click.option(
     "--no_save",
-    "--no-save",
     is_flag=True,
     help="Set flag when source is from webcam to not save results."
     "Not supported for non-webcam sources",
-    show_default=True,
 )
 def main(
     model_filepath: str,
