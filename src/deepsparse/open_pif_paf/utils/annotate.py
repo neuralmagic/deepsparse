@@ -142,9 +142,7 @@ def _draw_joints(
     """
     Draw the joints of the pose estimation
     """
-    for joint in data:
-        if all(joint) is False:
-            continue
+    for joint in filter(all, data):
         x, y = joint
         image = cv2.circle(
             image, (int(x), int(y)), joint_thickness + trace_thickness, (0, 0, 0), -1
