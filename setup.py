@@ -51,6 +51,11 @@ _PACKAGE_NAME = (
 )
 
 if is_enterprise:
+    license = "Apache"
+else:
+    license = "Neural Magic DeepSparse Community License, Apache"
+
+if is_enterprise:
     # do not include the LICENSE-NEURALMAGIC file
     # in the deepsparse-ent installation folder
     license_nm_path = os.path.join(
@@ -294,7 +299,7 @@ setup(
         "sparse, inference engine, cpu, runtime, deepsparse, computer vision, "
         "object detection, sparsity"
     ),
-    license="Neural Magic DeepSparse Community License, Apache",
+    license=license,
     license_files=license_files,
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),
