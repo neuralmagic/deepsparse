@@ -127,7 +127,7 @@ _yolo_integration_deps = [
     "opencv-python",
 ]
 _openpifpaf_integration_deps = [
-    "openpifpaf",
+    "openpifpaf=0.13.6",
     "opencv-python",
 ]
 # haystack dependencies are installed from a requirements file to avoid
@@ -246,6 +246,7 @@ def _setup_extras() -> Dict:
         "onnxruntime": _onnxruntime_deps,
         "yolo": _yolo_integration_deps,
         "haystack": _haystack_integration_deps,
+        "openpifpaf": _openpifpaf_integration_deps,
     }
 
 
