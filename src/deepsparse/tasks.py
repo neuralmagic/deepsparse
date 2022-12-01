@@ -120,10 +120,6 @@ class SupportedTasks:
         ),
     )
 
-    vit_pose = namedtuple("vit_pose", ["vit_pose"])(
-        vit_pose=AliasedTask("vit_pose", ["vit_pose"]),
-    )
-
     all_task_categories = [
         nlp,
         image_classification,
@@ -131,7 +127,6 @@ class SupportedTasks:
         yolact,
         haystack,
         embedding_extraction,
-        vit_pose,
     ]
 
     @classmethod
@@ -173,11 +168,6 @@ class SupportedTasks:
             # trigger embedding_extraction pipelines to register with
             #  Pipeline.register
             import deepsparse.pipelines.embedding_extraction  # noqa :F401
-
-        elif cls.is_vit_pose(task):
-            # trigger embedding_extraction pipelines to register with
-            #  Pipeline.register
-            import deepsparse.vit_pose.pipelines  # noqa :F401
 
         all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
         if task not in all_tasks:
@@ -249,15 +239,6 @@ class SupportedTasks:
             embedding_extraction_task.matches(task)
             for embedding_extraction_task in cls.embedding_extraction
         )
-
-    @classmethod
-    def is_vit_pose(cls, task):
-        """
-        :param task: the name of the task to check whether it is an
-            vit_pose task
-        :return: True if it is a vit_pose task, False otherwise
-        """
-        return any(vit_pose.matches(task) for vit_pose in cls.vit_pose)
 
     @classmethod
     def task_names(cls):
