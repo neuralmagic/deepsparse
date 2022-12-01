@@ -292,7 +292,7 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
     # If model.num_streams is set, and the scenario is either "multi_stream" or
     # "elastic", use the value of num_streams given to us by the model, otherwise
     # use a semi-sane default value.
-    if scenario == "sync" or scenario == "single_stream":
+    if scenario == "sync" or scenario == "singlestream":
         return 1
     else:
         if num_streams:
