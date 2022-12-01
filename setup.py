@@ -51,6 +51,11 @@ _PACKAGE_NAME = (
 )
 
 if is_enterprise:
+    license = "Apache"
+else:
+    license = "Neural Magic DeepSparse Community License, Apache"
+
+if is_enterprise:
     # do not include the LICENSE-NEURALMAGIC file
     # in the deepsparse-ent installation folder
     license_nm_path = os.path.join(
@@ -124,6 +129,10 @@ _onnxruntime_deps = [
 ]
 _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.12.0",
+    "opencv-python",
+]
+_openpifpaf_integration_deps = [
+    "openpifpaf==0.13.6",
     "opencv-python",
 ]
 # haystack dependencies are installed from a requirements file to avoid
@@ -242,6 +251,7 @@ def _setup_extras() -> Dict:
         "onnxruntime": _onnxruntime_deps,
         "yolo": _yolo_integration_deps,
         "haystack": _haystack_integration_deps,
+        "openpifpaf": _openpifpaf_integration_deps,
     }
 
 
@@ -259,6 +269,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
+            "deepsparse.pose_estimation.annotate=deepsparse.openpifpaf.annotate:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
@@ -288,7 +299,7 @@ setup(
         "sparse, inference engine, cpu, runtime, deepsparse, computer vision, "
         "object detection, sparsity"
     ),
-    license="Neural Magic DeepSparse Community License, Apache",
+    license=license,
     license_files=license_files,
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),

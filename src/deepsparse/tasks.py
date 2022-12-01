@@ -119,6 +119,9 @@ class SupportedTasks:
             "embedding_extraction", ["embedding_extraction"]
         ),
     )
+    open_pif_paf = namedtuple("open_pif_paf", ["open_pif_paf"])(
+        open_pif_paf=AliasedTask("open_pif_paf", ["open_pif_paf"]),
+    )
 
     all_task_categories = [
         nlp,
@@ -127,6 +130,7 @@ class SupportedTasks:
         yolact,
         haystack,
         embedding_extraction,
+        open_pif_paf,
     ]
 
     @classmethod
@@ -168,6 +172,11 @@ class SupportedTasks:
             # trigger embedding_extraction pipelines to register with
             #  Pipeline.register
             import deepsparse.pipelines.embedding_extraction  # noqa :F401
+
+        elif cls.is_open_pif_paf(task):
+            # trigger embedding_extraction pipelines to register with
+            #  Pipeline.register
+            import deepsparse.open_pif_paf.pipelines  # noqa :F401
 
         all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
         if task not in all_tasks:
@@ -238,6 +247,17 @@ class SupportedTasks:
         return any(
             embedding_extraction_task.matches(task)
             for embedding_extraction_task in cls.embedding_extraction
+        )
+
+    @classmethod
+    def is_open_pif_paf(cls, task):
+        """
+        :param task: the name of the task to check whether it is an
+            embedding_extraction task
+        :return: True if it is an open_pif_paf task, False otherwise
+        """
+        return any(
+            open_pif_paf_task.matches(task) for open_pif_paf_task in cls.open_pif_paf
         )
 
     @classmethod
