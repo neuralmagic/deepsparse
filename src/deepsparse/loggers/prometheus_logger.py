@@ -130,8 +130,6 @@ class PrometheusLogger(BaseLogger):
     def _validate(self, value: Any) -> Any:
         # make sure we are passing a value that is
         # a valid metric by prometheus client's standards
-        if hasattr(value, "is_integer"):
-            value = int(value)
         if not isinstance(value, SUPPORTED_DATA_TYPES):
             raise ValueError(
                 "Prometheus logger expects the incoming values "
