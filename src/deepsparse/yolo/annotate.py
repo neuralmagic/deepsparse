@@ -71,13 +71,13 @@ import click
 
 import cv2
 from deepsparse.pipeline import Pipeline
-from deepsparse.utils import (
+from deepsparse.utils.annotate import (
     annotate,
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
+from deepsparse.utils.cli_helpers import create_dir_callback
 from deepsparse.yolo.utils import annotate_image
-from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
 
 yolo_v5_default_stub = (

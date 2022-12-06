@@ -1,14 +1,16 @@
-                  NEURAL MAGIC ENGINE COMMUNITY LICENSE AGREEMENT
+Updated: November 16, 2022
 
-Please read this Neural Magic Engine Community License Agreement (“Agreement”) 
+NEURAL MAGIC DEEPSPARSE COMMUNITY LICENSE AGREEMENT
+
+Please read this Neural Magic DeepSparse Community License Agreement (“Agreement”) 
 carefully before using Software for the first time. By using the Software, you agree 
 to these terms. If you do not agree to the terms of this Agreement, the Software may 
 not be installed on your computer systems. 
 
-The DeepSparse Engine (“Software”) consists of a current version of: (a) machine 
-executable (object) code, and (b) any existing user guide and release notes. The 
+DeepSparse (“Software”) consists of a current version of: (a) machine 
+executable (object) code, (b) DeepSparse-branded components, and (c) any existing user guide and release notes. The 
 Software is copyrighted by Neuralmagic, Inc. (“Neural Magic”), a Delaware corporation 
-with offices at 55 Davis Square STE 3, Somerville, MA 02144, and is licensed and not 
+with offices at 55 Davis Square STE 3, Somerville, MA 02144 United States, and is licensed and not 
 sold. Licensing questions about this Software should be directed to 
 license@neuralmagic.com.
 
@@ -22,7 +24,7 @@ license@neuralmagic.com.
 
     2. 	Restrictions. As the source code of the Software is confidential, you may not 
     decompile, reverse engineer, disassemble, or otherwise attempt to derive the source 
-    code of the Software or any purpose. Except as permitted by applicable law and this 
+    code of the Software for any purpose. Except as permitted by applicable law and this 
     Agreement, you may not sublicense the Software. You may not use or otherwise export 
     the Software except as authorized by United States law. You may also not modify, 
     translate, or create derivative works of the Software or) sell, lease, license, 
@@ -67,6 +69,5 @@ license@neuralmagic.com.
 Your rights under this Agreement will terminate automatically without notice if you fail to 
 comply with any term(s) of this Agreement.
 
-Updated August 1, 2022
 
 Neuralmagic, Inc.’s Legal Policies https://www.neuralmagic.com/legal

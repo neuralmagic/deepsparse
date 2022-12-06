@@ -83,6 +83,7 @@ class SupportedTasks:
             "zero_shot_text_classification",
             "embedding_extraction",
             "masking"
+            "transformers_embedding_extraction",
         ],
     )(
         question_answering=AliasedTask("question_answering", ["qa"]),
@@ -94,6 +95,9 @@ class SupportedTasks:
         embedding_extraction=AliasedTask("embedding_extraction", []),
         masking=AliasedTask("masking", ["fill-in-the-blank"]),
 
+        transformers_embedding_extraction=AliasedTask(
+            "transformers_embedding_extraction", []
+        ),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(
@@ -115,8 +119,24 @@ class SupportedTasks:
             "information_retrieval_haystack", ["haystack"]
         ),
     )
+    embedding_extraction = namedtuple("embedding_extraction", ["embedding_extraction"])(
+        embedding_extraction=AliasedTask(
+            "embedding_extraction", ["embedding_extraction"]
+        ),
+    )
+    open_pif_paf = namedtuple("open_pif_paf", ["open_pif_paf"])(
+        open_pif_paf=AliasedTask("open_pif_paf", ["open_pif_paf"]),
+    )
 
-    all_task_categories = [nlp, image_classification, yolo, yolact, haystack]
+    all_task_categories = [
+        nlp,
+        image_classification,
+        yolo,
+        yolact,
+        haystack,
+        embedding_extraction,
+        open_pif_paf,
+    ]
 
     @classmethod
     def check_register_task(
@@ -152,6 +172,16 @@ class SupportedTasks:
             # trigger haystack pipeline as well as transformers pipelines to
             # register with Pipeline.register
             import deepsparse.transformers.haystack  # noqa: F401
+
+        elif cls.is_embedding_extraction(task):
+            # trigger embedding_extraction pipelines to register with
+            #  Pipeline.register
+            import deepsparse.pipelines.embedding_extraction  # noqa :F401
+
+        elif cls.is_open_pif_paf(task):
+            # trigger embedding_extraction pipelines to register with
+            #  Pipeline.register
+            import deepsparse.open_pif_paf.pipelines  # noqa :F401
 
         all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
         if task not in all_tasks:
@@ -211,6 +241,29 @@ class SupportedTasks:
         :return: True if it is a haystack task, False otherwise
         """
         return any([haystack_task.matches(task) for haystack_task in cls.haystack])
+
+    @classmethod
+    def is_embedding_extraction(cls, task):
+        """
+        :param task: the name of the task to check whether it is an
+            embedding_extraction task
+        :return: True if it is an embedding_extraction task, False otherwise
+        """
+        return any(
+            embedding_extraction_task.matches(task)
+            for embedding_extraction_task in cls.embedding_extraction
+        )
+
+    @classmethod
+    def is_open_pif_paf(cls, task):
+        """
+        :param task: the name of the task to check whether it is an
+            embedding_extraction task
+        :return: True if it is an open_pif_paf task, False otherwise
+        """
+        return any(
+            open_pif_paf_task.matches(task) for open_pif_paf_task in cls.open_pif_paf
+        )
 
     @classmethod
     def task_names(cls):

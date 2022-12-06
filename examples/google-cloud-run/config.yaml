@@ -1,0 +1,9 @@
+num_cores: 1
+num_workers: 1
+endpoints:
+    - task: token_classification
+      route: /inference
+      model: zoo:nlp/token_classification/obert-base/pytorch/huggingface/conll2003/pruned90_quant-none
+      batch_size: 1
+      bucketing:
+        sequence_lengths: [128]
