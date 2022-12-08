@@ -342,6 +342,12 @@ def truncate_onnx_model(
         f"{extracted_num_nodes} remaining"
     )
 
+    for output in extracted_model.graph.output:
+        if len(output.type.tensor_type.shape.dim) == 0:
+            # ONNX checker treats None shapes and empty shapes
+            # differently, clear None shape to pass checker
+            output.type.tensor_type.shape.Clear()
+
     # save and check model
     onnx.save(extracted_model, output_filepath)
     onnx.checker.check_model(output_filepath)
