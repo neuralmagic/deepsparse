@@ -21,15 +21,10 @@ huggingface/transformers
 
 import logging as _logging
 
+import pkg_resources
 
-try:
-    import transformers as _transformers
 
-    # triggers error if neuralmagic/transformers is not installed
-    assert _transformers.NM_INTEGRATED
-    _transformers_import_error = None
-except Exception as _transformers_import_err:
-    _transformers_import_error = _transformers_import_err
+_EXPECTED_VERSION = "4.23.1"
 
 
 _LOGGER = _logging.getLogger(__name__)
@@ -82,24 +77,48 @@ def _install_transformers_and_deps():
 
 
 def _check_transformers_install():
-    if _transformers_import_error is not None:
+    transformers_version = next(
+        (
+            pkg.version
+            for pkg in pkg_resources.working_set
+            if pkg.project_name.lower() == "transformers"
+        ),
+        None,
+    )
+
+    # Either no transformers install is found or wrong version installed
+    if transformers_version != _EXPECTED_VERSION:
         import os
 
         if os.getenv("NM_NO_AUTOINSTALL_TRANSFORMERS", False):
             _LOGGER.warning(
-                "Unable to import transformers, skipping auto installation "
+                "Unable to import, skipping auto installation "
                 "due to NM_NO_AUTOINSTALL_TRANSFORMERS"
             )
             # skip any further checks
             return
         else:
             _LOGGER.warning(
-                "deepsparse-transformers installation not detected. Installing "
-                "deepsparse-transformers dependencies if transformers is already "
-                "installed in the environment, it will be overwritten. Set "
-                "environment variable NM_NO_AUTOINSTALL_TRANSFORMERS to disable"
+                f"sparseml-transformers v{_EXPECTED_VERSION} installation not "
+                f"detected. Installing  sparseml-transformers v{_EXPECTED_VERSION} "
+                "dependencies if transformers is already  installed in the "
+                "environment, it will be overwritten. Set  environment variable "
+                "NM_NO_AUTOINSTALL_TRANSFORMERS to disable"
             )
             _install_transformers_and_deps()
+
+    else:
+        import transformers as _transformers
+
+        # Edge case where user has expected version of transformers installed, but
+        # not the nm integrated one
+        if not _transformers.NM_INTEGRATED:
+            _install_transformers_and_deps()
+            raise RuntimeError(
+                "Installed transformers package has been overwritten with "
+                "sparseml-transformers. Stopping process as this is likely to cause "
+                "import issues. Please re-run command"
+            )
 
     # re check import after potential install
     try:
