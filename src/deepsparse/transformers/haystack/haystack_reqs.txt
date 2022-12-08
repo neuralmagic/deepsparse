@@ -28,12 +28,12 @@ mmh3
 quantulum3
 posthog
 azure-ai-formrecognizer>=3.2.0b2
-azure-core<1.23
+azure-core==1.26
 more_itertools
 python-docx
 langdetect
 tika
-sentence-transformers>=2.2.0
+sentence-transformers==1.1.0
 scipy>=1.3.2
 scikit-learn>=1.0.0
 seqeval
@@ -63,7 +63,6 @@ onnxruntime_tools
 ray>=1.9.1,<2
 aiorwlock>=1.3.0,<2
 grpcio==1.43.0
-beir
 mypy
 typing_extensions
 pytest
