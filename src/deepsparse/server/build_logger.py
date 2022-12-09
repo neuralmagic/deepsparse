@@ -58,7 +58,9 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     loggers_config = server_config.loggers
     if not loggers_config:
         return AsyncLogger(
-            logger=MultiLogger(default_logger()),  # wrap all loggers to async log call
+            logger=MultiLogger(
+                [default_logger()]
+            ),  # wrap all loggers to async log call
             max_workers=1,
         )
 
