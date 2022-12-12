@@ -58,7 +58,9 @@ def _validate_ort_import():
         raise ImportError(
             "An exception occurred when importing onxxruntime. Please verify that "
             "onnxruntime is installed in order to use the onnxruntime inference "
-            f"engine. \n\nException info: {ort_import_error}"
+            "engine.\n\n`onnxruntime` can be installed by running the command "
+            "`pip install deepsparse[onnxruntime]`"
+            f"\n\nException info: {ort_import_error}"
         )
 
 
