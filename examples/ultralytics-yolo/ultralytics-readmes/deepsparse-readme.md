@@ -6,38 +6,35 @@
 
 DeepSparse is an inference runtime offering GPU-class performance on CPUs and tooling to integrate ML into your application.
 
-By deploying with DeepSparse, you get the performance of GPUs with the low cost and simplicity of software:
-- **Exceptional Performance:** Deploy state-of-the-art models with GPU-class performance on low-cost commodity CPUs
-- **Flexible Deployment:** Deploy consistently across any environment from cloud to data center to edge and any hardware provider from Intel to AMD to ARM
-- **Near-Infinite Scalability:** Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
-- **Ease of Integration:** Clean APIs for integrating your model into an application and monitoring it in production
+By deploying YOLOv5 with DeepSparse, you get the **performance of GPUs** with the **low cost and simplicity of software**:
+- Exceptional Performance: Deploy state-of-the-art models with GPU-class performance on low-cost commodity CPUs
+- Flexible Deployment: Deploy consistently across any environment from cloud to data center to edge and any hardware provider from Intel to AMD to ARM
+- Near-Infinite Scalability: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
+- Ease of Integration: Clean APIs for integrating your model into an application and monitoring it in production
 
-### How Does DeepSparse Achieve its Performance?
+### How Does DeepSparse Achieve GPU-Class Performance?
 
-DeepSparse leverages sparsity to gain its performance speedups.
+DeepSparse takes advantage of sparsity to gain its performance speedup. 
 
-Sparsification through weight pruning and quantization is a broadly studied  echnique, allowing reductions of 10x in the size and theoretical compute 
-needed to execute a neural network, without losing much accuracy. DeepSparse is uniquely architected to take advantage of sparsity by "skipping" the 
-multiply-adds by 0, shrinking the amount of computation in the forward pass. The sparse computation becomes memory bound, so DeepSparse executes the 
-network depth-wise rather than layer-after-layer, breaking the network into Tensor Columns, vertical stripes of computation that fit completely in cache 
-without having to read or write to memory.
+Sparsification through weight pruning and quantization is a broadly studied technique, allowing reductions of 10x in the size and compute needed to 
+execute a network, without losing much accuracy. DeepSparse is sparsity-aware, so it skips the multiply-adds by 0, shrinking the number of instructions 
+in a forward pass. Since the sparse computation is memory bound, DeepSparse executes the network depth-wise, breaking the problem into Tensor Columns, 
+vertical stripes of computation that fit in cache without having to read or write to memory.
 
+<img style="text-align:center; width:60%" src="sparse-network.svg">
+ 
 Sparse computation, executed depth-wise in cache, allows DeepSparse to deliver GPU-class performance on CPUs!
 
-### How Do I Create A Sparse Version of YOLOv5?
+### How Do I Create A Sparse Version of YOLOv5 To Run With DeepSparse?
 
 Neural Magic has open-source sparse versions of each YOLOv5 model, available for use from the [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1).
 
-Additionally, Neural Magic's SparseML library is integrated with Ultralytics, enabling you to create a sparse model trained on your data. SparseML
-allows you to transfer learn from pre-sparsified YOLOv5 models from the SparseZoo and to apply pruning and quantization to your YOLOv5 model from scratch. See [our YOLOv5 documentation](https://docs.neuralmagic.com/use-cases/object-detection/sparsifying) for more details.
+Neural Magic's SparseML library is integrated with Ultralytics, enabling you to create a sparse model trained on your data. SparseML
+allows you to transfer learn from pre-sparsified YOLOv5 models in SparseZoo and to apply pruning and quantization to your YOLOv5 model from scratch. See [our YOLOv5 documentation](https://docs.neuralmagic.com/use-cases/object-detection/sparsifying) for more details.
 
-## Usage Example
+## DeepSparse Usage
 
-We will walk through an example deploying a sparse version of YOLOv5s with DeepSparse, following these steps:
-- Install DeepSparse
-- Collect ONNX File
-- Benchmark Latency/Throughput
-- Deploy a Model
+We will walk through an example benchmarking and deploying a sparse version of YOLOv5s with DeepSparse.
 
 Pull down a sample image for the example and save as `basilica.jpg` with the following command:
 ```bash
@@ -54,14 +51,12 @@ pip install deepsparse[server,yolo]
 
 ### Collect an ONNX File
 
-DeepSparse accepts a model in the ONNX format.
+DeepSparse accepts a model in the ONNX format. It can be one of two options:   
+- A SparseZoo Stub which identifies a pre-sparsified model in the SparseZoo and downloads the ONNX file for you
+- A Local Path to an ONNX model in a filesystem. The [SparseML YOLOv5 docs](https://docs.neuralmagic.com/use-cases/object-detection/sparsifying) include 
+an example of how to export a model to ONNX.
 
-The `model_path` argument in the commands below tells DeepSparse where the ONNX file is. It can be one of two options:   
-- `sparsezoo_stub` which identifies a pre-sparsified model in the SparseZoo and downloads the ONNX file for you
-- `local_path` to an ONNX model `model_name.onnx` in a filesystem. The [SparseML YOLOv5 documentation](https://docs.neuralmagic.com/use-cases/object-detection/sparsifying)
-includes an example of how to export a model to ONNX.
-
-In the example below, we will compare the pruned-quantized YOLOv5s from the SparseZoo to the dense YOLOv5s, identified by the following stubs:
+We will compare the pruned-quantized YOLOv5s from the SparseZoo to the standard dense YOLOv5s, identified by the following stubs:
 ```
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
@@ -69,128 +64,98 @@ zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
 
 ### Benchmark Performance
 
-Let's demonstrate DeepSparse's performance gains.
+We will first demonstrate DeepSparse's performance gains. 
 
-DeepSparse includes a benchmarking script to test performance under a variety of scenarios. We will look at performance for batch-size 1 with 640x640 images, 
-using an AWS `c6i.4xlarge` instance (8 cores).
+DeepSparse includes a benchmarking script to test performance. We look at the realtime batch 1 scenario using an AWS `c6i.4xlarge` instance (8 cores).
 
-#### ONNX Runtime Dense Performance (Batch 1)
+#### ONNX Runtime Dense Performance
 
-As a baseline, let's look at ONNX Runtime's performance.
+As a baseline, let's look at ONNX Runtime's performance. Install ONNXRuntime with `pip install onnxruntime`.
 
-Install ONNXRuntime: 
-
-```
-pip install onnxruntime
-```
-
-Run the following to test ORTs's latency and throughput on dense YOLOv5s with batch 1:
-
+We can see ONNX Runtime achieves 17 images/sec at batch 1 with dense YOLOv5-s:
 ```
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -e onnxruntime
+
+>> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
+>> Batch Size: 1
+>> Scenario: sync
+>> Throughput (items/sec): 17.2266
+>> Latency Mean (ms/batch): 58.0394
+>> Latency Median (ms/batch): 58.0130
+>> Latency Std (ms/batch): 0.2080
+>> Iterations: 173
 ```
 
-The output is:
-```
-Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
-Batch Size: 1
-Scenario: sync
-Throughput (items/sec): 17.2266
-Latency Mean (ms/batch): 58.0394
-Latency Median (ms/batch): 58.0130
-Latency Std (ms/batch): 0.2080
-Iterations: 173
-```
+#### DeepSparse Dense Performance
 
-#### DeepSparse Dense Performance (Batch 1)
+While DeepSparse gets the best performance with sparse models, it also has strong performance for standard dense models.
 
-While DeepSparse has the best performance with sparse models, it also has a speedup relative to ONNX Runtime on dense models.
-
-Run the following to test DeepSparse's latency and throughput on dense YOLOv5s with batch 1:
+We can see DeepSparse achieves 35 images/sec at batch 1 with dense YOLOv5-s, a **2x** performance improvement over ORT:
 
 ```
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1
+
+>> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
+>> Batch Size: 1
+>> Scenario: sync
+>> Throughput (items/sec): 35.2821
+>> Latency Mean (ms/batch): 28.3274
+>> Latency Median (ms/batch): 28.3064
+>> Latency Std (ms/batch): 0.1022
+>> Iterations: 353
 ```
 
-The output is:
-```
-Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
-Batch Size: 1
-Scenario: sync
-Throughput (items/sec): 35.2821
-Latency Mean (ms/batch): 28.3274
-Latency Median (ms/batch): 28.3064
-Latency Std (ms/batch): 0.1022
-Iterations: 353
-```
+#### DeepSparse Sparse Performance
 
-DeepSparse offers a **2x** performance improvement over ONNX Runtime as throughput increased from 17 to 35 images/sec, without even sparsifying the model!
+With the sparse version of YOLOv5-s, DeepSparse's performance is even stronger.
 
-#### DeepSparse Sparse Performance (Batch 1)
-
-DeepSparse offers the best performance with sparse models.
-
-Run the following to test DeepSparse's latency and throughput on pruned-quantized YOLOv5s with batch 1:
+We can see DeepSparse achieves 80 images/sec with sparse YOLOv5-s, a **4.7x** performance improvement over ORT.
 
 ```
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 -s sync -b 1
+
+>> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+>> Batch Size: 1
+>> Scenario: sync
+>> Throughput (items/sec): 79.8339
+>> Latency Mean (ms/batch): 12.5111
+>> Latency Median (ms/batch): 12.5534
+>> Latency Std (ms/batch): 0.1546
+>> Iterations: 799
 ```
 
-The output is:
-```
-Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
-Batch Size: 1
-Scenario: sync
-Throughput (items/sec): 79.8339
-Latency Mean (ms/batch): 12.5111
-Latency Median (ms/batch): 12.5534
-Latency Std (ms/batch): 0.1546
-Iterations: 799
-```
-
-By utilizing sparsity, DeepSparse offers a **4.7x** performance improvement over ONNX Runtime as throughput increased from 17 to 80 images/sec!
-
-#### DeepSparse vs ONNX Runtime (Batch 64)
+#### Batch 64 Performance Comparison
 
 In latency-insensitive scenarios (where batch sizes are large), DeepSparse's performance gain relative to ONNX Runtime is even stronger.
 
-**ONNX Runtime at Batch 64:**
-
+ORT achieves 15 images/sec at batch 64:
 ```
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -e onnxruntime
+
+>> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
+>> Batch Size: 64
+>> Scenario: sync
+>> Throughput (items/sec): 14.7454
+>> Latency Mean (ms/batch): 4339.7396
+>> Latency Median (ms/batch): 4190.1105
+>> Latency Std (ms/batch): 211.6520
+>> Iterations: 3
 ```
 
-The output is:
-```
-Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
-Batch Size: 64
-Scenario: sync
-Throughput (items/sec): 14.7454
-Latency Mean (ms/batch): 4339.7396
-Latency Median (ms/batch): 4190.1105
-Latency Std (ms/batch): 211.6520
-Iterations: 3
-```
-
-**DeepSparse at Batch 64:**
+DeepSparse achieves 148 images/sec at batch 64, a **10x** performance improvement over ONNX Runtime:
 
 ```
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 -s sync -b 64
-```
 
-The output is:
+>> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+>> Batch Size: 64
+>> Scenario: sync
+>> Throughput (items/sec): 147.6844
+>> Latency Mean (ms/batch): 433.3391
+>> Latency Median (ms/batch): 433.1426
+>> Latency Std (ms/batch): 0.9764
+>> Iterations: 24
 ```
-Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
-Batch Size: 64
-Scenario: sync
-Throughput (items/sec): 147.6844
-Latency Mean (ms/batch): 433.3391
-Latency Median (ms/batch): 433.1426
-Latency Std (ms/batch): 0.9764
-Iterations: 24
-```
-
-In the throuput scenario, DeepSparse offers a **10x** performance improvement over ONNX Runtime as throughput increased from 15 to 148 images/sec!
 
 ### Deploy a Model
 
