@@ -1,54 +1,35 @@
-# DeepSparse: Deploy YOLOv5 with Realtime Latency on CPUs
+# DeepSparse Integration
 
-Learn how to deploy YOLOv5 with Neural Magic's DeepSparse. 
+:books: Learn how to deploy YOLOv5 on Neural Magic's DeepSparse with GPU-class performance on CPUs. 
 
-## DeepSparse Overview
+## About DeepSparse
 
-DeepSparse is an inference runtime offering GPU-class performance on CPUs and tooling to integrate ML into your application. 
+DeepSparse is an inference runtime offering GPU-class performance on CPUs and tooling to integrate ML into your application.
 
-CPU-only deployments take advantage of the low cost, flexibility, and scalability of software-delivered inference:
-- Lower latency than a GPU, at lower cost
-- Deploy the same model and runtime on any hardware from Intel to AMD to ARM and from cloud to data center to edge, including on pre-existing systems
-- Scale vertically from 1 to 192 cores, tailoring the footprint to an app's exact needs
-- Scale horizontally with standard Kubernetes, including using services like EKS/GKE
-- Scale abstractly with serverless instances like GCP Cloud Run and AWS Lambda
-- Integrate easily into "Deploy with code" provisioning systems
-- No wrestling with drivers, operator support, and compatibility issues
+By deploying with DeepSparse, you get the performance of GPUs with the low cost and simplicity of software:
+- **Exceptional Performance:** Deploy state-of-the-art models with GPU-class performance on low-cost commodity CPUs
+- **Flexible Deployment:** Deploy consistently across any environment from cloud to data center to edge and any hardware provider from Intel to AMD to ARM
+- **Near-Infinite Scalability:** Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
+- **Ease of Integration:** Clean APIs for integrating your model into an application and monitoring it in production
 
-With DeepSparse, you no longer need to pick between the performance of GPUs and the simplicity of software!
+### How Does DeepSparse Achieve its Performance?
 
-## How Does DeepSparse Achieve GPU-Class Performance with just CPUs?
+DeepSparse leverages sparsity to gain its performance speedups.
 
-DeepSparse uses sparsity in neural networks to gain its performance speedup.
+Sparsification through weight pruning and quantization is a broadly studied  echnique, allowing reductions of 10x in the size and theoretical compute 
+needed to execute a neural network, without losing much accuracy. DeepSparse is uniquely architected to take advantage of sparsity by "skipping" the 
+multiply-adds by 0, shrinking the amount of computation in the forward pass. The sparse computation becomes memory bound, so DeepSparse executes the 
+network depth-wise rather than layer-after-layer, breaking the network into Tensor Columns, vertical stripes of computation that fit completely in cache 
+without having to read or write to memory.
 
-When we say sparsity, we are talking about sparsity in the weights of the network. Sparsification through pruning and quantization is a broadly 
-studied ML technique, allowing reductions of 10x in the size and theoretical compute needed to execute a neural network, without losing much accuracy.
+Sparse computation, executed depth-wise in cache, allows DeepSparse to deliver GPU-class performance on CPUs!
 
-There are two primary techniques for creating sparse models:
-- **Pruning** removes redundant weights from a neural network. Because neural networks are highly overparameterized,
-removing redundant weights has very little if any impact on the model's accuracy, especially when performed in a training-aware manner where
-the non-zero weights can adjust to the new optimization space. By removing the useless weights and and settings them to 0, we can reduce the 
-amount of computation needed to execute a forward pass.
+### How Do I Create A Sparse Version of YOLOv5?
 
-- **Quantization** reduces the precision of the weights typically from FP32 to INT8. This reduces the amount of 
-memory needed to represent a model. Just like pruning, quantization has very little imact on model accuracy, especially
-when performed in a training-aware manner. By reducing the precision of the weights, the model can be executed more quickly as more
-data can fit into the caches inside a CPU, which is often the bottleneck of the computation.
+Neural Magic has open-source sparse versions of each YOLOv5 model, available for use from the [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1).
 
-DeepSparse is uniquely architected to take advantage of sparsity to gain performance speedups. DeepSparse has implemented sparse 
-versions of common operations in deep neural networks such as the convolution, and is able to effectively "skip" the multiply-adds by zero, 
-dramatically shrinking the amount of computation executed in the forward pass. The deeply sparsified computation is memory bound, 
-so DeepSparse execute the neural network depth-wise rather than layer-after-layer. It might seem like magic, but DeepSparse is able 
-to break the network into Tensor Columns, vertical stripes of computation that fit completely in cache without having to read or write to memory.
-
-Sparse computation, executed depth-wise in cache, allows us to deliver GPU-class performance on CPUs!
-
-#### How Do I Create A Sparse Version of YOLOv5?
-
-Neural Magic has created open-source sparsified versions of each YOLOv5 model, available for use from the [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1).
-
-Additionally, Neural Magic's SparseML library is integrated with Ultralytics, enabling you to create a sparse model trained on your data. These pathways
-allow you to transfer learn from pre-sparsified YOLOv5 models from SparseZoo or apply pruning and quantization to your YOLOv5 model from scratch. See [our YOLOv5 documentation](https://docs.neuralmagic.com/use-cases/object-detection/sparsifying) for more details.
+Additionally, Neural Magic's SparseML library is integrated with Ultralytics, enabling you to create a sparse model trained on your data. SparseML
+allows you to transfer learn from pre-sparsified YOLOv5 models from the SparseZoo and to apply pruning and quantization to your YOLOv5 model from scratch. See [our YOLOv5 documentation](https://docs.neuralmagic.com/use-cases/object-detection/sparsifying) for more details.
 
 ## Usage Example
 
