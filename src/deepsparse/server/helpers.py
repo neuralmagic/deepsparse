@@ -17,12 +17,16 @@ Helper functions for deepsparse.server
 
 import importlib
 import logging
-from typing import Type
+from typing import Dict, Type
 
 from deepsparse import BaseLogger, PythonLogger
 
 
-__all__ = ["log_system_info", "default_logger", "custom_logger_from_identifier"]
+__all__ = [
+    "default_logger",
+    "custom_logger_from_identifier",
+    "default_system_logging_config",
+]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,14 +47,16 @@ def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLog
     return getattr(module, logger_object_name)
 
 
-def default_logger() -> BaseLogger:
+def default_logger() -> Dict[str, Type[BaseLogger]]:
     """
     :return: default PythonLogger object for the deployment scenario
     """
-    logger = PythonLogger()
     _LOGGER.info("Created default logger: PythonLogger")
-    return logger
+    return {"python": PythonLogger}
 
 
-def log_system_info(server_logger: BaseLogger):
-    pass
+def default_system_logging_config() -> Dict[str, Dict[str, bool]]:
+    """
+    :return: default system logging configuration for the deployment scenario
+    """
+    return {"inference_latency_group": {"enable": True}}

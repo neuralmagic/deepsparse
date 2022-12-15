@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field, validator
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
+from deepsparse.server.helpers import default_system_logging_config
 from deepsparse.tasks import SupportedTasks
 
 
@@ -199,6 +200,9 @@ class ServerConfig(BaseModel):
             "Set to {} for no loggers. Default is {}."
         ),
     )
+    system_logging: Optional[
+        Dict[str, Union[bool, str, List[str], Dict[str, Any]]]
+    ] = Field(default=default_system_logging_config())
 
     @validator("endpoints")
     def assert_unique_endpoint_names(

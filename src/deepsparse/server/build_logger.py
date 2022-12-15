@@ -26,6 +26,7 @@ from deepsparse.loggers import (
     MultiLogger,
     PrometheusLogger,
     PythonLogger,
+    SystemMetricGroups,
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
 from deepsparse.server.config import MetricFunctionConfig, ServerConfig
@@ -35,6 +36,7 @@ from deepsparse.server.helpers import custom_logger_from_identifier, default_log
 __all__ = ["build_logger"]
 
 _LOGGER_MAPPING = {"python": PythonLogger, "prometheus": PrometheusLogger}
+AVAILABLE_SYSTEM_GROUPS = [group.value for group in SystemMetricGroups]
 
 
 def build_logger(server_config: ServerConfig) -> BaseLogger:
@@ -56,21 +58,18 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     """
 
     loggers_config = server_config.loggers
-    if not loggers_config:
-        return AsyncLogger(
-            logger=MultiLogger(
-                [default_logger()]
-            ),  # wrap all loggers to async log call
-            max_workers=1,
-        )
+    system_logging_config = server_config.system_logging
 
-    # base level loggers that log raw values for monitoring. ie python, prometheus
-    leaf_loggers = build_leaf_loggers(loggers_config)
+    leaf_loggers = (
+        build_leaf_loggers(loggers_config) if loggers_config else default_logger()
+    )
+    function_loggers_data = build_function_loggers(
+        server_config.endpoints, leaf_loggers
+    )
 
-    function_loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
+    function_loggers_system = create_system_loggers(leaf_loggers, system_logging_config)
 
-    # add logger to ensure leaf level logging of all system (timing) logs
-    function_loggers.append(_create_system_logger(leaf_loggers))
+    function_loggers = function_loggers_data + function_loggers_system
 
     return AsyncLogger(
         logger=MultiLogger(function_loggers),  # wrap all loggers to async log call
@@ -137,16 +136,49 @@ def build_function_loggers(
     return function_loggers
 
 
-def _create_system_logger(loggers: Dict[str, BaseLogger]) -> FunctionLogger:
-    # returns a function logger that matches to all system logs, logging
-    # every system call to each leaf logger
-    return _build_function_logger(
-        metric_function_cfg=MetricFunctionConfig(
-            func="identity", frequency=1, target_loggers=None
-        ),
-        target_identifier=f"category:{MetricCategories.SYSTEM.value}",
-        loggers=loggers,
-    )
+def create_system_loggers(
+    loggers: Dict[str, BaseLogger],
+    system_logging_config: Dict[str, Any],
+    available_system_groups: List[str] = AVAILABLE_SYSTEM_GROUPS,
+) -> List[Optional[FunctionLogger]]:
+    """
+    Create a system loggers (a list of FunctionLogger responsible for logging system metrics)
+    according to the configuration.
+
+    :param loggers: The created "leaf" loggers
+    :param system_logging_config: The system logging configuration
+    :return: A list of FunctionLogger instances
+    """
+    system_logging_enabled = system_logging_config.pop("enable", True)
+    if not system_logging_enabled:
+        return []
+    system_loggers = []
+    # extract the global `target_loggers` if present
+    target_loggers = system_logging_config.pop("target_loggers", None)
+    for target_name, target_args in system_logging_config.items():
+        target_name = target_name.replace("_group", "")
+        # check for valid target name
+        if target_name not in available_system_groups:
+            raise ValueError(
+                f"Unknown system logging group: {target_name}. Expected one of: {available_system_groups}"
+            )
+        target_logging_enabled = system_logging_config.get("enable", True)
+        if not target_logging_enabled:
+            continue
+
+        system_loggers.append(
+            _build_function_logger(
+                metric_function_cfg=MetricFunctionConfig(
+                    func="identity",
+                    frequency=1,
+                    # if applicable, override the global `target_loggers` with the target-specific `target_loggers`
+                    target_loggers=target_args.get("target_loggers", target_loggers),
+                ),
+                target_identifier=f"category:{MetricCategories.SYSTEM.value}/{target_name}",
+                loggers=loggers,
+            )
+        )
+    return system_loggers
 
 
 def _build_function_logger(

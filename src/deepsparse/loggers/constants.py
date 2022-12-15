@@ -18,23 +18,26 @@ Holds logging-related objects with constant values
 from enum import Enum
 
 
-__all__ = ["MetricCategories", "validate_identifier"]
+__all__ = ["SystemMetricGroups", "MetricCategories", "validate_identifier"]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
 
-
+"""
+Metric Taxonomy [for reference]
+   CATEGORY - category of metric (System/Data)
+       GROUP - logical group of metrics
+           METRIC - individual metric
+"""
 class MetricCategories(Enum):
-    """
-    Metric Taxonomy [for reference]
-        CATEGORY - category of metric (System/Data)
-            GROUP - logical group of metrics
-                METRIC - individual metric
-    """
-
     # Categories
     SYSTEM = "system"
     DATA = "data"
 
+class SystemMetricGroups(Enum):
+    # Groups for System category
+    INFERENCE_LATENCY = "inference_latency"
+    DEPLOYMENT_INFORMATION = "deployment_information"
+    RESOURCE_UTILIZATION = "resource_utilization"
 
 def validate_identifier(identifier: str):
     """

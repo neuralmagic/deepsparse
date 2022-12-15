@@ -34,7 +34,7 @@ from deepsparse.server.config import (
     ServerConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
-from deepsparse.server.helpers import log_system_info
+from deepsparse.server.system_logging import log_system_info
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -241,7 +241,7 @@ def _add_pipeline_endpoint(
         pipeline_outputs = pipeline(request)
         server_logger = pipeline.logger
         if server_logger:
-            log_system_info(server_logger)
+            log_system_info(server_logger, pipeline)
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):
