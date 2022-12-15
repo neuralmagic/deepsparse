@@ -118,7 +118,7 @@ def match_and_extract(
     is_match, remainder = check_identifier_match(
         template, identifier, category=category
     )
-    if is_match and category is not None:
+    if is_match:
         return possibly_extract_value(value, remainder), remainder
     else:
         return NO_MATCH, remainder
@@ -254,8 +254,8 @@ def check_identifier_match(
         template_category, template_group = template_category_and_group.split("/")
         template_category = MetricCategories(template_category)
         category = MetricCategories(category)  # ensure in Enum form
-        group = SystemMetricGroups(template_group)  # ensure in Enum form
-        return template_category == category, group.value
+        SystemMetricGroups(template_group)  # ensure in Enum form
+        return template_category == category, None
     if template == identifier:
         return True, None
     if template.startswith(identifier):

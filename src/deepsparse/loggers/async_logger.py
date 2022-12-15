@@ -18,9 +18,9 @@ Logger wrapper to run log calls asynchronously to not block the main process
 
 import logging
 from concurrent.futures import Executor, ThreadPoolExecutor
-from typing import Any
+from typing import Any, Optional
 
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import BaseLogger, MetricCategories, SystemMetricGroups
 
 
 __all__ = ["AsyncLogger"]
@@ -43,19 +43,28 @@ class AsyncLogger(BaseLogger):
         self.logger = logger
         self._job_pool: Executor = ThreadPoolExecutor(max_workers=max_workers)
 
-    def log(self, identifier: str, value: Any, category: MetricCategories):
+    def log(
+        self,
+        identifier: str,
+        value: Any,
+        category: MetricCategories,
+        group: Optional[SystemMetricGroups] = None,
+    ):
         """
         Forward log calls to wrapped logger to run asynchronously
 
         :param identifier: The name of the item that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
+        :param group: The metric group (subgroup of the category)
+            that the log belongs to
         """
         job_future = self._job_pool.submit(
             self.logger.log,
             identifier=identifier,
             value=value,
             category=category,
+            group=group,
         )
         job_future.add_done_callback(_log_async_job_exception)
 

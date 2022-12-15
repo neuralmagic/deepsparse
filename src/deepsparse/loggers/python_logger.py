@@ -16,9 +16,9 @@
 Implementation of the Python Logger that logs to the stdout
 """
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import BaseLogger, MetricCategories, SystemMetricGroups
 
 
 __all__ = ["PythonLogger"]
@@ -29,16 +29,24 @@ class PythonLogger(BaseLogger):
     Python logger that writes the collected logs to stdout
     """
 
-    def log(self, identifier: str, value: Any, category: MetricCategories):
+    def log(
+        self,
+        identifier: str,
+        value: Any,
+        category: MetricCategories,
+        group: Optional[SystemMetricGroups] = None,
+    ):
         """
         Collect information from the pipeline and pipe it them to the stdout
 
         :param identifier: The name of the item that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
+        :param group: The metric group (subgroup of the category)
+            that the log belongs to
         """
         msg = (
-            f" Identifier: {identifier} | Category: {category.value} "
+            f" Identifier: {identifier} | Category: {category.value} | Group: {group.value if group else 'N/A'} "
             f"| Logged Data: {value}"
         )
         print(datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f") + msg)

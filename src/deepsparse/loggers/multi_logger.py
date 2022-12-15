@@ -16,9 +16,9 @@
 Implementation of the Multi Logger that serves as a
 container for holding multiple loggers
 """
-from typing import Any, List
+from typing import Any, List, Optional
 
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import BaseLogger, MetricCategories, SystemMetricGroups
 
 
 __all__ = ["MultiLogger"]
@@ -32,12 +32,20 @@ class MultiLogger(BaseLogger):
     def __init__(self, loggers: List[BaseLogger]):
         self.loggers = loggers
 
-    def log(self, identifier: str, value: Any, category: MetricCategories):
+    def log(
+        self,
+        identifier: str,
+        value: Any,
+        category: MetricCategories,
+        group: Optional[SystemMetricGroups] = None,
+    ):
         """
 
         :param identifier: The name of the item that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
+        :param group: The metric group (subgroup of the category)
+            that the log belongs to
         """
         for logger in self.loggers:
-            logger.log(identifier, value, category)
+            logger.log(identifier, value, category, group)

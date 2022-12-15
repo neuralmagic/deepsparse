@@ -20,7 +20,7 @@ import os
 from collections import defaultdict
 from typing import Any, Optional
 
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import BaseLogger, MetricCategories, SystemMetricGroups
 
 
 try:
@@ -80,13 +80,21 @@ class PrometheusLogger(BaseLogger):
         self._setup_client()
         self._counter = 0
 
-    def log(self, identifier: str, value: Any, category: MetricCategories):
+    def log(
+        self,
+        identifier: str,
+        value: Any,
+        category: MetricCategories,
+        group: Optional[SystemMetricGroups] = None,
+    ):
         """
         Collect information from the pipeline and pipe it them to the stdout
 
         :param identifier: The name of the thing that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
+         :param group: The metric group (subgroup of the category)
+            that the log belongs to
         """
 
         # needs to adhere to
@@ -97,7 +105,7 @@ class PrometheusLogger(BaseLogger):
         prometheus_metric = self._prometheus_metrics.get(formatted_identifier)
         if prometheus_metric is None:
             prometheus_metric = self._add_metric_to_registry(
-                formatted_identifier, category
+                formatted_identifier, category, group
             )
         prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
@@ -110,15 +118,27 @@ class PrometheusLogger(BaseLogger):
             self._counter = 0
         self._counter += 1
 
-    def _add_metric_to_registry(self, identifier: str, category: str) -> Summary:
-        description = (
-            """Summary metric for identifier: {identifier} | Category: {category}"""
-        )
-        prometheus_metric = Summary(
-            identifier,
-            description.format(identifier=identifier, category=category),
-            registry=REGISTRY,
-        )
+    def _add_metric_to_registry(
+        self, identifier: str, category: str, group: Optional[str] = None
+    ) -> Summary:
+        if group:
+            description = (
+                """Summary metric for identifier: {identifier} | Category: {category}"""
+            )
+            prometheus_metric = Summary(
+                identifier,
+                description.format(identifier=identifier, category=category),
+                registry=REGISTRY,
+            )
+        else:
+            description = """Summary metric for identifier: {identifier} | Category: {category} | Group: {group}"""
+            prometheus_metric = Summary(
+                identifier,
+                description.format(
+                    identifier=identifier, category=category, group=group
+                ),
+                registry=REGISTRY,
+            )
         self._prometheus_metrics[identifier] = prometheus_metric
         return prometheus_metric
 
