@@ -15,7 +15,7 @@
 """
 Implementation of the Function Logger
 """
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from deepsparse.loggers import BaseLogger, MetricCategories, SystemMetricGroups
 from deepsparse.loggers.helpers import NO_MATCH, match_and_extract

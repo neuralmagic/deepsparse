@@ -155,6 +155,8 @@ def create_system_loggers(
     system_loggers = []
     # extract the global `target_loggers` if present
     target_loggers = system_logging_config.pop("target_loggers", None)
+
+    # iterate over the system group targets and create a system logger for each
     for target_name, target_args in system_logging_config.items():
         target_name = target_name.replace("_group", "")
         # check for valid target name
