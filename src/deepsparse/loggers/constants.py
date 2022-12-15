@@ -28,16 +28,20 @@ Metric Taxonomy [for reference]
        GROUP - logical group of metrics
            METRIC - individual metric
 """
+
+
 class MetricCategories(Enum):
     # Categories
     SYSTEM = "system"
     DATA = "data"
+
 
 class SystemMetricGroups(Enum):
     # Groups for System category
     INFERENCE_LATENCY = "inference_latency"
     DEPLOYMENT_INFORMATION = "deployment_information"
     RESOURCE_UTILIZATION = "resource_utilization"
+
 
 def validate_identifier(identifier: str):
     """

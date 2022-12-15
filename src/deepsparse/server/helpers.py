@@ -47,12 +47,12 @@ def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLog
     return getattr(module, logger_object_name)
 
 
-def default_logger() -> Dict[str, Type[BaseLogger]]:
+def default_logger() -> Dict[str, BaseLogger]:
     """
     :return: default PythonLogger object for the deployment scenario
     """
     _LOGGER.info("Created default logger: PythonLogger")
-    return {"python": PythonLogger}
+    return {"python": PythonLogger()}
 
 
 def default_system_logging_config() -> Dict[str, Dict[str, bool]]:

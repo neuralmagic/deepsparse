@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 import numpy
 
 import deepsparse.loggers.metric_functions.built_ins as built_ins
-from deepsparse.loggers import MetricCategories
+from deepsparse.loggers import MetricCategories, SystemMetricGroups
 
 
 __all__ = [
@@ -118,7 +118,7 @@ def match_and_extract(
     is_match, remainder = check_identifier_match(
         template, identifier, category=category
     )
-    if is_match:
+    if is_match and category is not None:
         return possibly_extract_value(value, remainder), remainder
     else:
         return NO_MATCH, remainder
@@ -250,10 +250,12 @@ def check_identifier_match(
         pattern = template[3:]
         return re.match(pattern, identifier) is not None, None
     if template.startswith("category:") and category is not None:
-        template_category = template[9:]
-        template_category = MetricCategories(template_category)  # parse into Enum
+        template_category_and_group = template[9:]
+        template_category, template_group = template_category_and_group.split("/")
+        template_category = MetricCategories(template_category)
         category = MetricCategories(category)  # ensure in Enum form
-        return template_category == category, None
+        group = SystemMetricGroups(template_group)  # ensure in Enum form
+        return template_category == category, group.value
     if template == identifier:
         return True, None
     if template.startswith(identifier):
