@@ -91,16 +91,6 @@ def annotate_image(
                 text_height=text_height,
             )
 
-    if images_per_sec is not None:
-        image_res = _plot_fps(
-            img_res=image_res,
-            images_per_sec=images_per_sec,
-            x=20,
-            y=30,
-            font_scale=0.9,
-            thickness=2,
-        )
-
     return image_res
 
 

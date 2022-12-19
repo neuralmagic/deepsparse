@@ -80,7 +80,7 @@ from deepsparse.yolact.utils import annotate_image
 
 
 yolact_v5_default_stub = (
-    "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
+    "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/base-none"
 )
 
 DEEPSPARSE_ENGINE = "deepsparse"
