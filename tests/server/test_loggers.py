@@ -40,8 +40,7 @@ def _test_logger_contents(leaf_logger, expected_logs):
 
 def test_default_logger():
     server_config = ServerConfig(
-        endpoints=[EndpointConfig(task=task, name=name, model=stub)],
-        loggers={},
+        endpoints=[EndpointConfig(task=task, name=name, model=stub)]
     )
     server_logger = build_logger(server_config)
     with mock.patch(
@@ -52,7 +51,7 @@ def test_default_logger():
 
     for _ in range(2):
         client.post("/predict", json={"sequences": "today is great"})
-    assert isinstance(server_logger.logger.loggers[0], PythonLogger)
+    assert isinstance(server_logger.logger.loggers[0].logger.loggers[0], PythonLogger)
 
 
 def test_logging_only_system_info():

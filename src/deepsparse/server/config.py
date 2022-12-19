@@ -49,6 +49,23 @@ class ImageSizesConfig(BaseModel):
     )
 
 
+class SystemLoggingGroup(BaseModel):
+    enable: Optional[bool] = Field(default=False)
+    target_loggers: Optional[List[str]] = Field(default=None)
+
+
+class SystemLoggingConfig(BaseModel):
+    enable: Optional[bool] = Field(default=True)
+    target_loggers: Optional[List[str]] = Field(default=None)
+
+    resource_utilization: Optional[SystemLoggingGroup] = Field(default=None)
+    deployment_details: Optional[SystemLoggingGroup] = Field(default=None)
+    prediction_latency: SystemLoggingGroup = Field(
+        default=SystemLoggingGroup(enable=True)
+    )
+    request_details: Optional[SystemLoggingGroup] = Field(default=None)
+
+
 class MetricFunctionConfig(BaseModel):
     """
     Holds logging configuration for a metric function
@@ -199,6 +216,8 @@ class ServerConfig(BaseModel):
             "Set to {} for no loggers. Default is {}."
         ),
     )
+
+    system_logging: SystemLoggingConfig = Field(default=SystemLoggingConfig())
 
     @validator("endpoints")
     def assert_unique_endpoint_names(

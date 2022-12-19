@@ -28,11 +28,16 @@ from deepsparse.loggers import (
     PythonLogger,
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.server.config import MetricFunctionConfig, ServerConfig
+from deepsparse.server.config import (
+    MetricFunctionConfig,
+    ServerConfig,
+    SystemLoggingConfig,
+    SystemLoggingGroup,
+)
 from deepsparse.server.helpers import custom_logger_from_identifier, default_logger
 
 
-__all__ = ["build_logger"]
+__all__ = ["build_logger", "extract_system_group_data"]
 
 _LOGGER_MAPPING = {"python": PythonLogger, "prometheus": PrometheusLogger}
 
@@ -56,21 +61,15 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     """
 
     loggers_config = server_config.loggers
-    if not loggers_config:
-        return AsyncLogger(
-            logger=MultiLogger(
-                [default_logger()]
-            ),  # wrap all loggers to async log call
-            max_workers=1,
-        )
+    system_logging_config = server_config.system_logging
 
-    # base level loggers that log raw values for monitoring. ie python, prometheus
-    leaf_loggers = build_leaf_loggers(loggers_config)
+    leaf_loggers = (
+        build_leaf_loggers(loggers_config) if loggers_config else default_logger()
+    )
 
-    function_loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
-
-    # add logger to ensure leaf level logging of all system (timing) logs
-    function_loggers.append(_create_system_logger(leaf_loggers))
+    function_loggers_data = build_data_loggers(server_config.endpoints, leaf_loggers)
+    function_loggers_system = build_system_loggers(leaf_loggers, system_logging_config)
+    function_loggers = function_loggers_data + function_loggers_system
 
     return AsyncLogger(
         logger=MultiLogger(function_loggers),  # wrap all loggers to async log call
@@ -111,11 +110,12 @@ def build_leaf_loggers(
     return loggers
 
 
-def build_function_loggers(
+def build_data_loggers(
     endpoints: List["EndpointConfig"], loggers: Dict[str, BaseLogger]  # noqa F821
 ) -> List[FunctionLogger]:
     """
-    Build a set of function loggers according to the configuration.
+    Build a set of data loggers (FunctionLogger instances)
+    according to the configuration.
 
     :param endpoints: A list of server's endpoint configurations;
         the configurations contain the information about the metric
@@ -137,16 +137,54 @@ def build_function_loggers(
     return function_loggers
 
 
-def _create_system_logger(loggers: Dict[str, BaseLogger]) -> FunctionLogger:
-    # returns a function logger that matches to all system logs, logging
-    # every system call to each leaf logger
-    return _build_function_logger(
-        metric_function_cfg=MetricFunctionConfig(
-            func="identity", frequency=1, target_loggers=None
-        ),
-        target_identifier=f"category:{MetricCategories.SYSTEM.value}",
-        loggers=loggers,
-    )
+def build_system_loggers(
+    loggers: Dict[str, BaseLogger], system_logging_config: SystemLoggingConfig
+) -> List[Optional[FunctionLogger]]:
+    """
+    Create a system loggers according to the configuration specified
+    in `system_logging_config`. System loggers are FunctionLogger instances
+    responsible for logging system groups metrics.
+
+    :param loggers: The created "leaf" loggers
+    :param system_logging_config: The system logging configuration
+    :return: A list of FunctionLogger instances reponsible for logging system data
+    """
+    system_loggers = []
+    system_config_groups = extract_system_group_data(system_logging_config)
+    for config_group_name, config_group_args in system_config_groups.items():
+        system_loggers.append(
+            _build_function_logger(
+                metric_function_cfg=MetricFunctionConfig(
+                    func="identity",
+                    frequency=1,
+                    target_loggers=config_group_args.target_loggers,
+                ),
+                target_identifier=_get_target_identifier(
+                    config_group_name, is_system_logging_identifier=True
+                ),
+                loggers=loggers,
+            )
+        )
+    return system_loggers
+
+
+def extract_system_group_data(
+    system_logging_config: "SystemLoggingConfig",
+) -> Dict[str, SystemLoggingGroup]:
+    if not system_logging_config.enable:
+        return {}
+    target_loggers = system_logging_config.target_loggers
+    system_config_groups = {
+        config_group_name: config_group_args
+        for (config_group_name, config_group_args) in system_logging_config
+        if isinstance(config_group_args, SystemLoggingGroup)
+    }
+    # assert that remaining config are system group configs
+    for config_group_name, config_group_args in system_config_groups.items():
+        if target_loggers and not config_group_args.target_loggers:
+            config_group_args.target_loggers = target_loggers
+
+    return system_config_groups
 
 
 def _build_function_logger(
@@ -190,7 +228,31 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
     return logger
 
 
-def _get_target_identifier(endpoint_name: str, target_name: str) -> str:
+def _get_target_identifier(
+    *identifier_strings, is_system_logging_identifier=False
+) -> str:
+    if is_system_logging_identifier:
+        if len(identifier_strings) != 1:
+            raise ValueError(
+                "System logging target identifier must be a single string. "
+                f"Got {identifier_strings} instead."
+            )
+        return _get_target_identifier_system(*identifier_strings)
+    else:
+        if len(identifier_strings) != 2:
+            raise ValueError(
+                "Target identifier must be a tuple of two strings. "
+                f"Got {identifier_strings} instead."
+            )
+        return _get_target_identifier_data(*identifier_strings)
+
+
+def _get_target_identifier_system(target_name: str) -> str:
+    # TODO: Support for regex
+    return f"category:{MetricCategories.SYSTEM.value}/{target_name}"
+
+
+def _get_target_identifier_data(endpoint_name: str, target_name: str) -> str:
     if target_name.startswith("re:"):
         # if target name starts with "re:", it is a regex,
         # and we don't need to add the endpoint name to it

@@ -34,7 +34,7 @@ from deepsparse.server.config import (
     ServerConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
-from deepsparse.server.helpers import log_system_info
+from deepsparse.server.system_logging import SystemLoggingManager
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -121,6 +121,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     app = FastAPI()
     server_logger = build_logger(server_config)
+    system_logging_manager = SystemLoggingManager.from_server_config(server_config)
 
     @app.get("/", include_in_schema=False)
     def _home():
@@ -148,6 +149,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
             executor,
             context,
             server_logger,
+            system_logging_manager,
         )
         # force regeneration of the docs
         app.openapi_schema = None
@@ -172,6 +174,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
             executor,
             context,
             server_logger,
+            system_logging_manager,
         )
 
     _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
@@ -217,6 +220,7 @@ def _add_endpoint(
     executor: ThreadPoolExecutor,
     context: Context,
     server_logger: BaseLogger,
+    system_logging_manager: SystemLoggingManager,
 ):
     pipeline_config = endpoint_config.to_pipeline_config()
     pipeline_config.kwargs["executor"] = executor
@@ -241,7 +245,7 @@ def _add_pipeline_endpoint(
         pipeline_outputs = pipeline(request)
         server_logger = pipeline.logger
         if server_logger:
-            log_system_info(server_logger)
+            pass
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):
