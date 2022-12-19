@@ -218,23 +218,21 @@ system_logging:
 
 
 @pytest.mark.parametrize(
-    "yaml_config, raises_error, expected_target_identifiers, number_leaf_loggers_per_system_logger",  # noqa: E501
+    "yaml_config, expected_target_identifiers, number_leaf_loggers_per_system_logger",  # noqa: E501
     [
-        (yaml_config_1, False, {"category:system/prediction_latency"}, [2]),
-        (yaml_config_2, False, set(), []),
+        (yaml_config_1, {"category:system/prediction_latency"}, [2]),
+        (yaml_config_2, set(), []),
         (
             yaml_config_3,
-            False,
             {
                 "category:system/prediction_latency",
                 "category:system/resource_utilization",
             },
             [2, 2],
         ),
-        (yaml_config_4, False, set(), []),
+        (yaml_config_4, set(), []),
         (
             yaml_config_5,
-            False,
             {
                 "category:system/prediction_latency",
                 "category:system/resource_utilization",
@@ -243,7 +241,6 @@ system_logging:
         ),
         (
             yaml_config_6,
-            False,
             {
                 "category:system/prediction_latency",
                 "category:system/resource_utilization",
@@ -254,7 +251,6 @@ system_logging:
 )
 def test_build_system_loggers(
     yaml_config,
-    raises_error,
     expected_target_identifiers,
     number_leaf_loggers_per_system_logger,
 ):
