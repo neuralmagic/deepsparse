@@ -39,7 +39,7 @@ try:
     from deepsparse.generated_version import is_enterprise, is_release, splash, version
 except Exception:
     # otherwise, fall back to version info in this file
-    version = "1.3.0"
+    version = "1.4.0"
     is_release = False
     is_enterprise = False
     splash = (
