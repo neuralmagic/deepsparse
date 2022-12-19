@@ -122,24 +122,25 @@ def build_data_loggers(
         functions (MetricFunctionConfig objects)
         and the targets that the functions are to be applied to
     :param loggers: The created "leaf" loggers
-    :return: A list of FunctionLogger instances
+    :return: A list of FunctionLogger instances responsible
+        for logging data information
     """
-    function_loggers = []
+    data_loggers = []
     for endpoint in endpoints:
         if endpoint.data_logging is None:
             continue
         for target, metric_functions in endpoint.data_logging.items():
             target_identifier = _get_target_identifier(endpoint.name, target)
             for metric_function in metric_functions:
-                function_loggers.append(
+                data_loggers.append(
                     _build_function_logger(metric_function, target_identifier, loggers)
                 )
-    return function_loggers
+    return data_loggers
 
 
 def build_system_loggers(
     loggers: Dict[str, BaseLogger], system_logging_config: SystemLoggingConfig
-) -> List[Optional[FunctionLogger]]:
+) -> List[FunctionLogger]:
     """
     Create a system loggers according to the configuration specified
     in `system_logging_config`. System loggers are FunctionLogger instances
@@ -147,7 +148,7 @@ def build_system_loggers(
 
     :param loggers: The created "leaf" loggers
     :param system_logging_config: The system logging configuration
-    :return: A list of FunctionLogger instances reponsible for logging system data
+    :return: A list of FunctionLogger instances responsible for logging system data
     """
     system_loggers = []
     system_config_groups = extract_system_group_data(system_logging_config)
@@ -171,15 +172,23 @@ def build_system_loggers(
 def extract_system_group_data(
     system_logging_config: "SystemLoggingConfig",
 ) -> Dict[str, SystemLoggingGroup]:
+    """
+    Extract the system logging groups data from the system logging configuration
+    :param system_logging_config: The system logging configuration
+    :return: A dictionary that contains a mapping from a system logging group name
+        to its arguments
+    """
     if not system_logging_config.enable:
         return {}
     target_loggers = system_logging_config.target_loggers
+
+    # extract exclusively the system logging groups data
     system_config_groups = {
         config_group_name: config_group_args
         for (config_group_name, config_group_args) in system_logging_config
         if isinstance(config_group_args, SystemLoggingGroup)
     }
-    # assert that remaining config are system group configs
+    # propagate the global target loggers information if applicable
     for config_group_name, config_group_args in system_config_groups.items():
         if target_loggers and not config_group_args.target_loggers:
             config_group_args.target_loggers = target_loggers
@@ -247,9 +256,10 @@ def _get_target_identifier(
         return _get_target_identifier_data(*identifier_strings)
 
 
-def _get_target_identifier_system(target_name: str) -> str:
-    # TODO: Support for regex
-    return f"category:{MetricCategories.SYSTEM.value}/{target_name}"
+def _get_target_identifier_system(group_name: str) -> str:
+    # TODO: Let's discuss how the support for regex would
+    # look like here
+    return f"category:{MetricCategories.SYSTEM.value}/{group_name}"
 
 
 def _get_target_identifier_data(endpoint_name: str, target_name: str) -> str:

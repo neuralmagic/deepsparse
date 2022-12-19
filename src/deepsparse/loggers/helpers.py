@@ -257,7 +257,8 @@ def check_identifier_match(
         template_category, *remainder = template_identifier.split("/")
         template_category = MetricCategories(template_category)  # parse into Enum
         category = MetricCategories(category)  # ensure in Enum form
-        return template_category == category, "/".join(remainder)
+        remainder = None if not remainder else "/".join(remainder)
+        return template_category == category, remainder
     if template == identifier:
         return True, None
     if template.startswith(identifier):
