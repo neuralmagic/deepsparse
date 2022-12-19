@@ -91,11 +91,11 @@ class SystemLoggingConfig(BaseModel):
         "documentation. By default this group is disabled.",
     )
     prediction_latency: SystemLoggingGroup = Field(
-        default=SystemLoggingGroup(enable=True),
+        default=None,
         description="The configuration group for the prediction latency "
-        "system logging group. For details refer to the DeepSparse "
-        "server system logging documentation. By default this group "
-        "is enabled.",
+        "system logging group. For details "
+        "refer to the DeepSparse server system logging "
+        "documentation. By default this group is disabled.",
     )
 
     request_details: Optional[SystemLoggingGroup] = Field(
@@ -258,7 +258,9 @@ class ServerConfig(BaseModel):
     )
 
     system_logging: SystemLoggingConfig = Field(
-        default=SystemLoggingConfig(),
+        default=SystemLoggingConfig(
+            prediction_latency=SystemLoggingGroup(enabled=True)
+        ),
         description="A model that holds the system logging configuration. "
         "If not specified explicitly in the yaml config, the "
         "default SystemLoggingConfig model is used.",

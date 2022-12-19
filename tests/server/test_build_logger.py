@@ -186,16 +186,21 @@ system_logging: {}"""
 
 yaml_config_2 = """
 system_logging:
-    enable: false"""
+    prediction_latency:
+        enable: true"""
 
 yaml_config_3 = """
 system_logging:
+    prediction_latency:
+        enable: true
     resource_utilization:
         enable: true"""
 
 yaml_config_4 = """
 system_logging:
     enable: false
+    prediction_latency:
+        enable: true
     resource_utilization:
         enable: true"""
 
@@ -203,6 +208,8 @@ yaml_config_5 = """
 system_logging:
     target_loggers:
     - list_logger_1
+    prediction_latency:
+        enable: true
     resource_utilization:
         enable: true"""
 
@@ -210,6 +217,8 @@ yaml_config_6 = """
 system_logging:
     target_loggers:
     - list_logger_1
+    prediction_latency:
+        enable: true
     resource_utilization:
         enable: true
         target_loggers:
@@ -220,8 +229,8 @@ system_logging:
 @pytest.mark.parametrize(
     "yaml_config, expected_target_identifiers, number_leaf_loggers_per_system_logger",  # noqa: E501
     [
-        (yaml_config_1, {"category:system/prediction_latency"}, [2]),
-        (yaml_config_2, set(), []),
+        (yaml_config_1, set(), []),
+        (yaml_config_2, {"category:system/prediction_latency"}, [2]),
         (
             yaml_config_3,
             {
