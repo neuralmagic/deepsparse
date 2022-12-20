@@ -259,7 +259,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
             span_extra_info.append(
                 {
-                    key: numpy.array(tokenized_example[key][span])
+                    key: numpy.array(tokenized_example[key][span], dtype=object)
                     for key in tokenized_example.keys()
                     if key not in self.onnx_input_names
                 }
