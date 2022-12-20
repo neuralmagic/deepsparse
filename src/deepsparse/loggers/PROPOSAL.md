@@ -18,7 +18,7 @@ Identifier_3 : "pose_estimation_pipeline/object_detection_pipeline/pre_processin
 The general rule, that every component of an identifier, whether it is the pipeline name or main identifier, regardless of the
 the complexity of the identifier is always connected by "/".
 
-Note: some of the system metrics may have values computed externally but logged internally by the pipeline.
+Note: some system metrics may have values computed externally but logged internally by the pipeline.
 ```python
 value = external_function()
 identifier = "some_value"
@@ -80,9 +80,11 @@ So all in all our matching logic will look like this (`check_identifier_match` f
 if template == identifier: # handling "clean" matches for both SYSTEM AND DATA categories
     return True, None
 if template.startswith(identifier): # handling the remaining matches for both SYSTEM AND DATA categories
+    # ACTUALLY: Will this ever happen for SYSTEM category logs? For now I think it's safe to assume that it won't, i.e.
+    # we either have a regex case or a clean match
     remainder = template.replace(identifier, "")
-    # Note: this will require us to avoid calling possibly_extract_value() on the remainder if category == MetricCategories.SYSTEM.
-    # This is because the remainder of such a log should never contain any components that should be used for indexing/slicing/accessing the value.
+    # If this case should happen for SYSTEM category logs, we should avoid calling possibly_extract_value() on the remainder.
+    # This is because the remainder of such a log should never contain any components that are used for indexing/slicing/accessing the value.
     return True, remainder if remainder.startswith("[") else remainder[1:]
 
 return False, None
@@ -91,7 +93,7 @@ return False, None
 # On the output from the FunctionLogger
 - if logging belongs to the DATA category and the remainder has slicing/indexing/access information, 
   remove it e.g. "some_value[0, 1:2]" -> "some_value". Then concatenate it with the identifier using ".": "identifier.some_value"
-- when the function is applied to the value, concatenate it with the identifier using "_": "identifier.some_value_{function_name}". 
+- when the function is applied to the value, concatenate it with the identifier using "_": "identifier.some_value_function_name". 
   If the identifier belongs to the SYSTEM category (function is identity function), skip this step.
 
 
