@@ -12,24 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from os import getpid
 from typing import Any
 
+import psutil
 from deepsparse import Pipeline
+from deepsparse.loggers import BaseLogger, MetricCategories
 
 
 __all__ = ["log_resource_utilization", "log_request_details"]
 
 
-def log_resource_utilization(pipeline: Pipeline, **kwargs: Any):
+def log_resource_utilization(server_logger: BaseLogger):
     """
-    Scope for 1.4:
-    - CPU utilization overall
-    - Memory available overall
-    - Memory used overall (shall we continuously log this?
-      this will be a constant value in time)
-    - Number of core used by the pipeline
+    Logs the resource utilization of the server process.
+    This includes:
+    - CPU utilization
+    - Memory utilization
+    - Total memory available
+
+    :param server_logger: the logger to log the metrics to
     """
-    pass
+    process = psutil.Process(getpid())
+
+    # A float representing the current system-wide CPU utilization as a percentage
+    cpu_percent = process.cpu_percent()
+    # A float representing process memory utilization as a percentage
+    memory_percent = process.memory_percent()
+    # Total physical memory
+    total_memory_bytes = psutil.virtual_memory().total
+    total_memory_megabytes = total_memory_bytes / 1024 / 1024
+
+    identifier_to_value = {
+        "cpu_utilization_[%]": cpu_percent,
+        "memory_utilization_[%]": memory_percent,
+        "total_memory_available_[MB]": total_memory_megabytes,
+    }
+
+    for identifier, value in identifier_to_value.items():
+        server_logger.log(
+            identifier=identifier, value=value, category=MetricCategories.SYSTEM
+        )
 
 
 def log_request_details(pipeline: Pipeline, **kwargs: Any):

@@ -242,8 +242,9 @@ def _add_pipeline_endpoint(
 
     def _predict(request: pipeline.input_schema):
         pipeline_outputs = pipeline(request)
-        if pipeline.logger:
-            log_resource_utilization(pipeline)
+        server_logger = pipeline.logger
+        if server_logger:
+            log_resource_utilization(server_logger)
             log_request_details(pipeline)
         return pipeline_outputs
 

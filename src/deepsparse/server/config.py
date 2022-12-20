@@ -55,7 +55,8 @@ class SystemLoggingGroup(BaseModel):
     """
 
     enable: bool = Field(
-        default=False, description="Whether to enable the system logging group"
+        default=False,
+        description="Whether to enable the system logging group. Defaults to False",
     )
 
     target_loggers: List[str] = Field(
@@ -72,7 +73,7 @@ class SystemLoggingConfig(BaseModel):
 
     # Global Logging Config
     enable: bool = Field(
-        default=True, description="Whether to enable system logging. Defaults to False"
+        default=True, description="Whether to enable system logging. Defaults to True"
     )
 
     # System Logging Groups
@@ -88,7 +89,7 @@ class SystemLoggingConfig(BaseModel):
         description="The configuration group for the prediction latency "
         "system logging group. For details "
         "refer to the DeepSparse server system logging "
-        "documentation. By default this group is disabled.",
+        "documentation. By default this group is enabled.",
     )
     request_details: SystemLoggingGroup = Field(
         default=SystemLoggingGroup(enable=False),
