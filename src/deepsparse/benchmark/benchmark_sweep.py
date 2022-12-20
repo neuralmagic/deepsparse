@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,41 +13,61 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """
-Script to faciliate benchmark sweeps over a variety of models, scenarios, and inputs
+Usage: benchmark_sweep.py [OPTIONS]
 
-##########
-Example sweep over BERT models:
-    models = [
-        "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni",
-        "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_3layers-aggressive_84",
-    ]
-    batch_sizes = [1, 16]
-    input_shapes = ["[1,128]", "[1,384]"]
-    scenario_streams_dict = {
-        "sync": [None],
-        "async": [None, 2, 4],
-    }
-    engines = ["deepsparse", "onnxruntime"]
+  Script to run benchmark sweep over a directory containing models or a comma
+  separated list of model-paths/Sparsezoo stubs against different
+  `batch_sizes` and `num_cores` for ORT and deepsparse run-times, writes one
+  csv per model file
 
-    benchmark_sweep(
-        models=models,
-        batch_sizes=batch_sizes,
-        input_shapes=input_shapes,
-        scenario_streams_dict=scenario_streams_dict,
-        engines=engines,
-    )
+  Examples:
+
+      1) Benchmark sweep over a model di for both ORT and DeepSparse for
+      multiple `num-cores` and `batch-sizes`:
+
+          python benchmark_sweep.py --model-dir ~/models
+          --num-cores "1, 4, max" --batch-sizes "1, 16, 32"
+
+      2) Benchmark sweep over model-paths for both ORT and DeepSparse for
+      multiple `num-cores` and `batch-sizes`:
+
+          python benchmark_sweep.py --model-paths
+          "~/models/resnet50.onnx, ~/quant-models/resnet_channel20_quant.onnx"
+          --num-cores "1, 4, max" --batch-sizes "1, 16, 32"
+
+Options:
+  --num-cores TEXT       Comma separated values for different num_cores to
+                         benchmark against, can also be specified as max to
+                         benchmark against max num of cores
+  --batch-sizes TEXT     Comma separated values for different batch_sizes to
+                         benchmark against
+  --model-dir TEXT       Directory of model files to benchmark, if not
+                         specified then `--model-paths` must be specified
+  --model-paths TEXT     Comma separated list of model paths, or Sparsezoo
+                         stubs. Must be specifiedif no `--model-dir` given
+  --save-dir TEXT        Directory to save model benchmarks in  [default:
+                         benchmarking-results]
+  --run-time INTEGER     The run_time to execute model for  [default: 30]
+  --warmup-time INTEGER  The warmup_time to execute model for  [default: 5]
+  --help                 Show this message and exit.
 """
+
 
 import csv
+import logging
 import time
 from itertools import product
-from typing import Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import click
 
 from deepsparse.benchmark.benchmark_model import benchmark_model
+from deepsparse.cpu import cpu_details
 
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["benchmark_sweep"]
 
@@ -61,6 +83,49 @@ def benchmark_sweep(
     warmup_time: int = 5,
     export_csv_path: str = None,
 ):
+    """
+    Function to facilitate benchmark sweeps over a variety of models, scenarios,
+    and inputs
+
+    ##########
+    Example sweep over BERT models:
+        models = [
+            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad
+            /12layer_pruned80_quant-none-vnni",
+            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad
+            /pruned_quant_3layers-aggressive_84",
+        ]
+        batch_sizes = [1, 16]
+        input_shapes = ["[1,128]", "[1,384]"]
+        scenario_streams_dict = {
+            "sync": [None],
+            "async": [None, 2, 4],
+        }
+        engines = ["deepsparse", "onnxruntime"]
+
+        benchmark_sweep(
+            models=models,
+            batch_sizes=batch_sizes,
+            input_shapes=input_shapes,
+            scenario_streams_dict=scenario_streams_dict,
+            engines=engines,
+        )
+
+    :param models: a list of string model paths or SparseZoo stubs to benchmark
+    :param batch_sizes: list of different batch sizes to benchmark against
+    :param num_cores: list of different num_cores to benchmark against
+    :param scenario_streams_dict: a dict containing different scenarios (sync, async)
+        as keys and the corresponding num_streams to use as their values
+    :param input_shapes: optional input shapes to use for benchmarking, if not specified
+        then they are inferred from the onnx graph
+    :param engines: list of strings representing different runtime engines to
+        benchmark with, currently supported ones include `onnxruntime` and
+        `deepsparse`
+    :param run_time: number of seconds to execute each model for
+    :param warmup_time: number of seconds to warmup each model for before benchmarking
+    :param export_csv_path: path to the csv to write results to
+    """
+
     if not export_csv_path:
         export_csv_path = "benchmark_sweep_{}.csv".format(
             time.strftime("%Y%m%d_%H%M%S")
@@ -103,50 +168,219 @@ def benchmark_sweep(
             scenario_streams_dict.items(),
         ):
             for num_streams in num_streams_list:
-                result = benchmark_model(
-                    model_path=model,
-                    batch_size=batch_size,
-                    input_shapes=input_shape,
-                    num_cores=num_core,
-                    scenario=scenario,
-                    time=run_time,
-                    warmup_time=warmup_time,
-                    num_streams=num_streams,
-                    engine=engine,
-                )
+                if num_cores is None:
+                    # override to max available num_cores if not specified
+                    num_cores = cpu_details()[0]
+                try:
 
-                items_per_second = result["benchmark_result"]["items_per_sec"]
-                latency_mean = result["benchmark_result"]["mean"]
-                latency_median = result["benchmark_result"]["median"]
-                latency_std = result["benchmark_result"]["std"]
+                    result = benchmark_model(
+                        model_path=model,
+                        batch_size=batch_size,
+                        input_shapes=input_shape,
+                        num_cores=num_core,
+                        scenario=scenario,
+                        time=run_time,
+                        warmup_time=warmup_time,
+                        num_streams=num_streams,
+                        engine=engine,
+                    )
 
-                command = [
-                    "deepsparse.benchmark",
-                    f"{model}",
-                    f"--batch_size={batch_size}",
-                    f"--input_shapes={input_shape}",
-                    f"--num_cores={num_core}",
-                    f"--scenario={scenario}",
-                    f"--time={run_time}",
-                    f"--warmup_time={warmup_time}",
-                    f"--num_streams={num_streams}",
-                    f"--engine={engine}",
-                ]
-                command_str = f"\"{' '.join(command)}\""
+                    items_per_second = result["benchmark_result"]["items_per_sec"]
+                    latency_mean = result["benchmark_result"]["mean"]
+                    latency_median = result["benchmark_result"]["median"]
+                    latency_std = result["benchmark_result"]["std"]
 
-                writer.writerow(
-                    [
-                        model,
-                        engine,
-                        batch_size,
-                        num_core,
-                        scenario,
-                        num_streams,
-                        items_per_second,
-                        latency_mean,
-                        latency_median,
-                        latency_std,
-                        input_shape,
-                        command_str,
+                    command = [
+                        "deepsparse.benchmark",
+                        f"{model}",
+                        f"--batch_size={batch_size}",
+                        f"--input_shapes={input_shape}",
+                        f"--num_cores={num_core}",
+                        f"--scenario={scenario}",
+                        f"--time={run_time}",
+                        f"--warmup_time={warmup_time}",
+                        f"--num_streams={num_streams}",
+                        f"--engine={engine}",
                     ]
+                    command_str = f"\"{' '.join(command)}\""
+
+                    writer.writerow(
+                        [
+                            model,
+                            engine,
+                            batch_size,
+                            num_core,
+                            scenario,
+                            num_streams,
+                            items_per_second,
+                            latency_mean,
+                            latency_median,
+                            latency_std,
+                            input_shape,
+                            command_str,
+                        ]
+                    )
+                    _LOGGER.info(
+                        f"{model} benchmarking results written to {export_csv_path}"
+                    )
+                except Exception as exception:
+                    _LOGGER.info(
+                        f"An exception was raised while trying to benchmark {model}, "
+                        f"{exception}"
+                    )
+
+
+def _get_models(
+    model_dir: Optional[str] = None,
+    model_paths: Optional[str] = None,
+) -> List[str]:
+    models = []
+
+    if model_dir is not None:
+        models.extend([str(model) for model in Path(model_dir).rglob("*.onnx")])
+
+    if model_paths is not None:
+        more_models = model_paths.split(",")
+        for model in more_models:
+            model = model.strip()
+
+            if Path(model).exists() or model.startswith("zoo:"):
+                models.append(model)
+            else:
+                raise ValueError(
+                    "The specified models must either be valid paths that exist,"
+                    f"or a valid SparseZoo stub but found {model}"
                 )
+    if not models:
+        raise ValueError(
+            "Could not find any models, either `--model-dir` did not have `onnx` files "
+            "or was not specified, additionally `--model-paths` was also not specified"
+        )
+    return models
+
+
+@click.command()
+@click.option(
+    "--num-cores",
+    help="Comma separated values for different num_cores to benchmark against, "
+    "can also be specified as max to benchmark against max num of cores",
+)
+@click.option(
+    "--batch-sizes",
+    help="Comma separated values for different batch_sizes to benchmark against",
+)
+@click.option(
+    "--model-dir",
+    type=str,
+    help="Directory of model files to benchmark, if not specified then "
+    "`--model-paths` must be specified",
+    default=None,
+)
+@click.option(
+    "--model-paths",
+    type=str,
+    default=None,
+    help="Comma separated list of model paths, or Sparsezoo stubs. Must be specified"
+    "if no `--model-dir` given",
+)
+@click.option(
+    "--save-dir",
+    help="Directory to save model benchmarks in",
+    default="benchmarking-results",
+    show_default=True,
+)
+@click.option(
+    "--run-time",
+    type=int,
+    default=30,
+    help="The run_time to execute model for",
+    show_default=True,
+)
+@click.option(
+    "--warmup-time",
+    type=int,
+    default=5,
+    help="The warmup_time to execute model for",
+    show_default=True,
+)
+def main(
+    num_cores: str,
+    batch_sizes: str,
+    model_dir: Optional[str],
+    model_paths: Optional[str],
+    save_dir: str,
+    run_time: int,
+    warmup_time: int,
+):
+    """
+    Script to run benchmark sweep over a directory containing models or a
+    comma separated list of model-paths/Sparsezoo stubs against different `batch_sizes`
+    and `num_cores` for ORT and deepsparse run-times, writes one csv per model file
+
+    Examples:
+
+        1) Benchmark sweep over a model di for both ORT and DeepSparse for
+        multiple `num-cores` and `batch-sizes`:
+
+            python benchmark_sweep.py --model-dir ~/models \
+                --num-cores "1, 4, max" --batch-sizes "1, 16, 32"
+
+        2) Benchmark sweep over model-paths for both ORT and DeepSparse for
+        multiple `num-cores` and `batch-sizes`:
+
+            python benchmark_sweep.py --model-paths \
+            "~/models/resnet50.onnx, ~/quant-models/resnet_channel20_quant.onnx" \
+                --num-cores "1, 4, max" --batch-sizes "1, 16, 32"
+    """
+    num_cores: List[int] = _validate_num_cores(num_cores)
+    batch_sizes: List[int] = _validate_batch_sizes(batch_sizes)
+    models: List[str] = _get_models(model_dir=model_dir, model_paths=model_paths)
+
+    save_dir_path: Path = Path(save_dir)
+    save_dir_path.mkdir(parents=True, exist_ok=True)
+
+    for model in models:
+        if model.startswith("zoo:"):
+            model_name = ""
+        else:
+            model_name = Path(model).name
+
+        export_csv_name = f'benchmark_{model_name}_{time.strftime("%Y%m%d_%H%M%S")}.csv'
+        export_csv_path = save_dir_path / export_csv_name
+        benchmark_sweep(
+            models=[str(model)],
+            batch_sizes=batch_sizes,
+            num_cores=num_cores,
+            engines=["onnxruntime", "deepsparse"],
+            scenario_streams_dict={
+                "sync": [None],
+            },
+            warmup_time=warmup_time,
+            run_time=run_time,
+            export_csv_path=str(export_csv_path),
+        )
+
+
+def _remove_duplicates(items: List[Any]):
+    return list(set(items))
+
+
+def _validate_batch_sizes(batch_sizes: str):
+    batch_sizes = [int(batch_size.strip()) for batch_size in batch_sizes.split(",")]
+    return _remove_duplicates(items=batch_sizes)
+
+
+def _validate_num_cores(num_cores: str):
+    valid_num_cores = []
+    for cores in num_cores.split(","):
+        cores = cores.strip()
+        if cores == "max":
+            new_core_value = cpu_details()[0]
+        else:
+            new_core_value = int(cores.strip())
+        valid_num_cores.append(new_core_value)
+    return _remove_duplicates(items=valid_num_cores)
+
+
+if __name__ == "__main__":
+    main()
