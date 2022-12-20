@@ -16,7 +16,11 @@ import yaml
 
 import pytest
 from deepsparse.loggers import AsyncLogger, MetricCategories, MultiLogger, PythonLogger
-from deepsparse.server.build_logger import build_logger, build_system_loggers
+from deepsparse.server.build_logger import (
+    build_logger,
+    build_system_loggers,
+    default_logger,
+)
 from deepsparse.server.config import ServerConfig, SystemLoggingConfig
 from tests.deepsparse.loggers.helpers import ListLogger
 from tests.helpers import find_free_port
@@ -186,13 +190,10 @@ system_logging: {}"""
 
 yaml_config_2 = """
 system_logging:
-    prediction_latency:
-        enable: true"""
+    enable: false"""
 
 yaml_config_3 = """
 system_logging:
-    prediction_latency:
-        enable: true
     resource_utilization:
         enable: true"""
 
@@ -206,31 +207,19 @@ system_logging:
 
 yaml_config_5 = """
 system_logging:
-    target_loggers:
-    - list_logger_1
-    prediction_latency:
-        enable: true
-    resource_utilization:
-        enable: true"""
-
-yaml_config_6 = """
-system_logging:
-    target_loggers:
-    - list_logger_1
     prediction_latency:
         enable: true
     resource_utilization:
         enable: true
         target_loggers:
-        - list_logger_1
-        - list_logger_2"""
+        - list_logger_1"""
 
 
 @pytest.mark.parametrize(
     "yaml_config, expected_target_identifiers, number_leaf_loggers_per_system_logger",  # noqa: E501
     [
-        (yaml_config_1, set(), []),
-        (yaml_config_2, {"category:system/prediction_latency"}, [2]),
+        (yaml_config_1, {"category:system/prediction_latency"}, [2]),
+        (yaml_config_2, set(), []),
         (
             yaml_config_3,
             {
@@ -246,15 +235,7 @@ system_logging:
                 "category:system/prediction_latency",
                 "category:system/resource_utilization",
             },
-            [1, 1],
-        ),
-        (
-            yaml_config_6,
-            {
-                "category:system/prediction_latency",
-                "category:system/resource_utilization",
-            },
-            [2, 1],
+            [1, 2],
         ),
     ],
 )
@@ -275,3 +256,7 @@ def test_build_system_loggers(
     assert [
         len(system_logger.logger.loggers) for system_logger in system_loggers
     ] == number_leaf_loggers_per_system_logger
+
+
+def test_default_logger(tmp_path):
+    assert isinstance(default_logger()["python"], PythonLogger)

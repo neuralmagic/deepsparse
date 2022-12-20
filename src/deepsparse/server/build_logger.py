@@ -16,7 +16,9 @@
 Specifies the mapping from the ServerConfig to the DeepSparse Logger
 """
 
-from typing import Any, Dict, List, Optional
+import importlib
+import logging
+from typing import Any, Dict, List, Optional, Type
 
 from deepsparse.loggers import (
     AsyncLogger,
@@ -34,11 +36,11 @@ from deepsparse.server.config import (
     SystemLoggingConfig,
     SystemLoggingGroup,
 )
-from deepsparse.server.helpers import custom_logger_from_identifier, default_logger
 
 
-__all__ = ["build_logger", "extract_system_group_data"]
+__all__ = ["build_logger"]
 
+_LOGGER = logging.getLogger(__name__)
 _LOGGER_MAPPING = {"python": PythonLogger, "prometheus": PrometheusLogger}
 
 
@@ -151,8 +153,15 @@ def build_system_loggers(
     :return: A list of FunctionLogger instances responsible for logging system data
     """
     system_loggers = []
-    system_config_groups = extract_system_group_data(system_logging_config)
-    for config_group_name, config_group_args in system_config_groups.items():
+    if not system_logging_config.enable:
+        return system_loggers
+
+    for config_group_name, config_group_args in system_logging_config:
+        if not isinstance(config_group_args, SystemLoggingGroup):
+            continue
+        if not config_group_args.enable:
+            continue
+
         system_loggers.append(
             _build_function_logger(
                 metric_function_cfg=MetricFunctionConfig(
@@ -166,34 +175,32 @@ def build_system_loggers(
                 loggers=loggers,
             )
         )
+
     return system_loggers
 
 
-def extract_system_group_data(
-    system_logging_config: "SystemLoggingConfig",
-) -> Dict[str, SystemLoggingGroup]:
+def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLogger]:
     """
-    Extract the system logging groups data from the system logging configuration
-    :param system_logging_config: The system logging configuration
-    :return: A dictionary that contains a mapping from a system logging group name
-        to its arguments
+    Parse the custom logger identifier in order to import a custom logger class object
+    from the user-specified python script
+
+    :param custom_logger_identifier: string in the form of
+           '<path_to_the_python_script>:<custom_logger_class_name>
+    :return: custom logger class object
     """
-    if not system_logging_config.enable:
-        return {}
-    target_loggers = system_logging_config.target_loggers
+    path, logger_object_name = custom_logger_identifier.split(":")
+    spec = importlib.util.spec_from_file_location("user_defined_custom_logger", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, logger_object_name)
 
-    # extract exclusively the system logging groups data
-    system_config_groups = {
-        config_group_name: config_group_args
-        for (config_group_name, config_group_args) in system_logging_config
-        if isinstance(config_group_args, SystemLoggingGroup)
-    }
-    # propagate the global target loggers information if applicable
-    for config_group_name, config_group_args in system_config_groups.items():
-        if target_loggers and not config_group_args.target_loggers:
-            config_group_args.target_loggers = target_loggers
 
-    return system_config_groups
+def default_logger() -> Dict[str, BaseLogger]:
+    """
+    :return: default PythonLogger object for the deployment scenario
+    """
+    _LOGGER.info("Created default logger: PythonLogger")
+    return {"python": PythonLogger()}
 
 
 def _build_function_logger(

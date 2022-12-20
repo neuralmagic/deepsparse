@@ -58,8 +58,8 @@ class SystemLoggingGroup(BaseModel):
         default=False, description="Whether to enable the system logging group"
     )
 
-    target_loggers: Optional[List[str]] = Field(
-        default=None,
+    target_loggers: List[str] = Field(
+        default=[],
         description="The list of target loggers to log to. "
         "If None, logs to all the available loggers",
     )
@@ -70,36 +70,28 @@ class SystemLoggingConfig(BaseModel):
     Holds the configuration for the system logging
     """
 
-    # Global System Logging
-    enable: Optional[bool] = Field(
-        default=True, description="Whether to enable system logging"
-    )
-    target_loggers: Optional[List[str]] = Field(
-        default=None,
-        description="The list of loggers to log to. If None, "
-        "logs to all the available loggers.Will "
-        "be overriden by the target_loggers specified "
-        "in the individual system logging groups.",
+    # Global Logging Config
+    enable: bool = Field(
+        default=True, description="Whether to enable system logging. Defaults to False"
     )
 
     # System Logging Groups
-    resource_utilization: Optional[SystemLoggingGroup] = Field(
-        default=None,
+    resource_utilization: SystemLoggingGroup = Field(
+        default=SystemLoggingGroup(enable=False),
         description="The configuration group for the resource "
         "utilization system logging group. For details "
         "refer to the DeepSparse server system logging "
         "documentation. By default this group is disabled.",
     )
     prediction_latency: SystemLoggingGroup = Field(
-        default=None,
+        default=SystemLoggingGroup(enable=True),
         description="The configuration group for the prediction latency "
         "system logging group. For details "
         "refer to the DeepSparse server system logging "
         "documentation. By default this group is disabled.",
     )
-
-    request_details: Optional[SystemLoggingGroup] = Field(
-        default=None,
+    request_details: SystemLoggingGroup = Field(
+        default=SystemLoggingGroup(enable=False),
         description="The configuration group for the request_details system "
         "logging group. For details refer to the DeepSparse server "
         "system logging documentation. By default this group is disabled.",
@@ -126,11 +118,11 @@ class MetricFunctionConfig(BaseModel):
         default=1,
     )
 
-    target_loggers: Optional[List[str]] = Field(
-        default=None,
+    target_loggers: List[str] = Field(
+        default=[],
         description="Overrides the global logger configuration in "
         "the context of the DeepSparse server. "
-        "If not None, this configuration stops logging data "
+        "If not an empty list, this configuration stops logging data "
         "to globally specified loggers, and will only use "
         "the subset of loggers (specified here by a list of their names).",
     )
@@ -258,9 +250,7 @@ class ServerConfig(BaseModel):
     )
 
     system_logging: SystemLoggingConfig = Field(
-        default=SystemLoggingConfig(
-            prediction_latency=SystemLoggingGroup(enabled=True)
-        ),
+        default=SystemLoggingConfig(),
         description="A model that holds the system logging configuration. "
         "If not specified explicitly in the yaml config, the "
         "default SystemLoggingConfig model is used.",
