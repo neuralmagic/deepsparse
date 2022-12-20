@@ -76,13 +76,13 @@ def benchmark_sweep(
                 "Engine",
                 "Batch Size",
                 "Num Cores",
-                "Input Shape",
                 "Scenario",
                 "Num Streams",
-                "Throughput",
+                "Items per second",
                 "Mean Latency",
                 "Median Latency",
                 "Std Latency",
+                "Input Shape",
                 "Command",
             ]
         )
@@ -137,14 +137,16 @@ def benchmark_sweep(
                 writer.writerow(
                     [
                         model,
+                        engine,
                         batch_size,
-                        input_shape,
+                        num_core,
                         scenario,
                         num_streams,
                         items_per_second,
                         latency_mean,
                         latency_median,
                         latency_std,
+                        input_shape,
                         command_str,
                     ]
                 )
