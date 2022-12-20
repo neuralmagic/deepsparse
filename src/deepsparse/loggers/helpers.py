@@ -31,9 +31,37 @@ __all__ = [
     "get_function_and_function_name",
     "NO_MATCH",
     "access_nested_value",
+    "finalize_identifier",
 ]
 
 NO_MATCH = "NO_MATCH"
+
+
+def finalize_identifier(
+    identifier: str,
+    category: MetricCategories,
+    function_name: str,
+    remainder: Optional[str] = None,
+):
+    """
+    :param identifier:
+    :param category:
+    :param function_name:
+    :param remainder:
+    :return:
+    """
+    if remainder:
+        if category == MetricCategories.DATA:
+            # if remainder has slicing/indexing/access information,
+            # remove the square brackets:
+            remainder = remainder.split("[")[0]
+        # join the identifier and remainder
+        identifier += "." + remainder
+
+    if category == MetricCategories.DATA:
+        identifier += f"__{function_name}"
+
+    return identifier
 
 
 def get_function_and_function_name(
@@ -115,9 +143,8 @@ def match_and_extract(
         - Value of interest or string flag that indicates that there was no match
         - An optional remainder string
     """
-    is_match, remainder = check_identifier_match(
-        template, identifier, category=category
-    )
+    is_match, remainder = check_identifier_match(template, identifier)
+
     if is_match:
         if category == MetricCategories.SYSTEM:
             return value, remainder
@@ -226,7 +253,8 @@ def access_nested_value(
 
 
 def check_identifier_match(
-    template: str, identifier: str, category: Optional[MetricCategories] = None
+    template: str,
+    identifier: str,
 ) -> Tuple[bool, Optional[str]]:
     """
     Match the template against the identifier
@@ -243,8 +271,6 @@ def check_identifier_match(
             if template and identifier do not share any first
             <string_n-t+k> components, there is no match
 
-    :param category: optional MetricCategory of the value logged value
-
     :return: A tuple that consists of:
         - a boolean (True if match, False otherwise)
         - an optional remainder (string if matched, None otherwise)
@@ -252,18 +278,13 @@ def check_identifier_match(
     if template[:3] == "re:":
         pattern = template[3:]
         return re.match(pattern, identifier) is not None, None
-    if template.startswith("category:") and category is not None:
-        template_identifier = template[9:]
-        template_category, *remainder = template_identifier.split("/")
-        template_category = MetricCategories(template_category)  # parse into Enum
-        category = MetricCategories(category)  # ensure in Enum form
-        remainder = None if not remainder else "/".join(remainder)
-        return template_category == category, remainder
     if template == identifier:
         return True, None
     if template.startswith(identifier):
         remainder = template.replace(identifier, "")
         return True, remainder if remainder.startswith("[") else remainder[1:]
+    if identifier.startswith(template):
+        return True, None
 
     return False, None
 

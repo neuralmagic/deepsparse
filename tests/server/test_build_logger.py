@@ -15,7 +15,7 @@
 import yaml
 
 import pytest
-from deepsparse.loggers import AsyncLogger, MetricCategories, MultiLogger, PythonLogger
+from deepsparse.loggers import AsyncLogger, MultiLogger, PythonLogger
 from deepsparse.server.build_logger import (
     build_logger,
     build_system_loggers,
@@ -178,9 +178,7 @@ def test_build_logger(yaml_config, raises_error, default_logger, num_function_lo
 
     # check for default system logger behaviour
     system_logger = logger.logger.loggers[-1]
-    assert system_logger.target_identifier == (
-        f"category:{MetricCategories.SYSTEM.value}/prediction_latency"
-    )
+    assert system_logger.target_identifier == "prediction_latency"
     assert system_logger.function_name == "identity"
     assert system_logger.frequency == 1
 
@@ -218,13 +216,13 @@ system_logging:
 @pytest.mark.parametrize(
     "yaml_config, expected_target_identifiers, number_leaf_loggers_per_system_logger",  # noqa: E501
     [
-        (yaml_config_1, {"category:system/prediction_latency"}, [2]),
+        (yaml_config_1, {"prediction_latency"}, [2]),
         (yaml_config_2, set(), []),
         (
             yaml_config_3,
             {
-                "category:system/prediction_latency",
-                "category:system/resource_utilization",
+                "prediction_latency",
+                "resource_utilization",
             },
             [2, 2],
         ),
@@ -232,8 +230,8 @@ system_logging:
         (
             yaml_config_5,
             {
-                "category:system/prediction_latency",
-                "category:system/resource_utilization",
+                "prediction_latency",
+                "resource_utilization",
             },
             [1, 2],
         ),
