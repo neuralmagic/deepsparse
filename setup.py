@@ -85,7 +85,7 @@ def _parse_requirements_file(file_path):
 
 
 _deps = [
-    "numpy>=1.19.0",
+    "numpy>=1.16.3",
     "onnx>=1.5.0,<=1.12.0",
     "pydantic>=1.8.2",
     "requests>=2.0.0",
