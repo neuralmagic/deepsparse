@@ -212,6 +212,11 @@ system_logging:
         target_loggers:
         - list_logger_1"""
 
+yaml_config_6 = """
+system_logging:
+    re:*._utilization:
+        enable: true"""
+
 
 @pytest.mark.parametrize(
     "yaml_config, expected_target_identifiers, number_leaf_loggers_per_system_logger",  # noqa: E501
@@ -235,6 +240,7 @@ system_logging:
             },
             [1, 2],
         ),
+        (yaml_config_6, {"prediction_latency", "resource_utilization"}, [2, 2]),
     ],
 )
 def test_build_system_loggers(

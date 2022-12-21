@@ -717,6 +717,7 @@ class Pipeline(ABC):
         :param identifier: The string name assigned to the logged value
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
+        :param identifier_pre_fix: An optional string to prepend to the identifier
         """
         identifier = f"{self.alias or self.task}/{identifier}"
         if identifier_pre_fix:

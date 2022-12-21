@@ -44,11 +44,13 @@ def finalize_identifier(
     remainder: Optional[str] = None,
 ):
     """
-    :param identifier:
-    :param category:
-    :param function_name:
-    :param remainder:
-    :return:
+    Compose the final identifier string from the identifier, category, function name
+
+    :param identifier: The identifier string
+    :param category: The category of the identifier
+    :param function_name: The name of the function applied to the identifier
+    :param remainder: The remainder of the identifier after the matching was applied
+    :return: The final identifier string
     """
     if remainder:
         if category == MetricCategories.DATA:
@@ -59,6 +61,7 @@ def finalize_identifier(
         identifier += "." + remainder
 
     if category == MetricCategories.DATA:
+        # if the category is DATA, add the function name to the identifier
         identifier += f"__{function_name}"
 
     return identifier
@@ -126,11 +129,12 @@ def match_and_extract(
     template: str,
     identifier: str,
     value: Any,
-    category: Optional[MetricCategories] = None,
+    category: MetricCategories,
 ) -> Tuple[Any, Optional[str]]:
     """
-    Attempts to match the template against the identifier. If successful,
-    uses the remainder to extract the item of interest inside `value` data structure.
+    Attempts to match the template against the identifier. If successful, and
+    the category is DATA, uses the remainder to extract the item of interest inside
+    `value` data structure.
 
     :param template: A string that defines the matching criteria
     :param identifier: A string that will be compared with the template, may
@@ -265,11 +269,12 @@ def check_identifier_match(
         by `category:`
 
     :param identifier: A string in the format:
+        <string_n-t>/<string_n-t+1)>/<...>/<string_n>
+        If template and identifier do not share any first
+        <string_n-t+k> components, there is no match.
 
-        1.  <string_n-t>/<string_n-t+1)>/<...>/<string_n>
-        2.
-            if template and identifier do not share any first
-            <string_n-t+k> components, there is no match
+    Note: if identifier is longer than a template, and both share the
+    first string components, there is a match with no remainder.
 
     :return: A tuple that consists of:
         - a boolean (True if match, False otherwise)
@@ -285,7 +290,6 @@ def check_identifier_match(
         return True, remainder if remainder.startswith("[") else remainder[1:]
     if identifier.startswith(template):
         return True, None
-
     return False, None
 
 

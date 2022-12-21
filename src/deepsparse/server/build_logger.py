@@ -248,6 +248,6 @@ def _get_target_identifier(
         # if target name starts with "re:", it is a regex,
         # and we don't need to add the endpoint name to it
         return target_name
-    if endpoint_name is None:
-        return target_name
-    return f"{endpoint_name}/{target_name}"
+    if endpoint_name:
+        return f"{endpoint_name}/{target_name}"
+    return target_name
