@@ -45,7 +45,7 @@ Options:
   --model-dir TEXT       Directory of model files to benchmark, if not
                          specified then `--model-paths` must be specified
   --model-paths TEXT     Comma separated list of model paths, or Sparsezoo
-                         stubs. Must be specifiedif no `--model-dir` given
+                         stubs. Must be specified if no `--model-dir` given
   --save-dir TEXT        Directory to save model benchmarks in  [default:
                          benchmarking-results]
   --run-time INTEGER     The run_time to execute model for  [default: 30]
@@ -167,10 +167,11 @@ def benchmark_sweep(
             engines,
             scenario_streams_dict.items(),
         ):
+            if num_cores is None:
+                # override to max available num_cores if not specified
+                num_cores = cpu_details()[0]
+
             for num_streams in num_streams_list:
-                if num_cores is None:
-                    # override to max available num_cores if not specified
-                    num_cores = cpu_details()[0]
                 try:
 
                     result = benchmark_model(
@@ -281,7 +282,7 @@ def _get_models(
     type=str,
     default=None,
     help="Comma separated list of model paths, or Sparsezoo stubs. Must be specified"
-    "if no `--model-dir` given",
+    " if no `--model-dir` given",
 )
 @click.option(
     "--save-dir",
@@ -319,7 +320,7 @@ def main(
 
     Examples:
 
-        1) Benchmark sweep over a model di for both ORT and DeepSparse for
+        1) Benchmark sweep over a model dir for both ORT and DeepSparse for
         multiple `num-cores` and `batch-sizes`:
 
             python benchmark_sweep.py --model-dir ~/models \
