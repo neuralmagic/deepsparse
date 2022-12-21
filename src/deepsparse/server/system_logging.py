@@ -22,14 +22,23 @@ from deepsparse.loggers import BaseLogger, MetricCategories
 
 __all__ = ["log_resource_utilization", "log_request_details"]
 
+RESOURCE_UTILIZATION_IDENTIFIER_PREFIX = "resource_utilization/"
 
-def log_resource_utilization(server_logger: BaseLogger):
+
+def log_resource_utilization(
+    server_logger: BaseLogger,
+    prefix: str = RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    **kwargs: Any,
+):
     """
     Logs the resource utilization of the server process.
     This includes:
     - CPU utilization
     - Memory utilization
     - Total memory available
+
+    + any additional kwargs passed in
+    (where key is the identifier and value is the value to log)
 
     :param server_logger: the logger to log the metrics to
     """
@@ -48,10 +57,14 @@ def log_resource_utilization(server_logger: BaseLogger):
         "memory_utilization_[%]": memory_percent,
         "total_memory_available_[MB]": total_memory_megabytes,
     }
+    if kwargs:
+        identifier_to_value.update(kwargs)
 
     for identifier, value in identifier_to_value.items():
         server_logger.log(
-            identifier=identifier, value=value, category=MetricCategories.SYSTEM
+            identifier=prefix + identifier,
+            value=value,
+            category=MetricCategories.SYSTEM,
         )
 
 

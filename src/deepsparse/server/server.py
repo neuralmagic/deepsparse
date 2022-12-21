@@ -124,6 +124,9 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     app = FastAPI()
     server_logger = build_logger(server_config)
+    log_resource_utilization(
+        server_logger, number_of_cores_used=server_config.num_cores
+    )
 
     @app.get("/", include_in_schema=False)
     def _home():
