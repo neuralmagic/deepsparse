@@ -15,9 +15,12 @@
 from typing import Any
 
 from deepsparse import Pipeline
+from deepsparse.loggers import BaseLogger, MetricCategories
 
 
 __all__ = ["log_resource_utilization", "log_request_details"]
+
+REQUEST_DETAILS_IDENTIFIER_PREFIX = "request_details"
 
 
 def log_resource_utilization(pipeline: Pipeline, **kwargs: Any):
@@ -32,13 +35,21 @@ def log_resource_utilization(pipeline: Pipeline, **kwargs: Any):
     pass
 
 
-def log_request_details(pipeline: Pipeline, **kwargs: Any):
+def log_request_details(
+    server_logger: BaseLogger,
+    prefix: str = REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    **kwargs: Any,
+):
     """
-    Scope for 1.4:
-    - Number of Successful Requests
-    (binary events, 1 or 0 per invocation of an endpoint)
-    - Batch size
-    - Number of Inferences (
-    number of successful inferences times the respective batch size)
+    Logs the request details of the server process.
+    Request details information are to be passed as kwargs.
+    (where key is the identifier and value is the value to log)
+
+    :param server_logger: the logger to log the metrics to
     """
-    pass
+    for identifier, value in kwargs.items():
+        server_logger.log(
+            identifier="/".join([prefix, identifier]),
+            value=value,
+            category=MetricCategories.SYSTEM,
+        )

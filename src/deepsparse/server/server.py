@@ -125,6 +125,26 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     app = FastAPI()
     server_logger = build_logger(server_config)
 
+    from fastapi.exceptions import RequestValidationError
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    @app.exception_handler(StarletteHTTPException)
+    async def custom_http_exception_handler(request, exc):
+        print(f"OMG! An HTTP error!: {repr(exc)}")
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request, exc):
+        print(f"OMG! The client sent invalid data!: {exc}")
+
+    @app.middleware("http")
+    async def log_request_details_middleware(request, call_next):
+
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            pass
+        return response
+
     @app.get("/", include_in_schema=False)
     def _home():
         return RedirectResponse("/docs")
@@ -241,10 +261,14 @@ def _add_pipeline_endpoint(
     output_schema = pipeline.output_schema
 
     def _predict(request: pipeline.input_schema):
-        pipeline_outputs = pipeline(request)
-        if pipeline.logger:
-            log_resource_utilization(pipeline)
-            log_request_details(pipeline)
+        try:
+            pipeline_outputs = pipeline(request)
+            successful_request = 1
+        except Exception as e:
+            successful_request, pipeline_outputs = 0, None
+        server_logger = pipeline.logger
+        if server_logger:
+            log_request_details(server_logger, successful_request=successful_request)
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):
