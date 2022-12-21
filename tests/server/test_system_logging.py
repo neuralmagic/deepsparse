@@ -71,7 +71,6 @@ def _test_kwargs(calls, num_iterations):
     ],
 )
 def test_log_resource_utilization(num_iterations, kwargs):
-    num_iterations = 5
     logger = ListLogger()
     for iter in range(num_iterations):
         log_resource_utilization(logger, kwargs)
