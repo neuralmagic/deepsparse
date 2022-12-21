@@ -42,7 +42,7 @@ def finalize_identifier(
     category: MetricCategories,
     function_name: str,
     remainder: Optional[str] = None,
-):
+) -> str:
     """
     Compose the final identifier string from the identifier, category, function name
 
