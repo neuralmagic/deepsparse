@@ -204,7 +204,7 @@ Spin up the Server with the pruned-quantized YOLOv5s:
 
 ```bash
 deepsparse.server \
-    yolo \
+    --task yolo \
     --model_path zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
 ```
 
