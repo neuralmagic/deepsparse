@@ -86,11 +86,11 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-non
 > Latency Std (ms/batch): 0.2080
 > Iterations: 173
 ```
-At batch 1, ORT achieves 17 images/sec with dense YOLOv5-s.
+At batch 1, ORT achieves 17 images/sec with dense YOLOv5s.
 
 #### DeepSparse Dense Performance
 
-While DeepSparse gets the best performance with sparse models, it also has strong performance for standard dense models. Run the following:
+While DeepSparse gets its best performance with sparse models, it also has strong performance for dense models. Run the following:
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1
@@ -105,11 +105,11 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-non
 > Iterations: 353
 ```
 
-At batch 1, DeepSparse achieves 35 images/sec with dense YOLOv5-s, a **2x performance improvement over ORT**, even before applying sparsity!
+At batch 1, DeepSparse achieves 35 images/sec with dense YOLOv5s, a **2x performance improvement over ORT**!
 
 #### DeepSparse Sparse Performance
 
-When sparsity is applied to the model, DeepSparse's performance is even stronger. Run the following:
+When sparsity is applied to the model, DeepSparse's performance is even better. Run the following:
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 -s sync -b 1
@@ -124,11 +124,11 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_q
 > Iterations: 799
 ```
 
-At batch 1, DeepSparse achieves 80 images/sec with a pruned-quantized YOLOv5-s, a **4.7x performance improvement over ORT**!
+At batch 1, DeepSparse achieves 80 images/sec with a pruned-quantized YOLOv5s, a **4.7x performance improvement over ORT**!
 
 #### Batch 64 Performance Comparison
 
-In latency-insensitive scenarios (where batch sizes are large), DeepSparse's performance gain relative to ONNX Runtime is even stronger.
+In latency-insensitive scenarios with large batch sizes, DeepSparse's performance relative to ORT is even stronger.
 
 ORT achieves 15 images/sec at batch 64:
 ```bash
@@ -163,7 +163,7 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_q
 
 Beyond offering exceptional performance, DeepSparse offers convenient APIs for integrating your model into an application.  
 
-Pull down a sample image for the example and save as `basilica.jpg` with the following command:
+To try the examples below, Pull down a sample image for the example and save as `basilica.jpg` with the following command:
 ```bash
 wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/basilica.jpg
 ```
@@ -195,10 +195,11 @@ print(pipeline_outputs)
 
 #### HTTP Server
   
-DeepSparse Server runs on top of the popular FastAPI web framework and Uvicorn web server such that you can easily setup a model service endpoint.
-The Server supports any task from DeepSparse, including object detection with YOLOv5.
+DeepSparse Server runs on top of the popular FastAPI web framework and Uvicorn web server. With just a single CLI command, you can easily setup a model 
+service endpoint with DeepSparse. The Server supports any Pipeline from DeepSparse, including object detection with YOLOv5, enabling you to send raw 
+images to the endpoint and recieve the bounding boxes.
 
-Spin up the Server with sparse by running the following from the command line: 
+Spin up the Server with the pruned-quantized YOLOv5s by running the following from the command line: 
 
 ```bash
 deepsparse.server \
