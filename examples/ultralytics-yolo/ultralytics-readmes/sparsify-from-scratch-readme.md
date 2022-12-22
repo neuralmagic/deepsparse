@@ -4,7 +4,7 @@ This guide explains how to apply pruning and quantization to create an inference
 version of YOLOv5.
 
 SparseML is an open-source library which enables you to easily apply pruning and quantization algorithms to 
-your models. Ultralytics is integrated with SparseML, allowing you to apply sparsity from 
+your models. Ultralytics is integrated with SparseML, allowing you to apply the algorithms from 
 within the YOLOv5 repo.
 
 ## Installation
