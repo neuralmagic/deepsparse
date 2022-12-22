@@ -65,7 +65,7 @@ from the open-source SparseZoo model repository. [SparseZoo](https://sparsezoo.n
 >:rotating_light: **Pro-Tip:** Consider using [Sparse Transfer Learning **UPDATE LINK**](Ultralytics-STL-README.md). 
 >It is an easier way to create a sparse model trained on your data.
 
-We will explain the `Modifiers` used in the Recipes for **GMP** and **QAT**. 
+See below for more details on the `Modifiers` used for GMP and QAT. 
 
 <details>
     <summary><b>GMP Modifiers</b></summary>
