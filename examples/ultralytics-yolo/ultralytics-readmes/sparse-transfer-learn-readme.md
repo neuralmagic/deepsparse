@@ -21,7 +21,7 @@ with an inference runtime that implements sparsity-aware optimizations.
                                                                                                        
 Similiar to typical fine-tuning, Sparse Transfer Learning starts with a checkpoint trained on a large dataset and then fine-tunes the weights onto a smaller downstream dataset. However, with Sparse Transfer Learning, the training starts from a sparse checkpoint and the sparsity structure is maintained as the fine-tuning occurs. The end result is a sparse model trained on the downstream dataset!
                                                                                                             
->:rotating_light: **Clarification:** When we say sparse models, we are describing sparsity in the **weights** of the model. 
+> **Clarification:** When we say sparse models, we are describing sparsity in the **weights** of the model. 
 
 There are four simple steps to Sparse Transfer Learning:
 1. Select a Pre-Sparsified Model as the Starting Point
