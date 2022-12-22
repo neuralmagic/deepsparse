@@ -286,7 +286,7 @@ class TextClassificationPipeline(TransformersPipeline):
             input_schema.sequences,
             add_special_tokens=True,
             return_tensors="np",
-            padding=False,
+            padding=True,
             truncation=False,
         )
         input_seq_len = max(map(len, tokens["input_ids"]))
