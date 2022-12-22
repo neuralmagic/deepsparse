@@ -1,28 +1,33 @@
-# DeepSparse Integration
+# DeepSparse
 
-:books: Learn how to deploy YOLOv5 on Neural Magic's DeepSparse with GPU-class performance on CPUs. 
+This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse to achieve GPU-class performance on commodity CPUs.
 
 ## About DeepSparse
 
-DeepSparse is an inference runtime offering GPU-class performance on CPUs and tooling to integrate ML into your application.
+Welcome to software-delivered AI.
 
-By deploying YOLOv5 with DeepSparse, you get the **performance of GPUs** with the **low cost and simplicity of software**:
-- Exceptional Performance: Deploy state-of-the-art models with GPU-class performance on low-cost commodity CPUs
-- Flexible Deployment: Deploy consistently across any environment from cloud to data center to edge and any hardware provider from Intel to AMD to ARM
-- Near-Infinite Scalability: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
-- Ease of Integration: Clean APIs for integrating your model into an application and monitoring it in production
+DeepSparse is an inference runtime offering GPU-class performance on CPUs. For the first time, your deep learning workloads can meet the performance 
+demands of production without the complexity and costs of hardware accelerators.
+
+Simply put, DeepSparse gives you the performance of GPUs and the simplicity of software:
+- **Exceptional Performance**: Deploy state-of-the-art models with GPU-class performance on low-cost commodity CPUs
+- **Flexible Deployment**: Run consistently across cloud, data center, and edge with any hardware provider from Intel to AMD to ARM
+- **Near-Infinite Scalability**: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
+- **Ease of Integration**: Clean APIs for integrating your model into an application and monitoring it in production
 
 ### How Does DeepSparse Achieve GPU-Class Performance?
 
-DeepSparse takes advantage of sparsity to gain its performance speedup. 
+DeepSparse takes advantage of model sparsity to gain its performance speedup. 
 
-Sparsification through weight pruning and quantization is a broadly studied technique, allowing reductions of 10x in the size and compute needed to 
-execute a network, without losing much accuracy. DeepSparse is sparsity-aware, so it skips the multiply-adds by 0, shrinking the number of instructions 
+Sparsification through pruning and quantization is a broadly studied technique, allowing reductions of 10x in the size and compute needed to 
+execute a network, while maintaining high accuracy. DeepSparse is sparsity-aware, so it skips the multiply-adds by 0, shrinking the number of instructions 
 in a forward pass. Since the sparse computation is memory bound, DeepSparse executes the network depth-wise, breaking the problem into Tensor Columns, 
 vertical stripes of computation that fit in cache without having to read or write to memory.
 
-<img style="text-align:center; width:60%" src="sparse-network.svg">
- 
+<p align="center">
+  <img width="75%" src="sparse-network.svg">
+</p>
+
 Sparse computation, executed depth-wise in cache, allows DeepSparse to deliver GPU-class performance on CPUs!
 
 ### How Do I Create A Sparse Version of YOLOv5 To Run With DeepSparse?
