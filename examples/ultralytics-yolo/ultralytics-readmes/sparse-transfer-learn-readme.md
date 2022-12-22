@@ -47,7 +47,7 @@ zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none
 
 The [Train Custom Data](https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data#1-create-dataset) 
 tutorial has a detailed explanation on creating a custom dataset. In this example we will use the VOC 
-dataset, for which there is a configuration file available off the shelf (`voc.yaml`).
+dataset, for which there is a configuration file available off the shelf (`VOC.yaml`).
 
 ## 3. Run Sparse Transfer Learning
 
@@ -143,7 +143,7 @@ Kick off training with `train.py`, passing in the starting checkpoint, the spars
 python3 train.py \
   --weights zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none?recipe_type=transfer_learn \
   --sparsification-recipe zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none?recipe_type=transfer_learn \
-  --data voc.yaml
+  --data VOC.yaml
 ```
 
 Once the training is finished, you will have a pruned-quantized YOLOv5s model trained on VOC!
