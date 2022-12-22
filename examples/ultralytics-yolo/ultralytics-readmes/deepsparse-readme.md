@@ -31,9 +31,10 @@ vertical stripes of computation that fit in cache.
 
 Sparse computation, executed depth-wise in cache, allows DeepSparse to deliver GPU-class performance on CPUs!
 
-### How Do I Create A Sparse Version of YOLOv5 To Run With DeepSparse?
+### How Do I Create A Sparse Version of YOLOv5 Trained on My Data?
 
-Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1) has open-source sparse versions of each YOLOv5 model available for use. Neural Magic's SparseML library is integrated with Ultralytics, enabling you to transfer learn from pre-sparsified YOLOv5 models in SparseZoo with just a single CLI script. 
+Neural Magic's open-source model repository SparseZoo and open-source model optimization library SparseML are integrated with Ultralytics YOLOv5, making 
+it easy to fine-tune a pre-sparsified version of any YOLOv5 model onto custom data with a single CLI command.
 
 [Checkout Neural Magic's YOLOv5 documentation for more details](https://docs.neuralmagic.com/use-cases/object-detection/sparsifying).
 
@@ -65,14 +66,14 @@ zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
 
 DeepSparse includes a benchmarking script to test performance. The examples below use an AWS `c6i.4xlarge` instance (8 cores).
 
-We will use ONNX Runtime as the baseline, which can be installed with the following:
+We will show DeepSparse's performance in several scenarios against ONNX Runtime, which can be installed with the following:
 ```
 pip install onnxruntime
 ```
 
 #### ONNX Runtime Baseline
 
-The performance benchmarking scipt includes an option to run with ONNX Runtime. Run the following:
+The performance benchmarking script includes an option to run with ONNX Runtime. Run the following:
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -e onnxruntime
@@ -132,7 +133,7 @@ In latency-insensitive scenarios with large batch sizes, DeepSparse's performanc
 
 ORT achieves 15 images/sec at batch 64:
 ```bash
-deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -e onnxruntime
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 64 -e onnxruntime
 
 > Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
 > Batch Size: 64
