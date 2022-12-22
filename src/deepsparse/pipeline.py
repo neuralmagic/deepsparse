@@ -230,6 +230,7 @@ class Pipeline(ABC):
             identifier=InferencePhases.PRE_PROCESS,
             value=timer.time_delta(InferencePhases.PRE_PROCESS),
             category=MetricCategories.SYSTEM,
+            identifier_pre_fix="prediction_latency",
         )
 
         # ------ INFERENCE ------
@@ -253,6 +254,7 @@ class Pipeline(ABC):
             identifier=InferencePhases.ENGINE_FORWARD,
             value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
             category=MetricCategories.SYSTEM,
+            identifier_pre_fix="prediction_latency",
         )
 
         # ------ POSTPROCESSING ------
@@ -277,11 +279,13 @@ class Pipeline(ABC):
             identifier=InferencePhases.POST_PROCESS,
             value=timer.time_delta(InferencePhases.POST_PROCESS),
             category=MetricCategories.SYSTEM,
+            identifier_pre_fix="prediction_latency",
         )
         self.log(
             identifier=InferencePhases.TOTAL_INFERENCE,
             value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
             category=MetricCategories.SYSTEM,
+            identifier_pre_fix="prediction_latency",
         )
 
         return pipeline_outputs
@@ -700,15 +704,24 @@ class Pipeline(ABC):
             kwargs=kwargs,
         )
 
-    def log(self, identifier: str, value: Any, category: str):
+    def log(
+        self,
+        identifier: str,
+        value: Any,
+        category: str,
+        identifier_pre_fix: Optional[str] = None,
+    ):
         """
         Pass the logged data to the DeepSparse logger object (if present)
 
         :param identifier: The string name assigned to the logged value
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
+        :param identifier_pre_fix: An optional string to prepend to the identifier
         """
         identifier = f"{self.alias or self.task}/{identifier}"
+        if identifier_pre_fix:
+            identifier = f"{identifier_pre_fix}/{identifier}"
         validate_identifier(identifier)
         if self.logger:
             self.logger.log(
