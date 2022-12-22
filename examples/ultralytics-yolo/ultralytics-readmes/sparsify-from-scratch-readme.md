@@ -62,102 +62,15 @@ SparseML uses YAML-files called Recipes to encode the hyperparameters of the spa
 The easiest way to create a Recipe for usage with SparseML is downloading a pre-made Recipe
 from the open-source SparseZoo model repository. [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1) has a Sparsification Recipe available for each version of YOLOv5 and YOLOv5p6. 
 
->:rotating_light: **Pro-Tip:** Consider using [Sparse Transfer Learning **UPDATE LINK**](Ultralytics-STL-README.md). 
->It is an easier way to create a sparse model trained on your data.
-
-See below for more details on the `Modifiers` used for GMP and QAT. 
-
 <details>
-    <summary><b>GMP Modifiers</b></summary>
-    <br>
-
-An example `recipe.yaml` file for GMP is the following:
-
-```yaml
-# gmp-recipe.yaml
-   
-modifiers:
-    - !GlobalMagnitudePruningModifier
-        init_sparsity: 0.05
-        final_sparsity: 0.8
-        start_epoch: 0.0
-        end_epoch: 30.0
-        update_frequency: 1.0
-        params: __ALL_PRUNABLE__
-
-    - !SetLearningRateModifier
-        start_epoch: 0.0
-        learning_rate: 0.05
-
-    - !LearningRateFunctionModifier
-        start_epoch: 30.0
-        end_epoch: 50.0
-        lr_func: cosine
-        init_lr: 0.05
-        final_lr: 0.001
-
-    - !EpochRangeModifier
-        start_epoch: 0.0
-        end_epoch: 50.0
-```
-
-Each `Modifier` encodes a hyperparameter of the **GMP** algorithm:
-  - `GlobalMagnitudePruningModifier` applies gradual magnitude pruning globally across all the prunable parameters/weights in a model. It
-  starts at 5% sparsity at epoch 0 and gradually ramps up to 80% sparsity at epoch 30, pruning at the start of each epoch.
-  - `SetLearningRateModifier` sets the pruning LR to 0.05 (the midpoint between the original 0.1 and 0.001 LRs used to train YOLO).
-  - `LearningRateFunctionModifier` cycles the LR from 0.5 to 0.001 with a cosine curve (0.001 was the final original training LR).
-  - `EpochRangeModifier` expands the training time to continue finetuning for an additional `20` epochs after pruning has ended.
-
-30 pruning epochs and 20 finetuning epochs were chosen based on a 50 epoch training schedule - be sure to adjust based on the number of epochs as needed.
-
-</details>
-
-<details>
-    <summary><b>QAT Modifiers</b></summary>
-    <br>
-    
-An example `recipe.yaml` file for QAT is the following:
-
-```yaml
-# qat-recipe.yaml
-    
-modifiers:
-    !QuantizationModifier
-        start_epoch: 0.0
-        submodules: ['model']
-        freeze_bn_stats_epoch: 3.0
-
-    !SetLearningRateModifier
-        start_epoch: 0.0
-        learning_rate: 10e-6
-
-    !EpochRangeModifier
-        start_epoch: 0.0
-        end_epoch: 5.0
-```
-
-Each `Modifier` encodes a hyperparameter of the **QAT** algorithm:  
-
-  - The `QuantizationModifier` applies QAT to all quantizable modules under the `model` scope.
-Note the `model` is used here as a general placeholder; to determine the name of the root module for your model, print out the root module and use that root name.
-  - The `QuantizationModifier` starts at epoch 0 and freezes batch normalization statistics at the start of epoch 3.
-  - The `SetLearningRateModifier` sets the quantization LR to 10e-6 (0.01 times the example final LR of 0.001).
-  - The `EpochRangeModifier` sets the training time to continue training for the desired 5 epochs.
-
-</details>
-
-<details>
-    <summary><b>Compound Sparsity: GMP + QAT</b></summary>
+    <summary>Click for an example of a simple Sparsification Recipe</b></summary>
     </br>
-    
-Pruning and quantization can be applied together. When run in a sparsity-aware runtime, the speedup
-from pruning and quantization amplify eachother. Here's what a Recipe might look like with both GMP and QAT:
 
 ```yaml
 # recipe.yaml
     
 modifiers:
-    - !GlobalMagnitudePruningModifier
+    - !GMPruningModifier
         init_sparsity: 0.05
         final_sparsity: 0.8
         start_epoch: 0.0
@@ -188,25 +101,25 @@ modifiers:
         start_epoch: 0.0
         end_epoch: 55.0
 ```
-    
+
+In this example, the GMP algorithm is applied to all parameters, starting from an initial sparsity of 5% and gradually increasing to 80% over 30 epochs, as indicated by the `GMPruningModifier` element. Over the final 6 epochs (epoch 50-55), quantization is applied, as indicated by `QuantizationModifier`.
+
+Note that this Recipe is an example. You can find a pre-made Sparsification Recipe for YOLOv5s in [SparseZoo](https://sparsezoo.neuralmagic.com/models/cv%2Fdetection%2Fyolov5-s%2Fpytorch%2Fultralytics%2Fcoco%2Fpruned_quant-aggressive_94).
+
 </details>
 
-Checkout SparseML's [Recipe User Guide](https://docs.neuralmagic.com/user-guide/recipes/creating) 
-for more details on creating recipes.
 
 ## Applying Sparsification Recipes to YOLOv5
 
-Once you have created a Recipe or identifed a Recipe in the SparseZoo, you can use the SparseML-YOLOv5 integration 
-to kick off the sparsification process with the `train.py` script.
+Once you have a Recipe, you can kick off the sparsification process with the `train.py` script.
 
-We will use YOLOv5s as the starting point and the pre-made sparsification recipe from SparseZoo, identified by the following stub:
+This example uses a pre-made sparsification recipe for YOLOv5s from SparseZoo, identified by the following stub:
 
 ```bash
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none
 ```
 
-The following CLI command downloads the sparsification recipe from the SparseZoo and 
-kicks off the sparsification process.
+The following downloads the sparsification recipe from SparseZoo and sparsifys YOLOv5s:
 
 ```bash
 python train.py \
@@ -215,7 +128,10 @@ python train.py \
     --data coco.yaml
 ```
 
-Once the training completes, you will have a pruned-quantized version of YOLOv5s! The majority of layers are pruned to [**XX**]% and the weights have been quantized to INT8. On our training run, final accuracy is [**XX**] mAP@0.5, an [**XX**]% recovery against the dense baseline.
+Once the training completes, you will have a pruned-quantized version of YOLOv5s! 
+
+The majority of layers are pruned to [**XX**]% and the weights have been quantized to INT8. 
+On our training run, final accuracy is [**XX**] mAP@0.5, an [**XX**]% recovery against the dense baseline.
 
 > Note: this example uses a SparseZoo stub, but you can also pass a local path to a `sparsification-recipe`.
 
