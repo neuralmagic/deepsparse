@@ -162,9 +162,9 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_q
 
 ### Deploy a Model
 
-Beyond offering exceptional performance, DeepSparse offers convenient APIs for integrating your model into an application.  
+DeepSparse offers convenient APIs for integrating your model into an application.  
 
-To try the examples below, Pull down a sample image for the example and save as `basilica.jpg` with the following command:
+To try the deployment examples below, pull down a sample image for the example and save as `basilica.jpg` with the following command:
 ```bash
 wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/basilica.jpg
 ```
