@@ -24,7 +24,6 @@ from deepsparse.loggers import (
     AsyncLogger,
     BaseLogger,
     FunctionLogger,
-    MetricCategories,
     MultiLogger,
     PrometheusLogger,
     PythonLogger,
@@ -132,7 +131,7 @@ def build_data_loggers(
         if endpoint.data_logging is None:
             continue
         for target, metric_functions in endpoint.data_logging.items():
-            target_identifier = _get_target_identifier(endpoint.name, target)
+            target_identifier = _get_target_identifier(target, endpoint.name)
             for metric_function in metric_functions:
                 data_loggers.append(
                     _build_function_logger(metric_function, target_identifier, loggers)
@@ -169,9 +168,7 @@ def build_system_loggers(
                     frequency=1,
                     target_loggers=config_group_args.target_loggers,
                 ),
-                target_identifier=_get_target_identifier(
-                    config_group_name, is_system_logging_identifier=True
-                ),
+                target_identifier=_get_target_identifier(config_group_name),
                 loggers=loggers,
             )
         )
@@ -245,33 +242,12 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
 
 
 def _get_target_identifier(
-    *identifier_strings, is_system_logging_identifier=False
+    target_name: str, endpoint_name: Optional[str] = None
 ) -> str:
-    if is_system_logging_identifier:
-        if len(identifier_strings) != 1:
-            raise ValueError(
-                "System logging target identifier must be a single string. "
-                f"Got {identifier_strings} instead."
-            )
-        return _get_target_identifier_system(*identifier_strings)
-    else:
-        if len(identifier_strings) != 2:
-            raise ValueError(
-                "Target identifier must be a tuple of two strings. "
-                f"Got {identifier_strings} instead."
-            )
-        return _get_target_identifier_data(*identifier_strings)
-
-
-def _get_target_identifier_system(group_name: str) -> str:
-    # TODO: Let's discuss how the support for regex would
-    # look like here
-    return f"category:{MetricCategories.SYSTEM.value}/{group_name}"
-
-
-def _get_target_identifier_data(endpoint_name: str, target_name: str) -> str:
     if target_name.startswith("re:"):
         # if target name starts with "re:", it is a regex,
         # and we don't need to add the endpoint name to it
         return target_name
-    return f"{endpoint_name}/{target_name}"
+    if endpoint_name:
+        return f"{endpoint_name}/{target_name}"
+    return target_name
