@@ -55,12 +55,12 @@ information from quantization on the forward pass.
     
 </details>
     
-## Creating SparseML Recipes
+## Creating Sparsification Recipes
 
 SparseML uses YAML-files called Recipes to encode the hyperparameters of the sparsification algorithms. The rest of the SparseML system parses the Recipes to setup GMP and QAT.
 
 The easiest way to create a Recipe for usage with SparseML is downloading a pre-made Recipe
-from the open-source SparseZoo model repository. [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1) has a sparsification recipe available for each version of YOLOv5 and YOLOv5p6. 
+from the open-source SparseZoo model repository. [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1) has a Sparsification Recipe available for each version of YOLOv5 and YOLOv5p6. 
 
 >:rotating_light: **Pro-Tip:** Consider using [Sparse Transfer Learning **UPDATE LINK**](Ultralytics-STL-README.md). 
 >It is an easier way to create a sparse model trained on your data.
@@ -206,7 +206,7 @@ zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none
 ```
 
 The following CLI command downloads the sparsification recipe from the SparseZoo and 
-kicks off the sparsification process, fine-tuning onto the COCO dataset.
+kicks off the sparsification process.
 
 ```bash
 python train.py \
