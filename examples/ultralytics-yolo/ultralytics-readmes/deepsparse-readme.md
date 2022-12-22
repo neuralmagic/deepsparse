@@ -91,7 +91,7 @@ At batch 1, ORT achieves 17 images/sec with dense YOLOv5s.
 
 #### DeepSparse Dense Performance
 
-While DeepSparse gets its best performance with sparse models, it also has strong performance for dense models. Run the following:
+While DeepSparse gets its best performance with sparse models, it also runs dense models well. Run the following:
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1
