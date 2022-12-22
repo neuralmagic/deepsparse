@@ -69,7 +69,6 @@ def test_log_request_details(json_payload, batch_size, successful_request):
     assert bool(successful_request_logged) == successful_request
 
     if successful_request:
-
         batch_size_calls = [call for call in calls if "batch_size" in call]
         assert len(batch_size_calls) == 1
         batch_size_logged = int(batch_size_calls[0].split("value:")[1].split(",")[0])

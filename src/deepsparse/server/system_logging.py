@@ -16,7 +16,7 @@ from typing import Any
 
 from deepsparse import Pipeline
 from deepsparse.loggers import BaseLogger, MetricCategories
-from fastapi import Request
+from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -26,15 +26,27 @@ REQUEST_DETAILS_IDENTIFIER_PREFIX = "request_details"
 
 
 class SystemLoggingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, server_logger):
+    """
+    FastAPI Middleware implementation for logging system metrics.
+
+    A "middleware" is a function that works with every request before
+    it is processed by any specific path operation.
+    And also with every response before returning it.
+
+    :param app: A FastAPI app instance
+    :param server_logger: A server logger instance
+    """
+
+    def __init__(self, app: FastAPI, server_logger: BaseLogger):
         super().__init__(app)
         self.server_logger = server_logger
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         try:
             response = await call_next(request)
         except Exception as e:  # noqa: F841
             log_request_details(self.server_logger, successful_request=0)
+
         log_request_details(
             self.server_logger, successful_request=int((response.status_code == 200))
         )

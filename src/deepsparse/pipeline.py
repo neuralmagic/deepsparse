@@ -226,7 +226,6 @@ class Pipeline(ABC):
             value=engine_inputs,
             category=MetricCategories.DATA,
         )
-
         self.log(
             identifier=InferencePhases.PRE_PROCESS,
             value=timer.time_delta(InferencePhases.PRE_PROCESS),
@@ -248,6 +247,10 @@ class Pipeline(ABC):
 
         self.log(
             identifier="input_batch_size",
+            # to get the batch size of the inputs, we need to look
+            # to multiply the engine batch size (self._batch_size)
+            # by the number of batches processed by the engine during
+            # a single inference call
             value=len(batch_outputs) * self._batch_size,
             category=MetricCategories.SYSTEM,
             identifier_pre_fix="request_details"
