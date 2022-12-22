@@ -26,8 +26,7 @@ SparseML uses two techniques to create sparse models:
 - **Pruning** systematically removes redundant weights from a network
 - **Quantization** reduces model precision by converting weights from `FP32` to `INT8`
 
-Pruning and Quantization can be applied with minimal accuracy loss when performed in a training-aware manner with 
-access to training data. This allows the model to slowly adjust to the new optimization space as the pathways are removed or become less precise. 
+Pruning and Quantization can be applied with minimal accuracy loss when performed in a training-aware manner. This allows the model to slowly adjust to the new optimization space as the pathways are removed or become less precise. 
 
 See below for more details on the key algorithms:
 
@@ -59,8 +58,7 @@ information from quantization on the forward pass.
 
 SparseML uses YAML-files called Recipes to encode the hyperparameters of the sparsification algorithms. The rest of the SparseML system parses the Recipes to setup GMP and QAT.
 
-The easiest way to create a Recipe for usage with SparseML is downloading a pre-made Recipe
-from the open-source SparseZoo model repository. [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1) has a Sparsification Recipe available for each version of YOLOv5 and YOLOv5p6. 
+The easiest way to collect a Recipe for usage with YOLOv5 is downloading from the open-source SparseZoo model repository. [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1) has a Sparsification Recipe available for each version of YOLOv5 and YOLOv5p6. 
 
 <details>
     <summary>Click for an example of a simple Sparsification Recipe</b></summary>
@@ -102,7 +100,10 @@ modifiers:
         end_epoch: 55.0
 ```
 
-In this example, the GMP algorithm is applied to all parameters, starting from an initial sparsity of 5% and gradually increasing to 80% over 30 epochs, as indicated by the `GMPruningModifier` element. Over the final 6 epochs (epoch 50-55), quantization is applied, as indicated by `QuantizationModifier`.
+This recipe instructs SparseML to do the following:
+- First, apply the GMP algorithm is to all layers, starting from an initial sparsity of 5% and gradually increasing to 80% over 30 epochs, as indicated by the `GMPruningModifier` element. 
+- Second, fine tune for 20 epochs with at 80% sparsity.
+- Finally, apply the QAT algorithm to all layers over the last 5 epochs, as indicated by `QuantizationModifier`.
 
 Note that this Recipe is a simple example. You can find a state-of-the-art Sparsification Recipe for YOLOv5s in [SparseZoo](https://sparsezoo.neuralmagic.com/models/cv%2Fdetection%2Fyolov5-s%2Fpytorch%2Fultralytics%2Fcoco%2Fpruned_quant-aggressive_94).
 
@@ -119,7 +120,7 @@ This example uses a Sparsification Recipe for YOLOv5s from SparseZoo, identified
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none
 ```
 
-The following downloads the Recipe from SparseZoo and runs the sparsification process on YOLOv5s:
+Run the following to download the Recipe from SparseZoo and sparsify YOLOv5s:
 
 ```bash
 python train.py \
