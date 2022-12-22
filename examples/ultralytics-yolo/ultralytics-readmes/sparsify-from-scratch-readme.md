@@ -3,8 +3,8 @@
 This guide explains how to apply pruning and quantization to create an inference-optimized sparse 
 version of YOLOv5.
 
-SparseML is an open-source library which enables you to apply pruning and quantization algorithms to 
-create sparse models. Ultralytics is integrated with SparseML, enabling you to apply sparsity from 
+SparseML is an open-source library which enables you to easily apply pruning and quantization algorithms to 
+your models. Ultralytics is integrated with SparseML, allowing you to apply sparsity from 
 within the YOLOv5 repo.
 
 ## Installation
@@ -104,7 +104,7 @@ modifiers:
 
 In this example, the GMP algorithm is applied to all parameters, starting from an initial sparsity of 5% and gradually increasing to 80% over 30 epochs, as indicated by the `GMPruningModifier` element. Over the final 6 epochs (epoch 50-55), quantization is applied, as indicated by `QuantizationModifier`.
 
-Note that this Recipe is an example. You can find a pre-made Sparsification Recipe for YOLOv5s in [SparseZoo](https://sparsezoo.neuralmagic.com/models/cv%2Fdetection%2Fyolov5-s%2Fpytorch%2Fultralytics%2Fcoco%2Fpruned_quant-aggressive_94).
+Note that this Recipe is a simple example. You can find a state-of-the-art Sparsification Recipe for YOLOv5s in [SparseZoo](https://sparsezoo.neuralmagic.com/models/cv%2Fdetection%2Fyolov5-s%2Fpytorch%2Fultralytics%2Fcoco%2Fpruned_quant-aggressive_94).
 
 </details>
 
@@ -119,7 +119,7 @@ This example uses a pre-made sparsification recipe for YOLOv5s from SparseZoo, i
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none
 ```
 
-The following downloads the sparsification recipe from SparseZoo and sparsifys YOLOv5s:
+The following downloads the Recipe from SparseZoo and runs the sparsification process on YOLOv5s:
 
 ```bash
 python train.py \
@@ -140,8 +140,8 @@ On our training run, final accuracy is [**XX**] mAP@0.5, an [**XX**]% recovery a
 Many inference runtimes accept ONNX as the input format.
 
 SparseML provides an export script that you can use to create a `model.onnx` version of your
-trained model. The export process is modified such that the quantized and pruned models are 
-corrected and folded properly. Point the `--weights` argument points to your trained model.
+trained model. The export process ensures that the quantized and pruned models are 
+corrected and folded properly.
 
 ```
 python3 export.py --weights runs/train/exp/weights/last.pt 
