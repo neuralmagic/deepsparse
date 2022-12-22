@@ -14,6 +14,7 @@
 
 from unittest import mock
 
+import pytest
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import (
     EndpointConfig,
@@ -23,7 +24,6 @@ from deepsparse.server.config import (
 )
 from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
-from tests.deepsparse.loggers.helpers import ListLogger
 from tests.utils import mock_engine
 
 
@@ -33,9 +33,19 @@ task = "text-classification"
 name = "endpoint_name"
 
 
-def test_end_to_end():
+@pytest.mark.parametrize(
+    "json_payload, batch_size, successful_request",
+    [
+        ({"sequences": "today is great"}, 1, True),
+        ({"sequences": ["today is great", "today is great"]}, 2, True),
+        ({"this": "is supposed to fail"}, 1, False),
+    ],
+)
+def test_log_request_details(json_payload, batch_size, successful_request):
     server_config = ServerConfig(
-        endpoints=[EndpointConfig(task=task, name=name, model=stub)],
+        endpoints=[
+            EndpointConfig(task=task, name=name, model=stub, batch_size=batch_size)
+        ],
         loggers={"logger_1": {"path": logger_identifier}},
         system_logging=SystemLoggingConfig(
             request_details=SystemLoggingGroup(enable=True)
@@ -47,16 +57,20 @@ def test_end_to_end():
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
-    client.post("/predict", json={"sequences_": "today is great"})
+    client.post("/predict", json=json_payload)
 
     calls = server_logger.logger.loggers[0].logger.loggers[0].calls
-    assert (
-        len(
-            [call for call in calls if call.startswith("identifier:prediction_latency")]
-        )
-        == 4
+
+    successful_request_calls = [call for call in calls if "successful_request" in call]
+    assert len(successful_request_calls) == 1
+    successful_request_logged = int(
+        successful_request_calls[0].split("value:")[1].split(",")[0]
     )
-    assert (
-        len([call for call in calls if call.startswith("identifier:request_details")])
-        == 1
-    )
+    assert bool(successful_request_logged) == successful_request
+
+    if successful_request:
+
+        batch_size_calls = [call for call in calls if "batch_size" in call]
+        assert len(batch_size_calls) == 1
+        batch_size_logged = int(batch_size_calls[0].split("value:")[1].split(",")[0])
+        assert batch_size_logged == server_config.endpoints[0].batch_size

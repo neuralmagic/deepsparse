@@ -34,10 +34,7 @@ from deepsparse.server.config import (
     ServerConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
-from deepsparse.server.system_logging import (
-    log_request_details,
-    log_resource_utilization,
-)
+from deepsparse.server.system_logging import SystemLoggingMiddleware
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -122,28 +119,9 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     _LOGGER.info(f"Built context: {repr(context)}")
     _LOGGER.info(f"Built ThreadPoolExecutor with {executor._max_workers} workers")
 
-    app = FastAPI()
     server_logger = build_logger(server_config)
-
-    from fastapi.exceptions import RequestValidationError
-    from starlette.exceptions import HTTPException as StarletteHTTPException
-
-    @app.exception_handler(StarletteHTTPException)
-    async def custom_http_exception_handler(request, exc):
-        print(f"OMG! An HTTP error!: {repr(exc)}")
-
-    @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request, exc):
-        print(f"OMG! The client sent invalid data!: {exc}")
-
-    @app.middleware("http")
-    async def log_request_details_middleware(request, call_next):
-
-        try:
-            response = await call_next(request)
-        except Exception as e:
-            pass
-        return response
+    app = FastAPI()
+    app.add_middleware(SystemLoggingMiddleware, server_logger=server_logger)
 
     @app.get("/", include_in_schema=False)
     def _home():
@@ -261,14 +239,7 @@ def _add_pipeline_endpoint(
     output_schema = pipeline.output_schema
 
     def _predict(request: pipeline.input_schema):
-        try:
-            pipeline_outputs = pipeline(request)
-            successful_request = 1
-        except Exception as e:
-            successful_request, pipeline_outputs = 0, None
-        server_logger = pipeline.logger
-        if server_logger:
-            log_request_details(server_logger, successful_request=successful_request)
+        pipeline_outputs = pipeline(request)
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):

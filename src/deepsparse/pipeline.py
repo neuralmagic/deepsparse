@@ -228,13 +228,6 @@ class Pipeline(ABC):
         )
 
         self.log(
-            identifier="batch_size",
-            value=len(engine_inputs),
-            category=MetricCategories.SYSTEM,
-            identifier_pre_fix="request_details"
-            # not really a request outside the server context though...
-        )
-        self.log(
             identifier=InferencePhases.PRE_PROCESS,
             value=timer.time_delta(InferencePhases.PRE_PROCESS),
             category=MetricCategories.SYSTEM,
@@ -252,6 +245,14 @@ class Pipeline(ABC):
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
         timer.stop(InferencePhases.ENGINE_FORWARD)
+
+        self.log(
+            identifier="input_batch_size",
+            value=len(batch_outputs) * self._batch_size,
+            category=MetricCategories.SYSTEM,
+            identifier_pre_fix="request_details"
+            # not really a request outside the server context though...
+        )
 
         self.log(
             identifier="engine_outputs",

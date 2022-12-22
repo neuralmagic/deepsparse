@@ -16,11 +16,29 @@ from typing import Any
 
 from deepsparse import Pipeline
 from deepsparse.loggers import BaseLogger, MetricCategories
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
 
 
-__all__ = ["log_resource_utilization", "log_request_details"]
+__all__ = ["log_resource_utilization", "log_request_details", "SystemLoggingMiddleware"]
 
 REQUEST_DETAILS_IDENTIFIER_PREFIX = "request_details"
+
+
+class SystemLoggingMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, server_logger):
+        super().__init__(app)
+        self.server_logger = server_logger
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            response = await call_next(request)
+        except Exception as e:  # noqa: F841
+            log_request_details(self.server_logger, successful_request=0)
+        log_request_details(
+            self.server_logger, successful_request=int((response.status_code == 200))
+        )
+        return response
 
 
 def log_resource_utilization(pipeline: Pipeline, **kwargs: Any):
