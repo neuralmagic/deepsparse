@@ -70,7 +70,7 @@ def test_logging_only_system_info():
         client.post("/predict", json={"sequences": "today is great"})
     _test_logger_contents(
         server_logger.logger.loggers[0].logger.loggers[0],
-        {"category:MetricCategories.SYSTEM": 8},
+        {"prediction_latency": 8},
     )
 
 
@@ -134,7 +134,7 @@ def test_multiple_targets_logging():
         {
             "pipeline_inputs.sequences__identity": 2,
             "engine_inputs__identity": 2,
-            "category:MetricCategories.SYSTEM": 8,
+            "prediction_latency": 8,
         },
     )
 
@@ -176,7 +176,7 @@ def test_function_metric_with_target_loggers():
         {
             "pipeline_inputs.sequences__identity": 2,
             "engine_inputs__identity": 2,
-            "category:MetricCategories.SYSTEM": 8,
+            "prediction_latency": 8,
         },
     )
     _test_logger_contents(
@@ -184,7 +184,7 @@ def test_function_metric_with_target_loggers():
         {
             "pipeline_inputs.sequences__identity": 0,
             "engine_inputs__identity": 2,
-            "category:MetricCategories.SYSTEM": 8,
+            "prediction_latency": 8,
         },
     )
 
