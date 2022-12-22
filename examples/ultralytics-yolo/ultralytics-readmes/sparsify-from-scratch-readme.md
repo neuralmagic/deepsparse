@@ -1,20 +1,23 @@
-# Sparsifying YOLOv5 :rocket:
+# Sparsifying YOLOv5 with SparseML
 
-:books: This guide explains how to apply **pruning** and **quantization** to YOLOv5 :rocket: models using SparseML.
+This guide explains how to apply pruning and quantization to create an inference-optimized sparse 
+version of YOLOv5.
 
-## :arrow_heading_down: Installation
+SparseML is an open-source library which enables you to apply pruning and quantization algorithms to 
+create sparse models. Ultralytics is integrated with SparseML, enabling you to apply sparsity from 
+within the YOLOv5 repo.
 
-#### [UPDATE WITH NEW PATHWAY]
+## Installation
 
-SparseML is an open-source library that includes tools to create sparse models. SparseML is integrated with
-Ultralytics YOLOv5, making it easy to apply SparseML's algorithms to YOLOv5 models.
+Clone the repo and install the requirements.
 
-Install SparseML with the following command. We recommend using a virtual enviornment.
 ```bash
-pip install sparseml[torchvision] # [XXX] update with the new pathway
+git clone https://github.com/ultralytics/yolov5  # clone
+cd yolov5
+pip install -r requirements.txt  # install
 ```
 
-## 💡 Sparsity Conceptual Overview
+## Sparsity Overview
 
 Introducing Sparsity to YOLOv5 can improve inference performance, especially when paired with 
 an inference runtime that implements sparsity-aware optimizations.
@@ -23,26 +26,27 @@ SparseML uses two techniques to create sparse models:
 - **Pruning** systematically removes redundant weights from a network
 - **Quantization** reduces model precision by converting weights from `FP32` to `INT8`
 
-Pruning and Quantization can be applied with minimal accuracy loss when performed with 
-access to training data. This allows the model to slowly adjust to the new optimization 
-space as the pathways are removed or become less precise. 
+Pruning and Quantization can be applied with minimal accuracy loss when performed in a training-aware manner with 
+access to training data. This allows the model to slowly adjust to the new optimization space as the pathways are removed or become less precise. 
+
+See below for more details on the key algorithms:
 
 <details>
-    <summary><b>:scissors: Pruning: GMP</b></summary>
+    <summary><b>Pruning: GMP</b></summary>
     <br>
    
-Gradual magnitude pruning or **GMP** is the best algorithm for pruning. With it, 
-the weights closest to zero are iteratively removed over several epochs or training steps up to a specified level of sparsity. 
+Gradual magnitude pruning or GMP is the best algorithm for pruning. With it, 
+the least impactful weights are iteratively removed over several epochs up to a specified level of sparsity. 
 The remaining non-zero weights are then fine-tuned to the objective function. This iterative process enables 
 the model to slowly adjust to a new optimization space after pathways are removed before pruning again.
 
 </details>
         
 <details>
-    <summary><b>:black_square_button: Quantization: QAT</b></summary>
+    <summary><b>Quantization: QAT</b></summary>
     <br>
 
-Quantization aware training or **QAT** is the best algorithm for quantization. With it, fake quantization 
+Quantization aware training or QAT is the best algorithm for quantization. With it, fake quantization 
 operators are injected into the graph before quantizable nodes for activations, and weights 
 are wrapped with fake quantization operators. The fake quantization operators interpolate 
 the weights and activations down to `INT8` on the forward pass but enable a full update of 
@@ -51,18 +55,12 @@ information from quantization on the forward pass.
     
 </details>
     
-## :cook: Creating SparseML Recipes
+## Creating SparseML Recipes
 
-SparseML uses a concept called "Recipes" to apply the sparsification algorithms. Recipes are YAML files 
-that provide a declarative inferface to encode the hyperparameters of the algorithms. 
-The rest of the SparseML system parses the Recipes to setup **GMP** and **QAT**.
+SparseML uses YAML-files called Recipes to encode the hyperparameters of the sparsification algorithms. The rest of the SparseML system parses the Recipes to setup GMP and QAT.
 
 The easiest way to create a Recipe for usage with SparseML is downloading a pre-made Recipe
-from the open-source SparseZoo model repo. SparseZoo has a recipe available for each version of YOLOv5 and 
-YOLOv5p. Checkout them out [here **UPDATE LINK**](https://sparsezoo.neuralmagic.com/).
-
->:rotating_light: **Pro-Tip:** The pre-made Recipes in SparseZoo are state-of-the-art. Try the pre-made recipes
->and tweak as needed.
+from the open-source SparseZoo model repository. [SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1) has a sparsification recipe available for each version of YOLOv5 and YOLOv5p6. 
 
 >:rotating_light: **Pro-Tip:** Consider using [Sparse Transfer Learning **UPDATE LINK**](Ultralytics-STL-README.md). 
 >It is an easier way to create a sparse model trained on your data.
@@ -70,7 +68,7 @@ YOLOv5p. Checkout them out [here **UPDATE LINK**](https://sparsezoo.neuralmagic.
 We will explain the `Modifiers` used in the Recipes for **GMP** and **QAT**. 
 
 <details>
-    <summary><b>:scissors: GMP Modifiers</b></summary>
+    <summary><b>GMP Modifiers</b></summary>
     <br>
 
 An example `recipe.yaml` file for GMP is the following:
@@ -115,7 +113,7 @@ Each `Modifier` encodes a hyperparameter of the **GMP** algorithm:
 </details>
 
 <details>
-    <summary><b>🔲 QAT Modifiers</b></summary>
+    <summary><b>QAT Modifiers</b></summary>
     <br>
     
 An example `recipe.yaml` file for QAT is the following:
@@ -149,7 +147,7 @@ Note the `model` is used here as a general placeholder; to determine the name of
 </details>
 
 <details>
-    <summary><b>:palms_up_together: Compound Sparsity: GMP + QAT</b></summary>
+    <summary><b>Compound Sparsity: GMP + QAT</b></summary>
     </br>
     
 Pruning and quantization can be applied together. When run in a sparsity-aware runtime, the speedup
@@ -196,46 +194,43 @@ modifiers:
 Checkout SparseML's [Recipe User Guide](https://docs.neuralmagic.com/user-guide/recipes/creating) 
 for more details on creating recipes.
 
-## :fork_and_knife: Applying Recipes to YOLOv5
+## Applying Sparsification Recipes to YOLOv5
 
 Once you have created a Recipe or identifed a Recipe in the SparseZoo, you can use the SparseML-YOLOv5 integration 
-to kick off the sparsification process with a single command line call.
+to kick off the sparsification process with the `train.py` script.
 
-In this example, we will use dense [XXX] as the starting point and the pre-made sparsification recipe for [XXX]. 
-You can use the `sparsezoo_stub` to identify the sparsification recipe:
-```bashe
-# add the new stub
+We will use YOLOv5s as the starting point and the pre-made sparsification recipe from SparseZoo, identified by the following stub:
+
+```bash
+zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none
 ```
 
 The following CLI command downloads the sparsification recipe from the SparseZoo and 
-kicks off the sparsification process, fine-tuning onto the COCO dataset. (Note: this example uses a SparseZoo stub, 
-but you can also pass a local path to a `recipe`).
-
+kicks off the sparsification process, fine-tuning onto the COCO dataset.
 
 ```bash
-# add the new code
+python train.py \
+    --weights yolov5s.pt \
+    --sparsification-recipe zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none \
+    --data coco.yaml
 ```
 
+Once the training completes, you will have a pruned-quantized version of YOLOv5s! The majority of layers are pruned to [**XX**]% and the weights have been quantized to INT8. On our training run, final accuracy is [**XX**] mAP@0.5, an [**XX**]% recovery against the dense baseline.
 
-DNNs are overparameterized, meaning we can remove weights and reduce
-precision with little loss of accuracy. In this example, we achieve [**XX**]% recovery of the accuracy 
-for the dense baseline. The majority of layers are pruned between [**XX**]% and [**XX**]%, with some more 
-senstive layers pruned to [**XX**]%. On our training run, final accuracy is [**XX**] mAP@0.5 as 
-reported by the Ultralytics training script.
+> Note: this example uses a SparseZoo stub, but you can also pass a local path to a `sparsification-recipe`.
 
-## ⤴️ Exporting to ONNX
+## Exporting to ONNX
 
 Many inference runtimes accept ONNX as the input format.
 
-SparseML provides an export script that you can use to create a new `model.onnx` version of your
+SparseML provides an export script that you can use to create a `model.onnx` version of your
 trained model. The export process is modified such that the quantized and pruned models are 
-corrected and folded properly. Be sure the `--weights` argument points to your trained model.
+corrected and folded properly. Point the `--weights` argument points to your trained model.
 
 ```
-sparseml.yolov5.export_onnx \           # [XXX] << update with new pathway
-   --weights path/to/weights.pt \
-   --dynamic
+python3 export.py --weights runs/train/exp/weights/last.pt 
 ```
 
-You have created a sparse version of YOLOv5 and exported to ONNX! Now, use a sparsity-aware runtime to 
-gain a performance speedup.
+You have successfully created and exported a inference-optimized sparse version of YOLOv5.
+
+Be sure to deploy with a sparsity-aware inference runtime to gain a performance speedup!
