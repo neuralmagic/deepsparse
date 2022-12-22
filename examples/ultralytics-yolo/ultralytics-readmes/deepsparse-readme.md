@@ -10,9 +10,9 @@ DeepSparse is an inference runtime offering GPU-class performance on CPUs. For t
 demands of production without the complexity and costs of hardware accelerators.
 
 Simply put, DeepSparse gives you the performance of GPUs and the simplicity of software:
-- Flexible Deployments: Run consistently across cloud, data center, and edge with any hardware provider from Intel to AMD to ARM
-- Near-Infinite Scalability: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
-- Easy Integration: Clean APIs for integrating your model into an application and monitoring it in production
+- **Flexible Deployments**: Run consistently across cloud, data center, and edge with any hardware provider from Intel to AMD to ARM
+- **Near-Infinite Scalability**: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
+- **Easy Integration**: Clean APIs for integrating your model into an application and monitoring it in production
 
 **[Start your 90 day Free Trial](https://neuralmagic.com/deepsparse-free-trial/?utm_campaign=free_trial&utm_source=ultralytics_github).**
 
@@ -72,7 +72,7 @@ pip install onnxruntime
 
 #### ONNX Runtime Baseline
 
-At batch 1, ORT achieves 17 images/sec with dense YOLOv5-s.
+The performance benchmarking scipt includes an option to run with ONNX Runtime. Run the following:
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -e onnxruntime
@@ -86,12 +86,11 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-non
 > Latency Std (ms/batch): 0.2080
 > Iterations: 173
 ```
+At batch 1, ORT achieves 17 images/sec with dense YOLOv5-s.
 
 #### DeepSparse Dense Performance
 
-While DeepSparse gets the best performance with sparse models, it also has strong performance for standard dense models.
-
-At batch 1, DeepSparse achieves 35 images/sec with dense YOLOv5-s, a **2x performance improvement over ORT**, even before applying sparsity!
+While DeepSparse gets the best performance with sparse models, it also has strong performance for standard dense models. Run the following:
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1
@@ -106,11 +105,11 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-non
 > Iterations: 353
 ```
 
+At batch 1, DeepSparse achieves 35 images/sec with dense YOLOv5-s, a **2x performance improvement over ORT**, even before applying sparsity!
+
 #### DeepSparse Sparse Performance
 
-When sparsity is applied to the model, DeepSparse's performance is even stronger.
-
-At batch 1, DeepSparse achieves 80 images/sec with a pruned-quantized YOLOv5-s, a **4.7x performance improvement over ORT**!
+When sparsity is applied to the model, DeepSparse's performance is even stronger. Run the following:
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 -s sync -b 1
@@ -124,6 +123,8 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_q
 > Latency Std (ms/batch): 0.1546
 > Iterations: 799
 ```
+
+At batch 1, DeepSparse achieves 80 images/sec with a pruned-quantized YOLOv5-s, a **4.7x performance improvement over ORT**!
 
 #### Batch 64 Performance Comparison
 
@@ -160,8 +161,7 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_q
 
 ### Deploy a Model
 
-Beyond offering exceptional performance, DeepSparse offers convenient APIs for integrating your model into an application. 
-We will walk through an example of  
+Beyond offering exceptional performance, DeepSparse offers convenient APIs for integrating your model into an application.  
 
 Pull down a sample image for the example and save as `basilica.jpg` with the following command:
 ```bash
