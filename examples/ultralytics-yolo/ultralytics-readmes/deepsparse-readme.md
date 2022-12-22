@@ -1,6 +1,6 @@
 # DeepSparse
 
-This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse to achieve GPU-class performance on commodity CPUs.
+This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse.
 
 ## About DeepSparse
 
@@ -10,9 +10,9 @@ DeepSparse is an inference runtime offering GPU-class performance on CPUs. For t
 demands of production without the complexity and costs of hardware accelerators.
 
 Simply put, DeepSparse gives you the performance of GPUs and the simplicity of software:
-- Flexible Deployment: Run consistently across cloud, data center, and edge with any hardware provider from Intel to AMD to ARM
+- Flexible Deployments: Run consistently across cloud, data center, and edge with any hardware provider from Intel to AMD to ARM
 - Near-Infinite Scalability: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
-- Ease of Integration: Clean APIs for integrating your model into an application and monitoring it in production
+- Easy Integration: Clean APIs for integrating your model into an application and monitoring it in production
 
 **[Start your 90 day Free Trial](https://neuralmagic.com/deepsparse-free-trial/?utm_campaign=free_trial&utm_source=ultralytics_github).**
 
@@ -70,9 +70,9 @@ We will use ONNX Runtime as the baseline, which can be installed with the follow
 pip install onnxruntime
 ```
 
-#### ONNX Runtime Dense Performance
+#### ONNX Runtime Baseline
 
-Run the following to test ORT's performance on dense YOLOv5-s at batch 1:
+At batch 1, ORT achieves 17 images/sec with dense YOLOv5-s.
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -e onnxruntime
@@ -87,13 +87,11 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-non
 > Iterations: 173
 ```
 
-We can see ORT achieves throughput of 17 items/second.
-
 #### DeepSparse Dense Performance
 
 While DeepSparse gets the best performance with sparse models, it also has strong performance for standard dense models.
 
-Run the following to test DeepSparse's performance on dense YOLOv5-s at batch 1:
+At batch 1, DeepSparse achieves 35 images/sec with dense YOLOv5-s, a **2x performance improvement over ORT**, even before applying sparsity!
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1
@@ -108,13 +106,11 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-non
 > Iterations: 353
 ```
 
-We can see DeepSparse achieves 35 images/sec at batch 1 with dense YOLOv5-s, a **2x** performance improvement over ORT, even before applying sparsity!
-
 #### DeepSparse Sparse Performance
 
-With the pruned-quantized version of YOLOv5-s, DeepSparse's performance is even stronger.
+When sparsity is applied to the model, DeepSparse's performance is even stronger.
 
-Run the following to test DeepSparse's performance on sparse YOLOv5-s at batch 1:
+At batch 1, DeepSparse achieves 80 images/sec with a pruned-quantized YOLOv5-s, a **4.7x performance improvement over ORT**!
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 -s sync -b 1
@@ -129,14 +125,11 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_q
 > Iterations: 799
 ```
 
-We can see DeepSparse achieves 80 images/sec with sparse YOLOv5-s, a **4.7x** performance improvement over the ORT baseline.
-
 #### Batch 64 Performance Comparison
 
 In latency-insensitive scenarios (where batch sizes are large), DeepSparse's performance gain relative to ONNX Runtime is even stronger.
 
-Run the following to test ORT's performance at batch 64.
-
+ORT achieves 15 images/sec at batch 64:
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -e onnxruntime
 
@@ -150,9 +143,7 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-non
 > Iterations: 3
 ```
 
-ORT achieves 15 images/sec at batch 64:
-
-Run the following to test DeepSparse's performance at batch 64.
+DeepSparse achieves 148 images/sec at batch 64, a **10x performance improvement over ORT**!
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 -s sync -b 64
@@ -167,12 +158,10 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_q
 > Iterations: 24
 ```
 
-DeepSparse achieves 148 images/sec at batch 64, a **10x** performance improvement over ONNX Runtime!
-
 ### Deploy a Model
 
-Beyond offering exceptional performance, DeepSparse offers convenient APIs for integrating your model into an application. There are two
-primary APIs for deploying YOLOv5 on DeepSparse.
+Beyond offering exceptional performance, DeepSparse offers convenient APIs for integrating your model into an application. 
+We will walk through an example of  
 
 Pull down a sample image for the example and save as `basilica.jpg` with the following command:
 ```bash
@@ -181,10 +170,10 @@ wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 
 #### Python API
   
-`Pipelines` wrap image pre-processing and output post-processing around the runtime. The DeepSparse-Ultralytics integration includes an 
-out-of-the-box `Pipeline` that accepts raw images and outputs the bounding boxes.
+`Pipelines` wrap image pre-processing and output post-processing around the runtime, providing a clean inferface for adding DeepSparse to an application. 
+The DeepSparse-Ultralytics integration includes an out-of-the-box `Pipeline` that accepts raw images and outputs the bounding boxes.
 
-Create a `Pipeline` for inference:
+Create a `Pipeline` and run inference:
 
 ```python
 from deepsparse import Pipeline
@@ -206,10 +195,10 @@ print(pipeline_outputs)
 
 #### HTTP Server
   
-The DeepSparse Server runs on top of the popular FastAPI web framework and Uvicorn web server such that you can query a model via HTTP. 
-The server supports any task from DeepSparse, including object detection.
+DeepSparse Server runs on top of the popular FastAPI web framework and Uvicorn web server such that you can easily setup a model service endpoint.
+The Server supports any task from DeepSparse, including object detection with YOLOv5.
 
-Spin up the server with sparse by running the following from the command line: 
+Spin up the Server with sparse by running the following from the command line: 
 
 ```bash
 deepsparse.server \
@@ -219,8 +208,7 @@ deepsparse.server \
 
 An example request, using Python's `requests` package:
 ```python
-import requests
-import json
+import requests, json
 
 # list of images for inference (local files on client side)
 path = ['basilica.jpg'] 
