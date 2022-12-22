@@ -171,7 +171,7 @@ wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 
 #### Python API
   
-`Pipelines` wrap image pre-processing and output post-processing around the runtime, providing a clean inferface for adding DeepSparse to an application. 
+`Pipelines` wrap pre-processing and output post-processing around the runtime, providing a clean inferface for adding DeepSparse to an application. 
 The DeepSparse-Ultralytics integration includes an out-of-the-box `Pipeline` that accepts raw images and outputs the bounding boxes.
 
 Create a `Pipeline` and run inference:
