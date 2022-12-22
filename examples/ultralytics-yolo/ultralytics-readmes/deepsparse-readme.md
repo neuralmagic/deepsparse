@@ -73,7 +73,7 @@ pip install onnxruntime
 
 #### ONNX Runtime Baseline
 
-The performance benchmarking script includes an option to run with ONNX Runtime. Run the following:
+The performance benchmarking script includes an option to run with ONNX Runtime as a baseline. Run the following:
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -e onnxruntime
