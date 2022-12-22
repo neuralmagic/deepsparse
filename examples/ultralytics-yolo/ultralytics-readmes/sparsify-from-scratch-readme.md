@@ -113,7 +113,7 @@ Note that this Recipe is a simple example. You can find a state-of-the-art Spars
 
 Once you have a Recipe, you can kick off the sparsification process with the `train.py` script.
 
-This example uses a pre-made sparsification recipe for YOLOv5s from SparseZoo, identified by the following stub:
+This example uses a Sparsification Recipe for YOLOv5s from SparseZoo, identified by the following stub:
 
 ```bash
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/prunedXXX_quant-none
