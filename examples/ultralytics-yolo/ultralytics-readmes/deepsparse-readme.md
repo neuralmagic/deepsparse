@@ -200,7 +200,7 @@ DeepSparse Server runs on top of the popular FastAPI web framework and Uvicorn w
 service endpoint with DeepSparse. The Server supports any Pipeline from DeepSparse, including object detection with YOLOv5, enabling you to send raw 
 images to the endpoint and recieve the bounding boxes.
 
-Spin up the Server with the pruned-quantized YOLOv5s by running the following from the command line: 
+Spin up the Server with the pruned-quantized YOLOv5s:
 
 ```bash
 deepsparse.server \
