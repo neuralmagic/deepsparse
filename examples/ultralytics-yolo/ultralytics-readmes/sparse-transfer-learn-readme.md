@@ -1,10 +1,8 @@
 # Sparse Transfer Learning with SparseML
 
-This guide explains how to fine-tune an inference-optimized sparse version of YOLOv5 onto a custom dataset.
+This guide explains how to fine-tune an inference-optimized sparse version of YOLOv5 onto a custom dataset. 
 
-SparseML is an open-source library which enables you to apply pruning and quantization algorithms to create
-sparse models. Ultralytics is integrated with SparseML, enabling you to apply Sparse Transfer Learning from 
-within the YOLOv5 repo.
+SparseML is an open-source library which enables you to apply pruning and quantization algorithms to create sparse models. Ultralytics is integrated with SparseML, enabling you to apply Sparse Transfer Learning from within the YOLOv5 repo.
 
 ## Installation
 
@@ -18,8 +16,9 @@ pip install -r requirements.txt  # install
 
 ## Sparse Transfer Learning Overview
 
-Sparse Transfer Learning is the easiest way to create a sparse version of YOLOv5 trained on custom data. 
-                                                                                                        
+Sparse Transfer Learning is the easiest way to create a sparse version of YOLOv5 trained on custom data. Using a sparse model can improve inference performance, especially when paired 
+with an inference runtime that implements sparsity-aware optimizations. 
+                                                                                                       
 Similiar to typical fine-tuning, Sparse Transfer Learning starts with a checkpoint trained on a large dataset and then fine-tunes the weights onto a smaller downstream dataset. However, with Sparse Transfer Learning, the training starts from a sparse checkpoint and the sparsity structure is maintained as the fine-tuning occurs. The end result is a sparse model trained on the downstream dataset!
                                                                                                             
 >:rotating_light: **Clarification:** When we say sparse models, we are describing sparsity in the **weights** of the model. 
