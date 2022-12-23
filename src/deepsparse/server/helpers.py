@@ -17,7 +17,7 @@ Helper functions for deepsparse.server
 
 import importlib
 import logging
-from typing import Type
+from typing import Dict, Type
 
 from deepsparse import BaseLogger, PythonLogger
 
@@ -43,13 +43,12 @@ def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLog
     return getattr(module, logger_object_name)
 
 
-def default_logger() -> BaseLogger:
+def default_logger() -> Dict[str, BaseLogger]:
     """
     :return: default PythonLogger object for the deployment scenario
     """
-    logger = PythonLogger()
     _LOGGER.info("Created default logger: PythonLogger")
-    return logger
+    return {"python": PythonLogger()}
 
 
 def log_system_info(server_logger: BaseLogger):

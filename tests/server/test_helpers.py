@@ -18,4 +18,4 @@ from deepsparse.server.helpers import default_logger
 
 
 def test_default_logger(tmp_path):
-    assert isinstance(default_logger(), PythonLogger)
+    assert isinstance(default_logger()["python"], PythonLogger)

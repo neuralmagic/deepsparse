@@ -52,7 +52,7 @@ def test_default_logger():
 
     for _ in range(2):
         client.post("/predict", json={"sequences": "today is great"})
-    assert isinstance(server_logger.logger.loggers[0], PythonLogger)
+    assert isinstance(server_logger.logger.loggers[0].logger.loggers[0], PythonLogger)
 
 
 def test_logging_only_system_info():

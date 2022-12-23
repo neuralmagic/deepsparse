@@ -167,7 +167,7 @@ def test_build_logger(yaml_config, raises_error, default_logger, num_function_lo
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)
     if default_logger:
-        assert isinstance(logger.logger.loggers[0], PythonLogger)
+        assert isinstance(logger.logger.loggers[0].logger.loggers[0], PythonLogger)
         return
     assert len(logger.logger.loggers) == num_function_loggers + 1
 
