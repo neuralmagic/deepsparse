@@ -56,16 +56,10 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     """
 
     loggers_config = server_config.loggers
-    if not loggers_config:
-        return AsyncLogger(
-            logger=MultiLogger(
-                [default_logger()]
-            ),  # wrap all loggers to async log call
-            max_workers=1,
-        )
-
     # base level loggers that log raw values for monitoring. ie python, prometheus
-    leaf_loggers = build_leaf_loggers(loggers_config)
+    leaf_loggers = (
+        build_leaf_loggers(loggers_config) if loggers_config else default_logger()
+    )
 
     function_loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
 
