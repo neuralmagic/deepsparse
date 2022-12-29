@@ -218,7 +218,8 @@ def access_nested_value(
             # indexing
             operator = int(string_operator)
 
-        value = _warn_if_array_or_tensor(value.__getitem__(operator))
+        _warn_if_array_or_tensor(value)
+        value = value.__getitem__(operator)
 
     return value
 
@@ -285,4 +286,3 @@ def _warn_if_array_or_tensor(value: Any) -> Any:
 
     if isinstance(value, numpy.ndarray) or hasattr(value, "numpy"):
         warnings.warn(msg)
-    return value
