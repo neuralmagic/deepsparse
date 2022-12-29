@@ -300,8 +300,8 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             or all_end_logits.shape[0] != num_spans
         ):
             raise ValueError(
-                "Engine outputs expected for {num_spans} span(s), "
-                "but found for {len(engine_outputs)}"
+                f"Engine outputs expected for {num_spans} span(s), "
+                f"but found for {len(engine_outputs)}"
             )
 
         if self.version_2_with_negative:
