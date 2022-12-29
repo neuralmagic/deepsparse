@@ -227,7 +227,9 @@ def benchmark_sweep(
                 except Exception as exception:
                     _LOGGER.info(
                         f"An exception was raised while trying to benchmark {model}, "
-                        f"{exception}"
+                        f"with batch_size: {batch_size}, input shapes: {input_shape},"
+                        f"num_cores: {num_core} and num_streams: {num_streams}, "
+                        f"Exception: {exception}"
                     )
 
 
