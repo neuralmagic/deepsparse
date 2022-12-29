@@ -37,10 +37,34 @@ from deepsparse.server.config import (
 )
 
 
-__all__ = ["build_logger"]
+__all__ = ["build_logger", "custom_logger_from_identifier", "default_logger"]
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER_MAPPING = {"python": PythonLogger, "prometheus": PrometheusLogger}
+
+
+def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLogger]:
+    """
+    Parse the custom logger identifier in order to import a custom logger class object
+    from the user-specified python script
+
+    :param custom_logger_identifier: string in the form of
+           '<path_to_the_python_script>:<custom_logger_class_name>
+    :return: custom logger class object
+    """
+    path, logger_object_name = custom_logger_identifier.split(":")
+    spec = importlib.util.spec_from_file_location("user_defined_custom_logger", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, logger_object_name)
+
+
+def default_logger() -> Dict[str, BaseLogger]:
+    """
+    :return: default PythonLogger object for the deployment scenario
+    """
+    _LOGGER.info("Created default logger: PythonLogger")
+    return {"python": PythonLogger()}
 
 
 def build_logger(server_config: ServerConfig) -> BaseLogger:
@@ -174,30 +198,6 @@ def build_system_loggers(
         )
 
     return system_loggers
-
-
-def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLogger]:
-    """
-    Parse the custom logger identifier in order to import a custom logger class object
-    from the user-specified python script
-
-    :param custom_logger_identifier: string in the form of
-           '<path_to_the_python_script>:<custom_logger_class_name>
-    :return: custom logger class object
-    """
-    path, logger_object_name = custom_logger_identifier.split(":")
-    spec = importlib.util.spec_from_file_location("user_defined_custom_logger", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return getattr(module, logger_object_name)
-
-
-def default_logger() -> Dict[str, BaseLogger]:
-    """
-    :return: default PythonLogger object for the deployment scenario
-    """
-    _LOGGER.info("Created default logger: PythonLogger")
-    return {"python": PythonLogger()}
 
 
 def _build_function_logger(
