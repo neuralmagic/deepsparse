@@ -85,7 +85,7 @@ def _parse_requirements_file(file_path):
 
 
 _deps = [
-    "numpy>=1.16.3",
+    "numpy>=1.16.3,<=1.21.6",
     "onnx>=1.5.0,<=1.12.0",
     "pydantic>=1.8.2",
     "requests>=2.0.0",
@@ -96,7 +96,7 @@ _deps = [
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
     "beautifulsoup4>=4.9.3",
-    "black>=20.8b1",
+    "black==22.12.0",
     "flake8>=3.8.3",
     "isort>=5.7.0",
     "m2r2~=0.2.7",
