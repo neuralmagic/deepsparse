@@ -121,10 +121,12 @@ def test_possibly_extract_value(value, remainder, expected_value):
 )
 def test_access_nested_value(value, square_brackets, expected_value):
     if isinstance(expected_value, numpy.ndarray):
-        assert numpy.array_equal(
-            expected_value, access_nested_value(value, square_brackets)
-        )
-        return
+        # assert raises warning
+        with pytest.warns(UserWarning):
+            assert numpy.array_equal(
+                expected_value, access_nested_value(value, square_brackets)
+            )
+            return
 
     assert expected_value == access_nested_value(
         value=value, square_brackets=square_brackets
