@@ -13,22 +13,24 @@
 # limitations under the License.
 
 from os import getpid
-from typing import Any
+from typing import Any, Dict
 
 import psutil
 from deepsparse import Pipeline
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import (
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    BaseLogger,
+    MetricCategories,
+)
 
 
 __all__ = ["log_resource_utilization", "log_request_details"]
-
-RESOURCE_UTILIZATION_IDENTIFIER_PREFIX = "resource_utilization/"
 
 
 def log_resource_utilization(
     server_logger: BaseLogger,
     prefix: str = RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
-    **kwargs: Any,
+    **additional_items_to_log: Dict[str, Any],
 ):
     """
     Logs the resource utilization of the server process.
@@ -37,13 +39,13 @@ def log_resource_utilization(
     - Memory utilization
     - Total memory available
 
-    + any additional kwargs passed in
-    (where key is the identifier and value is the value to log)
-
     :param server_logger: the logger to log the metrics to
+    :param prefix: the prefix to use for the identifier
+    :param additional_items_to_log: any additional items to log.
+        These will be key-value pairs, where the key is the
+        identifier string and the value is the value to log.
     """
     process = psutil.Process(getpid())
-
     # A float representing the current system-wide CPU utilization as a percentage
     cpu_percent = process.cpu_percent()
     # A float representing process memory utilization as a percentage
@@ -57,15 +59,12 @@ def log_resource_utilization(
         "memory_utilization_percent": memory_percent,
         "total_memory_available_MB": total_memory_megabytes,
     }
-    if kwargs:
-        identifier_to_value.update(kwargs)
+    if additional_items_to_log:
+        identifier_to_value.update(additional_items_to_log)
 
-    for identifier, value in identifier_to_value.items():
-        server_logger.log(
-            identifier=prefix + identifier,
-            value=value,
-            category=MetricCategories.SYSTEM,
-        )
+    _send_information_to_logger(
+        logger=server_logger, identifier_to_value=identifier_to_value, prefix=prefix
+    )
 
 
 def log_request_details(pipeline: Pipeline, **kwargs: Any):
@@ -78,3 +77,14 @@ def log_request_details(pipeline: Pipeline, **kwargs: Any):
     number of successful inferences times the respective batch size)
     """
     pass
+
+
+def _send_information_to_logger(
+    logger: BaseLogger, identifier_to_value: Dict[str, Any], prefix: str
+):
+    for identifier, value in identifier_to_value.items():
+        logger.log(
+            identifier=prefix + identifier,
+            value=value,
+            category=MetricCategories.SYSTEM,
+        )

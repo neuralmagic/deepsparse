@@ -18,9 +18,14 @@ Holds logging-related objects with constant values
 from enum import Enum
 
 
-__all__ = ["MetricCategories", "validate_identifier"]
+__all__ = [
+    "MetricCategories",
+    "validate_identifier",
+    "RESOURCE_UTILIZATION_IDENTIFIER_PREFIX",
+]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
+RESOURCE_UTILIZATION_IDENTIFIER_PREFIX = "resource_utilization"
 
 
 class MetricCategories(Enum):
