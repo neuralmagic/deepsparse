@@ -288,7 +288,7 @@ def check_identifier_match(
     if template.startswith(identifier):
         remainder = template.replace(identifier, "")
         return True, remainder if remainder.startswith("[") else remainder[1:]
-    if identifier.startswith(template):
+    if template in identifier:
         return True, None
     return False, None
 
