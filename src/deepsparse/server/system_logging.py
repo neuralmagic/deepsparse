@@ -53,9 +53,9 @@ def log_resource_utilization(
     total_memory_megabytes = total_memory_bytes / 1024 / 1024
 
     identifier_to_value = {
-        "cpu_utilization_[%]": cpu_percent,
-        "memory_utilization_[%]": memory_percent,
-        "total_memory_available_[MB]": total_memory_megabytes,
+        "cpu_utilization_percent": cpu_percent,
+        "memory_utilization_percent": memory_percent,
+        "total_memory_available_MB": total_memory_megabytes,
     }
     if kwargs:
         identifier_to_value.update(kwargs)
