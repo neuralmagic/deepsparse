@@ -18,8 +18,13 @@ Holds logging-related objects with constant values
 from enum import Enum
 
 
-__all__ = ["MetricCategories", "validate_identifier"]
+__all__ = [
+    "MetricCategories",
+    "validate_identifier",
+    "REQUEST_DETAILS_IDENTIFIER_PREFIX",
+]
 
+REQUEST_DETAILS_IDENTIFIER_PREFIX = "request_details"
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
 
 

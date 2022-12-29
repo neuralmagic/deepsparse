@@ -15,14 +15,16 @@
 from typing import Any
 
 from deepsparse import Pipeline
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import (
+    REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    BaseLogger,
+    MetricCategories,
+)
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
 __all__ = ["log_resource_utilization", "log_request_details", "SystemLoggingMiddleware"]
-
-REQUEST_DETAILS_IDENTIFIER_PREFIX = "request_details"
 
 
 class SystemLoggingMiddleware(BaseHTTPMiddleware):
@@ -68,7 +70,7 @@ def log_resource_utilization(pipeline: Pipeline, **kwargs: Any):
 def log_request_details(
     server_logger: BaseLogger,
     prefix: str = REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    **kwargs: Any,
+    **items_to_log: Any,
 ):
     """
     Logs the request details of the server process.
@@ -76,10 +78,26 @@ def log_request_details(
     (where key is the identifier and value is the value to log)
 
     :param server_logger: the logger to log the metrics to
+    :param prefix: the prefix to use for the identifier
+    :param items_to_log: The information that is to be logged under this
+        particular system logging metric group. The key of `items_to_log` is
+        the identifier and value is the value to log.
+
+        For example
+        ```
+        log_request_details(server_logger,
+                            prefix = "request_details"
+                            some_identifier = 0.0,
+                            some_other_identifier = True)
+        ```
+        would send:
+            value 0.0 under identifier "request_details/some_identifier"
+            value True under idedentifier "request_details/some_other_identifier"
+        to the `server_logger`
     """
-    for identifier, value in kwargs.items():
+    for identifier, value in items_to_log.items():
         server_logger.log(
-            identifier="/".join([prefix, identifier]),
+            identifier=f"{prefix}/{identifier}",
             value=value,
             category=MetricCategories.SYSTEM,
         )
