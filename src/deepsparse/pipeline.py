@@ -227,7 +227,9 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=InferencePhases.PRE_PROCESS,
+            # note, will be replaced by a reference instead of "bare" string
+            # with the upcoming PR for system logging
+            identifier="prediction_latency/" + InferencePhases.PRE_PROCESS,
             value=timer.time_delta(InferencePhases.PRE_PROCESS),
             category=MetricCategories.SYSTEM,
         )
@@ -250,7 +252,7 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=InferencePhases.ENGINE_FORWARD,
+            identifier="prediction_latency/" + InferencePhases.ENGINE_FORWARD,
             value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
             category=MetricCategories.SYSTEM,
         )
@@ -274,12 +276,12 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=InferencePhases.POST_PROCESS,
+            identifier="prediction_latency/" + InferencePhases.POST_PROCESS,
             value=timer.time_delta(InferencePhases.POST_PROCESS),
             category=MetricCategories.SYSTEM,
         )
         self.log(
-            identifier=InferencePhases.TOTAL_INFERENCE,
+            identifier="prediction_latency/" + InferencePhases.TOTAL_INFERENCE,
             value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
             category=MetricCategories.SYSTEM,
         )
@@ -700,7 +702,12 @@ class Pipeline(ABC):
             kwargs=kwargs,
         )
 
-    def log(self, identifier: str, value: Any, category: str):
+    def log(
+        self,
+        identifier: str,
+        value: Any,
+        category: str,
+    ):
         """
         Pass the logged data to the DeepSparse logger object (if present)
 
