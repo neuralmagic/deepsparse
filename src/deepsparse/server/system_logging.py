@@ -34,7 +34,10 @@ def log_resource_utilization(
     **additional_items_to_log: Dict[str, Any],
 ):
     """
-    Logs the resource utilization of the server process.
+    Checks whether server_logger excepts to receive logs pertaining to
+    the resource utilization of the server process.
+    If yes, log the relevant data.
+
     This includes:
     - CPU utilization
     - Memory utilization
@@ -46,6 +49,8 @@ def log_resource_utilization(
         These will be key-value pairs, where the key is the
         identifier string and the value is the value to log.
     """
+    if not _logging_enabled(server_logger=server_logger, group_name=prefix):
+        return
     process = psutil.Process(getpid())
     # A float representing the current system-wide CPU utilization as a percentage
     cpu_percent = process.cpu_percent()
@@ -80,12 +85,26 @@ def log_request_details(pipeline: Pipeline, **kwargs: Any):
     pass
 
 
+def _logging_enabled(server_logger: BaseLogger, group_name: str) -> bool:
+    function_loggers = server_logger.logger.loggers
+    if not any(
+        [
+            logger
+            for logger in function_loggers
+            if group_name == logger.target_identifier
+        ]
+    ):
+        return False
+    else:
+        return True
+
+
 def _send_information_to_logger(
     logger: BaseLogger, identifier_to_value: Dict[str, Any], prefix: str
 ):
     for identifier, value in identifier_to_value.items():
         logger.log(
-            identifier=prefix + identifier,
+            identifier=f"{prefix}/{identifier}",
             value=value,
             category=MetricCategories.SYSTEM,
         )
