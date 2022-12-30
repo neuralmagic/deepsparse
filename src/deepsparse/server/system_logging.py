@@ -120,7 +120,8 @@ def log_request_details(
     **items_to_log: Dict[str, Any],
 ):
     """
-    Logs the request details of the server process.
+    Checks whether server_logger expects to receive logs pertaining to
+    the request_details of the server process.
     Request details information are to be passed as kwargs.
     (where key is the identifier and value is the value to log)
 
