@@ -34,8 +34,10 @@ from deepsparse.server.config import (
     ServerConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
-from deepsparse.server.system_logging import SystemLoggingMiddleware
-from deepsparse.server.system_logging import log_resource_utilization
+from deepsparse.server.system_logging import (
+    SystemLoggingMiddleware,
+    log_resource_utilization,
+)
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 

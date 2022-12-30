@@ -29,10 +29,10 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers import (
+    REQUEST_DETAILS_IDENTIFIER_PREFIX,
     BaseLogger,
     MetricCategories,
     validate_identifier,
-    REQUEST_DETAILS_IDENTIFIER_PREFIX,
 )
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
 from deepsparse.timing import InferencePhases, Timer

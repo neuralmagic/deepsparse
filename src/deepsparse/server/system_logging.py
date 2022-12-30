@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import logging
 from os import getpid
 from typing import Any, Dict
 
@@ -27,6 +28,7 @@ from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
+_LOGGER = logging.getLogger(__name__)
 __all__ = ["log_resource_utilization", "log_request_details", "SystemLoggingMiddleware"]
 
 
@@ -49,11 +51,18 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         try:
             response = await call_next(request)
-        except Exception as e:  # noqa: F841
-            log_request_details(self.server_logger, response=e)
+        except Exception as err:  # noqa: F841
+            log_request_details(
+                self.server_logger, response_message=f"{err.__class__.__name__}: {err}"
+            )
             log_request_details(self.server_logger, successful_request=0)
+            _LOGGER.error(err)
+            raise
 
-        log_request_details(self.server_logger, response=response)
+        log_request_details(
+            self.server_logger,
+            response_message=f"Response status code: {response.status_code}",
+        )
         log_request_details(
             self.server_logger, successful_request=int((response.status_code == 200))
         )
@@ -133,6 +142,9 @@ def log_request_details(
             value True under identifier "request_details/some_other_identifier"
         to the `server_logger`
     """
+    if not _logging_enabled(server_logger=server_logger, group_name=prefix):
+        return
+
     _send_information_to_logger(
         logger=server_logger, identifier_to_value=items_to_log, prefix=prefix
     )
