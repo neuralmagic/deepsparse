@@ -60,7 +60,7 @@ def _test_additional_items_to_log(calls, num_iterations):
     ]
     values = [float(call.split("value:")[1].split(",")[0]) for call in relevant_calls]
     assert len(relevant_calls) == num_iterations
-    # assert all values are the same (total memory available is constant)
+    # assert all values are the same ({"test" : 1} is constant)
     assert all(value == 1 for value in values)
 
 
@@ -94,6 +94,7 @@ def test_log_resource_utilization(
 
     time.sleep(1)
     if "resource_utilization" == target_identifier:
+        # happy path
         _test_cpu_utilization(
             server_logger.logger.loggers[0].logger.calls, num_iterations
         )
@@ -108,4 +109,5 @@ def test_log_resource_utilization(
                 server_logger.logger.loggers[0].logger.calls, num_iterations
             )
     else:
+        # invalid target_identifier, no logging happened
         assert server_logger.logger.loggers[0].logger.calls == []

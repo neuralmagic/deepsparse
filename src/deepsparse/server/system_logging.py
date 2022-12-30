@@ -34,9 +34,9 @@ def log_resource_utilization(
     **additional_items_to_log: Dict[str, Any],
 ):
     """
-    Checks whether server_logger excepts to receive logs pertaining to
+    Checks whether server_logger expects to receive logs pertaining to
     the resource utilization of the server process.
-    If yes, log the relevant data.
+    If yes, compute and log the relevant data.
 
     This includes:
     - CPU utilization
@@ -87,16 +87,13 @@ def log_request_details(pipeline: Pipeline, **kwargs: Any):
 
 def _logging_enabled(server_logger: BaseLogger, group_name: str) -> bool:
     function_loggers = server_logger.logger.loggers
-    if not any(
+    return any(
         [
             logger
             for logger in function_loggers
             if group_name == logger.target_identifier
         ]
-    ):
-        return False
-    else:
-        return True
+    )
 
 
 def _send_information_to_logger(
