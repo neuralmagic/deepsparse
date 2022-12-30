@@ -17,6 +17,7 @@ Helpers functions for logging
 import importlib
 import os.path
 import re
+import warnings
 from types import ModuleType
 from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
@@ -251,6 +252,7 @@ def access_nested_value(
             # indexing
             operator = int(string_operator)
 
+        _warn_if_array_or_tensor(value)
         value = value.__getitem__(operator)
 
     return value
@@ -288,7 +290,7 @@ def check_identifier_match(
     if template.startswith(identifier):
         remainder = template.replace(identifier, "")
         return True, remainder if remainder.startswith("[") else remainder[1:]
-    if identifier.startswith(template):
+    if template in identifier:
         return True, None
     return False, None
 
@@ -301,3 +303,16 @@ def _get_function_and_function_name_from_framework(
     for attribute in func_attributes:
         module = getattr(module, attribute)
     return module, ".".join(func_attributes)
+
+
+def _warn_if_array_or_tensor(value: Any) -> Any:
+    msg = """
+    If value is an array or tensor, one should refrain from 
+    slicing/indexing/accessing its elements using 'access_nested_value'.
+    This function should only be used for Sequence types 
+    (lists, tuple, ranges, etc.) or Dictionaries due to their simple structure.
+    For more complex operations on `value`, one should use `metric_functions`
+    specified directly in the data logging config"""  # noqa W291
+
+    if isinstance(value, numpy.ndarray) or hasattr(value, "numpy"):
+        warnings.warn(msg)

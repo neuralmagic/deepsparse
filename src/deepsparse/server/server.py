@@ -35,6 +35,7 @@ from deepsparse.server.config import (
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
 from deepsparse.server.system_logging import SystemLoggingMiddleware
+from deepsparse.server.system_logging import log_resource_utilization
 from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
@@ -122,6 +123,9 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     server_logger = build_logger(server_config)
     app = FastAPI()
     app.add_middleware(SystemLoggingMiddleware, server_logger=server_logger)
+    log_resource_utilization(
+        server_logger, number_of_cores_used=server_config.num_cores
+    )
 
     @app.get("/", include_in_schema=False)
     def _home():
@@ -240,6 +244,9 @@ def _add_pipeline_endpoint(
 
     def _predict(request: pipeline.input_schema):
         pipeline_outputs = pipeline(request)
+        server_logger = pipeline.logger
+        if server_logger:
+            log_resource_utilization(server_logger)
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):

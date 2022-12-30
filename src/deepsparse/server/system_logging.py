@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
 
-from deepsparse import Pipeline
+from os import getpid
+from typing import Any, Dict
+
+import psutil
 from deepsparse.loggers import (
     REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
     BaseLogger,
     MetricCategories,
 )
@@ -47,30 +50,65 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except Exception as e:  # noqa: F841
+            log_request_details(self.server_logger, response=e)
             log_request_details(self.server_logger, successful_request=0)
 
+        log_request_details(self.server_logger, response=response)
         log_request_details(
             self.server_logger, successful_request=int((response.status_code == 200))
         )
         return response
 
 
-def log_resource_utilization(pipeline: Pipeline, **kwargs: Any):
+def log_resource_utilization(
+    server_logger: BaseLogger,
+    prefix: str = RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    **items_to_log: Dict[str, Any],
+):
     """
-    Scope for 1.4:
-    - CPU utilization overall
-    - Memory available overall
-    - Memory used overall (shall we continuously log this?
-      this will be a constant value in time)
-    - Number of core used by the pipeline
+    Checks whether server_logger expects to receive logs pertaining to
+    the resource utilization of the server process.
+    If yes, compute and log the relevant data.
+
+    This includes:
+    - CPU utilization
+    - Memory utilization
+    - Total memory available
+
+    :param server_logger: the logger to log the metrics to
+    :param prefix: the prefix to use for the identifier
+    :param items_to_log: any additional items to log.
+        These will be key-value pairs, where the key is the
+        identifier string and the value is the value to log.
     """
-    pass
+    if not _logging_enabled(server_logger=server_logger, group_name=prefix):
+        return
+    process = psutil.Process(getpid())
+    # A float representing the current system-wide CPU utilization as a percentage
+    cpu_percent = process.cpu_percent()
+    # A float representing process memory utilization as a percentage
+    memory_percent = process.memory_percent()
+    # Total physical memory
+    total_memory_bytes = psutil.virtual_memory().total
+    total_memory_megabytes = total_memory_bytes / 1024 / 1024
+
+    identifier_to_value = {
+        "cpu_utilization_percent": cpu_percent,
+        "memory_utilization_percent": memory_percent,
+        "total_memory_available_MB": total_memory_megabytes,
+    }
+    if items_to_log:
+        identifier_to_value.update(items_to_log)
+
+    _send_information_to_logger(
+        logger=server_logger, identifier_to_value=identifier_to_value, prefix=prefix
+    )
 
 
 def log_request_details(
     server_logger: BaseLogger,
     prefix: str = REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    **items_to_log: Any,
+    **items_to_log: Dict[str, Any],
 ):
     """
     Logs the request details of the server process.
@@ -92,11 +130,30 @@ def log_request_details(
         ```
         would send:
             value 0.0 under identifier "request_details/some_identifier"
-            value True under idedentifier "request_details/some_other_identifier"
+            value True under identifier "request_details/some_other_identifier"
         to the `server_logger`
     """
-    for identifier, value in items_to_log.items():
-        server_logger.log(
+    _send_information_to_logger(
+        logger=server_logger, identifier_to_value=items_to_log, prefix=prefix
+    )
+
+
+def _logging_enabled(server_logger: BaseLogger, group_name: str) -> bool:
+    function_loggers = server_logger.logger.loggers
+    return any(
+        [
+            logger
+            for logger in function_loggers
+            if group_name == logger.target_identifier
+        ]
+    )
+
+
+def _send_information_to_logger(
+    logger: BaseLogger, identifier_to_value: Dict[str, Any], prefix: str
+):
+    for identifier, value in identifier_to_value.items():
+        logger.log(
             identifier=f"{prefix}/{identifier}",
             value=value,
             category=MetricCategories.SYSTEM,

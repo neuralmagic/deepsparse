@@ -192,7 +192,7 @@ def build_system_loggers(
                     frequency=1,
                     target_loggers=config_group_args.target_loggers,
                 ),
-                target_identifier=_get_target_identifier(config_group_name),
+                target_identifier=config_group_name,
                 loggers=loggers,
             )
         )
