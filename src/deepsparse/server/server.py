@@ -248,7 +248,7 @@ def _add_pipeline_endpoint(
         server_logger = pipeline.logger
         if server_logger:
             log_resource_utilization(server_logger)
-            log_request_details(pipeline)
+            log_request_details()
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):
