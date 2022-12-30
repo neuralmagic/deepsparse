@@ -281,7 +281,7 @@ class Pipeline(ABC):
             category=MetricCategories.SYSTEM,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.POST_PROCESS}",
+            identifier=f"prediction_latency/{InferencePhases.TOTAL_INFERENCE}",
             value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
             category=MetricCategories.SYSTEM,
         )
