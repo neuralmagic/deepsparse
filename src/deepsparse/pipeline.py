@@ -28,7 +28,12 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.loggers import BaseLogger, MetricCategories, validate_identifier
+from deepsparse.loggers import (
+    REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    BaseLogger,
+    MetricCategories,
+    validate_identifier,
+)
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
 from deepsparse.timing import InferencePhases, Timer
 
@@ -245,6 +250,16 @@ class Pipeline(ABC):
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
         timer.stop(InferencePhases.ENGINE_FORWARD)
+
+        self.log(
+            identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size",
+            # to get the batch size of the inputs, we need to look
+            # to multiply the engine batch size (self._batch_size)
+            # by the number of batches processed by the engine during
+            # a single inference call
+            value=len(batch_outputs) * self._batch_size,
+            category=MetricCategories.SYSTEM,
+        )
 
         self.log(
             identifier="engine_outputs",

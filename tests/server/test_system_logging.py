@@ -11,12 +11,109 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import time
+from unittest import mock
 
 import pytest
 from deepsparse.loggers import AsyncLogger, FunctionLogger, MultiLogger
+from deepsparse.server.build_logger import build_logger
+from deepsparse.server.config import (
+    EndpointConfig,
+    ServerConfig,
+    SystemLoggingConfig,
+    SystemLoggingGroup,
+)
+from deepsparse.server.server import _build_app
 from deepsparse.server.system_logging import log_resource_utilization
+from fastapi.testclient import TestClient
 from tests.deepsparse.loggers.helpers import ListLogger
+from tests.utils import mock_engine
+
+
+logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
+stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"  # noqa E501
+task = "text-classification"
+name = "endpoint_name"
+
+
+def _test_successful_requests(calls, successful_request):
+    relevant_call = [
+        call
+        for call in calls
+        if call.startswith("identifier:request_details/successful_request")
+    ]
+    assert len(relevant_call) == 1
+    relevant_call = relevant_call[0]
+    value = bool(int(relevant_call.split("value:")[1].split(",")[0]))
+    assert value == successful_request
+
+
+def _test_input_batch_size(calls, input_batch_size):
+    relevant_call = [
+        call
+        for call in calls
+        if call.startswith("identifier:endpoint_name/request_details/input_batch_size")
+    ]
+    assert len(relevant_call) == 1
+    relevant_call = relevant_call[0]
+    value = int(relevant_call.split("value:")[1].split(",")[0])
+    assert value == input_batch_size
+
+
+def _test_response_msg(calls, response_msg):
+    relevant_call = [
+        call
+        for call in calls
+        if call.startswith("identifier:request_details/response_message")
+    ]
+    assert len(relevant_call) == 1
+    relevant_call = relevant_call[0]
+    value = relevant_call.split("value:")[1].split(",")[0]
+    assert value == response_msg
+
+
+@pytest.mark.parametrize(
+    "json_payload, input_batch_size, successful_request, response_msg",
+    [
+        ({"sequences": "today is great"}, 1, True, "Response status code: 200"),
+        (
+            {"sequences": ["today is great", "today is great"]},
+            2,
+            True,
+            "Response status code: 200",
+        ),
+        ({"this": "is supposed to fail"}, 1, False, "Response status code: 422"),
+    ],
+)
+def test_log_request_details(
+    json_payload, input_batch_size, successful_request, response_msg
+):
+    server_config = ServerConfig(
+        endpoints=[
+            EndpointConfig(
+                task=task, name=name, model=stub, batch_size=input_batch_size
+            )
+        ],
+        loggers={"logger_1": {"path": logger_identifier}},
+        system_logging=SystemLoggingConfig(
+            request_details=SystemLoggingGroup(enable=True)
+        ),
+    )
+    server_logger = build_logger(server_config)
+    with mock.patch(
+        "deepsparse.server.server.build_logger", return_value=server_logger
+    ), mock_engine(rng_seed=0):
+        app = _build_app(server_config)
+    client = TestClient(app)
+    client.post("/predict", json=json_payload)
+
+    calls = server_logger.logger.loggers[0].logger.loggers[0].calls
+
+    _test_successful_requests(calls, successful_request)
+    _test_response_msg(calls, response_msg)
+    if successful_request:
+        _test_input_batch_size(calls, input_batch_size)
 
 
 def _test_cpu_utilization(calls, num_iterations):
@@ -93,21 +190,14 @@ def test_log_resource_utilization(
         log_resource_utilization(server_logger, **additional_items_to_log)
 
     time.sleep(1)
+    calls = server_logger.logger.loggers[0].logger.calls
     if "resource_utilization" == target_identifier:
         # happy path
-        _test_cpu_utilization(
-            server_logger.logger.loggers[0].logger.calls, num_iterations
-        )
-        _test_memory_utilization(
-            server_logger.logger.loggers[0].logger.calls, num_iterations
-        )
-        _test_total_memory_available(
-            server_logger.logger.loggers[0].logger.calls, num_iterations
-        )
+        _test_cpu_utilization(calls, num_iterations)
+        _test_memory_utilization(calls, num_iterations)
+        _test_total_memory_available(calls, num_iterations)
         if additional_items_to_log:
-            _test_additional_items_to_log(
-                server_logger.logger.loggers[0].logger.calls, num_iterations
-            )
+            _test_additional_items_to_log(calls, num_iterations)
     else:
         # invalid target_identifier, no logging happened
-        assert server_logger.logger.loggers[0].logger.calls == []
+        assert calls == []
