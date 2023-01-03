@@ -308,6 +308,18 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
             return default_num_streams
 
 
+def load_custom_engine(custom_engine_identifier):
+    """
+    import a custom engine based off the specified `custom_engine_identifier`
+    from user specified script
+
+    :param custom_engine_identifier: string in the form of
+           '<path_to_the_python_script>:<custom_engine_class_name>
+    :return: custom engine class object
+    """
+    pass
+
+
 def benchmark_model(
     model_path: str,
     batch_size: int = 1,
@@ -352,6 +364,9 @@ def benchmark_model(
             num_cores=num_cores,
             input_shapes=input_shapes,
         )
+    elif ":" in engine:
+        Engine = load_custom_engine(custom_engine_identifier=engine)
+        print(Engine)
     else:
         raise ValueError(f"Invalid engine choice '{engine}'")
     _LOGGER.info(model)
