@@ -32,13 +32,14 @@ from deepsparse.server.config import (
     INTEGRATIONS,
     EndpointConfig,
     ServerConfig,
+    SystemLoggingConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
 from deepsparse.server.system_logging import (
-    log_request_details,
-    log_resource_utilization,
+    SystemLoggingMiddleware,
+    log_system_information,
 )
-from fastapi import FastAPI, UploadFile
+from fastapi import Depends, FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
 
@@ -122,8 +123,13 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     _LOGGER.info(f"Built context: {repr(context)}")
     _LOGGER.info(f"Built ThreadPoolExecutor with {executor._max_workers} workers")
 
-    app = FastAPI()
     server_logger = build_logger(server_config)
+    app = FastAPI()
+    app.add_middleware(
+        SystemLoggingMiddleware,
+        server_logger=server_logger,
+        system_logging_config=server_config.system_logging,
+    )
 
     @app.get("/", include_in_schema=False)
     def _home():
@@ -228,23 +234,37 @@ def _add_endpoint(
     pipeline = Pipeline.from_config(pipeline_config, context, server_logger)
 
     _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
-    _add_pipeline_endpoint(app, endpoint_config, pipeline, server_config.integration)
+    _add_pipeline_endpoint(
+        app,
+        endpoint_config,
+        server_config.system_logging,
+        pipeline,
+        server_config.integration,
+    )
 
 
 def _add_pipeline_endpoint(
     app: FastAPI,
     endpoint_config: EndpointConfig,
+    system_logging_config: SystemLoggingConfig,
     pipeline: Pipeline,
     integration: str = INTEGRATION_LOCAL,
 ):
     input_schema = pipeline.input_schema
     output_schema = pipeline.output_schema
 
-    def _predict(request: pipeline.input_schema):
+    async def endpoints_params():
+        # global parameters that will be passed to all the endpoints of the server
+        return {"system_logging_config": system_logging_config}
+
+    def _predict(request: pipeline.input_schema, params=Depends(endpoints_params)):
         pipeline_outputs = pipeline(request)
-        if pipeline.logger:
-            log_resource_utilization(pipeline)
-            log_request_details(pipeline)
+        server_logger = pipeline.logger
+        if server_logger:
+            log_system_information(
+                server_logger=server_logger,
+                system_logging_config=params.get("system_logging_config"),
+            )
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):

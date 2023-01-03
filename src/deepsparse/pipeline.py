@@ -28,7 +28,13 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.loggers import BaseLogger, MetricCategories, validate_identifier
+from deepsparse.loggers import (
+    REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    BaseLogger,
+    MetricCategories,
+    validate_identifier,
+)
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
 from deepsparse.timing import InferencePhases, Timer
 
@@ -187,6 +193,12 @@ class Pipeline(ABC):
 
         self._batch_size = self._batch_size or 1
 
+        self.log(
+            identifier=f"{RESOURCE_UTILIZATION_IDENTIFIER_PREFIX}/num_cores",
+            value=num_cores,
+            category=MetricCategories.SYSTEM,
+        )
+
     def __call__(self, *args, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
             raise ValueError(
@@ -229,7 +241,7 @@ class Pipeline(ABC):
         self.log(
             # note, will be replaced by a reference instead of "bare" string
             # with the upcoming PR for system logging
-            identifier="prediction_latency/" + InferencePhases.PRE_PROCESS,
+            identifier=f"prediction_latency/{InferencePhases.PRE_PROCESS}",
             value=timer.time_delta(InferencePhases.PRE_PROCESS),
             category=MetricCategories.SYSTEM,
         )
@@ -247,12 +259,22 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
         self.log(
+            identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size",
+            # to get the batch size of the inputs, we need to look
+            # to multiply the engine batch size (self._batch_size)
+            # by the number of batches processed by the engine during
+            # a single inference call
+            value=len(batch_outputs) * self._batch_size,
+            category=MetricCategories.SYSTEM,
+        )
+
+        self.log(
             identifier="engine_outputs",
             value=engine_outputs,
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier="prediction_latency/" + InferencePhases.ENGINE_FORWARD,
+            identifier=f"prediction_latency/{InferencePhases.ENGINE_FORWARD}",
             value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
             category=MetricCategories.SYSTEM,
         )
@@ -276,12 +298,12 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier="prediction_latency/" + InferencePhases.POST_PROCESS,
+            identifier=f"prediction_latency/{InferencePhases.POST_PROCESS}",
             value=timer.time_delta(InferencePhases.POST_PROCESS),
             category=MetricCategories.SYSTEM,
         )
         self.log(
-            identifier="prediction_latency/" + InferencePhases.TOTAL_INFERENCE,
+            identifier=f"prediction_latency/{InferencePhases.TOTAL_INFERENCE}",
             value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
             category=MetricCategories.SYSTEM,
         )

@@ -176,6 +176,7 @@ def build_system_loggers(
     :return: A list of FunctionLogger instances responsible for logging system data
     """
     system_loggers = []
+    system_logging_group_names = []
     if not system_logging_config.enable:
         return system_loggers
 
@@ -196,6 +197,9 @@ def build_system_loggers(
                 loggers=loggers,
             )
         )
+        system_logging_group_names.append(config_group_name)
+
+    _LOGGER.info("System Logging: enabled for groups: %s", system_logging_group_names)
 
     return system_loggers
 
