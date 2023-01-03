@@ -125,12 +125,17 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
 
     server_logger = build_logger(server_config)
     app = FastAPI()
-    app.add_middleware(SystemLoggingMiddleware, server_logger=server_logger)
+    app.add_middleware(
+        SystemLoggingMiddleware,
+        server_logger=server_logger,
+        system_logging_config=server_config.system_logging,
+    )
 
     log_system_information(
         server_logger,
-        number_of_cores_used=server_config.num_cores,
+        system_logging_config=server_config.system_logging,
         system_metric_groups="resource_utilization",
+        number_of_cores_used=server_config.num_cores,
     )
 
     @app.get("/", include_in_schema=False)

@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 from unittest import mock
 
 import pytest
-from deepsparse.loggers import AsyncLogger, FunctionLogger, MultiLogger
 from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import (
     EndpointConfig,
@@ -162,42 +160,22 @@ def _test_additional_items_to_log(calls, num_iterations):
 
 
 @pytest.mark.parametrize(
-    "num_iterations, target_identifier, additional_items_to_log",
+    "num_iterations, additional_items_to_log",
     [
-        (5, "resource_utilization", {}),
-        (5, "resource_utilization", {"test": 1}),
-        (5, "invalid", {}),
+        (5, {}),
+        (3, {"test": 1}),
     ],
 )
-def test_log_resource_utilization(
-    num_iterations, target_identifier, additional_items_to_log
-):
-    server_logger = AsyncLogger(
-        logger=MultiLogger(
-            [
-                FunctionLogger(
-                    logger=ListLogger(),
-                    target_identifier=target_identifier,
-                    function=lambda x: x,
-                    function_name="identity",
-                )
-            ]
-        ),
-        max_workers=1,
-    )
+def test_log_resource_utilization(num_iterations, additional_items_to_log):
+    server_logger = ListLogger()
 
     for iter in range(num_iterations):
-        log_resource_utilization(server_logger, **additional_items_to_log)
+        log_resource_utilization(
+            server_logger, prefix="resource_utilization", **additional_items_to_log
+        )
 
-    time.sleep(1)
-    calls = server_logger.logger.loggers[0].logger.calls
-    if "resource_utilization" == target_identifier:
-        # happy path
-        _test_cpu_utilization(calls, num_iterations)
-        _test_memory_utilization(calls, num_iterations)
-        _test_total_memory_available(calls, num_iterations)
-        if additional_items_to_log:
-            _test_additional_items_to_log(calls, num_iterations)
-    else:
-        # invalid target_identifier, no logging happened
-        assert calls == []
+    calls = server_logger.calls
+
+    _test_cpu_utilization(calls, num_iterations)
+    _test_memory_utilization(calls, num_iterations)
+    _test_total_memory_available(calls, num_iterations)

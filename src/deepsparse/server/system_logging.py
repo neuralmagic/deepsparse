@@ -44,29 +44,44 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
 
     :param app: A FastAPI app instance
     :param server_logger: A server logger instance
+    :param system_logging_config: A system logging config instance
     """
 
-    def __init__(self, app: FastAPI, server_logger: BaseLogger):
+    def __init__(
+        self,
+        app: FastAPI,
+        server_logger: BaseLogger,
+        system_logging_config: SystemLoggingConfig,
+    ):
         super().__init__(app)
         self.server_logger = server_logger
+        self.system_logging_config = system_logging_config
 
     async def dispatch(self, request: Request, call_next) -> Response:
         try:
             response = await call_next(request)
         except Exception as err:  # noqa: F841
-            log_request_details(
-                self.server_logger, response_message=f"{err.__class__.__name__}: {err}"
+            log_system_information(
+                self.server_logger,
+                self.system_logging_config,
+                "request_details",
+                response_message=f"{err.__class__.__name__}: {err}",
             )
-            log_request_details(self.server_logger, successful_request=0)
+            log_system_information(
+                self.server_logger, self.system_logging_config, successful_request=0
+            )
             _LOGGER.error(err)
             raise
 
-        log_request_details(
+        log_system_information(
             self.server_logger,
+            self.system_logging_config,
             response_message=f"Response status code: {response.status_code}",
         )
-        log_request_details(
-            self.server_logger, successful_request=int((response.status_code == 200))
+        log_system_information(
+            self.server_logger,
+            self.system_logging_config,
+            successful_request=int((response.status_code == 200)),
         )
         return response
 
@@ -198,7 +213,9 @@ def log_system_information(
         logging_func = _PREFIX_MAPPING.get(config_group_name)
         if not logging_func:
             continue
-        logging_func(server_logger=server_logger, **items_to_log)
+        logging_func(
+            server_logger=server_logger, prefix=config_group_name, **items_to_log
+        )
 
 
 def _send_information_to_logger(
