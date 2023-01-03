@@ -15,7 +15,7 @@
 
 import logging
 from os import getpid
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Union
 
 import psutil
 from deepsparse.loggers import (
@@ -24,12 +24,14 @@ from deepsparse.loggers import (
     BaseLogger,
     MetricCategories,
 )
+from deepsparse.server.config import SystemLoggingConfig, SystemLoggingGroup
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
 _LOGGER = logging.getLogger(__name__)
-__all__ = ["log_resource_utilization", "log_request_details", "SystemLoggingMiddleware"]
+
+__all__ = ["log_system_information", "SystemLoggingMiddleware"]
 
 
 class SystemLoggingMiddleware(BaseHTTPMiddleware):
@@ -71,11 +73,11 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
 
 def log_resource_utilization(
     server_logger: BaseLogger,
-    prefix: str = RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    prefix: str,
     **items_to_log: Dict[str, Any],
 ):
     """
-    Checks whether server_logger expects to receive logs pertaining to
+    Send to the server_logger the logs pertaining to
     the resource utilization of the server process.
     If yes, compute and log the relevant data.
 
@@ -90,8 +92,6 @@ def log_resource_utilization(
         These will be key-value pairs, where the key is the
         identifier string and the value is the value to log.
     """
-    if not _logging_enabled(server_logger=server_logger, group_name=prefix):
-        return
     process = psutil.Process(getpid())
     # A float representing the current system-wide CPU utilization as a percentage
     cpu_percent = process.cpu_percent()
@@ -116,11 +116,11 @@ def log_resource_utilization(
 
 def log_request_details(
     server_logger: BaseLogger,
-    prefix: str = REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    prefix: str,
     **items_to_log: Dict[str, Any],
 ):
     """
-    Checks whether server_logger expects to receive logs pertaining to
+    Send to the server_logger the logs pertaining to
     the request_details of the server process.
     Request details information are to be passed as kwargs.
     (where key is the identifier and value is the value to log)
@@ -143,23 +143,62 @@ def log_request_details(
             value True under identifier "request_details/some_other_identifier"
         to the `server_logger`
     """
-    if not _logging_enabled(server_logger=server_logger, group_name=prefix):
-        return
 
     _send_information_to_logger(
         logger=server_logger, identifier_to_value=items_to_log, prefix=prefix
     )
 
 
-def _logging_enabled(server_logger: BaseLogger, group_name: str) -> bool:
-    function_loggers = server_logger.logger.loggers
-    return any(
-        [
-            logger
-            for logger in function_loggers
-            if group_name == logger.target_identifier
-        ]
-    )
+# maps the metric group name to the function that logs the information
+# pertaining to this metric group name
+_PREFIX_MAPPING = {
+    REQUEST_DETAILS_IDENTIFIER_PREFIX: log_request_details,
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: log_resource_utilization,
+}
+
+
+def log_system_information(
+    server_logger: BaseLogger,
+    system_logging_config: SystemLoggingConfig,
+    system_metric_groups: Optional[Union[str, List[str]]] = None,
+    **items_to_log,
+):
+    """
+    A general function that handles logging of
+    system information by the server logger
+
+    :param server_logger: the logger to log the metrics to
+    :param system_logging_config: a SystemLoggingConfig object that contains
+        the configuration for the system logging
+    :param system_metric_groups: a name, or a list of names of groups that this function
+        should log information for (subset of all the available groups). If None,
+        all available groups will be logged (as specified by
+        the `system_logging_config`).
+    :param items_to_log: any additional items to log. Default is None
+        These will be key-value pairs, where the key is the
+        identifier string and the value is the value to log.
+    """
+    if not system_logging_config.enable:
+        # system logging disabled; nothing is being logged
+        return
+
+    for config_group_name, config_group_args in system_logging_config:
+        # iterate over all the valid system logging groups
+        if not isinstance(config_group_args, SystemLoggingGroup):
+            continue
+        if not config_group_args.enable:
+            continue
+        if system_metric_groups:
+            if isinstance(system_metric_groups, str):
+                system_metric_groups = [system_metric_groups]
+            if config_group_name not in system_metric_groups:
+                continue
+
+        # retrieve the function that logs the information for this group
+        logging_func = _PREFIX_MAPPING.get(config_group_name)
+        if not logging_func:
+            continue
+        logging_func(server_logger=server_logger, **items_to_log)
 
 
 def _send_information_to_logger(
