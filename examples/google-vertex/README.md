@@ -1,7 +1,9 @@
-# nm-gcp-vertex
-Example using DeepSparse in a GCP Vertex model serving endpoint for Sentiment Analysis
+# DeepSparse + Google Vertex Endpoints
+Google Vertex Endpoints are easy-to-use and easy-to-scale infrastructure for deploying deep learning models. GCP has [great documentation](https://console.cloud.google.com/vertex-ai) on using a custom container to create a Model for usage in inference Endpoints. Let's see how we can use this functionality to run a sentiment analysis model with DeepSparse in a Vertex Endpoint. This way, the deployment will benefit from the sparsity-driven CPU-only acceleration from DeepSparse and the automatic scaling of GCP Vertex.
 
-GCP has [great documentation](https://console.cloud.google.com/vertex-ai) on using a custom container to create a Model for usage in inference Endpoints. Let's see how we can use this functionality to run DeepSparse in a Vertex Endpoint!
+## Installation Requirements
+- Docker
+- gcloud CLI
 
 ## Overview
 
