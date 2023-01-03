@@ -92,6 +92,7 @@ deepsparse.benchmark /PATH/TO/model.onnx --batch_size 32 --scenario sync
 """
 
 import argparse
+import importlib
 import json
 import logging
 import os
@@ -214,10 +215,12 @@ def parse_args():
         "--engine",
         type=str,
         default=DEEPSPARSE_ENGINE,
-        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE],
         help=(
             "Inference engine backend to run eval on. Choices are 'deepsparse', "
-            "'onnxruntime'. Default is 'deepsparse'"
+            "'onnxruntime'. Default is 'deepsparse'. Can also specify a user "
+            "defined engine class by giving the script and class name in the "
+            "following format <path to python script>:<Engine Class name>. This "
+            "engine class will be dynamically imported during runtime"
         ),
     )
     parser.add_argument(
@@ -308,7 +311,7 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
             return default_num_streams
 
 
-def load_custom_engine(custom_engine_identifier):
+def load_custom_engine(custom_engine_identifier: str):
     """
     import a custom engine based off the specified `custom_engine_identifier`
     from user specified script
@@ -317,7 +320,11 @@ def load_custom_engine(custom_engine_identifier):
            '<path_to_the_python_script>:<custom_engine_class_name>
     :return: custom engine class object
     """
-    pass
+    path, logger_object_name = custom_engine_identifier.split(":")
+    spec = importlib.util.spec_from_file_location("user_defined_custom_engine", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, logger_object_name)
 
 
 def benchmark_model(
@@ -365,8 +372,12 @@ def benchmark_model(
             input_shapes=input_shapes,
         )
     elif ":" in engine:
-        Engine = load_custom_engine(custom_engine_identifier=engine)
-        print(Engine)
+        engine = load_custom_engine(custom_engine_identifier=engine)
+        model = engine(
+            model_path=model_path,
+            batch_size=batch_size,
+            num_cores=num_cores,
+        )
     else:
         raise ValueError(f"Invalid engine choice '{engine}'")
     _LOGGER.info(model)
