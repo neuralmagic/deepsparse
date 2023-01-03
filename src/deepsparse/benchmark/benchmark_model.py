@@ -387,6 +387,8 @@ def benchmark_model(
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as model_path:
             input_list = generate_random_inputs(model_path, batch_size)
+    elif hasattr(engine, "generate_random_inputs"):
+        input_list = engine.generate_random_inputs(batch_size=batch_size)
     else:
         input_list = generate_random_inputs(model_path, batch_size)
 
