@@ -1,0 +1,7 @@
+loggers:
+  python:
+  
+endpoints:
+  - task: sentiment_analysis
+    model: zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni
+    route: /predict
