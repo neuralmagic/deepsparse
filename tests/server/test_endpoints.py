@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 import pytest
 from deepsparse.loggers import MultiLogger
-from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.config import EndpointConfig, ServerConfig, SystemLoggingConfig
 from deepsparse.server.server import _add_pipeline_endpoint, _build_app
 from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
@@ -99,6 +99,7 @@ class TestMockEndpoints:
         )
         _add_pipeline_endpoint(
             app,
+            system_logging_config=SystemLoggingConfig(),
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=mock_pipeline,
         )
@@ -115,6 +116,7 @@ class TestMockEndpoints:
     def test_add_model_endpoint_with_from_files(self, app):
         _add_pipeline_endpoint(
             app,
+            system_logging_config=Mock(),
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
         )
@@ -130,6 +132,7 @@ class TestMockEndpoints:
         _add_pipeline_endpoint(
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
+            system_logging_config=Mock(),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
             integration="sagemaker",
         )
@@ -141,6 +144,7 @@ class TestMockEndpoints:
         _add_pipeline_endpoint(
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
+            system_logging_config=Mock(),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
             integration="sagemaker",
         )
@@ -152,6 +156,7 @@ class TestMockEndpoints:
         _add_pipeline_endpoint(
             app,
             endpoint_config=Mock(route=None),
+            system_logging_config=Mock(),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
         )
         assert app.routes[-1].path == "/predict"

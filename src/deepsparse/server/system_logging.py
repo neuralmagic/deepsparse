@@ -64,11 +64,14 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
             log_system_information(
                 self.server_logger,
                 self.system_logging_config,
-                "request_details",
+                REQUEST_DETAILS_IDENTIFIER_PREFIX,
                 response_message=f"{err.__class__.__name__}: {err}",
             )
             log_system_information(
-                self.server_logger, self.system_logging_config, successful_request=0
+                self.server_logger,
+                self.system_logging_config,
+                REQUEST_DETAILS_IDENTIFIER_PREFIX,
+                successful_request=0,
             )
             _LOGGER.error(err)
             raise
@@ -76,11 +79,13 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
         log_system_information(
             self.server_logger,
             self.system_logging_config,
+            REQUEST_DETAILS_IDENTIFIER_PREFIX,
             response_message=f"Response status code: {response.status_code}",
         )
         log_system_information(
             self.server_logger,
             self.system_logging_config,
+            REQUEST_DETAILS_IDENTIFIER_PREFIX,
             successful_request=int((response.status_code == 200)),
         )
         return response
@@ -88,7 +93,7 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
 
 def log_resource_utilization(
     server_logger: BaseLogger,
-    prefix: str,
+    prefix: str = RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
     **items_to_log: Dict[str, Any],
 ):
     """
@@ -131,7 +136,7 @@ def log_resource_utilization(
 
 def log_request_details(
     server_logger: BaseLogger,
-    prefix: str,
+    prefix: str = REQUEST_DETAILS_IDENTIFIER_PREFIX,
     **items_to_log: Dict[str, Any],
 ):
     """
@@ -213,9 +218,7 @@ def log_system_information(
         logging_func = _PREFIX_MAPPING.get(config_group_name)
         if not logging_func:
             continue
-        logging_func(
-            server_logger=server_logger, prefix=config_group_name, **items_to_log
-        )
+        logging_func(server_logger=server_logger, **items_to_log)
 
 
 def _send_information_to_logger(

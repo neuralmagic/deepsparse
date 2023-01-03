@@ -131,13 +131,6 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
         system_logging_config=server_config.system_logging,
     )
 
-    log_system_information(
-        server_logger,
-        system_logging_config=server_config.system_logging,
-        system_metric_groups="resource_utilization",
-        number_of_cores_used=server_config.num_cores,
-    )
-
     @app.get("/", include_in_schema=False)
     def _home():
         return RedirectResponse("/docs")

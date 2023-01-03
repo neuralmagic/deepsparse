@@ -30,6 +30,7 @@ from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers import (
     REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
     BaseLogger,
     MetricCategories,
     validate_identifier,
@@ -191,6 +192,12 @@ class Pipeline(ABC):
             self.engine = self._initialize_engine()
 
         self._batch_size = self._batch_size or 1
+
+        self.log(
+            identifier=f"{RESOURCE_UTILIZATION_IDENTIFIER_PREFIX}/num_cores",
+            value=num_cores,
+            category=MetricCategories.SYSTEM,
+        )
 
     def __call__(self, *args, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
