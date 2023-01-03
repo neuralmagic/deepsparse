@@ -306,6 +306,17 @@ def _get_models(
     help="The warmup_time to execute model for",
     show_default=True,
 )
+@click.option(
+    "--engine",
+    "-e",
+    multiple=True,
+    default=["onnxruntime", "deepsparse"],
+    help="Inference engine backend to run eval on. Choices are 'deepsparse', "
+     "'onnxruntime'. Default is 'deepsparse' and 'onnxruntime'. Can also specify a user "
+     "defined engine class by giving the script and class name in the following format "
+     "<path to python script>:<Engine Class name>. This engine class will be "
+     "dynamically imported during runtime. Note multiple engines can also be specified"
+)
 def main(
     num_cores: str,
     batch_sizes: str,
@@ -314,6 +325,7 @@ def main(
     save_dir: str,
     run_time: int,
     warmup_time: int,
+    engine: List[str]
 ):
     """
     Script to run benchmark sweep over a directory containing models or a
@@ -354,7 +366,7 @@ def main(
             models=[str(model)],
             batch_sizes=batch_sizes,
             num_cores=num_cores,
-            engines=["onnxruntime", "deepsparse"],
+            engines=engine,
             scenario_streams_dict={
                 "sync": [None],
             },
