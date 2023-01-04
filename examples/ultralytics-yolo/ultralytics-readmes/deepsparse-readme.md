@@ -26,7 +26,7 @@ in a forward pass. Since the sparse computation is memory bound, DeepSparse exec
 vertical stripes of computation that fit in cache.
 
 <p align="center">
-  <img width="60%" src="sparse-network.svg">
+  <img width="60%" src="tensor-columns.png">
 </p>
 
 Sparse computation, executed depth-wise in cache, allows DeepSparse to deliver GPU-class performance on CPUs!
