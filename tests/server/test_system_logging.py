@@ -132,7 +132,7 @@ def _test_memory_utilization(calls, num_iterations):
     values = [float(call.split("value:")[1].split(",")[0]) for call in relevant_calls]
     assert len(relevant_calls) == num_iterations
     # memory utilization is a percentage, so it should be between 0 and 1
-    assert all(0.0 <= value <= 1.0 for value in values)
+    assert all(0.0 <= value <= 1.0 for value in values), values
 
 
 def _test_total_memory_available(calls, num_iterations):
