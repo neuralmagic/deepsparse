@@ -51,7 +51,7 @@ def test_python_logger(engine, pipeline_name, capsys):
                 if f"Category: {MetricCategories.SYSTEM.value}" in log
             ]
         )
-        == 4
+        == 6
     )
     assert (
         len(

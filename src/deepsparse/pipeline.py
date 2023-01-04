@@ -737,6 +737,8 @@ class Pipeline(ABC):
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
+        if not hasattr(self, "task"):
+            self.task = None
         identifier = f"{self.alias or self.task}/{identifier}"
         validate_identifier(identifier)
         if self.logger:
