@@ -1,35 +1,33 @@
 # DeepSparse
 
-This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse.
-
-## About DeepSparse
-
 Welcome to software-delivered AI.
+
+This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse.
 
 DeepSparse is an inference runtime offering GPU-class performance on CPUs. For the first time, your deep learning workloads can meet the performance 
 demands of production without the complexity and costs of hardware accelerators.
 
 Simply put, DeepSparse gives you the performance of GPUs and the simplicity of software:
 - **Flexible Deployments**: Run consistently across cloud, data center, and edge with any hardware provider from Intel to AMD to ARM
-- **Near-Infinite Scalability**: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
+- **Infinite Scalability**: Scale vertically to 100s of cores, out with standard Kubernetes, or fully-abstracted with Serverless
 - **Easy Integration**: Clean APIs for integrating your model into an application and monitoring it in production
 
 **[Start your 90 day Free Trial](https://neuralmagic.com/deepsparse-free-trial/?utm_campaign=free_trial&utm_source=ultralytics_github).**
 
-### How Does DeepSparse Achieve GPU-Class Performance?
+## How Does DeepSparse Achieve GPU-Class Performance?
 
 DeepSparse takes advantage of model sparsity to gain its performance speedup. 
 
-Sparsification through pruning and quantization is a broadly studied technique, allowing reductions of 10x in the size and compute needed to 
-execute a network, while maintaining high accuracy. DeepSparse is sparsity-aware, so it skips the multiply-adds by 0, shrinking amount of compute
-in a forward pass. Since the sparse computation is memory bound, DeepSparse executes the network depth-wise, breaking the problem into Tensor Columns, 
+Sparsification through pruning and quantization is a broadly studied technique, allowing orders-of-magnitude reductions in the size and compute needed to 
+execute a network, while maintaining high accuracy. DeepSparse is sparsity-aware, meaning it skips the zeroed out parameters, shrinking amount of compute
+in a forward pass. Since the sparse computation is now memory bound, DeepSparse executes the network depth-wise, breaking the problem into Tensor Columns, 
 vertical stripes of computation that fit in cache.
 
 <p align="center">
-  <img width="60%" src="sparse-network.svg">
+  <img src="sparse-network.svg" style="background-color:red;padding:20px;">
 </p>
 
-Sparse computation, executed depth-wise in cache, allows DeepSparse to deliver GPU-class performance on CPUs!
+Sparse networks with compressed computation, executed depth-wise in cache, allows DeepSparse to deliver GPU-class performance on CPUs!
 
 ### How Do I Create A Sparse Version of YOLOv5 Trained on My Data?
 
@@ -56,7 +54,7 @@ DeepSparse accepts a model in the ONNX format, passed either as:
 - A SparseZoo stub which identifies an ONNX file in the SparseZoo
 - A Local Path to an ONNX model in a filesystem
 
-We will compare the pruned-quantized YOLOv5s to the standard dense YOLOv5s, identified by the following SparseZoo stubs:
+We will compare the standard dense YOLOv5s to the pruned-quantized YOLOv5s, identified by the following SparseZoo stubs:
 ```
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
@@ -230,4 +228,4 @@ labels = annotations["labels"]
 
 **Research or Testing?** DeepSparse Community is free for research and testing. Production deployments require DeepSparse Enterprise.
 
-**Want to Try DeepSparse Enterprise?** [Start your 90 day free trail](https://neuralmagic.com/deepsparse-free-trial/?utm_campaign=free_trial&utm_source=ultralytics_github).
+**Want to Try DeepSparse Enterprise?** [Start your 90 day free trial](https://neuralmagic.com/deepsparse-free-trial/?utm_campaign=free_trial&utm_source=ultralytics_github).
