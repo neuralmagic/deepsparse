@@ -23,13 +23,7 @@ Usage: benchmark_sweep.py [OPTIONS]
 
   Examples:
 
-      1) Benchmark sweep over a model di for both ORT and DeepSparse for
-      multiple `num-cores` and `batch-sizes`:
-
-          python benchmark_sweep.py --model-dir ~/models
-          --num-cores "1, 4, max" --batch-sizes "1, 16, 32"
-
-      2) Benchmark sweep over model-paths for both ORT and DeepSparse for
+      1) Benchmark sweep over model-paths for both ORT and DeepSparse for
       multiple `num-cores` and `batch-sizes`:
 
           python benchmark_sweep.py --model-paths
@@ -42,14 +36,20 @@ Options:
                          benchmark against max num of cores
   --batch-sizes TEXT     Comma separated values for different batch_sizes to
                          benchmark against
-  --model-dir TEXT       Directory of model files to benchmark, if not
-                         specified then `--model-paths` must be specified
-  --model-paths TEXT     Comma separated list of model paths, or Sparsezoo
-                         stubs. Must be specified if no `--model-dir` given
+  --model_paths TEXT     Comma separated list of model paths, or Sparsezoo
+                         stubs, or directories containing onnx models
   --save-dir TEXT        Directory to save model benchmarks in  [default:
                          benchmarking-results]
   --run-time INTEGER     The run_time to execute model for  [default: 30]
   --warmup-time INTEGER  The warmup_time to execute model for  [default: 5]
+  -e, --engine TEXT      Inference engine backend to run eval on. Choices are
+                         'deepsparse', 'onnxruntime'. Default is 'deepsparse'
+                         and 'onnxruntime'. Can also specify a user defined
+                         engine class by giving the script and class name in
+                         the following format <path to python script>:<Engine
+                         Class name>. This engine class will be dynamically
+                         imported during runtime. Note multiple engines can
+                         also be specified
   --help                 Show this message and exit.
 """
 
@@ -234,26 +234,25 @@ def benchmark_sweep(
 
 
 def _get_models(
-    model_dir: Optional[str] = None,
     model_paths: Optional[str] = None,
 ) -> List[str]:
     models = []
+    if not model_paths:
+        raise ValueError(f"Expected valid model_paths but got {model_paths}")
 
-    if model_dir is not None:
-        models.extend([str(model) for model in Path(model_dir).rglob("*.onnx")])
+    all_model_paths = model_paths.split(",")
+    for model in all_model_paths:
+        model = model.strip()
 
-    if model_paths is not None:
-        more_models = model_paths.split(",")
-        for model in more_models:
-            model = model.strip()
-
-            if Path(model).exists() or model.startswith("zoo:"):
-                models.append(model)
-            else:
-                raise ValueError(
-                    "The specified models must either be valid paths that exist,"
-                    f"or a valid SparseZoo stub but found {model}"
-                )
+        if Path(model).is_file() or model.startswith("zoo:"):
+            models.append(model)
+        elif Path(model).is_dir():
+            models.extend([str(model) for model in Path.rglob("*.onnx")])
+        else:
+            raise ValueError(
+                "The specified models must either be valid paths that exist,"
+                f"or a valid SparseZoo stub but found {model}"
+            )
     if not models:
         raise ValueError(
             "Could not find any models, either `--model-dir` did not have `onnx` files "
@@ -273,18 +272,11 @@ def _get_models(
     help="Comma separated values for different batch_sizes to benchmark against",
 )
 @click.option(
-    "--model-dir",
-    type=str,
-    help="Directory of model files to benchmark, if not specified then "
-    "`--model-paths` must be specified",
-    default=None,
-)
-@click.option(
-    "--model-paths",
+    "--model_paths",
     type=str,
     default=None,
-    help="Comma separated list of model paths, or Sparsezoo stubs. Must be specified"
-    " if no `--model-dir` given",
+    help="Comma separated list of model paths, or Sparsezoo stubs, or "
+    "directories containing onnx models",
 )
 @click.option(
     "--save-dir",
@@ -312,20 +304,19 @@ def _get_models(
     multiple=True,
     default=["onnxruntime", "deepsparse"],
     help="Inference engine backend to run eval on. Choices are 'deepsparse', "
-     "'onnxruntime'. Default is 'deepsparse' and 'onnxruntime'. Can also specify a user "
-     "defined engine class by giving the script and class name in the following format "
-     "<path to python script>:<Engine Class name>. This engine class will be "
-     "dynamically imported during runtime. Note multiple engines can also be specified"
+    "'onnxruntime'. Default is 'deepsparse' and 'onnxruntime'. Can also specify a user "
+    "defined engine class by giving the script and class name in the following format "
+    "<path to python script>:<Engine Class name>. This engine class will be "
+    "dynamically imported during runtime. Note multiple engines can also be specified",
 )
 def main(
     num_cores: str,
     batch_sizes: str,
-    model_dir: Optional[str],
     model_paths: Optional[str],
     save_dir: str,
     run_time: int,
     warmup_time: int,
-    engine: List[str]
+    engine: List[str],
 ):
     """
     Script to run benchmark sweep over a directory containing models or a
@@ -334,13 +325,7 @@ def main(
 
     Examples:
 
-        1) Benchmark sweep over a model dir for both ORT and DeepSparse for
-        multiple `num-cores` and `batch-sizes`:
-
-            python benchmark_sweep.py --model-dir ~/models \
-                --num-cores "1, 4, max" --batch-sizes "1, 16, 32"
-
-        2) Benchmark sweep over model-paths for both ORT and DeepSparse for
+        1) Benchmark sweep over model-paths for both ORT and DeepSparse for
         multiple `num-cores` and `batch-sizes`:
 
             python benchmark_sweep.py --model-paths \
@@ -349,7 +334,7 @@ def main(
     """
     num_cores: List[int] = _validate_num_cores(num_cores)
     batch_sizes: List[int] = _validate_batch_sizes(batch_sizes)
-    models: List[str] = _get_models(model_dir=model_dir, model_paths=model_paths)
+    models: List[str] = _get_models(model_paths=model_paths)
 
     save_dir_path: Path = Path(save_dir)
     save_dir_path.mkdir(parents=True, exist_ok=True)
