@@ -45,6 +45,8 @@ from starlette.responses import RedirectResponse
 
 _LOGGER = logging.getLogger(__name__)
 
+counter = []
+
 
 def start_server(
     config_path: str,
@@ -80,6 +82,7 @@ def start_server(
         _ = start_config_watcher(config_path, f"http://{host}:{port}/endpoints", 0.5)
 
     app = _build_app(server_config)
+
 
     uvicorn.run(
         app,
@@ -256,8 +259,12 @@ def _add_pipeline_endpoint(
     async def endpoints_params():
         # global parameters that will be passed to all the endpoints of the server
         return {"system_logging_config": system_logging_config}
-
+    import time
+    import numpy as np
     def _predict(request: pipeline.input_schema, params=Depends(endpoints_params)):
+        global counter
+
+        start = time.time()
         pipeline_outputs = pipeline(request)
         server_logger = pipeline.logger
         if server_logger:
@@ -265,6 +272,11 @@ def _add_pipeline_endpoint(
                 server_logger=server_logger,
                 system_logging_config=params.get("system_logging_config"),
             )
+        time_taken = time.time() - start
+        counter.append(time_taken)
+
+        print(f"Num_requests: {len(counter)}; Mean: {np.mean(counter)}; Std: {np.std(counter)}")
+
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):
