@@ -320,11 +320,11 @@ def load_custom_engine(custom_engine_identifier: str):
            '<path_to_the_python_script>:<custom_engine_class_name>
     :return: custom engine class object
     """
-    path, logger_object_name = custom_engine_identifier.split(":")
+    path, engine_object_name = custom_engine_identifier.split(":")
     spec = importlib.util.spec_from_file_location("user_defined_custom_engine", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return getattr(module, logger_object_name)
+    return getattr(module, engine_object_name)
 
 
 def benchmark_model(
