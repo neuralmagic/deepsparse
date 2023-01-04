@@ -1,4 +1,9 @@
-# DeepSparse
+<div style="display: flex; flex-direction: column; align-items: center;">
+  <h1>
+    DeepSparse &nbsp;&nbsp;<img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />
+  </h1>
+</div>
+
 
 Welcome to software-delivered AI.
 
@@ -24,7 +29,7 @@ in a forward pass. Since the sparse computation is now memory bound, DeepSparse 
 vertical stripes of computation that fit in cache.
 
 <p align="center">
-  <img src="sparse-network.svg" style="background-color:red;padding:20px;">
+  <img src="sparse-network.svg" style="width:60%">
 </p>
 
 Sparse networks with compressed computation, executed depth-wise in cache, allows DeepSparse to deliver GPU-class performance on CPUs!
@@ -42,7 +47,7 @@ We will walk through an example benchmarking and deploying a sparse version of Y
 
 ### Install DeepSparse
 
-Run the following to install DeepSparse. We recommend you use a virtual enviornment.
+Run the following to install DeepSparse. We recommend you use a virtual enviornment with Python.
 
 ```bash
 pip install deepsparse[server,yolo]
