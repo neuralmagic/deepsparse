@@ -51,6 +51,11 @@ _PACKAGE_NAME = (
 )
 
 if is_enterprise:
+    license = "Apache"
+else:
+    license = "Neural Magic DeepSparse Community License, Apache"
+
+if is_enterprise:
     # do not include the LICENSE-NEURALMAGIC file
     # in the deepsparse-ent installation folder
     license_nm_path = os.path.join(
@@ -61,6 +66,16 @@ if is_enterprise:
 # File regexes for binaries to include in package_data
 binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
 
+# regexes for things to include as license files in the .dist-info
+# see https://github.com/pypa/setuptools/blob/v65.6.0/docs/references/keywords.rst
+# for more info
+license_files = [
+    "NOTICE",
+    "LICENSE*",
+    "licenses/*",
+    "src/deepsparse/licenses/*",
+]
+
 
 def _parse_requirements_file(file_path):
     with open(file_path, "r") as requirements_file:
@@ -70,7 +85,7 @@ def _parse_requirements_file(file_path):
 
 
 _deps = [
-    "numpy>=1.16.3",
+    "numpy>=1.16.3,<=1.21.6",
     "onnx>=1.5.0,<=1.12.0",
     "pydantic>=1.8.2",
     "requests>=2.0.0",
@@ -81,7 +96,7 @@ _deps = [
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
     "beautifulsoup4>=4.9.3",
-    "black>=20.8b1",
+    "black==22.12.0",
     "flake8>=3.8.3",
     "isort>=5.7.0",
     "m2r2~=0.2.7",
@@ -103,7 +118,7 @@ _dev_deps = [
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
-    "fastapi>=0.70.0",
+    "fastapi>=0.70.0,<0.87.0",
     "pydantic>=1.8.2",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
@@ -113,7 +128,11 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 _yolo_integration_deps = [
-    "torchvision>=0.3.0,<=0.12.0",
+    "torchvision>=0.3.0,<=0.13",
+    "opencv-python",
+]
+_openpifpaf_integration_deps = [
+    "openpifpaf==0.13.6",
     "opencv-python",
 ]
 # haystack dependencies are installed from a requirements file to avoid
@@ -137,7 +156,7 @@ def _check_supported_system():
     if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
         # windows is not supported, raise error on install
         raise OSError(
-            "Native Windows is currently unsupported for the DeepSparse Engine. "
+            "Native Windows is currently unsupported for DeepSparse. "
             "Please run on a Linux system or within a Linux container on Windows. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -146,7 +165,7 @@ def _check_supported_system():
     if sys.platform.startswith("darwin"):
         # mac is not supported, raise error on install
         raise OSError(
-            "Native Mac is currently unsupported for the DeepSparse Engine. "
+            "Native Mac is currently unsupported for DeepSparse. "
             "Please run on a Linux system or within a Linux container on Mac. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -155,7 +174,7 @@ def _check_supported_system():
     # unknown system, raise error on install
     raise OSError(
         f"Unknown OS given of {sys.platform}; "
-        "it is unsupported for the DeepSparse Engine. "
+        "it is unsupported for DeepSparse. "
         "Please run on a Linux system. "
         "More info can be found in our docs here: "
         "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -172,7 +191,7 @@ def _check_supported_python_version():
     ):
         raise EnvironmentError(
             f"Python {supported_major}.{supported_minor} "
-            f"is only supported for the DeepSparse Engine; found {sys.version}. "
+            f"is only supported for DeepSparse; found {sys.version}. "
             "Please run on a system with the proper Python version installed. "
             "More info can be found in our docs here: "
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
@@ -232,6 +251,7 @@ def _setup_extras() -> Dict:
         "onnxruntime": _onnxruntime_deps,
         "yolo": _yolo_integration_deps,
         "haystack": _haystack_integration_deps,
+        "openpifpaf": _openpifpaf_integration_deps,
     }
 
 
@@ -249,6 +269,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
+            "deepsparse.pose_estimation.annotate=deepsparse.openpifpaf.annotate:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
@@ -268,8 +289,8 @@ setup(
     author="Neuralmagic, Inc.",
     author_email="support@neuralmagic.com",
     description=(
-        "Neural network inference engine that delivers GPU-class performance "
-        "for sparsified models on CPUs"
+        "An inference runtime offering GPU-class performance on CPUs "
+        "and APIs to integrate ML into your application"
     ),
     long_description=_setup_long_description()[0],
     long_description_content_type=_setup_long_description()[1],
@@ -278,7 +299,8 @@ setup(
         "sparse, inference engine, cpu, runtime, deepsparse, computer vision, "
         "object detection, sparsity"
     ),
-    license="Neural Magic Engine License, Apache",
+    license=license,
+    license_files=license_files,
     url="https://github.com/neuralmagic/deepsparse",
     package_dir=_setup_package_dir(),
     include_package_data=True,

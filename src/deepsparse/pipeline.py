@@ -28,8 +28,9 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
+from deepsparse.loggers import BaseLogger, MetricCategories, validate_identifier
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
-from deepsparse.timing import InferencePhases, InferenceTimingSchema, TimingBuilder
+from deepsparse.timing import InferencePhases, Timer
 
 
 __all__ = [
@@ -129,6 +130,8 @@ class Pipeline(ABC):
         synchronous execution - if running in dynamic batch mode a default
         ThreadPoolExecutor with default workers equal to the number of available
         cores / 2
+    :param logger: An optional DeepSparse Logger object for inference logging.
+        Default is None
     """
 
     def __init__(
@@ -142,6 +145,8 @@ class Pipeline(ABC):
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
+        logger: Optional[BaseLogger] = None,
+        _delay_engine_initialize: bool = False,  # internal use only
     ):
         self._model_path_orig = model_path
         self._model_path = model_path
@@ -149,6 +154,7 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
+        self.logger = logger
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -173,22 +179,35 @@ class Pipeline(ABC):
             self._engine_args["scheduler"] = scheduler
 
         self.onnx_file_path = self.setup_onnx_file_path()
-        self.engine = self._initialize_engine()
+
+        if _delay_engine_initialize:
+            self.engine = None
+        else:
+            self.engine = self._initialize_engine()
 
         self._batch_size = self._batch_size or 1
 
-    def __call__(self, *args, monitoring: bool = False, **kwargs) -> BaseModel:
+    def __call__(self, *args, **kwargs) -> BaseModel:
         if "engine_inputs" in kwargs:
             raise ValueError(
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
-        timer = TimingBuilder()
+        timer = Timer()
 
-        # parse inputs into input_schema
         timer.start(InferencePhases.TOTAL_INFERENCE)
+
+        # ------ PREPROCESSING ------
         timer.start(InferencePhases.PRE_PROCESS)
+        # parse inputs into input_schema
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
+
+        self.log(
+            identifier="pipeline_inputs",
+            value=pipeline_inputs,
+            category=MetricCategories.DATA,
+        )
+
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
                 f"Unable to parse {self.__class__} inputs into a "
@@ -202,6 +221,18 @@ class Pipeline(ABC):
             postprocess_kwargs = {}
         timer.stop(InferencePhases.PRE_PROCESS)
 
+        self.log(
+            identifier="engine_inputs",
+            value=engine_inputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.PRE_PROCESS,
+            value=timer.time_delta(InferencePhases.PRE_PROCESS),
+            category=MetricCategories.SYSTEM,
+        )
+
+        # ------ INFERENCE ------
         # split inputs into batches of size `self._batch_size`
         timer.start(InferencePhases.ENGINE_FORWARD)
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
@@ -213,6 +244,18 @@ class Pipeline(ABC):
         engine_outputs = self.join_engine_outputs(batch_outputs)
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
+        self.log(
+            identifier="engine_outputs",
+            value=engine_outputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.ENGINE_FORWARD,
+            value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
+            category=MetricCategories.SYSTEM,
+        )
+
+        # ------ POSTPROCESSING ------
         timer.start(InferencePhases.POST_PROCESS)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
@@ -225,36 +268,23 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.POST_PROCESS)
         timer.stop(InferencePhases.TOTAL_INFERENCE)
 
-        if not monitoring:
-            return pipeline_outputs
+        self.log(
+            identifier="pipeline_outputs",
+            value=pipeline_outputs,
+            category=MetricCategories.DATA,
+        )
+        self.log(
+            identifier=InferencePhases.POST_PROCESS,
+            value=timer.time_delta(InferencePhases.POST_PROCESS),
+            category=MetricCategories.SYSTEM,
+        )
+        self.log(
+            identifier=InferencePhases.TOTAL_INFERENCE,
+            value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
+            category=MetricCategories.SYSTEM,
+        )
 
-        else:
-            inference_timing = InferenceTimingSchema(**timer.build())
-            return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
-
-    def run_with_monitoring(
-        self, *args, **kwargs
-    ) -> Tuple[BaseModel, BaseModel, Any, InferenceTimingSchema]:
-        """
-        Run the inference forward pass and additionally
-        return extra monitoring information
-
-        :return:
-            pipeline_outputs: outputs from the inference pipeline
-            pipeline_inputs: inputs to the inference pipeline
-            engine_inputs: direct input to the inference engine
-            inference_timing: BaseModel, that contains the information about time
-                elapsed during the inference steps: pre-processing,
-                engine-forward, post-processing, as well as
-                the total elapsed time
-        """
-        (
-            pipeline_outputs,
-            pipeline_inputs,
-            engine_inputs,
-            inference_timing,
-        ) = self.__call__(*args, monitoring=True, **kwargs)
-        return pipeline_outputs, pipeline_inputs, engine_inputs, inference_timing
+        return pipeline_outputs
 
     @staticmethod
     def split_engine_inputs(
@@ -507,6 +537,7 @@ class Pipeline(ABC):
         cls,
         config: Union["PipelineConfig", str, Path],
         context: Optional[Context] = None,
+        logger: Optional[BaseLogger] = None,
     ) -> "Pipeline":
         """
         :param config: PipelineConfig object, filepath to a json serialized
@@ -516,6 +547,8 @@ class Pipeline(ABC):
             other runtime information that will be used across instances of the
             MultiModelEngine to provide optimal performance when running
             multiple models concurrently
+        :param logger: An optional DeepSparse Logger object for inference
+            logging. Default is None
         :return: loaded Pipeline object from the config
         """
         if isinstance(config, Path) or (
@@ -537,6 +570,7 @@ class Pipeline(ABC):
             input_shapes=config.input_shapes,
             alias=config.alias,
             context=context,
+            logger=logger,
             **config.kwargs,
         )
 
@@ -665,6 +699,24 @@ class Pipeline(ABC):
             alias=self.alias,
             kwargs=kwargs,
         )
+
+    def log(self, identifier: str, value: Any, category: str):
+        """
+        Pass the logged data to the DeepSparse logger object (if present)
+
+        :param identifier: The string name assigned to the logged value
+        :param value: The logged data structure
+        :param category: The metric category that the log belongs to
+        """
+        identifier = f"{self.alias or self.task}/{identifier}"
+        validate_identifier(identifier)
+        if self.logger:
+            self.logger.log(
+                identifier=identifier,
+                value=value,
+                category=category,
+            )
+        return
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """
@@ -1267,7 +1319,7 @@ def haystack_pipeline(*args, **kwargs) -> "Pipeline":
         specify Haystack node arguments
     :param retriever_kwargs: keyword arguments to be passed to retriever. If
         the retriever is a deepsparse retriever, then these arguments will also
-        be passed to the EmbeddingExtractionPipeline of the retriever
+        be passed to the TransformersEmbeddingExtractionPipeline of the retriever
     """
     return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
 

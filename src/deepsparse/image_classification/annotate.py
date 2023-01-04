@@ -78,7 +78,7 @@ from deepsparse.utils.annotate import (
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
-from deepsparse.yolo.utils.cli_helpers import create_dir_callback
+from deepsparse.utils.cli_helpers import create_dir_callback
 
 
 ic_default_stub = (

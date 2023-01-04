@@ -16,7 +16,8 @@ import contextlib
 import logging
 import os
 import tempfile
-from typing import List, Optional, Union
+from tempfile import NamedTemporaryFile
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -33,7 +34,6 @@ except Exception as sparsezoo_err:
     File = object
     sparsezoo_import_error = sparsezoo_err
 
-
 __all__ = [
     "ONNX_TENSOR_TYPE_MAP",
     "model_to_path",
@@ -45,6 +45,7 @@ __all__ = [
     "override_onnx_batch_size",
     "override_onnx_input_shapes",
     "truncate_onnx_model",
+    "truncate_onnx_embedding_model",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -286,13 +287,12 @@ def truncate_onnx_model(
         outputs of the graph
     :param graph_output_names: list of names to call the graph outputs. Names
         correspond with the outputs specified in final_node_names
-    :param graph_output_types: list of numpy dtypes
     :param graph_output_shapes: list of shapes for each output. If not provided,
         defaults to [None] for each output and leads to slight performance loss
     :return: None
     """
     if graph_output_shapes is None:
-        graph_output_shapes = [[None]] * len(final_node_names)
+        graph_output_shapes = [None] * len(final_node_names)
 
     if len(final_node_names) != len(graph_output_names) != len(graph_output_shapes):
         raise ValueError(
@@ -342,6 +342,70 @@ def truncate_onnx_model(
         f"{extracted_num_nodes} remaining"
     )
 
+    for output in extracted_model.graph.output:
+        if len(output.type.tensor_type.shape.dim) == 0:
+            # ONNX checker treats None shapes and empty shapes
+            # differently, clear None shape to pass checker
+            output.type.tensor_type.shape.Clear()
+
     # save and check model
     onnx.save(extracted_model, output_filepath)
     onnx.checker.check_model(output_filepath)
+
+
+def truncate_onnx_embedding_model(
+    model_path: str,
+    emb_extraction_layer: Union[int, str, None] = None,
+    output_filepath: Optional[str] = None,
+) -> Tuple[str, Optional[NamedTemporaryFile]]:
+    """
+     :param model_path: path of onnx file to be cut
+    :param emb_extraction_layer: if an int, last layer to include. If a
+        string, then the name of the last node in the truncated graph.
+        default is None.
+    :param output_filepath: path to write resulting onnx file. If not provided,
+        will create a temporary file path that will be destroyed on program end
+    :return: if no output path, a tuple of the saved path to the model, list of
+        model output names, and reference to the tempfile object will be returned
+        otherwise, a tuple containing the given output_path argument, the model
+        output names, and None
+    """
+
+    tmp_file = None
+    if output_filepath is None:
+        tmp_file = NamedTemporaryFile()
+        output_filepath = tmp_file.name
+
+    # determine where to cut the model
+    model = onnx.load(model_path)
+    if isinstance(emb_extraction_layer, str):
+        final_node = None
+        for graph_node in model.graph.node:
+            if graph_node.name == emb_extraction_layer:
+                final_node = graph_node
+
+        if final_node is None:
+            raise RuntimeError(
+                f"Unable to find node {emb_extraction_layer} for extraction in graph"
+            )
+
+        final_node_name = final_node.name
+        graph_output_name = final_node.output[0]
+    else:
+        final_node_name = model.graph.node[emb_extraction_layer].name
+        graph_output_name = model.graph.node[emb_extraction_layer].output[0]
+
+        if final_node_name is None:
+            raise ValueError(
+                f"Node at index {emb_extraction_layer} does not have a name set"
+            )
+
+    truncate_onnx_model(
+        onnx_filepath=model_path,
+        output_filepath=output_filepath,
+        final_node_names=[final_node_name],
+        graph_output_names=[graph_output_name],
+        graph_output_shapes=None,
+    )
+
+    return output_filepath, tmp_file

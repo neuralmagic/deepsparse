@@ -18,9 +18,9 @@ limitations under the License.
 <div style="display: flex; flex-direction: column; align-items: center;">
   <h1>
     <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />
-    &nbsp;&nbsp;DeepSparse Engine
+    &nbsp;&nbsp;DeepSparse
   </h1>
-  <h3> Sparsity-aware neural network inference engine for GPU-class performance on CPUs </h3>
+  <h3> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h3>
   <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap">
     <a href="https://docs.neuralmagic.com/deepsparse/">
       <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="25" />
@@ -54,13 +54,13 @@ limitations under the License.
 
 A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read [more about sparsification](https://docs.neuralmagic.com/user-guide/sparsification).
 
-Neural Magic's DeepSparse Engine is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. 
+Neural Magic's DeepSparse is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. 
 ONNX gives the flexibility to serve your model in a framework-agnostic environment. 
 Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
-The DeepSparse Engine is available in two editions: 
-1. [**The Community Edition**](#installation) is open-source and free for evaluation, research, and non-production use with our [Engine Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2. [**The Enterprise Edition**](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+DeepSparse is available in two editions: 
+1. [**DeepSparse Community**](#installation) is open-source and free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
+2. [**DeepSparse Enterprise**](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
 
 ## Features
 
@@ -70,27 +70,27 @@ The DeepSparse Engine is available in two editions:
 
 ## 🧰 Hardware Support and System Requirements
 
-Review [Supported Hardware for the DeepSparse Engine](https://docs.neuralmagic.com/user-guide/deepsparse-engine/hardware-support) to understand system requirements. 
-The DeepSparse Engine works natively on Linux; Mac and Windows require running Linux in a Docker or virtual machine; it will not run natively on those operating systems.
+Review [Supported Hardware for DeepSparse](https://docs.neuralmagic.com/user-guide/deepsparse-engine/hardware-support) to understand system requirements. 
+DeepSparse works natively on Linux; Mac and Windows require running Linux in a Docker or virtual machine; it will not run natively on those operating systems.
 
-The DeepSparse Engine is tested on Python 3.7-3.10, ONNX 1.5.0-1.12.0, ONNX opset version 11+, and manylinux compliant. 
+DeepSparse is tested on Python 3.7-3.10, ONNX 1.5.0-1.12.0, ONNX opset version 11+, and manylinux compliant. 
 Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended. 
 
 ## Installation
 
-Install the DeepSparse Community Edition as follows: 
+Install DeepSparse Community as follows: 
 
 ```bash
 pip install deepsparse
 ```
 
-To install the DeepSparse Enterprise Edition, trial or inquire about licensing for DeepSparse Enterprise Edition, see the [DeepSparse Enterprise documentation](https://docs.neuralmagic.com/products/deepsparse-ent).
+To install the DeepSparse Enterprise, trial or inquire about licensing for DeepSparse Enterprise, see the [DeepSparse Enterprise documentation](https://docs.neuralmagic.com/products/deepsparse-ent).
 
 ## Features
 
 ### 🔌 DeepSparse Server
 
-The DeepSparse Server allows you to serve models and pipelines from the terminal. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Install the server using the following command:
+DeepSparse Server allows you to serve models and pipelines from the terminal. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Install the server using the following command:
 
 ```bash
 pip install deepsparse[server]
@@ -130,11 +130,11 @@ Finally, after your `config.yaml` file is built, run the server with the config 
 deepsparse.server config config.yaml
 ```
 
-[Getting Started with the DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) for more info.
+[Getting Started with DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) for more info.
 
 ### 📜 DeepSparse Benchmark
 
-The benchmark tool is available on your CLI to run expressive model benchmarks on the DeepSparse Engine with minimal parameters.
+The benchmark tool is available on your CLI to run expressive model benchmarks on DeepSparse with minimal parameters.
 
 Run `deepsparse.benchmark -h` to look up arguments:
 
@@ -210,7 +210,7 @@ The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes pack
 
 ### Scheduling Single-Stream, Multi-Stream, and Elastic Inference
 
-The DeepSparse Engine offers up to three types of inferences based on your use case. Read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
+DeepSparse offers up to three types of inferences based on your use case. Read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
 
 1 ⚡ Single-stream scheduling: the latency/synchronous scenario, requests execute serially. [`default`]
 
@@ -266,10 +266,10 @@ For more general questions about Neural Magic, complete this [form.](http://neur
 
 ### License
 
-The Community Edition of the project's binary containing the DeepSparse Engine is licensed under the [Neural Magic Engine License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC) 
-Example files and scripts included in this repository are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
+[DeepSparse Community](https://docs.neuralmagic.com/products/deepsparse) is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
+Some source code, example files, and scripts included in the deepsparse GitHub repository or directory are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 
-[The Enterprise Edition](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+[DeepSparse Enterprise](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
 
 ### Cite
 

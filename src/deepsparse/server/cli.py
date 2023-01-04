@@ -225,7 +225,7 @@ def main(
                     batch_size=batch_size,
                 )
             ],
-            loggers=None,
+            loggers={},
         )
 
         with TemporaryDirectory() as tmp_dir:
@@ -285,15 +285,6 @@ def config(
 @LOG_LEVEL_OPTION
 @HOT_RELOAD_OPTION
 @INTEGRATION_OPTION
-@click.option(
-    "--no-loggers",
-    is_flag=True,
-    default=False,
-    help=(
-        "Set to not use any inference logging integration. Defaults to using "
-        "a default integration such as Prometheus."
-    ),
-)
 def task(
     task: str,
     model_path: str,
@@ -305,7 +296,6 @@ def task(
     log_level: str,
     hot_reload_config: bool,
     integration: str,
-    no_loggers: bool,
 ):
     """
     [DEPRECATED] Run the server using configuration with CLI options,
@@ -332,7 +322,7 @@ def task(
                 batch_size=batch_size,
             )
         ],
-        loggers=None if no_loggers else "default",
+        loggers={},
     )
 
     with TemporaryDirectory() as tmp_dir:

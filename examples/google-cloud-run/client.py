@@ -11,16 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pytest
-from deepsparse.loggers import BaseLogger, ManagerLogger, PrometheusLogger
+
+import json
+
+import requests
 
 
-@pytest.mark.parametrize("loggers", [PrometheusLogger(port=0)])
-def test_logger_manager(loggers):
-    logger_manager = ManagerLogger(loggers)
-    assert isinstance(logger_manager.loggers, dict)
-    assert len(logger_manager.loggers) == 1
-    assert [
-        isinstance(logger, BaseLogger) for logger in logger_manager.loggers.values()
-    ]
-    assert logger_manager.identifier == [loggers.identifier]
+class CloudRunClient:
+    """
+    Client object for making requests to the CLoud Run HTTP endpoint
+    :param url: API endpoint URL
+    """
+
+    def __init__(self, url: str):
+
+        self.url = url
+        self.headers = {"Content-Type": "application/json"}
+
+    def client(self, payload):
+        """
+        Client for NLP tasks.
+        """
+
+        response = requests.post(self.url, headers=self.headers, json=payload)
+
+        return json.loads(response.content)

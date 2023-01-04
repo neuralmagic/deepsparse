@@ -75,8 +75,8 @@ from deepsparse.utils.annotate import (
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
+from deepsparse.utils.cli_helpers import create_dir_callback
 from deepsparse.yolact.utils import annotate_image
-from deepsparse.yolo.utils.cli_helpers import create_dir_callback
 
 
 yolact_v5_default_stub = (
