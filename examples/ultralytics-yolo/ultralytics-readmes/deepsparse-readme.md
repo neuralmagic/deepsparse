@@ -172,6 +172,18 @@ To try the deployment examples below, pull down a sample image for the example a
 wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/basilica.jpg
 ```
 
+#### Annotate CLI
+You can also use the annotate command to have the engine save an annotated photo on disk. Try --source 0 to annotate your live webcam feed!
+```bash
+deepsparse.object_detection.annotate --model_filepath zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 --source basilica.jpg
+```
+
+Running the above command will create an `annotation-results` folder and save the annotated image inside.
+
+<p align = "center">
+<img src="https://github.com/neuralmagic/deepsparse/blob/d31f02596ebff2ec62761d0bc9ca14c4663e8858/src/deepsparse/yolo/sample_images/basilica-annotated.jpg" alt="annotated" width="60%"/>
+</p>
+
 #### Python API
   
 `Pipelines` wrap pre-processing and output post-processing around the runtime, providing a clean inferface for adding DeepSparse to an application. 
