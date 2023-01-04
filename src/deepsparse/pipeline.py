@@ -731,22 +731,25 @@ class Pipeline(ABC):
         category: str,
     ):
         """
-        Pass the logged data to the DeepSparse logger object (if present)
+        Pass the logged data to the DeepSparse logger object (if present).
 
         :param identifier: The string name assigned to the logged value
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
+        if not self.logger:
+            return
+
         if not hasattr(self, "task"):
             self.task = None
-        identifier = f"{self.alias or self.task}/{identifier}"
+
+        identifier = f"{self.alias or self.task or 'unknown_pipeline'}/{identifier}"
         validate_identifier(identifier)
-        if self.logger:
-            self.logger.log(
-                identifier=identifier,
-                value=value,
-                category=category,
-            )
+        self.logger.log(
+            identifier=identifier,
+            value=value,
+            category=category,
+        )
         return
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
