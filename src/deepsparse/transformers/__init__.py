@@ -60,7 +60,7 @@ def _install_transformers_and_deps():
                 "install",
                 transformers_requirement,
                 "datasets<=1.18.4",
-                "sklearn",
+                "scikit-learn",
                 "seqeval",
             ]
         )
