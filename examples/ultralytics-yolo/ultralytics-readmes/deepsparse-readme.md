@@ -24,10 +24,10 @@ Welcome to software-delivered AI.
 
 This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse.
 
-DeepSparse is an inference runtime with exceptional performance on CPUs. For instance, compared to ONNX Runtime's baseline, DeepSparse offers a 3.7x speed-up at batch size 1 and a 5.8x speed-up at batch size 64 for YOLOv5s!
+DeepSparse is an inference runtime with exceptional performance on CPUs. For instance, compared to the ONNX Runtime baseline, DeepSparse offers a 5.8x speed-up for YOLOv5s, running on the same machine!
 
 <p align="center">
-  <img width="60%" src="cluster-bar.png">
+  <img width="60%" src="performance-chart-5.8x.png">
 </p>
 
 For the first time, your deep learning workloads can meet the performance demands of production without the complexity and costs of hardware accelerators.
@@ -77,110 +77,20 @@ DeepSparse accepts a model in the ONNX format, passed either as:
 - A SparseZoo stub which identifies an ONNX file in the SparseZoo
 - A local path to an ONNX model in a filesystem
 
-The examples below will use the standard dense YOLOv5s and pruned-quantized YOLOv5s checkpoints, identified by the following SparseZoo stubs:
+The examples below use the standard dense and pruned-quantized YOLOv5s checkpoints, identified by the following SparseZoo stubs:
 ```bash
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none
-zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni # < pruned for VNNI machines
-```
-
-### Benchmark Performance
-
-We will compare DeepSparse's throughput to ONNX Runtime's throughput on YOLOv5s, using DeepSparse's benchmarking script.
-
-The benchmarks were run on an AWS `c6i.8xlarge` instance (16 cores). 
-
-#### Batch 1 Performance Comparison
-
-ONNX Runtime achieves 49 images/sec with dense YOLOv5s.
-
-```bash
-deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -nstreams 1 -e onnxruntime
-
-> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
-> Batch Size: 1
-> Scenario: sync
-> Throughput (items/sec): 48.8549
-> Latency Mean (ms/batch): 20.4613
-> Latency Median (ms/batch): 20.4192
-```
-
-DeepSparse achieves 135 items/sec with a pruned-quantized YOLOv5s, **a 2.8x performance gain over ONNX Runtime!**
-
-```bash
-deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none -s sync -b 1 -nstreams 1
-
-> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none
-> Batch Size: 1
-> Scenario: sync
-> Throughput (items/sec): 135.0647
-> Latency Mean (ms/batch): 7.3895
-> Latency Median (ms/batch): 7.2398```
-```
-
-Since `c6i.8xlarge` instances have VNNI instructions, DeepSparse's throughput can be pushed further if weights are pruned in blocks of 4. DeepSparse achieves 180 items/sec with a 4-block pruned-quantized YOLOv5s, a **3.7x performance gain over ONNX Runtime!**
-
-```bash
-deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni -s sync -b 1 -nstreams 1
-
-> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni
-> Batch Size: 1
-> Scenario: sync
-> Throughput (items/sec): 179.6016
-> Latency Mean (ms/batch): 5.5615
-> Latency Median (ms/batch): 5.5458
-```
-
-#### Batch 64 Performance Comparison
-
-In latency-insensitive scenarios with large batch sizes, DeepSparse's performance relative to ONNX Runtime is even stronger.
-
-ONNX Runtime achieves 42 images/sec with dense YOLOv5s:
-
-```bash
-deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 64 -nstreams 1 -e onnxruntime
-
-> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
-> Batch Size: 64
-> Scenario: sync
-> Throughput (items/sec): 41.5560
-> Latency Mean (ms/batch): 1538.6640
-> Latency Median (ms/batch): 1538.0362
-```
-
-DeepSparse achieves 239 images/sec with pruned-quantized YOLOv5s, a **5.8x performance improvement over ORT**!
-
-```bash
-deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none -s sync -b 64 -nstreams 1
-
-> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none
-> Batch Size: 64
-> Scenario: sync
-> Throughput (items/sec): 239.0854
-> Latency Mean (ms/batch): 267.6703
-> Latency Median (ms/batch): 267.3194
 ```
 
 ### Deploy a Model
 
 DeepSparse offers convenient APIs for integrating your model into an application.  
 
-To try the deployment examples below, pull down a sample image for the example and save as `basilica.jpg` with the following command:
+To try the deployment examples below, pull down a sample image and save it as `basilica.jpg` with the following:
 ```bash
 wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/basilica.jpg
 ```
-
-#### Annotate CLI
-You can also use the annotate command to have the engine save an annotated photo on disk. Try --source 0 to annotate your live webcam feed!
-```bash
-deepsparse.object_detection.annotate --model_filepath zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 --source basilica.jpg
-```
-
-Running the above command will create an `annotation-results` folder and save the annotated image inside.
-
-<p align = "center">
-<img src="https://github.com/neuralmagic/deepsparse/blob/d31f02596ebff2ec62761d0bc9ca14c4663e8858/src/deepsparse/yolo/sample_images/basilica-annotated.jpg" alt="annotated" width="60%"/>
-</p>
 
 #### Python API
   
@@ -237,6 +147,110 @@ resp = requests.post(url=url, files=files)
 annotations = json.loads(resp.text) # dictionary of annotation results
 bounding_boxes = annotations["boxes"]
 labels = annotations["labels"]
+```
+
+#### Annotate CLI
+You can also use the annotate command to have the engine save an annotated photo on disk. Try --source 0 to annotate your live webcam feed!
+```bash
+deepsparse.object_detection.annotate --model_filepath zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none --source basilica.jpg
+```
+
+Running the above command will create an `annotation-results` folder and save the annotated image inside.
+
+<p align = "center">
+<img src="https://github.com/neuralmagic/deepsparse/blob/d31f02596ebff2ec62761d0bc9ca14c4663e8858/src/deepsparse/yolo/sample_images/basilica-annotated.jpg" alt="annotated" width="60%"/>
+</p>
+
+## Benchmarking Performance
+
+We will compare DeepSparse's throughput to ONNX Runtime's throughput on YOLOv5s, using DeepSparse's benchmarking script.
+
+The benchmarks were run on an AWS `c6i.8xlarge` instance (16 cores). 
+
+### Batch 32 Performance Comparsion
+
+#### ONNX Runtime Baseline
+
+At batch 32, ONNX Runtime achieves 42 images/sec with the standard dense YOLOv5s:
+
+```bash
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 32 -nstreams 1 -e onnxruntime
+
+> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
+> Batch Size: 32
+> Scenario: sync
+> Throughput (items/sec): 41.9025
+```
+
+#### DeepSparse Dense Performance
+
+While DeepSparse offers its best performance with optimized sparse models, it also performs well with the standard dense YOLOv5s. 
+
+At batch 32, DeepSparse achieves 70 images/sec with the standard dense YOLOv5s, a **1.7x performance improvement over ORT**!
+
+```bash
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 32 -nstreams 1
+
+> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
+> Batch Size: 32
+> Scenario: sync
+> Throughput (items/sec): 69.5546
+```
+#### DeepSparse Sparse Performance
+
+When sparsity is applied to the model, DeepSparse's performance gains over ONNX Runtime is even stronger.
+
+At batch 32, DeepSparse achieves 241 images/sec with the pruned-quantized YOLOv5s, a **5.8x performance improvement over ORT**!
+
+```bash
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none -s sync -b 32 -nstreams 1
+
+> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none
+> Batch Size: 32
+> Scenario: sync
+> Throughput (items/sec): 241.2452
+```
+
+### Batch 1 Performance Comparison
+
+DeepSparse is also able to gain a speed-up over ONNX Runtime for the latency-sensitive, batch 1 scenario.
+
+#### ONNX Runtime Baseline
+At batch 1, ONNX Runtime achieves 48 images/sec with the standard, dense YOLOv5s.
+
+```bash
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 1 -nstreams 1 -e onnxruntime
+
+> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
+> Batch Size: 1
+> Scenario: sync
+> Throughput (items/sec): 48.0921
+```
+
+#### DeepSparse Sparse Performance
+
+At batch 1, DeepSparse achieves 135 items/sec with a pruned-quantized YOLOv5s, **a 2.8x performance gain over ONNX Runtime!**
+
+```bash
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none -s sync -b 1 -nstreams 1
+
+> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none
+> Batch Size: 1
+> Scenario: sync
+> Throughput (items/sec): 134.9468
+```
+
+Since `c6i.8xlarge` instances have VNNI instructions, DeepSparse's throughput can be pushed further if weights are pruned in blocks of 4. 
+
+At batch 1, DeepSparse achieves 180 items/sec with a 4-block pruned-quantized YOLOv5s, a **3.7x performance gain over ONNX Runtime!**
+
+```bash
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni -s sync -b 1 -nstreams 1
+
+> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni
+> Batch Size: 1
+> Scenario: sync
+> Throughput (items/sec): 179.7375
 ```
 
 ## Get Started With DeepSparse
