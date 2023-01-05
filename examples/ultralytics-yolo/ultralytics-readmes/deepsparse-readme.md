@@ -9,6 +9,9 @@ Welcome to software-delivered AI.
 DeepSparse is an inference runtime offering GPU-class performance on CPUs. For the first time, your deep learning workloads can meet the performance 
 demands of production without the complexity and costs of hardware accelerators.
 
+![](batch-1.png)  |  ![](batch-64.png)
+:-------------------------:|:-------------------------:
+
 Simply put, DeepSparse gives you the performance of GPUs and the simplicity of software:
 - **Flexible Deployments**: Run consistently across cloud, data center, and edge with any hardware provider from Intel to AMD to ARM
 - **Near-Infinite Scalability**: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
@@ -33,8 +36,7 @@ Sparse computation, executed depth-wise in cache, allows DeepSparse to deliver G
 
 ### How Do I Create A Sparse Version of YOLOv5 Trained on My Data?
 
-Neural Magic's open-source model repository SparseZoo and open-source model optimization library SparseML are integrated with Ultralytics YOLOv5, making 
-it easy to fine-tune a pre-sparsified version of any YOLOv5 model onto custom data with a single CLI command.
+Neural Magic's open-source model repository, SparseZoo, contains pre-sparsified checkpoints of each YOLOv5 model. Using SparseML, which is integrated with Ultralytics, you can fine-tune a sparse checkpoint onto your data with a single CLI command.
 
 [Checkout Neural Magic's YOLOv5 documentation for more details](https://docs.neuralmagic.com/use-cases/object-detection/sparsifying).
 
@@ -56,21 +58,22 @@ DeepSparse accepts a model in the ONNX format, passed either as:
 - A SparseZoo stub which identifies an ONNX file in the SparseZoo
 - A Local Path to an ONNX model in a filesystem
 
-We will compare the pruned-quantized YOLOv5s to the standard dense YOLOv5s, identified by the following SparseZoo stubs:
-```
+The examples below will use the pruned-quantized YOLOv5s and standard dense YOLOv5s checkpoints, identified by the following SparseZoo stubs:
+```bash
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none
-deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni # < pruned for VNNI machines
+zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni # < pruned for VNNI machines
 ```
 
 ### Benchmark Performance
 
-DeepSparse includes a benchmarking script to test performance. In the examples below, we will compare DeepSparse's throughput running sparse versions of YOLOv5s with ONNX Runtime.
+We will compare DeepSparse's throughput to ONNX Runtime, using DeepSparse's convienent benchmarking script.
 
-The benchmarks were run on an AWS `c6i.8xlarge` instance (16 cores). Running YOLOv5s, DeepSparse achieves a **3.7x** speed-up over ONNX Runtime at `batch_size=1` and a **5.8x** speed-up at `batch_size=64`!
+Relative to the ONNX Runtime baseline for YOLOv5s, DeepSparse achieves a **3.7x speed-up at batch 1** and a **5.8x speed-up at batch 64** !
 
-![](batch-1.png)  |  ![](batch-64.png)
-:-------------------------:|:-------------------------:
+
+
+The benchmarks were run on an AWS `c6i.8xlarge` instance (16 cores). 
 
 #### Batch 1 Performance
 
@@ -87,7 +90,7 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-non
 > Latency Median (ms/batch): 20.4192
 ```
 
-DeepSparse achieves 135 items/sec with a pruned-quantized YOLOv5s. **This is a 2.8x performance gain over ONNX Runtime!**
+DeepSparse achieves 135 items/sec with a pruned-quantized YOLOv5s, **a 2.8x performance gain over ONNX Runtime!**
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none -s sync -b 1 -nstreams 1
@@ -98,8 +101,9 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65
 > Throughput (items/sec): 135.0647
 > Latency Mean (ms/batch): 7.3895
 > Latency Median (ms/batch): 7.2398```
+```
 
-Since `c6i.8xlarge` instances have VNNI instructions, DeepSparse's performance can be pushed even further if weights are pruned in block of 4. DeepSparse achieves 180 items/sec with a 4-block pruned-quantized YOLOv5-s. **This is a 3.7x performance gain over ONNX Runtime**
+Since `c6i.8xlarge` instances have VNNI instructions, DeepSparse's throughput can be pushed further if weights are pruned in blocks of 4. DeepSparse achieves 180 items/sec with a 4-block pruned-quantized YOLOv5-s, a **3.7x performance gain over ONNX Runtime!**
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni -s sync -b 1 -nstreams 1
