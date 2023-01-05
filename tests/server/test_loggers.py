@@ -40,8 +40,7 @@ def _test_logger_contents(leaf_logger, expected_logs):
 
 def test_default_logger():
     server_config = ServerConfig(
-        endpoints=[EndpointConfig(task=task, name=name, model=stub)],
-        loggers={},
+        endpoints=[EndpointConfig(task=task, name=name, model=stub)]
     )
     server_logger = build_logger(server_config)
     with mock.patch(
@@ -52,7 +51,7 @@ def test_default_logger():
 
     for _ in range(2):
         client.post("/predict", json={"sequences": "today is great"})
-    assert isinstance(server_logger.logger.loggers, PythonLogger)
+    assert isinstance(server_logger.logger.loggers[0].logger.loggers[0], PythonLogger)
 
 
 def test_logging_only_system_info():
@@ -71,7 +70,7 @@ def test_logging_only_system_info():
         client.post("/predict", json={"sequences": "today is great"})
     _test_logger_contents(
         server_logger.logger.loggers[0].logger.loggers[0],
-        {"category:MetricCategories.SYSTEM": 8},
+        {"prediction_latency": 8},
     )
 
 
@@ -135,7 +134,7 @@ def test_multiple_targets_logging():
         {
             "pipeline_inputs.sequences__identity": 2,
             "engine_inputs__identity": 2,
-            "category:MetricCategories.SYSTEM": 8,
+            "prediction_latency": 8,
         },
     )
 
@@ -177,7 +176,7 @@ def test_function_metric_with_target_loggers():
         {
             "pipeline_inputs.sequences__identity": 2,
             "engine_inputs__identity": 2,
-            "category:MetricCategories.SYSTEM": 8,
+            "prediction_latency": 8,
         },
     )
     _test_logger_contents(
@@ -185,7 +184,7 @@ def test_function_metric_with_target_loggers():
         {
             "pipeline_inputs.sequences__identity": 0,
             "engine_inputs__identity": 2,
-            "category:MetricCategories.SYSTEM": 8,
+            "prediction_latency": 8,
         },
     )
 

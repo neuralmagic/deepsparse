@@ -16,25 +16,55 @@
 Specifies the mapping from the ServerConfig to the DeepSparse Logger
 """
 
-from typing import Any, Dict, List, Optional
+import importlib
+import logging
+from typing import Any, Dict, List, Optional, Type
 
 from deepsparse.loggers import (
     AsyncLogger,
     BaseLogger,
     FunctionLogger,
-    MetricCategories,
     MultiLogger,
     PrometheusLogger,
     PythonLogger,
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.server.config import MetricFunctionConfig, ServerConfig
-from deepsparse.server.helpers import custom_logger_from_identifier, default_logger
+from deepsparse.server.config import (
+    MetricFunctionConfig,
+    ServerConfig,
+    SystemLoggingConfig,
+    SystemLoggingGroup,
+)
 
 
-__all__ = ["build_logger"]
+__all__ = ["build_logger", "custom_logger_from_identifier", "default_logger"]
 
+_LOGGER = logging.getLogger(__name__)
 _LOGGER_MAPPING = {"python": PythonLogger, "prometheus": PrometheusLogger}
+
+
+def custom_logger_from_identifier(custom_logger_identifier: str) -> Type[BaseLogger]:
+    """
+    Parse the custom logger identifier in order to import a custom logger class object
+    from the user-specified python script
+
+    :param custom_logger_identifier: string in the form of
+           '<path_to_the_python_script>:<custom_logger_class_name>
+    :return: custom logger class object
+    """
+    path, logger_object_name = custom_logger_identifier.split(":")
+    spec = importlib.util.spec_from_file_location("user_defined_custom_logger", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, logger_object_name)
+
+
+def default_logger() -> Dict[str, BaseLogger]:
+    """
+    :return: default PythonLogger object for the deployment scenario
+    """
+    _LOGGER.info("Created default logger: PythonLogger")
+    return {"python": PythonLogger()}
 
 
 def build_logger(server_config: ServerConfig) -> BaseLogger:
@@ -56,19 +86,15 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
     """
 
     loggers_config = server_config.loggers
-    if not loggers_config:
-        return AsyncLogger(
-            logger=MultiLogger(default_logger()),  # wrap all loggers to async log call
-            max_workers=1,
-        )
+    system_logging_config = server_config.system_logging
 
-    # base level loggers that log raw values for monitoring. ie python, prometheus
-    leaf_loggers = build_leaf_loggers(loggers_config)
+    leaf_loggers = (
+        build_leaf_loggers(loggers_config) if loggers_config else default_logger()
+    )
 
-    function_loggers = build_function_loggers(server_config.endpoints, leaf_loggers)
-
-    # add logger to ensure leaf level logging of all system (timing) logs
-    function_loggers.append(_create_system_logger(leaf_loggers))
+    function_loggers_data = build_data_loggers(server_config.endpoints, leaf_loggers)
+    function_loggers_system = build_system_loggers(leaf_loggers, system_logging_config)
+    function_loggers = function_loggers_data + function_loggers_system
 
     return AsyncLogger(
         logger=MultiLogger(function_loggers),  # wrap all loggers to async log call
@@ -109,42 +135,73 @@ def build_leaf_loggers(
     return loggers
 
 
-def build_function_loggers(
+def build_data_loggers(
     endpoints: List["EndpointConfig"], loggers: Dict[str, BaseLogger]  # noqa F821
 ) -> List[FunctionLogger]:
     """
-    Build a set of function loggers according to the configuration.
+    Build a set of data loggers (FunctionLogger instances)
+    according to the configuration.
 
     :param endpoints: A list of server's endpoint configurations;
         the configurations contain the information about the metric
         functions (MetricFunctionConfig objects)
         and the targets that the functions are to be applied to
     :param loggers: The created "leaf" loggers
-    :return: A list of FunctionLogger instances
+    :return: A list of FunctionLogger instances responsible
+        for logging data information
     """
-    function_loggers = []
+    data_loggers = []
     for endpoint in endpoints:
         if endpoint.data_logging is None:
             continue
         for target, metric_functions in endpoint.data_logging.items():
-            target_identifier = _get_target_identifier(endpoint.name, target)
+            target_identifier = _get_target_identifier(target, endpoint.name)
             for metric_function in metric_functions:
-                function_loggers.append(
+                data_loggers.append(
                     _build_function_logger(metric_function, target_identifier, loggers)
                 )
-    return function_loggers
+    return data_loggers
 
 
-def _create_system_logger(loggers: Dict[str, BaseLogger]) -> FunctionLogger:
-    # returns a function logger that matches to all system logs, logging
-    # every system call to each leaf logger
-    return _build_function_logger(
-        metric_function_cfg=MetricFunctionConfig(
-            func="identity", frequency=1, target_loggers=None
-        ),
-        target_identifier=f"category:{MetricCategories.SYSTEM.value}",
-        loggers=loggers,
-    )
+def build_system_loggers(
+    loggers: Dict[str, BaseLogger], system_logging_config: SystemLoggingConfig
+) -> List[FunctionLogger]:
+    """
+    Create a system loggers according to the configuration specified
+    in `system_logging_config`. System loggers are FunctionLogger instances
+    responsible for logging system groups metrics.
+
+    :param loggers: The created "leaf" loggers
+    :param system_logging_config: The system logging configuration
+    :return: A list of FunctionLogger instances responsible for logging system data
+    """
+    system_loggers = []
+    system_logging_group_names = []
+    if not system_logging_config.enable:
+        return system_loggers
+
+    for config_group_name, config_group_args in system_logging_config:
+        if not isinstance(config_group_args, SystemLoggingGroup):
+            continue
+        if not config_group_args.enable:
+            continue
+
+        system_loggers.append(
+            _build_function_logger(
+                metric_function_cfg=MetricFunctionConfig(
+                    func="identity",
+                    frequency=1,
+                    target_loggers=config_group_args.target_loggers,
+                ),
+                target_identifier=config_group_name,
+                loggers=loggers,
+            )
+        )
+        system_logging_group_names.append(config_group_name)
+
+    _LOGGER.info("System Logging: enabled for groups: %s", system_logging_group_names)
+
+    return system_loggers
 
 
 def _build_function_logger(
@@ -188,9 +245,13 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
     return logger
 
 
-def _get_target_identifier(endpoint_name: str, target_name: str) -> str:
+def _get_target_identifier(
+    target_name: str, endpoint_name: Optional[str] = None
+) -> str:
     if target_name.startswith("re:"):
         # if target name starts with "re:", it is a regex,
         # and we don't need to add the endpoint name to it
         return target_name
-    return f"{endpoint_name}/{target_name}"
+    if endpoint_name:
+        return f"{endpoint_name}/{target_name}"
+    return target_name

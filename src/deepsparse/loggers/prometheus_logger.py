@@ -72,6 +72,7 @@ class PrometheusLogger(BaseLogger):
 
         self.port = port
         self.text_log_save_frequency = text_log_save_frequency
+        self.text_log_save_dir = text_log_save_dir
         self.text_log_file_path = os.path.join(
             text_log_save_dir, text_log_file_name or "prometheus_logs.prom"
         )
@@ -91,7 +92,9 @@ class PrometheusLogger(BaseLogger):
 
         # needs to adhere to
         # https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
-        formatted_identifier = identifier.replace(".", "__")
+        formatted_identifier = (
+            identifier.replace(".", "__").replace("-", "__").replace("/", "__")
+        )
         prometheus_metric = self._prometheus_metrics.get(formatted_identifier)
         if prometheus_metric is None:
             prometheus_metric = self._add_metric_to_registry(
@@ -103,6 +106,7 @@ class PrometheusLogger(BaseLogger):
     def _export_metrics_to_textfile(self):
         # export the metrics to a text file with
         # the specified frequency
+        os.makedirs(self.text_log_save_dir, exist_ok=True)
         if self._counter % self.text_log_save_frequency == 0:
             write_to_textfile(self.text_log_file_path, REGISTRY)
             self._counter = 0

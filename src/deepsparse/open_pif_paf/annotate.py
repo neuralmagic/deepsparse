@@ -13,15 +13,14 @@
 # limitations under the License.
 
 """
-Usage: deepsparse.instance_segmentation.annotate [OPTIONS]
+Usage: deepsparse.open_pif_paf.annotate [OPTIONS]
 
-  Annotation Script for YOLACT with DeepSparse
+  Annotation Script for OpenPifPaf with DeepSparse
 
 Options:
   --model_filepath, --model-filepath TEXT
                                   Path/SparseZoo stub to the model file to be
-                                  used for annotation  [default: zoo:cv/segmentation/
-                                  yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none]
+                                  used for annotation [default: ...]
   --source TEXT                   File path to an image or directory of image
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
@@ -31,7 +30,7 @@ Options:
                                   'torch'. Default is 'deepsparse'
   --image_shape, --image_shape INTEGER
                                   Image shape to use for inference, must be
-                                  two integers  [default: 550, 550]
+                                  two integers  [default: 384, 384]
   --num_cores, --num-cores INTEGER
                                   The number of physical cores to run the
                                   annotations with, defaults to using all
@@ -58,10 +57,10 @@ Options:
 #######
 Examples:
 
-1) deepsparse.instance_segmentation.annotate --source PATH/TO/IMAGE.jpg
-2) deepsparse.instance_segmentation.annotate --source PATH/TO/VIDEO.mp4
-3) deepsparse.instance_segmentation.annotate --source 0
-4) deepsparse.instance_segmentation.annotate --source PATH/TO/IMAGE_DIR
+1) deepsparse.open_pif_paf.annotate --source PATH/TO/IMAGE.jpg
+2) deepsparse.open_pif_paf.annotate --source PATH/TO/VIDEO.mp4
+3) deepsparse.open_pif_paf.annotate --source 0
+4) deepsparse.open_pif_paf.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
 from typing import Optional, Tuple
@@ -69,6 +68,7 @@ from typing import Optional, Tuple
 import click
 
 import cv2
+from deepsparse.open_pif_paf.utils import annotate_image
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils.annotate import (
     annotate,
@@ -76,12 +76,9 @@ from deepsparse.utils.annotate import (
     get_image_loader_and_saver,
 )
 from deepsparse.utils.cli_helpers import create_dir_callback
-from deepsparse.yolact.utils import annotate_image
 
 
-yolact_v5_default_stub = (
-    "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
-)
+open_pif_paf_default_stub = None
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
@@ -90,14 +87,16 @@ TORCH_ENGINE = "torch"
 _LOGGER = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command(
+    context_settings=dict(
+        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
+    ),
+)
 @click.option(
     "--model_filepath",
-    "--model-filepath",
     type=str,
-    default=yolact_v5_default_stub,
+    default=open_pif_paf_default_stub,
     help="Path/SparseZoo stub to the model file to be used for annotation",
-    show_default=True,
 )
 @click.option(
     "--source",
@@ -115,32 +114,26 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "--image_shape",
-    "--image-shape",
     type=int,
     nargs=2,
-    default=(550, 550),
+    default=(384, 384),
     help="Image shape to use for inference, must be two integers",
-    show_default=True,
 )
 @click.option(
     "--num_cores",
-    "--num-cores",
     type=int,
     default=None,
     help="The number of physical cores to run the annotations with, "
     "defaults to using all physical cores available on the system."
     " For DeepSparse benchmarks, this value is the number of cores "
     "per socket",
-    show_default=True,
 )
 @click.option(
     "--save_dir",
-    "--save-dir",
     type=click.Path(dir_okay=True, file_okay=False),
     default="annotation-results",
     callback=create_dir_callback,
     help="The path to the directory for saving results",
-    show_default=True,
 )
 @click.option(
     "--name",
@@ -151,22 +144,18 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "--target_fps",
-    "--target-fps",
     type=float,
     default=None,
     help="Target FPS when writing video files. Frames will be dropped to "
     "closely match target FPS. --source must be a video file and if "
     "target-fps is greater than the source video fps then it "
     "will be ignored",
-    show_default=True,
 )
 @click.option(
     "--no_save",
-    "--no-save",
     is_flag=True,
     help="Set flag when source is from webcam to not save results."
     "Not supported for non-webcam sources",
-    show_default=True,
 )
 def main(
     model_filepath: str,
@@ -180,7 +169,7 @@ def main(
     no_save: bool,
 ) -> None:
     """
-    Annotation Script for YOLACT with DeepSparse
+    Annotation Script for OpenPifPaf with DeepSparse
     """
     save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
@@ -197,24 +186,23 @@ def main(
     )
 
     is_webcam = source.isnumeric()
-    yolact_pipeline = Pipeline.create(
-        task="yolact",
+    open_pif_paf_pipeline = Pipeline.create(
+        task="open_pif_paf",
         model_path=model_filepath,
-        class_names="coco",
         engine_type=engine,
         num_cores=num_cores,
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
-
         # annotate
         annotated_image = annotate(
-            pipeline=yolact_pipeline,
+            pipeline=open_pif_paf_pipeline,
             annotation_func=annotate_image,
             image=input_image,
             target_fps=target_fps,
             calc_fps=is_video,
             original_image=source_image,
+            model_resolution=image_shape,
         )
 
         if is_webcam:
