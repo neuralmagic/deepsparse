@@ -123,6 +123,7 @@ _server_deps = [
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
     "prometheus-client>=0.14.1",
+    "psutil>=5.9.4",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
@@ -289,7 +290,7 @@ setup(
     author="Neuralmagic, Inc.",
     author_email="support@neuralmagic.com",
     description=(
-        "An inference runtime offering GPU-class performance on CPUs"
+        "An inference runtime offering GPU-class performance on CPUs "
         "and APIs to integrate ML into your application"
     ),
     long_description=_setup_long_description()[0],
