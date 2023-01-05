@@ -60,6 +60,7 @@ We will compare the pruned-quantized YOLOv5s to the standard dense YOLOv5s, iden
 ```
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
 zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni # < pruned for VNNI machines
 ```
 
 ### Benchmark Performance
