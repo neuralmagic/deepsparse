@@ -117,7 +117,7 @@ pipeline_outputs = yolo_pipeline(images=images, iou_thres=0.6, conf_thres=0.001)
 print(pipeline_outputs)
 ```
 
-If you are running on a cloud instance, you may get an error that open-cv cannot find `libGL.so.1`. Run the following to install it:
+If you are running on a cloud instance, you may get an error that open-cv cannot find `libGL.so.1`. Running the following on Ubuntu installs it:
 
 ```
 apt-get install libgl1-mesa-glx
