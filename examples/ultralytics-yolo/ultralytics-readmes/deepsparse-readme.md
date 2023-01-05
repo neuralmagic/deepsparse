@@ -115,7 +115,7 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65
 > Scenario: sync
 > Throughput (items/sec): 135.0647
 > Latency Mean (ms/batch): 7.3895
-> Latency Median (ms/batch): 7.2398```
+> Latency Median (ms/batch): 7.2398
 ```
 
 Since `c6i.8xlarge` instances have VNNI instructions, DeepSparse's throughput can be pushed further if weights are pruned in blocks of 4. DeepSparse achieves 180 items/sec with a 4-block pruned-quantized YOLOv5s, a **3.7x performance gain over ONNX Runtime!**
