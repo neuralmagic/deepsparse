@@ -24,7 +24,7 @@ Welcome to software-delivered AI.
 
 This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse.
 
-DeepSparse is an inference runtime with exceptional performance on CPUs. For instance, compared to ONNX Runtime's baseline, DeepSparse offers a 5.8x speed-up for YOLOv5s on the same machine!
+DeepSparse is an inference runtime with exceptional performance on CPUs. For instance, compared to the ONNX Runtime baseline, DeepSparse offers a 5.8x speed-up for YOLOv5s, running on the same machine!
 
 <p align="center">
   <img width="60%" src="performance-chart.png">
@@ -152,7 +152,7 @@ labels = annotations["labels"]
 #### Annotate CLI
 You can also use the annotate command to have the engine save an annotated photo on disk. Try --source 0 to annotate your live webcam feed!
 ```bash
-deepsparse.object_detection.annotate --model_filepath deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none --source basilica.jpg
+deepsparse.object_detection.annotate --model_filepath zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none --source basilica.jpg
 ```
 
 Running the above command will create an `annotation-results` folder and save the annotated image inside.
