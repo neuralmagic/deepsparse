@@ -6,13 +6,14 @@ This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse.
 
 Welcome to software-delivered AI.
 
-DeepSparse is an inference runtime offering GPU-class performance on CPUs. For the first time, your deep learning workloads can meet the performance 
-demands of production without the complexity and costs of hardware accelerators.
+DeepSparse is an inference runtime offering with exceptional performance on CPUs. Compared to ONNX Runtime running YOLOv5s, for instance, DeepSparse offers a **3.7x** performance speedup at batch size 1 and a **5.8x** performance speedup at batch size 64!
 
-![](batch-1.png)  |  ![](batch-64.png)
-:-------------------------:|:-------------------------:
+<p align="center">
+  <img width="70%" src="cluster-bar.png">
+</p>
 
-Simply put, DeepSparse gives you the performance of GPUs and the simplicity of software:
+For the first time, your deep learning workloads can meet the performance demands of production without the complexity and costs of hardware accelerators.
+Put simply, DeepSparse gives you the performance of GPUs and the simplicity of software:
 - **Flexible Deployments**: Run consistently across cloud, data center, and edge with any hardware provider from Intel to AMD to ARM
 - **Near-Infinite Scalability**: Scale vertically from 1 to 192 cores, out with standard Kubernetes, or fully-abstracted with Serverless
 - **Easy Integration**: Clean APIs for integrating your model into an application and monitoring it in production
@@ -56,7 +57,7 @@ pip install deepsparse[server,yolo,onnxruntime]
 
 DeepSparse accepts a model in the ONNX format, passed either as:
 - A SparseZoo stub which identifies an ONNX file in the SparseZoo
-- A Local Path to an ONNX model in a filesystem
+- A local path to an ONNX model in a filesystem
 
 The examples below will use the pruned-quantized YOLOv5s and standard dense YOLOv5s checkpoints, identified by the following SparseZoo stubs:
 ```bash
@@ -67,15 +68,11 @@ zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni # < 
 
 ### Benchmark Performance
 
-We will compare DeepSparse's throughput to ONNX Runtime, using DeepSparse's convienent benchmarking script.
-
-Relative to the ONNX Runtime baseline for YOLOv5s, DeepSparse achieves a **3.7x speed-up at batch 1** and a **5.8x speed-up at batch 64** !
-
-
+We will compare DeepSparse's throughput to ONNX Runtime's throughput on YOLOv5s, using DeepSparse's benchmarking script.
 
 The benchmarks were run on an AWS `c6i.8xlarge` instance (16 cores). 
 
-#### Batch 1 Performance
+#### Batch 1 Performance Comparison
 
 ONNX Runtime achieves 49 images/sec with dense YOLOv5s.
 
@@ -103,7 +100,7 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65
 > Latency Median (ms/batch): 7.2398```
 ```
 
-Since `c6i.8xlarge` instances have VNNI instructions, DeepSparse's throughput can be pushed further if weights are pruned in blocks of 4. DeepSparse achieves 180 items/sec with a 4-block pruned-quantized YOLOv5-s, a **3.7x performance gain over ONNX Runtime!**
+Since `c6i.8xlarge` instances have VNNI instructions, DeepSparse's throughput can be pushed further if weights are pruned in blocks of 4. DeepSparse achieves 180 items/sec with a 4-block pruned-quantized YOLOv5s, a **3.7x performance gain over ONNX Runtime!**
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned35_quant-none-vnni -s sync -b 1 -nstreams 1
@@ -214,6 +211,6 @@ labels = annotations["labels"]
 
 ## Get Started With DeepSparse
 
-**Research or Testing?** DeepSparse Community is free for research and testing. Production deployments require DeepSparse Enterprise.
+**Research or Testing?** DeepSparse Community is free for research and testing. Get started with our [Documentation](https://docs.neuralmagic.com/).
 
 **Want to Try DeepSparse Enterprise?** [Start your 90 day free trial](https://neuralmagic.com/deepsparse-free-trial/?utm_campaign=free_trial&utm_source=ultralytics_github).
