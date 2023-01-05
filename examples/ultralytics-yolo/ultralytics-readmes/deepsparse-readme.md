@@ -6,7 +6,7 @@ This guide explains how to deploy YOLOv5 with Neural Magic's DeepSparse.
 
 Welcome to software-delivered AI.
 
-DeepSparse is an inference runtime offering with exceptional performance on CPUs. For instance, compared to the ONNX Runtime YOLOv5s baseline, DeepSparse offers a **3.7x speed-up at batch size 1** and a **5.8x speed-up at batch size 64**!
+DeepSparse is an inference runtime with exceptional performance on CPUs. For instance, compared to ONNX Runtime's baseline, DeepSparse offers a 3.7x speed-up at batch size 1 and a 5.8x speed-up at batch size 64 for YOLOv5s!
 
 <p align="center">
   <img width="60%" src="cluster-bar.png">
