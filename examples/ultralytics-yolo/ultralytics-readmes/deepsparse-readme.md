@@ -68,7 +68,6 @@ DeepSparse includes a benchmarking script to test performance. In the examples b
 
 The benchmarks were run on an AWS `c6i.8xlarge` instance (16 cores). Running YOLOv5s, DeepSparse achieves a **3.7x** speed-up over ONNX Runtime at `batch_size=1` and a **5.8x** speed-up at `batch_size=64`!
 
-:-------------------------:|:-------------------------:
 ![](batch-1.png)  |  ![](batch-64.png)
 :-------------------------:|:-------------------------:
 
