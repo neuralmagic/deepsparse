@@ -122,6 +122,9 @@ class SupportedTasks:
     open_pif_paf = namedtuple("open_pif_paf", ["open_pif_paf"])(
         open_pif_paf=AliasedTask("open_pif_paf", ["open_pif_paf"]),
     )
+    yoloseg = namedtuple("yoloseg", ["yoloseg"])(
+        yoloseg=AliasedTask("yoloseg", ["yoloseg"]),
+    )
 
     all_task_categories = [
         nlp,
@@ -131,6 +134,7 @@ class SupportedTasks:
         haystack,
         embedding_extraction,
         open_pif_paf,
+        yoloseg,
     ]
 
     @classmethod
@@ -177,6 +181,11 @@ class SupportedTasks:
             # trigger embedding_extraction pipelines to register with
             #  Pipeline.register
             import deepsparse.open_pif_paf.pipelines  # noqa :F401
+
+        elif cls.is_yoloseg(task):
+            # trigger embedding_extraction pipelines to register with
+            #  Pipeline.register
+            import deepsparse.yoloseg.pipelines  # noqa :F401
 
         all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
         if task not in all_tasks:
@@ -258,6 +267,17 @@ class SupportedTasks:
         """
         return any(
             open_pif_paf_task.matches(task) for open_pif_paf_task in cls.open_pif_paf
+        )
+
+    @classmethod
+    def is_yoloseg(cls, task):
+        """
+        :param task: the name of the task to check whether it is an
+            embedding_extraction task
+        :return: True if it is an is_yoloseg task, False otherwise
+        """
+        return any(
+            yoloseg_task.matches(task) for yoloseg_task in cls.is_yoloseg
         )
 
     @classmethod
