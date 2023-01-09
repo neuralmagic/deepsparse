@@ -81,7 +81,9 @@ def add_logger_to_pipeline(
     """
     Add a logger to the pipeline according to the configuration
 
-    :param config: The configuration of the pipeline logger
+    :param config: The configuration of the pipeline logger.
+        Can be a string (path to the .yaml file) or a
+        PipelineLoggingConfig instance.
     :param pipeline: The pipeline to add the logger to
     :return: The pipeline with the logger added
     """
