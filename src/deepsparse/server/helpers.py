@@ -14,8 +14,7 @@
 
 from typing import Dict, List, Optional
 
-from deepsparse import BaseLogger
-from deepsparse.loggers.build_logger import build_logger, get_target_identifier
+from deepsparse import BaseLogger, build_logger, get_target_identifier
 from deepsparse.loggers.config import MetricFunctionConfig
 from deepsparse.server.config import EndpointConfig, ServerConfig
 

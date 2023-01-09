@@ -18,9 +18,10 @@ be used across the repository.
 """
 import importlib
 import logging
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
-from deepsparse import Pipeline
+import yaml
+
 from deepsparse.loggers import (
     AsyncLogger,
     BaseLogger,
@@ -43,6 +44,7 @@ __all__ = [
     "default_logger",
     "add_logger_to_pipeline",
     "build_logger",
+    "get_target_identifier",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,8 +76,8 @@ def default_logger() -> Dict[str, BaseLogger]:
 
 
 def add_logger_to_pipeline(
-    config: PipelineLoggingConfig, pipeline: Pipeline
-) -> Pipeline:
+    config: Union[PipelineLoggingConfig, str], pipeline: "Pipeline"  # noqa F821
+) -> "Pipeline":  # noqa F821
     """
     Add a logger to the pipeline according to the configuration
 
@@ -83,6 +85,12 @@ def add_logger_to_pipeline(
     :param pipeline: The pipeline to add the logger to
     :return: The pipeline with the logger added
     """
+    if isinstance(config, str):
+        with open(config) as f:
+            # config is a path to a yaml file
+            config = yaml.safe_load(f)
+        config = PipelineLoggingConfig(**config)
+
     if config.data_logging:
         for target, metric_functions in config.data_logging.copy().items():
             # modify the base target name if required
