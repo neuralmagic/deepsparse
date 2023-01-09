@@ -28,10 +28,10 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.loggers import (
+from deepsparse.loggers.base_logger import BaseLogger
+from deepsparse.loggers.constants import (
     REQUEST_DETAILS_IDENTIFIER_PREFIX,
     RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
-    BaseLogger,
     MetricCategories,
     validate_identifier,
 )
@@ -160,7 +160,7 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
-        self.logger = logger
+        self._logger = logger
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -257,7 +257,7 @@ class Pipeline(ABC):
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
         timer.stop(InferencePhases.ENGINE_FORWARD)
-
+        # let's put this into a separate metric group!
         self.log(
             identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size",
             # to get the batch size of the inputs, we need to look
@@ -693,6 +693,25 @@ class Pipeline(ABC):
         """
         return self._engine_type
 
+    @property
+    def logger(self) -> BaseLogger:
+        """
+        :return: a DeepSparse Logger object for inference logging.
+        """
+        return self._logger
+
+    @logger.setter
+    def logger(self, logger: BaseLogger):
+        """
+        Setter method for the `logger_property`
+        :param logger: a DeepSparse Logger object
+        """
+        if self._logger:
+            raise ValueError(
+                "Attempting to override the existing logger of the pipeline."
+            )
+        self._logger = logger
+
     def to_config(self) -> "PipelineConfig":
         """
         :return: PipelineConfig that can be used to reload this object
@@ -737,20 +756,24 @@ class Pipeline(ABC):
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
-        if not self.logger:
+        if not self._logger:
             return
 
-        if not hasattr(self, "task"):
-            self.task = None
+        identifier = f"{self.get_identifier()}/{identifier}"
 
-        identifier = f"{self.alias or self.task or 'unknown_pipeline'}/{identifier}"
-        validate_identifier(identifier)
-        self.logger.log(
+        self._logger.log(
             identifier=identifier,
             value=value,
             category=category,
         )
         return
+
+    def get_identifier(self) -> str:
+        if not hasattr(self, "task"):
+            self.task = None
+        identifier = f"{self.alias or self.task or 'unknown_pipeline'}"
+        validate_identifier(identifier)
+        return identifier
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """

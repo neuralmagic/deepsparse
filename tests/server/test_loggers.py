@@ -15,8 +15,8 @@
 from unittest import mock
 
 from deepsparse import PythonLogger
-from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import EndpointConfig, MetricFunctionConfig, ServerConfig
+from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
 from tests.helpers import find_free_port
@@ -42,9 +42,9 @@ def test_default_logger():
     server_config = ServerConfig(
         endpoints=[EndpointConfig(task=task, name=name, model=stub)]
     )
-    server_logger = build_logger(server_config)
+    server_logger = server_logger_from_config(server_config)
     with mock.patch(
-        "deepsparse.server.server.build_logger", return_value=server_logger
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
@@ -59,9 +59,9 @@ def test_logging_only_system_info():
         endpoints=[EndpointConfig(task=task, name=name, model=stub)],
         loggers={"logger_1": {"path": logger_identifier}},
     )
-    server_logger = build_logger(server_config)
+    server_logger = server_logger_from_config(server_config)
     with mock.patch(
-        "deepsparse.server.server.build_logger", return_value=server_logger
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
@@ -88,9 +88,9 @@ def test_regex_target_logging():
         ],
         loggers={"logger_1": {"path": logger_identifier}},
     )
-    server_logger = build_logger(server_config)
+    server_logger = server_logger_from_config(server_config)
     with mock.patch(
-        "deepsparse.server.server.build_logger", return_value=server_logger
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
@@ -120,9 +120,9 @@ def test_multiple_targets_logging():
         ],
         loggers={"logger_1": {"path": logger_identifier}},
     )
-    server_logger = build_logger(server_config)
+    server_logger = server_logger_from_config(server_config)
     with mock.patch(
-        "deepsparse.server.server.build_logger", return_value=server_logger
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
@@ -161,9 +161,9 @@ def test_function_metric_with_target_loggers():
             "logger_2": {"path": logger_identifier},
         },
     )
-    server_logger = build_logger(server_config)
+    server_logger = server_logger_from_config(server_config)
     with mock.patch(
-        "deepsparse.server.server.build_logger", return_value=server_logger
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
