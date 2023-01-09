@@ -46,7 +46,7 @@ def test_end_to_end(mock_engine):
     for i in range(10):
         pipeline("today is great")
 
-    time.sleep(1)
+    time.sleep(1)  # sleeping to make sure all the logs are collected
     calls = pipeline.logger.logger.loggers[0].logger.loggers[0].calls
     data_logging_calls = [call for call in calls if "DATA" in call]
     assert len(data_logging_calls) == 10
