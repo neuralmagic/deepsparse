@@ -89,3 +89,13 @@ class FunctionLogger(BaseLogger):
                 )
                 self._function_call_counter = 0
             self._function_call_counter += 1
+
+    def __str__(self, level=0):
+        whitespace = "\t" * level
+        text = "\n" + whitespace + f"{self.__class__.__name__}:"
+        text += "\n\t" + whitespace + "target identifier: " + self.target_identifier
+        text += "\n\t" + whitespace + "function name: " + self.function.__name__
+        text += "\n\t" + whitespace + "frequency: " + str(self.frequency)
+        text += "\n\t" + whitespace + "target_logger: "
+        text += self.logger.__str__(level=level + 2)
+        return text

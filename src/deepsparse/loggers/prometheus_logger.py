@@ -103,6 +103,12 @@ class PrometheusLogger(BaseLogger):
         prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
 
+    def __str__(self, level=0):
+        whitespace = "\t" * level
+        text = "\n" + whitespace + f"{self.__class__.__name__}"
+        text += "\n\t" + whitespace + "port: " + str(self.port)
+        return text
+
     def _export_metrics_to_textfile(self):
         # export the metrics to a text file with
         # the specified frequency

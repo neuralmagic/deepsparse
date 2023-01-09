@@ -41,3 +41,10 @@ class MultiLogger(BaseLogger):
         """
         for logger in self.loggers:
             logger.log(identifier, value, category)
+
+    def __str__(self, level=0):
+        whitespace = "\t" * level
+        text = "\n" + whitespace + f"{self.__class__.__name__}:"
+        for logger in self.loggers:
+            text += logger.__str__(level=level + 1)
+        return text
