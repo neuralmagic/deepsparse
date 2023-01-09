@@ -12,26 +12,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Dict, List, Optional
+
 from deepsparse import BaseLogger
-from deepsparse.loggers.build_logger import _get_target_identifier, build_logger
-from deepsparse.server.config import ServerConfig
+from deepsparse.loggers.build_logger import build_logger, get_target_identifier
+from deepsparse.loggers.config import MetricFunctionConfig
+from deepsparse.server.config import EndpointConfig, ServerConfig
 
 
 __all__ = ["server_logger_from_config"]
 
 
 def server_logger_from_config(config: ServerConfig) -> BaseLogger:
-    data_logging = {}
-    for endpoint in config.endpoints:
-        if endpoint.data_logging is None:
-            continue
-        for target, metric_functions in endpoint.data_logging.copy().items():
-            new_target = _get_target_identifier(
-                target_name=target, pipeline_identifier=endpoint.name
-            )
-            data_logging[new_target] = metric_functions
+    """
+    Builds a DeepSparse Server logger from the ServerConfig.
+
+    :param config: the Server configuration model
+    :return: a DeepSparse logger instance
+    """
+
     return build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
-        data_logging_config=data_logging,
+        data_logging_config=_extract_data_logging_from_endpoints(config.endpoints),
     )
+
+
+def _extract_data_logging_from_endpoints(
+    endpoints: List[EndpointConfig],
+) -> Optional[Dict[str, List[MetricFunctionConfig]]]:  # noqa F821
+    data_logging = {}
+    for endpoint in endpoints:
+        if endpoint.data_logging is None:
+            continue
+        for target, metric_functions in endpoint.data_logging.copy().items():
+            # if needed, get the new target identifier from
+            # the target and the endpoint name
+            new_target = get_target_identifier(
+                target_name=target, pipeline_identifier=endpoint.name
+            )
+            data_logging[new_target] = metric_functions
+    # if no data logging data specified, return None
+    return data_logging if data_logging else None

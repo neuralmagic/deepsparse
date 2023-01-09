@@ -759,21 +759,14 @@ class Pipeline(ABC):
         if not self._logger:
             return
 
-        identifier = f"{self.get_identifier()}/{identifier}"
-
+        compound_identifier = f"{self._identifier()}/{identifier}"
+        validate_identifier(compound_identifier)
         self._logger.log(
-            identifier=identifier,
+            identifier=compound_identifier,
             value=value,
             category=category,
         )
         return
-
-    def get_identifier(self) -> str:
-        if not hasattr(self, "task"):
-            self.task = None
-        identifier = f"{self.alias or self.task or 'unknown_pipeline'}"
-        validate_identifier(identifier)
-        return identifier
 
     def parse_inputs(self, *args, **kwargs) -> BaseModel:
         """
@@ -825,6 +818,20 @@ class Pipeline(ABC):
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
                 f"{SUPPORTED_PIPELINE_ENGINES}"
             )
+
+    def _identifier(self) -> str:
+        """
+        Create an identifier for this pipeline instance.
+        The identifier string depends on the attributes of the pipeline.
+        It may be either the alias or the task name. If either attributes
+        are missing,the identifier is set to `unknown_pipeline`.
+
+        :return: an identifier for this pipeline instance
+        """
+        if not hasattr(self, "task"):
+            self.task = None
+        identifier = f"{self.alias or self.task or 'unknown_pipeline'}"
+        return identifier
 
 
 class PipelineConfig(BaseModel):

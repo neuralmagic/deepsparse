@@ -55,7 +55,8 @@ class ImageSizesConfig(BaseModel):
 
 class ServerSystemLoggingConfig(SystemLoggingConfig):
     """
-    Holds the configuration for the system logging
+    Extends the `SystemLoggingConfig` schema to include system group metrics
+    that pertain to the Server.
     """
 
     request_details: SystemLoggingGroup = Field(

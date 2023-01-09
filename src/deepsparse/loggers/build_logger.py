@@ -20,6 +20,7 @@ import importlib
 import logging
 from typing import Any, Dict, List, Optional, Type
 
+from deepsparse import Pipeline
 from deepsparse.loggers import (
     AsyncLogger,
     BaseLogger,
@@ -73,8 +74,8 @@ def default_logger() -> Dict[str, BaseLogger]:
 
 
 def add_logger_to_pipeline(
-    config: PipelineLoggingConfig, pipeline: "Pipeline"  # F821
-) -> "Pipeline":  # F821
+    config: PipelineLoggingConfig, pipeline: Pipeline
+) -> Pipeline:
     """
     Add a logger to the pipeline according to the configuration
 
@@ -84,12 +85,15 @@ def add_logger_to_pipeline(
     """
     if config.data_logging:
         for target, metric_functions in config.data_logging.copy().items():
-            new_target = _get_target_identifier(
-                target_name=target, pipeline_identifier=pipeline.get_identifier()
+            # modify the base target name if required
+            new_target = get_target_identifier(
+                target_name=target, pipeline_identifier=pipeline._identifier()
             )
             if not new_target == target:
+                # if the target name is altered, we need to update the config
                 config.data_logging[new_target] = metric_functions
                 del config.data_logging[target]
+
     logger = build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
@@ -104,6 +108,18 @@ def build_logger(
     data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
     loggers_config: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,
 ) -> BaseLogger:
+    """
+    A general function for building a logger instance according to the specified
+    configuration
+
+    :param system_logging_config: A SystemLoggingConfig instance that describes
+        the system logging configuration
+    :param data_logging_config: An optional dictionary that maps target names to
+        lists of MetricFunctionConfigs.
+    :param loggers_config: An optional dictionary that maps logger names to
+        a dictionary of logger arguments.
+    :return: a DeepSparseLogger instance
+    """
 
     leaf_loggers = (
         build_leaf_loggers(loggers_config) if loggers_config else default_logger()
@@ -117,6 +133,25 @@ def build_logger(
         logger=MultiLogger(function_loggers),  # wrap all loggers to async log call
         max_workers=1,
     )
+
+
+def get_target_identifier(
+    target_name: str, pipeline_identifier: Optional[str] = None
+) -> str:
+    """
+    Get the target identifier given the target name and a pipeline identifier
+
+    :param target_name: The target name, can be a string or a regex pattern
+    :param pipeline_identifier: Optional pipeline identifier. By default, is None
+    :return: Final target identifier
+    """
+    if target_name.startswith("re:"):
+        # if target name starts with "re:", it is a regex,
+        # and we don't need to add the endpoint name to it
+        return target_name
+    if pipeline_identifier:
+        return f"{pipeline_identifier}/{target_name}"
+    return target_name
 
 
 def build_leaf_loggers(
@@ -160,7 +195,7 @@ def build_data_loggers(
 ) -> List[FunctionLogger]:
     """
     Build a set of data loggers (FunctionLogger instances)
-    according to the configuration.
+    according to the specified configuration.
 
     :param loggers: The created "leaf" loggers
     :param data_logging_config: The configuration of the data loggers.
@@ -183,12 +218,11 @@ def build_system_loggers(
     loggers: Dict[str, BaseLogger], system_logging_config: SystemLoggingConfig
 ) -> List[FunctionLogger]:
     """
-    Create a system loggers according to the configuration specified
-    in `system_logging_config`. System loggers are FunctionLogger instances
-    responsible for logging system groups metrics.
+    Build a set of  system loggers (FunctionLogger instances)
+    according to the specified configuration.
 
     :param loggers: The created "leaf" loggers
-    :param system_logging_config: The system logging configuration
+    :param system_logging_config: The configuration of the system loggers.
     :return: A list of FunctionLogger instances responsible for logging system data
     """
     system_loggers = []
@@ -259,15 +293,3 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
             f"Got {type(logger)} instead."
         )
     return logger
-
-
-def _get_target_identifier(
-    target_name: str, pipeline_identifier: Optional[str] = None
-) -> str:
-    if target_name.startswith("re:"):
-        # if target name starts with "re:", it is a regex,
-        # and we don't need to add the endpoint name to it
-        return target_name
-    if pipeline_identifier:
-        return f"{pipeline_identifier}/{target_name}"
-    return target_name
