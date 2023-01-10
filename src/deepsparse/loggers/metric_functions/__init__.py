@@ -13,4 +13,4 @@
 # limitations under the License.
 
 # flake8: noqa
-from .built_ins import *
+from src.deepsparse.loggers.metric_functions.cv.built_ins import *
