@@ -15,12 +15,14 @@
 import yaml
 
 import pytest
-from deepsparse import AsyncLogger, MultiLogger, Pipeline, PythonLogger
-from deepsparse.loggers.build_logger import (
-    add_logger_to_pipeline,
-    build_system_loggers,
+from deepsparse import (
+    AsyncLogger,
+    MultiLogger,
+    PythonLogger,
     default_logger,
+    logger_from_config,
 )
+from deepsparse.loggers.build_logger import build_system_loggers
 from deepsparse.loggers.config import PipelineLoggingConfig, SystemLoggingConfig
 from tests.deepsparse.loggers.helpers import ListLogger
 from tests.helpers import find_free_port
@@ -110,14 +112,11 @@ def test_add_logger_to_pipeline(
 ):
     obj = yaml.safe_load(yaml_config)
     pipeline_logging_config = PipelineLoggingConfig(**obj)
-    pipeline = Pipeline.create("token_classification")
-
     if raises_error:
         with pytest.raises(ValueError):
-            add_logger_to_pipeline(config=pipeline_logging_config, pipeline=pipeline)
+            logger_from_config(pipeline_logging_config)
         return
-    pipeline = add_logger_to_pipeline(config=pipeline_logging_config, pipeline=pipeline)
-    logger = pipeline.logger
+    logger = logger_from_config(config=pipeline_logging_config)
 
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)
@@ -131,14 +130,6 @@ def test_add_logger_to_pipeline(
     assert system_logger.target_identifier == "prediction_latency"
     assert system_logger.function_name == "identity"
     assert system_logger.frequency == 1
-
-
-@mock_engine(rng_seed=0)
-def test_cannot_override_existing_pipeline_logger(engine_mock):
-    pipeline = Pipeline.create("token_classification")
-    pipeline.logger = ListLogger()
-    with pytest.raises(ValueError):
-        add_logger_to_pipeline(config=PipelineLoggingConfig(), pipeline=pipeline)
 
 
 yaml_config_1 = """

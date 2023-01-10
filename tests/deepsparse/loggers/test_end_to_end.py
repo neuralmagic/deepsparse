@@ -16,14 +16,13 @@ import time
 
 import yaml
 
-from deepsparse import Pipeline, add_logger_to_pipeline
+import pytest
+from deepsparse import Pipeline, logger_from_config
 from deepsparse.loggers.config import PipelineLoggingConfig
 from tests.utils import mock_engine
 
 
-@mock_engine(rng_seed=0)
-def test_end_to_end(mock_engine):
-    yaml_config = """
+YAML_CONFIG = """
     loggers:
         list_logger:
             path: tests/deepsparse/loggers/helpers.py:ListLogger
@@ -37,11 +36,16 @@ def test_end_to_end(mock_engine):
         pipeline_inputs.sequences[0]:
             - func: identity"""
 
-    pipeline = Pipeline.create("text_classification")
-    obj = yaml.safe_load(yaml_config)
-    pipeline = add_logger_to_pipeline(
-        config=PipelineLoggingConfig(**obj), pipeline=pipeline
-    )
+PIPELINE_LOGGING_CONFIG = PipelineLoggingConfig(**yaml.safe_load(YAML_CONFIG))
+PATH = "tests/test_data/logging_config.yaml"
+
+
+@pytest.mark.parametrize("config", [YAML_CONFIG, PIPELINE_LOGGING_CONFIG, PATH])
+@mock_engine(rng_seed=0)
+def test_end_to_end(mock_engine, config):
+    logger = logger_from_config(config)
+
+    pipeline = Pipeline.create("text_classification", logger=logger)
 
     for i in range(10):
         pipeline("today is great")
@@ -51,4 +55,4 @@ def test_end_to_end(mock_engine):
     data_logging_calls = [call for call in calls if "DATA" in call]
     assert len(data_logging_calls) == 10
     prediction_latency_calls = [call for call in calls if "SYSTEM" in call]
-    assert len(prediction_latency_calls) == 40
+    assert len(prediction_latency_calls) == 41

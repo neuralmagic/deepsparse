@@ -18,6 +18,7 @@ be used across the repository.
 """
 import importlib
 import logging
+import os
 from typing import Any, Dict, List, Optional, Type, Union
 
 import yaml
@@ -42,7 +43,7 @@ from deepsparse.loggers.helpers import get_function_and_function_name
 __all__ = [
     "custom_logger_from_identifier",
     "default_logger",
-    "add_logger_to_pipeline",
+    "logger_from_config",
     "build_logger",
     "get_target_identifier",
 ]
@@ -75,42 +76,31 @@ def default_logger() -> Dict[str, BaseLogger]:
     return {"python": PythonLogger()}
 
 
-def add_logger_to_pipeline(
-    config: Union[PipelineLoggingConfig, str], pipeline: "Pipeline"  # noqa F821
-) -> "Pipeline":  # noqa F821
+def logger_from_config(config: Union[PipelineLoggingConfig, str]) -> BaseLogger:
     """
-    Add a logger to the pipeline according to the configuration
+     Builds a pipeline logger from the ServerConfig
 
     :param config: The configuration of the pipeline logger.
-        Can be a string (path to the .yaml file) or a
-        PipelineLoggingConfig instance.
-    :param pipeline: The pipeline to add the logger to
+        Can be:
+         - a string (path to the .yaml file)
+         - a string (string representation of the .yaml file)
+         - a PipelineLoggingConfig instance
     :return: The pipeline with the logger added
     """
-    if isinstance(config, str):
-        with open(config) as f:
-            # config is a path to a yaml file
-            config = yaml.safe_load(f)
+    if not isinstance(config, str):
+        pass
+    else:
+        if os.path.isfile(config):
+            config = open(config)
+        config = yaml.safe_load(config)
         config = PipelineLoggingConfig(**config)
-
-    if config.data_logging:
-        for target, metric_functions in config.data_logging.copy().items():
-            # modify the base target name if required
-            new_target = get_target_identifier(
-                target_name=target, pipeline_identifier=pipeline._identifier()
-            )
-            if not new_target == target:
-                # if the target name is altered, we need to update the config
-                config.data_logging[new_target] = metric_functions
-                del config.data_logging[target]
 
     logger = build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
         data_logging_config=config.data_logging,
     )
-    pipeline.logger = logger
-    return pipeline
+    return logger
 
 
 def build_logger(

@@ -257,7 +257,7 @@ class Pipeline(ABC):
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
         timer.stop(InferencePhases.ENGINE_FORWARD)
-        # let's put this into a separate metric group!
+
         self.log(
             identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size",
             # to get the batch size of the inputs, we need to look
@@ -759,10 +759,13 @@ class Pipeline(ABC):
         if not self._logger:
             return
 
-        compound_identifier = f"{self._identifier()}/{identifier}"
-        validate_identifier(compound_identifier)
+        if not hasattr(self, "task"):
+            self.task = None
+
+        identifier = f"{self.alias or self.task or 'unknown_pipeline'}/{identifier}"
+        validate_identifier(identifier)
         self._logger.log(
-            identifier=compound_identifier,
+            identifier=identifier,
             value=value,
             category=category,
         )
@@ -818,20 +821,6 @@ class Pipeline(ABC):
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
                 f"{SUPPORTED_PIPELINE_ENGINES}"
             )
-
-    def _identifier(self) -> str:
-        """
-        Create an identifier for this pipeline instance.
-        The identifier string depends on the attributes of the pipeline.
-        It may be either the alias or the task name. If either attributes
-        are missing,the identifier is set to `unknown_pipeline`.
-
-        :return: an identifier for this pipeline instance
-        """
-        if not hasattr(self, "task"):
-            self.task = None
-        identifier = f"{self.alias or self.task or 'unknown_pipeline'}"
-        return identifier
 
 
 class PipelineConfig(BaseModel):
