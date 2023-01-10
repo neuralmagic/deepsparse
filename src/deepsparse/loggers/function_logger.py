@@ -15,6 +15,7 @@
 """
 Implementation of the Function Logger
 """
+import textwrap
 from typing import Any, Callable
 
 from deepsparse.loggers import BaseLogger, MetricCategories
@@ -91,11 +92,13 @@ class FunctionLogger(BaseLogger):
             self._function_call_counter += 1
 
     def __str__(self, level=0):
-        whitespace = "\t" * level
-        text = "\n" + whitespace + f"{self.__class__.__name__}:"
-        text += "\n\t" + whitespace + "target identifier: " + self.target_identifier
-        text += "\n\t" + whitespace + "function name: " + self.function.__name__
-        text += "\n\t" + whitespace + "frequency: " + str(self.frequency)
-        text += "\n\t" + whitespace + "target_logger: "
+        header_wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * level)
+        text = header_wrapper.fill(f"{self.__class__.__name__}:")
+
+        body_wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * (level + 1))
+        text += body_wrapper.fill(f"target identifier: {self.target_identifier}")
+        text += body_wrapper.fill(f"function name: {self.function.__name__}")
+        text += body_wrapper.fill(f"frequency: {str(self.frequency)}")
+        text += body_wrapper.fill("target_logger: ")
         text += self.logger.__str__(level=level + 2)
         return text

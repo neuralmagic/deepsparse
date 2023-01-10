@@ -17,6 +17,7 @@ Logger wrapper to run log calls asynchronously to not block the main process
 """
 
 import logging
+import textwrap
 from concurrent.futures import Executor, ThreadPoolExecutor
 from typing import Any
 
@@ -60,8 +61,8 @@ class AsyncLogger(BaseLogger):
         job_future.add_done_callback(_log_async_job_exception)
 
     def __str__(self, level=0):
-        whitespace = "\t" * level
-        text = "\n" + whitespace + f"{self.__class__.__name__}:"
+        wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * level)
+        text = wrapper.fill(f"{self.__class__.__name__}:")
         text += self.logger.__str__(level=level + 1)
         return text
 

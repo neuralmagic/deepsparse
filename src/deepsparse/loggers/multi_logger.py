@@ -16,6 +16,7 @@
 Implementation of the Multi Logger that serves as a
 container for holding multiple loggers
 """
+import textwrap
 from typing import Any, List
 
 from deepsparse.loggers import BaseLogger, MetricCategories
@@ -43,8 +44,8 @@ class MultiLogger(BaseLogger):
             logger.log(identifier, value, category)
 
     def __str__(self, level=0):
-        whitespace = "\t" * level
-        text = "\n" + whitespace + f"{self.__class__.__name__}:"
+        wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * level)
+        text = wrapper.fill(f"{self.__class__.__name__}:")
         for logger in self.loggers:
             text += logger.__str__(level=level + 1)
         return text
