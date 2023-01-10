@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Implementation of the MultiLogger that serves as a
+Implementation of the Multi Logger that serves as a
 container for holding multiple loggers
 """
 import textwrap
