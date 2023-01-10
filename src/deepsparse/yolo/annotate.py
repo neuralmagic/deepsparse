@@ -201,7 +201,7 @@ def main(
     yolo_pipeline = Pipeline.create(
         task="yolo",
         model_path=model_filepath,
-        # class_names="coco",
+        class_names="coco",
         engine_type=engine,
         num_cores=num_cores,
     )
