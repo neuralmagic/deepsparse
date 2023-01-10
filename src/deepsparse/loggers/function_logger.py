@@ -91,14 +91,17 @@ class FunctionLogger(BaseLogger):
                 self._function_call_counter = 0
             self._function_call_counter += 1
 
-    def __str__(self, level=0):
-        header_wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * level)
-        text = header_wrapper.fill(f"{self.__class__.__name__}:")
-
-        body_wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * (level + 1))
-        text += body_wrapper.fill(f"target identifier: {self.target_identifier}")
-        text += body_wrapper.fill(f"function name: {self.function.__name__}")
-        text += body_wrapper.fill(f"frequency: {str(self.frequency)}")
-        text += body_wrapper.fill("target_logger: ")
-        text += self.logger.__str__(level=level + 2)
-        return text
+    def __str__(self):
+        prefix = "  "
+        text = "\n" + textwrap.indent(
+            f"target identifier: {self.target_identifier}", prefix=prefix
+        )
+        text += "\n" + textwrap.indent(
+            f"function name: {self.function.__name__}", prefix=prefix
+        )
+        text += "\n" + textwrap.indent(
+            f"frequency: {str(self.frequency)}", prefix=prefix
+        )
+        text += "\n" + textwrap.indent("target_logger: ", prefix=prefix)
+        text += "\n" + textwrap.indent(str(self.logger), prefix=2 * prefix)
+        return f"{self.__class__.__name__}:{text}"

@@ -60,11 +60,9 @@ class AsyncLogger(BaseLogger):
         )
         job_future.add_done_callback(_log_async_job_exception)
 
-    def __str__(self, level=0):
-        wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * level)
-        text = wrapper.fill(f"{self.__class__.__name__}:")
-        text += self.logger.__str__(level=level + 1)
-        return text
+    def __str__(self):
+        child_str = textwrap.indent(str(self.logger), prefix="  ")
+        return f"{self.__class__.__name__}:\n{child_str}"
 
 
 def _log_async_job_exception(future):

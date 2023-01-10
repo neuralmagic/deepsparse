@@ -28,14 +28,13 @@ from deepsparse import (
 from tests.helpers import find_free_port
 
 
-expected_str = """
-AsyncLogger:
+expected_str = """AsyncLogger:
   MultiLogger:
     FunctionLogger:
       target identifier: some_identifier
       function name: mean
       frequency: 1
-      target_logger:
+      target_logger: 
         MultiLogger:
           PythonLogger
           PythonLogger
@@ -43,7 +42,7 @@ AsyncLogger:
       target identifier: some_identifier_2
       function name: mean
       frequency: 1
-      target_logger:
+      target_logger: 
         MultiLogger:
           PythonLogger
           PrometheusLogger:
@@ -52,7 +51,7 @@ AsyncLogger:
       target identifier: some_identifier_3
       function name: mean
       frequency: 2
-      target_logger:
+      target_logger: 
         PythonLogger"""
 
 port = find_free_port()

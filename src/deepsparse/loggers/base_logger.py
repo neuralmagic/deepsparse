@@ -15,7 +15,6 @@ Base implementation of the logger
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import textwrap
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
@@ -39,7 +38,5 @@ class BaseLogger(ABC):
         """
         raise NotImplementedError()
 
-    def __str__(self, level=0):
-        wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * level)
-        text = wrapper.fill(f"{self.__class__.__name__}")
-        return text
+    def __str__(self):
+        return f"{self.__class__.__name__}"

@@ -104,13 +104,9 @@ class PrometheusLogger(BaseLogger):
         prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
 
-    def __str__(self, level=0):
-        header_wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * level)
-        text = header_wrapper.fill(f"{self.__class__.__name__}:")
-
-        body_wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * (level + 1))
-        text += body_wrapper.fill(f"port: {self.port}")
-        return text
+    def __str__(self):
+        text = textwrap.indent(f"port: {self.port}", prefix="  ")
+        return f"{self.__class__.__name__}:\n{text}"
 
     def _export_metrics_to_textfile(self):
         # export the metrics to a text file with

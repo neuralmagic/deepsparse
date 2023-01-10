@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Implementation of the Multi Logger that serves as a
+Implementation of the MultiLogger that serves as a
 container for holding multiple loggers
 """
 import textwrap
@@ -43,9 +43,8 @@ class MultiLogger(BaseLogger):
         for logger in self.loggers:
             logger.log(identifier, value, category)
 
-    def __str__(self, level=0):
-        wrapper = textwrap.TextWrapper(initial_indent="\n" + "  " * level)
-        text = wrapper.fill(f"{self.__class__.__name__}:")
+    def __str__(self):
+        text = ""
         for logger in self.loggers:
-            text += logger.__str__(level=level + 1)
-        return text
+            text += "\n" + textwrap.indent(str(logger), prefix="  ")
+        return f"{self.__class__.__name__}:{text}"
