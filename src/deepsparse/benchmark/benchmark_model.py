@@ -92,6 +92,7 @@ deepsparse.benchmark /PATH/TO/model.onnx --batch_size 32 --scenario sync
 """
 
 import argparse
+import importlib
 import json
 import logging
 import os
@@ -214,10 +215,12 @@ def parse_args():
         "--engine",
         type=str,
         default=DEEPSPARSE_ENGINE,
-        choices=[DEEPSPARSE_ENGINE, ORT_ENGINE],
         help=(
             "Inference engine backend to run eval on. Choices are 'deepsparse', "
-            "'onnxruntime'. Default is 'deepsparse'"
+            "'onnxruntime'. Default is 'deepsparse'. Can also specify a user "
+            "defined engine class by giving the script and class name in the "
+            "following format <path to python script>:<Engine Class name>. This "
+            "engine class will be dynamically imported during runtime"
         ),
     )
     parser.add_argument(
@@ -293,6 +296,8 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
     # "elastic", use the value of num_streams given to us by the model, otherwise
     # use a semi-sane default value.
     if scenario == "sync" or scenario == "singlestream":
+        if num_streams and num_streams > 1:
+            _LOGGER.info("num_streams reduced to 1 for singlestream scenario.")
         return 1
     else:
         if num_streams:
@@ -306,6 +311,22 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
                 )
             )
             return default_num_streams
+
+
+def load_custom_engine(custom_engine_identifier: str):
+    """
+    import a custom engine based off the specified `custom_engine_identifier`
+    from user specified script
+
+    :param custom_engine_identifier: string in the form of
+           '<path_to_the_python_script>:<custom_engine_class_name>
+    :return: custom engine class object
+    """
+    path, engine_object_name = custom_engine_identifier.split(":")
+    spec = importlib.util.spec_from_file_location("user_defined_custom_engine", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, engine_object_name)
 
 
 def benchmark_model(
@@ -352,6 +373,13 @@ def benchmark_model(
             num_cores=num_cores,
             input_shapes=input_shapes,
         )
+    elif ":" in engine:
+        engine = load_custom_engine(custom_engine_identifier=engine)
+        model = engine(
+            model_path=model_path,
+            batch_size=batch_size,
+            num_cores=num_cores,
+        )
     else:
         raise ValueError(f"Invalid engine choice '{engine}'")
     _LOGGER.info(model)
@@ -361,6 +389,8 @@ def benchmark_model(
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as model_path:
             input_list = generate_random_inputs(model_path, batch_size)
+    elif hasattr(engine, "generate_random_inputs"):
+        input_list = engine.generate_random_inputs(batch_size=batch_size)
     else:
         input_list = generate_random_inputs(model_path, batch_size)
 
