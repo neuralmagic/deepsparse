@@ -227,9 +227,6 @@ class YOLOPipeline(Pipeline):
             format of this pipeline
         """
 
-        from ultralytics.yolo.utils import ops
-        import torch
-
         # post-processing
         if self.postprocessor:
             batch_output = self.postprocessor.pre_nms_postprocess(engine_outputs)
@@ -239,6 +236,9 @@ class YOLOPipeline(Pipeline):
             ]  # post-processed values stored in first output
 
         # NMS
+        from ultralytics.yolo.utils import ops
+        import torch
+
         batch_output = ops.non_max_suppression(
             torch.from_numpy(batch_output),
             conf_thres=kwargs.get("conf_thres", 0.25),
