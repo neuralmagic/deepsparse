@@ -227,7 +227,7 @@ class YOLOPipeline(Pipeline):
             format of this pipeline
         """
 
-        from ultralytics.yolo.utils import DEFAULT_CONFIG, ROOT, ops
+        from ultralytics.yolo.utils import ops
         import torch
 
         # post-processing
@@ -241,10 +241,9 @@ class YOLOPipeline(Pipeline):
         # NMS
         batch_output = ops.non_max_suppression(
             torch.from_numpy(batch_output),
-            kwargs.get("conf_thres", 0.25),
-            kwargs.get("iou_thres", 0.6),
-            agnostic=False,
-            max_det=300,
+            conf_thres=kwargs.get("conf_thres", 0.25),
+            iou_thres=kwargs.get("iou_thres", 0.6),
+            multi_label=kwargs.get("multi_label", False),
         )
 
         batch_boxes, batch_scores, batch_labels = [], [], []
