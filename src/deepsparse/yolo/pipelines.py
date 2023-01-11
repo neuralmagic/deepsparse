@@ -236,13 +236,10 @@ class YOLOPipeline(Pipeline):
             ]  # post-processed values stored in first output
 
         # NMS
-        from ultralytics.yolo.utils import ops
-        import torch
-
-        batch_output = ops.non_max_suppression(
-            torch.from_numpy(batch_output),
-            conf_thres=kwargs.get("conf_thres", 0.25),
-            iou_thres=kwargs.get("iou_thres", 0.6),
+        batch_output = postprocess_nms(
+            batch_output,
+            iou_thres=kwargs.get("iou_thres", 0.25),
+            conf_thres=kwargs.get("conf_thres", 0.45),
             multi_label=kwargs.get("multi_label", False),
         )
 
