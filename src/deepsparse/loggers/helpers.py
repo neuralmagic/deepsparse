@@ -42,6 +42,7 @@ def finalize_identifier(
     identifier: str,
     category: MetricCategories,
     function_name: str,
+    value_identifier: str,
     remainder: Optional[str] = None,
 ) -> str:
     """
@@ -51,6 +52,8 @@ def finalize_identifier(
     :param category: The category of the identifier
     :param function_name: The name of the function applied to the identifier
     :param remainder: The remainder of the identifier after the matching was applied
+    :param value_identifier: The identifier that describes the name of the item
+        computed by the function
     :return: The final identifier string
     """
     if remainder:
@@ -64,6 +67,8 @@ def finalize_identifier(
     if category == MetricCategories.DATA:
         # if the category is DATA, add the function name to the identifier
         identifier += f"__{function_name}"
+        if value_identifier:
+            identifier += f"__{value_identifier}"
 
     return identifier
 
