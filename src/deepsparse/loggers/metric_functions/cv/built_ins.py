@@ -14,30 +14,22 @@
 """
 The set of all the built-in metric functions
 """
-from typing import Any, Dict, List, Optional, Tuple, Union
+from collections import Counter
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
 
 __all__ = [
-    "identity",
     "image_shape",
     "mean_pixels_per_channel",
     "std_pixels_per_channel",
-    "max_pixels_per_channel",
+    "mean_score_per_detection",
+    "std_score_per_detection",
     "fraction_zeros",
-    "bounding_box_count",
+    "count_classes_detected",
+    "count_number_objects_detected",
 ]
-
-
-def identity(x: Any):
-    """
-    Simple identity function
-
-    :param x: Any object
-    :return: The same object
-    """
-    return x
 
 
 def image_shape(
@@ -51,14 +43,22 @@ def image_shape(
             - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
               tensor/array
             - the image has 3 or 1 channels
-    :return: Dictionary that maps "height", "width", "channels" keys
-        to the appropriate integers
+    :return: Dictionary that maps "dim_0", "dim_1" and "channels" keys to the
+        appropriate integers
     """
     img_numpy = _assert_numpy_image(img)
-    num_dims, _ = _check_valid_image(img_numpy)
+    num_dims, channel_dim = _check_valid_image(img_numpy)
     if num_dims == 4:
         img_numpy = img_numpy[0]
-    return dict(zip(["height", "width", "channels"], img_numpy.shape))
+        channel_dim -= 1
+
+    result = {"channels": img_numpy.shape[channel_dim]}
+    dims_counter = 0
+    for index, dim in enumerate(img_numpy.shape):
+        if index != channel_dim:
+            result[f"dim_{dims_counter}"] = dim
+            dims_counter += 1
+    return result
 
 
 def mean_pixels_per_channel(
@@ -104,27 +104,6 @@ def std_pixels_per_channel(
     return dict(zip(keys, stds))
 
 
-def max_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
-) -> Union[Tuple[float, float, float], Tuple[float]]:
-    """
-    Return the max pixel value per image channel
-    :param img: An image represented as a numpy array or a torch tensor.
-        Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
-              tensor/array
-            - the image has 3 or 1 channels
-    :return: Tuple containing the max pixel values:
-        - 3 floats if image has 3 channels
-        - 1 float if image has 1 channel
-    """
-    img_numpy = _assert_numpy_image(img)
-    num_dims, channel_dim = _check_valid_image(img)
-    dims = numpy.arange(0, num_dims, 1)
-    dims = numpy.delete(dims, channel_dim)
-    return tuple(numpy.max(img_numpy, axis=tuple(dims)))
-
-
 def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa F821
     """
     Return the float the represents the fraction of zeros in the
@@ -141,32 +120,128 @@ def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa 
     _check_valid_image(image_numpy)
     return (image_numpy.size - numpy.count_nonzero(image_numpy)) / image_numpy.size
 
-def num_classes_predicted
 
-def bounding_box_count(bboxes: List[List[Optional[List[float]]]]) -> Dict[int, int]:
+def count_classes_detected(
+    classes: List[List[Optional[Union[int, str]]]]
+) -> Dict[str, int]:
     """
-    Extract the number of bounding boxes from the (nested) list of bbox corners
+    Count the number of unique classes detected in the image batch
 
-    :param bboxes: A (nested) list, where the leaf list has length four and contains
-        float values (top left and bottom right coordinates of the bounding box corners)
+    :param classes: A nested list, where:
+        - first level is the batch information
+        - second level is the sample information. Can be
+            either `None` (no detection) or an integer/string
+            representation of the class label
+     :return: Dictionary, where the keys are class labels
+        and the values are their counts across the batch
+    """
+    _check_valid_classes(classes)
+    detected_classes = []
+    for sample_idx, sample in enumerate(classes):
+        if sample != [None]:
+            detected_classes += sample
+    counter = Counter(detected_classes)
+    # convert keys to strings if required
+    counter = {str(class_label): count for class_label, count in counter.items()}
+    return counter
+
+
+def count_number_objects_detected(
+    classes: List[List[Optional[Union[int, str]]]]
+) -> Dict[str, int]:
+    """
+    Count the number of successful detections per image
+
+     :param classes: A nested list, where:
+        - first level is the batch information
+        - second level is the sample information. Can be
+            either `None` (no detection) or an integer/string
+            representation of the class label
     :return: Dictionary, where the keys are image indices within
-        a batch and the values are the bbox counts
+        a batch and the values are the number of detected objects per image
     """
-    if not bboxes or _is_nested_list_empty(bboxes):
-        return 0
+    _check_valid_classes(classes)
 
-    if not (isinstance(bboxes[0][0][0], float) and len(bboxes[0][0]) == 4):
-        raise ValueError(
-            "A valid argument `bboxes` should be of "
-            "type: List[List[Optional[List[float]]]])."
+    number_objects_per_batch = {}
+    for sample_idx, sample in enumerate(classes):
+        number_objects_per_batch[str(sample_idx)] = (
+            0 if sample == [None] else len(sample)
         )
 
-    bboxes_count = {}
-    for batch_idx, bboxes_ in enumerate(bboxes):
-        num_bboxes = len(bboxes_)
-        bboxes_count[batch_idx] = num_bboxes
+    return number_objects_per_batch
 
-    return bboxes_count
+
+def mean_score_per_detection(scores: List[List[Optional[float]]]) -> Dict[str, float]:
+    """
+    Return the mean score per detection
+
+    :param scores: A nested list, where:
+        - first level is the batch information
+        - second level is the sample information. Can be
+            either `None` (no detection) or a float score
+    :return: Dictionary, where the keys are image indices within
+        a batch and the values are the mean score per detection
+    """
+    _check_valid_scores(scores)
+
+    mean_scores_per_batch = {}
+    for sample_idx, sample in enumerate(scores):
+        if sample == [None]:
+            mean_scores_per_batch[str(sample_idx)] = 0.0
+        else:
+            mean_scores_per_batch[str(sample_idx)] = numpy.mean(sample)
+
+    return mean_scores_per_batch
+
+
+def std_score_per_detection(scores: List[List[Optional[float]]]) -> Dict[str, float]:
+    """
+    Return the standard deviation of scores per detection
+
+    :param scores: A nested list, where:
+        - first level is the batch information
+        - second level is the sample information. Can be
+            either `None` (no detection) or a float score
+    :return: Dictionary, where the keys are image indices within
+        a batch and the values are the standard deviation of scores per detection
+    """
+    _check_valid_scores(scores)
+
+    std_scores_per_batch = {}
+    for sample_idx, sample in enumerate(scores):
+        if sample == [None]:
+            std_scores_per_batch[str(sample_idx)] = 0.0
+        else:
+            std_scores_per_batch[str(sample_idx)] = numpy.std(sample)
+
+    return std_scores_per_batch
+
+
+def _check_valid_classes(classes: List[List[Optional[Union[int, str]]]]):
+    for sample in classes:
+        if (
+            all(isinstance(i, int) for i in sample)
+            or all(isinstance(i, str) for i in sample)
+            or sample == [None]
+        ):
+            pass
+        else:
+            raise ValueError(
+                "Detection for a sample must be either a "
+                "list of integers or a list of strings or a list "
+                "with a single `None` value"
+            )
+
+
+def _check_valid_scores(scores: List[List[Optional[float]]]):
+    for sample in scores:
+        if all(isinstance(i, float) for i in sample) or sample == [None]:
+            pass
+        else:
+            raise ValueError(
+                "Scores for a sample must be either a "
+                "list of floats or a list with a single `None` value"
+            )
 
 
 def _check_valid_image(img: numpy.ndarray) -> Tuple[int, int]:
@@ -196,11 +271,3 @@ def _assert_numpy_image(
     if hasattr(img, "numpy"):
         img = img.numpy()
     return img
-
-
-def _is_nested_list_empty(nested_list: List) -> bool:
-    if not nested_list:
-        return True
-    if isinstance(nested_list[0], list):
-        return _is_nested_list_empty(nested_list[0])
-    return False

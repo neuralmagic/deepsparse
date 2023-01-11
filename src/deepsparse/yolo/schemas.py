@@ -67,7 +67,7 @@ class YOLOOutput(BaseModel):
     scores: List[List[float]] = Field(
         description="List of scores, one for each prediction"
     )
-    labels: List[List[str]] = Field(
+    classes: List[List[str]] = Field(
         description="List of labels, one for each prediction"
     )
 
@@ -78,7 +78,7 @@ class YOLOOutput(BaseModel):
         return _YOLOImageOutput(
             self.boxes[index],
             self.scores[index],
-            self.labels[index],
+            self.classes[index],
         )
 
     def __iter__(self):
