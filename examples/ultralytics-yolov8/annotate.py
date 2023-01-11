@@ -41,10 +41,6 @@ from deepsparse.yolo.utils import annotate_image
 from ultralytics.yolo.utils import ops
 
 
-yolo_v5_default_stub = (
-    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96"
-)
-
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
