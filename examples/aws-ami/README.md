@@ -139,4 +139,4 @@ print(response.text)
 
 ## **Next Steps**
 
-Check out [Neural Magic's documentation](https://docs.neuralmagic.com/) for more details on optimizing models for inference with SparseML and deploying with DeepSparse.
+Check out [Neural Magic's documentation](https://docs.neuralmagic.com/) for details on optimizing models for inference with SparseML and deploying with DeepSparse.
