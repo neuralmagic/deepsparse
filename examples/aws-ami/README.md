@@ -113,7 +113,7 @@ Launch the server from the CLI. You should see Uvicorn running at port 5543.
 ```
 deepsparse.server --config-file qa_server_config.yaml
 
->> Uvicorn running on http://0.0.0.0:5543 (Press CTRL+C to quit)
+# >> Uvicorn running on http://0.0.0.0:5543 (Press CTRL+C to quit)
 ```
 
 Recall that we configured the instance to expose port 5543 on your AWS instance to recieve internet traffic. As such, we can send a request to the model endpoint over the web. From your local machine, run the following, filling in the public IPv4 address of your instance.
@@ -135,7 +135,7 @@ obj = {
 response = requests.post(endpoint_url, json=obj)
 print(response.text)
 
-# > {"score":17.623973846435547,"answer":"batman","start":8,"end":14}
+# >> {"score":17.623973846435547,"answer":"batman","start":8,"end":14}
 ```
 
 ## **Next Steps**
