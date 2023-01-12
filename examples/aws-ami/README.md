@@ -66,3 +66,46 @@ endpoints:
     model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none
 ```
 
+Download (or create) a config file called `qa_server_config.yaml`
+```
+curl https://raw.githubusercontent.com/neuralmagic/deepsparse/rs/aws-ami-example/examples/aws-ami/qa_server_config.yaml > qa_server_config.yaml
+```
+
+Launch the server from the CLI. You should see Uvicorn running at port 5543.
+```
+deepsparse.server --config-file qa_server_config.yaml
+
+> INFO:     Uvicorn running on http://0.0.0.0:5543 (Press CTRL+C to quit)
+```
+
+Recall that we previously opened port 5543 on your AWS instance to recieve internet traffic. As such,
+we can send a request from your local machine to your model endpoint over the web.
+
+
+From your local machine, run the following, filling in the public IPv4 address of your instance.
+
+```python
+import requests
+
+# fill in your IP address
+ip_address = "YOUR_INSTANCE_PUBLIC_IP" # (e.g. 54.160.166.157)
+endpoint_url = f"http://{ip_address}:5543/predict"
+
+# question answering request
+obj = {
+    "question": "Who is Mark?",
+    "context": "Mark is batman."
+}
+
+# send HTTP request
+response = requests.post(endpoint_url, json=obj)
+print(response.text)
+
+# > {"score":17.623973846435547,"answer":"batman","start":8,"end":14}
+```
+
+You can find the IPv4 address of your instance 
+
+<p align="center">
+    <img src="deepsparse-ipv4.png" width="100%"/>
+</p>
