@@ -92,7 +92,8 @@ web server, making it easy to stand up a model service running DeepSparse.
 Since the Server is a wrapper around Pipelines, you can send raw input
 to the DeepSparse endpoint and recieve the post-processed answers.
 
-DeepSparse Server is configured with YAML files that look like this:
+DeepSparse Server is configured with YAML. This example creates a question answering endpoint with a pruned-quantized version
+of BERT from [SparseZoo](https://sparsezoo.neuralmagic.com/models/nlp%2Fquestion_answering%2Fbert-base%2Fpytorch%2Fhuggingface%2Fsquad%2Fpruned95_obs_quant-none).
 
 ```yaml
 loggers:
