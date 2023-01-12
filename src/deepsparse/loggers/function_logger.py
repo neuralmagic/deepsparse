@@ -92,16 +92,13 @@ class FunctionLogger(BaseLogger):
             self._function_call_counter += 1
 
     def __str__(self):
-        prefix = "  "
-        text = "\n" + textwrap.indent(
-            f"target identifier: {self.target_identifier}", prefix=prefix
-        )
-        text += "\n" + textwrap.indent(
-            f"function name: {self.function.__name__}", prefix=prefix
-        )
-        text += "\n" + textwrap.indent(
-            f"frequency: {str(self.frequency)}", prefix=prefix
-        )
-        text += "\n" + textwrap.indent("target_logger: ", prefix=prefix)
-        text += "\n" + textwrap.indent(str(self.logger), prefix=2 * prefix)
-        return f"{self.__class__.__name__}:{text}"
+    def _indent(value):
+      return textwrap.indent(str(value), prefix="  ")
+
+    function_info = (
+        f"target identifier: {self.target_identifier}\n"
+        f"function name: {self.function.__name__}\n"
+        f"frequency: {self.frequency}\n"
+        f"target_logger:\n{_indent(self.logger)}"
+    )
+    return f"{self.__class__.__name__}:\n{_indent(function_info)}"
