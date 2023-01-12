@@ -235,7 +235,7 @@ def _check_valid_detection(detection: List[Union[int, str, None]]):
         or detection == [None]
     ):
         raise ValueError(
-            "Detection for a sample must be either a "
+            "Detection must be either a "
             "list of integers or a list of strings or a list "
             "with a single `None` value"
         )
@@ -244,7 +244,7 @@ def _check_valid_detection(detection: List[Union[int, str, None]]):
 def _check_valid_score(score: List[Union[float, None]]):
     if not (all(isinstance(score_, float) for score_ in score) or score == [None]):
         raise ValueError(
-            "Scores for a sample must be either a "
+            "Score must be either a "
             "list of floats or a list with a single `None` value"
         )
 
