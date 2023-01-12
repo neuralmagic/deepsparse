@@ -145,7 +145,7 @@ def count_classes_detected(
 
 
 def count_number_objects_detected(
-    classes: List[List[Optional[Union[int, str]]]]
+    classes: List[List[Union[int, str, None]]]
 ) -> Dict[str, int]:
     """
     Count the number of successful detections per image
