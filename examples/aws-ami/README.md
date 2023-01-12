@@ -112,8 +112,6 @@ curl https://raw.githubusercontent.com/neuralmagic/deepsparse/rs/aws-ami-example
 Launch the server from the CLI. You should see Uvicorn running at port 5543.
 ```
 deepsparse.server --config-file qa_server_config.yaml
-
-# >> Uvicorn running on http://0.0.0.0:5543 (Press CTRL+C to quit)
 ```
 
 Recall that we configured the instance to expose port 5543 on your AWS instance to recieve internet traffic. As such, we can send a request to the model endpoint over the web. From your local machine, run the following, filling in the public IPv4 address of your instance.
