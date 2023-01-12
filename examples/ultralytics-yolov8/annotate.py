@@ -23,6 +23,7 @@ Examples:
 """
 import logging
 from typing import List, Optional
+import os
 
 import click
 import numpy
@@ -35,7 +36,6 @@ from deepsparse.utils.annotate import (
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
-from deepsparse.utils.cli_helpers import create_dir_callback
 from deepsparse.yolo import YOLOOutput, YOLOPipeline
 from deepsparse.yolo.utils import annotate_image
 from ultralytics.yolo.utils import ops
@@ -89,6 +89,19 @@ class YOLOv8Pipeline(YOLOPipeline):
             scores=batch_scores,
             labels=batch_labels,
         )
+
+
+def create_dir_callback(ctx, params, value: str):
+    """
+    Create and return directory if it doesn't exist.
+
+    :param ctx: The click context
+    :param params: The click params
+    :param value: The value to create the directory from
+    :returns: The directory path
+    """
+    os.makedirs(value, exist_ok=True)
+    return value
 
 
 @click.command()
