@@ -23,7 +23,7 @@ from deepsparse import (
     logger_from_config,
 )
 from deepsparse.loggers.build_logger import build_system_loggers
-from deepsparse.loggers.config import PipelineLoggingConfig, SystemLoggingConfig
+from deepsparse.loggers.config import SystemLoggingConfig
 from tests.deepsparse.loggers.helpers import ListLogger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
@@ -110,13 +110,11 @@ data_logging:
 def test_add_logger_to_pipeline(
     engine_mock, yaml_config, raises_error, default_logger, num_function_loggers
 ):
-    obj = yaml.safe_load(yaml_config)
-    pipeline_logging_config = PipelineLoggingConfig(**obj)
     if raises_error:
         with pytest.raises(ValueError):
-            logger_from_config(pipeline_logging_config)
+            logger_from_config(yaml_config)
         return
-    logger = logger_from_config(config=pipeline_logging_config)
+    logger = logger_from_config(yaml_config)
 
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)

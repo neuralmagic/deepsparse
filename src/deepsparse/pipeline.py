@@ -29,6 +29,7 @@ from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
+from deepsparse.loggers.build_logger import logger_from_config
 from deepsparse.loggers.constants import (
     REQUEST_DETAILS_IDENTIFIER_PREFIX,
     RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
@@ -151,7 +152,7 @@ class Pipeline(ABC):
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
-        logger: Optional[BaseLogger] = None,
+        logger: Optional[Union[BaseLogger, str]] = None,
         _delay_engine_initialize: bool = False,  # internal use only
     ):
         self._model_path_orig = model_path
@@ -160,7 +161,13 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
-        self._logger = logger
+        self.logger = (
+            logger
+            if isinstance(logger, BaseLogger)
+            else logger_from_config(
+                config=logger, pipeline_identifier=self._identifier()
+            )
+        )
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -693,25 +700,6 @@ class Pipeline(ABC):
         """
         return self._engine_type
 
-    @property
-    def logger(self) -> BaseLogger:
-        """
-        :return: a DeepSparse Logger object for inference logging.
-        """
-        return self._logger
-
-    @logger.setter
-    def logger(self, logger: BaseLogger):
-        """
-        Setter method for the `logger_property`
-        :param logger: a DeepSparse Logger object
-        """
-        if self._logger:
-            raise ValueError(
-                "Attempting to override the existing logger of the pipeline."
-            )
-        self._logger = logger
-
     def to_config(self) -> "PipelineConfig":
         """
         :return: PipelineConfig that can be used to reload this object
@@ -756,15 +744,12 @@ class Pipeline(ABC):
         :param value: The logged data structure
         :param category: The metric category that the log belongs to
         """
-        if not self._logger:
+        if not self.logger:
             return
 
-        if not hasattr(self, "task"):
-            self.task = None
-
-        identifier = f"{self.alias or self.task or 'unknown_pipeline'}/{identifier}"
+        identifier = f"{self._identifier()}/{identifier}"
         validate_identifier(identifier)
-        self._logger.log(
+        self.logger.log(
             identifier=identifier,
             value=value,
             category=category,
@@ -821,6 +806,12 @@ class Pipeline(ABC):
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
                 f"{SUPPORTED_PIPELINE_ENGINES}"
             )
+
+    def _identifier(self):
+        if not hasattr(self, "task"):
+            self.task = None
+
+        return f"{self.alias or self.task or 'unknown_pipeline'}"
 
 
 class PipelineConfig(BaseModel):
