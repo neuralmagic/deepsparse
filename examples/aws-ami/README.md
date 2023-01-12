@@ -20,7 +20,7 @@ to SSH into the instance.
 - Add a security group rule with "Custom TCP" with "Source Type" equal to "Anywhere" and "Port" equal to 5543. DeepSparse Server will accept traffic on this port.
 
 <p align="center">
-    <img src="deepsparse-security-group.png" width="80%"/>
+    <img src="deepsparse-security-group.png" width="70%"/>
 </p>
 
 - In the "Summary" section on the right-hand side, click "Launch Instance."
@@ -30,7 +30,7 @@ You should see a success message on your AWS console!
 Open up a terminal and SSH into your instance, using your SSH key and the IPv4 address of your new instance. You can find your IPv4 address from the instances page.
 
 <p align="center">
-    <img src="deepsparse-ipv4.png" width="80%"/>
+    <img src="deepsparse-ipv4.png" width="70%"/>
 </p>
 
 ```
