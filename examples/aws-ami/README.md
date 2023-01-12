@@ -114,7 +114,18 @@ Launch the server from the CLI. You should see Uvicorn running at port 5543.
 deepsparse.server --config-file qa_server_config.yaml
 ```
 
-Recall that we configured the instance to expose port 5543 on your AWS instance to recieve internet traffic. As such, we can send a request to the model endpoint over the web. From your local machine, run the following, filling in the public IPv4 address of your instance.
+Recall that we configured the instance to expose port 5543 on your AWS instance to recieve internet traffic. As such, we can send a request to the model endpoint over the web. 
+
+DeepSparse is built on FastAPI, so it has the Swagger UI functionality that enables you to explore the endpoints exposed. Navigate
+to `http://YOUR_INSTANCE_IP:5543/docs` to checkout the exposed endpoints.
+
+<p align="center">
+    <img src="deepsparse-server-docs.png" width="70%"/>
+</p>
+
+
+As you can see, there is a `/predict` endpoint which accepts a JSON object with `context` and `question` fields. 
+From your local machine, run the following, filling in the public IPv4 address of your instance to query the `/predict` route.
 
 ```python
 import requests
