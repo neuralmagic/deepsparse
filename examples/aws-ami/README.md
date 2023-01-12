@@ -1,10 +1,51 @@
+# **Getting Started with DeepSparse**
+
+In this example, we will demonstrate how to benchmark and deploy a question answering model with a DeepSparse AMI.
+
+## **Launch Your Instance**
+
+To get started, [Sign in to the AWS Console](https://aws.amazon.com/console/), navigate to the EC2 dashboard, and select "Launch an instance."
+
+- In the "Name and Tags" section, name your instance as desired.
+
+- In the "Application and OS Images (Amazon Machine Image)" section, select the DeepSparse AMI.
+
+- In the "Instance type" section, choose an x86 instance. We recommend the `c6i` family.
+
+- In the "Key pair (login)" section, use an existing key or create a new key pair. You will need this key 
+to SSH into the instance.
+
+- In the "Network settings" section, click "Edit". At the bottom, click "Add security group rule."
+
+- Add a security group rule with "Custom TCP" with "Source Type" equal to "Anywhere" and "Port" equal to 5543. DeepSparse Server will accept traffic on this port.
+
+<p align="center">
+    <img src="deepsparse-security-group.png" width="80%"/>
+</p>
+
+- In the "Summary" section on the right-hand side, click "Launch Instance."
+
+You should see a success message on your AWS console!
+
+Open up a terminal and SSH into your instance, using your SSH key and the IPv4 address of your new instance. You can find your IPv4 address from the instances page.
+
+<p align="center">
+    <img src="deepsparse-ipv4.png" width="80%"/>
+</p>
+
+```
+ssh -i path/to/your/sshkey.pem XXXXXX@your_ipv4_address
+```
+
+DeepSparse is installed on the AMI. You are ready to benchmark and deploy a model!
+
 ## **Benchmark Performance**
 
-DeepSparse include a convienent benchmarking script to test througput in a variety of scenarios.
+DeepSparse include a convienent benchmarking script to assess performance in a variety of scenarios.
 
-As an example, let's take a look at throughput on a pruned-quantized version of BERT trained on SQuAD. DeepSparse
-is integrated with SparseZoo, an open source repository of sparse models, so we can use SparseZoo stubs to 
-download an ONNX file for testing.
+As an example, let's take a look at throughput on a pruned-quantized version of BERT 
+trained on SQuAD. DeepSparse is integrated with SparseZoo, an open source repository of 
+sparse models, so we can use SparseZoo stubs to download an ONNX file for testing.
 
 On an AWS `c6i.4xlarge` instance (8 cores), DeepSparse achieves >300 items/second at batch 64.
 
@@ -21,32 +62,28 @@ Run `deepsparse.benchmark --help` for full usage.
 
 ## **Deploy a Model**
 
-DeepSparse offers two interfaces for deploying a model, a Python API called DeepSparse Pipelines and a REST API called DeepSparse Server. This gives you the flexibility to embed DeepSparse in an application and to deploy as a model service.
-
-We will walk through an example of each.
+DeepSparse offers two interfaces for deploying a model, a Python API called DeepSparse Pipelines and a REST API called DeepSparse Server. This gives you the flexibility to embed DeepSparse in an application or to deploy DeepSparse as a model service.
 
 ### **DeepSparse Pipelines**
 
-DeepSparse Pipelines wrap model inference with task-specific pre- and post-processing, such that you can pass raw inputs to
-DeepSparse and recieve the post-processed output. For example, in the question answering domain, you can pass raw stings and recieve
-the predicted answer, with DeepSparse handling the tokenization and answer extraction.
+DeepSparse Pipelines wrap model inference with task-specific pre- and post-processing. As a result, you can pass raw stings to a DeepSparse question answering pipeline and recieve the predicted answer, with tokenization and answer extraction handled for you.
 
-Let's take a look at an example in the question answering domain:
-
+Here's an example:
 ```python
 from deepsparse import Pipeline
 
-# downloads model from sparse zoo, compiles
-qa_pipeline = Pipeline.create(task="question_answering", model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none")
+# downloads sparse BERT model from sparse zoo, compiles DeepSparse
+qa_pipeline = Pipeline.create(
+    task="question_answering", 
+    model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none")
 
-## run inference
-prediction = qa_pipeline(question="What is my name?", context="My name is Snorlax")
+# run inference
+prediction = qa_pipeline(
+    question="What is my name?", 
+    context="My name is Snorlax")
 print(prediction)
 # >> score=19.847949981689453 answer='Snorlax' start=11 end=18
 ```
-
-[Check out our documentation](https://docs.neuralmagic.com/use-cases/natural-language-processing/question-answering) to learn 
-how to create a QA model trained on your data and deploy it with DeepSparse.
 
 ### **DeepSparse Server**
 
@@ -75,14 +112,10 @@ Launch the server from the CLI. You should see Uvicorn running at port 5543.
 ```
 deepsparse.server --config-file qa_server_config.yaml
 
-> INFO:     Uvicorn running on http://0.0.0.0:5543 (Press CTRL+C to quit)
+>> Uvicorn running on http://0.0.0.0:5543 (Press CTRL+C to quit)
 ```
 
-Recall that we previously opened port 5543 on your AWS instance to recieve internet traffic. As such,
-we can send a request from your local machine to your model endpoint over the web.
-
-
-From your local machine, run the following, filling in the public IPv4 address of your instance.
+Recall that we previously opened port 5543 on your AWS instance to recieve internet traffic. As such, we can send a request from your local machine to your model endpoint over the web. From your local machine, run the following, filling in the public IPv4 address of your instance.
 
 ```python
 import requests
@@ -103,9 +136,3 @@ print(response.text)
 
 # > {"score":17.623973846435547,"answer":"batman","start":8,"end":14}
 ```
-
-You can find the IPv4 address of your instance 
-
-<p align="center">
-    <img src="deepsparse-ipv4.png" width="100%"/>
-</p>
