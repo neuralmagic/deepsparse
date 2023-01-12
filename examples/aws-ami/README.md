@@ -136,3 +136,7 @@ print(response.text)
 
 # > {"score":17.623973846435547,"answer":"batman","start":8,"end":14}
 ```
+
+## **Next Steps**
+
+Check out [Neural Magic's documentation](https://docs.neuralmagic.com/) for more details on DeepSparse.
