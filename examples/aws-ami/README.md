@@ -1,4 +1,4 @@
-# **Getting Started with DeepSparse**
+# **Getting Started with DeepSparse on AWS EC2**
 
 In this example, we will demonstrate how to benchmark and deploy a question answering model with a DeepSparse AMI.
 
