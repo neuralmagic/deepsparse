@@ -116,11 +116,10 @@ deepsparse.server --config-file qa_server_config.yaml
 
 Recall that we configured the instance to expose port 5543 on your AWS instance to recieve internet traffic. As such, we can send a request to the model endpoint over the web. 
 
-DeepSparse is built on FastAPI, so it has the Swagger UI functionality that enables you to explore the endpoints exposed. Navigate
-to `http://YOUR_INSTANCE_IP:5543/docs` to checkout the exposed endpoints.
+DeepSparse is built on FastAPI, so it has the Swagger UI functionality that enables you to explore the endpoints exposed. In your browser, navigate to `http://YOUR_INSTANCE_IP:5543/docs` to checkout the exposed endpoints.
 
 <p align="center">
-    <img src="deepsparse-server-docs.png" width="70%"/>
+    <img src="deepsparse-server-docs.png" width="80%"/>
 </p>
 
 
@@ -131,7 +130,7 @@ From your local machine, run the following, filling in the public IPv4 address o
 import requests
 
 # fill in your IP address
-ip_address = "YOUR_INSTANCE_PUBLIC_IP" # (e.g. 54.160.166.157)
+ip_address = "YOUR_INSTANCE_PUBLIC_IP" # (e.g. 54.160.40.19)
 endpoint_url = f"http://{ip_address}:5543/predict"
 
 # question answering request
