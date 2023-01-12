@@ -136,11 +136,9 @@ def count_classes_detected(
         and the values are their counts across the batch
     """
     _check_valid_classes(classes)
-    detected_classes = []
-    for sample_idx, sample in enumerate(classes):
-        if sample != [None]:
-            detected_classes += sample
-    counter = Counter(detected_classes)
+    counter = Counter()
+    for detections in classes:
+        counter.update(detections)
     # convert keys to strings if required
     counter = {str(class_label): count for class_label, count in counter.items()}
     return counter
