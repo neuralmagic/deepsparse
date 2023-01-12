@@ -16,12 +16,12 @@ import numpy
 
 import pytest
 from deepsparse.loggers.metric_functions import (
-    count_classes_detected,
-    count_number_objects_detected,
+    detected_classes,
     fraction_zeros,
     image_shape,
     mean_pixels_per_channel,
     mean_score_per_detection,
+    number_detected_objects,
     std_pixels_per_channel,
     std_score_per_detection,
 )
@@ -93,7 +93,7 @@ def test_mean_pixel_per_channel(image, expected_means):
     for mean, expected_mean in zip(result.values(), expected_means):
         numpy.testing.assert_allclose(mean, expected_mean)
     assert list(result.keys()) == [
-        f"mean_channel_{idx}" for idx in range(len(expected_means))
+        f"channel_{idx}" for idx in range(len(expected_means))
     ]
 
 
@@ -112,7 +112,7 @@ def test_std_pixels_per_channel(image, expected_stds):
     for std, expected_std in zip(result.values(), expected_stds):
         numpy.testing.assert_allclose(std, expected_std, atol=1e-16)
     assert list(result.keys()) == [
-        f"std_channel_{idx}" for idx in range(len(expected_stds))
+        f"channel_{idx}" for idx in range(len(expected_stds))
     ]
 
 
@@ -146,8 +146,8 @@ def test_percentage_zeros_per_channel(image, expected_percentage):
 @pytest.mark.parametrize(
     "classes, expected_count_classes, should_raise_error",
     [
-        ([[None], [0, 1, 3], [3, 3, 0]], {"0": 2, "1": 1, "3": 3}, False),
-        ([[None], [None]], {}, False),
+        ([[None], [0, 1, 3], [3, 3, 0]], {"0": 2, "1": 1, "3": 3, "None": 1}, False),
+        ([[None], [None]], {"None": 2}, False),
         (
             [["foo", "bar"], ["foo", "bar", "alice"]],
             {"foo": 2, "bar": 2, "alice": 1},
@@ -155,19 +155,19 @@ def test_percentage_zeros_per_channel(image, expected_percentage):
         ),
         (
             [["foo", "bar"], ["foo", "bar", "alice"], [None]],
-            {"foo": 2, "bar": 2, "alice": 1},
+            {"foo": 2, "bar": 2, "alice": 1, "None": 1},
             False,
         ),
         ([[6.666], [0, 1, 3], [3, 3, 0]], None, True),
         ([[None, None], [0, 1, 3], [3, 3, 0]], None, True),
     ],
 )
-def test_count_classes_detected(classes, expected_count_classes, should_raise_error):
+def test_detected_classes(classes, expected_count_classes, should_raise_error):
     if should_raise_error:
         with pytest.raises(ValueError):
-            count_classes_detected(classes)
+            detected_classes(classes)
         return
-    assert expected_count_classes == count_classes_detected(classes)
+    assert expected_count_classes == detected_classes(classes)
 
 
 @pytest.mark.parametrize(
@@ -179,8 +179,8 @@ def test_count_classes_detected(classes, expected_count_classes, should_raise_er
         ([["foo", "bar"], ["foo", "bar", "alice"], [None]], {"0": 2, "1": 3, "2": 0}),
     ],
 )
-def test_count_number_objects_detected(classes, expected_count_classes):
-    assert expected_count_classes == count_number_objects_detected(classes)
+def test_number_detected_objects(classes, expected_count_classes):
+    assert expected_count_classes == number_detected_objects(classes)
 
 
 @pytest.mark.parametrize(

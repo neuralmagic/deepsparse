@@ -27,8 +27,8 @@ __all__ = [
     "mean_score_per_detection",
     "std_score_per_detection",
     "fraction_zeros",
-    "count_classes_detected",
-    "count_number_objects_detected",
+    "detected_classes",
+    "number_detected_objects",
 ]
 
 
@@ -79,7 +79,7 @@ def mean_pixels_per_channel(
     dims = numpy.arange(0, num_dims, 1)
     dims = numpy.delete(dims, channel_dim)
     means = numpy.mean(img_numpy, axis=tuple(dims))
-    keys = ["mean_channel_{}".format(i) for i in range(len(means))]
+    keys = ["channel_{}".format(i) for i in range(len(means))]
     return dict(zip(keys, means))
 
 
@@ -100,7 +100,7 @@ def std_pixels_per_channel(
     dims = numpy.arange(0, num_dims, 1)
     dims = numpy.delete(dims, channel_dim)
     stds = tuple(numpy.std(img_numpy, axis=tuple(dims)))
-    keys = ["std_channel_{}".format(i) for i in range(len(stds))]
+    keys = ["channel_{}".format(i) for i in range(len(stds))]
     return dict(zip(keys, stds))
 
 
@@ -121,125 +121,132 @@ def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa 
     return (image_numpy.size - numpy.count_nonzero(image_numpy)) / image_numpy.size
 
 
-def count_classes_detected(
-    classes: List[List[Optional[Union[int, str]]]]
+def detected_classes(
+    detected_classes: List[List[Union[int, str, None]]]
 ) -> Dict[str, int]:
     """
     Count the number of unique classes detected in the image batch
 
-    :param classes: A nested list, where:
-        - first level is the batch information
-        - second level is the sample information. Can be
-            either `None` (no detection) or an integer/string
-            representation of the class label
+    :param detected_classes: A nested list, that contains
+        the detected classes for each sample in the batch.
+        Every element of the inner list pertains to one
+        set of detections in the batch. The inner list can
+        either contain a single `None` value (no detection)
+        or a number of integer/string representation of the
+        detected classes.
      :return: Dictionary, where the keys are class labels
         and the values are their counts across the batch
     """
-    _check_valid_classes(classes)
     counter = Counter()
-    for detections in classes:
-        counter.update(detections)
+    for detection in detected_classes:
+        _check_valid_detection(detection)
+        counter.update(detection)
     # convert keys to strings if required
     counter = {str(class_label): count for class_label, count in counter.items()}
     return counter
 
 
-def count_number_objects_detected(
-    classes: List[List[Union[int, str, None]]]
+def number_detected_objects(
+    detected_classes: List[List[Union[int, str, None]]]
 ) -> Dict[str, int]:
     """
-    Count the number of successful detections per image
+    Count the number of successful detections per sample
 
-     :param classes: A nested list, where:
-        - first level is the batch information
-        - second level is the sample information. Can be
-            either `None` (no detection) or an integer/string
-            representation of the class label
+    :param detected_classes: A nested list, that contains
+        the detected classes for each sample in the batch.
+        Every element of the inner list pertains to one
+        set of detections in the batch. The inner list can
+        either contain a single `None` value (no detection)
+        or a number of integer/string representation of the
+        detected classes.
     :return: Dictionary, where the keys are image indices within
         a batch and the values are the number of detected objects per image
+        Example:
+            {"0": 3, # 3 objects detected in the zeroth image
+             "1": 0, # no objects detected in the first image
+             "2": 1  # 1 object detected in the second image
+             ...
+             }
     """
-    _check_valid_classes(classes)
 
-    number_objects_per_batch = {}
-    for sample_idx, sample in enumerate(classes):
-        number_objects_per_batch[str(sample_idx)] = (
-            0 if sample == [None] else len(sample)
+    number_objects_per_image = {}
+    for detection_idx, detection in enumerate(detected_classes):
+        _check_valid_detection(detection)
+        number_objects_per_image[str(detection_idx)] = (
+            0 if detection == [None] else len(detection)
         )
+    return number_objects_per_image
 
-    return number_objects_per_batch
 
-
-def mean_score_per_detection(scores: List[List[Optional[float]]]) -> Dict[str, float]:
+def mean_score_per_detection(
+    scores: List[List[Union[None, float]]]
+) -> Dict[str, float]:
     """
     Return the mean score per detection
 
-    :param scores: A nested list, where:
-        - first level is the batch information
-        - second level is the sample information. Can be
-            either `None` (no detection) or a float score
+    :param scores: A nested list, that contains
+        the detected classes for each sample in the batch.
+        Every element of the inner list pertains to one
+        set of detections in the batch. The inner list can
+        either contain a single `None` value (no detection)
+        or a number of float representation of the
+        score (confidence) of the detected classes.
     :return: Dictionary, where the keys are image indices within
         a batch and the values are the mean score per detection
     """
-    _check_valid_scores(scores)
+    mean_scores_per_image = {}
+    for score_idx, score in enumerate(scores):
+        _check_valid_score(score)
+        mean_scores_per_image[str(score_idx)] = (
+            0.0 if score == [None] else numpy.mean(score)
+        )
 
-    mean_scores_per_batch = {}
-    for sample_idx, sample in enumerate(scores):
-        if sample == [None]:
-            mean_scores_per_batch[str(sample_idx)] = 0.0
-        else:
-            mean_scores_per_batch[str(sample_idx)] = numpy.mean(sample)
-
-    return mean_scores_per_batch
+    return mean_scores_per_image
 
 
 def std_score_per_detection(scores: List[List[Optional[float]]]) -> Dict[str, float]:
     """
     Return the standard deviation of scores per detection
 
-    :param scores: A nested list, where:
-        - first level is the batch information
-        - second level is the sample information. Can be
-            either `None` (no detection) or a float score
+    :param scores: A nested list, that contains
+        the detected classes for each sample in the batch.
+        Every element of the inner list pertains to one
+        set of detections in the batch. The inner list can
+        either contain a single `None` value (no detection)
+        or a number of float representation of the
+        score (confidence) of the detected classes.
     :return: Dictionary, where the keys are image indices within
         a batch and the values are the standard deviation of scores per detection
     """
-    _check_valid_scores(scores)
+    std_scores_per_image = {}
+    for score_idx, score in enumerate(scores):
+        _check_valid_score(score)
+        std_scores_per_image[str(score_idx)] = (
+            0.0 if score == [None] else numpy.std(score)
+        )
 
-    std_scores_per_batch = {}
-    for sample_idx, sample in enumerate(scores):
-        if sample == [None]:
-            std_scores_per_batch[str(sample_idx)] = 0.0
-        else:
-            std_scores_per_batch[str(sample_idx)] = numpy.std(sample)
-
-    return std_scores_per_batch
+    return std_scores_per_image
 
 
-def _check_valid_classes(classes: List[List[Optional[Union[int, str]]]]):
-    for sample in classes:
-        if (
-            all(isinstance(i, int) for i in sample)
-            or all(isinstance(i, str) for i in sample)
-            or sample == [None]
-        ):
-            pass
-        else:
-            raise ValueError(
-                "Detection for a sample must be either a "
-                "list of integers or a list of strings or a list "
-                "with a single `None` value"
-            )
+def _check_valid_detection(detection: List[Union[int, str, None]]):
+    if not (
+        all(isinstance(det, int) for det in detection)
+        or all(isinstance(det, str) for det in detection)
+        or detection == [None]
+    ):
+        raise ValueError(
+            "Detection for a sample must be either a "
+            "list of integers or a list of strings or a list "
+            "with a single `None` value"
+        )
 
 
-def _check_valid_scores(scores: List[List[Optional[float]]]):
-    for sample in scores:
-        if all(isinstance(i, float) for i in sample) or sample == [None]:
-            pass
-        else:
-            raise ValueError(
-                "Scores for a sample must be either a "
-                "list of floats or a list with a single `None` value"
-            )
+def _check_valid_score(score: List[Union[float, None]]):
+    if not (all(isinstance(score_, float) for score_ in score) or score == [None]):
+        raise ValueError(
+            "Scores for a sample must be either a "
+            "list of floats or a list with a single `None` value"
+        )
 
 
 def _check_valid_image(img: numpy.ndarray) -> Tuple[int, int]:

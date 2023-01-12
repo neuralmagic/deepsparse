@@ -14,4 +14,4 @@
 
 # flake8: noqa
 from .built_ins import *
-from .cv import *
+from .computer_vision import *
