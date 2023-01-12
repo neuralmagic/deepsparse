@@ -104,7 +104,7 @@ endpoints:
     model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none
 ```
 
-Download (or create) a config file called `qa_server_config.yaml`
+Download this config file and save it as `qa_server_config.yaml`
 ```
 curl https://raw.githubusercontent.com/neuralmagic/deepsparse/rs/aws-ami-example/examples/aws-ami/qa_server_config.yaml > qa_server_config.yaml
 ```
@@ -116,7 +116,7 @@ deepsparse.server --config-file qa_server_config.yaml
 >> Uvicorn running on http://0.0.0.0:5543 (Press CTRL+C to quit)
 ```
 
-Recall that we previously opened port 5543 on your AWS instance to recieve internet traffic. As such, we can send a request from your local machine to your model endpoint over the web. From your local machine, run the following, filling in the public IPv4 address of your instance.
+Recall that we configured the instance to expose port 5543 on your AWS instance to recieve internet traffic. As such, we can send a request to the model endpoint over the web. From your local machine, run the following, filling in the public IPv4 address of your instance.
 
 ```python
 import requests
