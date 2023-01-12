@@ -44,7 +44,5 @@ class MultiLogger(BaseLogger):
             logger.log(identifier, value, category)
 
     def __str__(self):
-        text = ""
-        for logger in self.loggers:
-            text += "\n" + textwrap.indent(str(logger), prefix="  ")
-        return f"{self.__class__.__name__}:{text}"
+        text = "\n".join([str(logger) for logger in self.loggers])
+        return f"{self.__class__.__name__}:\n{textwrap.indent(text, prefix='  ')}"

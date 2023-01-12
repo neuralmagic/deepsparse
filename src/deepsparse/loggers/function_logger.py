@@ -92,13 +92,21 @@ class FunctionLogger(BaseLogger):
             self._function_call_counter += 1
 
     def __str__(self):
-    def _indent(value):
-      return textwrap.indent(str(value), prefix="  ")
+        def _indent(value):
+            return textwrap.indent(str(value), prefix="  ")
 
-    function_info = (
-        f"target identifier: {self.target_identifier}\n"
-        f"function name: {self.function.__name__}\n"
-        f"frequency: {self.frequency}\n"
-        f"target_logger:\n{_indent(self.logger)}"
-    )
-    return f"{self.__class__.__name__}:\n{_indent(function_info)}"
+        def _shorten(text, max_num_lines=10, placeholder="[...]"):
+            lines = text.split("\n")
+            if len(lines) <= max_num_lines:
+                return text
+            lines_to_keep = lines[:max_num_lines]
+            lines_to_keep.append(placeholder)
+            return "\n".join(lines_to_keep)
+
+        function_info = (
+            f"target identifier: {self.target_identifier}\n"
+            f"function name: {self.function.__name__}\n"
+            f"frequency: {self.frequency}\n"
+            f"target_logger:\n{_indent(self.logger)}"
+        )
+        return f"{self.__class__.__name__}:\n{_indent(_shorten(function_info))}"

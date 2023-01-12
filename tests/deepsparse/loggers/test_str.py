@@ -28,13 +28,13 @@ from deepsparse import (
 from tests.helpers import find_free_port
 
 
-expected_str = """AsyncLogger:
+expected_str_1 = """AsyncLogger:
   MultiLogger:
     FunctionLogger:
       target identifier: some_identifier
       function name: mean
       frequency: 1
-      target_logger: 
+      target_logger:
         MultiLogger:
           PythonLogger
           PythonLogger
@@ -42,7 +42,7 @@ expected_str = """AsyncLogger:
       target identifier: some_identifier_2
       function name: mean
       frequency: 1
-      target_logger: 
+      target_logger:
         MultiLogger:
           PythonLogger
           PrometheusLogger:
@@ -51,11 +51,11 @@ expected_str = """AsyncLogger:
       target identifier: some_identifier_3
       function name: mean
       frequency: 2
-      target_logger: 
+      target_logger:
         PythonLogger"""
 
-port = find_free_port()
-logger = AsyncLogger(
+port_1 = find_free_port()
+logger_1 = AsyncLogger(
     MultiLogger(
         [
             FunctionLogger(
@@ -64,7 +64,7 @@ logger = AsyncLogger(
                 function=np.mean,
             ),
             FunctionLogger(
-                logger=MultiLogger([PythonLogger(), PrometheusLogger(port=port)]),
+                logger=MultiLogger([PythonLogger(), PrometheusLogger(port=port_1)]),
                 target_identifier="some_identifier_2",
                 function=np.mean,
             ),
@@ -78,13 +78,33 @@ logger = AsyncLogger(
     )
 )
 
+expected_str_2 = """FunctionLogger:
+  target identifier: some_identifier
+  function name: mean
+  frequency: 1
+  target_logger:
+    MultiLogger:
+      PythonLogger
+      PythonLogger
+      PythonLogger
+      PythonLogger
+      PythonLogger
+  [...]"""
+
+port_2 = None
+logger_2 = FunctionLogger(
+    logger=MultiLogger([PythonLogger()] * 20),
+    target_identifier="some_identifier",
+    function=np.mean,
+)
+
 
 @pytest.mark.parametrize(
     "expected_str, logger, port",
-    [(expected_str, logger, port)],
+    [(expected_str_1, logger_1, port_1), (expected_str_2, logger_2, port_2)],
 )
 def test_str(expected_str, logger, port):
     """
     Test the __str__ method of the BaseLogger classes
     """
-    assert str(logger) == expected_str.format(port=port)
+    assert str(logger) == expected_str.format(port=port) if port else expected_str

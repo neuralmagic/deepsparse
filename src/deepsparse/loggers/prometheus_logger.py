@@ -17,7 +17,6 @@ Implementation of the Prometheus Logger
 """
 import logging
 import os
-import textwrap
 from collections import defaultdict
 from typing import Any, Optional
 
@@ -105,8 +104,8 @@ class PrometheusLogger(BaseLogger):
         self._export_metrics_to_textfile()
 
     def __str__(self):
-        text = textwrap.indent(f"port: {self.port}", prefix="  ")
-        return f"{self.__class__.__name__}:\n{text}"
+        logger_info = f"  port: {self.port}"
+        return f"{self.__class__.__name__}:\n{logger_info}"
 
     def _export_metrics_to_textfile(self):
         # export the metrics to a text file with
