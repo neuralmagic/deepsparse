@@ -167,8 +167,12 @@ class Pipeline(ABC):
         self.logger = (
             logger
             if isinstance(logger, BaseLogger)
-            else logger_from_config(
-                config=logger, pipeline_identifier=self._identifier()
+            else (
+                logger_from_config(
+                    config=logger, pipeline_identifier=self._identifier()
+                )
+                if isinstance(logger, str)
+                else None
             )
         )
 

@@ -316,10 +316,12 @@ def possibly_modify_target_identifiers(
             # if the target identifier does not already start
             # with the pipeline identifier, call get_target_identifier
             # to prepend it
-            target_identifier = get_target_identifier(
+            new_target_identifier = get_target_identifier(
                 target_identifier, pipeline_identifier
             )
-        data_logging_config[target_identifier] = metric_functions
+            data_logging_config[new_target_identifier] = data_logging_config.pop(
+                target_identifier
+            )
     return data_logging_config
 
 

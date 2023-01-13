@@ -180,7 +180,7 @@ class ServerConfig(BaseModel):
     )
 
     system_logging: ServerSystemLoggingConfig = Field(
-        default_facotry=ServerSystemLoggingConfig,
+        default_factory=ServerSystemLoggingConfig,
         description="A model that holds the system logging configuration. "
         "If not specified explicitly in the yaml config, the "
         "default SystemLoggingConfig model is used.",
