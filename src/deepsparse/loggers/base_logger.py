@@ -37,3 +37,6 @@ class BaseLogger(ABC):
         :param category: The metric category that the log belongs to
         """
         raise NotImplementedError()
+
+    def __str__(self):
+        return f"{self.__class__.__name__}"
