@@ -15,8 +15,9 @@
 """
 Implementation of the Function Logger
 """
-from typing import Any, Callable
 import collections
+from typing import Any, Callable
+
 from deepsparse.loggers import BaseLogger, MetricCategories
 from deepsparse.loggers.helpers import NO_MATCH, finalize_identifier, match_and_extract
 
@@ -80,7 +81,9 @@ class FunctionLogger(BaseLogger):
         if extracted_value != NO_MATCH:
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
-                for value_identifier, mapped_value in _unwrap_possible_dictionary(mapped_value):
+                for value_identifier, mapped_value in _unwrap_possible_dictionary(
+                    mapped_value
+                ):
 
                     identifier = finalize_identifier(
                         identifier=identifier,
@@ -94,7 +97,8 @@ class FunctionLogger(BaseLogger):
                 self._function_call_counter = 0
             self._function_call_counter += 1
 
-def _unwrap_possible_dictionary(d, parent_identifier='', seperator='__'):
+
+def _unwrap_possible_dictionary(d, parent_identifier="", seperator="__"):
     if not isinstance(d, dict):
         yield parent_identifier, d
     else:
@@ -104,6 +108,3 @@ def _unwrap_possible_dictionary(d, parent_identifier='', seperator='__'):
                 yield from _unwrap_possible_dictionary(v, new_key, seperator)
             else:
                 yield new_key, v
-
-
-

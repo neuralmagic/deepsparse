@@ -82,15 +82,32 @@ def test_function_logger(
 
 
 @pytest.mark.parametrize(
-"value, expected_result",
-[
-    (10, set([("",10)])),
-    ({"level_1a": 1, "level_1b": 1}, set([("level_1a", 1), ("level_1b", 1)])),
-    ({"level_1a": {"level_2a": 1, "level_2b": 2}, "level_1b": 2}, set([('level_1a__level_2a', 1), ('level_1a__level_2b', 2), ('level_1b',2)])),
-    ({"level_1a": {"level_2a": 1, "level_2b": 2}, "level_1b": {"level_2a": {"level_3a": 1, "level_3b": 2}}}, set([('level_1a__level_2a',1), ('level_1a__level_2b', 2), ('level_1b__level_2a__level_3a',1), ('level_1b__level_2a__level_3b',2)])),
-]
+    "value, expected_result",
+    [
+        (10, set([("", 10)])),
+        ({"level_1a": 1, "level_1b": 1}, set([("level_1a", 1), ("level_1b", 1)])),
+        (
+            {"level_1a": {"level_2a": 1, "level_2b": 2}, "level_1b": 2},
+            set(
+                [("level_1a__level_2a", 1), ("level_1a__level_2b", 2), ("level_1b", 2)]
+            ),
+        ),
+        (
+            {
+                "level_1a": {"level_2a": 1, "level_2b": 2},
+                "level_1b": {"level_2a": {"level_3a": 1, "level_3b": 2}},
+            },
+            set(
+                [
+                    ("level_1a__level_2a", 1),
+                    ("level_1a__level_2b", 2),
+                    ("level_1b__level_2a__level_3a", 1),
+                    ("level_1b__level_2a__level_3b", 2),
+                ]
+            ),
+        ),
+    ],
 )
 def test_unwrap_possible_dictionary(value, expected_result):
     result = set(result for result in _unwrap_possible_dictionary(value))
     assert result == expected_result
-
