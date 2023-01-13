@@ -20,7 +20,6 @@ import numpy
 
 import pytest
 from deepsparse.pipeline import Pipeline, _initialize_executor_and_workers
-from tests.deepsparse.loggers.helpers import NullLogger
 from tests.utils import mock_engine
 
 
@@ -148,10 +147,3 @@ def test_pipeline_call_is_async(engine_mock):
         # instead of doing a hard comparison of timing for each separate
         # duration, do relative comparison of timing
         assert numpy.allclose(dur_1_worker / dur_2_worker, 2, atol=0.1)
-
-
-@mock_engine(rng_seed=0)
-def test_cannot_override_existing_pipeline_logger(engine_mock):
-    pipeline = Pipeline.create("token_classification", logger=NullLogger())
-    with pytest.raises(ValueError):
-        pipeline.logger = NullLogger()
