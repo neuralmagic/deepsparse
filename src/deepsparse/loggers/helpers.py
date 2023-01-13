@@ -18,6 +18,7 @@ import importlib
 import os.path
 import re
 import warnings
+from difflib import SequenceMatcher
 from types import ModuleType
 from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
@@ -272,16 +273,10 @@ def check_identifier_match(
 
     :param template: A string the in format:
         <string_n-t>/<string_n-t+1)>/<...>/<string_n>(optionally).<remainder>,
-        a regex pattern prefixed by `re:`, or a MetricCategory value prefixed
-        by `category:`
+        a regex pattern prefixed by `re:`
 
     :param identifier: A string in the format:
         <string_n-t>/<string_n-t+1)>/<...>/<string_n>
-        If template and identifier do not share any first
-        <string_n-t+k> components, there is no match.
-
-    Note: if identifier is longer than a template, and both share the
-    first string components, there is a match with no remainder.
 
     :return: A tuple that consists of:
         - a boolean (True if match, False otherwise)
@@ -290,13 +285,38 @@ def check_identifier_match(
     if template[:3] == "re:":
         pattern = template[3:]
         return re.match(pattern, identifier) is not None, None
-    if template == identifier:
-        return True, None
-    if template.startswith(identifier):
-        remainder = template.replace(identifier, "")
-        return True, remainder if remainder.startswith("[") else remainder[1:]
-    if template in identifier:
-        return True, None
+
+    match = SequenceMatcher(None, identifier, template).find_longest_match(
+        0, len(identifier), 0, len(template)
+    )
+    if not match:
+        return False, None
+
+    if match.b == 0:
+        """
+        The template and identifier share common components.
+        There is a potential match.
+        Case: 0) identifier = "foo/bar" and template: "foo/bar"
+            results in match and remainder None
+        Case: 1) identifier: "foo/bar" and template: "foo/bar.baz"
+            results in match and remainder "baz"
+        Case 2) identifier: "foo/bar/alice" and template: "bar"
+            results in match and remainder None
+        """
+        if match.size == len(identifier) == len(template):
+            # case 0)
+            return True, None
+        possible_remainder = (
+            identifier[match.a + match.size :] or template[match.b + match.size :]
+        )
+        if possible_remainder.startswith(".") and match.a == match.b == 0:
+            # case 1)
+            return True, possible_remainder[1:]
+
+        if possible_remainder.startswith("/"):
+            # case 2
+            return True, None
+
     return False, None
 
 

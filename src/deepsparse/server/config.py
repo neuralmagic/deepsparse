@@ -18,13 +18,17 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, Field, validator
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
+from deepsparse.loggers.config import (
+    MetricFunctionConfig,
+    SystemLoggingConfig,
+    SystemLoggingGroup,
+)
 from deepsparse.tasks import SupportedTasks
 
 
 __all__ = [
     "ServerConfig",
     "EndpointConfig",
-    "MetricFunctionConfig",
     "SequenceLengthsConfig",
     "ImageSizesConfig",
 ]
@@ -49,93 +53,18 @@ class ImageSizesConfig(BaseModel):
     )
 
 
-class SystemLoggingGroup(BaseModel):
+class ServerSystemLoggingConfig(SystemLoggingConfig):
     """
-    Holds the configuration for a single system logging group.
-    """
-
-    enable: bool = Field(
-        default=False,
-        description="Whether to enable the system logging group. Defaults to False",
-    )
-
-    target_loggers: List[str] = Field(
-        default=[],
-        description="The list of target loggers to log to. "
-        "If None, logs to all the available loggers",
-    )
-
-
-class SystemLoggingConfig(BaseModel):
-    """
-    Holds the configuration for the system logging
+    Extends the `SystemLoggingConfig` schema to include system group metrics
+    that pertain to the Server.
     """
 
-    # Global Logging Config
-    enable: bool = Field(
-        default=True, description="Whether to enable system logging. Defaults to True"
-    )
-
-    # System Logging Groups
-    resource_utilization: SystemLoggingGroup = Field(
-        default=SystemLoggingGroup(enable=False),
-        description="The configuration group for the resource "
-        "utilization system logging group. For details "
-        "refer to the DeepSparse server system logging "
-        "documentation. By default this group is disabled.",
-    )
-    prediction_latency: SystemLoggingGroup = Field(
-        default=SystemLoggingGroup(enable=True),
-        description="The configuration group for the prediction latency "
-        "system logging group. For details "
-        "refer to the DeepSparse server system logging "
-        "documentation. By default this group is enabled.",
-    )
     request_details: SystemLoggingGroup = Field(
         default=SystemLoggingGroup(enable=False),
         description="The configuration group for the request_details system "
         "logging group. For details refer to the DeepSparse server "
         "system logging documentation. By default this group is disabled.",
     )
-
-
-class MetricFunctionConfig(BaseModel):
-    """
-    Holds logging configuration for a metric function
-    """
-
-    func: str = Field(
-        description="The name that specifies the metric function to be applied. "
-        "It can be: "
-        "1) a built-in function name "
-        "2) a dynamic import function of the form "
-        "'<path_to_the_python_script>:<function_name>' "
-        "3) a framework function (e.g. np.mean or torch.mean)"
-    )
-
-    frequency: int = Field(
-        description="Specifies how often the function should be applied"
-        "(measured in numbers of inference calls).",
-        default=1,
-    )
-
-    target_loggers: List[str] = Field(
-        default=[],
-        description="Overrides the global logger configuration in "
-        "the context of the DeepSparse server. "
-        "If not an empty list, this configuration stops logging data "
-        "to globally specified loggers, and will only use "
-        "the subset of loggers (specified here by a list of their names).",
-    )
-
-    @validator("frequency")
-    def non_zero_frequency(cls, frequency: int) -> int:
-        if frequency <= 0:
-            raise ValueError(
-                f"Passed frequency: {frequency}, but "
-                "frequency must be a positive integer greater equal 1"
-            )
-        return frequency
 
 
 class EndpointConfig(BaseModel):
@@ -250,8 +179,8 @@ class ServerConfig(BaseModel):
         ),
     )
 
-    system_logging: SystemLoggingConfig = Field(
-        default=SystemLoggingConfig(),
+    system_logging: ServerSystemLoggingConfig = Field(
+        default=ServerSystemLoggingConfig(),
         description="A model that holds the system logging configuration. "
         "If not specified explicitly in the yaml config, the "
         "default SystemLoggingConfig model is used.",

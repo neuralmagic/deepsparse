@@ -16,6 +16,7 @@ import math
 import pytest
 from deepsparse import FunctionLogger, Pipeline, PythonLogger
 from deepsparse.loggers.function_logger import _unwrap_possible_dictionary
+from tests.utils import mock_engine
 
 
 def _identity(x):
@@ -47,7 +48,9 @@ def _return_number(x):
         ),
     ],
 )
+@mock_engine(rng_seed=0)
 def test_function_logger(
+    engine_mock,
     capsys,
     identifier,
     function_name,

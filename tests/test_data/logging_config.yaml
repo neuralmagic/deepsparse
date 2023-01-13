@@ -1,0 +1,12 @@
+loggers:
+  list_logger:
+    path: tests/deepsparse/loggers/helpers.py:ListLogger
+system_logging:
+  enable: true
+  prediction_latency:
+    enable: true
+  resource_utilization:
+    enable: true
+data_logging:
+  pipeline_inputs.sequences[0]:
+    - func: identity
