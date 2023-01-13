@@ -31,12 +31,14 @@ from deepsparse.loggers import (
     MultiLogger,
     PrometheusLogger,
     PythonLogger,
+    ALL_IDENTIFIERS
 )
 from deepsparse.loggers.config import (
     MetricFunctionConfig,
     PipelineLoggingConfig,
     SystemLoggingConfig,
     SystemLoggingGroup,
+
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
 
@@ -182,7 +184,7 @@ def get_target_identifier(
     :param pipeline_identifier: Optional pipeline identifier. By default, is None
     :return: Final target identifier
     """
-    if target_name.startswith("re:"):
+    if target_name.startswith("re:") or target_name == ALL_IDENTIFIERS:
         # if target name starts with "re:", it is a regex,
         # and we don't need to add the endpoint name to it
         return target_name
@@ -245,12 +247,28 @@ def build_data_loggers(
     data_loggers = []
     if not data_logging_config:
         return data_loggers
+
     for target_identifier, metric_functions in data_logging_config.items():
-        for metric_function in metric_functions:
-            data_loggers.append(
-                _build_function_logger(metric_function, target_identifier, loggers)
-            )
+        if target_identifier == ALL_IDENTIFIERS:
+            for target_identifier, metric_function in fetch_metric_functions_from_defaults(metric_functions):
+                    data_loggers.append(_build_function_logger(metric_function, target_identifier, loggers))
+        else:
+            for metric_function in metric_functions:
+                data_loggers.append(
+                    _build_function_logger(metric_function, target_identifier, loggers)
+                )
     return data_loggers
+
+def fetch_metric_functions_from_defaults(metric_functions):
+    if len(metric_functions) != 1:
+        raise ValueError()
+    func_name = metric_functions[0].func
+    import deepsparse.loggers.configs as template_configs
+    if not hasattr(template_configs, func_name):
+        raise ValueError(f"Template config {func_name} not found")
+    for identifier, metric_function in getattr(template_configs, func_name).items():
+        yield get_target_identifier(identifier, func_name), MetricFunctionConfig(func=metric_function, frequency = metric_functions[0].frequency, target_loggers = metric_functions[0].target_loggers)
+
 
 
 def build_system_loggers(
@@ -307,6 +325,7 @@ def possibly_modify_target_identifiers(
         the name of the pipeline the logging is being performed for.
     :return: the modified data_logging_config
     """
+
     if not data_logging_config or not pipeline_identifier:
         # if either of the arguments is None, return the original config
         return data_logging_config
@@ -316,10 +335,10 @@ def possibly_modify_target_identifiers(
             # if the target identifier does not already start
             # with the pipeline identifier, call get_target_identifier
             # to prepend it
-            target_identifier = get_target_identifier(
+            new_target_identifier = get_target_identifier(
                 target_identifier, pipeline_identifier
             )
-        data_logging_config[target_identifier] = metric_functions
+            data_logging_config[new_target_identifier] = data_logging_config.pop(target_identifier)
     return data_logging_config
 
 
