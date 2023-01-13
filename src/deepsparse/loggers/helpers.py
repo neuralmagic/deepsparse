@@ -291,13 +291,11 @@ def check_identifier_match(
         """
         The template and identifier share common components.
         There is a potential match.
-        0) identifier = "foo/bar" and template: "foo/bar"
+        Case: 0) identifier = "foo/bar" and template: "foo/bar"
             results in match and remainder None
-        1) identifier: "foo/bar" and template: "foo/bar.baz"
+        Case: 1) identifier: "foo/bar" and template: "foo/bar.baz"
             results in match and remainder "baz"
-        2) identifier: "foo/bar" and template: "bar.baz"
-            results in match and remainder "baz"
-        3) identifier: "foo/bar/alice" and template: "bar"
+        Case 2) identifier: "foo/bar/alice" and template: "bar"
             results in match and remainder None
         """
         if match.size == len(identifier) == len(template):
@@ -306,13 +304,14 @@ def check_identifier_match(
         possible_remainder = (
             identifier[match.a + match.size :] or template[match.b + match.size :]
         )
-        if possible_remainder.startswith("/"):
+        if possible_remainder.startswith(".") and match.a == match.b == 0:
             # case 1)
-            return True, None
-        if possible_remainder.startswith("."):
-            # case 2)
             return True, possible_remainder[1:]
-    # case 3)
+
+        if possible_remainder.startswith("/"):
+            # case 2
+            return True, None
+
     return False, None
 
 

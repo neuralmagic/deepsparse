@@ -51,7 +51,7 @@ def test_get_function_and_function_name(
     "template, identifier,expected_output",
     [
         ("string_1.string_2[1:3]", "string_1", (True, "string_2[1:3]")),
-        ("string_2.string_3", "string_1/string_2", (True, "string_3")),
+        ("string_1/string_2.string_3", "string_1/string_2", (True, "string_3")),
         ("string_2", "string_1/string_2/string_3", (True, None)),
         ("string_1/string_2", "string_1/string_2", (True, None)),
         ("string_1/string_3", "string_1/string_2", (False, None)),

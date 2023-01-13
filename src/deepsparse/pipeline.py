@@ -137,8 +137,11 @@ class Pipeline(ABC):
         synchronous execution - if running in dynamic batch mode a default
         ThreadPoolExecutor with default workers equal to the number of available
         cores / 2
-    :param logger: An optional DeepSparse Logger object for inference logging.
-        Default is None
+    :param logger: An optional item that can be either a DeepSparse Logger object,
+        or an object that can be transformed into one. Those object can be either
+        a path to the logging config, or yaml string representation the logging
+        config. If logger provided (in any form), the pipeline will log inference
+        metrics to the logger. Default is None
     """
 
     def __init__(
@@ -808,9 +811,9 @@ class Pipeline(ABC):
             )
 
     def _identifier(self):
+        # get pipeline identifier; used in the context of logging
         if not hasattr(self, "task"):
             self.task = None
-
         return f"{self.alias or self.task or 'unknown_pipeline'}"
 
 

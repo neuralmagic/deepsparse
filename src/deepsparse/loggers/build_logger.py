@@ -16,6 +16,7 @@
 A general set of functionalities for building complex logger instances to
 be used across the repository.
 """
+
 import importlib
 import logging
 import os
@@ -78,13 +79,16 @@ def default_logger() -> Dict[str, BaseLogger]:
 
 def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogger:
     """
-     Builds a pipeline logger from the appropriate configuration file
-     # TODO: MOAR DOCSTRINGS!
+    Builds a pipeline logger from the appropriate configuration file
 
     :param config: The configuration of the pipeline logger.
-        Is a string that represents:
-         - a string (path to the .yaml file)
-         - a string (yaml string representation of the config)
+        Is a string that represents either:
+            a path to the .yaml file
+            or
+            yaml string representation of the logging config
+        The config file should obey the rules enforced by
+        the PipelineLoggingConfig schema
+    :param pipeline_identifier: An optional identifier of the pipeline
 
     :return: A pipeline logger instance
     """
@@ -124,9 +128,9 @@ def build_logger(
             function loggers, responsible for system logging functionality
             wraps around the appropriate "leaf" loggers.
 
-        Fourth: The resulting loggers are wrapped inside a MultiLogger.
-            Finally, the resulting MultiLogger is wrapped inside an AsyncLogger
-            to ensure that the logging process is asynchronous.
+        Fourth: The resulting data and system loggers are wrapped inside a
+            MultiLogger. Finally, the MultiLogger is wrapped inside
+            an AsyncLogger to ensure that the logging process is asynchronous.
 
     For example:
 
@@ -183,6 +187,8 @@ def get_target_identifier(
         # and we don't need to add the endpoint name to it
         return target_name
     if pipeline_identifier:
+        # if pipeline_identifier specified,
+        # prepend it to the target name
         return f"{pipeline_identifier}/{target_name}"
     return target_name
 
@@ -287,6 +293,36 @@ def build_system_loggers(
     return system_loggers
 
 
+def possibly_modify_target_identifiers(
+    data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
+    pipeline_identifier: str = None,
+) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
+    """
+    Modify the target identifiers in the data logging config, given
+    the specified pipeline identifier.
+
+    :param data_logging_config: The configuration of the data loggers.
+        Specified as a dictionary that maps a target name to a list of metric functions.
+    :param pipeline_identifier: An optional string, that specifies
+        the name of the pipeline the logging is being performed for.
+    :return: the modified data_logging_config
+    """
+    if not data_logging_config or not pipeline_identifier:
+        # if either of the arguments is None, return the original config
+        return data_logging_config
+
+    for target_identifier, metric_functions in data_logging_config.copy().items():
+        if not target_identifier.startswith(pipeline_identifier):
+            # if the target identifier does not already start
+            # with the pipeline identifier, call get_target_identifier
+            # to prepend it
+            target_identifier = get_target_identifier(
+                target_identifier, pipeline_identifier
+            )
+        data_logging_config[target_identifier] = metric_functions
+    return data_logging_config
+
+
 def _build_function_logger(
     metric_function_cfg: MetricFunctionConfig,
     target_identifier: str,
@@ -326,19 +362,3 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
             f"Got {type(logger)} instead."
         )
     return logger
-
-
-def possibly_modify_target_identifiers(
-    data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
-    pipeline_identifier: str = None,
-):
-    if not data_logging_config or not pipeline_identifier:
-        return data_logging_config
-    new_data_logging_config = {}
-    for target_identifier, metric_functions in data_logging_config.items():
-        if target_identifier.startswith(pipeline_identifier):
-            target_identifier = get_target_identifier(
-                target_identifier, pipeline_identifier
-            )
-        new_data_logging_config[target_identifier] = metric_functions
-    return new_data_logging_config

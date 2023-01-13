@@ -26,7 +26,20 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     """
     Builds a DeepSparse Server logger from the ServerConfig.
 
-    :param config: the Server configuration model
+    :param config: the Server configuration model.
+        This configuration by default contains three fields relevant
+        for the instantiation of a Server logger:
+            - ServerConfig.loggers: this is a configuration of the
+            "leaf" loggers (that log information to the end destination)
+            that will be used by the Server logger
+        - ServerConfig.data_logging: this is a configuration of
+            the function loggers, responsible for system logging
+            functionality. If present, those function logger wrap
+            around the appropriate "leaf" loggers.
+        - ServerConfig.endpoints: this is a configuration of the
+            endpoints that the Server will serve. Each endpoint
+            can have its own data_logging configuration, which
+            will be merged parsed out by the logic of this function
     :return: a DeepSparse logger instance
     """
 
@@ -39,12 +52,12 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
 
 def _extract_data_logging_from_endpoints(
     endpoints: List[EndpointConfig],
-) -> Optional[Dict[str, List[MetricFunctionConfig]]]:  # noqa F821
+) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
     data_logging = {}
     for endpoint in endpoints:
         if endpoint.data_logging is None:
             continue
-        for target, metric_functions in endpoint.data_logging.copy().items():
+        for target, metric_functions in endpoint.data_logging.items():
             # if needed, get the new target identifier from
             # the target and the endpoint name
             new_target = get_target_identifier(

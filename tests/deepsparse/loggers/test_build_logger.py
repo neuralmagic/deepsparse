@@ -107,7 +107,7 @@ data_logging:
     ],
 )
 @mock_engine(rng_seed=0)
-def test_add_logger_to_pipeline(
+def test_logger_from_config(
     engine_mock, yaml_config, raises_error, default_logger, num_function_loggers
 ):
     if raises_error:

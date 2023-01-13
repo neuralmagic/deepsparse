@@ -14,11 +14,8 @@
 
 import time
 
-import yaml
-
 import pytest
 from deepsparse import Pipeline, logger_from_config
-from deepsparse.loggers.config import PipelineLoggingConfig
 from tests.utils import mock_engine
 
 
@@ -33,20 +30,28 @@ YAML_CONFIG = """
         resource_utilization:
             enable: true
     data_logging:
-        pipeline_inputs.sequences[0]:
+        {possible_pipeline_name}pipeline_inputs.sequences[0]:
             - func: identity"""
 
-PIPELINE_LOGGING_CONFIG = PipelineLoggingConfig(**yaml.safe_load(YAML_CONFIG))
+
 PATH = "tests/test_data/logging_config.yaml"
+LOGGER = logger_from_config(
+    YAML_CONFIG.format(possible_pipeline_name="text_classification/")
+)
 
 
-@pytest.mark.parametrize("config", [YAML_CONFIG, PIPELINE_LOGGING_CONFIG, PATH])
+@pytest.mark.parametrize(
+    "config",
+    [
+        YAML_CONFIG.format(possible_pipeline_name=""),
+        YAML_CONFIG.format(possible_pipeline_name="text_classification/"),
+        PATH,
+        LOGGER,
+    ],
+)
 @mock_engine(rng_seed=0)
 def test_end_to_end(mock_engine, config):
-    logger = logger_from_config(config)
-
-    pipeline = Pipeline.create("text_classification", logger=logger)
-
+    pipeline = Pipeline.create("text_classification", logger=config)
     for i in range(10):
         pipeline("today is great")
 
