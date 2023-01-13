@@ -15,7 +15,6 @@
 """
 Implementation of the Function Logger
 """
-import collections
 from typing import Any, Callable
 
 from deepsparse.loggers import BaseLogger, MetricCategories
@@ -81,30 +80,12 @@ class FunctionLogger(BaseLogger):
         if extracted_value != NO_MATCH:
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
-                for value_identifier, mapped_value in _unwrap_possible_dictionary(
-                    mapped_value
-                ):
-
-                    identifier = finalize_identifier(
-                        identifier=identifier,
-                        category=category,
-                        function_name=self.function_name,
-                        value_identifier=value_identifier,
-                        remainder=remainder,
-                    )
-
-                self.logger.log(identifier=identifier, value=value, category=category)
+                self.logger.log(
+                    identifier=finalize_identifier(
+                        identifier, category, self.function_name, remainder
+                    ),
+                    value=mapped_value,
+                    category=category,
+                )
                 self._function_call_counter = 0
             self._function_call_counter += 1
-
-
-def _unwrap_possible_dictionary(d, parent_identifier="", seperator="__"):
-    if not isinstance(d, dict):
-        yield parent_identifier, d
-    else:
-        for k, v in d.items():
-            new_key = parent_identifier + seperator + k if parent_identifier else k
-            if isinstance(v, collections.MutableMapping):
-                yield from _unwrap_possible_dictionary(v, new_key, seperator)
-            else:
-                yield new_key, v

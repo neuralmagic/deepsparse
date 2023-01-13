@@ -247,7 +247,20 @@ def build_data_loggers(
     if not data_logging_config:
         return data_loggers
     for target_identifier, metric_functions in data_logging_config.items():
+
         if target_identifier.endswith(ALL_IDENTIFIERS):
+            """
+            So at this point, we are iterating over target_identifiers and metric functions.
+            If we encounter:
+                target_identifier = "{pipeline_name}/__all___"
+            we would also expect to encounter encounter:
+                metric_function: BaseModel with fields:
+                    func: {name_of_the_compound_metric_function}
+                    frequency: ...
+                    target_loggers: ...
+            If this is the case, we enter the `data_logging_config_from_defaults` function that takes
+            as args metric_functions and prefix = {pipeline_name}
+            """
             for target_identifier, metric_function in data_logging_config_from_defaults(
                 metric_functions=metric_functions,
                 prefix=target_identifier[: -len(ALL_IDENTIFIERS)],
@@ -338,22 +351,27 @@ def possibly_modify_target_identifiers(
 def data_logging_config_from_defaults(
     metric_functions: List[MetricFunctionConfig], prefix: str = ""
 ) -> Generator[Tuple[str, MetricFunctionConfig], None, None]:
+    # import module with template configs (let's disregard its placement
+    # and naming for now
     import deepsparse.loggers.configs as template_configs
 
     if len(metric_functions) != 1:
         raise ValueError(
             "Only one metric function is allowed when using the default data logging configuration"
         )
-    default_config_name = metric_functions[0].func
+    default_config_name = metric_functions[
+        0
+    ].func  # fetch the compound_metric_function name
     if not hasattr(template_configs, default_config_name):
         raise ValueError(f"Default config: {default_config_name} not found")
-    for identifier, metric_function in getattr(
-        template_configs, default_config_name
-    ).items():
+    # iterate over the dictionary of default configs
+    for identifier, func in getattr(template_configs, default_config_name).items():
+        # new identifier is the prefix + the identifier from the default config (clean)
+        # new MetricFunctionConfig is the same as the original, but with the func replaced
         yield get_target_identifier(
             target_name=identifier, pipeline_identifier=prefix
         ), MetricFunctionConfig(
-            func=metric_function,
+            func=func,
             frequency=metric_functions[0].frequency,
             target_loggers=metric_functions[0].target_loggers,
         )
