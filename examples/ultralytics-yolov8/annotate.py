@@ -22,8 +22,8 @@ Examples:
 4) python annotate.py --model_filepath yolov8n.onnx --source PATH/TO/IMAGE_DIR
 """
 import logging
-from typing import List, Optional
 import os
+from typing import List, Optional
 
 import click
 import numpy
