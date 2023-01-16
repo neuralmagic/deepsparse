@@ -36,12 +36,7 @@ def percent_unknown_tokens():
     pass
 
 
-def answer_found(qa_output: BaseModel) -> bool:
-    pass
 
-
-def answer_length(qa_output: BaseModel) -> str:
-    return len(qa_output.answer)
 
 
 def answer_score(qa_output: BaseModel) -> float:

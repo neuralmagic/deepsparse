@@ -12,7 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-from .built_ins import *
-from .computer_vision import *
-from .natural_language_processing import *
+from deepsparse.loggers.metric_functions.natural_language_processing import sequence_length
+
+
+def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:
+    pass
+
+def answer_length(qa_output: "QuestionAnsweringOutput") -> int:
+    """
+    Returns the length of the answer
+    :param qa_output: The output schema of the question answering pipeline
+    :return: The length of the answer
+    """
+    return sequence_length(qa_output.answer)
+
+def answer_score(qa_output: "QuestionAnsweringOutput") -> float:
+    return qa_output.score

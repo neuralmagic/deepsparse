@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import numpy
 
-import deepsparse.loggers.metric_functions.built_ins as built_ins
+import deepsparse.loggers.metric_functions as built_ins
 from deepsparse.loggers import MetricCategories
 
 

@@ -15,7 +15,8 @@
 """
 Implementation of the Function Logger
 """
-from typing import Any, Callable, Dict, Optional, Union
+import textwrap
+from typing import Any, Callable
 
 from deepsparse.loggers import BaseLogger, MetricCategories
 from deepsparse.loggers.helpers import NO_MATCH, finalize_identifier, match_and_extract
@@ -80,38 +81,32 @@ class FunctionLogger(BaseLogger):
         if extracted_value != NO_MATCH:
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
-                self._log_mapped_value(
-                    mapped_value=mapped_value,
-                    identifier=identifier,
+                self.logger.log(
+                    identifier=finalize_identifier(
+                        identifier, category, self.function_name, remainder
+                    ),
+                    value=mapped_value,
                     category=category,
-                    function_name=self.function_name,
-                    remainder=remainder,
                 )
                 self._function_call_counter = 0
             self._function_call_counter += 1
 
-    def _log_mapped_value(
-        self,
-        mapped_value: Union[int, float, Dict[str, Union[int, float]]],
-        identifier: str,
-        category: MetricCategories,
-        function_name: str,
-        remainder: Optional[str] = None,
-    ):
+    def __str__(self):
+        def _indent(value):
+            return textwrap.indent(str(value), prefix="  ")
 
-        value_identifiers, mapped_values = [""], [mapped_value]
+        def _shorten(text, max_num_lines=10, placeholder="[...]"):
+            lines = text.split("\n")
+            if len(lines) <= max_num_lines:
+                return text
+            lines_to_keep = lines[:max_num_lines]
+            lines_to_keep.append(placeholder)
+            return "\n".join(lines_to_keep)
 
-        if isinstance(mapped_value, dict):
-            value_identifiers = list(mapped_value.keys())
-            mapped_values = list(mapped_value.values())
-
-        for value_identifier, value in zip(value_identifiers, mapped_values):
-            identifier = finalize_identifier(
-                identifier=identifier,
-                category=category,
-                function_name=function_name,
-                value_identifier=value_identifier,
-                remainder=remainder,
-            )
-
-            self.logger.log(identifier=identifier, value=value, category=category)
+        function_info = (
+            f"target identifier: {self.target_identifier}\n"
+            f"function name: {self.function.__name__}\n"
+            f"frequency: {self.frequency}\n"
+            f"target_logger:\n{_indent(self.logger)}"
+        )
+        return f"{self.__class__.__name__}:\n{_indent(_shorten(function_info))}"
