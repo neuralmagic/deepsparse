@@ -13,10 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.metric_functions.natural_language_processing import (
-    answer_length,
-    answer_score,
-)
+from deepsparse.loggers.metric_functions import answer_length, answer_score
 from deepsparse.transformers.pipelines.question_answering import QuestionAnsweringOutput
 
 

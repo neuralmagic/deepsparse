@@ -14,16 +14,20 @@
 """
 Set of functions for logging metrics from the question answering pipeline
 """
+
 from deepsparse.loggers.metric_functions.natural_language_processing import (
     sequence_length,
 )
 
 
-def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:
+__all__ = ["answer_found", "answer_length", "answer_score"]
+
+
+def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:  # noqa: F821
     raise NotImplementedError()
 
 
-def answer_length(qa_output: "QuestionAnsweringOutput") -> int:
+def answer_length(qa_output: "QuestionAnsweringOutput") -> int:  # noqa: F821
     """
     Returns the length of the answer given the QuestionAnsweringOutput
 
@@ -33,9 +37,10 @@ def answer_length(qa_output: "QuestionAnsweringOutput") -> int:
     return sequence_length(qa_output.answer)
 
 
-def answer_score(qa_output: "QuestionAnsweringOutput") -> float:
+def answer_score(qa_output: "QuestionAnsweringOutput") -> float:  # noqa: F821
     """
     Returns the score of the answer given the QuestionAnsweringOutput
+
     :param qa_output: The output schema of the question answering pipeline
     :return: The score of the answer
     """

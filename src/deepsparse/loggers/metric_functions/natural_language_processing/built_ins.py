@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""
+Set of functions for logging metrics from the natural language processing pipelines
+"""
 from typing import Dict, List, Union
 
-from pydantic import BaseModel
 
-
-__all__ = ["sequence_length"]
+__all__ = ["sequence_length", "percent_unknown_tokens"]
 
 
 def sequence_length(sequence: Union[List[str], str]) -> Union[Dict[str, int], int]:

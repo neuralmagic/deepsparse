@@ -13,10 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.metric_functions.natural_language_processing import (
-    mean_score,
-    percent_zero_labels,
-)
+from deepsparse.loggers.metric_functions import mean_score, percent_zero_labels
 from deepsparse.transformers.pipelines.token_classification import (
     TokenClassificationOutput,
     TokenClassificationResult,
@@ -59,7 +56,7 @@ def test_percent_zero_labels(schema, expected_percent):
         )
     ],
 )
-def test_percent_zero_labels(schema, expected_score):
+def test_mean_score(schema, expected_score):
     result = mean_score(schema)
     keys1, values1 = set(expected_score.keys()), set(expected_score.values())
     keys2, values2 = set(result.keys()), set(result.values())

@@ -11,14 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""
+Set of functions for logging metrics from the token classification pipeline
+"""
 from typing import Dict, List
 
 import numpy
 
 
+__all__ = ["mean_score", "percent_zero_labels"]
+
+
 def percent_zero_labels(
-    token_classification_output: "TokenClassificationOutput",
+    token_classification_output: "TokenClassificationOutput",  # noqa: F821
 ) -> Dict[str, float]:
     """
     Returns the percentage of zero labels in the token classification output
@@ -36,7 +41,7 @@ def percent_zero_labels(
 
 
 def mean_score(
-    token_classification_output: "TokenClassificationOutput",
+    token_classification_output: "TokenClassificationOutput",  # noqa: F821
 ) -> Dict[str, float]:
     """
     Returns the mean score of the token classification output
@@ -54,13 +59,13 @@ def mean_score(
 
 
 def _mean_score(
-    token_classification_output: List["TokenClassificationResult"],
+    token_classification_output: List["TokenClassificationResult"],  # noqa: F821
 ) -> float:
     return numpy.mean([result.score for result in token_classification_output])
 
 
 def _percent_zero_labels(
-    token_classification_output: List["TokenClassificationResult"],
+    token_classification_output: List["TokenClassificationResult"],  # noqa: F821
 ) -> float:
     label_zero = "LABEL_0"
     all_results = len(token_classification_output)
