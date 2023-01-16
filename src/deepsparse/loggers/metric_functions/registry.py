@@ -18,7 +18,10 @@ set of relevant built-in functions
 from collections import defaultdict
 
 
-_FUNCTIONS_REGISTRY = defaultdict(lambda: defaultdict(str))
+__all__ = ["DATA_LOGGING_REGISTRY", "register"]
+
+
+DATA_LOGGING_REGISTRY = defaultdict(lambda: defaultdict(str))
 
 
 def register(task: str, identifier: str):
@@ -43,14 +46,14 @@ def register(task: str, identifier: str):
 
     def decorator(f):
         identifier_registry = None
-        task_registry = _FUNCTIONS_REGISTRY.get(task)
+        task_registry = DATA_LOGGING_REGISTRY.get(task)
         if task_registry:
             identifier_registry = task_registry.get(identifier)
         # add the built-in function to the registry
         if identifier_registry and task_registry:
-            _FUNCTIONS_REGISTRY[task][identifier].append(f.__name__)
+            DATA_LOGGING_REGISTRY[task][identifier].append(f.__name__)
         else:
-            _FUNCTIONS_REGISTRY[task][identifier] = [f.__name__]
+            DATA_LOGGING_REGISTRY[task][identifier] = [f.__name__]
         return f
 
     return decorator

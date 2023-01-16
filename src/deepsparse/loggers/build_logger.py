@@ -39,7 +39,7 @@ from deepsparse.loggers.config import (
     SystemLoggingGroup,
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.loggers.metric_functions import _FUNCTIONS_REGISTRY
+from deepsparse.loggers.metric_functions import DATA_LOGGING_REGISTRY
 
 
 __all__ = [
@@ -99,17 +99,15 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
     config = yaml.safe_load(config)
     config = PipelineLoggingConfig(**config)
 
+    data_logging_config = config.data_logging
     if isinstance(config.data_logging, list):
-        data_logging_config = data_logging_config_from_predefined(config.data_logging)
-    else:
-        data_logging_config = possibly_modify_target_identifiers(
-            config.data_logging, pipeline_identifier
-        )
-
+        data_logging_config = data_logging_config_from_predefined(data_logging_config)
     logger = build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
-        data_logging_config=data_logging_config,
+        data_logging_config=possibly_modify_target_identifiers(
+            data_logging_config, pipeline_identifier
+        ),
     )
     return logger
 
@@ -361,14 +359,14 @@ def data_logging_config_from_predefined(
     predefined_compound_func = data_logging_config[0].func
     # TODO: Could add some logic for more robust checking of the template function name
     # e.g. making sure that "image_classification" == "image-classification"
-    if predefined_compound_func not in _FUNCTIONS_REGISTRY:
+    if predefined_compound_func not in DATA_LOGGING_REGISTRY:
         raise ValueError(
             f"Specified the function name {predefined_compound_func}. "
             f"However, it is not present in the registry of predefined "
-            f"configurations: {_FUNCTIONS_REGISTRY.keys()}"
+            f"configurations: {DATA_LOGGING_REGISTRY.keys()}"
         )
 
-    for identifier, function_names in _FUNCTIONS_REGISTRY[
+    for identifier, function_names in DATA_LOGGING_REGISTRY[
         predefined_compound_func
     ].items():
         metric_functions = [
