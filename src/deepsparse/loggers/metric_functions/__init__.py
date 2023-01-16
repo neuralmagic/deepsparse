@@ -13,5 +13,11 @@
 # limitations under the License.
 
 # flake8: noqa
+# isort: skip_file
+
+# registry function
+from .registry import *
+
+# a set of functions for logging metrics
 from .built_ins import *
 from .computer_vision import *

@@ -129,7 +129,9 @@ class PipelineLoggingConfig(BaseModel):
         "default SystemLoggingConfig model is used.",
     )
 
-    data_logging: Optional[Union[Dict[str, List[MetricFunctionConfig]],List[MetricFunctionConfig]]] = Field(
+    data_logging: Optional[
+        Union[Dict[str, List[MetricFunctionConfig]], List[MetricFunctionConfig]]
+    ] = Field(
         default=None,
         description="Specifies the rules for the data logging. "
         "It relates a key (name of the logging target) "

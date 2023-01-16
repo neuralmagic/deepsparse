@@ -14,7 +14,12 @@
 
 from typing import Dict, List, Optional
 
-from deepsparse import BaseLogger, build_logger, get_target_identifier
+from deepsparse import (
+    BaseLogger,
+    build_logger,
+    data_logging_config_from_template,
+    get_target_identifier,
+)
 from deepsparse.loggers.config import MetricFunctionConfig
 from deepsparse.server.config import EndpointConfig, ServerConfig
 
@@ -42,8 +47,6 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
             will be merged parsed out by the logic of this function
     :return: a DeepSparse logger instance
     """
-    if isinstance(config.data_logging_config, list):
-        data_logging_config = data_logging_config_from_template(config.data_logging_config)
     return build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
@@ -58,7 +61,12 @@ def _extract_data_logging_from_endpoints(
     for endpoint in endpoints:
         if endpoint.data_logging is None:
             continue
-        for target, metric_functions in endpoint.data_logging.items():
+        data_logging_config = endpoint.data_logging_config
+        if isinstance(data_logging_config, list):
+            # if data_logging_config is a list, we attempt
+            # to load template data logging functions
+            data_logging_config = data_logging_config_from_template(data_logging_config)
+        for target, metric_functions in data_logging_config.items():
             # if needed, get the new target identifier from
             # the target and the endpoint name
             new_target = get_target_identifier(

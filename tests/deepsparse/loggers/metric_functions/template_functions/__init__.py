@@ -11,25 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import pytest
-from deepsparse import Pipeline
-from tests.utils import mock_engine
-
-
-yaml_config = """
-loggers:
-    python:
-data_logging:
-    - func: image_classification
-      frequency: 1"""
-
-
-@pytest.mark.parametrize(
-    "config",
-    [yaml_config],
-)
-@mock_engine(rng_seed=0)
-def test_end_to_end(mock_engine, config):
-    pipeline = Pipeline.create("image_classification", logger=config)
-    pipeline

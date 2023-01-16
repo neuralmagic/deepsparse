@@ -16,8 +16,10 @@ The set of all the built-in metric functions
 """
 from collections import Counter
 from typing import Dict, List, Optional, Tuple, Union
-from deepsparse.loggers.metric_functions.logging_registry import register
+
 import numpy
+
+from deepsparse.loggers.metric_functions import register
 
 
 __all__ = [
@@ -31,15 +33,16 @@ __all__ = [
     "number_detected_objects",
 ]
 
-pass
+
 @register(task="image_classification", identifier="pipeline_inputs.images")
 def image_shape(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, int]:
     """
     Return the shape of the image.
 
-    :param img: An image represented as a numpy array or a torch tensor.
+    :param img: An image represented as a
+        numpy array/list of numpy arrays/or a torch tensor.
         Assumptions:
             - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
               tensor/array
@@ -104,6 +107,7 @@ def std_pixels_per_channel(
     stds = tuple(numpy.std(img_numpy, axis=tuple(dims)))
     keys = ["channel_{}".format(i) for i in range(len(stds))]
     return dict(zip(keys, stds))
+
 
 @register(task="image_classification", identifier="pipeline_inputs.images")
 def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa F821
@@ -277,5 +281,6 @@ def _assert_numpy_image(
 ) -> numpy.ndarray:
     if hasattr(img, "numpy"):
         img = img.numpy()
+    if isinstance(img, list):
+        img = numpy.stack(img)
     return img
-

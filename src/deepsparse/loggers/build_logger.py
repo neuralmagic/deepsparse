@@ -20,7 +20,7 @@ be used across the repository.
 import importlib
 import logging
 import os
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type
 
 import yaml
 
@@ -39,7 +39,8 @@ from deepsparse.loggers.config import (
     SystemLoggingGroup,
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.loggers.metric_functions.logging_registry import _FUNCTIONS_REGISTRY
+from deepsparse.loggers.metric_functions import _FUNCTIONS_REGISTRY
+
 
 __all__ = [
     "custom_logger_from_identifier",
@@ -98,14 +99,16 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
     config = PipelineLoggingConfig(**config)
 
     if isinstance(config.data_logging, list):
-        config.data_logging = data_logging_config_from_template(config.data_logging)
+        data_logging_config = data_logging_config_from_template(config.data_logging)
+    else:
+        data_logging_config = possibly_modify_target_identifiers(
+            config.data_logging, pipeline_identifier
+        )
 
     logger = build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
-        data_logging_config=possibly_modify_target_identifiers(
-            config.data_logging, pipeline_identifier
-        ),
+        data_logging_config=data_logging_config,
     )
     return logger
 
@@ -298,7 +301,7 @@ def build_system_loggers(
 
 
 def possibly_modify_target_identifiers(
-    data_logging_config:  Optional[Dict[str, List[MetricFunctionConfig]]] = None,
+    data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
     pipeline_identifier: str = None,
 ) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
     """
@@ -328,21 +331,49 @@ def possibly_modify_target_identifiers(
             )
     return data_logging_config
 
-def data_logging_config_from_template(data_logging_config: List[MetricFunctionConfig]) -> Dict[str, List[MetricFunctionConfig]]:
+
+def data_logging_config_from_template(
+    data_logging_config: List[MetricFunctionConfig],
+) -> Dict[str, List[MetricFunctionConfig]]:
+    """
+    Given a single MetricFunctionConfig object, parse out the
+    actual data_logging_config, that will be fetched from the
+    registry of template functions.
+
+    :param data_logging_config: A list of MetricFunctionConfig objects,
+        that specify the data logging configuration.The list should be of length one
+        (contain a single MetricFunctionConfig with the template function information)
+    :return: The actual data logging configuration, that will be used to
+        instantiate the data loggers
+    """
     new_data_logging_config = {}
 
     if len(data_logging_config) != 1:
-        raise ValueError()
+        raise ValueError(
+            "If a template is specified, the data_logging_config "
+            "should be a list containing a single MetricFunctionConfig object"
+        )
     template_function_name = data_logging_config[0].func
-    # add identifier mangling
+    # TODO: Could add some logic for more robust checking of the template function name
+    # e.g. making sure that "image_classification" == "image-classification"
     if template_function_name not in _FUNCTIONS_REGISTRY:
-        raise ValueError()
+        raise ValueError(
+            f"Specified the template function name {template_function_name}. "
+            f"However, it is not present in the registry of template "
+            f"functions: {_FUNCTIONS_REGISTRY.keys()}"
+        )
 
-    for identifier, function_names in _FUNCTIONS_REGISTRY[template_function_name].items():
-        metric_functions = [MetricFunctionConfig(func=func_name,
-                                                 frequency=data_logging_config[0].frequency,
-                                                 target_loggers=data_logging_config[0].target_loggers)
-                            for func_name in function_names]
+    for identifier, function_names in _FUNCTIONS_REGISTRY[
+        template_function_name
+    ].items():
+        metric_functions = [
+            MetricFunctionConfig(
+                func=func_name,
+                frequency=data_logging_config[0].frequency,
+                target_loggers=data_logging_config[0].target_loggers,
+            )
+            for func_name in function_names
+        ]
         new_data_logging_config[identifier] = metric_functions
     return new_data_logging_config
 
