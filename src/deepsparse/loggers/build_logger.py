@@ -344,8 +344,9 @@ def data_logging_config_from_predefined(
     and identifiers that will be retrieved from the registry to
     build a new data_logging_config.
 
-    :param data_logging_config: A list of MetricFunctionConfig objects (of length 1),
-        that specify the data logging configuration.
+    :param data_logging_config: A list containing a single
+        MetricFunctionConfig object that specifies the
+        data logging configuration.
     :return: The actual data logging configuration, that will be used to
         instantiate the data loggers
     """
