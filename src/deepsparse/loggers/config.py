@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, validator
 
@@ -129,7 +129,7 @@ class PipelineLoggingConfig(BaseModel):
         "default SystemLoggingConfig model is used.",
     )
 
-    data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(
+    data_logging: Optional[Union[Dict[str, List[MetricFunctionConfig]],List[MetricFunctionConfig]]] = Field(
         default=None,
         description="Specifies the rules for the data logging. "
         "It relates a key (name of the logging target) "

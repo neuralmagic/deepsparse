@@ -20,12 +20,11 @@ be used across the repository.
 import importlib
 import logging
 import os
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
 import yaml
 
 from deepsparse.loggers import (
-    ALL_IDENTIFIERS,
     AsyncLogger,
     BaseLogger,
     FunctionLogger,
@@ -40,7 +39,7 @@ from deepsparse.loggers.config import (
     SystemLoggingGroup,
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
-
+from deepsparse.loggers.metric_functions.logging_registry import _FUNCTIONS_REGISTRY
 
 __all__ = [
     "custom_logger_from_identifier",
@@ -97,6 +96,9 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
         config = open(config)
     config = yaml.safe_load(config)
     config = PipelineLoggingConfig(**config)
+
+    if isinstance(config.data_logging, list):
+        config.data_logging = data_logging_config_from_template(config.data_logging)
 
     logger = build_logger(
         system_logging_config=config.system_logging,
@@ -246,33 +248,12 @@ def build_data_loggers(
     data_loggers = []
     if not data_logging_config:
         return data_loggers
-    for target_identifier, metric_functions in data_logging_config.items():
 
-        if target_identifier.endswith(ALL_IDENTIFIERS):
-            """
-            So at this point, we are iterating over target_identifiers and metric functions.
-            If we encounter:
-                target_identifier = "{pipeline_name}/__all___"
-            we would also expect to encounter encounter:
-                metric_function: BaseModel with fields:
-                    func: {name_of_the_compound_metric_function}
-                    frequency: ...
-                    target_loggers: ...
-            If this is the case, we enter the `data_logging_config_from_defaults` function that takes
-            as args metric_functions and prefix = {pipeline_name}
-            """
-            for target_identifier, metric_function in data_logging_config_from_defaults(
-                metric_functions=metric_functions,
-                prefix=target_identifier[: -len(ALL_IDENTIFIERS)],
-            ):
-                data_loggers.append(
-                    _build_function_logger(metric_function, target_identifier, loggers)
-                )
-        else:
-            for metric_function in metric_functions:
-                data_loggers.append(
-                    _build_function_logger(metric_function, target_identifier, loggers)
-                )
+    for target_identifier, metric_functions in data_logging_config.items():
+        for metric_function in metric_functions:
+            data_loggers.append(
+                _build_function_logger(metric_function, target_identifier, loggers)
+            )
     return data_loggers
 
 
@@ -317,7 +298,7 @@ def build_system_loggers(
 
 
 def possibly_modify_target_identifiers(
-    data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
+    data_logging_config:  Optional[Dict[str, List[MetricFunctionConfig]]] = None,
     pipeline_identifier: str = None,
 ) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
     """
@@ -347,34 +328,23 @@ def possibly_modify_target_identifiers(
             )
     return data_logging_config
 
+def data_logging_config_from_template(data_logging_config: List[MetricFunctionConfig]) -> Dict[str, List[MetricFunctionConfig]]:
+    new_data_logging_config = {}
 
-def data_logging_config_from_defaults(
-    metric_functions: List[MetricFunctionConfig], prefix: str = ""
-) -> Generator[Tuple[str, MetricFunctionConfig], None, None]:
-    # import module with template configs (let's disregard its placement
-    # and naming for now
-    import deepsparse.loggers.configs as template_configs
+    if len(data_logging_config) != 1:
+        raise ValueError()
+    template_function_name = data_logging_config[0].func
+    # add identifier mangling
+    if template_function_name not in _FUNCTIONS_REGISTRY:
+        raise ValueError()
 
-    if len(metric_functions) != 1:
-        raise ValueError(
-            "Only one metric function is allowed when using the default data logging configuration"
-        )
-    default_config_name = metric_functions[
-        0
-    ].func  # fetch the compound_metric_function name
-    if not hasattr(template_configs, default_config_name):
-        raise ValueError(f"Default config: {default_config_name} not found")
-    # iterate over the dictionary of default configs
-    for identifier, func in getattr(template_configs, default_config_name).items():
-        # new identifier is the prefix + the identifier from the default config (clean)
-        # new MetricFunctionConfig is the same as the original, but with the func replaced
-        yield get_target_identifier(
-            target_name=identifier, pipeline_identifier=prefix
-        ), MetricFunctionConfig(
-            func=func,
-            frequency=metric_functions[0].frequency,
-            target_loggers=metric_functions[0].target_loggers,
-        )
+    for identifier, function_names in _FUNCTIONS_REGISTRY[template_function_name].items():
+        metric_functions = [MetricFunctionConfig(func=func_name,
+                                                 frequency=data_logging_config[0].frequency,
+                                                 target_loggers=data_logging_config[0].target_loggers)
+                            for func_name in function_names]
+        new_data_logging_config[identifier] = metric_functions
+    return new_data_logging_config
 
 
 def _build_function_logger(

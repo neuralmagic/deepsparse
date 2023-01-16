@@ -21,9 +21,8 @@ yaml_config = """
 loggers:
     python:
 data_logging:
-    __all__:
-        - func: image_classification
-          frequency: 3"""
+    - func: image_classification
+      frequency: 1"""
 
 
 @pytest.mark.parametrize(
@@ -32,4 +31,5 @@ data_logging:
 )
 @mock_engine(rng_seed=0)
 def test_end_to_end(mock_engine, config):
-    Pipeline.create("image_classification", logger=config)
+    pipeline = Pipeline.create("image_classification", logger=config)
+    pipeline
