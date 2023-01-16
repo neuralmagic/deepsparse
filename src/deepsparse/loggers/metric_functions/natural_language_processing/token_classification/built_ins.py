@@ -12,38 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Union, Dict
+from typing import Dict, List
 
 import numpy
-from pydantic import BaseModel
 
 
 def percent_zero_labels(
-    token_classification_output: "TokenClassificationOutput"
+    token_classification_output: "TokenClassificationOutput",
 ) -> Dict[str, float]:
     """
     Returns the percentage of zero labels in the token classification output
-    :param token_classification_output:
-    :return:
+
+    :param token_classification_output: the TokenClassificationOutput object
+    :return: A dictionary where the key is the token sequence index and the
+        value is the percentage of zero labels in the sequence of tokens
     """
     result = {}
-    for prediction_idx, prediction in enumerate(token_classification_output.predictions):
+    for prediction_idx, prediction in enumerate(
+        token_classification_output.predictions
+    ):
         result[str(prediction_idx)] = _percent_zero_labels(prediction)
     return result
 
 
-def mean_score(token_classification_output: "TokenClassificationOutput"):
+def mean_score(
+    token_classification_output: "TokenClassificationOutput",
+) -> Dict[str, float]:
+    """
+    Returns the mean score of the token classification output
+
+    :param token_classification_output: the TokenClassificationOutput object
+    :return: A dictionary where the key is the token sequence index and the
+        value is the mean score of the sequence of tokens
+    """
     result = {}
-    for prediction_idx, prediction in enumerate(token_classification_output.predictions):
+    for prediction_idx, prediction in enumerate(
+        token_classification_output.predictions
+    ):
         result[str(prediction_idx)] = _mean_score(prediction)
     return result
 
 
-def _mean_score(token_classification_output: List["TokenClassificationResult"]) -> float:
+def _mean_score(
+    token_classification_output: List["TokenClassificationResult"],
+) -> float:
     return numpy.mean([result.score for result in token_classification_output])
 
 
-def _percent_zero_labels(token_classification_output: List["TokenClassificationResult"]) -> float:
+def _percent_zero_labels(
+    token_classification_output: List["TokenClassificationResult"],
+) -> float:
     label_zero = "LABEL_0"
     all_results = len(token_classification_output)
     zero_results = sum(

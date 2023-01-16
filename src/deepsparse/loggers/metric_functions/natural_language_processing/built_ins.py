@@ -33,44 +33,4 @@ def sequence_length(sequence: Union[List[str], str]) -> Union[Dict[str, int], in
 
 
 def percent_unknown_tokens():
-    pass
-
-
-
-
-
-def answer_score(qa_output: BaseModel) -> float:
-    return qa_output.score
-
-
-def percent_zero_labels(
-    token_classification_output: List[Union[BaseModel, List[BaseModel]]]
-):
-    if isinstance(token_classification_output[0], BaseModel):
-        return _percent_zero_labels(token_classification_output)
-    return {
-        str(result_id): _percent_zero_labels(result)
-        for result_id, result in enumerate(token_classification_output)
-    }
-
-
-def mean_score(token_classification_output: List[Union[BaseModel, List[BaseModel]]]):
-    if isinstance(token_classification_output[0], BaseModel):
-        return _mean_score(token_classification_output)
-    return {
-        str(result_id): _mean_score(result)
-        for result_id, result in enumerate(token_classification_output)
-    }
-
-
-def _mean_score(token_classification_output: List[BaseModel]) -> float:
-    return numpy.mean([result.score for result in token_classification_output])
-
-
-def _percent_zero_labels(token_classification_output: List[BaseModel]) -> float:
-    label_zero = "LABEL_0"
-    all_results = len(token_classification_output)
-    zero_results = sum(
-        1 for result in token_classification_output if result.entity == label_zero
-    )
-    return zero_results / all_results
+    raise NotImplementedError()

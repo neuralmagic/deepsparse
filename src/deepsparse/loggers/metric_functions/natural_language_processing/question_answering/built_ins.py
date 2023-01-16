@@ -11,20 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from deepsparse.loggers.metric_functions.natural_language_processing import sequence_length
+"""
+Set of functions for logging metrics from the question answering pipeline
+"""
+from deepsparse.loggers.metric_functions.natural_language_processing import (
+    sequence_length,
+)
 
 
 def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:
-    pass
+    raise NotImplementedError()
+
 
 def answer_length(qa_output: "QuestionAnsweringOutput") -> int:
     """
-    Returns the length of the answer
+    Returns the length of the answer given the QuestionAnsweringOutput
+
     :param qa_output: The output schema of the question answering pipeline
     :return: The length of the answer
     """
     return sequence_length(qa_output.answer)
 
+
 def answer_score(qa_output: "QuestionAnsweringOutput") -> float:
+    """
+    Returns the score of the answer given the QuestionAnsweringOutput
+    :param qa_output: The output schema of the question answering pipeline
+    :return: The score of the answer
+    """
     return qa_output.score
