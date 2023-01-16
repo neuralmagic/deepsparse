@@ -25,7 +25,6 @@ import uvicorn
 from deepsparse.engine import Context
 from deepsparse.loggers import BaseLogger
 from deepsparse.pipeline import Pipeline
-from deepsparse.server.build_logger import build_logger
 from deepsparse.server.config import (
     INTEGRATION_LOCAL,
     INTEGRATION_SAGEMAKER,
@@ -35,6 +34,7 @@ from deepsparse.server.config import (
     SystemLoggingConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
+from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.system_logging import (
     SystemLoggingMiddleware,
     log_system_information,
@@ -123,7 +123,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     _LOGGER.info(f"Built context: {repr(context)}")
     _LOGGER.info(f"Built ThreadPoolExecutor with {executor._max_workers} workers")
 
-    server_logger = build_logger(server_config)
+    server_logger = server_logger_from_config(server_config)
     app = FastAPI()
     app.add_middleware(
         SystemLoggingMiddleware,
