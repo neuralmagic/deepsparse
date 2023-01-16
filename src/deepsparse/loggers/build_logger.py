@@ -48,6 +48,7 @@ __all__ = [
     "logger_from_config",
     "build_logger",
     "get_target_identifier",
+    "data_logging_config_from_predefined",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,7 +100,7 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
     config = PipelineLoggingConfig(**config)
 
     if isinstance(config.data_logging, list):
-        data_logging_config = data_logging_config_from_template(config.data_logging)
+        data_logging_config = data_logging_config_from_predefined(config.data_logging)
     else:
         data_logging_config = possibly_modify_target_identifiers(
             config.data_logging, pipeline_identifier
@@ -332,17 +333,19 @@ def possibly_modify_target_identifiers(
     return data_logging_config
 
 
-def data_logging_config_from_template(
+def data_logging_config_from_predefined(
     data_logging_config: List[MetricFunctionConfig],
 ) -> Dict[str, List[MetricFunctionConfig]]:
     """
-    Given a single MetricFunctionConfig object, parse out the
-    actual data_logging_config, that will be fetched from the
-    registry of template functions.
+    Given a single MetricFunctionConfig object, parse out
+    the information about the pre-defined data_logging configuration.
 
-    :param data_logging_config: A list of MetricFunctionConfig objects,
-        that specify the data logging configuration.The list should be of length one
-        (contain a single MetricFunctionConfig with the template function information)
+    The MetricFunctionConfig maps to a set of built-in functions
+    and identifiers that will be retrieved from the registry to
+    build a new data_logging_config.
+
+    :param data_logging_config: A list of MetricFunctionConfig objects (of length 1),
+        that specify the data logging configuration.
     :return: The actual data logging configuration, that will be used to
         instantiate the data loggers
     """
@@ -350,21 +353,22 @@ def data_logging_config_from_template(
 
     if len(data_logging_config) != 1:
         raise ValueError(
-            "If a template is specified, the data_logging_config "
-            "should be a list containing a single MetricFunctionConfig object"
+            "Attempting to instantiate data loggers from "
+            "predefined config. This requires a single MetricFunctionConfig "
+            f"object, but received: {len(data_logging_config)}"
         )
-    template_function_name = data_logging_config[0].func
+    predefined_compound_func = data_logging_config[0].func
     # TODO: Could add some logic for more robust checking of the template function name
     # e.g. making sure that "image_classification" == "image-classification"
-    if template_function_name not in _FUNCTIONS_REGISTRY:
+    if predefined_compound_func not in _FUNCTIONS_REGISTRY:
         raise ValueError(
-            f"Specified the template function name {template_function_name}. "
-            f"However, it is not present in the registry of template "
-            f"functions: {_FUNCTIONS_REGISTRY.keys()}"
+            f"Specified the function name {predefined_compound_func}. "
+            f"However, it is not present in the registry of predefined "
+            f"configurations: {_FUNCTIONS_REGISTRY.keys()}"
         )
 
     for identifier, function_names in _FUNCTIONS_REGISTRY[
-        template_function_name
+        predefined_compound_func
     ].items():
         metric_functions = [
             MetricFunctionConfig(

@@ -135,6 +135,10 @@ class PipelineLoggingConfig(BaseModel):
         default=None,
         description="Specifies the rules for the data logging. "
         "It relates a key (name of the logging target) "
-        "to a list of metric functions that are to be applied"
-        "to this target prior to logging.",
+        "to a list of metric functions that are to be applied "
+        "to this target prior to logging. If a list is passed "
+        "this means that we are using a single MetricFunctionConfig "
+        "that specifies information about the whole set of built-in "
+        "functions and identifiers. This is the case when one wants to use"
+        "a pre-defined data_logging configuration.",
     )
