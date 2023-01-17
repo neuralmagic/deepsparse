@@ -339,7 +339,7 @@ def data_logging_config_from_predefined(
     Given a single MetricFunctionConfig object, parse out
     the information about the pre-defined data_logging configuration.
 
-    The MetricFunctionConfig maps to a set of built-in functions
+    The MetricFunctionConfig.func maps to a set of built-in functions
     and identifiers that will be retrieved from the registry to
     build a new data_logging_config.
 
