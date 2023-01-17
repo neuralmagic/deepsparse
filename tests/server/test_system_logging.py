@@ -15,13 +15,13 @@
 from unittest import mock
 
 import pytest
-from deepsparse.server.build_logger import build_logger
+from deepsparse.loggers.config import SystemLoggingGroup
 from deepsparse.server.config import (
     EndpointConfig,
     ServerConfig,
-    SystemLoggingConfig,
-    SystemLoggingGroup,
+    ServerSystemLoggingConfig,
 )
+from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from deepsparse.server.system_logging import log_resource_utilization
 from fastapi.testclient import TestClient
@@ -94,13 +94,13 @@ def test_log_request_details(
             )
         ],
         loggers={"logger_1": {"path": logger_identifier}},
-        system_logging=SystemLoggingConfig(
+        system_logging=ServerSystemLoggingConfig(
             request_details=SystemLoggingGroup(enable=True)
         ),
     )
-    server_logger = build_logger(server_config)
+    server_logger = server_logger_from_config(server_config)
     with mock.patch(
-        "deepsparse.server.server.build_logger", return_value=server_logger
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
