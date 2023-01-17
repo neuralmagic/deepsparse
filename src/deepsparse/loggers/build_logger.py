@@ -102,6 +102,7 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
     data_logging_config = config.data_logging
     if isinstance(config.data_logging, list):
         data_logging_config = data_logging_config_from_predefined(data_logging_config)
+
     logger = build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,

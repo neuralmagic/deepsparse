@@ -47,6 +47,7 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
             will be merged parsed out by the logic of this function
     :return: a DeepSparse logger instance
     """
+
     return build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
@@ -61,6 +62,7 @@ def _extract_data_logging_from_endpoints(
     for endpoint in endpoints:
         if endpoint.data_logging is None:
             continue
+
         data_logging_config = endpoint.data_logging_config
         if isinstance(data_logging_config, list):
             # if data_logging_config is a list, we attempt
