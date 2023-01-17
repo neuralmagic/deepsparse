@@ -345,7 +345,7 @@ def data_logging_config_from_predefined(
 
     :param data_logging_config: A list containing a single
         MetricFunctionConfig object that specifies the
-        data logging configuration.
+        predefined data logging configuration.
     :return: The actual data logging configuration, that will be used to
         instantiate the data loggers
     """
