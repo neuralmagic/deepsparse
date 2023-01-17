@@ -13,7 +13,11 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.metric_functions import answer_length, answer_score
+from deepsparse.loggers.metric_functions import (
+    answer_found,
+    answer_length,
+    answer_score,
+)
 from deepsparse.transformers.pipelines.question_answering import QuestionAnsweringOutput
 
 
@@ -40,3 +44,14 @@ def test_answer_length(schema, expected_len):
 )
 def test_answer_score(schema, expected_score):
     assert answer_score(schema) == expected_score
+
+
+@pytest.mark.parametrize(
+    "schema, expected_bool",
+    [
+        (output_schema, True),
+        (QuestionAnsweringOutput(answer="empty", score=0.69, start=0, end=0), False),
+    ],
+)
+def test_answer_found(schema, expected_bool):
+    assert answer_found(schema) == expected_bool

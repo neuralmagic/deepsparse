@@ -24,7 +24,12 @@ __all__ = ["answer_found", "answer_length", "answer_score"]
 
 
 def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:  # noqa: F821
-    raise NotImplementedError()
+    """
+    Returns whether an answer was found given the QuestionAnsweringOutput
+    :param qa_output: The output schema of the question answering pipeline
+    :return: True if an answer was found, False otherwise
+    """
+    return not qa_output.answer == "empty"
 
 
 def answer_length(qa_output: "QuestionAnsweringOutput") -> int:  # noqa: F821
