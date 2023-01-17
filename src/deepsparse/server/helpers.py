@@ -63,7 +63,7 @@ def _extract_data_logging_from_endpoints(
         if endpoint.data_logging is None:
             continue
 
-        data_logging_config = endpoint.data_logging_config
+        data_logging_config = endpoint.data_logging
         if isinstance(data_logging_config, list):
             # if data_logging_config is a list, we attempt
             # to load a pre-defined data_logging configuration

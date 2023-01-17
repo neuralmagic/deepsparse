@@ -21,21 +21,34 @@ from tests.utils import mock_engine
 
 yaml_config = """
 loggers:
-    python:
+    list_logger:
+        path: tests/deepsparse/loggers/helpers.py:ListLogger
 data_logging:
     - func: image_classification
       frequency: 2"""
 
+expected_logs = """identifier:image_classification/pipeline_inputs.images__image_shape__channels, value:3, category:MetricCategories.DATA
+identifier:image_classification/pipeline_inputs.images__image_shape__dim_0, value:224, category:MetricCategories.DATA
+identifier:image_classification/pipeline_inputs.images__image_shape__dim_1, value:224, category:MetricCategories.DATA
+identifier:image_classification/pipeline_inputs.images__mean_pixels_per_channel__channel_0, value:1.0, category:MetricCategories.DATA
+identifier:image_classification/pipeline_inputs.images__mean_pixels_per_channel__channel_1, value:1.0, category:MetricCategories.DATA
+identifier:image_classification/pipeline_inputs.images__mean_pixels_per_channel__channel_2, value:1.0, category:MetricCategories.DATA
+identifier:image_classification/pipeline_inputs.images__fraction_zeros, value:0.0, category:MetricCategories.DATA"""  # noqa E501
+
 
 @pytest.mark.parametrize(
-    "config, inp, num_iterations",
+    "config, inp, num_iterations, expected_logs",
     [
-        (yaml_config, [numpy.ones((3, 224, 224))] * 2, 6),
-        (yaml_config, numpy.ones((2, 3, 224, 224)), 6),
+        (yaml_config, [numpy.ones((3, 224, 224))] * 2, 1, expected_logs),
+        (yaml_config, numpy.ones((2, 3, 224, 224)), 1, expected_logs),
     ],
 )
 @mock_engine(rng_seed=0)
-def test_end_to_end(mock_engine, config, inp, num_iterations):
+def test_end_to_end(mock_engine, config, inp, num_iterations, expected_logs):
     pipeline = Pipeline.create("image_classification", logger=config)
     for _ in range(num_iterations):
         pipeline(images=inp)
+    logs = pipeline.logger.logger.loggers[0].logger.loggers[0].calls
+    data_logging_logs = [log for log in logs if "DATA" in log]
+    for log, expected_log in zip(data_logging_logs, expected_logs.splitlines()):
+        assert log == expected_log
