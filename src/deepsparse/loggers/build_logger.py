@@ -13,12 +13,16 @@
 # limitations under the License.
 
 """
-Specifies the mapping from the ServerConfig to the DeepSparse Logger
+A general set of functionalities for building complex logger instances to
+be used across the repository.
 """
 
 import importlib
 import logging
+import os
 from typing import Any, Dict, List, Optional, Type
+
+import yaml
 
 from deepsparse.loggers import (
     AsyncLogger,
@@ -28,16 +32,22 @@ from deepsparse.loggers import (
     PrometheusLogger,
     PythonLogger,
 )
-from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.server.config import (
+from deepsparse.loggers.config import (
     MetricFunctionConfig,
-    ServerConfig,
+    PipelineLoggingConfig,
     SystemLoggingConfig,
     SystemLoggingGroup,
 )
+from deepsparse.loggers.helpers import get_function_and_function_name
 
 
-__all__ = ["build_logger", "custom_logger_from_identifier", "default_logger"]
+__all__ = [
+    "custom_logger_from_identifier",
+    "default_logger",
+    "logger_from_config",
+    "build_logger",
+    "get_target_identifier",
+]
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER_MAPPING = {"python": PythonLogger, "prometheus": PrometheusLogger}
@@ -67,32 +77,92 @@ def default_logger() -> Dict[str, BaseLogger]:
     return {"python": PythonLogger()}
 
 
-def build_logger(server_config: ServerConfig) -> BaseLogger:
+def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogger:
     """
-    Builds a DeepSparse logger from the ServerConfig.
+    Builds a pipeline logger from the appropriate configuration file
+
+    :param config: The configuration of the pipeline logger.
+        Is a string that represents either:
+            a path to the .yaml file
+            or
+            yaml string representation of the logging config
+        The config file should obey the rules enforced by
+        the PipelineLoggingConfig schema
+    :param pipeline_identifier: An optional identifier of the pipeline
+
+    :return: A pipeline logger instance
+    """
+    if os.path.isfile(config):
+        config = open(config)
+    config = yaml.safe_load(config)
+    config = PipelineLoggingConfig(**config)
+
+    logger = build_logger(
+        system_logging_config=config.system_logging,
+        loggers_config=config.loggers,
+        data_logging_config=possibly_modify_target_identifiers(
+            config.data_logging, pipeline_identifier
+        ),
+    )
+    return logger
+
+
+def build_logger(
+    system_logging_config: SystemLoggingConfig,
+    data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
+    loggers_config: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,
+) -> BaseLogger:
+    """
+    Builds a DeepSparse logger from the set of provided configs
 
     The process follows the following hierarchy:
+        First: if global logger config is provided, the "leaf" loggers
+            are built. Leaf loggers are the final loggers that log
+            information to the final destination.
 
-    First: if global logger config is provided,
-        the "leaf" loggers are built.
+        Second: if data logging config is specified, a set of
+            function loggers, responsible for data logging functionality
+            wraps around the appropriate "leaf" loggers.
 
-    Second: if data logging config is specified, a set of
-        function loggers wraps around the appropriate "leaf" loggers.
+        Third: if system logging config is specified, a set of
+            function loggers, responsible for system logging functionality
+            wraps around the appropriate "leaf" loggers.
 
-    Third: The resulting loggers are wrapped inside a MultiLogger.
+        Fourth: The resulting data and system loggers are wrapped inside a
+            MultiLogger. Finally, the MultiLogger is wrapped inside
+            an AsyncLogger to ensure that the logging process is asynchronous.
 
-    :param server_config: the Server configuration model
-    :return: a DeepSparse logger instance
+    For example:
+
+    ```
+    AsyncLogger:
+      MultiLogger:
+        FunctionLogger (system logging):
+          target_logger:
+            MultiLogger:
+              LeafLogger1
+              LeafLogger2
+        FunctionLogger (system logging):
+          ...
+        FunctionLogger (data logging):
+          target_logger:
+            LeafLogger1
+    ```
+
+    :param system_logging_config: A SystemLoggingConfig instance that describes
+        the system logging configuration
+    :param data_logging_config: An optional dictionary that maps target names to
+        lists of MetricFunctionConfigs.
+    :param loggers_config: An optional dictionary that maps logger names to
+        a dictionary of logger arguments.
+    :return: a DeepSparseLogger instance
     """
-
-    loggers_config = server_config.loggers
-    system_logging_config = server_config.system_logging
 
     leaf_loggers = (
         build_leaf_loggers(loggers_config) if loggers_config else default_logger()
     )
 
-    function_loggers_data = build_data_loggers(server_config.endpoints, leaf_loggers)
+    function_loggers_data = build_data_loggers(leaf_loggers, data_logging_config)
     function_loggers_system = build_system_loggers(leaf_loggers, system_logging_config)
     function_loggers = function_loggers_data + function_loggers_system
 
@@ -100,6 +170,27 @@ def build_logger(server_config: ServerConfig) -> BaseLogger:
         logger=MultiLogger(function_loggers),  # wrap all loggers to async log call
         max_workers=1,
     )
+
+
+def get_target_identifier(
+    target_name: str, pipeline_identifier: Optional[str] = None
+) -> str:
+    """
+    Get the target identifier given the target name and a pipeline identifier
+
+    :param target_name: The target name, can be a string or a regex pattern
+    :param pipeline_identifier: Optional pipeline identifier. By default, is None
+    :return: Final target identifier
+    """
+    if target_name.startswith("re:"):
+        # if target name starts with "re:", it is a regex,
+        # and we don't need to add the endpoint name to it
+        return target_name
+    if pipeline_identifier:
+        # if pipeline_identifier specified,
+        # prepend it to the target name
+        return f"{pipeline_identifier}/{target_name}"
+    return target_name
 
 
 def build_leaf_loggers(
@@ -136,30 +227,29 @@ def build_leaf_loggers(
 
 
 def build_data_loggers(
-    endpoints: List["EndpointConfig"], loggers: Dict[str, BaseLogger]  # noqa F821
+    loggers: Dict[str, BaseLogger],
+    data_logging_config: Optional[
+        Dict[str, List[MetricFunctionConfig]]
+    ] = None,  # noqa F821
 ) -> List[FunctionLogger]:
     """
     Build a set of data loggers (FunctionLogger instances)
-    according to the configuration.
+    according to the specified configuration.
 
-    :param endpoints: A list of server's endpoint configurations;
-        the configurations contain the information about the metric
-        functions (MetricFunctionConfig objects)
-        and the targets that the functions are to be applied to
     :param loggers: The created "leaf" loggers
+    :param data_logging_config: The configuration of the data loggers.
+        Specified as a dictionary that maps a target name to a list of metric functions.
     :return: A list of FunctionLogger instances responsible
         for logging data information
     """
     data_loggers = []
-    for endpoint in endpoints:
-        if endpoint.data_logging is None:
-            continue
-        for target, metric_functions in endpoint.data_logging.items():
-            target_identifier = _get_target_identifier(target, endpoint.name)
-            for metric_function in metric_functions:
-                data_loggers.append(
-                    _build_function_logger(metric_function, target_identifier, loggers)
-                )
+    if not data_logging_config:
+        return data_loggers
+    for target_identifier, metric_functions in data_logging_config.items():
+        for metric_function in metric_functions:
+            data_loggers.append(
+                _build_function_logger(metric_function, target_identifier, loggers)
+            )
     return data_loggers
 
 
@@ -167,12 +257,11 @@ def build_system_loggers(
     loggers: Dict[str, BaseLogger], system_logging_config: SystemLoggingConfig
 ) -> List[FunctionLogger]:
     """
-    Create a system loggers according to the configuration specified
-    in `system_logging_config`. System loggers are FunctionLogger instances
-    responsible for logging system groups metrics.
+    Build a set of  system loggers (FunctionLogger instances)
+    according to the specified configuration.
 
     :param loggers: The created "leaf" loggers
-    :param system_logging_config: The system logging configuration
+    :param system_logging_config: The configuration of the system loggers.
     :return: A list of FunctionLogger instances responsible for logging system data
     """
     system_loggers = []
@@ -202,6 +291,38 @@ def build_system_loggers(
     _LOGGER.info("System Logging: enabled for groups: %s", system_logging_group_names)
 
     return system_loggers
+
+
+def possibly_modify_target_identifiers(
+    data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
+    pipeline_identifier: str = None,
+) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
+    """
+    Modify the target identifiers in the data logging config, given
+    the specified pipeline identifier.
+
+    :param data_logging_config: The configuration of the data loggers.
+        Specified as a dictionary that maps a target name to a list of metric functions.
+    :param pipeline_identifier: An optional string, that specifies
+        the name of the pipeline the logging is being performed for.
+    :return: the modified data_logging_config
+    """
+    if not data_logging_config or not pipeline_identifier:
+        # if either of the arguments is None, return the original config
+        return data_logging_config
+
+    for target_identifier, metric_functions in data_logging_config.copy().items():
+        if not target_identifier.startswith(pipeline_identifier):
+            # if the target identifier does not already start
+            # with the pipeline identifier, call get_target_identifier
+            # to prepend it
+            new_target_identifier = get_target_identifier(
+                target_identifier, pipeline_identifier
+            )
+            data_logging_config[new_target_identifier] = data_logging_config.pop(
+                target_identifier
+            )
+    return data_logging_config
 
 
 def _build_function_logger(
@@ -243,15 +364,3 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
             f"Got {type(logger)} instead."
         )
     return logger
-
-
-def _get_target_identifier(
-    target_name: str, endpoint_name: Optional[str] = None
-) -> str:
-    if target_name.startswith("re:"):
-        # if target name starts with "re:", it is a regex,
-        # and we don't need to add the endpoint name to it
-        return target_name
-    if endpoint_name:
-        return f"{endpoint_name}/{target_name}"
-    return target_name
