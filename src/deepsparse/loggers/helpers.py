@@ -20,11 +20,10 @@ import re
 import warnings
 from difflib import SequenceMatcher
 from types import ModuleType
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import numpy
 
-import deepsparse.loggers.metric_functions as built_ins
 from deepsparse.loggers import MetricCategories
 
 
@@ -34,16 +33,64 @@ __all__ = [
     "NO_MATCH",
     "access_nested_value",
     "finalize_identifier",
+    "unwrap_logs_dictionary",
 ]
 
 NO_MATCH = "NO_MATCH"
+
+
+def unwrap_logs_dictionary(
+    value: Any, parent_identifier="", seperator="__"
+) -> Generator[Tuple[str, Any], None, None]:
+    """
+    Unwrap the `value`, given that it may be nested dictionary.
+    e.g.
+    ```
+    value = {"foo": {"alice": 1, "bob": 2},
+             "bazz": 2},
+    for identifier, value in unwrap_possible_dictionary(value):
+        -> yields:
+            "foo__alice", 1
+            "foo__bob", 2
+            "bazz", 2 (no unwrapping)
+    ```
+
+    :param value: The value to possibly unwrap
+    :param parent_identifier: The identifier that may be prepended to the
+        child identifier retrieved from the nested dictionary
+    :param seperator: The seperator to use when composing the parent and child
+        identifiers
+    :return: A generator that:
+        - if `value` is not a dictionary:
+            yields the `parent_identifier` and `value`
+        - else:
+            yields a sequence of tuples (identifier, value) where:
+                identifier is composed by connecting the keys over the multiple levels
+                    of nesting with the seperator
+                value is extracted from the nested dictionary (corresponding to the
+                    appropriate composed identifier)
+    """
+    if not isinstance(value, dict):
+        yield parent_identifier, value
+    else:
+        for child_identifier, child_value in value.items():
+            new_parent_identifier = (
+                f"{parent_identifier}{seperator}{child_identifier}"
+                if parent_identifier
+                else child_identifier
+            )
+            if isinstance(child_value, dict):
+                yield from unwrap_logs_dictionary(
+                    child_value, new_parent_identifier, seperator
+                )
+            else:
+                yield new_parent_identifier, child_value
 
 
 def finalize_identifier(
     identifier: str,
     category: MetricCategories,
     function_name: str,
-    value_identifier: str,
     remainder: Optional[str] = None,
 ) -> str:
     """
@@ -53,8 +100,6 @@ def finalize_identifier(
     :param category: The category of the identifier
     :param function_name: The name of the function applied to the identifier
     :param remainder: The remainder of the identifier after the matching was applied
-    :param value_identifier: The identifier that describes the name of the item
-        computed by the function
     :return: The final identifier string
     """
     if remainder:
@@ -68,9 +113,6 @@ def finalize_identifier(
     if category == MetricCategories.DATA:
         # if the category is DATA, add the function name to the identifier
         identifier += f"__{function_name}"
-        if value_identifier:
-            # if the value identifier is not empty, add it to the identifier
-            identifier += f"__{value_identifier}"
 
     return identifier
 
@@ -97,6 +139,7 @@ def get_function_and_function_name(
 
     :return: A tuple (function, function name)
     """
+    import deepsparse.loggers.metric_functions as built_ins
 
     if function_identifier.startswith("torch."):
         import torch

@@ -20,11 +20,12 @@ be used across the repository.
 import importlib
 import logging
 import os
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type
 
 import yaml
 
 from deepsparse.loggers import (
+    PREDEFINED_IDENTIFIER_ALIAS,
     AsyncLogger,
     BaseLogger,
     FunctionLogger,
@@ -39,7 +40,6 @@ from deepsparse.loggers.config import (
     SystemLoggingGroup,
 )
 from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.loggers.metric_functions import DATA_LOGGING_REGISTRY
 
 
 __all__ = [
@@ -48,7 +48,6 @@ __all__ = [
     "logger_from_config",
     "build_logger",
     "get_target_identifier",
-    "data_logging_config_from_predefined",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,15 +98,11 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
     config = yaml.safe_load(config)
     config = PipelineLoggingConfig(**config)
 
-    data_logging_config = config.data_logging
-    if isinstance(config.data_logging, list):
-        data_logging_config = data_logging_config_from_predefined(data_logging_config)
-
     logger = build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
         data_logging_config=possibly_modify_target_identifiers(
-            data_logging_config, pipeline_identifier
+            config.data_logging, pipeline_identifier
         ),
     )
     return logger
@@ -253,6 +248,17 @@ def build_data_loggers(
         return data_loggers
 
     for target_identifier, metric_functions in data_logging_config.items():
+        if target_identifier.endswith(PREDEFINED_IDENTIFIER_ALIAS):
+            """
+            If the target identifier ends with the predefined alias,
+            overwrite the target identifier and metric functions with the one
+            retrieved from the predefined data logging confuguration
+            """
+            for target_identifier, metric_functions in metric_functions_from_predefined(
+                metric_functions, target_identifier[: -len(PREDEFINED_IDENTIFIER_ALIAS)]
+            ):
+                pass
+
         for metric_function in metric_functions:
             data_loggers.append(
                 _build_function_logger(metric_function, target_identifier, loggers)
@@ -332,54 +338,50 @@ def possibly_modify_target_identifiers(
     return data_logging_config
 
 
-def data_logging_config_from_predefined(
-    data_logging_config: List[MetricFunctionConfig],
-) -> Dict[str, List[MetricFunctionConfig]]:
+def metric_functions_from_predefined(
+    metric_functions: List[MetricFunctionConfig], identifier_prefix: str
+) -> Generator[Tuple[str, List[MetricFunctionConfig]], None, None]:
     """
-    Given a single MetricFunctionConfig object, parse out
+    Given a list of MetricFunctionConfig objects, parse out
     the information about the pre-defined data logging configuration.
 
-    The MetricFunctionConfig.func maps to a set of built-in functions
-    and identifiers that will be retrieved from the registry to
-    build a new data logging config.
+    Every MetricFunctionConfig.func in the `metric_functions` list
+    maps to a set of built-in functions and identifiers that will be
+    retrieved from the data logging registry to yield pre-defined
+    pairs of (target_identifier, List[MetricFunctionConfig]), that
+    are then used to build the data loggers.
 
-    :param data_logging_config: A list containing a single
-        MetricFunctionConfig object that specifies the
-        predefined data logging configuration.
-    :return: The actual data logging configuration, that will be used to
-        instantiate the data loggers
+    :param metric_functions: A list containing MetricFunctionConfig
+        objects that specify the predefined data logging configuration.
+    :return: A generator object that generates a sequence of
+        (target_identifier, List[MetricFunctionConfig]) tuples.
     """
-    new_data_logging_config = {}
+    # get the registry with the pre-defined data logging configurations
+    from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
 
-    if len(data_logging_config) != 1:
-        raise ValueError(
-            "Attempting to instantiate data loggers from "
-            "predefined config. This requires a single MetricFunctionConfig "
-            f"object, but received: {len(data_logging_config)}"
-        )
-    predefined_compound_func = data_logging_config[0].func
-    # TODO: Could add some logic for more robust checking of the template function name
-    # e.g. making sure that "image_classification" == "image-classification"
-    if predefined_compound_func not in DATA_LOGGING_REGISTRY:
-        raise ValueError(
-            f"Specified the function name {predefined_compound_func}. "
-            f"However, it is not present in the registry of predefined "
-            f"configurations: {DATA_LOGGING_REGISTRY.keys()}"
-        )
-
-    for identifier, function_names in DATA_LOGGING_REGISTRY[
-        predefined_compound_func
-    ].items():
-        metric_functions = [
-            MetricFunctionConfig(
-                func=func_name,
-                frequency=data_logging_config[0].frequency,
-                target_loggers=data_logging_config[0].target_loggers,
+    for metric_function in metric_functions:
+        function_group_name = metric_function.func
+        # fetch the pre-defined data logging configuration from the registry
+        registered_function_group = DATA_LOGGING_REGISTRY.get(function_group_name)
+        if not registered_function_group:
+            raise ValueError(
+                f"Unknown function group name: {function_group_name}. "
+                f"Supported function group names: {list(DATA_LOGGING_REGISTRY.keys())}"
             )
-            for func_name in function_names
-        ]
-        new_data_logging_config[identifier] = metric_functions
-    return new_data_logging_config
+        for (
+            registered_identifier,
+            registered_functions,
+        ) in registered_function_group.items():
+            target_identifier = identifier_prefix + registered_identifier
+            new_metric_functions = [
+                MetricFunctionConfig(
+                    func=func,
+                    frequency=metric_function.frequency,
+                    target_loggers=metric_function.target_loggers,
+                )
+                for func in registered_functions
+            ]
+            yield target_identifier, new_metric_functions
 
 
 def _build_function_logger(

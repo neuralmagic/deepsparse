@@ -14,12 +14,7 @@
 
 from typing import Dict, List, Optional
 
-from deepsparse import (
-    BaseLogger,
-    build_logger,
-    data_logging_config_from_predefined,
-    get_target_identifier,
-)
+from deepsparse import BaseLogger, build_logger, get_target_identifier
 from deepsparse.loggers.config import MetricFunctionConfig
 from deepsparse.server.config import EndpointConfig, ServerConfig
 
@@ -62,15 +57,7 @@ def _extract_data_logging_from_endpoints(
     for endpoint in endpoints:
         if endpoint.data_logging is None:
             continue
-
-        data_logging_config = endpoint.data_logging
-        if isinstance(data_logging_config, list):
-            # if data_logging_config is a list, we attempt
-            # to load a pre-defined data_logging configuration
-            data_logging_config = data_logging_config_from_predefined(
-                data_logging_config
-            )
-        for target, metric_functions in data_logging_config.items():
+        for target, metric_functions in endpoint.data_logging.items():
             # if needed, get the new target identifier from
             # the target and the endpoint name
             new_target = get_target_identifier(

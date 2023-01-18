@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
-from deepsparse.loggers.metric_functions import register
+from deepsparse.loggers.metric_functions.registry import register
 
 
 __all__ = [
@@ -34,7 +34,7 @@ __all__ = [
 ]
 
 
-@register(task="image_classification", identifier="pipeline_inputs.images")
+@register(group="image_classification", identifier="pipeline_inputs.images")
 def image_shape(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, int]:
@@ -65,7 +65,7 @@ def image_shape(
     return result
 
 
-@register(task="image_classification", identifier="pipeline_inputs.images")
+@register(group="image_classification", identifier="pipeline_inputs.images")
 def mean_pixels_per_channel(
     img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
 ) -> Dict[str, float]:
@@ -109,7 +109,7 @@ def std_pixels_per_channel(
     return dict(zip(keys, stds))
 
 
-@register(task="image_classification", identifier="pipeline_inputs.images")
+@register(group="image_classification", identifier="pipeline_inputs.images")
 def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa F821
     """
     Return the float the represents the fraction of zeros in the

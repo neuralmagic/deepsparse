@@ -16,7 +16,7 @@
 Implementation of the Function Logger
 """
 import textwrap
-from typing import Any, Callable, Dict
+from typing import Any, Callable
 
 from deepsparse.loggers import BaseLogger, MetricCategories
 from deepsparse.loggers.helpers import NO_MATCH, finalize_identifier, match_and_extract
@@ -81,22 +81,13 @@ class FunctionLogger(BaseLogger):
         if extracted_value != NO_MATCH:
             if self._function_call_counter % self.frequency == 0:
                 mapped_value = self.function(extracted_value)
-                for (
-                    mapped_value_identifier,
-                    single_mapped_value,
-                ) in _unwrap_possible_dictionary(mapped_value):
-                    final_identifier = finalize_identifier(
-                        identifier=identifier,
-                        category=category,
-                        function_name=self.function_name,
-                        value_identifier=mapped_value_identifier,
-                        remainder=remainder,
-                    )
-                    self.logger.log(
-                        identifier=final_identifier,
-                        value=single_mapped_value,
-                        category=category,
-                    )
+                self.logger.log(
+                    identifier=finalize_identifier(
+                        identifier, category, self.function_name, remainder
+                    ),
+                    value=mapped_value,
+                    category=category,
+                )
                 self._function_call_counter = 0
             self._function_call_counter += 1
 
@@ -119,18 +110,3 @@ class FunctionLogger(BaseLogger):
             f"target_logger:\n{_indent(self.logger)}"
         )
         return f"{self.__class__.__name__}:\n{_indent(_shorten(function_info))}"
-
-
-def _unwrap_possible_dictionary(
-    dictionary: Dict[str, Any], parent_identifier="", seperator="__"
-):
-    # TODO add docstring and beautify
-    if not isinstance(dictionary, dict):
-        yield parent_identifier, dictionary
-    else:
-        for k, v in dictionary.items():
-            new_key = parent_identifier + seperator + k if parent_identifier else k
-            if isinstance(v, dict):
-                yield from _unwrap_possible_dictionary(v, new_key, seperator)
-            else:
-                yield new_key, v

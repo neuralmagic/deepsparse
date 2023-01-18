@@ -24,36 +24,36 @@ __all__ = ["DATA_LOGGING_REGISTRY", "register"]
 DATA_LOGGING_REGISTRY = defaultdict(lambda: defaultdict(str))
 
 
-def register(task: str, identifier: str):
+def register(group: str, identifier: str):
     """
     A decorator for registering the built-in function name under the
-    relevant task name and data_logging_identifier.
+    relevant group name and data_logging_identifier.
     e.g
     ```
-    @register(task="image_classification", identifier = pipeline_inputs.image)
+    @register(group="image_classification", identifier = pipeline_inputs.image)
     def some_function(image):
         ...
     ```
     this will register the function `some_function` under the
-    task `image_classification` and the data_logging_identifier
+    group name `image_classification` and the data_logging_identifier
     `pipeline_inputs.image`
 
-    :param task: The name of the task, that uses the function in question.
-        Same functions may be registered under multiple tasks.
+    :param group: The name of the group, that uses the function in question.
+        Same functions may be registered under multiple groups.
     :param identifier: The name of the identifier, that the function in question
         acts on. A single identifier may be related to multiple functions.
     """
 
-    def decorator(f):
+    def decorator(function):
         identifier_registry = None
-        task_registry = DATA_LOGGING_REGISTRY.get(task)
+        task_registry = DATA_LOGGING_REGISTRY.get(group)
         if task_registry:
             identifier_registry = task_registry.get(identifier)
         # add the built-in function to the registry
         if identifier_registry and task_registry:
-            DATA_LOGGING_REGISTRY[task][identifier].append(f.__name__)
+            DATA_LOGGING_REGISTRY[group][identifier].append(function.__name__)
         else:
-            DATA_LOGGING_REGISTRY[task][identifier] = [f.__name__]
-        return f
+            DATA_LOGGING_REGISTRY[group][identifier] = [function.__name__]
+        return function
 
     return decorator
