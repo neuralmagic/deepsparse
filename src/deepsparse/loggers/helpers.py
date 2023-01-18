@@ -24,6 +24,7 @@ from typing import Any, Callable, Dict, Generator, Optional, Sequence, Tuple, Un
 
 import numpy
 
+import deepsparse.loggers.metric_functions as built_ins
 from deepsparse.loggers import MetricCategories
 
 
@@ -139,7 +140,6 @@ def get_function_and_function_name(
 
     :return: A tuple (function, function name)
     """
-    import deepsparse.loggers.metric_functions as built_ins
 
     if function_identifier.startswith("torch."):
         import torch
