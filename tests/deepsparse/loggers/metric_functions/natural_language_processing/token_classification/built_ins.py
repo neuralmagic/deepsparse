@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.metric_functions import mean_score, percent_zero_labels
+from deepsparse.loggers.metric_functions.natural_language_processing import (
+    mean_score,
+    percent_zero_labels,
+)
 from deepsparse.transformers.pipelines.token_classification import (
     TokenClassificationOutput,
     TokenClassificationResult,

@@ -17,10 +17,10 @@ Set of functions for logging metrics from the natural language processing pipeli
 from typing import Dict, List, Union
 
 
-__all__ = ["sequence_length", "percent_unknown_tokens"]
+__all__ = ["string_length", "percent_unknown_tokens"]
 
 
-def sequence_length(sequence: Union[List[str], str]) -> Union[Dict[str, int], int]:
+def string_length(sequence: Union[List[str], str]) -> Union[Dict[str, int], int]:
     """
     Returns the length of the sequence
 

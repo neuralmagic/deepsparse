@@ -16,7 +16,7 @@ Set of functions for logging metrics from the question answering pipeline
 """
 
 from deepsparse.loggers.metric_functions.natural_language_processing import (
-    sequence_length,
+    string_length,
 )
 
 
@@ -39,7 +39,9 @@ def answer_length(qa_output: "QuestionAnsweringOutput") -> int:  # noqa: F821
     :param qa_output: The output schema of the question answering pipeline
     :return: The length of the answer
     """
-    return sequence_length(qa_output.answer)
+    if qa_output.answer == "empty":
+        return 0
+    return string_length(qa_output.answer)
 
 
 def answer_score(qa_output: "QuestionAnsweringOutput") -> float:  # noqa: F821
