@@ -251,7 +251,7 @@ def build_data_loggers(
         if target_identifier.endswith(PREDEFINED_IDENTIFIER_ALIAS):
             """
             If the target identifier ends with the predefined alias,
-            overwrite the target identifier and metric functions with the one
+            overwrite the current target identifier and metric functions with the one
             retrieved from the predefined data logging confuguration
             """
             for target_identifier, metric_functions in metric_functions_from_predefined(
