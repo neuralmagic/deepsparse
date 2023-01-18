@@ -372,7 +372,7 @@ def metric_functions_from_predefined(
             registered_identifier,
             registered_functions,
         ) in registered_function_group.items():
-            target_identifier = identifier_prefix + registered_identifier
+            target_identifier = "f{identifier_prefix}{registered_identifier}"
             new_metric_functions = [
                 MetricFunctionConfig(
                     func=func,
