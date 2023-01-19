@@ -1,13 +1,34 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+Helper functions for generating metric function configs
+"""
+
 __all__ = ["data_logging_config_from_predefined"]
 
-from typing import Dict, List, Optional, Union, Any
+import textwrap
+from typing import Any, Dict, List, Optional, Union
 
-from deepsparse.loggers.build_logger import default_logger
+from deepsparse.loggers.config import MetricFunctionConfig
+
+
+_WHITESPACE = "  "
 
 
 def data_logging_config_from_predefined(
     group_names: Union[str, List[str]],
-    loggers: Dict[str, Optional[Dict[str, Any]]] = default_logger(),
+    loggers: Dict[str, Optional[Dict[str, Any]]] = {"python": {}},
     frequency: int = 1,
     save_dir: Optional[str] = None,
     save_name: str = "data_logging_config.yaml",
@@ -32,3 +53,71 @@ def data_logging_config_from_predefined(
         configuration
     """
     raise NotImplementedError()
+
+
+def _loggers_to_config_string(
+    loggers: Dict[str, Optional[Union[str, List[str]]]]
+) -> str:
+    return ("\n").join(_nested_dict_to_lines(loggers, yaml_str_lines=[]))
+
+
+def _nested_dict_to_lines(
+    value: Any, key=None, yaml_str_lines=[], level=0
+) -> List[str]:
+    # converts a nested dictionary to a list of yaml string lines
+    for new_key, new_value in value.items():
+        if isinstance(new_value, dict):
+            yaml_str_lines.append(f"{_WHITESPACE*level}{new_key}:")
+            yaml_str_lines = _nested_dict_to_lines(
+                new_value, new_key, yaml_str_lines, level + 1
+            )
+        else:
+            if isinstance(new_value, list):
+                # we can safely return here, since we are not expecting nested lists
+                yaml_str_lines.append(
+                    f"{new_key}:\n{textwrap.indent(_metric_functions_configs_to_string(new_value), prefix=_WHITESPACE)}"  # noqa E501
+                )
+            else:
+                yaml_str_lines.append(f"{_WHITESPACE*level}{new_key}: {new_value}")
+
+    return yaml_str_lines
+
+
+def _str_list_to_yaml(list_to_convert: List[str]) -> str:
+    # converts a list of strings to their appropriate yaml string representation
+    lines_indented = [
+        textwrap.indent(line, prefix=_WHITESPACE) for line in list_to_convert
+    ]
+    lines_leading_coma = ["-" + line[1:] for line in lines_indented]
+    return ("\n").join(lines_leading_coma)
+
+
+def _metric_functions_configs_to_string(
+    metric_functions_configs: List[MetricFunctionConfig],
+) -> str:
+    # converts a list of metric function configs to
+    # their appropriate yaml string representation
+    return _str_list_to_yaml(
+        [
+            _metric_function_config_to_string(config)
+            for config in metric_functions_configs
+        ]
+    )
+
+
+def _metric_function_config_to_string(
+    metric_function_config: MetricFunctionConfig,
+) -> str:
+    # converts a single metric function config to
+    # its appropriate yaml string representation
+    text = (
+        f"func: {metric_function_config.func}\n"
+        f"frequency: {metric_function_config.frequency}"
+    )
+
+    target_loggers = metric_function_config.target_loggers
+    # if target_loggers is not None,
+    # include it in the yaml string
+    if target_loggers:
+        text += f"\ntarget_loggers:\n{textwrap.indent(_str_list_to_yaml(target_loggers), prefix=_WHITESPACE)}"  # noqa E501
+    return text
