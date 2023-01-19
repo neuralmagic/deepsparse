@@ -23,11 +23,13 @@ __all__ = [
     "validate_identifier",
     "REQUEST_DETAILS_IDENTIFIER_PREFIX",
     "RESOURCE_UTILIZATION_IDENTIFIER_PREFIX",
+    "PREDEFINED_IDENTIFIER_ALIAS",
 ]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
 REQUEST_DETAILS_IDENTIFIER_PREFIX = "request_details"
 RESOURCE_UTILIZATION_IDENTIFIER_PREFIX = "resource_utilization"
+PREDEFINED_IDENTIFIER_ALIAS = "predefined"
 
 
 class MetricCategories(Enum):
