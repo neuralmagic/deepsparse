@@ -41,7 +41,7 @@ NO_MATCH = "NO_MATCH"
 
 
 def unwrap_logs_dictionary(
-    value: Any, parent_identifier="", seperator="__"
+    value: Any, parent_identifier: str = "", seperator: str = "__"
 ) -> Generator[Tuple[str, Any], None, None]:
     """
     Unwrap the `value`, given that it may be nested dictionary.
