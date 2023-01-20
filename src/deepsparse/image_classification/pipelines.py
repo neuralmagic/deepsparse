@@ -183,7 +183,7 @@ class ImageClassificationPipeline(Pipeline):
             image = Image.fromarray(image)
         elif isinstance(image, str):
             # load image from string filepath
-            image = Image.open(image)
+            image = Image.open(image).convert("RGB")
         elif isinstance(image, numpy.ndarray):
             image = image.astype(numpy.uint8)
             if image.shape[0] < image.shape[-1]:
