@@ -18,11 +18,11 @@ Implementation of the Prometheus Logger
 import logging
 import os
 from collections import defaultdict
-from typing import Any, Optional, Dict, Type
+from typing import Any, Dict, Optional, Type, Union
 
 from deepsparse.loggers import (
-    REQUEST_DETAILS_PREFIX,
-    RESOURCE_UTILIZATION_PREFIX,
+    REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
     BaseLogger,
     MetricCategories,
 )
@@ -31,13 +31,13 @@ from deepsparse.loggers import (
 try:
     from prometheus_client import (
         REGISTRY,
+        CollectorRegistry,
         Counter,
         Gauge,
         Histogram,
         Summary,
         start_http_server,
         write_to_textfile,
-        CollectorRegistry,
     )
 
     prometheus_import_error = None
@@ -59,14 +59,17 @@ __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
 _SUPPORTED_DATA_TYPES = (int, float)
-_DESCRIPTION = """{metric_name} metric for identifier: {identifier} | Category: {category}"""
+_DESCRIPTION = (
+    """{metric_name} metric for identifier: {identifier} | Category: {category}"""
+)
 _IDENTIFIER_TO_METRIC_TYPE = {
     "prediction_latency": Histogram,
-    RESOURCE_UTILIZATION_PREFIX: Gauge,
-    f"{REQUEST_DETAILS_PREFIX}/successful_request": Counter,
-    f"{REQUEST_DETAILS_PREFIX}/input_batch_size": Histogram,
-    f"{REQUEST_DETAILS_PREFIX}/response_message": None,
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: Gauge,
+    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/successful_request": Counter,
+    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size": Histogram,
+    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/response_message": None,
 }
+
 
 class PrometheusLogger(BaseLogger):
     """
@@ -111,13 +114,19 @@ class PrometheusLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        prometheus_metric = self._prometheus_metrics.get(identifier)
+        prometheus_metric = self._get_prometheus_metric(identifier, category)
         if prometheus_metric is None:
-            prometheus_metric = self._add_metric_to_registry(
-                identifier, category
-            )
+            return
         prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
+
+    def _get_prometheus_metric(
+        self, identifier: str, category: MetricCategories
+    ) -> Union[Counter, Histogram, Gauge, Summary, None]:
+        saved_metric = self._prometheus_metrics.get(identifier)
+        if saved_metric is None:
+            return self._add_metric_to_registry(identifier, category)
+        return saved_metric
 
     def __str__(self):
         logger_info = f"  port: {self.port}"
@@ -132,7 +141,9 @@ class PrometheusLogger(BaseLogger):
             self._counter = 0
         self._counter += 1
 
-    def _add_metric_to_registry(self, identifier: str, category: str) -> Summary:
+    def _add_metric_to_registry(
+        self, identifier: str, category: str
+    ) -> Union[Counter, Histogram, Gauge, Summary]:
         prometheus_metric = get_prometheus_metric(identifier, category, REGISTRY)
         self._prometheus_metrics[identifier] = prometheus_metric
         return prometheus_metric
@@ -152,10 +163,13 @@ class PrometheusLogger(BaseLogger):
             )
         return value
 
-def get_prometheus_metric(identifier: str,
-                          category: MetricCategories,
-                          registry: CollectorRegistry,
-                          description_template: str = _DESCRIPTION) -> Optional["MetricWrapperBase"]:
+
+def get_prometheus_metric(
+    identifier: str,
+    category: MetricCategories,
+    registry: CollectorRegistry,
+    description_template: str = _DESCRIPTION,
+) -> Optional["MetricWrapperBase"]:  # noqa: F821
     """
     Get a Prometheus metric object for the given identifier and category.
 
@@ -171,31 +185,48 @@ def get_prometheus_metric(identifier: str,
     else:
         metric = Summary
 
+    if metric is None:
+        return None
     # needs to adhere to
     # https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
-    formatted_identifier = identifier.replace(".", "__").replace("-", "__").replace("/", "__")
+    formatted_identifier = (
+        identifier.replace(".", "__").replace("-", "__").replace("/", "__")
+    )
 
     return metric(
         formatted_identifier,
-        description_template.format(metric_name = metric._type, identifier=identifier, category=category),
-        registry=registry)
+        description_template.format(
+            metric_name=metric._type, identifier=identifier, category=category
+        ),
+        registry=registry,
+    )
 
-def _get_metric_from_the_mapping(identifier: str, metric_type_mapping: Dict[str, str]) -> Optional[Type["MetricWrapperBase"]]:
+
+def _get_metric_from_the_mapping(
+    identifier: str, metric_type_mapping: Dict[str, str] = _IDENTIFIER_TO_METRIC_TYPE
+) -> Optional[Type["MetricWrapperBase"]]:  # noqa: F821
     for system_group_name, metric_type in metric_type_mapping.items():
         """
         Attempts to get the metric type given the identifier and system_group_name.
         There are two cases:
         Case 1) If system_group_name contains both the group name and the identifier,
             e.g. "request_details/successful_request", the match requires the identifier
-            to end with the system_group_name, 
+            to end with the system_group_name,
             e.g. "pipeline_name/request_details/successful_request".
-        Case 2) If system_group_name contains only the group name, e.g. "prediction_latency",
-            the match requires the system_group_name to be contained within the identifier
-            e.g. prediction_latency/pipeline_inputs 
+        Case 2) If system_group_name contains only the group name,
+            e.g. "prediction_latency",
+            the match requires the system_group_name to be
+            contained within the identifier
+            e.g. prediction_latency/pipeline_inputs
         """
-        if ("/" in system_group_name and identifier.endswith(system_group_name)) or (system_group_name in identifier):
+        if ("/" in system_group_name and identifier.endswith(system_group_name)) or (
+            system_group_name in identifier
+        ):
             return metric_type
-    raise KeyError("The identifier cannot be matched with any of the Prometheus metrics")
+    raise KeyError(
+        "The identifier cannot be matched with any of the Prometheus metrics"
+    )
+
 
 def _check_prometheus_import():
     if prometheus_import_error is not None:
