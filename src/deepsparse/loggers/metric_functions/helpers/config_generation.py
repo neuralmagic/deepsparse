@@ -28,8 +28,8 @@ _WHITESPACE = "  "
 
 def data_logging_config_from_predefined(
     group_names: Union[str, List[str]],
-    loggers: Dict[str, Optional[Dict[str, Any]]] = {"python": {}},
     frequency: int = 1,
+    loggers: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,
     save_dir: Optional[str] = None,
     save_name: str = "data_logging_config.yaml",
 ) -> str:
@@ -58,27 +58,34 @@ def data_logging_config_from_predefined(
 def _loggers_to_config_string(
     loggers: Dict[str, Optional[Union[str, List[str]]]]
 ) -> str:
-    return ("\n").join(_nested_dict_to_lines(loggers, yaml_str_lines=[]))
+    return ("\n").join(_nested_dict_to_lines(loggers))
 
 
 def _nested_dict_to_lines(
-    value: Any, key=None, yaml_str_lines=[], level=0
+    value: Any,
+    key: Optional[str] = None,
+    yaml_str_lines: Optional[List[str]] = None,
+    _level: int = 0,
 ) -> List[str]:
     # converts a nested dictionary to a list of yaml string lines
+    if yaml_str_lines is None:
+        yaml_str_lines = []
+
+    identation = _WHITESPACE * _level
+
     for new_key, new_value in value.items():
         if isinstance(new_value, dict):
-            yaml_str_lines.append(f"{_WHITESPACE*level}{new_key}:")
+            yaml_str_lines.append(f"{identation}{new_key}:")
             yaml_str_lines = _nested_dict_to_lines(
-                new_value, new_key, yaml_str_lines, level + 1
+                new_value, new_key, yaml_str_lines, _level + 1
+            )
+        elif isinstance(new_value, list):
+            list_as_str = _metric_functions_configs_to_string(new_value)
+            yaml_str_lines.append(
+                f"{new_key}:\n{textwrap.indent(list_as_str, prefix=_WHITESPACE)}"
             )
         else:
-            if isinstance(new_value, list):
-                # we can safely return here, since we are not expecting nested lists
-                yaml_str_lines.append(
-                    f"{new_key}:\n{textwrap.indent(_metric_functions_configs_to_string(new_value), prefix=_WHITESPACE)}"  # noqa E501
-                )
-            else:
-                yaml_str_lines.append(f"{_WHITESPACE*level}{new_key}: {new_value}")
+            yaml_str_lines.append(f"{identation}{new_key}: {new_value}")
 
     return yaml_str_lines
 
