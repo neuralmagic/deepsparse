@@ -18,34 +18,84 @@ Implementation of the Prometheus Logger
 import logging
 import os
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import (
+    REQUEST_DETAILS_PREFIX,
+    RESOURCE_UTILIZATION_PREFIX,
+    BaseLogger,
+    MetricCategories,
+)
 
 
 try:
     from prometheus_client import (
         REGISTRY,
+        Counter,
+        Gauge,
+        Histogram,
         Summary,
         start_http_server,
         write_to_textfile,
+        CollectorRegistry
     )
 
     prometheus_import_error = None
 except Exception as prometheus_import_err:
-    REGISTRY = None
-    Summary = None
-    start_http_server = None
-    write_to_textfile = None
+    (
+        REGISTRY,
+        Summary,
+        Counter,
+        Gauge,
+        Histogram,
+        start_http_server,
+        write_to_textfile,
+        CollectorRegistry,
+    ) = None
     prometheus_import_error = prometheus_import_err
 
 
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
-SUPPORTED_DATA_TYPES = (int, float)
+_SUPPORTED_DATA_TYPES = (int, float)
+_DESCRIPTION = """{metric_name} metric for identifier: {identifier} | Category: {category}"""
+_IDENTIFIER_TO_METRIC_TYPE = {
+    "prediction_latency": Histogram,
+    RESOURCE_UTILIZATION_PREFIX: Gauge,
+    f"{REQUEST_DETAILS_PREFIX}/successful_request": Counter,
+    f"{REQUEST_DETAILS_PREFIX}/input_batch_size": Histogram,
+    #f"{REQUEST_DETAILS_PREFIX}/response_message": None,
+}
+metric = None
+def fetch_metric(identifier: str, metric_type_mapping) -> Any:
+    for system_group_name, metric_type in metric_type_mapping.items():
+        if "/" in system_group_name:
+            if identifier.endswith(system_group_name):
+                return metric_type
+        if system_group_name in identifier:
+            return metric_type
+    raise KeyError()
 
+def fetch_prometheus_metric(identifier: str,
+                            category: MetricCategories,
+                            registry: CollectorRegistry,
+                            description_template: str = _DESCRIPTION,
+                            metric_type_mapping: Dict[str, str] = _IDENTIFIER_TO_METRIC_TYPE) -> Any:
+    metric = Summary
+    if category == MetricCategories.SYSTEM:
+        metric = fetch_metric(identifier, metric_type_mapping)
 
+    # needs to adhere to
+    # https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
+    formatted_identifier = identifier.replace(".", "__").replace("-", "__").replace("/", "__")
+
+    prometheus_metric = metric(
+        formatted_identifier,
+        description_template.format(metric_name = metric._type, identifier=identifier, category=category),
+        registry=registry,
+    )
+    return prometheus_metric
 class PrometheusLogger(BaseLogger):
     """
     DeepSparse logger that continuously exposes the collected logs over the
@@ -89,16 +139,10 @@ class PrometheusLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-
-        # needs to adhere to
-        # https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
-        formatted_identifier = (
-            identifier.replace(".", "__").replace("-", "__").replace("/", "__")
-        )
-        prometheus_metric = self._prometheus_metrics.get(formatted_identifier)
+        prometheus_metric = self._prometheus_metrics.get(identifier)
         if prometheus_metric is None:
             prometheus_metric = self._add_metric_to_registry(
-                formatted_identifier, category
+                identifier, category
             )
         prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
@@ -117,14 +161,7 @@ class PrometheusLogger(BaseLogger):
         self._counter += 1
 
     def _add_metric_to_registry(self, identifier: str, category: str) -> Summary:
-        description = (
-            """Summary metric for identifier: {identifier} | Category: {category}"""
-        )
-        prometheus_metric = Summary(
-            identifier,
-            description.format(identifier=identifier, category=category),
-            registry=REGISTRY,
-        )
+        prometheus_metric = fetch_prometheus_metric(identifier, category, REGISTRY)
         self._prometheus_metrics[identifier] = prometheus_metric
         return prometheus_metric
 
@@ -136,10 +173,10 @@ class PrometheusLogger(BaseLogger):
     def _validate(self, value: Any) -> Any:
         # make sure we are passing a value that is
         # a valid metric by prometheus client's standards
-        if not isinstance(value, SUPPORTED_DATA_TYPES):
+        if not isinstance(value, _SUPPORTED_DATA_TYPES):
             raise ValueError(
                 "Prometheus logger expects the incoming values "
-                f"to be one of the type: {SUPPORTED_DATA_TYPES}"
+                f"to be one of the type: {_SUPPORTED_DATA_TYPES}"
             )
         return value
 

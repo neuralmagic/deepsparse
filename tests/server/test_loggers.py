@@ -15,7 +15,7 @@
 from unittest import mock
 
 from deepsparse import PythonLogger
-from deepsparse.server.config import EndpointConfig, MetricFunctionConfig, ServerConfig
+from deepsparse.server.config import EndpointConfig, MetricFunctionConfig, ServerConfig, ServerSystemLoggingConfig
 from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
@@ -207,3 +207,36 @@ def test_instantiate_prometheus(tmp_path):
     )
     r = client.post("/predict", json=dict(sequences="asdf"))
     assert r.status_code == 200
+import yaml
+@mock_engine(rng_seed=0)
+def test_prometheus_metrics(tmp_path):
+    system_logging_turned_on = """
+    system_logging:
+        prediction_latency:
+            enable: true
+        resource_utilization:
+            enable: true
+        request_details:    
+            enable: true"""
+
+    obj = yaml.safe_load(system_logging_turned_on)
+    system_logging_config = ServerSystemLoggingConfig(**obj["system_logging"])
+
+    client = TestClient(
+        _build_app(
+            ServerConfig(
+                endpoints=[EndpointConfig(task="text_classification", model="default")],
+                system_logging = system_logging_config,
+                loggers=dict(
+                    prometheus={
+                        "port": find_free_port(),
+
+                    }
+                ),
+            )
+        )
+    )
+    r = client.post("/predict", json=dict(sequences="asdf"))
+    assert r.status_code == 200
+    logger = client.app.user_middleware[0].options['server_logger'].logger.loggers[0].logger.loggers[0]
+    pass

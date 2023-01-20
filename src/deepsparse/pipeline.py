@@ -31,8 +31,8 @@ from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.loggers.build_logger import logger_from_config
 from deepsparse.loggers.constants import (
-    REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    REQUEST_DETAILS_PREFIX,
+    RESOURCE_UTILIZATION_PREFIX,
     MetricCategories,
     validate_identifier,
 )
@@ -208,7 +208,7 @@ class Pipeline(ABC):
         self._batch_size = self._batch_size or 1
 
         self.log(
-            identifier=f"{RESOURCE_UTILIZATION_IDENTIFIER_PREFIX}/num_cores",
+            identifier=f"{RESOURCE_UTILIZATION_PREFIX}/num_cores",
             value=num_cores,
             category=MetricCategories.SYSTEM,
         )
@@ -273,7 +273,7 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
         self.log(
-            identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size",
+            identifier=f"{REQUEST_DETAILS_PREFIX}/input_batch_size",
             # to get the batch size of the inputs, we need to look
             # to multiply the engine batch size (self._batch_size)
             # by the number of batches processed by the engine during

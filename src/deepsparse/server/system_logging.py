@@ -19,8 +19,8 @@ from typing import Any, Dict, List, Optional, Union
 
 import psutil
 from deepsparse.loggers import (
-    REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    REQUEST_DETAILS_PREFIX,
+    RESOURCE_UTILIZATION_PREFIX,
     BaseLogger,
     MetricCategories,
 )
@@ -61,31 +61,31 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except Exception as err:  # noqa: F841
+            # log_system_information(
+            #     self.server_logger,
+            #     self.system_logging_config,
+            #     REQUEST_DETAILS_PREFIX,
+            #     response_message=f"{err.__class__.__name__}: {err}",
+            #)
             log_system_information(
                 self.server_logger,
                 self.system_logging_config,
-                REQUEST_DETAILS_IDENTIFIER_PREFIX,
-                response_message=f"{err.__class__.__name__}: {err}",
-            )
-            log_system_information(
-                self.server_logger,
-                self.system_logging_config,
-                REQUEST_DETAILS_IDENTIFIER_PREFIX,
+                REQUEST_DETAILS_PREFIX,
                 successful_request=0,
             )
             _LOGGER.error(err)
             raise
 
+        # log_system_information(
+        #     self.server_logger,
+        #     self.system_logging_config,
+        #     REQUEST_DETAILS_PREFIX,
+        #     response_message=f"Response status code: {response.status_code}",
+        # )
         log_system_information(
             self.server_logger,
             self.system_logging_config,
-            REQUEST_DETAILS_IDENTIFIER_PREFIX,
-            response_message=f"Response status code: {response.status_code}",
-        )
-        log_system_information(
-            self.server_logger,
-            self.system_logging_config,
-            REQUEST_DETAILS_IDENTIFIER_PREFIX,
+            REQUEST_DETAILS_PREFIX,
             successful_request=int((response.status_code == 200)),
         )
         return response
@@ -93,7 +93,7 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
 
 def log_resource_utilization(
     server_logger: BaseLogger,
-    prefix: str = RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    prefix: str = RESOURCE_UTILIZATION_PREFIX,
     **items_to_log: Dict[str, Any],
 ):
     """
@@ -136,7 +136,7 @@ def log_resource_utilization(
 
 def log_request_details(
     server_logger: BaseLogger,
-    prefix: str = REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    prefix: str = REQUEST_DETAILS_PREFIX,
     **items_to_log: Dict[str, Any],
 ):
     """
@@ -172,8 +172,8 @@ def log_request_details(
 # maps the metric group name to the function that logs the information
 # pertaining to this metric group name
 _PREFIX_MAPPING = {
-    REQUEST_DETAILS_IDENTIFIER_PREFIX: log_request_details,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: log_resource_utilization,
+    REQUEST_DETAILS_PREFIX: log_request_details,
+    RESOURCE_UTILIZATION_PREFIX: log_resource_utilization,
 }
 
 
