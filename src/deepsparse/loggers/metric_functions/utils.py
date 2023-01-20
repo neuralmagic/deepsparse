@@ -16,4 +16,7 @@ __all__ = ["BatchResult"]
 
 
 class BatchResult(list):
-    pass
+    """
+    Wrapper class for a list of values that
+    are derived from a set of batch data
+    """
