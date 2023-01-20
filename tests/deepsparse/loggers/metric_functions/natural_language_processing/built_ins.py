@@ -12,7 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-from .built_ins import *
-from .computer_vision import *
-from .natural_language_processing import *
+import pytest
+from deepsparse.loggers.metric_functions.natural_language_processing import (
+    string_length,
+)
+
+
+@pytest.mark.parametrize(
+    "string, expected_len",
+    [
+        ("His palms are sweaty", 20),
+        (["knees weak", "arms are heavy"], {"0": 10, "1": 14}),
+    ],
+)
+def test_string_length(string, expected_len):
+    assert string_length(string) == expected_len
