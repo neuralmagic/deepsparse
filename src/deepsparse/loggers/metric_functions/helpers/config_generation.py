@@ -1,16 +1,33 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 __all__ = ["data_logging_config_from_predefined"]
 
-from typing import Dict, List, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
 
-from deepsparse.loggers.build_logger import default_logger
+from deepsparse.loggers.build_logger import predefined_metric_function
+from deepsparse.loggers.config import MetricFunctionConfig
+from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
 
 
 def data_logging_config_from_predefined(
     group_names: Union[str, List[str]],
-    loggers: Dict[str, Optional[Dict[str, Any]]] = default_logger(),
     frequency: int = 1,
+    loggers: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,
     save_dir: Optional[str] = None,
     save_name: str = "data_logging_config.yaml",
+    registry: Dict[str, Any] = DATA_LOGGING_REGISTRY,
 ) -> str:
     """
     Generate a data logging config yaml string using a predefined
@@ -31,4 +48,14 @@ def data_logging_config_from_predefined(
     :return: A string yaml dict that specifies the data logging
         configuration
     """
-    raise NotImplementedError()
+    if isinstance(group_names, str):
+        group_names = [group_names]
+
+    metric_functions = [
+        MetricFunctionConfig(func=group_name, frequency=frequency)
+        for group_name in group_names
+    ]
+    data_logging_config = predefined_metric_function(
+        metric_functions=metric_functions, registry=registry
+    )
+    return data_logging_config
