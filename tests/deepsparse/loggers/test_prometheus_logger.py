@@ -18,80 +18,16 @@ import requests
 import pytest
 from deepsparse import PrometheusLogger
 from deepsparse.loggers import MetricCategories
-from deepsparse.loggers.prometheus_logger import get_prometheus_metric
-from prometheus_client import REGISTRY, Counter, Gauge, Histogram, Summary
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
 
 @pytest.mark.parametrize(
-    "identifier, category, registry, expected_metric, raise_error",
-    [
-        ("dummy_identifier", MetricCategories.DATA, REGISTRY, Summary, False),
-        ("dummy_identifier", MetricCategories.SYSTEM, REGISTRY, None, True),
-        (
-            "prediction_latency/dummy_identifier",
-            MetricCategories.SYSTEM,
-            REGISTRY,
-            Histogram,
-            False,
-        ),
-        (
-            "resource_utilization/dummy_identifier",
-            MetricCategories.SYSTEM,
-            REGISTRY,
-            Gauge,
-            False,
-        ),
-        (
-            "request_details/successful_request",
-            MetricCategories.SYSTEM,
-            REGISTRY,
-            Counter,
-            False,
-        ),
-        (
-            "request_details/input_batch_size",
-            MetricCategories.SYSTEM,
-            REGISTRY,
-            Histogram,
-            False,
-        ),
-        (
-            "request_details/response_message",
-            MetricCategories.SYSTEM,
-            REGISTRY,
-            None,
-            False,
-        ),
-    ],
-)
-def test_get_prometheus_metric(
-    identifier, category, registry, expected_metric, raise_error
-):
-    if raise_error:
-        with pytest.raises(KeyError):
-            get_prometheus_metric(identifier, category, registry)
-        return
-    metric = get_prometheus_metric(identifier, category, registry)
-    if metric is not None:
-        assert isinstance(metric, expected_metric)
-        assert (
-            metric._documentation
-            == "{metric_type} metric for identifier: {identifier} | Category: {category}".format(  # noqa: E501
-                metric_type=metric._type, identifier=identifier, category=category
-            )
-        )
-        return
-    assert metric is None
-
-
-@pytest.mark.parametrize(
     "identifier, no_iterations, value, text_log_save_frequency, should_fail",
     [
-        ("dummy.identifier_1", 20, 1.0, 1, False),
-        ("dummy.identifier.2", 20, 1, 5, False),
-        ("dummy.identifier.3", 20, [1.0], 10, True),
+        ("dummy_pipeline/dummy.identifier_1", 20, 1.0, 1, False),
+        ("dummy_pipeline/dummy.identifier_2", 20, 1, 5, False),
+        ("dummy_pipeline/dummy.identifier_3", 20, [1.0], 10, True),
     ],
 )
 @mock_engine(rng_seed=0)
@@ -115,10 +51,10 @@ def test_prometheus_logger(
     for idx in range(no_iterations):
         if should_fail:
             with pytest.raises(ValueError):
-                logger.log(identifier, value, MetricCategories.DATA)
+                logger.log(identifier, value, MetricCategories.SYSTEM)
                 return
             return
-        logger.log(identifier, value, MetricCategories.DATA)
+        logger.log(identifier, value, MetricCategories.SYSTEM)
 
     response = requests.get(f"http://0.0.0.0:{port}").text
     request_log_lines = response.split("\n")
