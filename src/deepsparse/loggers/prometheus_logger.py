@@ -38,12 +38,9 @@ except Exception as prometheus_import_err:
     (
         REGISTRY,
         Summary,
-        Counter,
-        Gauge,
-        Histogram,
+        CollectorRegistry,
         start_http_server,
         write_to_textfile,
-        CollectorRegistry,
     ) = None
     prometheus_import_error = prometheus_import_err
 
@@ -171,6 +168,7 @@ def get_prometheus_metric(
         ),
         registry=registry,
     )
+
 
 def format_identifier(identifier: str) -> str:
     """
