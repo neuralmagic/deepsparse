@@ -18,8 +18,70 @@ import requests
 import pytest
 from deepsparse import PrometheusLogger
 from deepsparse.loggers import MetricCategories
+from deepsparse.loggers.prometheus_logger import get_prometheus_metric
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, Summary
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
+
+
+@pytest.mark.parametrize(
+    "identifier, category, registry, expected_metric, raise_warning",
+    [
+        ("dummy_identifier", MetricCategories.DATA, REGISTRY, Summary, False),
+        ("dummy_identifier", MetricCategories.SYSTEM, REGISTRY, None, True),
+        (
+            "prediction_latency/dummy_identifier",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            Histogram,
+            False,
+        ),
+        (
+            "resource_utilization/dummy_identifier",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            Gauge,
+            False,
+        ),
+        (
+            "request_details/successful_request",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            Counter,
+            False,
+        ),
+        (
+            "request_details/input_batch_size",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            Histogram,
+            False,
+        ),
+        (
+            "request_details/response_message",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            None,
+            True,
+        ),
+    ],
+)
+def test_get_prometheus_metric(
+    identifier, category, registry, expected_metric, raise_warning
+):
+    if raise_warning:
+        with pytest.warns(UserWarning):
+            metric = get_prometheus_metric(identifier, category, registry)
+            assert metric is None
+        return
+    metric = get_prometheus_metric(identifier, category, registry)
+    assert isinstance(metric, expected_metric)
+    assert (
+        metric._documentation
+        == "{metric_type} metric for identifier: {identifier} | Category: {category}".format(  # noqa: E501
+            metric_type=metric._type, identifier=identifier, category=category
+        )
+    )
 
 
 @pytest.mark.parametrize(
