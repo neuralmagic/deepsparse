@@ -48,6 +48,7 @@ except Exception as prometheus_import_err:
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
+_NAMESPACE = "deepsparse"
 _SUPPORTED_DATA_TYPES = (int, float)
 _DESCRIPTION = (
     """{metric_name} metric for identifier: {identifier} | Category: {category}"""
@@ -97,8 +98,9 @@ class PrometheusLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
+        model_name = identifier.split("/")[-1]
         prometheus_metric = self._get_prometheus_metric(identifier, category)
-        prometheus_metric.observe(self._validate(value))
+        prometheus_metric.labels(model_name=model_name).observe(self._validate(value))
         self._export_metrics_to_textfile()
 
     def _get_prometheus_metric(
@@ -166,11 +168,12 @@ def get_prometheus_metric(
         description_template.format(
             metric_name=metric._type, identifier=identifier, category=category
         ),
+        ["model_name"],
         registry=registry,
     )
 
 
-def format_identifier(identifier: str) -> str:
+def format_identifier(identifier: str, namespace: str = _NAMESPACE) -> str:
     """
     Replace forbidden characters with `__` so that the identifier
     digested by prometheus adheres to
@@ -178,7 +181,7 @@ def format_identifier(identifier: str) -> str:
     :param identifier: The identifier to be formatted
     :return: The formatted identifier
     """
-    return re.sub(r"[^a-zA-Z0-9_]", "__", identifier).lower()
+    return f"{namespace}_{re.sub(r'[^a-zA-Z0-9_]', '__', identifier).lower()}"
 
 
 def _check_prometheus_import():
