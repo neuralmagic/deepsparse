@@ -15,14 +15,12 @@
 """
 Usage: deepsparse.object_detection.annotate [OPTIONS]
 
-  Annotation Script for YOLOv5 with DeepSparse
+  Annotation Script for YOLOv8 with DeepSparse
 
 Options:
   --model_filepath, --model-filepath TEXT
                                   Path/SparseZoo stub to the model file to be
-                                  used for annotation  [default: zoo:cv/detect
-                                  ion/yolov5-s/pytorch/ultralytics/coco/pruned
-                                  -aggressive_96]
+                                  used for annotation  [default: # TODO add]
   --source TEXT                   File path to an image or directory of image
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
@@ -59,10 +57,10 @@ Options:
 #######
 Examples:
 
-1) deepsparse.object_detection.annotate --source PATH/TO/IMAGE.jpg
-2) deepsparse.object_detection.annotate --source PATH/TO/VIDEO.mp4
-3) deepsparse.object_detection.annotate --source 0
-4) deepsparse.object_detection.annotate --source PATH/TO/IMAGE_DIR
+1) deepsparse.yolov8.annotate --source PATH/TO/IMAGE.jpg
+2) deepsparse.yolov8.annotate --source PATH/TO/VIDEO.mp4
+3) deepsparse.yolov8.annotate --source 0
+4) deepsparse.yolov8.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
 from typing import Optional
@@ -80,9 +78,7 @@ from deepsparse.utils.cli_helpers import create_dir_callback
 from deepsparse.yolo.utils import annotate_image
 
 
-yolo_v5_default_stub = (
-    "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96"
-)
+yolo_v5_default_stub = None
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
@@ -181,7 +177,7 @@ def main(
     no_save: bool,
 ) -> None:
     """
-    Annotation Script for YOLOv5 with DeepSparse
+    Annotation Script for YOLOv8 with DeepSparse
     """
     save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
@@ -199,7 +195,7 @@ def main(
 
     is_webcam = source.isnumeric()
     yolo_pipeline = Pipeline.create(
-        task="yolo",
+        task="yolov8",
         model_path=model_filepath,
         class_names="coco",
         engine_type=engine,

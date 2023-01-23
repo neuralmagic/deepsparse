@@ -105,6 +105,9 @@ class SupportedTasks:
     yolo = namedtuple("yolo", ["yolo"])(
         yolo=AliasedTask("yolo", ["yolo"]),
     )
+    yolov8 = namedtuple("yolov8", ["yolov8"])(
+        yolov8=AliasedTask("yolov8", ["yolov8"]),
+    )
     yolact = namedtuple("yolact", ["yolact"])(
         yolact=AliasedTask("yolact", ["yolact"]),
     )
@@ -127,6 +130,7 @@ class SupportedTasks:
         nlp,
         image_classification,
         yolo,
+        yolov8,
         yolact,
         haystack,
         embedding_extraction,
@@ -163,6 +167,10 @@ class SupportedTasks:
             # trigger yolo pipelines to register with Pipeline.register
             import deepsparse.yolo.pipelines  # noqa: F401
 
+        elif cls.is_yolov8(task):
+            # trigger yolo pipelines to register with Pipeline.register
+            import deepsparse.yolov8.pipelines  # noqa: F401
+
         elif cls.is_haystack(task):
             # trigger haystack pipeline as well as transformers pipelines to
             # register with Pipeline.register
@@ -198,8 +206,10 @@ class SupportedTasks:
     def is_cv(cls, task: str) -> bool:
         return (
             cls.is_yolo(task)
+            or cls.is_yolov8(task)
             or cls.is_yolact(task)
             or cls.is_image_classification(task)
+            or cls.is_open_pif_paf(task)
         )
 
     @classmethod
@@ -219,6 +229,15 @@ class SupportedTasks:
         :return: True if it is an segmentation task using YOLO, False otherwise
         """
         return any([yolo_task.matches(task) for yolo_task in cls.yolo])
+
+    @classmethod
+    def is_yolov8(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is an image
+            segmentation task using YOLOv8
+        :return: True if it is an segmentation task using YOLOv8, False otherwise
+        """
+        return any([yolov8_task.matches(task) for yolov8_task in cls.yolov8])
 
     @classmethod
     def is_yolact(cls, task: str) -> bool:
