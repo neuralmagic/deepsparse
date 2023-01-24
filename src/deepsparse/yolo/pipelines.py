@@ -218,7 +218,10 @@ class YOLOPipeline(Pipeline):
                 numpy.asarray(original_image_shape), numpy.asarray(self.image_size)
             )
         )
+
+        # broadcast scales to rescale bounding boxes in one numpy operation
         scale = numpy.concatenate([scale, scale])
+
         boxes = numpy.multiply(boxes, scale)
         return boxes
 
