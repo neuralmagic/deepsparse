@@ -30,9 +30,6 @@ Options:
                                   Inference engine backend to run on. Choices
                                   are 'deepsparse', 'onnxruntime', and
                                   'torch'. Default is 'deepsparse'
-  --image_shape, --image_shape INTEGER
-                                  Image shape to use for inference, must be
-                                  two integers  [default: 640, 640]
   --num_cores, --num-cores INTEGER
                                   The number of physical cores to run the
                                   annotations with, defaults to using all
@@ -115,15 +112,6 @@ _LOGGER = logging.getLogger(__name__)
     "'onnxruntime', and 'torch'. Default is 'deepsparse'",
 )
 @click.option(
-    "--image_shape",
-    "--image-shape",
-    type=int,
-    nargs=2,
-    default=(640, 640),
-    help="Image shape to use for inference, must be two integers",
-    show_default=True,
-)
-@click.option(
     "--num_cores",
     "--num-cores",
     type=int,
@@ -173,7 +161,6 @@ def main(
     model_filepath: str,
     source: str,
     engine: str,
-    image_shape: tuple,
     num_cores: Optional[int],
     save_dir: str,
     name: Optional[str],
@@ -192,7 +179,7 @@ def main(
     loader, saver, is_video = get_image_loader_and_saver(
         path=source,
         save_dir=save_dir,
-        image_shape=image_shape,
+        image_shape=None,
         target_fps=target_fps,
         no_save=no_save,
     )
@@ -216,7 +203,6 @@ def main(
             target_fps=target_fps,
             calc_fps=is_video,
             original_image=source_image,
-            model_input_size=image_shape,
         )
 
         if is_webcam:
