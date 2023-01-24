@@ -147,6 +147,7 @@ class PrometheusLogger(BaseLogger):
         # the specified frequency
         os.makedirs(self.text_log_save_dir, exist_ok=True)
         if self._counter % self.text_log_save_frequency == 0:
+
             write_to_textfile(self.text_log_file_path, REGISTRY)
             self._counter = 0
         self._counter += 1
