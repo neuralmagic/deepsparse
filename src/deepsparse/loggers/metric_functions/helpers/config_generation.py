@@ -19,6 +19,9 @@ Helper functions for generating metric function configs
 __all__ = ["data_logging_config_from_predefined"]
 
 import textwrap
+import os
+import logging
+import yaml
 from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.loggers.build_logger import predefined_metric_function
@@ -27,7 +30,7 @@ from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
 
 
 _WHITESPACE = "  "
-
+_LOGGER = logging.getLogger(__name__)
 
 def data_logging_config_from_predefined(
     group_names: Union[str, List[str]],
@@ -59,6 +62,9 @@ def data_logging_config_from_predefined(
     if isinstance(group_names, str):
         group_names = [group_names]
 
+    if loggers is None:
+        loggers = {'python': {}}
+
     metric_functions = [
         MetricFunctionConfig(func=group_name, frequency=frequency)
         for group_name in group_names
@@ -66,13 +72,31 @@ def data_logging_config_from_predefined(
     data_logging_config = predefined_metric_function(
         metric_functions=metric_functions, registry=registry
     )
-    return data_logging_config
+    data_logging_config_str = _data_logging_config_string(data_logging_config)
+    loggers_config_str = _loggers_to_config_string(loggers)
+
+    config_str = loggers_config_str + "\n\n" + data_logging_config_str
+
+    if save_dir:
+        # save and log
+        save_path = os.path.join(save_dir, save_name)
+        with open(save_path, 'w') as outfile:
+            yaml.dump(config_str, outfile, default_flow_style=False)
+        _LOGGER.info(f"Saved data logging config to {save_path}")
+
+
+    return config_str
 
 
 def _loggers_to_config_string(
     loggers: Dict[str, Optional[Union[str, List[str]]]]
 ) -> str:
     return ("\n").join(_nested_dict_to_lines(loggers))
+
+def _data_logging_config_string(
+    data_logging_config: Dict[str, List[MetricFunctionConfig]],
+) -> str:
+    return ("\n").join(_nested_dict_to_lines(data_logging_config))
 
 
 def _nested_dict_to_lines(

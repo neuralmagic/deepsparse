@@ -14,13 +14,96 @@
 
 
 import pytest
-from deepsparse.loggers.config import MetricFunctionConfig
+import os
+import yaml
+from deepsparse.loggers.config import MetricFunctionConfig, PipelineLoggingConfig
 from deepsparse.loggers.metric_functions.helpers.config_generation import (
     _loggers_to_config_string,
     _metric_function_config_to_string,
     _metric_functions_configs_to_string,
     _nested_dict_to_lines,
+    data_logging_config_from_predefined
 )
+from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
+
+DATA_LOGGING_REGISTRY_W_DUMMY_GROUP = DATA_LOGGING_REGISTRY.copy()
+DATA_LOGGING_REGISTRY_W_DUMMY_GROUP.update({"dummy_group": {"dummy_target" : ["dummy_func_1", "dummy_func_2"]}})
+
+dummy_logger_config = {"some_logger": {"arg_1": "argument_1", "arg_2": None},
+                       "some_other_logger": {"arg_3": 5.6, "arg_4": 10}}
+result_1 = """python:
+
+pipeline_inputs.images:
+  - func: image_shape
+    frequency: 3
+  - func: mean_pixels_per_channel
+    frequency: 3
+  - func: fraction_zeros
+    frequency: 3"""
+
+result_2 = """some_logger:
+  arg_1: argument_1
+  arg_2: None
+some_other_logger:
+  arg_3: 5.6
+  arg_4: 10
+
+pipeline_inputs.images:
+  - func: image_shape
+    frequency: 3
+  - func: mean_pixels_per_channel
+    frequency: 3
+  - func: fraction_zeros
+    frequency: 3"""
+
+result_3 = """some_logger:
+  arg_1: argument_1
+  arg_2: None
+some_other_logger:
+  arg_3: 5.6
+  arg_4: 10
+
+pipeline_inputs.images:
+  - func: image_shape
+    frequency: 10
+  - func: mean_pixels_per_channel
+    frequency: 10
+  - func: fraction_zeros
+    frequency: 10
+dummy_target:
+  - func: dummy_func_1
+    frequency: 10
+  - func: dummy_func_2
+    frequency: 10"""
+
+@pytest.mark.parametrize(
+    "group_names, frequency, loggers, save_dir, registry, expected_result",
+    [
+        ("image_classification", 3, None, True, DATA_LOGGING_REGISTRY, result_1),
+        ("image_classification", 3 , dummy_logger_config, False, DATA_LOGGING_REGISTRY, result_2),
+        (["image_classification", "dummy_group"], 10, dummy_logger_config, True, DATA_LOGGING_REGISTRY_W_DUMMY_GROUP, result_3),
+
+    ],
+)
+def test_data_logging_config_from_predefined(tmp_path, group_names, frequency, loggers, save_dir, registry, expected_result):
+    tmp_path.mkdir(exist_ok=True)
+
+    string_result = data_logging_config_from_predefined(
+        group_names = group_names,
+        frequency = frequency,
+        loggers = loggers,
+        save_dir = tmp_path,
+        registry = registry)
+
+    assert string_result == expected_result
+    assert PipelineLoggingConfig(**yaml.safe_load(string_result))
+
+    if save_dir:
+        with open(os.path.join(tmp_path, "data_logging_config.yaml"), 'r') as stream:
+            string_result_saved = yaml.safe_load(stream)
+        assert string_result_saved == expected_result
+
+    assert string_result == expected_result
 
 
 result_1 = """logger_2:
