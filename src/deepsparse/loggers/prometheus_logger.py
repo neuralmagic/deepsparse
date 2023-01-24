@@ -61,6 +61,7 @@ __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
 _SUPPORTED_DATA_TYPES = (int, float)
+_PrometheusMetric = Union[Histogram, Gauge, Summary, Counter]
 _DESCRIPTION = (
     """{metric_name} metric for identifier: {identifier} | Category: {category}"""
 )
@@ -123,7 +124,7 @@ class PrometheusLogger(BaseLogger):
 
     def _get_prometheus_metric(
         self, identifier: str, category: MetricCategories
-    ) -> Union[None, Histogram, Gauge, Summary, Counter]:
+    ) -> Optional[_PrometheusMetric]:
         saved_metric = self._prometheus_metrics.get(identifier)
         if saved_metric is None:
             return self._add_metric_to_registry(identifier, category)
@@ -131,7 +132,7 @@ class PrometheusLogger(BaseLogger):
 
     def _add_metric_to_registry(
         self, identifier: str, category: str
-    ) -> Union[None, Histogram, Gauge, Summary, Counter]:
+    ) -> Optional[_PrometheusMetric]:
         # add a new metric to the registry
         prometheus_metric = get_prometheus_metric(identifier, category, REGISTRY)
         self._prometheus_metrics[identifier] = prometheus_metric
