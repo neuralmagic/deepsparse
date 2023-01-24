@@ -60,7 +60,7 @@ class YOLOPipeline(Pipeline):
         specifies all available cores. Default is None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
         Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
+    :param input_shapes: list of shapes to set ONNX inputs to. Pass None
         to use model as-is. Default is None
     :param alias: optional name to give this pipeline instance, useful when
         inferencing with multiple models. Default is None
@@ -185,6 +185,12 @@ class YOLOPipeline(Pipeline):
 
         image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
 
+        original_image_shapes = None
+        if image_batch and isinstance(image_batch[0], tuple):
+            # splits image batch is of format:
+            #  [(preprocesses_img, original_image_shape), ...] into separate lists
+            image_batch, original_image_shapes = list(map(list, zip(*image_batch)))
+
         image_batch = self._make_batch(image_batch)
         image_batch = numpy.ascontiguousarray(
             image_batch,
@@ -197,8 +203,24 @@ class YOLOPipeline(Pipeline):
             iou_thres=inputs.iou_thres,
             conf_thres=inputs.conf_thres,
             multi_label=inputs.multi_label,
+            original_image_shapes=original_image_shapes,
         )
         return [image_batch], postprocessing_kwargs
+
+    def _scale_boxes(
+        self, boxes: numpy.ndarray, original_image_shape: Optional[Tuple[int, ...]]
+    ):
+        if not original_image_shape:
+            return boxes
+
+        scale = numpy.flipud(
+            numpy.divide(
+                numpy.asarray(original_image_shape), numpy.asarray(self.image_size)
+            )
+        )
+        scale = numpy.concatenate([scale, scale])
+        boxes = numpy.multiply(boxes, scale)
+        return boxes
 
     def _preprocess_image(self, image) -> numpy.ndarray:
         if isinstance(image, list):
@@ -209,11 +231,12 @@ class YOLOPipeline(Pipeline):
             image = cv2.imread(image)
 
         image = self._make_channels_last(image)
+        original_image_shape = image.shape[:2]
         if image.ndim < 4:
             # Assume a batch is of the correct size already
             image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
         image = self._make_channels_first(image)
-        return image
+        return image, original_image_shape
 
     def process_engine_outputs(
         self,
@@ -245,8 +268,15 @@ class YOLOPipeline(Pipeline):
 
         batch_boxes, batch_scores, batch_labels = [], [], []
 
-        for image_output in batch_output:
-            batch_boxes.append(image_output[:, 0:4].tolist())
+        original_image_shapes = kwargs.get("original_image_shapes")
+        for idx, image_output in enumerate(batch_output):
+            boxes = image_output[:, 0:4]
+            if original_image_shapes:
+                boxes = self._scale_boxes(
+                    boxes=boxes,
+                    original_image_shape=original_image_shapes[idx],
+                )
+            batch_boxes.append(boxes.tolist())
             batch_scores.append(image_output[:, 4].tolist())
             batch_labels.append(image_output[:, 5].tolist())
             if self.class_names is not None:
