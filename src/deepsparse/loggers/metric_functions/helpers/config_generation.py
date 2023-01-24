@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
 Helper functions for generating metric function configs
 """
@@ -20,7 +21,9 @@ __all__ = ["data_logging_config_from_predefined"]
 import textwrap
 from typing import Any, Dict, List, Optional, Union
 
+from deepsparse.loggers.build_logger import predefined_metric_function
 from deepsparse.loggers.config import MetricFunctionConfig
+from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
 
 
 _WHITESPACE = "  "
@@ -32,6 +35,7 @@ def data_logging_config_from_predefined(
     loggers: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,
     save_dir: Optional[str] = None,
     save_name: str = "data_logging_config.yaml",
+    registry: Dict[str, Any] = DATA_LOGGING_REGISTRY,
 ) -> str:
     """
     Generate a data logging config yaml string using a predefined
@@ -52,7 +56,17 @@ def data_logging_config_from_predefined(
     :return: A string yaml dict that specifies the data logging
         configuration
     """
-    raise NotImplementedError()
+    if isinstance(group_names, str):
+        group_names = [group_names]
+
+    metric_functions = [
+        MetricFunctionConfig(func=group_name, frequency=frequency)
+        for group_name in group_names
+    ]
+    data_logging_config = predefined_metric_function(
+        metric_functions=metric_functions, registry=registry
+    )
+    return data_logging_config
 
 
 def _loggers_to_config_string(

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import pytest
 from deepsparse.loggers.config import MetricFunctionConfig
 from deepsparse.loggers.metric_functions.helpers.config_generation import (
