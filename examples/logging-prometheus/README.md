@@ -4,7 +4,7 @@ This is a simple example that shows you how to connect DeepSparse Logging to the
 
 #### There are four steps:
 - Configure DeepSparse Logging to log metrics in Prometheus format to a REST endpoint
-- Point Prometheus to the appropriate endpoint to scape the data at a specified interval
+- Point Prometheus to the appropriate endpoint to scrape the data at a specified interval
 - Run the client script simulating a data quality/drift issue
 - Visualize data in Prometheus with dashboarding tool like Grafana
 
@@ -49,7 +49,7 @@ endpoints:
     route: /image_classification/predict
     model: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
     data_logging:      
-      pipeline_inputs.images[0]: # applies to the first image (of the form stage.property[idx])
+      pipeline_inputs.images[0]: # applies to the first image (of the form target.property[idx])
         - func: fraction_zeros   # built-in function
           frequency: 1
           target_loggers:
@@ -68,7 +68,7 @@ Thus, once launched, the Server exposes two endpoints:
 
 To spin up the Server execute:
 ```
-deepsparse.server --config server-config.yaml
+deepsparse.server --config_file server-config.yaml
 ```
 
 To validate that metrics are being properly exposed, visit `localhost:6100`. It should contain logs in the specific format meant to be used by the PromQL query language.
@@ -173,6 +173,17 @@ This graph shows the percentage of 0 pixels in the images sent to the server.
 As the "corrupted" all black images were sent to the server in increasing probability, 
 we can clearly see a spike in the graph, alerting us
 that something strange is happening with the provided input.
+
+DeepSparse Server also automatically logs prediction latencies for each pipeline stage as well
+end-to-end server-side inference time. Add the following query to inspect average latency:
+
+```
+rate(image_classification__0__prediction_latency__total_inference_sum[30s])
+/
+rate(image_classification__0__prediction_latency__total_inference_count[30s])
+```
+
+![prometheus-dashboard-latency.png](image/prometheus-dashboard-latency.png)
 
 For more details on working with the Prometheus Query Language PromQL, 
 see [the official docs](https://prometheus.io/docs/prometheus/latest/querying/basics/).
