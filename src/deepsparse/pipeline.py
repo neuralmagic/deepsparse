@@ -28,10 +28,11 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.loggers import (
+from deepsparse.loggers.base_logger import BaseLogger
+from deepsparse.loggers.build_logger import logger_from_config
+from deepsparse.loggers.constants import (
     REQUEST_DETAILS_IDENTIFIER_PREFIX,
     RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
-    BaseLogger,
     MetricCategories,
     validate_identifier,
 )
@@ -136,8 +137,11 @@ class Pipeline(ABC):
         synchronous execution - if running in dynamic batch mode a default
         ThreadPoolExecutor with default workers equal to the number of available
         cores / 2
-    :param logger: An optional DeepSparse Logger object for inference logging.
-        Default is None
+    :param logger: An optional item that can be either a DeepSparse Logger object,
+        or an object that can be transformed into one. Those object can be either
+        a path to the logging config, or yaml string representation the logging
+        config. If logger provided (in any form), the pipeline will log inference
+        metrics to the logger. Default is None
     """
 
     def __init__(
@@ -151,7 +155,7 @@ class Pipeline(ABC):
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
-        logger: Optional[BaseLogger] = None,
+        logger: Optional[Union[BaseLogger, str]] = None,
         _delay_engine_initialize: bool = False,  # internal use only
     ):
         self._model_path_orig = model_path
@@ -160,7 +164,17 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
-        self.logger = logger
+        self.logger = (
+            logger
+            if isinstance(logger, BaseLogger)
+            else (
+                logger_from_config(
+                    config=logger, pipeline_identifier=self._identifier()
+                )
+                if isinstance(logger, str)
+                else None
+            )
+        )
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -740,10 +754,7 @@ class Pipeline(ABC):
         if not self.logger:
             return
 
-        if not hasattr(self, "task"):
-            self.task = None
-
-        identifier = f"{self.alias or self.task or 'unknown_pipeline'}/{identifier}"
+        identifier = f"{self._identifier()}/{identifier}"
         validate_identifier(identifier)
         self.logger.log(
             identifier=identifier,
@@ -802,6 +813,12 @@ class Pipeline(ABC):
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
                 f"{SUPPORTED_PIPELINE_ENGINES}"
             )
+
+    def _identifier(self):
+        # get pipeline identifier; used in the context of logging
+        if not hasattr(self, "task"):
+            self.task = None
+        return f"{self.alias or self.task or 'unknown_pipeline'}"
 
 
 class PipelineConfig(BaseModel):

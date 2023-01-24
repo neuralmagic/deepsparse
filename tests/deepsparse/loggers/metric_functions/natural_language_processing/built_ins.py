@@ -12,20 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-# isort: skip_file
-
-# base modules
-from .base_logger import *
-from .constants import *
+import pytest
+from deepsparse.loggers.metric_functions.natural_language_processing import (
+    string_length,
+)
 
 
-# logger implementations
-from .async_logger import *
-from .function_logger import *
-from .multi_logger import *
-from .prometheus_logger import *
-from .python_logger import *
-
-# functions for creating complex loggers
-from .build_logger import *
+@pytest.mark.parametrize(
+    "string, expected_len",
+    [
+        ("His palms are sweaty", 20),
+        (["knees weak", "arms are heavy"], {"0": 10, "1": 14}),
+    ],
+)
+def test_string_length(string, expected_len):
+    assert string_length(string) == expected_len

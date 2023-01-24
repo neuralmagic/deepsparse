@@ -130,11 +130,11 @@ _onnxruntime_deps = [
 ]
 _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.13",
-    "opencv-python",
+    "opencv-python==4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
     "openpifpaf==0.13.6",
-    "opencv-python",
+    "opencv-python==4.6.0.66",
 ]
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
@@ -268,6 +268,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
+            "deepsparse.benchmark_sweep=deepsparse.benchmark.benchmark_sweep:main",
             "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
             "deepsparse.pose_estimation.annotate=deepsparse.openpifpaf.annotate:main",
