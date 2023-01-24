@@ -209,7 +209,7 @@ class YOLOPipeline(Pipeline):
 
     def _scale_boxes(
         self, boxes: numpy.ndarray, original_image_shape: Optional[Tuple[int, ...]]
-    ):
+    ) -> numpy.ndarray:
         if not original_image_shape:
             return boxes
 
@@ -225,7 +225,7 @@ class YOLOPipeline(Pipeline):
         boxes = numpy.multiply(boxes, scale)
         return boxes
 
-    def _preprocess_image(self, image) -> numpy.ndarray:
+    def _preprocess_image(self, image) -> Tuple[numpy.ndarray, Tuple[int, ...]]:
         if isinstance(image, list):
             # image consists of floats or ints
             image = numpy.asarray(image)
@@ -234,10 +234,14 @@ class YOLOPipeline(Pipeline):
             image = cv2.imread(image)
 
         image = self._make_channels_last(image)
-        original_image_shape = image.shape[:2]
+
+        # extract (H, W) shapes from (H, W, C) and (B, H, W, C) shaped input
+        original_image_shape = image.shape[:2] if image.ndim == 3 else image.shape[1:-1]
+
         if image.ndim < 4:
             # Assume a batch is of the correct size already
             image = cv2.resize(image, dsize=tuple(reversed(self.image_size)))
+
         image = self._make_channels_first(image)
         return image, original_image_shape
 
@@ -273,13 +277,15 @@ class YOLOPipeline(Pipeline):
 
         original_image_shapes = kwargs.get("original_image_shapes")
         for idx, image_output in enumerate(batch_output):
-            boxes = image_output[:, 0:4]
-            if original_image_shapes:
-                boxes = self._scale_boxes(
-                    boxes=boxes,
-                    original_image_shape=original_image_shapes[idx],
-                )
-            batch_boxes.append(boxes.tolist())
+            original_image_shape = (
+                original_image_shapes[idx] if idx < len(original_image_shapes) else None
+            )
+            batch_boxes.append(
+                self._scale_boxes(
+                    boxes=image_output[:, 0:4],
+                    original_image_shape=original_image_shape,
+                ).tolist(),
+            )
             batch_scores.append(image_output[:, 4].tolist())
             batch_labels.append(image_output[:, 5].tolist())
             if self.class_names is not None:
