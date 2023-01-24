@@ -341,7 +341,7 @@ The dataset we are using has labels in the [Roboflow Universe](https://universe.
 
 Download the data with labels in the YOLOv5 format:
 ```bash
-mkdir data-with-labels; cd data-with-labels; curl -L "https://universe.roboflow.com/ds/YZbicMV8Z4?key=WrbJD7E7Ky" > roboflow.zip; unzip roboflow.zip; rm roboflow.zip
+mkdir data-with-labels; cd data-with-labels; curl -L "https://universe.roboflow.com/ds/YZbicMV8Z4?key=WrbJD7E7Ky" > roboflow.zip; unzip roboflow.zip; rm roboflow.zip; cd ..
 ```
 
 Install the Roboflow CLI with `npm`.
@@ -356,7 +356,7 @@ roboflow auth
 
 Import the dataset to your project.
 ```
-roboflow import data-with-labels/
+roboflow import data-with-labels
 ```
 
 Open your project on the Roboflow web app
