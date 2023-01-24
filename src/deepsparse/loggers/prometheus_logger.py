@@ -141,7 +141,8 @@ class PrometheusLogger(BaseLogger):
         if not isinstance(value, _SUPPORTED_DATA_TYPES):
             raise ValueError(
                 "Prometheus logger expects the incoming values "
-                f"to be one of the type: {_SUPPORTED_DATA_TYPES}"
+                f"to be one of the type: {_SUPPORTED_DATA_TYPES}, "
+                f"but received: {type(value)}"
             )
         return value
 
