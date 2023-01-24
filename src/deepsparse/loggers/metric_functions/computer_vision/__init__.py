@@ -13,19 +13,4 @@
 # limitations under the License.
 
 # flake8: noqa
-# isort: skip_file
-
-# base modules
-from .base_logger import *
-from .constants import *
-
-
-# logger implementations
-from .async_logger import *
-from .function_logger import *
-from .multi_logger import *
-from .prometheus_logger import *
-from .python_logger import *
-
-# functions for creating complex loggers
-from .build_logger import *
+from .built_ins import *

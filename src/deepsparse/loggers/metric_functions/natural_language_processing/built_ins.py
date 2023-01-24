@@ -12,19 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The set of the general built-in metric functions
+Set of functions for logging metrics from the natural language processing pipelines
 """
-from typing import Any
+from typing import Dict, List, Union
 
 
-__all__ = ["identity"]
+__all__ = ["string_length", "percent_unknown_tokens"]
 
 
-def identity(x: Any):
+def string_length(sequence: Union[List[str], str]) -> Union[Dict[str, int], int]:
     """
-    Simple identity function
+    Returns the length of the sequence
 
-    :param x: Any object
-    :return: The same object
+    :param sequence: The sequence whose length is to be returned
+    :return: The length of the sequence
     """
-    return x
+    if isinstance(sequence, str):
+        return len(sequence)
+    return {str(string_id): len(string) for string_id, string in enumerate(sequence)}
+
+
+def percent_unknown_tokens():
+    raise NotImplementedError()
