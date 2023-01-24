@@ -17,6 +17,7 @@ Helpers functions for logging
 import importlib
 import os.path
 import re
+import warnings
 from types import ModuleType
 from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
@@ -31,9 +32,40 @@ __all__ = [
     "get_function_and_function_name",
     "NO_MATCH",
     "access_nested_value",
+    "finalize_identifier",
 ]
 
 NO_MATCH = "NO_MATCH"
+
+
+def finalize_identifier(
+    identifier: str,
+    category: MetricCategories,
+    function_name: str,
+    remainder: Optional[str] = None,
+) -> str:
+    """
+    Compose the final identifier string from the identifier, category, function name
+
+    :param identifier: The identifier string
+    :param category: The category of the identifier
+    :param function_name: The name of the function applied to the identifier
+    :param remainder: The remainder of the identifier after the matching was applied
+    :return: The final identifier string
+    """
+    if remainder:
+        if category == MetricCategories.DATA:
+            # if remainder has slicing/indexing/access information,
+            # remove the square brackets:
+            remainder = remainder.split("[")[0]
+        # join the identifier and remainder
+        identifier += "." + remainder
+
+    if category == MetricCategories.DATA:
+        # if the category is DATA, add the function name to the identifier
+        identifier += f"__{function_name}"
+
+    return identifier
 
 
 def get_function_and_function_name(
@@ -98,11 +130,12 @@ def match_and_extract(
     template: str,
     identifier: str,
     value: Any,
-    category: Optional[MetricCategories] = None,
+    category: MetricCategories,
 ) -> Tuple[Any, Optional[str]]:
     """
-    Attempts to match the template against the identifier. If successful,
-    uses the remainder to extract the item of interest inside `value` data structure.
+    Attempts to match the template against the identifier. If successful, and
+    the category is DATA, uses the remainder to extract the item of interest inside
+    `value` data structure.
 
     :param template: A string that defines the matching criteria
     :param identifier: A string that will be compared with the template, may
@@ -115,11 +148,13 @@ def match_and_extract(
         - Value of interest or string flag that indicates that there was no match
         - An optional remainder string
     """
-    is_match, remainder = check_identifier_match(
-        template, identifier, category=category
-    )
+    is_match, remainder = check_identifier_match(template, identifier)
+
     if is_match:
-        return possibly_extract_value(value, remainder), remainder
+        if category == MetricCategories.SYSTEM:
+            return value, remainder
+        else:
+            return possibly_extract_value(value, remainder), remainder
     else:
         return NO_MATCH, remainder
 
@@ -217,13 +252,15 @@ def access_nested_value(
             # indexing
             operator = int(string_operator)
 
+        _warn_if_array_or_tensor(value)
         value = value.__getitem__(operator)
 
     return value
 
 
 def check_identifier_match(
-    template: str, identifier: str, category: Optional[MetricCategories] = None
+    template: str,
+    identifier: str,
 ) -> Tuple[bool, Optional[str]]:
     """
     Match the template against the identifier
@@ -234,13 +271,12 @@ def check_identifier_match(
         by `category:`
 
     :param identifier: A string in the format:
+        <string_n-t>/<string_n-t+1)>/<...>/<string_n>
+        If template and identifier do not share any first
+        <string_n-t+k> components, there is no match.
 
-        1.  <string_n-t>/<string_n-t+1)>/<...>/<string_n>
-        2.
-            if template and identifier do not share any first
-            <string_n-t+k> components, there is no match
-
-    :param category: optional MetricCategory of the value logged value
+    Note: if identifier is longer than a template, and both share the
+    first string components, there is a match with no remainder.
 
     :return: A tuple that consists of:
         - a boolean (True if match, False otherwise)
@@ -249,17 +285,13 @@ def check_identifier_match(
     if template[:3] == "re:":
         pattern = template[3:]
         return re.match(pattern, identifier) is not None, None
-    if template.startswith("category:") and category is not None:
-        template_category = template[9:]
-        template_category = MetricCategories(template_category)  # parse into Enum
-        category = MetricCategories(category)  # ensure in Enum form
-        return template_category == category, None
     if template == identifier:
         return True, None
     if template.startswith(identifier):
         remainder = template.replace(identifier, "")
         return True, remainder if remainder.startswith("[") else remainder[1:]
-
+    if template in identifier:
+        return True, None
     return False, None
 
 
@@ -271,3 +303,16 @@ def _get_function_and_function_name_from_framework(
     for attribute in func_attributes:
         module = getattr(module, attribute)
     return module, ".".join(func_attributes)
+
+
+def _warn_if_array_or_tensor(value: Any) -> Any:
+    msg = """
+    If value is an array or tensor, one should refrain from 
+    slicing/indexing/accessing its elements using 'access_nested_value'.
+    This function should only be used for Sequence types 
+    (lists, tuple, ranges, etc.) or Dictionaries due to their simple structure.
+    For more complex operations on `value`, one should use `metric_functions`
+    specified directly in the data logging config"""  # noqa W291
+
+    if isinstance(value, numpy.ndarray) or hasattr(value, "numpy"):
+        warnings.warn(msg)

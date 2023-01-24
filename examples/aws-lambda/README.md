@@ -22,15 +22,15 @@ The scope of this application encompasses:
 1. The construction of a local Docker image.
 2. The creation of an ECR repo in AWS.
 3. Pushing the local image to ECR.
-4. The creation of the appropriate IAM permissions for handling Lambda.
-5. The creation of a Lambda function alongside an API Gateway in a Cloudformation stack. 
+4. The creation of a Lambda function via API Gateway in a Cloudformation stack. 
 
 ## Requirements
 The following credentials, tools, and libraries are also required:
 * The [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) version 2.X that is [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html). Double check if the `region` that is configured in your AWS CLI matches the region passed in the SparseLambda class found in the `endpoint.py` file. Currently, the default region being used is `us-east-1`.
+* Full permissions to select AWS resources: ECR, API Gateway, Cloudformation, and Lambda.
 * The AWS Serverless Application Model [(AWS SAM)](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html), an open-source CLI framework used for building serverless applications on AWS.
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
-* The `boto3` python AWS SDK: `pip install boto3`.
+* The `boto3` python AWS SDK and the `click` library.
 
 ## Quick Start
 
@@ -65,7 +65,7 @@ print(answer)
 
 answer: `{'labels': ['positive'], 'scores': [0.9990884065628052]}`
 
-On your first cold start, it will take a ~30 seconds to get your first inference, but afterwards, it should be in milliseconds.
+On your first cold start, it will take a ~60 seconds to invoque your first inference, but afterwards, it should be in milliseconds.
 
 ## Delete Endpoint
 

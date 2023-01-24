@@ -15,9 +15,14 @@
 import yaml
 
 import pytest
-from deepsparse.loggers import AsyncLogger, MetricCategories, MultiLogger, PythonLogger
-from deepsparse.server.build_logger import build_logger
-from deepsparse.server.config import ServerConfig
+from deepsparse.loggers import AsyncLogger, MultiLogger, PythonLogger
+from deepsparse.server.build_logger import (
+    build_logger,
+    build_system_loggers,
+    default_logger,
+)
+from deepsparse.server.config import ServerConfig, SystemLoggingConfig
+from tests.deepsparse.loggers.helpers import ListLogger
 from tests.helpers import find_free_port
 
 
@@ -167,14 +172,89 @@ def test_build_logger(yaml_config, raises_error, default_logger, num_function_lo
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)
     if default_logger:
-        assert isinstance(logger.logger.loggers, PythonLogger)
+        assert isinstance(logger.logger.loggers[0].logger.loggers[0], PythonLogger)
         return
     assert len(logger.logger.loggers) == num_function_loggers + 1
 
-    # check for system logger
+    # check for default system logger behaviour
     system_logger = logger.logger.loggers[-1]
-    assert system_logger.target_identifier == (
-        f"category:{MetricCategories.SYSTEM.value}"
-    )
+    assert system_logger.target_identifier == "prediction_latency"
     assert system_logger.function_name == "identity"
     assert system_logger.frequency == 1
+
+
+yaml_config_1 = """
+system_logging: {}"""
+
+yaml_config_2 = """
+system_logging:
+    enable: false"""
+
+yaml_config_3 = """
+system_logging:
+    resource_utilization:
+        enable: true"""
+
+yaml_config_4 = """
+system_logging:
+    enable: false
+    prediction_latency:
+        enable: true
+    resource_utilization:
+        enable: true"""
+
+yaml_config_5 = """
+system_logging:
+    prediction_latency:
+        enable: true
+    resource_utilization:
+        enable: true
+        target_loggers:
+        - list_logger_1"""
+
+
+@pytest.mark.parametrize(
+    "yaml_config, expected_target_identifiers, number_leaf_loggers_per_system_logger",  # noqa: E501
+    [
+        (yaml_config_1, {"prediction_latency"}, [2]),
+        (yaml_config_2, set(), []),
+        (
+            yaml_config_3,
+            {
+                "prediction_latency",
+                "resource_utilization",
+            },
+            [2, 2],
+        ),
+        (yaml_config_4, set(), []),
+        (
+            yaml_config_5,
+            {
+                "prediction_latency",
+                "resource_utilization",
+            },
+            [1, 2],
+        ),
+    ],
+)
+def test_build_system_loggers(
+    yaml_config,
+    expected_target_identifiers,
+    number_leaf_loggers_per_system_logger,
+):
+    leaf_loggers = {"list_logger_1": ListLogger(), "list_logger_2": ListLogger()}
+    obj = yaml.safe_load(yaml_config)
+    system_logging_config = SystemLoggingConfig(**obj["system_logging"])
+    system_loggers = build_system_loggers(leaf_loggers, system_logging_config)
+
+    assert (
+        set([logger.target_identifier for logger in system_loggers])
+        == expected_target_identifiers
+    )
+    assert [
+        len(system_logger.logger.loggers) for system_logger in system_loggers
+    ] == number_leaf_loggers_per_system_logger
+
+
+def test_default_logger(tmp_path):
+    assert isinstance(default_logger()["python"], PythonLogger)

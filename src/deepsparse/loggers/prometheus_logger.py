@@ -72,6 +72,7 @@ class PrometheusLogger(BaseLogger):
 
         self.port = port
         self.text_log_save_frequency = text_log_save_frequency
+        self.text_log_save_dir = text_log_save_dir
         self.text_log_file_path = os.path.join(
             text_log_save_dir, text_log_file_name or "prometheus_logs.prom"
         )
@@ -105,6 +106,7 @@ class PrometheusLogger(BaseLogger):
     def _export_metrics_to_textfile(self):
         # export the metrics to a text file with
         # the specified frequency
+        os.makedirs(self.text_log_save_dir, exist_ok=True)
         if self._counter % self.text_log_save_frequency == 0:
             write_to_textfile(self.text_log_file_path, REGISTRY)
             self._counter = 0
@@ -130,8 +132,6 @@ class PrometheusLogger(BaseLogger):
     def _validate(self, value: Any) -> Any:
         # make sure we are passing a value that is
         # a valid metric by prometheus client's standards
-        if hasattr(value, "is_integer"):
-            value = int(value)
         if not isinstance(value, SUPPORTED_DATA_TYPES):
             raise ValueError(
                 "Prometheus logger expects the incoming values "

@@ -34,6 +34,7 @@ Open a Pull Request to [contribute](https://github.com/neuralmagic/deepsparse/bl
 | [Instance Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/examples/dbolya-yolact/)  | How to use an optimized YOLACT model and the DeepSparse Engine to perform real-time instance segmentation. |
 | [AWS Lambda Integration](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-lambda/)  | How to deploy a DeepSparse pipeline on AWS Lambda. |
 | [AWS Sagemaker Integration](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-sagemaker/)  | How to deploy a DeepSparse inference server on SageMaker. |
+| [Google Cloud Run](https://github.com/neuralmagic/deepsparse/tree/main/examples/google-cloud-run) | How to deploy a DeepSparse inference server on Cloud Run. |
 | [Google Kubernetes Engine](https://github.com/neuralmagic/deepsparse/tree/main/examples/google-kubernetes-engine/) | How to deploy a DeepSparse inference server on GKE. |
 | [SparseStream](https://github.com/neuralmagic/deepsparse/tree/main/examples/sparsestream/)  | Deploying 2 sparse transformers for classifying Finance tweets in a real-time Twitter stream. |
 | [SparseServer.UI](https://github.com/neuralmagic/deepsparse/tree/main/examples/sparseserver-ui/)  | A Streamlit app for deploying the DeepSparse Server to compare the latency and accuracy of sparse BERT models. |

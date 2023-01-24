@@ -342,6 +342,12 @@ def truncate_onnx_model(
         f"{extracted_num_nodes} remaining"
     )
 
+    for output in extracted_model.graph.output:
+        if len(output.type.tensor_type.shape.dim) == 0:
+            # ONNX checker treats None shapes and empty shapes
+            # differently, clear None shape to pass checker
+            output.type.tensor_type.shape.Clear()
+
     # save and check model
     onnx.save(extracted_model, output_filepath)
     onnx.checker.check_model(output_filepath)
@@ -371,10 +377,21 @@ def truncate_onnx_embedding_model(
         output_filepath = tmp_file.name
 
     # determine where to cut the model
+    model = onnx.load(model_path)
     if isinstance(emb_extraction_layer, str):
-        final_node_name = emb_extraction_layer
+        final_node = None
+        for graph_node in model.graph.node:
+            if graph_node.name == emb_extraction_layer:
+                final_node = graph_node
+
+        if final_node is None:
+            raise RuntimeError(
+                f"Unable to find node {emb_extraction_layer} for extraction in graph"
+            )
+
+        final_node_name = final_node.name
+        graph_output_name = final_node.output[0]
     else:
-        model = onnx.load(model_path)
         final_node_name = model.graph.node[emb_extraction_layer].name
         graph_output_name = model.graph.node[emb_extraction_layer].output[0]
 
