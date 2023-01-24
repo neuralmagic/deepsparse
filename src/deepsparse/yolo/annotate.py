@@ -30,7 +30,7 @@ Options:
                                   Inference engine backend to run on. Choices
                                   are 'deepsparse', 'onnxruntime', and
                                   'torch'. Default is 'deepsparse'
-  --model_input_shape, --model-input-shape INTEGER...
+  --model_input_image_shape, --model-input-shape INTEGER...
                                   Image shape to override model with for
                                   inference, must be two integers
   --num_cores, --num-cores INTEGER
@@ -114,8 +114,8 @@ _LOGGER = logging.getLogger(__name__)
     "'onnxruntime', and 'torch'. Default is 'deepsparse'",
 )
 @click.option(
-    "--model_input_shape",
-    "--model-input-shape",
+    "--model_input_image_shape",
+    "--model-input-image-shape",
     type=int,
     nargs=2,
     default=None,
@@ -177,7 +177,7 @@ def main(
     name: Optional[str],
     target_fps: Optional[float],
     no_save: bool,
-    model_input_shape: Optional[Tuple[int, ...]],
+    model_input_image_shape: Optional[Tuple[int, ...]],
 ) -> None:
     """
     Annotation Script for YOLO with DeepSparse
@@ -203,7 +203,7 @@ def main(
         class_names="coco",
         engine_type=engine,
         num_cores=num_cores,
-        image_size=model_input_shape,
+        image_size=model_input_image_shape,
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
