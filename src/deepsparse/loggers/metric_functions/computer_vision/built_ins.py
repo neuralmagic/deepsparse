@@ -19,9 +19,8 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
-from deepsparse.loggers.metric_functions.utils import BatchResult
-
 from deepsparse.loggers.metric_functions.registry import register
+from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = [
