@@ -173,10 +173,10 @@ def test_detected_classes(classes, expected_count_classes, should_raise_error):
 @pytest.mark.parametrize(
     "classes, expected_count_classes",
     [
-        ([[None], [0, 1, 3], [3, 3, 0]], {"0": 0, "1": 3, "2": 3}),
-        ([[None], [None]], {"0": 0, "1": 0}),
-        ([["foo", "bar"], ["foo", "bar", "alice"], ["bar"]], {"0": 2, "1": 3, "2": 1}),
-        ([["foo", "bar"], ["foo", "bar", "alice"], [None]], {"0": 2, "1": 3, "2": 0}),
+        ([[None], [0, 1, 3], [3, 3, 0]], [0, 3, 3]),
+        ([[None], [None]], [0, 0]),
+        ([["foo", "bar"], ["foo", "bar", "alice"], ["bar"]], [2, 3, 1]),
+        ([["foo", "bar"], ["foo", "bar", "alice"], [None]], [2, 3, 0]),
     ],
 )
 def test_number_detected_objects(classes, expected_count_classes):
@@ -186,10 +186,10 @@ def test_number_detected_objects(classes, expected_count_classes):
 @pytest.mark.parametrize(
     "scores, expected_mean_score",
     [
-        ([[None], [0.5, 0.5, 0.5], [0.3, 0.3, 0.3]], {"0": 0.0, "1": 0.5, "2": 0.3}),
-        ([[None], [None]], {"0": 0.0, "1": 0.0}),
-        ([[0.5, 0.5], [0.9, 0.9, 0.9], [1.0]], {"0": 0.5, "1": 0.9, "2": 1.0}),
-        ([[1.0, 0.0], [None]], {"0": 0.5, "1": 0.0}),
+        ([[None], [0.5, 0.5, 0.5], [0.3, 0.3, 0.3]], [0.0, 0.5, 0.3]),
+        ([[None], [None]], [0.0, 0.0]),
+        ([[0.5, 0.5], [0.9, 0.9, 0.9], [1.0]], [0.5, 0.9, 1.0]),
+        ([[1.0, 0.0], [None]], [0.5, 0.0]),
     ],
 )
 def test_mean_score_per_detection(scores, expected_mean_score):
@@ -201,16 +201,12 @@ def test_mean_score_per_detection(scores, expected_mean_score):
     [
         (
             [[None], [0.5, 0.5, 0.5], [0.6, 0.7, 0.8]],
-            {"0": 0.0, "1": 0.0, "2": 0.08164},
+            [0.0, 0.0, 0.08164],
         ),
-        ([[None], [None]], {"0": 0.0, "1": 0.0}),
-        ([[1.0, 0.0], [None]], {"0": 0.5, "1": 0.0}),
+        ([[None], [None]], [0.0, 0.0]),
+        ([[1.0, 0.0], [None]], [0.5, 0.0]),
     ],
 )
 def test_std_score_per_detection(scores, expected_std_score):
     result = std_score_per_detection(scores)
-    for (result_keys, results_values), (keys, values) in zip(
-        result.items(), expected_std_score.items()
-    ):
-        numpy.testing.assert_allclose(results_values, values, atol=1e-5)
-        assert result_keys == keys
+    numpy.testing.assert_allclose(result, expected_std_score, atol=1e-5)

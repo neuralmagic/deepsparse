@@ -14,9 +14,11 @@
 """
 Set of functions for logging metrics from the token classification pipeline
 """
-from typing import Dict, List
+from typing import List
 
 import numpy
+
+from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = ["mean_score", "percent_zero_labels"]
@@ -24,38 +26,34 @@ __all__ = ["mean_score", "percent_zero_labels"]
 
 def percent_zero_labels(
     token_classification_output: "TokenClassificationOutput",  # noqa: F821
-) -> Dict[str, float]:
+) -> BatchResult:
     """
     Returns the percentage of zero labels in the token classification output
 
     :param token_classification_output: the TokenClassificationOutput object
-    :return: A dictionary where the key is the token sequence index and the
-        value is the percentage of zero labels in the sequence of tokens
+    :return: BatchResult object, that contains the percentage of zero labels
+        in for each sequence of tokens in the batch
     """
-    result = {}
-    for prediction_idx, prediction in enumerate(
-        token_classification_output.predictions
-    ):
-        result[str(prediction_idx)] = _percent_zero_labels(prediction)
-    return result
+    batch_result = BatchResult()
+    for prediction in token_classification_output.predictions:
+        batch_result.append(_percent_zero_labels(prediction))
+    return batch_result
 
 
 def mean_score(
     token_classification_output: "TokenClassificationOutput",  # noqa: F821
-) -> Dict[str, float]:
+) -> BatchResult:
     """
     Returns the mean score of the token classification output
 
     :param token_classification_output: the TokenClassificationOutput object
-    :return: A dictionary where the key is the token sequence index and the
-        value is the mean score of the sequence of tokens
+    :return: BatchResult object, that contains the mean score for each
+        sequence of tokens in the batch
     """
-    result = {}
-    for prediction_idx, prediction in enumerate(
-        token_classification_output.predictions
-    ):
-        result[str(prediction_idx)] = _mean_score(prediction)
-    return result
+    batch_result = BatchResult()
+    for prediction in token_classification_output.predictions:
+        batch_result.append(_mean_score(prediction))
+    return batch_result
 
 
 def _mean_score(

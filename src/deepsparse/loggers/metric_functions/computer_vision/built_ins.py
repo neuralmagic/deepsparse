@@ -19,6 +19,8 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
+from deepsparse.loggers.metric_functions.utils import BatchResult
+
 
 __all__ = [
     "image_shape",
@@ -148,7 +150,7 @@ def detected_classes(
 
 def number_detected_objects(
     detected_classes: List[List[Union[int, str, None]]]
-) -> Dict[str, int]:
+) -> BatchResult:
     """
     Count the number of successful detections per sample
 
@@ -159,28 +161,18 @@ def number_detected_objects(
         either contain a single `None` value (no detection)
         or a number of integer/string representation of the
         detected classes.
-    :return: Dictionary, where the keys are image indices within
-        a batch and the values are the number of detected objects per image
-        Example:
-            {"0": 3, # 3 objects detected in the zeroth image
-             "1": 0, # no objects detected in the first image
-             "2": 1  # 1 object detected in the second image
-             ...
-             }
+    :return: BatchResult object, that contains the number of
+        detections per sample in the batch
     """
 
-    number_objects_per_image = {}
-    for detection_idx, detection in enumerate(detected_classes):
+    batch_result = BatchResult()
+    for detection in detected_classes:
         _check_valid_detection(detection)
-        number_objects_per_image[str(detection_idx)] = (
-            0 if detection == [None] else len(detection)
-        )
-    return number_objects_per_image
+        batch_result.append(0 if detection == [None] else len(detection))
+    return batch_result
 
 
-def mean_score_per_detection(
-    scores: List[List[Union[None, float]]]
-) -> Dict[str, float]:
+def mean_score_per_detection(scores: List[List[Union[None, float]]]) -> BatchResult:
     """
     Return the mean score per detection
 
@@ -191,20 +183,18 @@ def mean_score_per_detection(
         either contain a single `None` value (no detection)
         or a number of float representation of the
         score (confidence) of the detected classes.
-    :return: Dictionary, where the keys are image indices within
-        a batch and the values are the mean score per detection
+    :return: BatchResult object, that contains the mean scores
+        per detection in the batch
     """
-    mean_scores_per_image = {}
-    for score_idx, score in enumerate(scores):
+    batch_result = BatchResult()
+    for score in scores:
         _check_valid_score(score)
-        mean_scores_per_image[str(score_idx)] = (
-            0.0 if score == [None] else numpy.mean(score)
-        )
+        batch_result.append(0.0 if score == [None] else numpy.mean(score))
 
-    return mean_scores_per_image
+    return batch_result
 
 
-def std_score_per_detection(scores: List[List[Optional[float]]]) -> Dict[str, float]:
+def std_score_per_detection(scores: List[List[Optional[float]]]) -> BatchResult:
     """
     Return the standard deviation of scores per detection
 
@@ -215,17 +205,15 @@ def std_score_per_detection(scores: List[List[Optional[float]]]) -> Dict[str, fl
         either contain a single `None` value (no detection)
         or a number of float representation of the
         score (confidence) of the detected classes.
-    :return: Dictionary, where the keys are image indices within
-        a batch and the values are the standard deviation of scores per detection
+    :return: BatchResult object, that contains the standard
+        deviation of scores per detection in the batch
     """
-    std_scores_per_image = {}
-    for score_idx, score in enumerate(scores):
+    batch_result = BatchResult()
+    for score in scores:
         _check_valid_score(score)
-        std_scores_per_image[str(score_idx)] = (
-            0.0 if score == [None] else numpy.std(score)
-        )
+        batch_result.append(0.0 if score == [None] else numpy.std(score))
 
-    return std_scores_per_image
+    return batch_result
 
 
 def _check_valid_detection(detection: List[Union[int, str, None]]):
