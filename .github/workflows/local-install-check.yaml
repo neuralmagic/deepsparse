@@ -29,6 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: "⚙️ Install local develop deepsparse"
-        run: pip3 install -e .
+        run: pip3 install --use-pep517 -e .
       - name: "deepsparse.benchmark"
         run: deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned_quant-moderate -w 1 -t 1
