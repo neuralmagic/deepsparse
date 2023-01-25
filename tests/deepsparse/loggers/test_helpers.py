@@ -26,6 +26,7 @@ from deepsparse.loggers.helpers import (
     unwrap_logs_dictionary,
 )
 from deepsparse.loggers.metric_functions import identity
+from deepsparse.loggers.metric_functions.utils import BatchResult
 from tests.test_data.metric_functions import user_defined_identity
 
 
@@ -135,7 +136,10 @@ def test_access_nested_value(value, square_brackets, expected_value):
     "value, expected_result",
     [
         (10, set([("", 10)])),
-        ({"level_1a": 1, "level_1b": 1}, set([("level_1a", 1), ("level_1b", 1)])),
+        (
+            {"level_1a": 1, "level_1b": BatchResult([1, 2, 3])},
+            set([("level_1a", 1), ("level_1b", 1), ("level_1b", 2), ("level_1b", 3)]),
+        ),
         (
             {"level_1a": {"level_2a": 1, "level_2b": 2}, "level_1b": 2},
             set(

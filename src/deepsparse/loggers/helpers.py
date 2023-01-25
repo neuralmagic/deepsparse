@@ -80,7 +80,11 @@ def unwrap_logs_dictionary(
                 if parent_identifier
                 else child_identifier
             )
-            if isinstance(child_value, dict):
+            if isinstance(child_value, list):
+                for child_value_item in child_value:
+                    yield new_parent_identifier, child_value_item
+
+            elif isinstance(child_value, dict):
                 yield from unwrap_logs_dictionary(
                     child_value, new_parent_identifier, seperator
                 )

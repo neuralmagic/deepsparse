@@ -91,34 +91,44 @@ class PrometheusLogger(BaseLogger):
         self._setup_client()
         self._counter = 0
 
-    def log(self, identifier: str, value: Any, category: MetricCategories):
+    def log(self, identifier: str, value: Any, category: MetricCategories, **kwargs):
         """
         Collect information from the pipeline and pipe it them to the stdout
 
         :param identifier: The name of the thing that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
+        :param kwargs: Additional keyword arguments to pass to the logger
         """
 
-        model_name = identifier.split("/")[-1]
+        pipeline_name = kwargs.get("pipeline_name")
         for identifier, value in unwrap_logs_dictionary(value, identifier):
-            prometheus_metric = self._get_prometheus_metric(identifier, category)
-            prometheus_metric.labels(model_name=model_name).observe(
-                self._validate(value)
+            prometheus_metric = self._get_prometheus_metric(
+                identifier, category, **kwargs
             )
+            if pipeline_name:
+                prometheus_metric.labels(pipeline_name=pipeline_name).observe(
+                    self._validate(value)
+                )
+            else:
+                prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
 
     def _get_prometheus_metric(
-        self, identifier: str, category: MetricCategories
+        self, identifier: str, category: MetricCategories, **kwargs
     ) -> Summary:
         saved_metric = self._prometheus_metrics.get(identifier)
         if saved_metric is None:
-            return self._add_metric_to_registry(identifier, category)
+            return self._add_metric_to_registry(identifier, category, **kwargs)
         return saved_metric
 
-    def _add_metric_to_registry(self, identifier: str, category: str) -> Summary:
+    def _add_metric_to_registry(
+        self, identifier: str, category: str, **kwargs
+    ) -> Summary:
         # add a new metric to the registry
-        prometheus_metric = get_prometheus_metric(identifier, category, REGISTRY)
+        prometheus_metric = get_prometheus_metric(
+            identifier, category, REGISTRY, **kwargs
+        )
         self._prometheus_metrics[identifier] = prometheus_metric
         return prometheus_metric
 
@@ -157,6 +167,7 @@ def get_prometheus_metric(
     category: MetricCategories,
     registry: CollectorRegistry,
     description_template: str = _DESCRIPTION,
+    **kwargs,
 ) -> Optional["MetricWrapperBase"]:  # noqa: F821
     """
     Get a Prometheus metric object for the given identifier and category.
@@ -168,13 +179,13 @@ def get_prometheus_metric(
     :return: The Prometheus metric object or None if the identifier not supported
     """
     metric = Summary
-
+    pipeline_name = kwargs.get("pipeline_name")
     return metric(
-        format_identifier(identifier),
-        description_template.format(
+        name=format_identifier(identifier),
+        documentation=description_template.format(
             metric_name=metric._type, identifier=identifier, category=category
         ),
-        ["model_name"],
+        labelnames=["pipeline_name"] if pipeline_name else [],
         registry=registry,
     )
 
