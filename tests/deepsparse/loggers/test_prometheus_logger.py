@@ -33,7 +33,6 @@ from tests.utils import mock_engine
 @mock_engine(rng_seed=0)
 def test_prometheus_logger(
     engine,
-    capsys,
     tmp_path,
     identifier,
     no_iterations,
@@ -66,3 +65,27 @@ def test_prometheus_logger(
     count_request_text = float(text_log_lines[38].split(" ")[1])
 
     assert count_request_request == count_request_text == no_iterations
+
+
+@pytest.mark.parametrize(
+    "identifier, value, expected_logs",
+    [
+        (
+            "dummy_identifier",
+            {"foo": {"alice": 1, "bob": 2}, "bar": 5},
+            {
+                "dummy_identifier__foo__alice_count 1.0",
+                "dummy_identifier__foo__bob_count 1.0",
+                "dummy_identifier__bar_count 1.0",
+            },
+        ),
+    ],
+)
+@mock_engine(rng_seed=0)
+def test_nested_value_inputs(engine, identifier, value, expected_logs):
+    port = find_free_port()
+    logger = PrometheusLogger(port=port)
+    logger.log(identifier, value, MetricCategories.SYSTEM)
+    response = requests.get(f"http://0.0.0.0:{port}").text
+    request_log_lines = response.split("\n")
+    assert set(request_log_lines).issuperset(expected_logs)
