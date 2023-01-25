@@ -461,7 +461,7 @@ class Pipeline(ABC):
         :param context: Optional Context object to use for creating instances of
             MultiModelEngine. The Context contains a shared scheduler along with
             other runtime information that will be used across instances of the
-            MultiModelEngine to providse optimal performance when running
+            MultiModelEngine to provide optimal performance when running
             multiple models concurrently
         :param kwargs: extra task specific kwargs to be passed to task Pipeline
             implementation
