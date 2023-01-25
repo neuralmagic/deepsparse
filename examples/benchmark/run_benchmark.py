@@ -21,18 +21,24 @@ In this method, we can assume that ONNXRuntime will give the
 
 ##########
 Command help:
-usage: run_benchmark.py [-h] [-s BATCH_SIZE] [-b NUM_ITERATIONS]
-    [-w NUM_WARMUP_ITERATIONS] onnx_filepath
+usage: run_benchmark.py [-h] [-s BATCH_SIZE] [-shapes INPUT_SHAPES]
+                        [-b NUM_ITERATIONS] [-w NUM_WARMUP_ITERATIONS]
+                        onnx_filepath
 
 Benchmark an ONNX model, comparing between DeepSparse and ONNXRuntime
 
 positional arguments:
-  onnx_filepath         The full filepath of the ONNX model file being benchmarked
+  onnx_filepath         The full filepath of the ONNX model file being
+                        benchmarked
 
 optional arguments:
   -h, --help            show this help message and exit
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
+  -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
+                        Override the shapes of the inputs, i.e., -shapes
+                        "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
+                        input1=[4,5,6] input2=[7,8,9].
   -b NUM_ITERATIONS, --num_iterations NUM_ITERATIONS
                         The number of times the benchmark will be run
   -w NUM_WARMUP_ITERATIONS, --num_warmup_iterations NUM_WARMUP_ITERATIONS
@@ -51,15 +57,13 @@ python examples/benchmark/run_benchmark.py \
 import argparse
 import time
 
-import onnxruntime
-
 from deepsparse import compile_model, cpu
-from deepsparse.benchmark import BenchmarkResults
+from deepsparse.benchmark import BenchmarkResults, ORTEngine
 from deepsparse.utils import (
     generate_random_inputs,
-    get_input_names,
-    get_output_names,
-    override_onnx_batch_size,
+    model_to_path,
+    override_onnx_input_shapes,
+    parse_input_shapes,
     verify_outputs,
 )
 
@@ -88,6 +92,15 @@ def parse_args():
         help="The batch size to run the analysis for",
     )
     parser.add_argument(
+        "-shapes",
+        "--input_shapes",
+        type=str,
+        default="",
+        help="Override the shapes of the inputs, "
+        'i.e., -shapes "[1,2,3],[4,5,6],[7,8,9]" results in '
+        "input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]. ",
+    )
+    parser.add_argument(
         "-b",
         "--num_iterations",
         help="The number of times the benchmark will be run",
@@ -110,32 +123,37 @@ def parse_args():
 
 def main():
     args = parse_args()
-    onnx_filepath = args.onnx_filepath
+    onnx_filepath = model_to_path(args.onnx_filepath)
     batch_size = args.batch_size
     num_iterations = args.num_iterations
     num_warmup_iterations = args.num_warmup_iterations
 
-    inputs = generate_random_inputs(onnx_filepath, batch_size)
-    input_names = get_input_names(onnx_filepath)
-    output_names = get_output_names(onnx_filepath)
-    inputs_dict = {name: value for name, value in zip(input_names, inputs)}
+    input_shapes = parse_input_shapes(args.input_shapes)
+
+    if input_shapes:
+        with override_onnx_input_shapes(onnx_filepath, input_shapes) as model_path:
+            inputs = generate_random_inputs(model_path, args.batch_size)
+    else:
+        inputs = generate_random_inputs(onnx_filepath, args.batch_size)
 
     # Benchmark ONNXRuntime
     print("Benchmarking model with ONNXRuntime...")
-    sess_options = onnxruntime.SessionOptions()
-    with override_onnx_batch_size(onnx_filepath, batch_size) as override_onnx_filepath:
-        ort_network = onnxruntime.InferenceSession(override_onnx_filepath, sess_options)
-
-        ort_results = BenchmarkResults()
-        for i in range(num_warmup_iterations):
-            ort_network.run(output_names, inputs_dict)
-        for i in range(num_iterations):
-            start = time.perf_counter()
-            output = ort_network.run(output_names, inputs_dict)
-            end = time.perf_counter()
-            ort_results.append_batch(
-                time_start=start, time_end=end, batch_size=batch_size, outputs=output
-            )
+    ort_network = ORTEngine(
+        model=onnx_filepath,
+        batch_size=batch_size,
+        num_cores=None,
+        input_shapes=input_shapes,
+    )
+    ort_results = BenchmarkResults()
+    for _ in range(num_warmup_iterations):
+        ort_network.run(inputs)
+    for _ in range(num_iterations):
+        start = time.perf_counter()
+        output = ort_network.run(inputs)
+        end = time.perf_counter()
+        ort_results.append_batch(
+            time_start=start, time_end=end, batch_size=batch_size, outputs=output
+        )
 
     # Benchmark DeepSparse Engine
     print("Benchmarking model with DeepSparse Engine...")

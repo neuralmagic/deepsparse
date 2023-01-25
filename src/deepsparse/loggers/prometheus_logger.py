@@ -22,6 +22,7 @@ from collections import defaultdict
 from typing import Any, Optional
 
 from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers.helpers import unwrap_logs_dictionary
 
 
 try:
@@ -98,9 +99,13 @@ class PrometheusLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
+
         model_name = identifier.split("/")[-1]
-        prometheus_metric = self._get_prometheus_metric(identifier, category)
-        prometheus_metric.labels(model_name=model_name).observe(self._validate(value))
+        for identifier, value in unwrap_logs_dictionary(value, identifier):
+            prometheus_metric = self._get_prometheus_metric(identifier, category)
+            prometheus_metric.labels(model_name=model_name).observe(
+                self._validate(value)
+            )
         self._export_metrics_to_textfile()
 
     def _get_prometheus_metric(
