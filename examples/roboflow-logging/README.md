@@ -1,6 +1,6 @@
 # **Neural Magic + Roboflow**
 
-DeepSparse is more than the fastest deep learning inference runtime on CPUs - it also simplifies management of your production models. 
+DeepSparse is more than the fastest deep learning inference runtime on CPUs—it also simplifies management of your production models. 
 
 Let's take a look at how [DeepSparse Logging](https://docs.neuralmagic.com/user-guide/deepsparse-engine/logging)
 can be integrated with Roboflow to create a Continual Learning system.  
