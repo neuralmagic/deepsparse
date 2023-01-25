@@ -130,11 +130,11 @@ _onnxruntime_deps = [
 ]
 _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.13",
-    "opencv-python==4.6.0.66",
+    "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
     "openpifpaf==0.13.6",
-    "opencv-python==4.6.0.66",
+    "opencv-python<=4.6.0.66",
 ]
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
