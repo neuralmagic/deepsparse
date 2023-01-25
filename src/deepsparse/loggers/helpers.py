@@ -62,14 +62,16 @@ def unwrap_logs_dictionary(
     :param seperator: The seperator to use when composing the parent and child
         identifiers
     :return: A generator that:
-        - if `value` is not a dictionary:
+        - if `value` is a dictionary:
+            continues to unwrap the dictionary...
+        - if `value` is a list:
+            yields the `parent_identifier` and items in `value`
+        - if `value` is not a dictionary or list
             yields the `parent_identifier` and `value`
-        - else:
-            yields a sequence of tuples (identifier, value) where:
-                identifier is composed by connecting the keys over the multiple levels
-                    of nesting with the seperator
-                value is extracted from the nested dictionary (corresponding to the
-                    appropriate composed identifier)
+        Note: `parent_identifier` is composed by connecting the keys over
+            the multiple levels of nesting with the seperator value is extracted
+            from the nested dictionary (corresponding to the appropriate composed
+            identifier)
     """
     if not isinstance(value, dict):
         yield parent_identifier, value
@@ -80,7 +82,10 @@ def unwrap_logs_dictionary(
                 if parent_identifier
                 else child_identifier
             )
-            if isinstance(child_value, dict):
+            if isinstance(child_value, list):
+                for child_value_item in child_value:
+                    yield new_parent_identifier, child_value_item
+            elif isinstance(child_value, dict):
                 yield from unwrap_logs_dictionary(
                     child_value, new_parent_identifier, seperator
                 )
