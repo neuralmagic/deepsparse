@@ -26,9 +26,9 @@ from tests.utils import mock_engine
 @pytest.mark.parametrize(
     "identifier, no_iterations, value, text_log_save_frequency, should_fail",
     [
-        ("dummy.identifier_1", 20, 1.0, 1, False),
-        ("dummy.identifier.2", 20, 1, 5, False),
-        ("dummy.identifier.3", 20, [1.0], 10, True),
+        ("dummy_pipeline/dummy.identifier_1", 20, 1.0, 1, False),
+        ("dummy_pipeline/dummy.identifier_2", 20, 1, 5, False),
+        ("dummy_pipeline/dummy.identifier_3", 20, [1.0], 10, True),
     ],
 )
 @mock_engine(rng_seed=0)
