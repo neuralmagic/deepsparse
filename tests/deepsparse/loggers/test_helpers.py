@@ -23,7 +23,7 @@ from deepsparse.loggers.helpers import (
     check_identifier_match,
     get_function_and_function_name,
     possibly_extract_value,
-    unwrap_logs_dictionary,
+    unwrap_logged_value,
 )
 from deepsparse.loggers.metric_functions import identity
 from deepsparse.loggers.metric_functions.utils import BatchResult
@@ -163,5 +163,5 @@ def test_access_nested_value(value, square_brackets, expected_value):
     ],
 )
 def test_unwrap_logs_dictionary(value, expected_result):
-    result = set(result for result in unwrap_logs_dictionary(value))
+    result = set(result for result in unwrap_logged_value(value))
     assert result == expected_result
