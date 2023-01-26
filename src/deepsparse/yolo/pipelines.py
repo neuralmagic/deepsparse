@@ -219,9 +219,10 @@ class YOLOPipeline(Pipeline):
             )
         )
 
-        # broadcast scales to rescale bounding boxes in one numpy operation
+        # scale is originally np.array([x_scale, y_scale]), needs to be
+        #  np.array([x_scale, y_scale, x_scale, y_scale])
+        #  to allow broadcasting with bbox(s) with shape (num_bboxes, 4)
         scale = numpy.concatenate([scale, scale])
-
         boxes = numpy.multiply(boxes, scale)
         return boxes
 

@@ -13,17 +13,30 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.metric_functions.natural_language_processing import (
-    string_length,
-)
+from deepsparse import Pipeline
+from tests.utils import mock_engine
+
+
+yaml_config = """
+loggers:
+    list_logger:
+        path: tests/deepsparse/loggers/helpers.py:ListLogger
+add_predefined:
+    - func: image_classification
+      frequency: 2
+data_logging:
+    pipeline_inputs.images:
+    - func: image_shape
+      frequency: 2"""
 
 
 @pytest.mark.parametrize(
-    "string, expected_len",
+    "yaml_config",
     [
-        ("His palms are sweaty", 20),
-        (["knees weak", "arms are heavy"], [10, 14]),
+        yaml_config,
     ],
 )
-def test_string_length(string, expected_len):
-    assert string_length(string) == expected_len
+@mock_engine(rng_seed=0)
+def test_no_function_duplicates_within_template(mock_engine, yaml_config):
+    with pytest.raises(ValueError):
+        Pipeline.create("image_classification", logger=yaml_config)

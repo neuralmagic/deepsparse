@@ -11,19 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import pytest
-from deepsparse.loggers.metric_functions.natural_language_processing import (
-    string_length,
-)
-
-
-@pytest.mark.parametrize(
-    "string, expected_len",
-    [
-        ("His palms are sweaty", 20),
-        (["knees weak", "arms are heavy"], [10, 14]),
-    ],
-)
-def test_string_length(string, expected_len):
-    assert string_length(string) == expected_len
