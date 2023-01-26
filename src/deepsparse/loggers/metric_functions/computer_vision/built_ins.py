@@ -34,8 +34,10 @@ __all__ = [
     "number_detected_objects",
 ]
 
+# TODO: all class predicted
+# TODO: all_top_class_score
 
-@register(group="image_classification", identifier="pipeline_inputs.images")
+@register(group=["image_classification", "object_detection", "segmentation"], identifier="pipeline_inputs.images")
 def image_shape(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, int]:
@@ -65,10 +67,9 @@ def image_shape(
             dims_counter += 1
     return result
 
-
-@register(group="image_classification", identifier="pipeline_inputs.images")
+@register(group=["image_classification", "object_detection", "segmentation"], identifier="pipeline_inputs.images")
 def mean_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]   # noqa F821
 ) -> Dict[str, float]:
     """
     Return the mean pixel value per image channel
@@ -88,9 +89,9 @@ def mean_pixels_per_channel(
     keys = ["channel_{}".format(i) for i in range(len(means))]
     return dict(zip(keys, means))
 
-
+@register(group=["image_classification", "object_detection", "segmentation"], identifier="pipeline_inputs.images")
 def std_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]   # noqa F821
 ) -> Dict[str, float]:
     """
     Return the standard deviation of pixel values per image channel
@@ -102,16 +103,15 @@ def std_pixels_per_channel(
     :return: Dictionary that maps channel number to the std pixel value
     """
     img_numpy = _assert_numpy_image(img)
-    num_dims, channel_dim = _check_valid_image(img)
+    num_dims, channel_dim = _check_valid_image(img_numpy)
     dims = numpy.arange(0, num_dims, 1)
     dims = numpy.delete(dims, channel_dim)
     stds = tuple(numpy.std(img_numpy, axis=tuple(dims)))
     keys = ["channel_{}".format(i) for i in range(len(stds))]
     return dict(zip(keys, stds))
 
-
-@register(group="image_classification", identifier="pipeline_inputs.images")
-def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa F821
+@register(group=["image_classification", "object_detection", "segmentation"], identifier="pipeline_inputs.images")
+def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]) -> float:  # noqa F821
     """
     Return the float the represents the fraction of zeros in the
     image tensor/array
@@ -127,7 +127,8 @@ def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa 
     _check_valid_image(image_numpy)
     return (image_numpy.size - numpy.count_nonzero(image_numpy)) / image_numpy.size
 
-
+@register(group="segmentation", identifier="pipeline_outputs.classes")
+@register(group="object_detection", identifier="pipeline_outputs.labels")
 def detected_classes(
     detected_classes: List[List[Union[int, str, None]]]
 ) -> Dict[str, int]:
@@ -152,7 +153,8 @@ def detected_classes(
     counter = {str(class_label): count for class_label, count in counter.items()}
     return counter
 
-
+@register(group="segmentation", identifier="pipeline_outputs.classes")
+@register(group="object_detection", identifier="pipeline_outputs.labels")
 def number_detected_objects(
     detected_classes: List[List[Union[int, str, None]]]
 ) -> BatchResult:
@@ -177,6 +179,7 @@ def number_detected_objects(
     return batch_result
 
 
+@register(group=["object_detection", "segmentation"], identifier="pipeline_outputs.scores")
 def mean_score_per_detection(scores: List[List[Union[None, float]]]) -> BatchResult:
     """
     Return the mean score per detection
@@ -198,7 +201,7 @@ def mean_score_per_detection(scores: List[List[Union[None, float]]]) -> BatchRes
 
     return batch_result
 
-
+@register(group=["object_detection", "segmentation"], identifier="pipeline_outputs.scores")
 def std_score_per_detection(scores: List[List[Optional[float]]]) -> BatchResult:
     """
     Return the standard deviation of scores per detection
@@ -264,7 +267,7 @@ def _check_valid_image(img: numpy.ndarray) -> Tuple[int, int]:
 
 
 def _assert_numpy_image(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> numpy.ndarray:
     if hasattr(img, "numpy"):
         img = img.numpy()

@@ -460,7 +460,7 @@ class Pipeline(ABC):
             inferencing with multiple models. Default is None
         :param context: Optional Context object to use for creating instances of
             MultiModelEngine. The Context contains a shared scheduler along with
-            other runtime information that will be used across instances of the
+            other runtime information that will be used across inssetances of the
             MultiModelEngine to provide optimal performance when running
             multiple models concurrently
         :param kwargs: extra task specific kwargs to be passed to task Pipeline

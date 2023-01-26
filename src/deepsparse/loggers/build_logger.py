@@ -169,10 +169,7 @@ def build_logger(
     function_loggers_system = build_system_loggers(leaf_loggers, system_logging_config)
     function_loggers = function_loggers_data + function_loggers_system
 
-    return AsyncLogger(
-        logger=MultiLogger(function_loggers),  # wrap all loggers to async log call
-        max_workers=1,
-    )
+    return MultiLogger(function_loggers)  # wrap all loggers to async log call
 
 
 def get_target_identifier(

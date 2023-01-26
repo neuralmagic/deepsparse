@@ -17,11 +17,12 @@ Set of functions for logging metrics from the natural language processing pipeli
 from typing import List, Union
 
 from deepsparse.loggers.metric_functions.utils import BatchResult
-
+from deepsparse.loggers.metric_functions.registry import register
 
 __all__ = ["string_length", "percent_unknown_tokens"]
 
-
+@register(group="question_answering", identifier="pipeline_inputs.context")
+@register(group="question_answering", identifier="pipeline_inputs.question")
 def string_length(sequence: Union[List[str], str]) -> Union[BatchResult, int]:
     """
     Returns the length of the sequence
