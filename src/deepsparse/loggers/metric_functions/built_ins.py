@@ -30,6 +30,6 @@ def identity(x: Any):
     return x
 
 def all_predicted_classes(classes: List[Union[int, str, List[int], List[str]]]):
-    if list[0]
+    pass
 
 
