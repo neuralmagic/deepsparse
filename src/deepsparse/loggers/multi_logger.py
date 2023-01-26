@@ -42,7 +42,7 @@ class MultiLogger(BaseLogger):
         :param kwargs: Additional keyword arguments to pass to the logger
         """
         for logger in self.loggers:
-            logger.log(identifier, value, category)
+            logger.log(identifier, value, category, **kwargs)
 
     def __str__(self):
         text = "\n".join([str(logger) for logger in self.loggers])

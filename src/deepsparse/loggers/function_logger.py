@@ -88,6 +88,7 @@ class FunctionLogger(BaseLogger):
                     ),
                     value=mapped_value,
                     category=category,
+                    **kwargs,
                 )
                 self._function_call_counter = 0
             self._function_call_counter += 1

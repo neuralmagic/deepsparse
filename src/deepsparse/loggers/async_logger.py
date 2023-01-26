@@ -58,6 +58,7 @@ class AsyncLogger(BaseLogger):
             identifier=identifier,
             value=value,
             category=category,
+            **kwargs,
         )
         job_future.add_done_callback(_log_async_job_exception)
 
