@@ -21,10 +21,10 @@ yaml_config = """
 loggers:
     list_logger:
         path: tests/deepsparse/loggers/helpers.py:ListLogger
-data_logging:
-    predefined:
+add_predefined:
     - func: image_classification
-      frequency: 1
+      frequency: 2
+data_logging:
     pipeline_inputs.images:
     - func: image_shape
       frequency: 2"""

@@ -23,10 +23,9 @@ yaml_config = """
 loggers:
     list_logger:
         path: tests/deepsparse/loggers/helpers.py:ListLogger
-data_logging:
-    predefined:
+add_predefined:
     - func: image_classification
-      frequency: 1"""
+      frequency: 2"""
 
 expected_logs = """identifier:image_classification/pipeline_inputs.images__image_shape, value:{'channels': 3, 'dim_0': 224, 'dim_1': 224}, category:MetricCategories.DATA
 identifier:image_classification/pipeline_inputs.images__mean_pixels_per_channel, value:{'channel_0': 1.0, 'channel_1': 1.0, 'channel_2': 1.0}, category:MetricCategories.DATA

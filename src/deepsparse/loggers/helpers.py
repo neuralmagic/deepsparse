@@ -140,6 +140,7 @@ def get_function_and_function_name(
 
     :return: A tuple (function, function name)
     """
+
     if function_identifier.startswith("torch."):
         import torch
 
