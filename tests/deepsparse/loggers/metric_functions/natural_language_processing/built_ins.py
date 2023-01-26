@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+from deepsparse.loggers.metric_functions.utils import BatchResult
 from deepsparse.loggers.metric_functions.natural_language_processing import (
     string_length,
 )
@@ -22,7 +23,11 @@ from deepsparse.loggers.metric_functions.natural_language_processing import (
     "string, expected_len",
     [
         ("His palms are sweaty", 20),
-        (["knees weak", "arms are heavy"], [10, 14]),
+        (["knees weak", "arms are heavy"], BatchResult([10, 14])),
+        (
+            [["knees weak", "arms are heavy"], ["His palms", "are sweaty"]],
+            BatchResult([BatchResult([10, 14]), BatchResult([9, 10])]),
+        ),
     ],
 )
 def test_string_length(string, expected_len):

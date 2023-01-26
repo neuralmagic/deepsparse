@@ -22,6 +22,7 @@ from deepsparse.loggers.metric_functions.registry import register
 
 __all__ = ["answer_found", "answer_length", "answer_score"]
 
+
 @register(group="question_answering", identifier="pipeline_outputs")
 def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:  # noqa: F821
     """
@@ -30,6 +31,7 @@ def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:  # noqa: F821
     :return: True if an answer was found, False otherwise
     """
     return not qa_output.answer == "empty"
+
 
 @register(group="question_answering", identifier="pipeline_outputs")
 def answer_length(qa_output: "QuestionAnsweringOutput") -> int:  # noqa: F821
@@ -42,6 +44,7 @@ def answer_length(qa_output: "QuestionAnsweringOutput") -> int:  # noqa: F821
     if qa_output.answer == "empty":
         return 0
     return string_length(qa_output.answer)
+
 
 @register(group="question_answering", identifier="pipeline_outputs")
 def answer_score(qa_output: "QuestionAnsweringOutput") -> float:  # noqa: F821

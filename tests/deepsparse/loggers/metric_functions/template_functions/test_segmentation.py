@@ -1,3 +1,17 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import pytest
 import numpy
 from tests.utils import mock_engine
@@ -21,6 +35,7 @@ identifier:yolact/pipeline_outputs.classes__number_detected_objects, value:[50, 
 identifier:yolact/pipeline_outputs.scores__mean_score_per_detection, value:[0.9999835777282715, 0.9999835777282715], category:MetricCategories.DATA
 identifier:yolact/pipeline_outputs.scores__std_score_per_detection, value:[8.525441680612083e-06, 8.525441680612083e-06], category:MetricCategories.DATA
 """  # noqa E501
+
 
 @pytest.mark.parametrize(
     "config, inp, num_iterations, expected_logs",

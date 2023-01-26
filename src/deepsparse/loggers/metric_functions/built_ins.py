@@ -14,7 +14,7 @@
 """
 The set of the general built-in metric functions
 """
-from typing import Any
+from typing import Any, List, Union
 
 
 __all__ = ["identity"]
@@ -28,3 +28,8 @@ def identity(x: Any):
     :return: The same object
     """
     return x
+
+def all_predicted_classes(classes: List[Union[int, str, List[int], List[str]]]):
+    if list[0]
+
+

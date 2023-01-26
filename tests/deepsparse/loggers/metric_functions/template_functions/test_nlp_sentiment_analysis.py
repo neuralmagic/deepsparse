@@ -22,28 +22,40 @@ loggers:
         path: tests/deepsparse/loggers/helpers.py:ListLogger
 data_logging:
     predefined:
-    - func: question_answering
+    - func: sentiment_analysis
       frequency: 1"""
 
-expected_logs = """identifier:question_answering/pipeline_inputs.question__string_length, value:10, category:MetricCategories.DATA
-identifier:question_answering/pipeline_inputs.context__string_length, value:18, category:MetricCategories.DATA
-identifier:question_answering/pipeline_outputs__answer_found, value:True, category:MetricCategories.DATA
-identifier:question_answering/pipeline_outputs__answer_length, value:13, category:MetricCategories.DATA
-identifier:question_answering/pipeline_outputs__answer_score, value:1.8941500186920166, category:MetricCategories.DATA"""  # noqa E501
+expected_logs = """identifier:text_classification/pipeline_inputs.sequences__string_length, value:8, category:MetricCategories.DATA"""
+expected_logs1 = """identifier:text_classification/pipeline_inputs.sequences__string_length, value:[8, 35], category:MetricCategories.DATA"""
+expected_logs2 = """identifier:text_classification/pipeline_inputs.sequences__string_length, value:[[8, 35], [26, 34]], category:MetricCategories.DATA"""
 
 
 @pytest.mark.parametrize(
     "config, inp, num_iterations, expected_logs",
     [
-        (yaml_config, ("Go, shorty", "It's your birthday"), 1, expected_logs),
+        (yaml_config, "She said", 1, expected_logs),
+        (
+            yaml_config,
+            ["She said", "Ye, can we get married at the mall?"],
+            1,
+            expected_logs1,
+        ),
+        (
+            yaml_config,
+            [
+                ["She said", "Ye, can we get married at the mall?"],
+                ["Doctors say I'm the illest", "'cause I'm suffering from realness"],
+            ],
+            1,
+            expected_logs2,
+        ),
     ],
 )
 @mock_engine(rng_seed=0)
 def test_end_to_end(mock_engine, config, inp, num_iterations, expected_logs):
-    pipeline = Pipeline.create("qa", logger=config)
+    pipeline = Pipeline.create("text_classification", logger=config)
     for _ in range(num_iterations):
-        question, context = inp
-        pipeline(question=question, context=context)
+        pipeline(sequences=inp)
 
     logs = pipeline.logger.loggers[0].logger.loggers[0].calls
     data_logging_logs = [log for log in logs if "DATA" in log]
