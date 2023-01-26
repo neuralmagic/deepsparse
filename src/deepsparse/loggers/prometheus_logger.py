@@ -174,7 +174,6 @@ def get_prometheus_metric(
     identifier: str,
     category: MetricCategories,
     registry: CollectorRegistry,
-    description_template: str = _DESCRIPTION,
 ) -> Optional["MetricWrapperBase"]:  # noqa: F821
     """
     Get a Prometheus metric object for the given identifier and category.
@@ -182,7 +181,6 @@ def get_prometheus_metric(
     :param identifier: The name of the thing that is being logged.
     :param category: The metric category that the log belongs to
     :param registry: The Prometheus registry to which the metric should be added
-    :param description_template: The template for the description of the metric
     :return: The Prometheus metric object or None if the identifier not supported
     """
     if category == MetricCategories.SYSTEM:
@@ -195,7 +193,7 @@ def get_prometheus_metric(
 
     return metric(
         format_identifier(identifier),
-        description_template.format(
+        _DESCRIPTION.format(
             metric_name=metric._type, identifier=identifier, category=category
         ),
         registry=registry,
