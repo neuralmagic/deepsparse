@@ -36,13 +36,11 @@ try:
 
     prometheus_import_error = None
 except Exception as prometheus_import_err:
-    (
-        REGISTRY,
-        Summary,
-        CollectorRegistry,
-        start_http_server,
-        write_to_textfile,
-    ) = None
+    REGISTRY = None
+    Summary = None
+    CollectorRegistry = None
+    start_http_server = None
+    write_to_textfile = None
     prometheus_import_error = prometheus_import_err
 
 
@@ -51,7 +49,7 @@ __all__ = ["PrometheusLogger"]
 _LOGGER = logging.getLogger(__name__)
 _SUPPORTED_DATA_TYPES = (int, float)
 _DESCRIPTION = (
-    """{metric_name} metric for identifier: {identifier} | Category: {category}"""
+    "{metric_name} metric for identifier: {identifier} | Category: {category}"
 )
 
 
@@ -98,7 +96,7 @@ class PrometheusLogger(BaseLogger):
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         """
-        for identifier, value in unwrap_logs_dictionary(value, identifier):
+        for identifier, value in unwrap_logged_value(value, identifier):
             prometheus_metric = self._get_prometheus_metric(identifier, category)
             prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
@@ -178,6 +176,7 @@ def format_identifier(identifier: str) -> str:
     :param identifier: The identifier to be formatted
     :return: The formatted identifier
     """
+
     return re.sub(r"[^a-zA-Z0-9_]", "__", identifier).lower()
 
 
