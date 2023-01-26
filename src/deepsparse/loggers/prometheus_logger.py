@@ -21,7 +21,7 @@ from collections import defaultdict
 from typing import Any, Optional
 
 from deepsparse.loggers import BaseLogger, MetricCategories
-from deepsparse.loggers.helpers import unwrap_logs_dictionary
+from deepsparse.loggers.helpers import unwrap_logged_value
 
 
 try:
@@ -91,7 +91,7 @@ class PrometheusLogger(BaseLogger):
         :param category: The metric category that the log belongs to
         """
 
-        for identifier, value in unwrap_logs_dictionary(value, identifier):
+        for identifier, value in unwrap_logged_value(value, identifier):
             # needs to adhere to
             # https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
             formatted_identifier = (
