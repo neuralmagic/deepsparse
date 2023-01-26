@@ -20,6 +20,7 @@ import logging
 import os
 import shutil
 import time
+from copy import copy
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
 
@@ -44,7 +45,7 @@ __all__ = ["get_image_loader_and_saver", "get_annotations_save_dir", "annotate"]
 def get_image_loader_and_saver(
     path: str,
     save_dir: str,
-    image_shape: Tuple[int, int] = (640, 640),
+    image_shape: Optional[Tuple[int, int]] = None,
     target_fps: Optional[float] = None,
     no_save: bool = False,
 ) -> Union[Iterable, Any, bool]:
@@ -121,7 +122,7 @@ class VideoLoader:
     :param image_size: size of input image_batch to model
     """
 
-    def __init__(self, path: str, image_size: Tuple[int, int]):
+    def __init__(self, path: str, image_size: Optional[Tuple[int, int]]=None):
         self._path = path
         self._image_size = image_size
         self._vid = cv2.VideoCapture(self._path)
@@ -174,7 +175,7 @@ class ImageLoader:
     :param image_size: size of input image_batch to model
     """
 
-    def __init__(self, path: str, image_size: Tuple[int, int]):
+    def __init__(self, path: str, image_size: Optional[Tuple[int, int]] = None):
         self._path = path
         self._image_size = image_size
 
@@ -291,7 +292,7 @@ class VideoSaver(ImageSaver):
 
 
 def load_image(
-    img: Union[str, numpy.ndarray], image_size: Tuple[int, int]
+    img: Union[str, numpy.ndarray], image_size: Optional[Tuple[int, int]] = None,
 ) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
     """
     :param img: file path to image or raw image array
@@ -300,7 +301,7 @@ def load_image(
         image
     """
     img = cv2.imread(img) if isinstance(img, str) else img
-    img_resized = cv2.resize(img, image_size)
+    img_resized = cv2.resize(img, image_size) if image_size else copy(img)
     img_transposed = img_resized[:, :, ::-1].transpose(2, 0, 1)
 
     return img_transposed, img
@@ -391,7 +392,7 @@ class WebcamLoader:
     :param image_size: size of input image_batch to model
     """
 
-    def __init__(self, camera: int, image_size: Tuple[int, int] = (640, 640)):
+    def __init__(self, camera: int, image_size: Optional[Tuple[int, int]] = None):
 
         self._camera = camera
         self._image_size = image_size
