@@ -22,8 +22,6 @@ from tests.helpers import find_free_port
 
 
 yaml_config_1 = """
-num_cores: 2
-num_workers: 2
 loggers:
     python:
 endpoints:
@@ -42,8 +40,6 @@ endpoints:
              frequency: 3"""  # noqa E501
 
 yaml_config_2 = """
-num_cores: 2
-num_workers: 2
 loggers:
     python: {}
 endpoints:
@@ -53,8 +49,6 @@ endpoints:
       batch_size: 1"""
 
 yaml_config_3 = """
-num_cores: 2
-num_workers: 2
 endpoints:
     - task: question_answering
       route: /unpruned/predict
@@ -62,8 +56,6 @@ endpoints:
       batch_size: 1"""
 
 yaml_config_4 = """
-num_cores: 2
-num_workers: 2
 loggers:
     python:
 endpoints:
@@ -82,8 +74,6 @@ endpoints:
              frequency: 3"""
 
 yaml_config_5 = """
-num_cores: 2
-num_workers: 2
 loggers:
     invalid_logger_name:
 endpoints:
@@ -93,8 +83,6 @@ endpoints:
       batch_size: 1"""
 
 yaml_config_6 = """
-num_cores: 2
-num_workers: 2
 loggers:
     python:
 endpoints:
@@ -108,8 +96,6 @@ endpoints:
             frequency: 2"""
 
 yaml_config_7 = """
-num_cores: 2
-num_workers: 2
 loggers:
     python:
     prometheus:
@@ -125,8 +111,6 @@ endpoints:
             frequency: 2"""
 
 yaml_config_8 = """
-num_cores: 2
-num_workers: 2
 loggers:
     custom_logger:
         path: tests/deepsparse/loggers/helpers.py:CustomLogger
@@ -178,3 +162,43 @@ def test_server_logger_from_config(
     assert system_logger.target_identifier == "prediction_latency"
     assert system_logger.function_name == "identity"
     assert system_logger.frequency == 1
+
+
+yaml_config_1 = """
+endpoints:
+    - task: image_classification
+      route: /unpruned/predict
+      model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
+      batch_size: 1
+      add_predefined:
+        - func: image_classification
+      data_logging:
+        engine_outputs:
+           - func: np.mean
+             frequency: 3"""
+
+
+@pytest.mark.parametrize(
+    "yaml_config, expected_target_identifiers",
+    [
+        (
+            yaml_config_1,
+            [
+                "image_classification-0/engine_outputs",
+                "image_classification-0/pipeline_inputs.images",
+                "image_classification-0/pipeline_inputs.images",
+                "image_classification-0/pipeline_inputs.images",
+                "prediction_latency",
+            ],
+        )
+    ],
+)
+def test_server_logger_from_predefined(yaml_config, expected_target_identifiers):
+    obj = yaml.safe_load(yaml_config)
+    server_config = ServerConfig(**obj)
+    logger = server_logger_from_config(server_config)
+    target_identifiers = [
+        function_logger.target_identifier for function_logger in logger.logger.loggers
+    ]
+    for expected, actual in zip(expected_target_identifiers, target_identifiers):
+        assert expected == actual
