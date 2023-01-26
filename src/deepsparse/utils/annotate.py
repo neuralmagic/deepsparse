@@ -122,7 +122,7 @@ class VideoLoader:
     :param image_size: size of input image_batch to model
     """
 
-    def __init__(self, path: str, image_size: Optional[Tuple[int, int]]=None):
+    def __init__(self, path: str, image_size: Optional[Tuple[int, int]] = None):
         self._path = path
         self._image_size = image_size
         self._vid = cv2.VideoCapture(self._path)
@@ -292,7 +292,8 @@ class VideoSaver(ImageSaver):
 
 
 def load_image(
-    img: Union[str, numpy.ndarray], image_size: Optional[Tuple[int, int]] = None,
+    img: Union[str, numpy.ndarray],
+    image_size: Optional[Tuple[int, int]] = None,
 ) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
     """
     :param img: file path to image or raw image array
