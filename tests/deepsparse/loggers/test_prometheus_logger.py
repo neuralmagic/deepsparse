@@ -18,6 +18,7 @@ import requests
 import pytest
 from deepsparse import PrometheusLogger
 from deepsparse.loggers import MetricCategories
+from deepsparse.loggers.metric_functions.utils import BatchResult
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
@@ -72,10 +73,11 @@ def test_prometheus_logger(
     [
         (
             "dummy_identifier",
-            {"foo": {"alice": 1, "bob": 2}, "bar": 5},
+            {"foo": {"alice": 1, "bob": BatchResult([1, 2, 3])}, "bar": 5},
             {
                 "dummy_identifier__foo__alice_count 1.0",
-                "dummy_identifier__foo__bob_count 1.0",
+                "dummy_identifier__foo__bob_count 3.0",
+                "dummy_identifier__foo__bob_sum 6.0",
                 "dummy_identifier__bar_count 1.0",
             },
         ),

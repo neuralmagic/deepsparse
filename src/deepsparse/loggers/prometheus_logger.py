@@ -22,7 +22,7 @@ from collections import defaultdict
 from typing import Any, Optional
 
 from deepsparse.loggers import BaseLogger, MetricCategories
-from deepsparse.loggers.helpers import unwrap_logs_dictionary
+from deepsparse.loggers.helpers import unwrap_logged_value
 
 
 try:
