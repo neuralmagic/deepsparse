@@ -15,9 +15,10 @@
 The set of the general built-in metric functions
 """
 from typing import Any, List, Union
+from deepsparse.loggers.metric_functions.utils import BatchResult
+from deepsparse.loggers.metric_functions.registry import register
 
-
-__all__ = ["identity"]
+__all__ = ["identity", "predicted_classes"]
 
 
 def identity(x: Any):
@@ -29,7 +30,29 @@ def identity(x: Any):
     """
     return x
 
-def all_predicted_classes(classes: List[Union[int, str, List[int], List[str]]]):
-    pass
+@register(group="image_classification", identifier = "pipeline_outputs.labels")
+def predicted_classes(batch_classes: List[Union[int, str, List[int], List[str]]]) -> BatchResult:
+    """
+    Some docstring
+    """
+    result = BatchResult()
+    for class_ in batch_classes:
+        if isinstance(class_, list):
+            class_ = BatchResult(class_)
+        result.append(class_)
+    return result
+
+@register(group="image_classification", identifier = "pipeline_outputs.labels")
+def predicted_top_score(batch_scores: List[Union[float, List[float]]]) -> BatchResult:
+    """
+    Some docstring
+    """
+    result = BatchResult()
+    for score in batch_scores:
+        if isinstance(score, list):
+            score = max(score)
+        result.append(score)
+    return result
+
 
 
