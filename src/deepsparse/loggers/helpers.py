@@ -26,6 +26,7 @@ import numpy
 
 import deepsparse.loggers.metric_functions as built_ins
 from deepsparse.loggers import MetricCategories
+from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = [
@@ -34,22 +35,23 @@ __all__ = [
     "NO_MATCH",
     "access_nested_value",
     "finalize_identifier",
-    "unwrap_logs_dictionary",
+    "unwrap_logged_value",
 ]
 
 NO_MATCH = "NO_MATCH"
 
 
-def unwrap_logs_dictionary(
+def unwrap_logged_value(
     value: Any, parent_identifier: str = "", seperator: str = "__"
 ) -> Generator[Tuple[str, Any], None, None]:
     """
-    Unwrap the `value`, given that it may be nested dictionary.
+    Unwrap the `value`, given that it may be a nested
+    data structure
     e.g.
     ```
     value = {"foo": {"alice": 1, "bob": 2},
              "bazz": 2},
-    for identifier, value in unwrap_possible_dictionary(value):
+    for identifier, value in unwrap_logged_value(value):
         -> yields:
             "foo__alice", 1
             "foo__bob", 2
@@ -62,14 +64,16 @@ def unwrap_logs_dictionary(
     :param seperator: The seperator to use when composing the parent and child
         identifiers
     :return: A generator that:
-        - if `value` is not a dictionary:
+        - if `value` is a dictionary:
+            continues to unwrap the dictionary...
+        - if `value` is a BatchResult object:
+            yields the `parent_identifier` and items in `value`
+        - if `value` is not a dictionary or BatchResult object
             yields the `parent_identifier` and `value`
-        - else:
-            yields a sequence of tuples (identifier, value) where:
-                identifier is composed by connecting the keys over the multiple levels
-                    of nesting with the seperator
-                value is extracted from the nested dictionary (corresponding to the
-                    appropriate composed identifier)
+        Note: `parent_identifier` is composed by connecting the keys over
+            the multiple levels of nesting with the seperator value is extracted
+            from the nested dictionary (corresponding to the appropriate composed
+            identifier)
     """
     if not isinstance(value, dict):
         yield parent_identifier, value
@@ -80,8 +84,11 @@ def unwrap_logs_dictionary(
                 if parent_identifier
                 else child_identifier
             )
-            if isinstance(child_value, dict):
-                yield from unwrap_logs_dictionary(
+            if isinstance(child_value, BatchResult):
+                for child_value_item in child_value:
+                    yield new_parent_identifier, child_value_item
+            elif isinstance(child_value, dict):
+                yield from unwrap_logged_value(
                     child_value, new_parent_identifier, seperator
                 )
             else:
