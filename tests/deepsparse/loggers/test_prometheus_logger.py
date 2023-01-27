@@ -144,3 +144,31 @@ def test_nested_value_inputs(engine, identifier, value, expected_logs):
     response = requests.get(f"http://0.0.0.0:{port}").text
     request_log_lines = response.split("\n")
     assert set(request_log_lines).issuperset(expected_logs)
+
+
+@pytest.mark.parametrize(
+    "identifier, additional_args, expected_logs",
+    [
+        (
+            "some_dummy_identifier",
+            {"pipeline_name": "dummy_pipeline"},
+            {
+                'deepsparse_some_dummy_identifier_count{pipeline_name="dummy_pipeline"} 1.0',  # noqa: E501
+                'deepsparse_some_dummy_identifier_sum{pipeline_name="dummy_pipeline"} 1.0',  # noqa: E501
+            },
+        ),
+    ],
+)
+@mock_engine(rng_seed=0)
+def test_using_labels(engine, identifier, additional_args, expected_logs):
+    port = find_free_port()
+    logger = PrometheusLogger(port=port)
+    logger.log(
+        identifier=identifier,
+        value=1.0,
+        category=MetricCategories.DATA,
+        **additional_args,
+    )
+    response = requests.get(f"http://0.0.0.0:{port}").text
+    request_log_lines = response.split("\n")
+    assert set(request_log_lines).issuperset(expected_logs)

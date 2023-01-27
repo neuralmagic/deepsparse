@@ -29,6 +29,8 @@ __all__ = [
     "FileLogger",
     "NullLogger",
     "SleepLogger",
+    "ListLogger",
+    "KwargsLogger",
 ]
 
 
@@ -97,7 +99,15 @@ class ListLogger(BaseLogger):
     def __init__(self):
         self.calls = []
 
-    def log(self, identifier, value, category):
+    def log(self, identifier, value, category, **kwargs):
         self.calls.append(
             f"identifier:{identifier}, value:{value}, category:{category}"
         )
+
+
+class KwargsLogger(BaseLogger):
+    def __init__(self):
+        self.caught_kwargs = {}
+
+    def log(self, identifier, value, category, **kwargs):
+        self.caught_kwargs.update(kwargs)
