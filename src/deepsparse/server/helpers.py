@@ -46,8 +46,22 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     return build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
+        data_logging_from_predefined=_extract_data_logging_from_predefined_from_endpoints(  # noqa: E501
+            config.endpoints
+        ),
         data_logging_config=_extract_data_logging_from_endpoints(config.endpoints),
     )
+
+
+def _extract_data_logging_from_predefined_from_endpoints(
+    endpoints: List[EndpointConfig],
+) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
+    data_logging_from_predefined = {}
+    for endpoint in endpoints:
+        if endpoint.add_predefined is None:
+            continue
+        data_logging_from_predefined.update({endpoint.name: endpoint.add_predefined})
+    return data_logging_from_predefined if data_logging_from_predefined else None
 
 
 def _extract_data_logging_from_endpoints(
