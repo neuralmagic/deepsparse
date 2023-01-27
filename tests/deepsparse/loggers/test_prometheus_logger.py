@@ -18,6 +18,7 @@ import requests
 import pytest
 from deepsparse import PrometheusLogger
 from deepsparse.loggers import MetricCategories
+from deepsparse.loggers.metric_functions.utils import BatchResult
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
@@ -25,9 +26,9 @@ from tests.utils import mock_engine
 @pytest.mark.parametrize(
     "identifier, no_iterations, value, text_log_save_frequency, should_fail",
     [
-        ("dummy.identifier_1", 20, 1.0, 1, False),
-        ("dummy.identifier.2", 20, 1, 5, False),
-        ("dummy.identifier.3", 20, [1.0], 10, True),
+        ("dummy_pipeline/dummy.identifier_1", 20, 1.0, 1, False),
+        ("dummy_pipeline/dummy.identifier_2", 20, 1, 5, False),
+        ("dummy_pipeline/dummy.identifier_3", 20, [1.0], 10, True),
     ],
 )
 @mock_engine(rng_seed=0)
@@ -72,10 +73,11 @@ def test_prometheus_logger(
     [
         (
             "dummy_identifier",
-            {"foo": {"alice": 1, "bob": 2}, "bar": 5},
+            {"foo": {"alice": 1, "bob": BatchResult([1, 2, 3])}, "bar": 5},
             {
                 "dummy_identifier__foo__alice_count 1.0",
-                "dummy_identifier__foo__bob_count 1.0",
+                "dummy_identifier__foo__bob_count 3.0",
+                "dummy_identifier__foo__bob_sum 6.0",
                 "dummy_identifier__bar_count 1.0",
             },
         ),
