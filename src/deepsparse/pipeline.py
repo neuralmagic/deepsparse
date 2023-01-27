@@ -208,7 +208,7 @@ class Pipeline(ABC):
         self._batch_size = self._batch_size or 1
 
         self.log(
-            identifier=f"{RESOURCE_UTILIZATION_IDENTIFIER_PREFIX}/num_cores",
+            identifier=f"{RESOURCE_UTILIZATION_IDENTIFIER_PREFIX}/num_cores_total",
             value=num_cores,
             category=MetricCategories.SYSTEM,
         )
@@ -255,7 +255,7 @@ class Pipeline(ABC):
         self.log(
             # note, will be replaced by a reference instead of "bare" string
             # with the upcoming PR for system logging
-            identifier=f"prediction_latency/{InferencePhases.PRE_PROCESS}",
+            identifier=f"prediction_latency/{InferencePhases.PRE_PROCESS}_seconds",
             value=timer.time_delta(InferencePhases.PRE_PROCESS),
             category=MetricCategories.SYSTEM,
         )
@@ -273,7 +273,7 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
         self.log(
-            identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size",
+            identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size_total",
             # to get the batch size of the inputs, we need to look
             # to multiply the engine batch size (self._batch_size)
             # by the number of batches processed by the engine during
@@ -288,7 +288,7 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.ENGINE_FORWARD}",
+            identifier=f"prediction_latency/{InferencePhases.ENGINE_FORWARD}_seconds",
             value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
             category=MetricCategories.SYSTEM,
         )
@@ -312,12 +312,12 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.POST_PROCESS}",
+            identifier=f"prediction_latency/{InferencePhases.POST_PROCESS}_seconds",
             value=timer.time_delta(InferencePhases.POST_PROCESS),
             category=MetricCategories.SYSTEM,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.TOTAL_INFERENCE}",
+            identifier=f"prediction_latency/{InferencePhases.TOTAL_INFERENCE}_seconds",
             value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
             category=MetricCategories.SYSTEM,
         )
@@ -760,6 +760,7 @@ class Pipeline(ABC):
             identifier=identifier,
             value=value,
             category=category,
+            pipeline_name=self._identifier(),
         )
         return
 
