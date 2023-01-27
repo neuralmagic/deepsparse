@@ -81,7 +81,7 @@ def test_get_prometheus_metric(identifier, category, registry, expected_metric):
     [
         ("dummy_pipeline/dummy.identifier_1", 20, 1.0, 1, False),
         ("dummy_pipeline/dummy.identifier_2", 20, 1, 5, False),
-        # ("dummy_pipeline/dummy.identifier_3", 20, [1.0], 10, True),
+        ("dummy_pipeline/dummy.identifier_3", 20, [1.0], 10, True),
     ],
 )
 @mock_engine(rng_seed=0)
