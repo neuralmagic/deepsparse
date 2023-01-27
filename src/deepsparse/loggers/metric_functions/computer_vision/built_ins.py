@@ -35,10 +35,7 @@ __all__ = [
 ]
 
 
-@register(
-    group=["image_classification", "object_detection", "segmentation"],
-    identifier="pipeline_inputs.images",
-)
+@register(group="image_classification", identifier="pipeline_inputs.images")
 def image_shape(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, int]:
@@ -69,10 +66,7 @@ def image_shape(
     return result
 
 
-@register(
-    group=["image_classification", "object_detection", "segmentation"],
-    identifier="pipeline_inputs.images",
-)
+@register(group="image_classification", identifier="pipeline_inputs.images")
 def mean_pixels_per_channel(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, float]:
@@ -95,10 +89,6 @@ def mean_pixels_per_channel(
     return dict(zip(keys, means))
 
 
-@register(
-    group=["image_classification", "object_detection", "segmentation"],
-    identifier="pipeline_inputs.images",
-)
 def std_pixels_per_channel(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, float]:
@@ -119,11 +109,6 @@ def std_pixels_per_channel(
     keys = ["channel_{}".format(i) for i in range(len(stds))]
     return dict(zip(keys, stds))
 
-
-@register(
-    group=["image_classification", "object_detection", "segmentation"],
-    identifier="pipeline_inputs.images",
-)
 def fraction_zeros(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> float:
@@ -142,9 +127,6 @@ def fraction_zeros(
     _check_valid_image(image_numpy)
     return (image_numpy.size - numpy.count_nonzero(image_numpy)) / image_numpy.size
 
-
-@register(group="segmentation", identifier="pipeline_outputs.classes")
-@register(group="object_detection", identifier="pipeline_outputs.labels")
 def detected_classes(
     detected_classes: List[List[Union[int, str, None]]]
 ) -> Dict[str, int]:
@@ -169,9 +151,6 @@ def detected_classes(
     counter = {str(class_label): count for class_label, count in counter.items()}
     return counter
 
-
-@register(group="segmentation", identifier="pipeline_outputs.classes")
-@register(group="object_detection", identifier="pipeline_outputs.labels")
 def number_detected_objects(
     detected_classes: List[List[Union[int, str, None]]]
 ) -> BatchResult:
@@ -196,9 +175,6 @@ def number_detected_objects(
     return batch_result
 
 
-@register(
-    group=["object_detection", "segmentation"], identifier="pipeline_outputs.scores"
-)
 def mean_score_per_detection(scores: List[List[Union[None, float]]]) -> BatchResult:
     """
     Return the mean score per detection
@@ -221,9 +197,6 @@ def mean_score_per_detection(scores: List[List[Union[None, float]]]) -> BatchRes
     return batch_result
 
 
-@register(
-    group=["object_detection", "segmentation"], identifier="pipeline_outputs.scores"
-)
 def std_score_per_detection(scores: List[List[Optional[float]]]) -> BatchResult:
     """
     Return the standard deviation of scores per detection
