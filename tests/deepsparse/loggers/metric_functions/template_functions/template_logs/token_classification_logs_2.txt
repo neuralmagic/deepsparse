@@ -1,3 +1,0 @@
-identifier:token_classification/pipeline_inputs.inputs__string_length, value:[21, 19], category:MetricCategories.DATA
-identifier:token_classification/pipeline_outputs__percent_zero_labels, value:[0.5, 0.5], category:MetricCategories.DATA
-identifier:token_classification/pipeline_outputs__mean_score, value:[0.16483906656503677, 0.16483906656503677], category:MetricCategories.DATA
