@@ -125,8 +125,8 @@ def std_pixels_per_channel(
     identifier="pipeline_inputs.images",
 )
 def fraction_zeros(
-    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]
-) -> float:  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
+) -> float:
     """
     Return the float the represents the fraction of zeros in the
     image tensor/array
