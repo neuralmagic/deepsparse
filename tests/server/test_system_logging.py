@@ -39,7 +39,7 @@ def _test_successful_requests(calls, successful_request):
     relevant_call = [
         call
         for call in calls
-        if call.startswith("identifier:request_details/successful_request")
+        if call.startswith("identifier:request_details/successful_request_count")
     ]
     assert len(relevant_call) == 1
     relevant_call = relevant_call[0]
@@ -51,7 +51,9 @@ def _test_input_batch_size(calls, input_batch_size):
     relevant_call = [
         call
         for call in calls
-        if call.startswith("identifier:endpoint_name/request_details/input_batch_size")
+        if call.startswith(
+            "identifier:endpoint_name/request_details/input_batch_size_total"
+        )
     ]
     assert len(relevant_call) == 1
     relevant_call = relevant_call[0]
@@ -139,7 +141,9 @@ def _test_total_memory_available(calls, num_iterations):
     relevant_calls = [
         call
         for call in calls
-        if call.startswith("identifier:resource_utilization/total_memory_available_MB")
+        if call.startswith(
+            "identifier:resource_utilization/total_memory_available_bytes"
+        )
     ]
     values = [float(call.split("value:")[1].split(",")[0]) for call in relevant_calls]
     assert len(relevant_calls) == num_iterations

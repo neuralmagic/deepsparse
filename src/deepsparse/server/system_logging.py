@@ -71,7 +71,7 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
                 self.server_logger,
                 self.system_logging_config,
                 REQUEST_DETAILS_IDENTIFIER_PREFIX,
-                successful_request=0,
+                successful_request_count=0,
             )
             _LOGGER.error(err)
             raise
@@ -86,7 +86,7 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
             self.server_logger,
             self.system_logging_config,
             REQUEST_DETAILS_IDENTIFIER_PREFIX,
-            successful_request=int((response.status_code == 200)),
+            successful_request_count=int((response.status_code == 200)),
         )
         return response
 
@@ -119,12 +119,11 @@ def log_resource_utilization(
     memory_percent = process.memory_percent()
     # Total physical memory
     total_memory_bytes = psutil.virtual_memory().total
-    total_memory_megabytes = total_memory_bytes / 1024 / 1024
 
     identifier_to_value = {
         "cpu_utilization_percent": cpu_percent,
         "memory_utilization_percent": memory_percent,
-        "total_memory_available_MB": total_memory_megabytes,
+        "total_memory_available_bytes": total_memory_bytes,
     }
     if items_to_log:
         identifier_to_value.update(items_to_log)

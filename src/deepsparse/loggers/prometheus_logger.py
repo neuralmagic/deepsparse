@@ -59,6 +59,18 @@ except Exception as prometheus_import_err:
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
+_NAMESPACE = "deepsparse"
+_SUPPORTED_DATA_TYPES = (int, float)
+_PrometheusMetric = Union[Histogram, Gauge, Summary, Counter]
+_DESCRIPTION = (
+    """{metric_name} metric for identifier: {identifier} | Category: {category}"""
+)
+_IDENTIFIER_TO_METRIC_TYPE = {
+    "prediction_latency": Histogram,
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: Gauge,
+    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/successful_request": Counter,
+    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size": Histogram,
+}
 _SUPPORTED_DATA_TYPES = (int, float)
 _PrometheusMetric = Union[Histogram, Gauge, Summary, Counter]
 _DESCRIPTION = (
@@ -171,7 +183,8 @@ class PrometheusLogger(BaseLogger):
         if not isinstance(value, _SUPPORTED_DATA_TYPES):
             raise ValueError(
                 "Prometheus logger expects the incoming values "
-                f"to be one of the type: {_SUPPORTED_DATA_TYPES}"
+                f"to be one of the type: {_SUPPORTED_DATA_TYPES}, "
+                f"but received: {type(value)}"
             )
         return value
 
@@ -229,7 +242,7 @@ def _get_metric_from_the_mapping(
             return metric_type
 
 
-def format_identifier(identifier: str) -> str:
+def format_identifier(identifier: str, namespace: str = _NAMESPACE) -> str:
     """
     Replace forbidden characters with `__` so that the identifier
     digested by prometheus adheres to
@@ -237,7 +250,8 @@ def format_identifier(identifier: str) -> str:
     :param identifier: The identifier to be formatted
     :return: The formatted identifier
     """
-    return re.sub(r"[^a-zA-Z0-9_]", "__", identifier).lower()
+
+    return f"{namespace}_{re.sub(r'[^a-zA-Z0-9_]', '__', identifier).lower()}"
 
 
 def _check_prometheus_import():
