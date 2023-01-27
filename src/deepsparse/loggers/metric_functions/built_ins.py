@@ -15,6 +15,7 @@
 The set of the general built-in metric functions
 """
 from typing import Any, List, Union
+
 from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
@@ -29,6 +30,7 @@ def identity(x: Any):
     :return: The same object
     """
     return x
+
 
 def predicted_classes(
     classes: List[Union[int, str, List[int], List[str]]]
@@ -49,6 +51,7 @@ def predicted_classes(
         return result
     else:
         return BatchResult(classes)
+
 
 def predicted_top_score(
     scores: List[Union[float, List[float]]]

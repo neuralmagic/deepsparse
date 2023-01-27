@@ -109,6 +109,7 @@ def std_pixels_per_channel(
     keys = ["channel_{}".format(i) for i in range(len(stds))]
     return dict(zip(keys, stds))
 
+
 @register(group="image_classification", identifier="pipeline_inputs.images")
 def fraction_zeros(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
