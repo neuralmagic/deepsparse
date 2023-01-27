@@ -112,11 +112,11 @@ def test_prometheus_logger(
     response = requests.get(f"http://0.0.0.0:{port}").text
     request_log_lines = response.split("\n")
     # line 38 is where we get '{identifier}_count {no_iterations}'
-    count_request_request = float(request_log_lines[38].split(" ")[1])
+    count_request_request = float(request_log_lines[98].split(" ")[1])
 
     with open(logger.text_log_file_path) as f:
         text_log_lines = f.readlines()
-    count_request_text = float(text_log_lines[38].split(" ")[1])
+    count_request_text = float(text_log_lines[98].split(" ")[1])
 
     assert count_request_request == count_request_text == no_iterations
 
