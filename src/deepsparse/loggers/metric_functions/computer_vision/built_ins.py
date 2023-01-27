@@ -68,7 +68,7 @@ def image_shape(
 
 @register(group="image_classification", identifier="pipeline_inputs.images")
 def mean_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, float]:
     """
     Return the mean pixel value per image channel
@@ -90,7 +90,7 @@ def mean_pixels_per_channel(
 
 
 def std_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, float]:
     """
     Return the standard deviation of pixel values per image channel
@@ -102,7 +102,7 @@ def std_pixels_per_channel(
     :return: Dictionary that maps channel number to the std pixel value
     """
     img_numpy = _assert_numpy_image(img)
-    num_dims, channel_dim = _check_valid_image(img)
+    num_dims, channel_dim = _check_valid_image(img_numpy)
     dims = numpy.arange(0, num_dims, 1)
     dims = numpy.delete(dims, channel_dim)
     stds = tuple(numpy.std(img_numpy, axis=tuple(dims)))
@@ -111,7 +111,9 @@ def std_pixels_per_channel(
 
 
 @register(group="image_classification", identifier="pipeline_inputs.images")
-def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa F821
+def fraction_zeros(
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
+) -> float:
     """
     Return the float the represents the fraction of zeros in the
     image tensor/array
@@ -264,7 +266,7 @@ def _check_valid_image(img: numpy.ndarray) -> Tuple[int, int]:
 
 
 def _assert_numpy_image(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> numpy.ndarray:
     if hasattr(img, "numpy"):
         img = img.numpy()
