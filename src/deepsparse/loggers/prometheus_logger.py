@@ -72,6 +72,17 @@ _IDENTIFIER_TO_METRIC_TYPE = {
     f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size": Histogram,
 }
 _SUPPORTED_DATA_TYPES = (int, float)
+_PrometheusMetric = Union[Histogram, Gauge, Summary, Counter]
+_DESCRIPTION = (
+    """{metric_name} metric for identifier: {identifier} | Category: {category}"""
+)
+_IDENTIFIER_TO_METRIC_TYPE = {
+    "prediction_latency": Histogram,
+    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: Gauge,
+    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/successful_request": Counter,
+    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size": Histogram,
+}
+_SUPPORTED_DATA_TYPES = (int, float)
 _DESCRIPTION = (
     "{metric_name} metric for identifier: {identifier} | Category: {category}"
 )
@@ -239,6 +250,7 @@ def format_identifier(identifier: str, namespace: str = _NAMESPACE) -> str:
     :param identifier: The identifier to be formatted
     :return: The formatted identifier
     """
+
     return f"{namespace}_{re.sub(r'[^a-zA-Z0-9_]', '__', identifier).lower()}"
 
 
