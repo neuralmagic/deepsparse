@@ -19,8 +19,61 @@ import pytest
 from deepsparse import PrometheusLogger
 from deepsparse.loggers import MetricCategories
 from deepsparse.loggers.metric_functions.utils import BatchResult
+from deepsparse.loggers.prometheus_logger import get_prometheus_metric
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, Summary
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
+
+
+@pytest.mark.parametrize(
+    "identifier, category, registry, expected_metric",
+    [
+        ("dummy_identifier", MetricCategories.DATA, REGISTRY, Summary),
+        ("dummy_identifier", MetricCategories.SYSTEM, REGISTRY, None),
+        (
+            "prediction_latency/dummy_identifier",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            Histogram,
+        ),
+        (
+            "resource_utilization/dummy_identifier",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            Gauge,
+        ),
+        (
+            "request_details/successful_request",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            Counter,
+        ),
+        (
+            "request_details/input_batch_size",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            Histogram,
+        ),
+        (
+            "request_details/response_message",
+            MetricCategories.SYSTEM,
+            REGISTRY,
+            None,
+        ),
+    ],
+)
+def test_get_prometheus_metric(identifier, category, registry, expected_metric):
+    metric = get_prometheus_metric(identifier, category, registry)
+    if metric is None:
+        assert metric is expected_metric
+        return
+    assert isinstance(metric, expected_metric)
+    assert (
+        metric._documentation
+        == "{metric_type} metric for identifier: {identifier} | Category: {category}".format(  # noqa: E501
+            metric_type=metric._type, identifier=identifier, category=category
+        )
+    )
 
 
 @pytest.mark.parametrize(
@@ -51,19 +104,19 @@ def test_prometheus_logger(
     for idx in range(no_iterations):
         if should_fail:
             with pytest.raises(ValueError):
-                logger.log(identifier, value, MetricCategories.SYSTEM)
+                logger.log(identifier, value, MetricCategories.DATA)
                 return
             return
-        logger.log(identifier, value, MetricCategories.SYSTEM)
+        logger.log(identifier, value, MetricCategories.DATA)
 
     response = requests.get(f"http://0.0.0.0:{port}").text
     request_log_lines = response.split("\n")
     # line 38 is where we get '{identifier}_count {no_iterations}'
-    count_request_request = float(request_log_lines[38].split(" ")[1])
+    count_request_request = float(request_log_lines[98].split(" ")[1])
 
     with open(logger.text_log_file_path) as f:
         text_log_lines = f.readlines()
-    count_request_text = float(text_log_lines[38].split(" ")[1])
+    count_request_text = float(text_log_lines[98].split(" ")[1])
 
     assert count_request_request == count_request_text == no_iterations
 
@@ -87,7 +140,7 @@ def test_prometheus_logger(
 def test_nested_value_inputs(engine, identifier, value, expected_logs):
     port = find_free_port()
     logger = PrometheusLogger(port=port)
-    logger.log(identifier, value, MetricCategories.SYSTEM)
+    logger.log(identifier, value, MetricCategories.DATA)
     response = requests.get(f"http://0.0.0.0:{port}").text
     request_log_lines = response.split("\n")
     assert set(request_log_lines).issuperset(expected_logs)
