@@ -18,13 +18,11 @@ Set of functions for logging metrics from the question answering pipeline
 from deepsparse.loggers.metric_functions.natural_language_processing import (
     string_length,
 )
-from deepsparse.loggers.metric_functions.registry import register
 
 
 __all__ = ["answer_found", "answer_length", "answer_score"]
 
 
-@register(group="question_answering", identifier="pipeline_outputs")
 def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:  # noqa: F821
     """
     Returns whether an answer was found given the QuestionAnsweringOutput
@@ -34,7 +32,6 @@ def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:  # noqa: F821
     return not qa_output.answer == "empty"
 
 
-@register(group="question_answering", identifier="pipeline_outputs")
 def answer_length(qa_output: "QuestionAnsweringOutput") -> int:  # noqa: F821
     """
     Returns the length of the answer given the QuestionAnsweringOutput
@@ -47,7 +44,6 @@ def answer_length(qa_output: "QuestionAnsweringOutput") -> int:  # noqa: F821
     return string_length(qa_output.answer)
 
 
-@register(group="question_answering", identifier="pipeline_outputs")
 def answer_score(qa_output: "QuestionAnsweringOutput") -> float:  # noqa: F821
     """
     Returns the score of the answer given the QuestionAnsweringOutput

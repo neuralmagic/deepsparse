@@ -109,6 +109,7 @@ def std_pixels_per_channel(
     keys = ["channel_{}".format(i) for i in range(len(stds))]
     return dict(zip(keys, stds))
 
+@register(group="image_classification", identifier="pipeline_inputs.images")
 def fraction_zeros(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> float:
@@ -126,6 +127,7 @@ def fraction_zeros(
     image_numpy = _assert_numpy_image(img)
     _check_valid_image(image_numpy)
     return (image_numpy.size - numpy.count_nonzero(image_numpy)) / image_numpy.size
+
 
 def detected_classes(
     detected_classes: List[List[Union[int, str, None]]]
@@ -150,6 +152,7 @@ def detected_classes(
     # convert keys to strings if required
     counter = {str(class_label): count for class_label, count in counter.items()}
     return counter
+
 
 def number_detected_objects(
     detected_classes: List[List[Union[int, str, None]]]
