@@ -45,7 +45,10 @@ def predicted_classes(
     classes: List[Union[int, str, List[int], List[str]]]
 ) -> BatchResult:
     """
-    Some docstring
+    Returns the predicted classes from the model output
+    schema in the form of a BatchResult object
+
+    :param classes: The classes to convert to a BatchResult
     """
 
     if isinstance(classes[0], list):
@@ -71,7 +74,11 @@ def predicted_top_score(
     scores: List[Union[float, List[float]]]
 ) -> Union[float, BatchResult]:
     """
-    Some docstring
+    Returns the top score from the model output
+    schema in the form of a BatchResult object
+    (or a single float)
+
+    :param scores: The scores to convert to a BatchResult
     """
     if isinstance(scores[0], list):
         result = BatchResult()

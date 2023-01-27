@@ -51,7 +51,6 @@ def register(group: Union[str, List[str]], identifier: str):
             task_registry = DATA_LOGGING_REGISTRY.get(group_name)
             if task_registry:
                 identifier_registry = task_registry.get(identifier)
-            # add the built-in function to the registry
             if identifier_registry and task_registry:
                 DATA_LOGGING_REGISTRY[group_name][identifier].append(function.__name__)
             else:
