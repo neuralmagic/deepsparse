@@ -28,7 +28,7 @@ from deepsparse.loggers import (
     BaseLogger,
     MetricCategories,
 )
-from deepsparse.loggers.helpers import unwrap_logs_dictionary
+from deepsparse.loggers.helpers import unwrap_logged_value
 
 
 try:
@@ -45,16 +45,14 @@ try:
 
     prometheus_import_error = None
 except Exception as prometheus_import_err:
-    (
-        REGISTRY,
-        Summary,
-        Histogram,
-        Gauge,
-        Counter,
-        CollectorRegistry,
-        start_http_server,
-        write_to_textfile,
-    ) = None
+    REGISTRY = None
+    Summary = None
+    Histogram = None
+    Gauge = None
+    Counter = None
+    CollectorRegistry = None
+    start_http_server = None
+    write_to_textfile = None
     prometheus_import_error = prometheus_import_err
 
 
@@ -72,6 +70,10 @@ _IDENTIFIER_TO_METRIC_TYPE = {
     f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/successful_request": Counter,
     f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size": Histogram,
 }
+_SUPPORTED_DATA_TYPES = (int, float)
+_DESCRIPTION = (
+    "{metric_name} metric for identifier: {identifier} | Category: {category}"
+)
 
 
 class PrometheusLogger(BaseLogger):
@@ -118,9 +120,13 @@ class PrometheusLogger(BaseLogger):
         :param category: The metric category that the log belongs to
         """
 
-        for identifier, value in unwrap_logs_dictionary(value, identifier):
+        for identifier, value in unwrap_logged_value(value, identifier):
             prometheus_metric = self._get_prometheus_metric(identifier, category)
             if prometheus_metric is None:
+                warnings.warn(
+                    f"The identifier {identifier} cannot be matched with any "
+                    f"of the Prometheus metrics and will be ignored."
+                )
                 return
             prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
@@ -221,10 +227,6 @@ def _get_metric_from_the_mapping(
             system_group_name in identifier
         ):
             return metric_type
-    warnings.warn(
-        f"The identifier {identifier} cannot be matched with any "
-        f"of the Prometheus metrics and will be ignored."
-    )
 
 
 def format_identifier(identifier: str) -> str:

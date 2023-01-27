@@ -18,6 +18,7 @@ import requests
 import pytest
 from deepsparse import PrometheusLogger
 from deepsparse.loggers import MetricCategories
+from deepsparse.loggers.metric_functions.utils import BatchResult
 from deepsparse.loggers.prometheus_logger import get_prometheus_metric
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram, Summary
 from tests.helpers import find_free_port
@@ -25,56 +26,47 @@ from tests.utils import mock_engine
 
 
 @pytest.mark.parametrize(
-    "identifier, category, registry, expected_metric, raise_warning",
+    "identifier, category, registry, expected_metric",
     [
-        ("dummy_identifier", MetricCategories.DATA, REGISTRY, Summary, False),
-        ("dummy_identifier", MetricCategories.SYSTEM, REGISTRY, None, True),
+        ("dummy_identifier", MetricCategories.DATA, REGISTRY, Summary),
+        ("dummy_identifier", MetricCategories.SYSTEM, REGISTRY, None),
         (
             "prediction_latency/dummy_identifier",
             MetricCategories.SYSTEM,
             REGISTRY,
             Histogram,
-            False,
         ),
         (
             "resource_utilization/dummy_identifier",
             MetricCategories.SYSTEM,
             REGISTRY,
             Gauge,
-            False,
         ),
         (
             "request_details/successful_request",
             MetricCategories.SYSTEM,
             REGISTRY,
             Counter,
-            False,
         ),
         (
             "request_details/input_batch_size",
             MetricCategories.SYSTEM,
             REGISTRY,
             Histogram,
-            False,
         ),
         (
             "request_details/response_message",
             MetricCategories.SYSTEM,
             REGISTRY,
             None,
-            True,
         ),
     ],
 )
-def test_get_prometheus_metric(
-    identifier, category, registry, expected_metric, raise_warning
-):
-    if raise_warning:
-        with pytest.warns(UserWarning):
-            metric = get_prometheus_metric(identifier, category, registry)
-            assert metric is None
-        return
+def test_get_prometheus_metric(identifier, category, registry, expected_metric):
     metric = get_prometheus_metric(identifier, category, registry)
+    if metric is None:
+        assert metric is expected_metric
+        return
     assert isinstance(metric, expected_metric)
     assert (
         metric._documentation
@@ -112,10 +104,10 @@ def test_prometheus_logger(
     for idx in range(no_iterations):
         if should_fail:
             with pytest.raises(ValueError):
-                logger.log(identifier, value, MetricCategories.SYSTEM)
+                logger.log(identifier, value, MetricCategories.DATA)
                 return
             return
-        logger.log(identifier, value, MetricCategories.SYSTEM)
+        logger.log(identifier, value, MetricCategories.DATA)
 
     response = requests.get(f"http://0.0.0.0:{port}").text
     request_log_lines = response.split("\n")
@@ -134,10 +126,11 @@ def test_prometheus_logger(
     [
         (
             "dummy_identifier",
-            {"foo": {"alice": 1, "bob": 2}, "bar": 5},
+            {"foo": {"alice": 1, "bob": BatchResult([1, 2, 3])}, "bar": 5},
             {
                 "dummy_identifier__foo__alice_count 1.0",
-                "dummy_identifier__foo__bob_count 1.0",
+                "dummy_identifier__foo__bob_count 3.0",
+                "dummy_identifier__foo__bob_sum 6.0",
                 "dummy_identifier__bar_count 1.0",
             },
         ),
@@ -147,7 +140,7 @@ def test_prometheus_logger(
 def test_nested_value_inputs(engine, identifier, value, expected_logs):
     port = find_free_port()
     logger = PrometheusLogger(port=port)
-    logger.log(identifier, value, MetricCategories.SYSTEM)
+    logger.log(identifier, value, MetricCategories.DATA)
     response = requests.get(f"http://0.0.0.0:{port}").text
     request_log_lines = response.split("\n")
     assert set(request_log_lines).issuperset(expected_logs)
