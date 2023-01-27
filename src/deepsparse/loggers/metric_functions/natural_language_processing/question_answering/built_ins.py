@@ -31,6 +31,7 @@ def answer_found(qa_output: "QuestionAnsweringOutput") -> bool:  # noqa: F821
     :param qa_output: The output schema of the question answering pipeline
     :return: True if an answer was found, False otherwise
     """
+
     return not qa_output.answer == "empty"
 
 
@@ -42,6 +43,7 @@ def answer_length(qa_output: "QuestionAnsweringOutput") -> int:  # noqa: F821
     :param qa_output: The output schema of the question answering pipeline
     :return: The length of the answer
     """
+
     if qa_output.answer == "empty":
         return 0
     return string_length(qa_output.answer)
@@ -55,4 +57,5 @@ def answer_score(qa_output: "QuestionAnsweringOutput") -> float:  # noqa: F821
     :param qa_output: The output schema of the question answering pipeline
     :return: The score of the answer
     """
+
     return qa_output.score
