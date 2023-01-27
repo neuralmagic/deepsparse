@@ -180,7 +180,6 @@ def build_logger(
     return MultiLogger(function_loggers)  # wrap all loggers to async log call
 
 
-
 def get_target_identifier(
     target_name: str, pipeline_identifier: Optional[str] = None
 ) -> str:

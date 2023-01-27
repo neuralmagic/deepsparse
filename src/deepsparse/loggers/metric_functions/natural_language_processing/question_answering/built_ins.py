@@ -20,6 +20,7 @@ from deepsparse.loggers.metric_functions.natural_language_processing import (
 )
 from deepsparse.loggers.metric_functions.registry import register
 
+
 __all__ = ["answer_found", "answer_length", "answer_score"]
 
 

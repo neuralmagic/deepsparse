@@ -18,6 +18,7 @@ set of relevant built-in functions
 from collections import defaultdict
 from typing import List, Union
 
+
 __all__ = ["DATA_LOGGING_REGISTRY", "register"]
 
 

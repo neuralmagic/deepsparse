@@ -15,10 +15,12 @@
 The set of the general built-in metric functions
 """
 from typing import Any, List, Union
-from deepsparse.loggers.metric_functions.utils import BatchResult
-from deepsparse.loggers.metric_functions.registry import register
 
-__all__ = ["identity", "predicted_classes"]
+from deepsparse.loggers.metric_functions.registry import register
+from deepsparse.loggers.metric_functions.utils import BatchResult
+
+
+__all__ = ["identity", "predicted_classes", "predicted_top_score"]
 
 
 def identity(x: Any):
@@ -30,29 +32,58 @@ def identity(x: Any):
     """
     return x
 
-@register(group="image_classification", identifier = "pipeline_outputs.labels")
-def predicted_classes(batch_classes: List[Union[int, str, List[int], List[str]]]) -> BatchResult:
+
+@register(
+    group=[
+        "image_classification",
+        "sentiment_analysis",
+        "zero_shot_text_classification",
+    ],
+    identifier="pipeline_outputs.labels",
+)
+def predicted_classes(
+    classes: List[Union[int, str, List[int], List[str]]]
+) -> BatchResult:
     """
     Some docstring
     """
-    result = BatchResult()
-    for class_ in batch_classes:
-        if isinstance(class_, list):
-            class_ = BatchResult(class_)
-        result.append(class_)
-    return result
 
-@register(group="image_classification", identifier = "pipeline_outputs.labels")
-def predicted_top_score(batch_scores: List[Union[float, List[float]]]) -> BatchResult:
+    if isinstance(classes[0], list):
+        result = BatchResult()
+        for class_ in classes:
+            result.append(
+                BatchResult([_check_if_convertable_to_int(value) for value in class_])
+            )
+        return result
+    else:
+        return BatchResult(classes)
+
+
+@register(
+    group=[
+        "image_classification",
+        "sentiment_analysis",
+        "zero_shot_text_classification",
+    ],
+    identifier="pipeline_outputs.scores",
+)
+def predicted_top_score(
+    scores: List[Union[float, List[float]]]
+) -> Union[float, BatchResult]:
     """
     Some docstring
     """
-    result = BatchResult()
-    for score in batch_scores:
-        if isinstance(score, list):
-            score = max(score)
-        result.append(score)
-    return result
+    if isinstance(scores[0], list):
+        result = BatchResult()
+        for scores_ in scores:
+            result.append(max(scores_))
+        return result
+    else:
+        return max(scores)
 
 
-
+def _check_if_convertable_to_int(value):
+    if isinstance(value, str):
+        if value.isdigit():
+            return int(value)
+    return value

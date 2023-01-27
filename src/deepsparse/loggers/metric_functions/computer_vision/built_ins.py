@@ -34,7 +34,11 @@ __all__ = [
     "number_detected_objects",
 ]
 
-@register(group=["image_classification", "object_detection", "segmentation"], identifier="pipeline_inputs.images")
+
+@register(
+    group=["image_classification", "object_detection", "segmentation"],
+    identifier="pipeline_inputs.images",
+)
 def image_shape(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, int]:
@@ -65,8 +69,10 @@ def image_shape(
     return result
 
 
-
-@register(group=["image_classification", "object_detection", "segmentation"], identifier="pipeline_inputs.images",)
+@register(
+    group=["image_classification", "object_detection", "segmentation"],
+    identifier="pipeline_inputs.images",
+)
 def mean_pixels_per_channel(
     img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
 ) -> Dict[str, float]:

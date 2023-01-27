@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.metric_functions.utils import BatchResult
 from deepsparse.loggers.metric_functions.natural_language_processing import (
     string_length,
 )
+from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
 @pytest.mark.parametrize(
