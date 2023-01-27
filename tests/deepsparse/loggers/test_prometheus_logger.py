@@ -150,11 +150,11 @@ def test_nested_value_inputs(engine, identifier, value, expected_logs):
     "identifier, additional_args, expected_logs",
     [
         (
-            "dummy_identifier",
+            "some_dummy_identifier",
             {"pipeline_name": "dummy_pipeline"},
             {
-                'deepsparse_dummy_identifier_count{pipeline_name="dummy_pipeline"} 1.0',
-                'deepsparse_dummy_identifier_sum{pipeline_name="dummy_pipeline"} 1.0',
+                'deepsparse_some_dummy_identifier_count{pipeline_name="dummy_pipeline"} 1.0',  # noqa: E501
+                'deepsparse_some_dummy_identifier_sum{pipeline_name="dummy_pipeline"} 1.0',  # noqa: E501
             },
         ),
     ],

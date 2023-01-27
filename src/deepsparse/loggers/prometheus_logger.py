@@ -59,12 +59,9 @@ except Exception as prometheus_import_err:
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
+
 _NAMESPACE = "deepsparse"
-_SUPPORTED_DATA_TYPES = (int, float)
 _PrometheusMetric = Union[Histogram, Gauge, Summary, Counter]
-_DESCRIPTION = (
-    """{metric_name} metric for identifier: {identifier} | Category: {category}"""
-)
 _IDENTIFIER_TO_METRIC_TYPE = {
     "prediction_latency": Histogram,
     RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: Gauge,
