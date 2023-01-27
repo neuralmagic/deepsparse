@@ -22,7 +22,9 @@ from deepsparse.loggers.metric_functions.utils import BatchResult
 __all__ = ["string_length", "percent_unknown_tokens"]
 
 
-def string_length(sequence: Union[List[str], str]) -> Union[BatchResult, int]:
+def string_length(
+    sequence: Union[List[List[str]], List[str], str]
+) -> Union[BatchResult, int]:
     """
     Returns the length of the sequence
 
@@ -33,7 +35,13 @@ def string_length(sequence: Union[List[str], str]) -> Union[BatchResult, int]:
     """
     if isinstance(sequence, str):
         return len(sequence)
-    return BatchResult([len(seq) for seq in sequence])
+    elif isinstance(sequence[0], str):
+        return BatchResult([len(seq) for seq in sequence])
+    else:
+        result = BatchResult()
+        for sequence_list in sequence:
+            result.append(BatchResult([len(seq) for seq in sequence_list]))
+        return result
 
 
 def percent_unknown_tokens():
