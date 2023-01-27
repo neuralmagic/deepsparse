@@ -760,6 +760,7 @@ class Pipeline(ABC):
             identifier=identifier,
             value=value,
             category=category,
+            pipeline_name=self._identifier(),
         )
         return
 
