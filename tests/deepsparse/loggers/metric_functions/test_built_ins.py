@@ -40,7 +40,10 @@ def test_predicted_classes(classes, expected_result):
     "batch_scores, expected_result",
     [
         ([[0.7, 0.8, 0.1], [0.6, 0.4, 0.1]], BatchResult([0.8, 0.6])),
-        ([0.7, 0.8, 0.1], BatchResult([0.8, 0.6])),
+        (
+            [0.7, 0.8, 0.1],
+            0.8,
+        ),
     ],
 )
 def test_predicted_top_score(batch_scores, expected_result):

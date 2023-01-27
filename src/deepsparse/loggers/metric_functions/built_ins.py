@@ -50,7 +50,7 @@ def predicted_classes(
             )
         return result
     else:
-        return BatchResult(classes)
+        return BatchResult([_check_if_convertable_to_int(value) for value in classes])
 
 
 def predicted_top_score(
