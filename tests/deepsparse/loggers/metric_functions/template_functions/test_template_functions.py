@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import time
 
 import numpy
 
@@ -136,6 +137,8 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, expected_log
         )
 
     pipeline(**inputs)
+    # let's sleep one seconds so all the logs get collected
+    time.sleep(1)
     logs = pipeline.logger.logger.loggers[0].logger.loggers[0].calls
 
     data_logging_logs = [log for log in logs if "DATA" in log]

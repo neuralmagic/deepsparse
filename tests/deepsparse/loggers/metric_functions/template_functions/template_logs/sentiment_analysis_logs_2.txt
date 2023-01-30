@@ -1,1 +1,0 @@
-identifier:text_classification/pipeline_inputs.sequences__string_length, value:[21, 19], category:MetricCategories.DATA

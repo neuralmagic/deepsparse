@@ -1,1 +1,0 @@
-identifier:token_classification/pipeline_inputs.inputs__string_length, value:21, category:MetricCategories.DATA

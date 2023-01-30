@@ -1,4 +1,0 @@
-identifier:yolact/pipeline_inputs.images__image_shape, value:{'channels': 3, 'dim_0': 640, 'dim_1': 640}, category:MetricCategories.DATA
-identifier:yolact/pipeline_inputs.images__mean_pixels_per_channel, value:{'channel_0': 1.0, 'channel_1': 1.0, 'channel_2': 1.0}, category:MetricCategories.DATA
-identifier:yolact/pipeline_inputs.images__std_pixels_per_channel, value:{'channel_0': 0.0, 'channel_1': 0.0, 'channel_2': 0.0}, category:MetricCategories.DATA
-identifier:yolact/pipeline_inputs.images__fraction_zeros, value:0.0, category:MetricCategories.DATA
