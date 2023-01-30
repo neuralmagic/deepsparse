@@ -1,0 +1,14 @@
+python: null
+pipeline_inputs.question:
+- func: string_length
+  frequency: 3
+pipeline_inputs.context:
+- func: string_length
+  frequency: 3
+pipeline_outputs:
+- func: answer_found
+  frequency: 3
+- func: answer_length
+  frequency: 3
+- func: answer_score
+  frequency: 3

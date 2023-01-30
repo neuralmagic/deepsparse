@@ -1,0 +1,20 @@
+python: null
+pipeline_inputs.images:
+- func: image_shape
+  frequency: 2
+- func: mean_pixels_per_channel
+  frequency: 2
+- func: std_pixels_per_channel
+  frequency: 2
+- func: fraction_zeros
+  frequency: 2
+pipeline_outputs.labels:
+- func: detected_classes
+  frequency: 2
+- func: number_detected_objects
+  frequency: 2
+pipeline_outputs.scores:
+- func: mean_score_per_detection
+  frequency: 2
+- func: std_score_per_detection
+  frequency: 2
