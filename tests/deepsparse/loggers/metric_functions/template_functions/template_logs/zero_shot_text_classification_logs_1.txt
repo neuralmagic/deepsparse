@@ -1,0 +1,1 @@
+identifier:zero_shot_text_classification/pipeline_inputs.sequences__string_length, value:21, category:MetricCategories.DATA

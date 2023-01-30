@@ -18,6 +18,7 @@ import numpy
 
 import pytest
 from deepsparse import Pipeline
+from deepsparse.loggers.build_logger import logger_from_config
 from tests.utils import mock_engine
 
 
@@ -28,87 +29,87 @@ from tests.utils import mock_engine
             "image_classification",
             "image_classification",
             {"images": [numpy.ones((3, 224, 224))] * 2},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/image_classification_logs.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/image_classification_logs.txt",  # noqa E501
         ),
         (
             "image_classification",
             "image_classification",
             {"images": numpy.ones((2, 3, 224, 224))},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/image_classification_logs.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/image_classification_logs.txt",  # noqa E501
         ),
         (
             "object_detection",
             "yolo",
             {"images": [numpy.ones((3, 640, 640))] * 2},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/object_detection_logs.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/object_detection_logs.txt",  # noqa E501
         ),
         (
             "object_detection",
             "yolo",
             {"images": numpy.ones((2, 3, 640, 640))},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/object_detection_logs.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/object_detection_logs.txt",  # noqa E501
         ),
         (
             "segmentation",
             "yolact",
             {"images": [numpy.ones((3, 640, 640))] * 2},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/segmentation_logs.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/segmentation_logs.txt",  # noqa E501
         ),
         (
             "segmentation",
             "yolact",
             {"images": numpy.ones((2, 3, 640, 640))},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/segmentation_logs.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/segmentation_logs.txt",  # noqa E501
         ),
         (
             "sentiment_analysis",
             "sentiment_analysis",
             {"sequences": "the food tastes great"},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_1.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_1.txt",  # noqa E501
         ),
         (
             "sentiment_analysis",
             "sentiment_analysis",
             {"sequences": ["the food tastes great", "the food tastes bad"]},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_2.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_2.txt",  # noqa E501
         ),
         (
             "sentiment_analysis",
             "sentiment_analysis",
             {
                 "sequences": [
-                    ["the food tastes great", "the food tastes bad"],
-                    ["the food tastes great", "the food tastes bad"],
+                    ["the food tastes great"],
+                    ["the food tastes bad"],
                 ]
             },
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_3.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_3.txt",  # noqa E501
         ),
         (
             "zero_shot_text_classification",
             "zero_shot_text_classification",
             {"sequences": "the food tastes great", "labels": ["politics", "food"]},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/zero_shot_text_classification_logs_1.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/zero_shot_text_classification_logs_1.txt",  # noqa E501
         ),
         (
             "zero_shot_text_classification",
             "zero_shot_text_classification",
             {
-                "sequences": ["the food tastes great", "the food tastes bad"],
+                "sequences": ["the food tastes great", "the government is corrupt"],
                 "labels": ["politics", "food"],
             },
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/zero_shot_text_classification_logs_2.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/zero_shot_text_classification_logs_2.txt",  # noqa E501
         ),
         (
             "token_classification",
             "token_classification",
             {"inputs": "the food tastes great"},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/token_classification_logs_1.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/token_classification_logs_1.txt",  # noqa E501
         ),
         (
             "token_classification",
             "token_classification",
             {"inputs": ["the food tastes great", "the food tastes bad"]},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/token_classification_logs_2.txt",
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/token_classification_logs_2.txt",  # noqa E501
         ),
     ],
 )
@@ -121,13 +122,24 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, expected_log
     add_predefined:
     - func: {group_name}"""
 
-    pipeline = Pipeline.create(
-        pipeline_name, logger=yaml_config.format(group_name=group_name)
-    )
+    if pipeline_name == "zero_shot_text_classification":
+        pipeline = Pipeline.create(
+            pipeline_name,
+            logger=logger_from_config(
+                config=yaml_config.format(group_name=group_name),
+                pipeline_identifier=pipeline_name,
+            ),
+        )
+    else:
+        pipeline = Pipeline.create(
+            pipeline_name, logger=yaml_config.format(group_name=group_name)
+        )
+
     pipeline(**inputs)
-    logs = pipeline.logger.loggers[0].logger.loggers[0].calls
+    logs = pipeline.logger.logger.loggers[0].logger.loggers[0].calls
+
     data_logging_logs = [log for log in logs if "DATA" in log]
-    if os.environ["GENERATE_LOGS"] == "1":
+    if os.environ.get("GENERATE_LOGS"):
         dir = os.path.dirname(expected_logs)
         os.makedirs(dir, exist_ok=True)
         with open(expected_logs, "w") as f:

@@ -2,7 +2,3 @@ identifier:yolact/pipeline_inputs.images__image_shape, value:{'channels': 3, 'di
 identifier:yolact/pipeline_inputs.images__mean_pixels_per_channel, value:{'channel_0': 1.0, 'channel_1': 1.0, 'channel_2': 1.0}, category:MetricCategories.DATA
 identifier:yolact/pipeline_inputs.images__std_pixels_per_channel, value:{'channel_0': 0.0, 'channel_1': 0.0, 'channel_2': 0.0}, category:MetricCategories.DATA
 identifier:yolact/pipeline_inputs.images__fraction_zeros, value:0.0, category:MetricCategories.DATA
-identifier:yolact/pipeline_outputs.classes__detected_classes, value:{'7': 6, '10': 4, '23': 6, '38': 2, '41': 2, '69': 2, '67': 2, '8': 2, '54': 2, '16': 2, '78': 2, '39': 4, '73': 2, '32': 4, '58': 2, '31': 2, '40': 6, '22': 2, '46': 2, '36': 2, '47': 2, '30': 4, '1': 2, '57': 2, '60': 2, '25': 2, '64': 4, '26': 2, '29': 2, '5': 2, '52': 2, '37': 2, '70': 2, '3': 2, '65': 2, '56': 2, '9': 2, '63': 2, '79': 2}, category:MetricCategories.DATA
-identifier:yolact/pipeline_outputs.classes__number_detected_objects, value:[50, 50], category:MetricCategories.DATA
-identifier:yolact/pipeline_outputs.scores__mean_score_per_detection, value:[0.9999835777282715, 0.9999835777282715], category:MetricCategories.DATA
-identifier:yolact/pipeline_outputs.scores__std_score_per_detection, value:[8.525441680612083e-06, 8.525441680612083e-06], category:MetricCategories.DATA
