@@ -14,22 +14,34 @@
 """
 Set of functions for logging metrics from the natural language processing pipelines
 """
-from typing import Dict, List, Union
+from typing import List, Union
+
+from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = ["string_length", "percent_unknown_tokens"]
 
 
-def string_length(sequence: Union[List[str], str]) -> Union[Dict[str, int], int]:
+def string_length(
+    sequence: Union[List[List[str]], List[str], str]
+) -> Union[BatchResult, int]:
     """
     Returns the length of the sequence
 
     :param sequence: The sequence whose length is to be returned
-    :return: The length of the sequence
+    :return: The length of the sequence if sequence is a string,
+        else a BatchResult containing the length of each sequence
+        in the batch
     """
     if isinstance(sequence, str):
         return len(sequence)
-    return {str(string_id): len(string) for string_id, string in enumerate(sequence)}
+    elif isinstance(sequence[0], str):
+        return BatchResult([len(seq) for seq in sequence])
+    else:
+        result = BatchResult()
+        for sequence_list in sequence:
+            result.append(BatchResult([len(seq) for seq in sequence_list]))
+        return result
 
 
 def percent_unknown_tokens():

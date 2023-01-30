@@ -41,7 +41,7 @@ def test_python_logger(engine, pipeline_name, capsys):
         pipeline_name = pipeline.task
     pipeline("all_your_base_are_belong_to_us")
     messages = capsys.readouterr().out.split("\n")
-    relevant_logs = [message for message in messages if pipeline_name in message]
+    relevant_logs = [message for message in messages if " Identifier: " in message]
     assert len(relevant_logs) == 10
     assert (
         len(
