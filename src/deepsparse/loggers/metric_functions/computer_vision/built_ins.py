@@ -19,7 +19,9 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
-from deepsparse.loggers.metric_functions.registry import register
+from deepsparse.loggers.metric_functions.registry import (
+    register as register_metric_function,
+)
 from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
@@ -35,7 +37,7 @@ __all__ = [
 ]
 
 
-@register(
+@register_metric_function(
     group=["image_classification", "object_detection", "segmentation"],
     identifier="pipeline_inputs.images",
 )
@@ -69,7 +71,7 @@ def image_shape(
     return result
 
 
-@register(
+@register_metric_function(
     group=["image_classification", "object_detection", "segmentation"],
     identifier="pipeline_inputs.images",
 )
@@ -95,7 +97,7 @@ def mean_pixels_per_channel(
     return dict(zip(keys, means))
 
 
-@register(
+@register_metric_function(
     group=["image_classification", "object_detection", "segmentation"],
     identifier="pipeline_inputs.images",
 )
@@ -120,13 +122,13 @@ def std_pixels_per_channel(
     return dict(zip(keys, stds))
 
 
-@register(
+@register_metric_function(
     group=["image_classification", "object_detection", "segmentation"],
     identifier="pipeline_inputs.images",
 )
 def fraction_zeros(
-    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]
-) -> float:  # noqa F821
+    img: Union[numpy.ndarray, "torch.tensor", List[numpy.ndarray]]  # noqa F821
+) -> float:
     """
     Return the float the represents the fraction of zeros in the
     image tensor/array
@@ -143,8 +145,10 @@ def fraction_zeros(
     return (image_numpy.size - numpy.count_nonzero(image_numpy)) / image_numpy.size
 
 
-@register(group="segmentation", identifier="pipeline_outputs.classes")
-@register(group="object_detection", identifier="pipeline_outputs.labels")
+@register_metric_function(group="segmentation", identifier="pipeline_outputs.classes")
+@register_metric_function(
+    group="object_detection", identifier="pipeline_outputs.labels"
+)
 def detected_classes(
     detected_classes: List[List[Union[int, str, None]]]
 ) -> Dict[str, int]:
@@ -170,8 +174,10 @@ def detected_classes(
     return counter
 
 
-@register(group="segmentation", identifier="pipeline_outputs.classes")
-@register(group="object_detection", identifier="pipeline_outputs.labels")
+@register_metric_function(group="segmentation", identifier="pipeline_outputs.classes")
+@register_metric_function(
+    group="object_detection", identifier="pipeline_outputs.labels"
+)
 def number_detected_objects(
     detected_classes: List[List[Union[int, str, None]]]
 ) -> BatchResult:
@@ -196,7 +202,7 @@ def number_detected_objects(
     return batch_result
 
 
-@register(
+@register_metric_function(
     group=["object_detection", "segmentation"], identifier="pipeline_outputs.scores"
 )
 def mean_score_per_detection(scores: List[List[Union[None, float]]]) -> BatchResult:
@@ -221,7 +227,7 @@ def mean_score_per_detection(scores: List[List[Union[None, float]]]) -> BatchRes
     return batch_result
 
 
-@register(
+@register_metric_function(
     group=["object_detection", "segmentation"], identifier="pipeline_outputs.scores"
 )
 def std_score_per_detection(scores: List[List[Optional[float]]]) -> BatchResult:

@@ -22,8 +22,8 @@ from deepsparse import (
     default_logger,
     logger_from_config,
 )
-from deepsparse.loggers.build_logger import build_system_loggers
-from deepsparse.loggers.config import SystemLoggingConfig
+from deepsparse.loggers.build_logger import build_logger, build_system_loggers
+from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingConfig
 from tests.deepsparse.loggers.helpers import ListLogger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
@@ -205,3 +205,18 @@ def test_build_system_loggers(
 
 def test_default_logger(tmp_path):
     assert isinstance(default_logger()["python"], PythonLogger)
+
+
+def test_kwargs():
+    logger = build_logger(
+        data_logging_config={"identifier": [MetricFunctionConfig(func="identity")]},
+        system_logging_config=SystemLoggingConfig(),
+        loggers_config={
+            "kwargs_logger": {
+                "path": "tests/deepsparse/loggers/helpers.py:KwargsLogger"
+            }
+        },
+    )
+    logger.log("identifier", None, None, argument="some_value")
+    kwargs_logger = logger.logger.loggers[0].logger.loggers[0]
+    assert kwargs_logger.caught_kwargs == {"argument": "some_value"}
