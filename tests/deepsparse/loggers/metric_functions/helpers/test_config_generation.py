@@ -40,10 +40,17 @@ dummy_logger_config = {
 }
 result_1 = """python:
 
+pipeline_outputs.labels:
+  - func: predicted_classes
+    frequency: 3
+  - func: predicted_top_score
+    frequency: 3
 pipeline_inputs.images:
   - func: image_shape
     frequency: 3
   - func: mean_pixels_per_channel
+    frequency: 3
+  - func: std_pixels_per_channel
     frequency: 3
   - func: fraction_zeros
     frequency: 3"""
@@ -55,10 +62,17 @@ some_other_logger:
   arg_3: 5.6
   arg_4: 10
 
+pipeline_outputs.labels:
+  - func: predicted_classes
+    frequency: 3
+  - func: predicted_top_score
+    frequency: 3
 pipeline_inputs.images:
   - func: image_shape
     frequency: 3
   - func: mean_pixels_per_channel
+    frequency: 3
+  - func: std_pixels_per_channel
     frequency: 3
   - func: fraction_zeros
     frequency: 3"""
@@ -70,10 +84,17 @@ some_other_logger:
   arg_3: 5.6
   arg_4: 10
 
+pipeline_outputs.labels:
+  - func: predicted_classes
+    frequency: 10
+  - func: predicted_top_score
+    frequency: 10
 pipeline_inputs.images:
   - func: image_shape
     frequency: 10
   - func: mean_pixels_per_channel
+    frequency: 10
+  - func: std_pixels_per_channel
     frequency: 10
   - func: fraction_zeros
     frequency: 10

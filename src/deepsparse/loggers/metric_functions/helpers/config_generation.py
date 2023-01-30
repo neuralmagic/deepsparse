@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
-from deepsparse.loggers.build_logger import predefined_metric_function
+from deepsparse.loggers.build_logger import parse_out_predefined_function_groups
 from deepsparse.loggers.config import MetricFunctionConfig
 from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
 
@@ -71,7 +71,7 @@ def data_logging_config_from_predefined(
         MetricFunctionConfig(func=group_name, frequency=frequency)
         for group_name in group_names
     ]
-    data_logging_config = predefined_metric_function(
+    data_logging_config = parse_out_predefined_function_groups(
         metric_functions=metric_functions, registry=registry
     )
     data_logging_config_str = _data_logging_config_string(data_logging_config)
@@ -82,8 +82,15 @@ def data_logging_config_from_predefined(
     if save_dir:
         # save and log
         save_path = os.path.join(save_dir, save_name)
-        with open(save_path, "w") as outfile:
-            yaml.dump(config_str, outfile, default_flow_style=False)
+        parsed_data = yaml.safe_load(config_str)
+        with open(save_path, "w") as file:
+            yaml.dump(
+                parsed_data,
+                file,
+                default_flow_style=False,
+                line_break="\n",
+                sort_keys=False,
+            )
         _LOGGER.info(f"Saved data logging config to {save_path}")
 
     return config_str
