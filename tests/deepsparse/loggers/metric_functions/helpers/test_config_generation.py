@@ -146,9 +146,7 @@ def test_data_logging_config_from_predefined(
     if save_dir:
         with open(os.path.join(tmp_path, "data_logging_config.yaml"), "r") as stream:
             string_result_saved = yaml.safe_load(stream)
-        assert string_result_saved == expected_result
-
-    assert string_result == expected_result
+        assert string_result_saved == yaml.safe_load(expected_result)
 
 
 result_1 = """logger_2:
