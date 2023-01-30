@@ -54,6 +54,33 @@ def test_default_logger():
     assert isinstance(server_logger.logger.loggers[0].logger.loggers[0], PythonLogger)
 
 
+def test_data_logging_from_predefined():
+    server_config = ServerConfig(
+        endpoints=[
+            EndpointConfig(
+                task=task,
+                name=name,
+                model=stub,
+                add_predefined=[MetricFunctionConfig(func="sentiment_analysis")],
+            )
+        ],
+        loggers={"logger_1": {"path": logger_identifier}},
+    )
+    server_logger = server_logger_from_config(server_config)
+    with mock.patch(
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
+    ), mock_engine(rng_seed=0):
+        app = _build_app(server_config)
+    client = TestClient(app)
+    client.post("/predict", json={"sequences": "today is great"})
+    data_logging_calls = [
+        call
+        for call in server_logger.logger.loggers[0].logger.loggers[0].calls
+        if "DATA" in call and call.startswith(f"identifier:{name}/")
+    ]
+    assert len(data_logging_calls) == 3
+
+
 def test_logging_only_system_info():
     server_config = ServerConfig(
         endpoints=[EndpointConfig(task=task, name=name, model=stub)],
