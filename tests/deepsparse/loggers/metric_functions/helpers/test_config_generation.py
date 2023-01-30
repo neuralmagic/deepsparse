@@ -38,14 +38,16 @@ dummy_logger_config = {
     "some_logger": {"arg_1": "argument_1", "arg_2": None},
     "some_other_logger": {"arg_3": 5.6, "arg_4": 10},
 }
-result_1 = """python:
+result_1 = """loggers:
+  python:
 
-pipeline_outputs.labels:
+data_logging:
+  pipeline_outputs.labels:
   - func: predicted_classes
     frequency: 3
   - func: predicted_top_score
     frequency: 3
-pipeline_inputs.images:
+  pipeline_inputs.images:
   - func: image_shape
     frequency: 3
   - func: mean_pixels_per_channel
@@ -55,19 +57,21 @@ pipeline_inputs.images:
   - func: fraction_zeros
     frequency: 3"""
 
-result_2 = """some_logger:
-  arg_1: argument_1
-  arg_2: None
-some_other_logger:
-  arg_3: 5.6
-  arg_4: 10
+result_2 = """loggers:
+  some_logger:
+    arg_1: argument_1
+    arg_2: None
+  some_other_logger:
+    arg_3: 5.6
+    arg_4: 10
 
-pipeline_outputs.labels:
+data_logging:
+  pipeline_outputs.labels:
   - func: predicted_classes
     frequency: 3
   - func: predicted_top_score
     frequency: 3
-pipeline_inputs.images:
+  pipeline_inputs.images:
   - func: image_shape
     frequency: 3
   - func: mean_pixels_per_channel
@@ -77,19 +81,21 @@ pipeline_inputs.images:
   - func: fraction_zeros
     frequency: 3"""
 
-result_3 = """some_logger:
-  arg_1: argument_1
-  arg_2: None
-some_other_logger:
-  arg_3: 5.6
-  arg_4: 10
+result_3 = """loggers:
+  some_logger:
+    arg_1: argument_1
+    arg_2: None
+  some_other_logger:
+    arg_3: 5.6
+    arg_4: 10
 
-pipeline_outputs.labels:
+data_logging:
+  pipeline_outputs.labels:
   - func: predicted_classes
     frequency: 10
   - func: predicted_top_score
     frequency: 10
-pipeline_inputs.images:
+  pipeline_inputs.images:
   - func: image_shape
     frequency: 10
   - func: mean_pixels_per_channel
@@ -98,7 +104,7 @@ pipeline_inputs.images:
     frequency: 10
   - func: fraction_zeros
     frequency: 10
-dummy_target:
+  dummy_target:
   - func: dummy_func_1
     frequency: 10
   - func: dummy_func_2
@@ -139,7 +145,7 @@ def test_data_logging_config_from_predefined(
         save_dir=tmp_path,
         registry=registry,
     )
-
+    print(string_result)
     assert string_result == expected_result
     assert PipelineLoggingConfig(**yaml.safe_load(string_result))
 
@@ -149,18 +155,22 @@ def test_data_logging_config_from_predefined(
         assert string_result_saved == yaml.safe_load(expected_result)
 
 
-result_1 = """logger_2:
-  arg_1: 1
-  arg_2:
-    arg_3: 3
-    arg_4: 4"""
+result_1 = """loggers:
+  logger_2:
+    arg_1: 1
+    arg_2:
+      arg_3: 3
+      arg_4: 4"""
+
+result_2 = """loggers:
+  logger_1:"""
 
 
 @pytest.mark.parametrize(
     "loggers, expected_result",
     [
         ({"logger_2": {"arg_1": 1, "arg_2": {"arg_3": 3, "arg_4": 4}}}, result_1),
-        ({"logger_1": {}}, "logger_1:"),
+        ({"logger_1": {}}, result_2),
     ],
 )
 def test_loggers_to_config_string(loggers, expected_result):

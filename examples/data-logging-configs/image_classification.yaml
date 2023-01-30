@@ -1,15 +1,17 @@
-python: null
-pipeline_outputs.labels:
-- func: predicted_classes
-  frequency: 1
-- func: predicted_top_score
-  frequency: 1
-pipeline_inputs.images:
-- func: image_shape
-  frequency: 1
-- func: mean_pixels_per_channel
-  frequency: 1
-- func: std_pixels_per_channel
-  frequency: 1
-- func: fraction_zeros
-  frequency: 1
+loggers:
+  python: null
+data_logging:
+  pipeline_outputs.labels:
+  - func: predicted_classes
+    frequency: 1
+  - func: predicted_top_score
+    frequency: 1
+  pipeline_inputs.images:
+  - func: image_shape
+    frequency: 1
+  - func: mean_pixels_per_channel
+    frequency: 1
+  - func: std_pixels_per_channel
+    frequency: 1
+  - func: fraction_zeros
+    frequency: 1

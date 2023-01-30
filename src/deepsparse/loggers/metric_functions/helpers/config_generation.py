@@ -99,13 +99,17 @@ def data_logging_config_from_predefined(
 def _loggers_to_config_string(
     loggers: Dict[str, Optional[Union[str, List[str]]]]
 ) -> str:
-    return ("\n").join(_nested_dict_to_lines(loggers))
+    lines = [_WHITESPACE + line for line in _nested_dict_to_lines(loggers)]
+    lines.insert(0, "loggers:")
+    return ("\n").join(lines)
 
 
 def _data_logging_config_string(
     data_logging_config: Dict[str, List[MetricFunctionConfig]],
 ) -> str:
-    return ("\n").join(_nested_dict_to_lines(data_logging_config))
+    lines = [_WHITESPACE + line for line in _nested_dict_to_lines(data_logging_config)]
+    lines.insert(0, "data_logging:")
+    return ("\n").join(lines)
 
 
 def _nested_dict_to_lines(
