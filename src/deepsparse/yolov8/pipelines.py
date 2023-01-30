@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, List
+from typing import Callable
 
-import torch
 from deepsparse import Pipeline
-from deepsparse.yolo import YOLOOutput, YOLOPipeline
-from ultralytics.yolo.utils import ops
+from deepsparse.yolo import YOLOPipeline
+from deepsparse.yolov8.utils import non_max_suppression
 
 
 @Pipeline.register(
@@ -25,8 +24,6 @@ from ultralytics.yolo.utils import ops
     default_model_path=None,
 )
 class YOLOv8Pipeline(YOLOPipeline):
-    def __init__(
-        self, nms_function: Callable = ops.non_max_suppression, **kwargs
-    ):  # TODO: finish typing here
+    def __init__(self, nms_function: Callable = non_max_suppression, **kwargs):
         self.nms_function = nms_function
         super().__init__(nms_function=nms_function, **kwargs)

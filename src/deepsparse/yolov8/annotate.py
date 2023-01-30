@@ -20,7 +20,7 @@ Usage: deepsparse.object_detection.annotate [OPTIONS]
 Options:
   --model_filepath, --model-filepath TEXT
                                   Path/SparseZoo stub to the model file to be
-                                  used for annotation  [default: # TODO add]
+                                  used for annotation
   --source TEXT                   File path to an image or directory of image
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
@@ -78,7 +78,7 @@ from deepsparse.utils.cli_helpers import create_dir_callback
 from deepsparse.yolo.utils import annotate_image
 
 
-yolo_v5_default_stub = None
+yolo_v8_default_stub = None
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
@@ -92,7 +92,7 @@ _LOGGER = logging.getLogger(__name__)
     "--model_filepath",
     "--model-filepath",
     type=str,
-    default=yolo_v5_default_stub,
+    default=yolo_v8_default_stub,
     help="Path/SparseZoo stub to the model file to be used for annotation",
     show_default=True,
 )

@@ -78,7 +78,10 @@ class YOLOPipeline(Pipeline):
         class_names: Optional[Union[str, Dict[str, str]]] = None,
         model_config: Optional[str] = None,
         image_size: Union[int, Tuple[int, int], None] = None,
-        nms_function: Callable = postprocess_nms,  # TODO: finish type hint
+        nms_function: Callable[
+            [Union["torch.Tensor", numpy.ndarray], float, float, bool],  # noqa F821
+            List[numpy.ndarray],
+        ] = postprocess_nms,
         **kwargs,
     ):
 
