@@ -5,8 +5,7 @@ DeepSparse allows accelerated inference, serving, and benchmarking of sparsified
 > "Ultralytics YOLOv8, developed by Ultralytics, is a cutting-edge, state-of-the-art (SOTA) model that builds upon 
 > the success of previous YOLO versions and introduces new features and improvements to further boost performance 
 > and flexibility. YOLOv8 is designed to be fast, accurate, and easy to use, making it an excellent choice for a wide 
-> range of object detection, image segmentation and image classification tasks."
-
+> range of object detection, image segmentation, and image classification tasks."
 This integration allows for leveraging the DeepSparse Engine to run the sparsified YOLOv8 inference with GPU-class performance directly on the CPU.
 
 The DeepSparse Engine is taking advantage of sparsity within neural networks to 
@@ -22,19 +21,14 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 ### Installation
 
 ```pip install deepsparse[yolov8]```
-
 ### Model Format
 By default, to deploy YOLOv8 using DeepSparse Engine it is required to supply the model in the ONNX format. 
 This grants the engine the flexibility to serve any model in a framework-agnostic environment. 
-
 Below we describe three possibilities to obtain the required ONNX model.
-
 ### Fetching the original (non-compressed) YOLOv8 directly from the Ultralytics repository
-
 ```bash
 # Install packages for DeepSparse and YOLOv8
 pip install deepsparse[yolov8] ultralytics
-
 # Export YOLOv8n and YOLOv8s ONNX models
 yolo task=detect mode=export model=yolov8n.pt format=onnx opset=13
 yolo task=detect mode=export model=yolov8s.pt format=onnx opset=13
@@ -51,7 +45,7 @@ sparseml.yolov8.export_onnx \
     --weights path/to/your/model \
     --dynamic #Allows for dynamic input shape
 ```
-This creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
+This creates a `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
 
 #### Fetching Sparsified YOLOv8 Models
 DeepSparse’s performance can be pushed even further by optimizing the model for inference. DeepSparse is built to take advantage of models that have been optimized with weight pruning 
@@ -62,7 +56,7 @@ This was achieved with just 1024 samples and no back-propagation. You can downlo
 ## Deployment APIs
 
 ## Deployment Example
-The following example uses pipelines to run a pruned and quantized YOLOv8 model for inference. As input the pipeline ingests a list of images and returns for each image the detection boxes in numeric form.
+The following example uses pipelines to run a pruned and quantized YOLOv8 model for inference. As input, the pipeline ingests a list of images and returns for each image the detection boxes in numeric form.
 
 If you don't have an image ready, pull a sample image down with
 
@@ -72,21 +66,18 @@ wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 
 ```python
 from deepsparse import Pipeline
-
 model_path = "yolov8n.onnx" # or "yolov8n_quant.onnx"
 images = ["basilica.jpg"]
-
 yolo_pipeline = Pipeline.create(
     task="yolov8",
     model_path=model_path,
 )
-
 pipeline_outputs = yolo_pipeline(images=images)
 ```
 <img width="1041" alt="Screenshot 2023-01-11 at 6 53 46 PM" src="https://user-images.githubusercontent.com/3195154/211942937-1d32193a-6dda-473d-a7ad-e2162bbb42e9.png">
 
 #### Annotate CLI
-You can also use the annotate command to have the engine save an annotated photo on disk.
+You can also use the annotate command to have the engine save an annotated photo on the disk.
 ```bash
 deepsparse.yolov8.annotate --source basilica.jpg --model_filepath "yolov8n.onnx" # or "yolov8n_quant.onnx"
 ```
@@ -103,16 +94,13 @@ You only need to provide the model path of the local ONNX model to get started:
 ```bash
 # Install packages for DeepSparse and YOLOv8
 pip install deepsparse[yolov8] ultralytics
-
 # Export YOLOv8n and YOLOv8s ONNX models
 yolo task=detect mode=export model=yolov8n.pt format=onnx opset=13
 yolo task=detect mode=export model=yolov8s.pt format=onnx opset=13
-
 # Benchmark with DeepSparse!
 deepsparse.benchmark yolov8n.onnx --scenario=sync --input_shapes="[1,3,640,640]"
 > Throughput (items/sec): 198.3282
 > Latency Mean (ms/batch): 5.0366
-
 deepsparse.benchmark yolov8s.onnx --scenario=sync --input_shapes="[1,3,640,640]"
 > Throughput (items/sec): 68.3909
 > Latency Mean (ms/batch): 14.6101
@@ -122,7 +110,6 @@ deepsparse.benchmark yolov8s.onnx --scenario=sync --input_shapes="[1,3,640,640]"
 deepsparse.benchmark yolov8n_quant.onnx --scenario=sync --input_shapes="[1,3,640,640]"
 > Throughput (items/sec): 525.0226
 > Latency Mean (ms/batch): 1.9047
-
 deepsparse.benchmark yolov8s_quant.onnx --scenario=sync --input_shapes="[1,3,640,640]"
 > Throughput (items/sec): 209.9472
 > Latency Mean (ms/batch): 4.7631
