@@ -15,7 +15,7 @@
 """
 Usage: deepsparse.object_detection.annotate [OPTIONS]
 
-  Annotation Script for YOLOv5 with DeepSparse
+  Annotation Script for YOLO with DeepSparse
 
 Options:
   --model_filepath, --model-filepath TEXT
@@ -181,7 +181,7 @@ def main(
     no_save: bool,
 ) -> None:
     """
-    Annotation Script for YOLOv5 with DeepSparse
+    Annotation Script for YOLO with DeepSparse
     """
     save_dir = get_annotations_save_dir(
         initial_save_dir=save_dir,
