@@ -16,6 +16,7 @@ Registry that relates the task and the data logging identifier to the
 set of relevant built-in functions
 """
 from collections import defaultdict
+from typing import List, Union
 
 
 __all__ = ["DATA_LOGGING_REGISTRY", "register"]
@@ -24,7 +25,7 @@ __all__ = ["DATA_LOGGING_REGISTRY", "register"]
 DATA_LOGGING_REGISTRY = defaultdict(lambda: defaultdict(str))
 
 
-def register(group: str, identifier: str):
+def register(group: Union[str, List[str]], identifier: str):
     """
     A decorator for registering the built-in function name under the
     relevant group name and data_logging_identifier.
@@ -46,14 +47,15 @@ def register(group: str, identifier: str):
 
     def decorator(function):
         identifier_registry = None
-        task_registry = DATA_LOGGING_REGISTRY.get(group)
-        if task_registry:
-            identifier_registry = task_registry.get(identifier)
-        # add the built-in function to the registry
-        if identifier_registry and task_registry:
-            DATA_LOGGING_REGISTRY[group][identifier].append(function.__name__)
-        else:
-            DATA_LOGGING_REGISTRY[group][identifier] = [function.__name__]
+        for group_name in group if isinstance(group, list) else [group]:
+            task_registry = DATA_LOGGING_REGISTRY.get(group_name)
+            if task_registry:
+                identifier_registry = task_registry.get(identifier)
+            # add the built-in function to the registry
+            if identifier_registry and task_registry:
+                DATA_LOGGING_REGISTRY[group_name][identifier].append(function.__name__)
+            else:
+                DATA_LOGGING_REGISTRY[group_name][identifier] = [function.__name__]
         return function
 
     return decorator
