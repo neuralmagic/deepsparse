@@ -24,7 +24,7 @@ from tests.utils import mock_engine
 
 
 logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
-stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"  # noqa E501
+stub = "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"  # noqa E501
 task = "text-classification"
 name = "endpoint_name"
 
@@ -59,9 +59,9 @@ def test_data_logging_from_predefined():
         endpoints=[
             EndpointConfig(
                 task=task,
-                name=name,
+                name="text_classification",
                 model=stub,
-                add_predefined=[MetricFunctionConfig(func="sentiment_analysis")],
+                add_predefined=[MetricFunctionConfig(func="text_classification")],
             )
         ],
         loggers={"logger_1": {"path": logger_identifier}},
@@ -72,13 +72,24 @@ def test_data_logging_from_predefined():
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
-    client.post("/predict", json={"sequences": "today is great"})
-    data_logging_calls = [
+    client.post(
+        "/predict",
+        json={
+            "sequences": [["Fun for adults and children.", "Fun for only children."]]
+        },
+    )
+    data_logging_logs = [
         call
         for call in server_logger.logger.loggers[0].logger.loggers[0].calls
-        if "DATA" in call and call.startswith(f"identifier:{name}/")
+        if "DATA" in call
     ]
-    assert len(data_logging_calls) == 3
+    with open(
+        "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/text_classification_logs.txt",  # noqa E501
+        "r",
+    ) as f:
+        expected_logs = f.read().splitlines()
+    for log, expected_log in zip(data_logging_logs, expected_logs):
+        assert log == expected_log
 
 
 def test_logging_only_system_info():

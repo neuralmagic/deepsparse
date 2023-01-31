@@ -63,6 +63,21 @@ from tests.utils import mock_engine
             "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/segmentation_logs.txt",  # noqa E501
         ),
         (
+            "question_answering",
+            "question_answering",
+            {
+                "question": "what is the capital of France?",
+                "context": "Paris is the capital of France.",
+            },
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/question_answering_logs.txt",  # noqa E501
+        ),
+        (
+            "text_classification",
+            "text_classification",
+            {"sequences": [["Fun for adults and children.", "Fun for only children."]]},
+            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/text_classification_logs.txt",  # noqa E501
+        ),
+        (
             "sentiment_analysis",
             "sentiment_analysis",
             {"sequences": "the food tastes great"},
