@@ -12,9 +12,7 @@ This integration allows for leveraging the DeepSparse Engine to run the sparsifi
 The DeepSparse Engine is taking advantage of sparsity within neural networks to 
 reduce compute required as well as accelerate memory-bound workloads. The engine is particularly effective when leveraging sparsification
 methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [quantization](https://arxiv.org/abs/1609.07061). 
-These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
-
-This integration currently supports the original YOLOv8.
+These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics.
 
 ## Getting Started
 
@@ -29,7 +27,19 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 By default, to deploy YOLOv8 using DeepSparse Engine it is required to supply the model in the ONNX format. 
 This grants the engine the flexibility to serve any model in a framework-agnostic environment. 
 
-Below we describe two possibilities to obtain the required ONNX model.
+Below we describe three possibilities to obtain the required ONNX model.
+
+### Fetching the original (non-compressed) YOLOv8 directly from the Ultralytics repository
+
+```bash
+# Install packages for DeepSparse and YOLOv8
+pip install deepsparse[yolov8] ultralytics
+
+# Export YOLOv8n and YOLOv8s ONNX models
+yolo task=detect mode=export model=yolov8n.pt format=onnx opset=13
+yolo task=detect mode=export model=yolov8s.pt format=onnx opset=13
+```
+This will save `yolov8n.onnx` and `yolov8s.onnx` to your disk.
 
 ### Exporting the ONNX File From the Contents of a Local Directory
 This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
@@ -43,44 +53,16 @@ sparseml.yolov8.export_onnx \
 ```
 This creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
 
-####  SparseZoo Stub
-Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
-All of DeepSparse's pipelines and APIs can use a SparseZoo stub in place of a local folder. The Deployment APIs examples use SparseZoo stubs to highlight this pathway.
+#### Fetching Sparsified YOLOv8 Models
+DeepSparse’s performance can be pushed even further by optimizing the model for inference. DeepSparse is built to take advantage of models that have been optimized with weight pruning 
+and quantization—techniques that dramatically shrink the required compute without dropping accuracy. Through our One-Shot optimization methods, which will be made available in an upcoming 
+product called Sparsify, we have produced YOLOv8s and YOLOv8n ONNX models that have been quantized to INT8 while maintaining at least 99% of the original FP32 mAP@0.5. 
+This was achieved with just 1024 samples and no back-propagation. You can download the quantized models [here](https://drive.google.com/drive/folders/1vf4Es-8bxhx348TzzfhvljMQUo62XhQ4?usp=sharing).
+
 ## Deployment APIs
 
-DeepSparse provides both a Python Pipeline API and an out-of-the-box model server
-that can be used for end-to-end inference in either existing Python workflows or as an HTTP endpoint.
-Both options provide similar specifications for configurations and support annotation serving for all 
-YOLOv5 models.
-
-### Python Pipelines
-Pipelines are the default interface for running inference with the DeepSparse Engine.
-
-Once a model is obtained, either through SparseML training or directly from SparseZoo, `deepsparse.Pipeline` can be used to easily facilitate end-to-end inference and deployment of the sparsified neural networks.
-
-If no model is specified to the Pipeline for a given task, the Pipeline will automatically select a pruned and quantized model for the task from the SparseZoo that can be used for accelerated inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size, and accuracy.
-
-### DeepSparse Server
-As an alternative to Python API, the DeepSparse Server allows you to serve ONNX models and pipelines in HTTP.
-Both configuring and making requests to the server follow the same parameters and schemas as the
-Pipelines enabling simple deployment.  Once launched, a `/docs` endpoint is created with full
-endpoint descriptions and support for making sample requests.
-
-An example of starting and requesting a DeepSparse Server for YOLOv8 is given below.
-
-#### Installation
-The Deepsparse Server requirements can be installed by specifying the `server` extra dependency when installing
-DeepSparse.
-
-```bash
-pip install deepsparse[yolov8,server]
-```
-
 ## Deployment Example
-The following example uses pipelines to run a pruned and quantized YOLOv8 model for inference, downloaded by default from the SparseZoo. As input the pipeline ingests a list of images and returns for each image the detection boxes in numeric form. 
-
-[List of the YOLOv8 SparseZoo Models](
-https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1)
+The following example uses pipelines to run a pruned and quantized YOLOv8 model for inference. As input the pipeline ingests a list of images and returns for each image the detection boxes in numeric form.
 
 If you don't have an image ready, pull a sample image down with
 
@@ -91,83 +73,68 @@ wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 ```python
 from deepsparse import Pipeline
 
-model_stub = "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
+model_path = "yolov8n.onnx" # or "yolov8n_quant.onnx"
 images = ["basilica.jpg"]
 
 yolo_pipeline = Pipeline.create(
     task="yolov8",
-    model_path=model_stub,
+    model_path=model_path,
 )
 
-pipeline_outputs = yolo_pipeline(images=images, iou_thres=0.6, conf_thres=0.001)
+pipeline_outputs = yolo_pipeline(images=images)
 ```
+<img width="1041" alt="Screenshot 2023-01-11 at 6 53 46 PM" src="https://user-images.githubusercontent.com/3195154/211942937-1d32193a-6dda-473d-a7ad-e2162bbb42e9.png">
 
 #### Annotate CLI
 You can also use the annotate command to have the engine save an annotated photo on disk.
 ```bash
-deepsparse.object_detection.annotate --source basilica.jpg #Try --source 0 to annotate your live webcam feed
+deepsparse.yolov8.annotate --source basilica.jpg --model_filepath "yolov8n.onnx" # or "yolov8n_quant.onnx"
 ```
 
 Running the above command will create an `annotation-results` folder and save the annotated image inside.
 
-<p align = "center">
-<img src="sample_images/basilica.jpg" alt="original" width="400"/> <img src="sample_images/basilica-annotated.jpg" alt="annotated" width="400"/>
-</p>
-<p align = "center">
-Image annotated with 96% sparse YOLOv5s
-</p>
-
-If a `--model_filepath` arg isn't provided, then `zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96` will be used by default.
-
-
-#### HTTP Server
-Spinning up:
-```bash
-deepsparse.server \
-    task yolov8 \
-    --model_path "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94"
-```
-
-Making a request:
-```python
-import requests
-import json
-
-url = 'http://0.0.0.0:5543/predict/from_files'
-path = ['basilica.jpg'] # list of images for inference
-files = [('request', open(img, 'rb')) for img in path]
-resp = requests.post(url=url, files=files)
-annotations = json.loads(resp.text) # dictionary of annotation results
-bounding_boxes = annotations["boxes"]
-labels = annotations["labels"]
-```
 
 ### Benchmarking
-The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse YOLOv5 ONNX models perform inference? 
+The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse YOLOv8 ONNX models perform inference? 
 You can quickly do benchmarking tests on your own with a single CLI command!
 
-You only need to provide the model path of a SparseZoo ONNX model or your own local ONNX model to get started:
+You only need to provide the model path of the local ONNX model to get started:
 
 ```bash
-deepsparse.benchmark \
-    zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
-    --scenario sync 
+# Install packages for DeepSparse and YOLOv8
+pip install deepsparse[yolov8] ultralytics
 
->> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
->> Batch Size: 1
->> Scenario: sync
->> Throughput (items/sec): 74.0355
->> Latency Mean (ms/batch): 13.4924
->> Latency Median (ms/batch): 13.4177
->> Latency Std (ms/batch): 0.2166
->> Iterations: 741
+# Export YOLOv8n and YOLOv8s ONNX models
+yolo task=detect mode=export model=yolov8n.pt format=onnx opset=13
+yolo task=detect mode=export model=yolov8s.pt format=onnx opset=13
+
+# Benchmark with DeepSparse!
+deepsparse.benchmark yolov8n.onnx --scenario=sync --input_shapes="[1,3,640,640]"
+> Throughput (items/sec): 198.3282
+> Latency Mean (ms/batch): 5.0366
+
+deepsparse.benchmark yolov8s.onnx --scenario=sync --input_shapes="[1,3,640,640]"
+> Throughput (items/sec): 68.3909
+> Latency Mean (ms/batch): 14.6101
 ```
+
+```bash
+deepsparse.benchmark yolov8n_quant.onnx --scenario=sync --input_shapes="[1,3,640,640]"
+> Throughput (items/sec): 525.0226
+> Latency Mean (ms/batch): 1.9047
+
+deepsparse.benchmark yolov8s_quant.onnx --scenario=sync --input_shapes="[1,3,640,640]"
+> Throughput (items/sec): 209.9472
+> Latency Mean (ms/batch): 4.7631
+```
+
+DeepSparse places commodity CPUs right next to the A100 GPU, which achieves [~1ms latency](https://github.com/ultralytics/ultralytics#models). Check out our performance benchmarks for YOLOv8 on Amazon EC2 C6i Instances. DeepSparse is 4X faster at FP32 and 10X faster at INT8 than all other CPU alternatives.  
 
 To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
 
 ## Tutorials:
-For a deeper dive into using YOLOv5 within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/use-cases/#computervision).
+For a deeper dive into using YOLOv8 within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/use-cases/#computervision).
 
 ## Support
 For Neural Magic Support, sign up or log in to our [Deep Sparse Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues).
