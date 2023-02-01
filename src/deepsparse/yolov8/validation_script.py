@@ -64,15 +64,15 @@ import torch
 import torchvision
 from torchvision import transforms
 from tqdm import tqdm
-
+from torchvision.ops import complete_box_iou, box_convert
 from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
 )
 from deepsparse.pipeline import Pipeline
-from torch.utils.data import DataLoader
-from torchvision.datasets import CocoDetection
-from pycocotools.coco import COCO
+import matplotlib.pyplot as plt
+import cv2
+import numpy as np
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -150,7 +150,7 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
 )
 @click.option(
     "--engine",
-    default=DEEPSPARSE_ENGINE,
+    default=ORT_ENGINE,
     type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE]),
     show_default=True,
     help="engine type to use, valid choices: ['deepsparse', 'onnxruntime']",
@@ -187,13 +187,29 @@ def main(
         rgb_stds = dataset_kwargs["rgb_stds"]
     else:
         rgb_stds = IMAGENET_RGB_STDS
-
+    from typing import Tuple, Any
     if type(resize_mode) is str and resize_mode.lower() in ["linear", "bilinear"]:
         interpolation = transforms.InterpolationMode.BILINEAR
     elif type(resize_mode) is str and resize_mode.lower() in ["cubic", "bicubic"]:
         interpolation = transforms.InterpolationMode.BICUBIC
 
-    dataset = torchvision.datasets.CocoDetection(
+
+    class Test(torchvision.datasets.CocoDetection):
+        def __init__(self, root, annFile, transform=None):
+            super().__init__(root, annFile, transform=transform)
+
+        def __getitem__(self, index: int) -> Tuple[Any, Any]:
+            id = self.ids[index]
+            image = self._load_image(id)
+            target = self._load_target(id)
+
+            if self.transforms is not None:
+                image, target = self.transforms(image, target)
+
+            return image, target, self.coco.imgs[self.ids[index]]
+
+
+    dataset = Test(
         root="./coco/val2017",
         annFile= "./coco/annotations/instances_val2017.json",
         transform=transforms.Compose([
@@ -205,66 +221,96 @@ def main(
     data_loader = dataset
 
     pipeline = Pipeline.create(
-        task="yolov8",
-        model_path=model_path,
+        task="yolo",
+        model_path="zoo:cv/detection/yolo_v3-spp/pytorch/ultralytics/coco/pruned_quant-aggressive_94",
         batch_size=batch_size,
         num_cores=num_cores,
         engine_type=engine,
     )
     print(f"engine info: {pipeline.engine}")
-    correct = total = 0
-    progress_bar = tqdm(data_loader)
-    metric = MeanAveragePrecision()
-    targets = []
-    predictions = []
+    import glob
+    image_paths = glob.glob("./coco/val2017/*")
+    results = []
 
-    for u, batch in enumerate(progress_bar):
-        batch, annotations = batch
-        batch = batch.numpy()
-        outs = pipeline(images=batch * 255)
-
-        predicted_labels = outs.labels[0]
-        predicted_labels = [int(float(x)) +1 for x in predicted_labels]
+    for u, batch in enumerate(tqdm(data_loader)):
+        outs = pipeline(images="./coco/val2017/" + batch[2]['file_name'])
+        predicted_labels = [int(float(x)) +1 for x in outs.labels[0]]
         predicted_bboxes = outs.boxes[0]
         predicted_scores = outs.scores[0]
 
-        actual_labels = [ann['category_id'] for ann in annotations]
-        actual_bboxes = [ann['bbox'] for ann in annotations]
+        imageId = batch[2]['id']
 
-        import matplotlib.pyplot as plt
-        import cv2
-        import numpy as np
+        ## scaling bboxes ##
+        predicted_bboxes = np.array(predicted_bboxes)
+        _, h, w = batch[0].shape
+        scale = np.flipud(np.divide(np.asarray((h, w)), np.asarray((640, 640))))
+        scale = np.concatenate([scale, scale])
+        if not predicted_bboxes.any():
+            continue
+        predicted_bboxes = np.multiply(predicted_bboxes, scale).tolist()
 
-        batch = 255 * batch
-        batch = batch.astype(np.uint8).transpose(1, 2, 0).copy()
-        h, w, _ = batch.shape
-        _pred_boxes = []
-        for bbox in predicted_bboxes:
-            bbox = np.array(bbox)
-            scale = np.flipud(np.divide(
-                    np.asarray((h,w)), np.asarray((640,640))
-                )
-            )
-            scale = np.concatenate([scale, scale])
-            bbox = np.multiply(bbox, scale)
-            bbox = bbox.tolist()
-            cv2.rectangle(batch, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 255, 0), 2)
-            _pred_boxes.append([bbox[0], bbox[2], bbox[1], bbox[3]])
+        img = batch[0].numpy().transpose(1, 2, 0).copy()
+        img = 255 * img
+        img= img.astype(np.uint8)
 
-        # _act_bbox = []
-        # for bbox in actual_bboxes:
-        #     x_min, y_min, width, height = bbox
-        #     # get (x,y) and (x2,y2) coordinates
-        #     x_max = x_min + width
-        #     y_max = y_min + height
-        #     cv2.rectangle(batch, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (255, 0, 0), 2)
-        #     _act_bbox.append([x_min, y_min, x_max, y_max])
+        for label, bbox, conf in zip(predicted_labels, predicted_bboxes, predicted_scores):
+            x_min, y_min, x_max, y_max = bbox
+            w = x_max - x_min
+            h = y_max - y_min
+
+            cv2.rectangle(img, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
+
+
+            results.append({"image_id": imageId,
+                            "category_id": label,
+                            "bbox": [x_min, y_min, h,w],
+                            "score": conf})
+            plt.imshow(img)
+            plt.show()
+            pass
+
+
+
+
+    with open("test.json", "w") as f:
+        json.dump(results, f, indent=4)
+
+        # actual_labels = [ann['category_id'] for ann in annotations]
+        # actual_bboxes = [ann['bbox'] for ann in annotations]
+        # for i, bbox in enumerate(actual_bboxes):
+        #     x_min, y_min, w, h = bbox
+        #     x_max = x_min + w
+        #     y_max = y_min + h
+        #     actual_bboxes[i] = [x_min, y_min, x_max, y_max]
+
+
+        # batch = batch.transpose(1, 2, 0).copy()
+        # batch = 255 * batch
+        # batch = batch.astype(np.uint8)
         #
-        plt.imshow(batch /255)
-        plt.show()
-        # from torchvision.ops import box_iou
-        # iou = box_iou(torch.tensor(_pred_boxes).reshape(-1,4), torch.tensor(_act_bbox).reshape(-1,4))
-        pass
+        # for bbox in predicted_bboxes:
+        #     cv2.rectangle(batch, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 255, 0), 2)
+        #
+        # for bbox in actual_bboxes:
+        #     cv2.rectangle(batch, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (255, 0, 0), 2)
+
+        #plt.imshow(batch)
+        #plt.show()
+        # from pycocotools.coco import COCO
+        # from pycocotools.cocoeval import COCOeval
+        #
+        # coco = COCO("./coco/annotations/instances_val2017.json")
+        #
+        #
+        # predicted_bboxes = np.array(predicted_bboxes)
+        # predicted_bboxes[:, [0,1,2,3]] = predicted_bboxes[:, [0,2,1,3]]
+        #
+        # actual_bboxes = np.array(actual_bboxes)
+        # actual_bboxes[:, [0, 1, 2, 3]] = actual_bboxes[:, [0, 2, 1, 3]]
+        #
+        # iou = complete_box_iou(torch.tensor(predicted_bboxes), torch.tensor(actual_bboxes))
+        # found = (iou>0.2).nonzero(as_tuple=True)
+        # pass
     #             print(iou)
     #             if iou > 0.5:
     #
@@ -280,6 +326,29 @@ def main(
     #         break
     # metric.update(predictions, targets)
     # print(metric.compute())
+
+"""
+import numpy as np
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+
+# Load COCO annotations
+coco = COCO("path/to/annotations.json")
+
+# Load your predicted bounding boxes and class labels
+pred_bboxes = np.array([[x1, y1, x2, y2] for x1, y1, x2, y2 in zip(pred_x1, pred_y1, pred_x2, pred_y2)])
+pred_labels = np.array(pred_labels)
+
+# Run evaluation
+coco_eval = COCOeval(coco, coco.loadRes(pred_bboxes, pred_labels), "bbox")
+coco_eval.params.imgIds = image_ids # image_ids is a list of image ids to evaluate on
+coco_eval.evaluate()
+coco_eval.accumulate()
+coco_eval.summarize()
+
+# Extract mAP score
+mAP = coco_eval.stats[0]
+"""
 
 
 
