@@ -18,12 +18,16 @@ from typing import List
 
 import numpy
 
+from deepsparse.loggers.metric_functions.registry import (
+    register as register_metric_function,
+)
 from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = ["mean_score", "percent_zero_labels"]
 
 
+@register_metric_function(group="token_classification", identifier="pipeline_outputs")
 def percent_zero_labels(
     token_classification_output: "TokenClassificationOutput",  # noqa: F821
 ) -> BatchResult:
@@ -40,6 +44,7 @@ def percent_zero_labels(
     return batch_result
 
 
+@register_metric_function(group="token_classification", identifier="pipeline_outputs")
 def mean_score(
     token_classification_output: "TokenClassificationOutput",  # noqa: F821
 ) -> BatchResult:
