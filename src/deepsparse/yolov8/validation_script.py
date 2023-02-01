@@ -150,11 +150,13 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
 )
 @click.option(
     "--engine",
-    default=ORT_ENGINE,
+    default=DEEPSPARSE_ENGINE,
     type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE]),
     show_default=True,
     help="engine type to use, valid choices: ['deepsparse', 'onnxruntime']",
 )
+
+
 def main(
     dataset_path: str,
     model_path: str,
@@ -193,6 +195,11 @@ def main(
     elif type(resize_mode) is str and resize_mode.lower() in ["cubic", "bicubic"]:
         interpolation = transforms.InterpolationMode.BICUBIC
 
+    mapping = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34,
+        35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+        64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90]
+
 
     class Test(torchvision.datasets.CocoDetection):
         def __init__(self, root, annFile, transform=None):
@@ -229,12 +236,11 @@ def main(
     )
     print(f"engine info: {pipeline.engine}")
     import glob
-    image_paths = glob.glob("./coco/val2017/*")
     results = []
 
     for u, batch in enumerate(tqdm(data_loader)):
         outs = pipeline(images="./coco/val2017/" + batch[2]['file_name'])
-        predicted_labels = [int(float(x)) +1 for x in outs.labels[0]]
+        predicted_labels = [int(float(x)) for x in outs.labels[0]]
         predicted_bboxes = outs.boxes[0]
         predicted_scores = outs.scores[0]
 
@@ -244,9 +250,6 @@ def main(
         predicted_bboxes = np.array(predicted_bboxes)
         _, h, w = batch[0].shape
         scale = np.flipud(np.divide(np.asarray((h, w)), np.asarray((640, 640))))
-        scale = np.concatenate([scale, scale])
-        if not predicted_bboxes.any():
-            continue
         predicted_bboxes = np.multiply(predicted_bboxes, scale).tolist()
 
         img = batch[0].numpy().transpose(1, 2, 0).copy()
@@ -260,16 +263,20 @@ def main(
 
             cv2.rectangle(img, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
 
-
+            try:
+                cat_id = mapping[label]
+            except IndexError:
+                pass
             results.append({"image_id": imageId,
-                            "category_id": label,
+                            "category_id": cat_id,
                             "bbox": [x_min, y_min, h,w],
                             "score": conf})
-            plt.imshow(img)
-            plt.show()
-            pass
 
-
+            # plt.imshow(img)
+            # plt.show()
+            # pass
+            break
+      
 
 
     with open("test.json", "w") as f:
