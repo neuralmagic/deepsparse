@@ -1,20 +1,73 @@
 # Ultralytics YOLO 🚀, GPL-3.0 license
 
 import os
-import sys
-from pathlib import Path
+
 
 import numpy as np
-import torch
+
 
 from ultralytics.yolo.data import build_dataloader
 from ultralytics.yolo.data.dataloaders.v5loader import create_dataloader
-from ultralytics.yolo.engine.validator import BaseValidator
-from ultralytics.yolo.utils import DEFAULT_CFG, colorstr, ops, yaml_load
+from ultralytics.yolo.utils import colorstr, ops, yaml_load
 from ultralytics.yolo.utils.checks import check_file, check_requirements
 from ultralytics.yolo.utils.metrics import ConfusionMatrix, DetMetrics, box_iou
 from ultralytics.yolo.utils.plotting import output_to_target, plot_images
-from ultralytics.yolo.utils.torch_utils import de_parallel
+
+import json
+from collections import defaultdict
+from pathlib import Path
+
+import torch
+from tqdm import tqdm
+
+from ultralytics.nn.autobackend import AutoBackend
+from ultralytics.yolo.cfg import get_cfg
+from ultralytics.yolo.data.utils import check_cls_dataset, check_det_dataset
+from ultralytics.yolo.utils import DEFAULT_CFG, LOGGER, RANK, SETTINGS, TQDM_BAR_FORMAT, callbacks, emojis
+from ultralytics.yolo.utils.checks import check_imgsz
+from ultralytics.yolo.utils.files import increment_path
+from ultralytics.yolo.utils.ops import Profile
+from ultralytics.yolo.utils.torch_utils import de_parallel, select_device, smart_inference_mode
+from deepsparse.yolo import YOLOPipeline, YOLOOutput
+from deepsparse import Pipeline
+
+@Pipeline.register("yolov8")
+class YOLOv8Pipeline(YOLOPipeline):
+    def process_engine_outputs(
+        self, engine_outputs, **kwargs
+    ) -> YOLOOutput:
+        # post-processing
+
+        batch_output = engine_outputs[0]  # post-processed values stored in first output
+
+        # NMS
+        batch_output = ops.non_max_suppression(
+            torch.from_numpy(batch_output),
+            conf_thres=0.001,
+            iou_thres=0.7,
+            multi_label=True)
+
+        batch_boxes, batch_scores, batch_labels = [], [], []
+
+        for image_output in batch_output:
+            batch_boxes.append(image_output[:, 0:4].tolist())
+            batch_scores.append(image_output[:, 4].tolist())
+            batch_labels.append(image_output[:, 5].tolist())
+            if self.class_names is not None:
+                batch_labels_as_strings = [
+                    str(int(label)) for label in batch_labels[-1]
+                ]
+                batch_class_names = [
+                    self.class_names[label_string]
+                    for label_string in batch_labels_as_strings
+                ]
+                batch_labels[-1] = batch_class_names
+
+        return YOLOOutput(
+            boxes=batch_boxes,
+            scores=batch_scores,
+            labels=batch_labels,
+        )
 
 class BaseValidator:
     """
@@ -48,7 +101,7 @@ class BaseValidator:
         self.dataloader = dataloader
         self.pbar = pbar
         self.logger = logger or LOGGER
-        self.args = args or get_cfg(DEFAULT_CFG)
+        self.args = get_cfg(DEFAULT_CFG)
         self.model = None
         self.data = None
         self.device = None
@@ -57,7 +110,8 @@ class BaseValidator:
         self.speed = None
         self.jdict = None
 
-        project = self.args.project or Path(SETTINGS['runs_dir']) / self.args.task
+        self.args.data = "coco128.yaml"
+        project = "project"
         name = self.args.name or f"{self.args.mode}"
         self.save_dir = save_dir or increment_path(Path(project) / name,
                                                    exist_ok=self.args.exist_ok if RANK in {-1, 0} else True)
@@ -128,6 +182,7 @@ class BaseValidator:
         bar = tqdm(self.dataloader, desc, n_batches, bar_format=TQDM_BAR_FORMAT)
         self.init_metrics(de_parallel(model))
         self.jdict = []  # empty before each val
+        yolo_pipeline = Pipeline.create("yolov8", model_path="yolov8n.onnx")
         for batch_i, batch in enumerate(bar):
             self.run_callbacks('on_val_batch_start')
             self.batch_i = batch_i
@@ -138,6 +193,10 @@ class BaseValidator:
             # inference
             with dt[1]:
                 preds = model(batch["img"])
+                deepsparse_preds = yolo_pipeline(images=batch["im_file"],
+                                                 conf_thresh=self.args.conf,
+                                                 iou_thres=self.args.iou,
+                                                 multi_label=True)
 
             # loss
             with dt[2]:
@@ -148,7 +207,20 @@ class BaseValidator:
             with dt[3]:
                 preds = self.postprocess(preds)
 
-            self.update_metrics(preds, batch)
+            def deepsparse_preds_to_preds(outputs, device):
+                preds = []
+                for boxes, labels, confidence in zip(outputs.boxes, outputs.labels, outputs.scores):
+                    boxes = torch.tensor(boxes)
+
+                    labels = list(map(int, list(map(float, labels))))
+                    labels = torch.tensor(labels).view(-1, 1)
+
+                    scores = torch.tensor(confidence).view(-1, 1)
+                    preds.append(torch.cat([boxes, scores, labels], axis=1).to(device))
+                return preds
+
+            # self.update_metrics(preds, batch)
+            self.update_metrics(deepsparse_preds_to_preds(deepsparse_preds, device=preds[0].device), batch)
             if self.args.plots and batch_i < 3:
                 self.plot_val_samples(batch, batch_i)
                 self.plot_predictions(batch, preds, batch_i)
@@ -440,7 +512,7 @@ class DetectionValidator(BaseValidator):
 
 def val(cfg=DEFAULT_CFG, use_python=False):
     model = cfg.model or "yolov8n.pt"
-    data = cfg.data or "coco128.yaml"
+    data = "coco128.yaml"
 
     args = dict(model=model, data=data)
     if use_python:
