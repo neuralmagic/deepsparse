@@ -383,7 +383,9 @@ def add_predefined_function_groups(
 
 
 def parse_out_predefined_function_groups(
-    metric_functions: List[MetricFunctionConfig], identifier_prefix: str
+    metric_functions: List[MetricFunctionConfig],
+    identifier_prefix: Optional[str] = None,
+    registry: Dict[str, List[MetricFunctionConfig]] = DATA_LOGGING_REGISTRY,
 ) -> Dict[str, List[MetricFunctionConfig]]:
     """
     Given a list of MetricFunctionConfig objects, parse out
@@ -403,11 +405,11 @@ def parse_out_predefined_function_groups(
     for metric_function in metric_functions:
         function_group_name = metric_function.func
         # fetch the pre-defined data logging configuration from the registry
-        registered_function_group = DATA_LOGGING_REGISTRY.get(function_group_name)
+        registered_function_group = registry.get(function_group_name)
         if not registered_function_group:
             raise ValueError(
                 f"Unknown function group name: {function_group_name}. "
-                f"Supported function group names: {list(DATA_LOGGING_REGISTRY.keys())}"
+                f"Supported function group names: {list(registry.keys())}"
             )
         for (
             registered_identifier,
