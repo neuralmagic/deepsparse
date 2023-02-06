@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import Counter
 from unittest import mock
 
 from deepsparse import PythonLogger
@@ -26,6 +27,7 @@ from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
 from tests.helpers import find_free_port
+from tests.test_data.server_test_data import SAMPLE_LOGS_DICT
 from tests.utils import mock_engine
 
 
@@ -255,28 +257,7 @@ def test_endpoint_system_logging(tmp_path):
         "/predict_text_classification", json=dict(question="asdf", context="asdf")
     )
     calls = server_logger.logger.loggers[0].logger.loggers[0].calls
-    from collections import Counter
 
     c = Counter([call.split(",")[0] for call in calls])
 
-    assert c == Counter(
-        {
-            "identifier:request_details/" "response_message": 2,
-            "identifier:request_details/" "successful_request_count": 2,
-            "identifier:text_classification-0/" "inference_details/num_cores_total": 1,
-            "identifier:question_answering-0/" "inference_details/num_cores_total": 1,
-            "identifier:text_classification-0/"
-            "prediction_latency/pre_process_seconds": 1,
-            "identifier:text_classification-0/"
-            "inference_details/input_batch_size_total": 1,
-            "identifier:text_classification-0/"
-            "prediction_latency/engine_forward_seconds": 1,
-            "identifier:text_classification-0/"
-            "prediction_latency/post_process_seconds": 1,
-            "identifier:text_classification-0/"
-            "prediction_latency/total_inference_seconds": 1,
-            "identifier:resource_utilization/" "cpu_utilization_percent": 1,
-            "identifier:resource_utilization/" "memory_utilization_percent": 1,
-            "identifier:resource_utilization/" "total_memory_available_bytes": 1,
-        }
-    )
+    assert c == SAMPLE_LOGS_DICT
