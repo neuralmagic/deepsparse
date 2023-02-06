@@ -22,12 +22,12 @@ from deepsparse import (
     default_logger,
     logger_from_config,
 )
-from deepsparse.loggers.build_logger import build_logger, build_system_loggers
-from deepsparse.loggers.config import (
-    MetricFunctionConfig,
-    PipelineSystemLoggingConfig,
-    SystemLoggingConfig,
+from deepsparse.loggers.build_logger import (
+    build_logger,
+    build_system_loggers,
+    system_logging_config_to_groups,
 )
+from deepsparse.loggers.config import MetricFunctionConfig, PipelineSystemLoggingConfig
 from tests.deepsparse.loggers.helpers import ListLogger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
@@ -159,7 +159,14 @@ system_logging:
         target_loggers:
         - list_logger_1"""
 
-from deepsparse.loggers import process_system_logging_config
+yaml_config_6 = """
+system_logging:
+    prediction_latency:
+        enable: false
+    inference_details:
+        enable: true
+        target_loggers:
+        - list_logger_1"""
 
 
 @pytest.mark.parametrize(
@@ -184,6 +191,13 @@ from deepsparse.loggers import process_system_logging_config
             },
             [1, 2],
         ),
+        (
+            yaml_config_6,
+            {
+                "inference_details",
+            },
+            [1],
+        ),
     ],
 )
 def test_build_system_loggers(
@@ -194,7 +208,7 @@ def test_build_system_loggers(
     leaf_loggers = {"list_logger_1": ListLogger(), "list_logger_2": ListLogger()}
     obj = yaml.safe_load(yaml_config)
     system_logging_config = PipelineSystemLoggingConfig(**obj["system_logging"])
-    system_logging_config = process_system_logging_config(system_logging_config)
+    system_logging_config = system_logging_config_to_groups(system_logging_config)
     system_loggers = build_system_loggers(leaf_loggers, system_logging_config)
 
     assert (
@@ -213,7 +227,7 @@ def test_default_logger(tmp_path):
 def test_kwargs():
     logger = build_logger(
         data_logging_config={"identifier": [MetricFunctionConfig(func="identity")]},
-        system_logging_config=process_system_logging_config(
+        system_logging_config=system_logging_config_to_groups(
             PipelineSystemLoggingConfig()
         ),
         loggers_config={

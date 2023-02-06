@@ -261,17 +261,22 @@ def test_endpoint_system_logging(tmp_path):
 
     assert c == Counter(
         {
-            "identifier:request_details/response_message": 2,
-            "identifier:request_details/successful_request_count": 2,
-            "identifier:text_classification-0/inference_details/num_cores_total": 1,
-            "identifier:question_answering-0/inference_details/num_cores_total": 1,
-            "identifier:text_classification-0/prediction_latency/pre_process_seconds": 1,
-            "identifier:text_classification-0/inference_details/input_batch_size_total": 1,
-            "identifier:text_classification-0/prediction_latency/engine_forward_seconds": 1,
-            "identifier:text_classification-0/prediction_latency/post_process_seconds": 1,
-            "identifier:text_classification-0/prediction_latency/total_inference_seconds": 1,
-            "identifier:resource_utilization/cpu_utilization_percent": 1,
-            "identifier:resource_utilization/memory_utilization_percent": 1,
-            "identifier:resource_utilization/total_memory_available_bytes": 1,
+            "identifier:request_details/" "response_message": 2,
+            "identifier:request_details/" "successful_request_count": 2,
+            "identifier:text_classification-0/" "inference_details/num_cores_total": 1,
+            "identifier:question_answering-0/" "inference_details/num_cores_total": 1,
+            "identifier:text_classification-0/"
+            "prediction_latency/pre_process_seconds": 1,
+            "identifier:text_classification-0/"
+            "inference_details/input_batch_size_total": 1,
+            "identifier:text_classification-0/"
+            "prediction_latency/engine_forward_seconds": 1,
+            "identifier:text_classification-0/"
+            "prediction_latency/post_process_seconds": 1,
+            "identifier:text_classification-0/"
+            "prediction_latency/total_inference_seconds": 1,
+            "identifier:resource_utilization/" "cpu_utilization_percent": 1,
+            "identifier:resource_utilization/" "memory_utilization_percent": 1,
+            "identifier:resource_utilization/" "total_memory_available_bytes": 1,
         }
     )

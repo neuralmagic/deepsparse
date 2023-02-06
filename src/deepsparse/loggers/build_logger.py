@@ -49,7 +49,7 @@ __all__ = [
     "logger_from_config",
     "build_logger",
     "get_target_identifier",
-    "process_system_logging_config",
+    "system_logging_config_to_groups",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
     config = PipelineLoggingConfig(**config)
 
     logger = build_logger(
-        system_logging_config=process_system_logging_config(config.system_logging),
+        system_logging_config=system_logging_config_to_groups(config.system_logging),
         loggers_config=config.loggers,
         data_logging_from_predefined=possibly_modify_target_identifiers(
             config.add_predefined, pipeline_identifier
@@ -290,6 +290,7 @@ def build_system_loggers(
     :return: A list of FunctionLogger instances responsible for logging system data
     """
     system_loggers = []
+
     if not system_logging_config:
         return system_loggers
 
@@ -427,6 +428,44 @@ def parse_out_predefined_function_groups(
     return new_data_logging_config
 
 
+def system_logging_config_to_groups(
+    system_logging_config: SystemLoggingConfig,
+    endpoint_name: Optional[str] = None,
+) -> Dict[str, SystemLoggingGroup]:
+    """
+    Convert the system logging config to a dictionary that maps
+    the group name to the SystemLoggingGroup object
+    This function also alters the group name to include the
+    endpoint name, if provided
+
+    :param system_logging_config: The system logging config
+        instance
+    :param endpoint_name: The optional name of the endpoint
+    :return: A dictionary that maps the group name to the
+        SystemLoggingGroup object
+    """
+    system_logging_groups = defaultdict(SystemLoggingGroup)
+
+    if not system_logging_config.enable:
+        # if system logging is not enabled, return an empty dict
+        return system_logging_groups
+
+    for config_group_name, config_group_args in system_logging_config:
+        if not isinstance(config_group_args, SystemLoggingGroup):
+            continue
+        if not config_group_args.enable:
+            continue
+
+        config_group_data = getattr(system_logging_config, config_group_name)
+        config_group_name = get_target_identifier(
+            target_name=config_group_name, pipeline_identifier=endpoint_name
+        )
+
+        system_logging_groups.update({config_group_name: config_group_data})
+
+    return system_logging_groups
+
+
 def _merge_data_logging_configs(
     config_1: Dict[str, List[MetricFunctionConfig]],
     config_2: Dict[str, List[MetricFunctionConfig]],
@@ -493,28 +532,3 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
             f"Got {type(logger)} instead."
         )
     return logger
-
-
-def process_system_logging_config(
-    system_logging_config: SystemLoggingConfig,
-    endpoint_name=None,
-) -> Dict[str, SystemLoggingGroup]:
-    system_logging_groups = {}
-    if not system_logging_config.enable:
-        return system_logging_groups
-
-    for config_group_name, config_group_args in system_logging_config:
-        if not isinstance(config_group_args, SystemLoggingGroup):
-            continue
-        if not config_group_args.enable:
-            continue
-        if endpoint_name:
-            config_group_name_ = get_target_identifier(
-                target_name=config_group_name, pipeline_identifier=endpoint_name
-            )
-        else:
-            config_group_name_ = config_group_name
-        system_logging_groups.update(
-            {config_group_name_: getattr(system_logging_config, config_group_name)}
-        )
-    return system_logging_groups

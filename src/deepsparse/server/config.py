@@ -110,7 +110,7 @@ class EndpointConfig(BaseModel):
         default=PipelineSystemLoggingConfig(),
         description="A model that holds the endpoint (pipeline) logging configuration. "
         "If not specified explicitly in the yaml config, the "
-        "default SystemLoggingConfig model is used.",
+        "default PipelineSystemLoggingConfig model is used.",
     )
 
     data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(

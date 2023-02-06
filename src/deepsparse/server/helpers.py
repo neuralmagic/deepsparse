@@ -18,9 +18,9 @@ from deepsparse import (
     BaseLogger,
     build_logger,
     get_target_identifier,
-    process_system_logging_config,
+    system_logging_config_to_groups,
 )
-from deepsparse.loggers.config import MetricFunctionConfig
+from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingGroup
 from deepsparse.server.config import EndpointConfig, ServerConfig
 
 
@@ -49,7 +49,7 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     """
 
     system_logging_groups = _extract_system_logging_from_endpoints(config.endpoints)
-    system_logging_groups.update(process_system_logging_config(config.system_logging))
+    system_logging_groups.update(system_logging_config_to_groups(config.system_logging))
 
     return build_logger(
         system_logging_config=system_logging_groups,
@@ -63,13 +63,13 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
 
 def _extract_system_logging_from_endpoints(
     endpoints: List[EndpointConfig],
-) -> Dict[str, "SystemLoggingGroup"]:
+) -> Dict[str, SystemLoggingGroup]:
     system_logging_groups = {}
     for endpoint in endpoints:
         if endpoint.logging_config is None:
             continue
         system_logging_groups.update(
-            process_system_logging_config(
+            system_logging_config_to_groups(
                 endpoint.logging_config, endpoint_name=endpoint.name
             )
         )
