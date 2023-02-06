@@ -248,11 +248,9 @@ def _get_models(
 
         if Path(model).is_file() or model.startswith("zoo:"):
             models.append(model)
-        elif Path(model).is_dir():
-            models.extend([str(model) for model in Path.rglob("*") if model.is_file()])
         else:
             raise ValueError(
-                "The specified models must either be valid paths that exist,"
+                "The specified models must either be valid files that exist,"
                 f"or a valid SparseZoo stub but found {model}"
             )
     if not models:
@@ -284,8 +282,7 @@ def _get_models(
     "--model_paths",
     type=str,
     default=None,
-    help="Comma separated list of model paths, or Sparsezoo stubs, or "
-    "directories containing onnx models",
+    help="Comma separated list of model paths, or Sparsezoo stubs",
 )
 @click.option(
     "--save-dir",
