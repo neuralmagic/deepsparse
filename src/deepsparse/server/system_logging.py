@@ -18,12 +18,7 @@ from os import getpid
 from typing import Any, Dict, List, Optional, Union
 
 import psutil
-from deepsparse.loggers import (
-    REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
-    BaseLogger,
-    MetricCategories,
-)
+from deepsparse.loggers import BaseLogger, MetricCategories, SystemGroups
 from deepsparse.server.config import SystemLoggingConfig, SystemLoggingGroup
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -64,13 +59,13 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
             log_system_information(
                 self.server_logger,
                 self.system_logging_config,
-                REQUEST_DETAILS_IDENTIFIER_PREFIX,
+                SystemGroups.REQUEST_DETAILS,
                 response_message=f"{err.__class__.__name__}: {err}",
             )
             log_system_information(
                 self.server_logger,
                 self.system_logging_config,
-                REQUEST_DETAILS_IDENTIFIER_PREFIX,
+                SystemGroups.REQUEST_DETAILS,
                 successful_request_count=0,
             )
             _LOGGER.error(err)
@@ -79,13 +74,13 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
         log_system_information(
             self.server_logger,
             self.system_logging_config,
-            REQUEST_DETAILS_IDENTIFIER_PREFIX,
+            SystemGroups.REQUEST_DETAILS,
             response_message=f"Response status code: {response.status_code}",
         )
         log_system_information(
             self.server_logger,
             self.system_logging_config,
-            REQUEST_DETAILS_IDENTIFIER_PREFIX,
+            SystemGroups.REQUEST_DETAILS,
             successful_request_count=int((response.status_code == 200)),
         )
         return response
@@ -93,7 +88,7 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
 
 def log_resource_utilization(
     server_logger: BaseLogger,
-    prefix: str = RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    prefix: str = SystemGroups.RESOURCE_UTILIZATION,
     **items_to_log: Dict[str, Any],
 ):
     """
@@ -135,7 +130,7 @@ def log_resource_utilization(
 
 def log_request_details(
     server_logger: BaseLogger,
-    prefix: str = REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    prefix: str = SystemGroups.REQUEST_DETAILS,
     **items_to_log: Dict[str, Any],
 ):
     """
@@ -171,8 +166,8 @@ def log_request_details(
 # maps the metric group name to the function that logs the information
 # pertaining to this metric group name
 _PREFIX_MAPPING = {
-    REQUEST_DETAILS_IDENTIFIER_PREFIX: log_request_details,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: log_resource_utilization,
+    SystemGroups.REQUEST_DETAILS: log_request_details,
+    SystemGroups.RESOURCE_UTILIZATION: log_resource_utilization,
 }
 
 
