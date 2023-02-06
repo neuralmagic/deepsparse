@@ -14,7 +14,12 @@
 
 from typing import Dict, List, Optional
 
-from deepsparse import BaseLogger, build_logger, get_target_identifier
+from deepsparse import (
+    BaseLogger,
+    build_logger,
+    get_target_identifier,
+    process_system_logging_config,
+)
 from deepsparse.loggers.config import MetricFunctionConfig
 from deepsparse.server.config import EndpointConfig, ServerConfig
 
@@ -43,14 +48,32 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     :return: a DeepSparse logger instance
     """
 
+    system_logging_groups = _extract_system_logging_from_endpoints(config.endpoints)
+    system_logging_groups.update(process_system_logging_config(config.system_logging))
+
     return build_logger(
-        system_logging_config=config.system_logging,
+        system_logging_config=system_logging_groups,
         loggers_config=config.loggers,
         data_logging_from_predefined=_extract_data_logging_from_predefined_from_endpoints(  # noqa: E501
             config.endpoints
         ),
         data_logging_config=_extract_data_logging_from_endpoints(config.endpoints),
     )
+
+
+def _extract_system_logging_from_endpoints(
+    endpoints: List[EndpointConfig],
+) -> Dict[str, "SystemLoggingGroup"]:
+    system_logging_groups = {}
+    for endpoint in endpoints:
+        if endpoint.logging_config is None:
+            continue
+        system_logging_groups.update(
+            process_system_logging_config(
+                endpoint.logging_config, endpoint_name=endpoint.name
+            )
+        )
+    return system_logging_groups
 
 
 def _extract_data_logging_from_predefined_from_endpoints(

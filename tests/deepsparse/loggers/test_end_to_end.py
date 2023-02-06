@@ -52,12 +52,13 @@ LOGGER = logger_from_config(
 @mock_engine(rng_seed=0)
 def test_end_to_end(mock_engine, config):
     pipeline = Pipeline.create("text_classification", logger=config)
-    for i in range(10):
+    no_iterations = 10
+    for i in range(no_iterations):
         pipeline("today is great")
 
     time.sleep(1)  # sleeping to make sure all the logs are collected
     calls = pipeline.logger.logger.loggers[0].logger.loggers[0].calls
     data_logging_calls = [call for call in calls if "DATA" in call]
-    assert len(data_logging_calls) == 10
+    assert len(data_logging_calls) == no_iterations
     prediction_latency_calls = [call for call in calls if "SYSTEM" in call]
-    assert len(prediction_latency_calls) == 41
+    assert len(prediction_latency_calls) == 4 * no_iterations

@@ -49,6 +49,7 @@ __all__ = [
     "logger_from_config",
     "build_logger",
     "get_target_identifier",
+    "process_system_logging_config",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -100,7 +101,7 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
     config = PipelineLoggingConfig(**config)
 
     logger = build_logger(
-        system_logging_config=config.system_logging,
+        system_logging_config=process_system_logging_config(config.system_logging),
         loggers_config=config.loggers,
         data_logging_from_predefined=possibly_modify_target_identifiers(
             config.add_predefined, pipeline_identifier
@@ -114,7 +115,7 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
 
 
 def build_logger(
-    system_logging_config: SystemLoggingConfig,
+    system_logging_config: Optional[Dict[str, SystemLoggingGroup]] = None,
     data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
     data_logging_from_predefined: Optional[List[MetricFunctionConfig]] = None,
     loggers_config: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,
@@ -277,7 +278,8 @@ def build_data_loggers(
 
 
 def build_system_loggers(
-    loggers: Dict[str, BaseLogger], system_logging_config: SystemLoggingConfig
+    loggers: Dict[str, BaseLogger],
+    system_logging_config: Optional[Dict[str, SystemLoggingGroup]],
 ) -> List[FunctionLogger]:
     """
     Build a set of  system loggers (FunctionLogger instances)
@@ -288,16 +290,10 @@ def build_system_loggers(
     :return: A list of FunctionLogger instances responsible for logging system data
     """
     system_loggers = []
-    system_logging_group_names = []
-    if not system_logging_config.enable:
+    if not system_logging_config:
         return system_loggers
 
-    for config_group_name, config_group_args in system_logging_config:
-        if not isinstance(config_group_args, SystemLoggingGroup):
-            continue
-        if not config_group_args.enable:
-            continue
-
+    for config_group_name, config_group_args in system_logging_config.items():
         system_loggers.append(
             _build_function_logger(
                 metric_function_cfg=MetricFunctionConfig(
@@ -309,9 +305,10 @@ def build_system_loggers(
                 loggers=loggers,
             )
         )
-        system_logging_group_names.append(config_group_name)
 
-    _LOGGER.info("System Logging: enabled for groups: %s", system_logging_group_names)
+    _LOGGER.info(
+        "System Logging: enabled for groups: %s", list(system_logging_config.keys())
+    )
 
     return system_loggers
 
@@ -496,3 +493,28 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
             f"Got {type(logger)} instead."
         )
     return logger
+
+
+def process_system_logging_config(
+    system_logging_config: SystemLoggingConfig,
+    endpoint_name=None,
+) -> Dict[str, SystemLoggingGroup]:
+    system_logging_groups = {}
+    if not system_logging_config.enable:
+        return system_logging_groups
+
+    for config_group_name, config_group_args in system_logging_config:
+        if not isinstance(config_group_args, SystemLoggingGroup):
+            continue
+        if not config_group_args.enable:
+            continue
+        if endpoint_name:
+            config_group_name_ = get_target_identifier(
+                target_name=config_group_name, pipeline_identifier=endpoint_name
+            )
+        else:
+            config_group_name_ = config_group_name
+        system_logging_groups.update(
+            {config_group_name_: getattr(system_logging_config, config_group_name)}
+        )
+    return system_logging_groups

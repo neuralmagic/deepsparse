@@ -15,7 +15,13 @@
 from unittest import mock
 
 from deepsparse import PythonLogger
-from deepsparse.server.config import EndpointConfig, MetricFunctionConfig, ServerConfig
+from deepsparse.loggers.config import PipelineSystemLoggingConfig, SystemLoggingGroup
+from deepsparse.server.config import (
+    EndpointConfig,
+    MetricFunctionConfig,
+    ServerConfig,
+    ServerSystemLoggingConfig,
+)
 from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
@@ -207,3 +213,65 @@ def test_instantiate_prometheus(tmp_path):
     )
     r = client.post("/predict", json=dict(sequences="asdf"))
     assert r.status_code == 200
+
+
+@mock_engine(rng_seed=0)
+def test_endpoint_system_logging(tmp_path):
+    server_config = ServerConfig(
+        system_logging=ServerSystemLoggingConfig(
+            request_details=SystemLoggingGroup(enable=True),
+            resource_utilization=SystemLoggingGroup(enable=True),
+        ),
+        endpoints=[
+            EndpointConfig(
+                task="text_classification",
+                model="default",
+                route="/predict_text_classification",
+                logging_config=PipelineSystemLoggingConfig(
+                    inference_details=SystemLoggingGroup(enable=True),
+                    prediction_latency=SystemLoggingGroup(enable=True),
+                ),
+            ),
+            EndpointConfig(
+                task="question_answering",
+                model="default",
+                route="/predict_question_answering",
+                logging_config=PipelineSystemLoggingConfig(
+                    inference_details=SystemLoggingGroup(enable=True),
+                    prediction_latency=SystemLoggingGroup(enable=True),
+                ),
+            ),
+        ],
+        loggers={"logger_1": {"path": logger_identifier}},
+    )
+    server_logger = server_logger_from_config(server_config)
+    with mock.patch(
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
+    ), mock_engine(rng_seed=0):
+        app = _build_app(server_config)
+    client = TestClient(app)
+    client.post("/predict_text_classification", json=dict(sequences="asdf"))
+    client.post(
+        "/predict_text_classification", json=dict(question="asdf", context="asdf")
+    )
+    calls = server_logger.logger.loggers[0].logger.loggers[0].calls
+    from collections import Counter
+
+    c = Counter([call.split(",")[0] for call in calls])
+
+    assert c == Counter(
+        {
+            "identifier:request_details/response_message": 2,
+            "identifier:request_details/successful_request_count": 2,
+            "identifier:text_classification-0/inference_details/num_cores_total": 1,
+            "identifier:question_answering-0/inference_details/num_cores_total": 1,
+            "identifier:text_classification-0/prediction_latency/pre_process_seconds": 1,
+            "identifier:text_classification-0/inference_details/input_batch_size_total": 1,
+            "identifier:text_classification-0/prediction_latency/engine_forward_seconds": 1,
+            "identifier:text_classification-0/prediction_latency/post_process_seconds": 1,
+            "identifier:text_classification-0/prediction_latency/total_inference_seconds": 1,
+            "identifier:resource_utilization/cpu_utilization_percent": 1,
+            "identifier:resource_utilization/memory_utilization_percent": 1,
+            "identifier:resource_utilization/total_memory_available_bytes": 1,
+        }
+    )
