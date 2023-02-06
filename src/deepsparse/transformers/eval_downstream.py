@@ -326,6 +326,7 @@ def conll2003_eval(args):
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
+        ignore_labels=[],
     )
     print(f"Engine info: {token_classify.engine}")
 
