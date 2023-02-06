@@ -21,11 +21,12 @@ import importlib
 import logging
 import os
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import yaml
 
 from deepsparse.loggers import (
+    FROM_PREDEFINED,
     AsyncLogger,
     BaseLogger,
     FunctionLogger,
@@ -102,9 +103,6 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
     logger = build_logger(
         system_logging_config=config.system_logging,
         loggers_config=config.loggers,
-        data_logging_from_predefined=possibly_modify_target_identifiers(
-            config.add_predefined, pipeline_identifier
-        ),
         data_logging_config=possibly_modify_target_identifiers(
             config.data_logging, pipeline_identifier
         ),
@@ -116,7 +114,6 @@ def logger_from_config(config: str, pipeline_identifier: str = None) -> BaseLogg
 def build_logger(
     system_logging_config: SystemLoggingConfig,
     data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
-    data_logging_from_predefined: Optional[List[MetricFunctionConfig]] = None,
     loggers_config: Optional[Dict[str, Optional[Dict[str, Any]]]] = None,
 ) -> BaseLogger:
     """
@@ -160,8 +157,6 @@ def build_logger(
         the system logging configuration
     :param data_logging_config: An optional dictionary that maps target names to
         lists of MetricFunctionConfigs.
-    :param data_logging_from_predefined: An optional list of predefined
-        data logging groups, that will be merged with the data_logging_config
     :param loggers_config: An optional dictionary that maps logger names to
         a dictionary of logger arguments.
     :return: a DeepSparseLogger instance
@@ -171,9 +166,7 @@ def build_logger(
         build_leaf_loggers(loggers_config) if loggers_config else default_logger()
     )
 
-    function_loggers_data = build_data_loggers(
-        leaf_loggers, data_logging_config, data_logging_from_predefined
-    )
+    function_loggers_data = build_data_loggers(leaf_loggers, data_logging_config)
     function_loggers_system = build_system_loggers(leaf_loggers, system_logging_config)
     function_loggers = function_loggers_data + function_loggers_system
 
@@ -245,7 +238,6 @@ def build_leaf_loggers(
 def build_data_loggers(
     loggers: Dict[str, BaseLogger],
     data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
-    data_logging_from_predefined: List[MetricFunctionConfig] = None,
 ) -> List[FunctionLogger]:
     """
     Build a set of data loggers (FunctionLogger instances)
@@ -254,21 +246,23 @@ def build_data_loggers(
     :param loggers: The created "leaf" loggers
     :param data_logging_config: The configuration of the data loggers.
         Specified as a dictionary that maps a target name to a list of metric functions.
-    :param data_logging_from_predefined: An optional list of predefined
-        data logging groups, that will be merged with the data_logging_config
     :return: A list of FunctionLogger instances responsible
         for logging data information
     """
     data_loggers = []
-    if not (data_logging_config or data_logging_from_predefined):
+    if not data_logging_config:
         return data_loggers
 
-    if data_logging_from_predefined:
-        data_logging_config = add_predefined_function_groups(
-            data_logging_from_predefined, data_logging_config
-        )
-
     for target_identifier, metric_functions in data_logging_config.items():
+
+        from_predefined, identifier_prefix = check_from_predefined(target_identifier)
+        if from_predefined:
+            data_loggers.extend(
+                _build_function_logger_from_predefined(
+                    metric_functions, loggers, identifier_prefix
+                )
+            )
+
         for metric_function in metric_functions:
             data_loggers.append(
                 _build_function_logger(metric_function, target_identifier, loggers)
@@ -316,10 +310,35 @@ def build_system_loggers(
     return system_loggers
 
 
+def check_from_predefined(target: str) -> Tuple[bool, Optional[str]]:
+    """
+    Check if the target name points at config that will invoke
+    the predefined metric function groups
+
+    :param target: The target name to check
+    :return: A tuple of (is_from_predefined, identifier_prefix)
+        is_from_predefined: True if the target name points at
+            predefined metric function group
+        identifier_prefix: The prefix of the target name if
+            it is from predefined metric function group
+    """
+    target_split = target.split("/")
+
+    if len(target_split) == 1 and target_split == FROM_PREDEFINED:
+        return True, None
+    elif len(target_split) == 2 and target_split[1] == FROM_PREDEFINED:
+        return True, target_split[0]
+    else:
+        if any([substring == FROM_PREDEFINED for substring in target_split]):
+            raise ValueError(
+                "Invalid target name. Cannot have `from_predefined` "
+                "in the middle of the target name"
+            )
+        return False, None
+
+
 def possibly_modify_target_identifiers(
-    data_logging_config: Union[
-        None, Dict[str, List[MetricFunctionConfig]], List[MetricFunctionConfig]
-    ] = None,
+    data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
     pipeline_identifier: str = None,
 ) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
     """
@@ -337,9 +356,6 @@ def possibly_modify_target_identifiers(
         # if either of the arguments is None, return the original config
         return data_logging_config
 
-    if isinstance(data_logging_config, list):
-        data_logging_config = {"": data_logging_config}
-
     for target_identifier, metric_functions in data_logging_config.copy().items():
         if not target_identifier.startswith(pipeline_identifier):
             # if the target identifier does not already start
@@ -352,34 +368,6 @@ def possibly_modify_target_identifiers(
                 target_identifier
             )
     return data_logging_config
-
-
-def add_predefined_function_groups(
-    data_logging_from_predefined: Dict[str, List[MetricFunctionConfig]],
-    data_logging_config: Optional[Dict[str, List[MetricFunctionConfig]]] = None,
-) -> Dict[str, List[MetricFunctionConfig]]:
-    """
-    Parse out the predefined metric functions from the
-    `data_logging_from_predefined` and update the `data_logging_config`
-    accordingly
-
-    :param data_logging_config: The configuration of the data loggers
-    :param data_logging_from_predefined: The configuration of the
-        predefined data logging groups
-    :return: The updated configuration of the `data_logging_config`
-    """
-    identifier_prefix, metric_function_groups = tuple(
-        data_logging_from_predefined.items()
-    )[0]
-    data_logging_from_predefined = parse_out_predefined_function_groups(
-        metric_function_groups, identifier_prefix
-    )
-
-    return (
-        _merge_data_logging_configs(data_logging_config, data_logging_from_predefined)
-        if data_logging_config
-        else data_logging_from_predefined
-    )
 
 
 def parse_out_predefined_function_groups(
@@ -430,33 +418,6 @@ def parse_out_predefined_function_groups(
     return new_data_logging_config
 
 
-def _merge_data_logging_configs(
-    config_1: Dict[str, List[MetricFunctionConfig]],
-    config_2: Dict[str, List[MetricFunctionConfig]],
-) -> Dict[str, List[MetricFunctionConfig]]:
-
-    new_config = config_1.copy()
-    for target_identifier, metric_functions in config_2.items():
-        if target_identifier in new_config:
-            updated_metric_function_names = [
-                metric_function.func
-                for metric_function in new_config[target_identifier]
-            ]
-            fragment_metric_function_names = [
-                metric_function.func for metric_function in metric_functions
-            ]
-            if set(updated_metric_function_names) & set(fragment_metric_function_names):
-                raise ValueError(
-                    f"Duplicate metric functions found for target {target_identifier}: "
-                    f"{set(updated_metric_function_names) & set(fragment_metric_function_names)}"  # noqa: E501
-                )
-            new_config[target_identifier].extend(metric_functions)
-        else:
-            new_config[target_identifier] = metric_functions
-
-    return new_config
-
-
 def _build_function_logger(
     metric_function_cfg: MetricFunctionConfig,
     target_identifier: str,
@@ -483,6 +444,27 @@ def _build_function_logger(
         function_name=function_name,
         frequency=metric_function_cfg.frequency,
     )
+
+
+def _build_function_logger_from_predefined(
+    metric_functions: List[MetricFunctionConfig],
+    loggers: Dict[str, BaseLogger],
+    identifier_prefix: Optional[str] = None,
+) -> List[FunctionLogger]:
+
+    data_loggers = []
+    data_logging_config_from_predefined = parse_out_predefined_function_groups(
+        metric_functions, identifier_prefix
+    )
+    for (
+        target_identifier,
+        metric_functions,
+    ) in data_logging_config_from_predefined.items():
+        for metric_function in metric_functions:
+            data_loggers.append(
+                _build_function_logger(metric_function, target_identifier, loggers)
+            )
+    return data_loggers
 
 
 def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:

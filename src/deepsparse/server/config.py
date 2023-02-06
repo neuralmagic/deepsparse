@@ -90,14 +90,6 @@ class EndpointConfig(BaseModel):
     batch_size: int = Field(
         default=1, description="The batch size to compile the model for."
     )
-    add_predefined: Optional[List[MetricFunctionConfig]] = Field(
-        default=None,
-        description=(
-            "Optional list of predefined metric function groups - configurations of "
-            "identifiers with their built-in functions, specific for a given "
-            "predefined logger integration names. Default is []."
-        ),
-    )
 
     data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(
         default=None,

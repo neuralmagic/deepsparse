@@ -23,9 +23,11 @@ __all__ = [
     "validate_identifier",
     "REQUEST_DETAILS_IDENTIFIER_PREFIX",
     "RESOURCE_UTILIZATION_IDENTIFIER_PREFIX",
+    "FROM_PREDEFINED",
 ]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
+FROM_PREDEFINED = "from_predefined"
 REQUEST_DETAILS_IDENTIFIER_PREFIX = "request_details"
 RESOURCE_UTILIZATION_IDENTIFIER_PREFIX = "resource_utilization"
 
