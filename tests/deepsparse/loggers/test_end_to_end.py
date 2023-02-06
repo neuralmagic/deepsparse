@@ -27,14 +27,13 @@ YAML_CONFIG = """
         enable: true
         prediction_latency:
             enable: true
-        resource_utilization:
+        inference_details:
             enable: true
     data_logging:
         {possible_pipeline_name}pipeline_inputs.sequences[0]:
             - func: identity"""
 
 
-PATH = "tests/test_data/logging_config.yaml"
 LOGGER = logger_from_config(
     YAML_CONFIG.format(possible_pipeline_name="text_classification/")
 )
@@ -45,7 +44,6 @@ LOGGER = logger_from_config(
     [
         YAML_CONFIG.format(possible_pipeline_name=""),
         YAML_CONFIG.format(possible_pipeline_name="text_classification/"),
-        PATH,
         LOGGER,
     ],
 )
@@ -55,10 +53,12 @@ def test_end_to_end(mock_engine, config):
     no_iterations = 10
     for i in range(no_iterations):
         pipeline("today is great")
+        time.sleep(0.1)  # sleeping to make sure all the logs are collected
 
-    time.sleep(1)  # sleeping to make sure all the logs are collected
     calls = pipeline.logger.logger.loggers[0].logger.loggers[0].calls
     data_logging_calls = [call for call in calls if "DATA" in call]
     assert len(data_logging_calls) == no_iterations
-    prediction_latency_calls = [call for call in calls if "SYSTEM" in call]
+    prediction_latency_calls = [call for call in calls if "prediction_latency" in call]
     assert len(prediction_latency_calls) == 4 * no_iterations
+    inference_details_calls = [call for call in calls if "inference_details" in call]
+    assert len(inference_details_calls) == 1 + no_iterations
