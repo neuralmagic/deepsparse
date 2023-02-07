@@ -106,7 +106,6 @@ def main(
     args.data = dataset_yaml
     args.batch_size = batch_size
     args.device = device
-    print(args.device)
 
     if dataset_yaml not in SUPPORTED_DATASET_CONFIGS:
         raise ValueError(
