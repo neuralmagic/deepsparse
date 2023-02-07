@@ -105,7 +105,6 @@ def main(
     args = get_cfg(DEFAULT_CFG)
     args.data = dataset_yaml
     args.batch_size = batch_size
-    print(args.device)
     args.device = device
     print(args.device)
 
