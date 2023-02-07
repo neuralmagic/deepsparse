@@ -24,7 +24,7 @@ from deepsparse import (
 )
 from deepsparse.loggers.build_logger import build_logger, build_system_loggers
 from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingConfig
-from tests.deepsparse.loggers.helpers import ListLogger
+from tests.deepsparse.loggers.helpers import ListLogger, fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
 
@@ -119,7 +119,7 @@ def test_logger_from_config(
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)
     if default_logger:
-        assert isinstance(logger.logger.loggers[0].logger.loggers[0], PythonLogger)
+        assert isinstance(fetch_leaf_logger(logger), PythonLogger)
         return
     assert len(logger.logger.loggers) == num_function_loggers + 1
 
@@ -218,5 +218,5 @@ def test_kwargs():
         },
     )
     logger.log("identifier", None, None, argument="some_value")
-    kwargs_logger = logger.logger.loggers[0].logger.loggers[0]
+    kwargs_logger = fetch_leaf_logger(logger)
     assert kwargs_logger.caught_kwargs == {"argument": "some_value"}
