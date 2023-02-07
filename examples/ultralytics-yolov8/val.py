@@ -39,7 +39,6 @@ class YOLOv8Pipeline(YOLOPipeline):
         # post-processing
 
         batch_output = engine_outputs[0]  # post-processed values stored in first output
-
         # NMS
         batch_output = ops.non_max_suppression(
             torch.from_numpy(batch_output),
@@ -111,6 +110,7 @@ class BaseValidator:
         self.jdict = None
 
         self.args.data = "coco128.yaml"
+        self.args.rect = False
         project = "project"
         name = self.args.name or f"{self.args.mode}"
         self.save_dir = save_dir or increment_path(Path(project) / name,
@@ -188,15 +188,12 @@ class BaseValidator:
             self.batch_i = batch_i
             # pre-process
             with dt[0]:
+                deepsparse_preds = yolo_pipeline(images=[x.cpu().numpy() for x in batch["img"]])
                 batch = self.preprocess(batch)
 
             # inference
             with dt[1]:
                 preds = model(batch["img"])
-                deepsparse_preds = yolo_pipeline(images=batch["im_file"],
-                                                 conf_thresh=self.args.conf,
-                                                 iou_thres=self.args.iou,
-                                                 multi_label=True)
 
             # loss
             with dt[2]:
@@ -219,7 +216,7 @@ class BaseValidator:
                     preds.append(torch.cat([boxes, scores, labels], axis=1).to(device))
                 return preds
 
-            # self.update_metrics(preds, batch)
+            #self.update_metrics(preds, batch)
             self.update_metrics(deepsparse_preds_to_preds(deepsparse_preds, device=preds[0].device), batch)
             if self.args.plots and batch_i < 3:
                 self.plot_val_samples(batch, batch_i)
