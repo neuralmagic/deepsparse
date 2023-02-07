@@ -21,7 +21,7 @@ import numpy as np
 
 import torch
 from deepsparse import Pipeline
-from deepsparse.yolov8.utils import DeepSparseValidator
+from deepsparse.yolov8.utils.validation.deepsparse_validator import DeepSparseValidator
 from ultralytics.yolo.data import build_dataloader
 from ultralytics.yolo.data.dataloaders.v5loader import create_dataloader
 from ultralytics.yolo.utils import colorstr, ops

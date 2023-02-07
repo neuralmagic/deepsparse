@@ -14,7 +14,7 @@
 
 # flake8: noqa
 
-from .validation import *
 from .annotate import *
 from .pipelines import *
 from .utils import *
+from .validation import *

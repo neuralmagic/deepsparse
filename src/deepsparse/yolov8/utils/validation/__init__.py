@@ -13,6 +13,4 @@
 # limitations under the License.
 
 # flake8: noqa
-
 from .detection_validator import *
-from .deepsparse_validator import *

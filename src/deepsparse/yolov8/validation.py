@@ -13,55 +13,17 @@
 # limitations under the License.
 
 import click
-import torch
+
 from deepsparse import Pipeline
-from deepsparse.yolo import YOLOOutput, YOLOPipeline
 from deepsparse.yolo.utils import COCO_CLASSES
 from deepsparse.yolov8.utils import DetectionValidator
 from ultralytics.yolo.cfg import get_cfg
-from ultralytics.yolo.utils import DEFAULT_CFG, ops
+from ultralytics.yolo.utils import DEFAULT_CFG
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
-
-
-@Pipeline.register("yolov8")
-class YOLOv8Pipeline(YOLOPipeline):
-    def process_engine_outputs(self, engine_outputs, **kwargs) -> YOLOOutput:
-        # post-processing
-
-        batch_output = engine_outputs[0]  # post-processed values stored in first output
-        # NMS
-        batch_output = ops.non_max_suppression(
-            torch.from_numpy(batch_output),
-            conf_thres=0.001,
-            iou_thres=0.7,
-            multi_label=True,
-        )
-
-        batch_boxes, batch_scores, batch_labels = [], [], []
-
-        for image_output in batch_output:
-            batch_boxes.append(image_output[:, 0:4].tolist())
-            batch_scores.append(image_output[:, 4].tolist())
-            batch_labels.append(image_output[:, 5].tolist())
-            if self.class_names is not None:
-                batch_labels_as_strings = [
-                    str(int(label)) for label in batch_labels[-1]
-                ]
-                batch_class_names = [
-                    self.class_names[label_string]
-                    for label_string in batch_labels_as_strings
-                ]
-                batch_labels[-1] = batch_class_names
-
-        return YOLOOutput(
-            boxes=batch_boxes,
-            scores=batch_scores,
-            labels=batch_labels,
-        )
 
 
 @click.command()
@@ -117,10 +79,11 @@ class YOLOv8Pipeline(YOLOPipeline):
 )
 @click.option(
     "--device",
-    default="cuda",
-    type=click.Choice(["cuda", "cpu"]),
+    default="0",
+    type=str,
     show_default=True,
-    help="device to run on, valid choices: ['cuda', 'cpu']",
+    help="Use 'device=cpu' or pass valid CUDA device(s) if available, "
+    "i.e. 'device=0' or 'device=0,1,2,3' for Multi-GPU",
 )
 def main(
     dataset_yaml: str,
@@ -142,7 +105,9 @@ def main(
     args = get_cfg(DEFAULT_CFG)
     args.data = dataset_yaml
     args.batch_size = batch_size
+    print(args.device)
     args.device = device
+    print(args.device)
 
     if dataset_yaml not in SUPPORTED_DATASET_CONFIGS:
         raise ValueError(
