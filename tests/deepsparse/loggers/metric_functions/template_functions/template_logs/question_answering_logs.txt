@@ -1,5 +1,0 @@
-identifier:question_answering/pipeline_inputs.question__string_length, value:30, category:MetricCategories.DATA
-identifier:question_answering/pipeline_inputs.context__string_length, value:31, category:MetricCategories.DATA
-identifier:question_answering/pipeline_outputs__answer_found, value:True, category:MetricCategories.DATA
-identifier:question_answering/pipeline_outputs__answer_length, value:8, category:MetricCategories.DATA
-identifier:question_answering/pipeline_outputs__answer_score, value:1.8941500186920166, category:MetricCategories.DATA

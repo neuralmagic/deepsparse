@@ -13,56 +13,47 @@
 # limitations under the License.
 
 import os
-import time
+import pathlib
+from typing import Optional
 
 import numpy
 
 import pytest
 from deepsparse import Pipeline
 from deepsparse.loggers.build_logger import logger_from_config
-from tests.utils import mock_engine
 from tests.deepsparse.loggers.helpers import fetch_leaf_logger
+from tests.utils import mock_engine
+
+
+def _generate_logs_path(group_name: str, optional_index: Optional[int] = None):
+    logs_directory = os.path.join(
+        pathlib.Path(__file__).parent.resolve(), "template_logs"
+    )
+    group_name = (
+        f"{group_name}_{optional_index}" if optional_index is not None else group_name
+    )
+    return os.path.join(logs_directory, f"{group_name}.text")
 
 
 @pytest.mark.parametrize(
-    "group_name, pipeline_name, inputs, expected_logs",
+    "group_name, pipeline_name, inputs, optional_index",
     [
         (
             "image_classification",
             "image_classification",
             {"images": [numpy.ones((3, 224, 224))] * 2},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/image_classification_logs.txt",  # noqa E501
+            None,
         ),
         (
             "image_classification",
             "image_classification",
             {"images": numpy.ones((2, 3, 224, 224))},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/image_classification_logs.txt",  # noqa E501
+            None,
         ),
-        (
-            "object_detection",
-            "yolo",
-            {"images": [numpy.ones((3, 640, 640))] * 2},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/object_detection_logs.txt",  # noqa E501
-        ),
-        (
-            "object_detection",
-            "yolo",
-            {"images": numpy.ones((2, 3, 640, 640))},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/object_detection_logs.txt",  # noqa E501
-        ),
-        (
-            "segmentation",
-            "yolact",
-            {"images": [numpy.ones((3, 640, 640))] * 2},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/segmentation_logs.txt",  # noqa E501
-        ),
-        (
-            "segmentation",
-            "yolact",
-            {"images": numpy.ones((2, 3, 640, 640))},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/segmentation_logs.txt",  # noqa E501
-        ),
+        ("object_detection", "yolo", {"images": [numpy.ones((3, 640, 640))] * 2}, None),
+        ("object_detection", "yolo", {"images": numpy.ones((2, 3, 640, 640))}, None),
+        ("segmentation", "yolact", {"images": [numpy.ones((3, 640, 640))] * 2}, None),
+        ("segmentation", "yolact", {"images": numpy.ones((2, 3, 640, 640))}, None),
         (
             "question_answering",
             "question_answering",
@@ -70,25 +61,25 @@ from tests.deepsparse.loggers.helpers import fetch_leaf_logger
                 "question": "what is the capital of France?",
                 "context": "Paris is the capital of France.",
             },
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/question_answering_logs.txt",  # noqa E501
+            None,
         ),
         (
             "text_classification",
             "text_classification",
             {"sequences": [["Fun for adults and children.", "Fun for only children."]]},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/text_classification_logs.txt",  # noqa E501
+            None,
         ),
         (
             "sentiment_analysis",
             "sentiment_analysis",
             {"sequences": "the food tastes great"},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_1.txt",  # noqa E501
+            None,
         ),
         (
             "sentiment_analysis",
             "sentiment_analysis",
             {"sequences": ["the food tastes great", "the food tastes bad"]},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_2.txt",  # noqa E501
+            1,
         ),
         (
             "sentiment_analysis",
@@ -99,13 +90,13 @@ from tests.deepsparse.loggers.helpers import fetch_leaf_logger
                     ["the food tastes bad"],
                 ]
             },
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/sentiment_analysis_logs_3.txt",  # noqa E501
+            2,
         ),
         (
             "zero_shot_text_classification",
             "zero_shot_text_classification",
             {"sequences": "the food tastes great", "labels": ["politics", "food"]},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/zero_shot_text_classification_logs_1.txt",  # noqa E501
+            None,
         ),
         (
             "zero_shot_text_classification",
@@ -114,24 +105,24 @@ from tests.deepsparse.loggers.helpers import fetch_leaf_logger
                 "sequences": ["the food tastes great", "the government is corrupt"],
                 "labels": ["politics", "food"],
             },
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/zero_shot_text_classification_logs_2.txt",  # noqa E501
+            1,
         ),
         (
             "token_classification",
             "token_classification",
             {"inputs": "the food tastes great"},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/token_classification_logs_1.txt",  # noqa E501
+            None,
         ),
         (
             "token_classification",
             "token_classification",
             {"inputs": ["the food tastes great", "the food tastes bad"]},
-            "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/token_classification_logs_2.txt",  # noqa E501
+            1,
         ),
     ],
 )
 @mock_engine(rng_seed=0)
-def test_group_name(mock_engine, group_name, pipeline_name, inputs, expected_logs):
+def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_index):
     yaml_config = """
     loggers:
         list_logger:
@@ -153,10 +144,9 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, expected_log
         )
 
     pipeline(**inputs)
-    # let's sleep one seconds so all the logs get collected
-    time.sleep(1)
     calls = fetch_leaf_logger(pipeline.logger).calls
 
+    expected_logs = _generate_logs_path(group_name, optional_index)
     data_logging_logs = [call for call in calls if "DATA" in calls]
     if os.environ.get("NM_GENERATE_LOG_TEST_FILES"):
         dir = os.path.dirname(expected_logs)

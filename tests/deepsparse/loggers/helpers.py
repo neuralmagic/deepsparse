@@ -19,9 +19,15 @@ Helper classes and functions for testing deepsparse.loggers
 import os
 from datetime import datetime
 from time import sleep
-from typing import Any, Union, List
+from typing import Any, List, Union
 
-from deepsparse.loggers import BaseLogger, AsyncLogger, MultiLogger, FunctionLogger, MetricCategories
+from deepsparse.loggers import (
+    AsyncLogger,
+    BaseLogger,
+    FunctionLogger,
+    MetricCategories,
+    MultiLogger,
+)
 
 
 __all__ = [
@@ -52,8 +58,6 @@ def fetch_leaf_logger(logger: BaseLogger) -> BaseLogger:
         return fetch_leaf_logger(logger.logger)
 
     return logger
-
-
 
 
 class ErrorLogger(BaseLogger):

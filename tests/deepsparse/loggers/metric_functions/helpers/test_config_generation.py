@@ -45,6 +45,7 @@ data_logging:
   pipeline_outputs.labels:
   - func: predicted_classes
     frequency: 3
+  pipeline_outputs.scores:
   - func: predicted_top_score
     frequency: 3
   pipeline_inputs.images:
@@ -69,6 +70,7 @@ data_logging:
   pipeline_outputs.labels:
   - func: predicted_classes
     frequency: 3
+  pipeline_outputs.scores:
   - func: predicted_top_score
     frequency: 3
   pipeline_inputs.images:
@@ -93,6 +95,7 @@ data_logging:
   pipeline_outputs.labels:
   - func: predicted_classes
     frequency: 10
+  pipeline_outputs.scores:
   - func: predicted_top_score
     frequency: 10
   pipeline_inputs.images:
@@ -145,7 +148,6 @@ def test_data_logging_config_from_predefined(
         save_dir=tmp_path,
         registry=registry,
     )
-    print(string_result)
     assert string_result == expected_result
     assert PipelineLoggingConfig(**yaml.safe_load(string_result))
 
