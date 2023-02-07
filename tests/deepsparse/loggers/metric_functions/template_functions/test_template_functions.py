@@ -162,7 +162,7 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_ind
 
 yaml_config = """
 loggers:
-    python: 
+    python:
 data_logging:
     from_predefined:
     - func: image_classification

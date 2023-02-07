@@ -19,7 +19,7 @@ Helper classes and functions for testing deepsparse.loggers
 import os
 from datetime import datetime
 from time import sleep
-from typing import Any, List, Union
+from typing import Any
 
 from deepsparse.loggers import (
     AsyncLogger,
