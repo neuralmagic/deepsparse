@@ -14,6 +14,7 @@
 
 import os
 import pathlib
+import time
 from typing import Optional
 
 import numpy
@@ -127,8 +128,9 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_ind
     loggers:
         list_logger:
             path: tests/deepsparse/loggers/helpers.py:ListLogger
-    add_predefined:
-    - func: {group_name}"""
+    data_logging:
+        from_predefined:
+        - func: {group_name}"""
 
     if pipeline_name == "zero_shot_text_classification":
         pipeline = Pipeline.create(
@@ -144,10 +146,11 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_ind
         )
 
     pipeline(**inputs)
+    time.sleep(0.1)
     calls = fetch_leaf_logger(pipeline.logger).calls
 
     expected_logs = _generate_logs_path(group_name, optional_index)
-    data_logging_logs = [call for call in calls if "DATA" in calls]
+    data_logging_logs = [call for call in calls if call.endswith("DATA")]
     if os.environ.get("NM_GENERATE_LOG_TEST_FILES"):
         dir = os.path.dirname(expected_logs)
         os.makedirs(dir, exist_ok=True)

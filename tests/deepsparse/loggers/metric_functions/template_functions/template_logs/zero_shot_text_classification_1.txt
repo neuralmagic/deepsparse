@@ -1,0 +1,3 @@
+identifier:zero_shot_text_classification/pipeline_inputs.sequences__string_length, value:[21, 25], category:MetricCategories.DATA
+identifier:zero_shot_text_classification/pipeline_outputs.labels__predicted_classes, value:[['politics', 'food'], ['politics', 'food']], category:MetricCategories.DATA
+identifier:zero_shot_text_classification/pipeline_outputs.scores__predicted_top_score, value:[0.5, 0.5], category:MetricCategories.DATA
