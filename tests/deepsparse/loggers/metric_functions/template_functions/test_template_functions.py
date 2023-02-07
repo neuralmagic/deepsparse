@@ -32,7 +32,7 @@ def _generate_logs_path(group_name: str, optional_index: Optional[int] = None):
     group_name = (
         f"{group_name}_{optional_index}" if optional_index is not None else group_name
     )
-    return os.path.join(logs_directory, f"{group_name}.text")
+    return os.path.join(logs_directory, f"{group_name}.txt")
 
 
 @pytest.mark.parametrize(

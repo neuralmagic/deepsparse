@@ -268,6 +268,8 @@ def build_data_loggers(
             data_loggers.append(
                 _build_function_logger(metric_function, target_identifier, loggers)
             )
+    _validate_data_loggers(data_loggers)
+    return data_loggers
 
 
 def build_system_loggers(
@@ -499,4 +501,3 @@ def _validate_data_loggers(data_loggers: List[FunctionLogger]):
                     f"{data_loggers[i].target_identifier} and "
                     f"{data_loggers[i].function_name}"
                 )
-    return data_loggers

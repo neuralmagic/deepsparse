@@ -82,7 +82,7 @@ def test_data_logging_from_predefined():
     calls = fetch_leaf_logger(server_logger).calls
     data_logging_logs = [call for call in calls if "DATA" in call]
     with open(
-        "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/text_classification_logs.txt",  # noqa E501
+        "tests/deepsparse/loggers/metric_functions/template_functions/template_logs/text_classification.txt",  # noqa E501
         "r",
     ) as f:
         expected_logs = f.read().splitlines()
