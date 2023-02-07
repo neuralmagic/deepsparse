@@ -23,16 +23,16 @@ Options:
                                   used for annotation  [default: zoo:cv/detect
                                   ion/yolov5-s/pytorch/ultralytics/coco/pruned
                                   -aggressive_96]
-  --source TEXT                   File path to image or directory of .jpg
+  --source TEXT                   File path to an image or directory of image
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
   --engine [deepsparse|onnxruntime|torch]
                                   Inference engine backend to run on. Choices
                                   are 'deepsparse', 'onnxruntime', and
                                   'torch'. Default is 'deepsparse'
-  --model_input_image_shape, --model-input-shape INTEGER...
-                                  Image shape to override model with for
-                                  inference, must be two integers
+  --image_shape, --image_shape INTEGER
+                                  Image shape to use for inference, must be
+                                  two integers  [default: 640, 640]
   --num_cores, --num-cores INTEGER
                                   The number of physical cores to run the
                                   annotations with, defaults to using all
@@ -54,7 +54,8 @@ Options:
   --no_save, --no-save            Set flag when source is from webcam to not
                                   save results.Not supported for non-webcam
                                   sources  [default: False]
-  --help                          Show this message and exit.
+  --help                          Show this message and exit
+
 #######
 Examples:
 
@@ -64,7 +65,7 @@ Examples:
 4) deepsparse.object_detection.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
-from typing import Optional, Tuple
+from typing import Optional
 
 import click
 
@@ -114,12 +115,12 @@ _LOGGER = logging.getLogger(__name__)
     "'onnxruntime', and 'torch'. Default is 'deepsparse'",
 )
 @click.option(
-    "--model_input_image_shape",
-    "--model-input-image-shape",
+    "--image_shape",
+    "--image-shape",
     type=int,
     nargs=2,
-    default=None,
-    help="Image shape to override model with for inference, must be two integers",
+    default=(640, 640),
+    help="Image shape to use for inference, must be two integers",
     show_default=True,
 )
 @click.option(
@@ -172,12 +173,12 @@ def main(
     model_filepath: str,
     source: str,
     engine: str,
+    image_shape: tuple,
     num_cores: Optional[int],
     save_dir: str,
     name: Optional[str],
     target_fps: Optional[float],
     no_save: bool,
-    model_input_image_shape: Optional[Tuple[int, ...]],
 ) -> None:
     """
     Annotation Script for YOLO with DeepSparse
@@ -191,7 +192,7 @@ def main(
     loader, saver, is_video = get_image_loader_and_saver(
         path=source,
         save_dir=save_dir,
-        image_shape=None,
+        image_shape=image_shape,
         target_fps=target_fps,
         no_save=no_save,
     )
@@ -203,7 +204,6 @@ def main(
         class_names="coco",
         engine_type=engine,
         num_cores=num_cores,
-        image_size=model_input_image_shape,
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
@@ -216,6 +216,7 @@ def main(
             target_fps=target_fps,
             calc_fps=is_video,
             original_image=source_image,
+            model_input_size=image_shape,
         )
 
         if is_webcam:
