@@ -21,6 +21,7 @@ import pytest
 from deepsparse import Pipeline
 from deepsparse.loggers.build_logger import logger_from_config
 from tests.utils import mock_engine
+from tests.deepsparse.loggers.helpers import fetch_leaf_logger
 
 
 @pytest.mark.parametrize(
@@ -154,10 +155,10 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, expected_log
     pipeline(**inputs)
     # let's sleep one seconds so all the logs get collected
     time.sleep(1)
-    logs = pipeline.logger.logger.loggers[0].logger.loggers[0].calls
+    calls = fetch_leaf_logger(pipeline.logger).calls
 
-    data_logging_logs = [log for log in logs if "DATA" in log]
-    if os.environ.get("GENERATE_LOGS"):
+    data_logging_logs = [call for call in calls if "DATA" in calls]
+    if os.environ.get("NM_GENERATE_LOG_TEST_FILES"):
         dir = os.path.dirname(expected_logs)
         os.makedirs(dir, exist_ok=True)
         with open(expected_logs, "w") as f:
@@ -171,12 +172,11 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, expected_log
 
 yaml_config = """
 loggers:
-    list_logger:
-        path: tests/deepsparse/loggers/helpers.py:ListLogger
-add_predefined:
+    python: 
+data_logging:
+    from_predefined:
     - func: image_classification
       frequency: 2
-data_logging:
     pipeline_inputs.images:
     - func: image_shape
       frequency: 2"""
