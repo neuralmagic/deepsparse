@@ -22,12 +22,7 @@ import warnings
 from collections import defaultdict
 from typing import Any, Dict, Optional, Type, Union
 
-from deepsparse.loggers import (
-    REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
-    BaseLogger,
-    MetricCategories,
-)
+from deepsparse.loggers import BaseLogger, MetricCategories, SystemGroups
 from deepsparse.loggers.helpers import unwrap_logged_value
 
 
@@ -64,9 +59,9 @@ _NAMESPACE = "deepsparse"
 _PrometheusMetric = Union[Histogram, Gauge, Summary, Counter]
 _IDENTIFIER_TO_METRIC_TYPE = {
     "prediction_latency": Histogram,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: Gauge,
-    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/successful_request": Counter,
-    f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size": Histogram,
+    SystemGroups.RESOURCE_UTILIZATION: Gauge,
+    f"{SystemGroups.REQUEST_DETAILS}/successful_request": Counter,
+    f"{SystemGroups.REQUEST_DETAILS}/input_batch_size": Histogram,
 }
 _SUPPORTED_DATA_TYPES = (int, float)
 _DESCRIPTION = (
