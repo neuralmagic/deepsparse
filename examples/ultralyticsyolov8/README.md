@@ -43,7 +43,7 @@ DeepSparse also offers some convenient utilities for integrating a model into yo
 ```bash
 # Download example code, model, and sample image
 git clone https://github.com/neuralmagic/deepsparse.git
-cd deepsparse/examples/ultralytics-yolov8
+cd deepsparse/examples/ultralyticsyolov8
 wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/basilica.jpg
 
 # Annotate image with DeepSparse
