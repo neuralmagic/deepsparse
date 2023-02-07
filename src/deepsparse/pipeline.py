@@ -31,9 +31,8 @@ from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.loggers.build_logger import logger_from_config
 from deepsparse.loggers.constants import (
-    REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
     MetricCategories,
+    SystemGroups,
     validate_identifier,
 )
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
@@ -208,7 +207,7 @@ class Pipeline(ABC):
         self._batch_size = self._batch_size or 1
 
         self.log(
-            identifier=f"{RESOURCE_UTILIZATION_IDENTIFIER_PREFIX}/num_cores_total",
+            identifier=f"{SystemGroups.RESOURCE_UTILIZATION}/num_cores_total",
             value=num_cores,
             category=MetricCategories.SYSTEM,
         )
@@ -253,9 +252,7 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            # note, will be replaced by a reference instead of "bare" string
-            # with the upcoming PR for system logging
-            identifier=f"prediction_latency/{InferencePhases.PRE_PROCESS}_seconds",
+            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.PRE_PROCESS}_seconds",  # noqa E501
             value=timer.time_delta(InferencePhases.PRE_PROCESS),
             category=MetricCategories.SYSTEM,
         )
@@ -273,7 +270,7 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
         self.log(
-            identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size_total",
+            identifier=f"{SystemGroups.REQUEST_DETAILS}/input_batch_size_total",
             # to get the batch size of the inputs, we need to look
             # to multiply the engine batch size (self._batch_size)
             # by the number of batches processed by the engine during
@@ -288,7 +285,7 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.ENGINE_FORWARD}_seconds",
+            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.ENGINE_FORWARD}_seconds",  # noqa E501
             value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
             category=MetricCategories.SYSTEM,
         )
@@ -312,12 +309,12 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.POST_PROCESS}_seconds",
+            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.POST_PROCESS}_seconds",  # noqa E501
             value=timer.time_delta(InferencePhases.POST_PROCESS),
             category=MetricCategories.SYSTEM,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.TOTAL_INFERENCE}_seconds",
+            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.TOTAL_INFERENCE}_seconds",  # noqa E501
             value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
             category=MetricCategories.SYSTEM,
         )

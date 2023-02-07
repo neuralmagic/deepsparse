@@ -13,95 +13,78 @@
 # limitations under the License.
 
 """
+Usage: deepsparse.object_detection.annotate [OPTIONS]
+
+  Annotation Script for YOLOv8 with DeepSparse
+
+Options:
+  --model_filepath, --model-filepath TEXT
+                                  Path/SparseZoo stub to the model file to be
+                                  used for annotation
+  --source TEXT                   File path to an image or directory of image
+                                  files, a .mp4 video, or an integer (i.e. 0)
+                                  for webcam  [required]
+  --engine [deepsparse|onnxruntime|torch]
+                                  Inference engine backend to run on. Choices
+                                  are 'deepsparse', 'onnxruntime', and
+                                  'torch'. Default is 'deepsparse'
+  --image_shape, --image_shape INTEGER
+                                  Image shape to use for inference, must be
+                                  two integers  [default: 640, 640]
+  --num_cores, --num-cores INTEGER
+                                  The number of physical cores to run the
+                                  annotations with, defaults to using all
+                                  physical cores available on the system. For
+                                  DeepSparse benchmarks, this value is the
+                                  number of cores per socket
+  --save_dir, --save-dir DIRECTORY
+                                  The path to the directory for saving results
+                                  [default: annotation-results]
+  --name TEXT                     Name of directory in save-dir to write
+                                  results to. defaults to
+                                  {engine}-annotations-{run_number}
+  --target_fps, --target-fps FLOAT
+                                  Target FPS when writing video files. Frames
+                                  will be dropped to closely match target FPS.
+                                  --source must be a video file and if target-
+                                  fps is greater than the source video fps
+                                  then it will be ignored
+  --no_save, --no-save            Set flag when source is from webcam to not
+                                  save results.Not supported for non-webcam
+                                  sources  [default: False]
+  --help                          Show this message and exit
+
 #######
 Examples:
 
-1) python annotate.py --model_filepath yolov8n.onnx --source PATH/TO/IMAGE.jpg
-2) python annotate.py --model_filepath yolov8n.onnx --source PATH/TO/VIDEO.mp4
-3) python annotate.py --model_filepath yolov8n.onnx --source 0
-4) python annotate.py --model_filepath yolov8n.onnx --source PATH/TO/IMAGE_DIR
+1) deepsparse.yolov8.annotate --source PATH/TO/IMAGE.jpg
+2) deepsparse.yolov8.annotate --source PATH/TO/VIDEO.mp4
+3) deepsparse.yolov8.annotate --source 0
+4) deepsparse.yolov8.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
-import os
-from typing import List, Optional
+from typing import Optional
 
 import click
-import numpy
 
 import cv2
-import torch
-from deepsparse import Pipeline
+from deepsparse.pipeline import Pipeline
 from deepsparse.utils.annotate import (
     annotate,
     get_annotations_save_dir,
     get_image_loader_and_saver,
 )
-from deepsparse.yolo import YOLOOutput, YOLOPipeline
+from deepsparse.utils.cli_helpers import create_dir_callback
 from deepsparse.yolo.utils import annotate_image
-from ultralytics.yolo.utils import ops
 
+
+yolo_v8_default_stub = None
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
+TORCH_ENGINE = "torch"
 
 _LOGGER = logging.getLogger(__name__)
-
-
-@Pipeline.register("yolov8")
-class YOLOv8Pipeline(YOLOPipeline):
-    def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], **kwargs
-    ) -> YOLOOutput:
-        # post-processing
-        if self.postprocessor:
-            batch_output = self.postprocessor.pre_nms_postprocess(engine_outputs)
-        else:
-            batch_output = engine_outputs[
-                0
-            ]  # post-processed values stored in first output
-
-        # NMS
-        batch_output = ops.non_max_suppression(
-            torch.from_numpy(batch_output),
-            conf_thres=kwargs.get("conf_thres", 0.25),
-            iou_thres=kwargs.get("iou_thres", 0.6),
-            multi_label=kwargs.get("multi_label", False),
-        )
-
-        batch_boxes, batch_scores, batch_labels = [], [], []
-
-        for image_output in batch_output:
-            batch_boxes.append(image_output[:, 0:4].tolist())
-            batch_scores.append(image_output[:, 4].tolist())
-            batch_labels.append(image_output[:, 5].tolist())
-            if self.class_names is not None:
-                batch_labels_as_strings = [
-                    str(int(label)) for label in batch_labels[-1]
-                ]
-                batch_class_names = [
-                    self.class_names[label_string]
-                    for label_string in batch_labels_as_strings
-                ]
-                batch_labels[-1] = batch_class_names
-
-        return YOLOOutput(
-            boxes=batch_boxes,
-            scores=batch_scores,
-            labels=batch_labels,
-        )
-
-
-def create_dir_callback(ctx, params, value: str):
-    """
-    Create and return directory if it doesn't exist.
-
-    :param ctx: The click context
-    :param params: The click params
-    :param value: The value to create the directory from
-    :returns: The directory path
-    """
-    os.makedirs(value, exist_ok=True)
-    return value
 
 
 @click.command()
@@ -109,7 +92,9 @@ def create_dir_callback(ctx, params, value: str):
     "--model_filepath",
     "--model-filepath",
     type=str,
+    default=yolo_v8_default_stub,
     help="Path/SparseZoo stub to the model file to be used for annotation",
+    show_default=True,
 )
 @click.option(
     "--source",
@@ -120,7 +105,7 @@ def create_dir_callback(ctx, params, value: str):
 )
 @click.option(
     "--engine",
-    type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE]),
+    type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE, TORCH_ENGINE]),
     default=DEEPSPARSE_ENGINE,
     help="Inference engine backend to run on. Choices are 'deepsparse', "
     "'onnxruntime', and 'torch'. Default is 'deepsparse'",
@@ -209,7 +194,6 @@ def main(
     )
 
     is_webcam = source.isnumeric()
-
     yolo_pipeline = Pipeline.create(
         task="yolov8",
         model_path=model_filepath,

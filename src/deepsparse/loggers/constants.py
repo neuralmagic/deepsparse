@@ -15,19 +15,17 @@ Holds logging-related objects with constant values
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 from enum import Enum
 
 
 __all__ = [
     "MetricCategories",
     "validate_identifier",
-    "REQUEST_DETAILS_IDENTIFIER_PREFIX",
-    "RESOURCE_UTILIZATION_IDENTIFIER_PREFIX",
+    "SystemGroups",
 ]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
-REQUEST_DETAILS_IDENTIFIER_PREFIX = "request_details"
-RESOURCE_UTILIZATION_IDENTIFIER_PREFIX = "resource_utilization"
 
 
 class MetricCategories(Enum):
@@ -41,6 +39,15 @@ class MetricCategories(Enum):
     # Categories
     SYSTEM = "system"
     DATA = "data"
+
+
+@dataclass(frozen=True)
+class SystemGroups:
+    # Pipeline System Groups
+    PREDICTION_LATENCY: str = "prediction_latency"
+    # Server System Groups
+    REQUEST_DETAILS: str = "request_details"
+    RESOURCE_UTILIZATION: str = "resource_utilization"
 
 
 def validate_identifier(identifier: str):
