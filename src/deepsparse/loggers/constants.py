@@ -22,11 +22,13 @@ from enum import Enum
 __all__ = [
     "MetricCategories",
     "validate_identifier",
+    "SystemGroups",
     "FROM_PREDEFINED",
 ]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
 FROM_PREDEFINED = "from_predefined"
+
 
 class MetricCategories(Enum):
     """
