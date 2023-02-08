@@ -34,7 +34,7 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     :param config: the Server configuration model.
         This configuration by default contains three fields relevant
         for the instantiation of a Server logger:
-            - ServerConfig.loggers: this is a configuration of the
+        - ServerConfig.loggers: this is a configuration of the
             "leaf" loggers (that log information to the end destination)
             that will be used by the Server logger
         - ServerConfig.data_logging: this is a configuration of
@@ -54,9 +54,6 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     return build_logger(
         system_logging_config=system_logging_groups,
         loggers_config=config.loggers,
-        data_logging_from_predefined=_extract_data_logging_from_predefined_from_endpoints(  # noqa: E501
-            config.endpoints
-        ),
         data_logging_config=_extract_data_logging_from_endpoints(config.endpoints),
     )
 
@@ -74,17 +71,6 @@ def _extract_system_logging_from_endpoints(
             )
         )
     return system_logging_groups
-
-
-def _extract_data_logging_from_predefined_from_endpoints(
-    endpoints: List[EndpointConfig],
-) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
-    data_logging_from_predefined = {}
-    for endpoint in endpoints:
-        if endpoint.add_predefined is None:
-            continue
-        data_logging_from_predefined.update({endpoint.name: endpoint.add_predefined})
-    return data_logging_from_predefined if data_logging_from_predefined else None
 
 
 def _extract_data_logging_from_endpoints(

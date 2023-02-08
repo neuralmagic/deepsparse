@@ -123,14 +123,6 @@ class PipelineLoggingConfig(BaseModel):
             "Set to {} for no loggers. Default is {}."
         ),
     )
-    add_predefined: Optional[List[MetricFunctionConfig]] = Field(
-        default=None,
-        description=(
-            "Optional list of predefined metric function groups - configurations of "
-            "identifiers with their built-in functions, specific for a given "
-            "predefined logger integration names. Default is []."
-        ),
-    )
 
     system_logging: PipelineSystemLoggingConfig = Field(
         default=PipelineSystemLoggingConfig(),
