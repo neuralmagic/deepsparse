@@ -4,6 +4,7 @@ data_logging:
   pipeline_outputs.labels:
   - func: predicted_classes
     frequency: 1
+  pipeline_outputs.scores:
   - func: predicted_top_score
     frequency: 1
   pipeline_inputs.images:
