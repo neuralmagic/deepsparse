@@ -427,7 +427,6 @@ def annotate_image(
     prediction: YOLOOutput,
     images_per_sec: Optional[float] = None,
     score_threshold: float = 0.35,
-    model_input_size: Tuple[int, int] = None,
 ) -> numpy.ndarray:
     """
     Draws bounding boxes on predictions of a detection model
@@ -438,9 +437,6 @@ def annotate_image(
         of the image (video) with
     :param score_threshold: minimum score a detection should have to be annotated
         on the image. Default is 0.35
-    :param model_input_size: 2-tuple of expected input size for the given model to
-        be used for bounding box scaling with original image. Scaling will not
-        be applied if model_input_size is None. Default is None
     :return: the original image annotated with the given bounding boxes
     """
     boxes = prediction[0].boxes
@@ -449,19 +445,13 @@ def annotate_image(
 
     img_res = numpy.copy(image)
 
-    scale_y = image.shape[0] / (1.0 * model_input_size[0]) if model_input_size else 1.0
-    scale_x = image.shape[1] / (1.0 * model_input_size[1]) if model_input_size else 1.0
-
     for idx in range(len(boxes)):
         label = labels[idx]
         if scores[idx] > score_threshold:
             annotation_text = f"{label}: {scores[idx]:.0%}"
 
             # bounding box points
-            left = boxes[idx][0] * scale_x
-            top = boxes[idx][1] * scale_y
-            right = boxes[idx][2] * scale_x
-            bottom = boxes[idx][3] * scale_y
+            left, top, right, bottom = boxes[idx]
 
             # calculate text size
             (text_width, text_height), text_baseline = cv2.getTextSize(
