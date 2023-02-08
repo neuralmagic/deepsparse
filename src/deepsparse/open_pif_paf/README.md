@@ -10,7 +10,8 @@ DeepSparse pipeline for OpenPifPaf
 ```python
 from deepsparse import Pipeline
 
-pipeline = Pipeline.create(task="open_pif_paf", batch_size = 1)
+model_path: str = ... # path to open_pif_paf model
+pipeline = Pipeline.create(task="open_pif_paf", batch_size=1, model_path=model_path)
 predictions = pipeline(images=['dancers.jpg'])
 # predictions have attributes `data', 'keypoints', 'scores', 'skeletons'
 predictions[0].scores
