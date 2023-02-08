@@ -28,7 +28,7 @@ from tests.utils import mock_engine
 
 def _generate_logs_path(group_name: str, optional_index: Optional[int] = None):
     logs_directory = os.path.join(
-        pathlib.Path(__file__).parent.resolve(), "predefined"
+        pathlib.Path(__file__).parent.resolve(), "predefined_logs"
     )
     group_name = (
         f"{group_name}_{optional_index}" if optional_index is not None else group_name
@@ -129,7 +129,7 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_ind
         list_logger:
             path: tests/deepsparse/loggers/helpers.py:ListLogger
     data_logging:
-        from_predefined:
+        predefined:
         - func: {group_name}"""
 
     if pipeline_name == "zero_shot_text_classification":
@@ -167,7 +167,7 @@ yaml_config = """
 loggers:
     python:
 data_logging:
-    from_predefined:
+    predefined:
     - func: image_classification
       frequency: 2
     pipeline_inputs.images:

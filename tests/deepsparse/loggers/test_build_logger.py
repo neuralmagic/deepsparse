@@ -22,7 +22,11 @@ from deepsparse import (
     default_logger,
     logger_from_config,
 )
-from deepsparse.loggers.build_logger import build_logger, build_system_loggers, system_logging_config_to_groups
+from deepsparse.loggers.build_logger import (
+    build_logger,
+    build_system_loggers,
+    system_logging_config_to_groups,
+)
 from deepsparse.loggers.config import MetricFunctionConfig, PipelineSystemLoggingConfig
 from tests.deepsparse.loggers.helpers import ListLogger, fetch_leaf_logger
 from tests.helpers import find_free_port
