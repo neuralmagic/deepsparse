@@ -166,7 +166,3 @@ def test_server_logger_from_config(
     )
     assert system_logger.function_name == "identity"
     assert system_logger.frequency == 1
-
-
-def test_server_logger_from_predefined():
-    pass

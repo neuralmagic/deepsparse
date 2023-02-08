@@ -263,11 +263,13 @@ def build_data_loggers(
                     metric_functions, loggers, identifier_prefix
                 )
             )
+            continue
 
         for metric_function in metric_functions:
             data_loggers.append(
                 _build_function_logger(metric_function, target_identifier, loggers)
             )
+    _validate_data_loggers(data_loggers)
     return data_loggers
 
 
@@ -514,3 +516,24 @@ def _build_custom_logger(logger_arguments: Dict[str, Any]) -> BaseLogger:
             f"Got {type(logger)} instead."
         )
     return logger
+
+
+def _validate_data_loggers(data_loggers: List[FunctionLogger]):
+    """
+    Check whether any of the function loggers inside data_loggers
+    has the same target_identifier and function name.
+    If yes raise, throw an error.
+    """
+
+    for i in range(len(data_loggers)):
+        for j in range(i + 1, len(data_loggers)):
+            if (
+                data_loggers[i].target_identifier == data_loggers[j].target_identifier
+                and data_loggers[i].function_name == data_loggers[j].function_name
+            ):
+                raise ValueError(
+                    "Duplicate target_identifier and metric_function "
+                    "found in the data logging configuration: "
+                    f"{data_loggers[i].target_identifier} and "
+                    f"{data_loggers[i].function_name}"
+                )

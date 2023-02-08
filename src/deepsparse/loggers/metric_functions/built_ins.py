@@ -40,6 +40,7 @@ def identity(x: Any):
         "image_classification",
         "sentiment_analysis",
         "zero_shot_text_classification",
+        "text_classification",
     ],
     identifier="pipeline_outputs.labels",
 )
@@ -69,8 +70,9 @@ def predicted_classes(
         "image_classification",
         "sentiment_analysis",
         "zero_shot_text_classification",
+        "text_classification",
     ],
-    identifier="pipeline_outputs.labels",
+    identifier="pipeline_outputs.scores",
 )
 def predicted_top_score(
     scores: List[Union[float, List[float]]]
