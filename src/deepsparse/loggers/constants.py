@@ -23,9 +23,11 @@ __all__ = [
     "MetricCategories",
     "validate_identifier",
     "SystemGroups",
+    "FROM_PREDEFINED",
 ]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
+FROM_PREDEFINED = "predefined"
 
 
 class MetricCategories(Enum):
