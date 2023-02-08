@@ -26,6 +26,7 @@ from deepsparse.server.config import (
 from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
+from tests.deepsparse.loggers.helpers import fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.test_data.server_test_data import SAMPLE_LOGS_DICT
 from tests.utils import mock_engine
@@ -59,7 +60,7 @@ def test_default_logger():
 
     for _ in range(2):
         client.post("/predict", json={"sequences": "today is great"})
-    assert isinstance(server_logger.logger.loggers[0].logger.loggers[0], PythonLogger)
+    assert isinstance(fetch_leaf_logger(server_logger), PythonLogger)
 
 
 def test_logging_only_system_info():
@@ -77,7 +78,7 @@ def test_logging_only_system_info():
     for _ in range(2):
         client.post("/predict", json={"sequences": "today is great"})
     _test_logger_contents(
-        server_logger.logger.loggers[0].logger.loggers[0],
+        fetch_leaf_logger(server_logger),
         {"prediction_latency": 8},
     )
 
@@ -106,7 +107,7 @@ def test_regex_target_logging():
     for _ in range(2):
         client.post("/predict", json={"sequences": "today is great"})
     _test_logger_contents(
-        server_logger.logger.loggers[0].logger.loggers[0],
+        fetch_leaf_logger(server_logger),
         {"pipeline_inputs__identity": 2, "pipeline_outputs__identity": 2},
     )
 
@@ -138,7 +139,7 @@ def test_multiple_targets_logging():
     for _ in range(2):
         client.post("/predict", json={"sequences": "today is great"})
     _test_logger_contents(
-        server_logger.logger.loggers[0].logger.loggers[0],
+        fetch_leaf_logger(server_logger),
         {
             "pipeline_inputs.sequences__identity": 2,
             "engine_inputs__identity": 2,

@@ -21,7 +21,13 @@ from datetime import datetime
 from time import sleep
 from typing import Any
 
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.loggers import (
+    AsyncLogger,
+    BaseLogger,
+    FunctionLogger,
+    MetricCategories,
+    MultiLogger,
+)
 
 
 __all__ = [
@@ -31,7 +37,27 @@ __all__ = [
     "SleepLogger",
     "ListLogger",
     "KwargsLogger",
+    "fetch_leaf_logger",
 ]
+
+
+def fetch_leaf_logger(logger: BaseLogger) -> BaseLogger:
+    """
+    A simple helper function that maneuvers the tree-like structure of loggers
+    to extract the leaf logger.
+
+    Note: it is assumed that:
+        - the search follows a depth-first-like logic
+
+    :param logger: the logger to extract the leaf logger from
+    :return the leaf logger
+    """
+    if isinstance(logger, MultiLogger):
+        return fetch_leaf_logger(logger.loggers[0])
+    elif isinstance(logger, AsyncLogger) or isinstance(logger, FunctionLogger):
+        return fetch_leaf_logger(logger.logger)
+
+    return logger
 
 
 class ErrorLogger(BaseLogger):

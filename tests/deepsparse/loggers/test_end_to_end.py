@@ -16,6 +16,7 @@ import time
 
 import pytest
 from deepsparse import Pipeline, logger_from_config
+from tests.deepsparse.loggers.helpers import fetch_leaf_logger
 from tests.utils import mock_engine
 
 
@@ -55,7 +56,7 @@ def test_end_to_end(mock_engine, config):
         pipeline("today is great")
         time.sleep(0.1)  # sleeping to make sure all the logs are collected
 
-    calls = pipeline.logger.logger.loggers[0].logger.loggers[0].calls
+    calls = fetch_leaf_logger(pipeline.logger).calls
     data_logging_calls = [call for call in calls if "DATA" in call]
     assert len(data_logging_calls) == no_iterations
     prediction_latency_calls = [call for call in calls if "prediction_latency" in call]
