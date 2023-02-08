@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field, validator
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
 from deepsparse.loggers.config import (
     MetricFunctionConfig,
+    PipelineSystemLoggingConfig,
     SystemLoggingConfig,
     SystemLoggingGroup,
 )
@@ -55,11 +56,18 @@ class ImageSizesConfig(BaseModel):
 
 class ServerSystemLoggingConfig(SystemLoggingConfig):
     """
-    Extends the `SystemLoggingConfig` schema to include system group metrics
-    that pertain to the Server.
+    A configuration that specifies system group metrics
+    that pertain to the Deepsparse Server.
     """
 
     request_details: SystemLoggingGroup = Field(
+        default=SystemLoggingGroup(enable=False),
+        description="The configuration group for the request_details system "
+        "logging group. For details refer to the DeepSparse server "
+        "system logging documentation. By default this group is disabled.",
+    )
+
+    resource_utilization: SystemLoggingGroup = Field(
         default=SystemLoggingGroup(enable=False),
         description="The configuration group for the request_details system "
         "logging group. For details refer to the DeepSparse server "
@@ -89,6 +97,13 @@ class EndpointConfig(BaseModel):
 
     batch_size: int = Field(
         default=1, description="The batch size to compile the model for."
+    )
+
+    logging_config: PipelineSystemLoggingConfig = Field(
+        default=PipelineSystemLoggingConfig(),
+        description="A model that holds the endpoint (pipeline) logging configuration. "
+        "If not specified explicitly in the yaml config, the "
+        "default PipelineSystemLoggingConfig model is used.",
     )
 
     data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(
