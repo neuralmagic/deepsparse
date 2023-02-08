@@ -33,13 +33,10 @@ from ultralytics.yolo.utils.torch_utils import de_parallel
 
 __all__ = ["DetectionValidator"]
 
-
+# adapted from ULTRALYTICS GITHUB:
+# https://github.com/ultralytics/ultralytics/blob/main/ultralytics/yolo/v8/detect/val.py
+# the appropriate edits are marked with # deepsparse edit: <edit comment>
 class DetectionValidator(DeepSparseValidator):
-    """
-    This class is fully ported from
-    https://github.com/ultralytics/ultralytics/blob/main/ultralytics/yolo/v8/detect/val.py
-    """
-
     def __init__(
         self,
         pipeline: Pipeline,
@@ -79,6 +76,7 @@ class DetectionValidator(DeepSparseValidator):
 
         return batch
 
+    # deepsparse edit: replaced argument `model` with `classes`
     def init_metrics(self, classes):
         val = self.data.get("val", "")  # validation path
         self.is_coco = isinstance(val, str) and val.endswith(

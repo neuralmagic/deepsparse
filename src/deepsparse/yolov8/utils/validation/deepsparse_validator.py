@@ -71,10 +71,16 @@ def schema_to_tensor(pipeline_outputs: YOLOOutput, device: str) -> List[torch.Te
     return preds
 
 
-class DeepSparseValidator(BaseValidator):
+# adapted from ULTRALYTICS GITHUB:
+# https://github.com/ultralytics/ultralytics/blob/main/ultralytics/yolo/engine/validator.py
+# the appropriate edits are marked with # deepsparse edit: <edit comment>
+
+
+class DeepSparseValidator(BaseValidator):  # deepsparse edit: overwriting BaseValidator
     """
     A DeepSparseValidator class for creating validators for
     YOLOv8 Deepsparse pipeline.
+
     Attributes:
         pipeline (Pipeline): DeepSparse Pipeline to be evaluated
         dataloader (DataLoader): Dataloader to use for validation.
@@ -93,7 +99,7 @@ class DeepSparseValidator(BaseValidator):
 
     def __init__(
         self,
-        pipeline: Pipeline,
+        pipeline: Pipeline,  # deepsparse edit: added pipeline
         dataloader=None,
         save_dir=None,
         pbar=None,
@@ -102,10 +108,6 @@ class DeepSparseValidator(BaseValidator):
     ):
         """
         Initializes a DeepSparseValidator instance.
-
-        This class is largely ported from
-        https://github.com/ultralytics/ultralytics/blob/main/ultralytics/yolo/engine/validator.py
-
         Args:
             pipeline (Pipeline): DeepSparse Pipeline to be evaluated
             dataloader (torch.utils.data.DataLoader): Dataloader to be used for validation.
@@ -114,7 +116,7 @@ class DeepSparseValidator(BaseValidator):
             logger (logging.Logger): Logger to log messages.
             args (SimpleNamespace): Configuration for the validator.
         """
-        self.pipeline = pipeline
+        self.pipeline = pipeline  # deepsparse edit: added pipeline
         self.dataloader = dataloader
         self.pbar = pbar
         self.logger = logger or LOGGER
@@ -143,12 +145,15 @@ class DeepSparseValidator(BaseValidator):
         self.callbacks = defaultdict(list, callbacks.default_callbacks)  # add callbacks
 
     @smart_inference_mode()
+    # deepsparse edit: replaced arguments `trainer` and `model`
+    # with `stride` and `classes`
     def __call__(self, stride: int, classes: Dict[int, str]):
         """
         Supports validation of a pre-trained model if passed or a model being trained
         if trainer is passed (trainer gets priority).
         """
-
+        # deepsparse edit: removed the if-statement responsible
+        # for validation when self.training is True
         callbacks.add_integration_callbacks(self)
         self.run_callbacks("on_val_start")
         self.device = select_device(self.args.device, self.args.batch)
@@ -162,7 +167,8 @@ class DeepSparseValidator(BaseValidator):
         self.dataloader = self.dataloader or self.get_dataloader(
             self.data.get("val") or self.data.set("test"), self.args.batch
         )
-
+        # deepsparse edit: left only profiler for inference, removed the redundant
+        # profilers for pre-process, loss and post-process
         dt = Profile()
         n_batches = len(self.dataloader)
         desc = self.get_desc()
@@ -170,15 +176,19 @@ class DeepSparseValidator(BaseValidator):
         # which may affect classification task since this arg is in yolov5/classify/val.py.
         # bar = tqdm(self.dataloader, desc, n_batches, not self.training, bar_format=TQDM_BAR_FORMAT)
         bar = tqdm(self.dataloader, desc, n_batches, bar_format=TQDM_BAR_FORMAT)
+        # deepsparse edit: replaced argument `model` with `classes`
         self.init_metrics(classes=classes)
         self.jdict = []  # empty before each val
         for batch_i, batch in enumerate(bar):
             self.run_callbacks("on_val_batch_start")
             self.batch_i = batch_i
-            """
-            This is the part of the code that is 
-            adapted for the valuation of the DeepSparse pipeline
-            """
+
+            # deepsparse edit:
+            # - removed the redundant pre-process function
+            # - removed the redundant loss computation
+            # - removed the redundant post-process function
+
+            # deepsparse edit: replaced the inference model with the DeepSparse pipeline
             # inference
             with dt:
                 outputs = self.pipeline(
@@ -187,15 +197,11 @@ class DeepSparseValidator(BaseValidator):
                     conf_thres=self.args.conf,
                     multi_label=True,
                 )
-
             preds = schema_to_tensor(pipeline_outputs=outputs, device=self.device)
-
             batch["bboxes"] = batch["bboxes"].to(self.device)
             batch["cls"] = batch["cls"].to(self.device)
             batch["batch_idx"] = batch["batch_idx"].to(self.device)
-            """
-            End of the adapted part
-            """
+
             self.update_metrics(preds, batch)
             if self.args.plots and batch_i < 3:
                 self.plot_val_samples(batch, batch_i)
@@ -208,7 +214,10 @@ class DeepSparseValidator(BaseValidator):
         self.speed = dt.t / len(self.dataloader.dataset) * 1e3  # speeds per image
         self.run_callbacks("on_val_end")
 
+        # deepsparse_edit: changed the string formatting to match the
+        # removed profilers
         self.logger.info("Speed: %.1fms inference per image" % self.speed)
+
         if self.args.save_json and self.jdict:
             with open(str(self.save_dir / "predictions.json"), "w") as f:
                 self.logger.info(f"Saving {f.name}...")
