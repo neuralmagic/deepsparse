@@ -28,7 +28,7 @@ from tests.utils import mock_engine
 
 def _generate_logs_path(group_name: str, optional_index: Optional[int] = None):
     logs_directory = os.path.join(
-        pathlib.Path(__file__).parent.resolve(), "template_logs"
+        pathlib.Path(__file__).parent.resolve(), "predefined"
     )
     group_name = (
         f"{group_name}_{optional_index}" if optional_index is not None else group_name
