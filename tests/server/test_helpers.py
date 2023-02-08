@@ -160,7 +160,10 @@ def test_server_logger_from_config(
 
     # check for default system logger behaviour
     system_logger = logger.logger.loggers[-1]
-    assert system_logger.target_identifier == "prediction_latency"
+    assert (
+        system_logger.target_identifier
+        == f"{server_config.endpoints[0].name}/prediction_latency"
+    )
     assert system_logger.function_name == "identity"
     assert system_logger.frequency == 1
 

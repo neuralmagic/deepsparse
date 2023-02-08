@@ -22,8 +22,16 @@ from deepsparse import (
     default_logger,
     logger_from_config,
 )
-from deepsparse.loggers.build_logger import build_logger, build_system_loggers
-from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingConfig
+from deepsparse.loggers.build_logger import (
+    build_logger,
+    build_system_loggers,
+    system_logging_config_to_groups,
+)
+from deepsparse.loggers.config import (
+    MetricFunctionConfig,
+    PipelineSystemLoggingConfig,
+    SystemLoggingConfig,
+)
 from tests.deepsparse.loggers.helpers import ListLogger, fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
@@ -139,22 +147,27 @@ system_logging:
 
 yaml_config_3 = """
 system_logging:
-    resource_utilization:
+    inference_details:
         enable: true"""
 
 yaml_config_4 = """
 system_logging:
     enable: false
-    prediction_latency:
-        enable: true
-    resource_utilization:
+    inference_details:
         enable: true"""
 
 yaml_config_5 = """
 system_logging:
-    prediction_latency:
+    inference_details:
         enable: true
-    resource_utilization:
+        target_loggers:
+        - list_logger_1"""
+
+yaml_config_6 = """
+system_logging:
+    prediction_latency:
+        enable: false
+    inference_details:
         enable: true
         target_loggers:
         - list_logger_1"""
@@ -169,7 +182,7 @@ system_logging:
             yaml_config_3,
             {
                 "prediction_latency",
-                "resource_utilization",
+                "inference_details",
             },
             [2, 2],
         ),
@@ -178,9 +191,16 @@ system_logging:
             yaml_config_5,
             {
                 "prediction_latency",
-                "resource_utilization",
+                "inference_details",
             },
             [1, 2],
+        ),
+        (
+            yaml_config_6,
+            {
+                "inference_details",
+            },
+            [1],
         ),
     ],
 )
@@ -191,7 +211,8 @@ def test_build_system_loggers(
 ):
     leaf_loggers = {"list_logger_1": ListLogger(), "list_logger_2": ListLogger()}
     obj = yaml.safe_load(yaml_config)
-    system_logging_config = SystemLoggingConfig(**obj["system_logging"])
+    system_logging_config = PipelineSystemLoggingConfig(**obj["system_logging"])
+    system_logging_config = system_logging_config_to_groups(system_logging_config)
     system_loggers = build_system_loggers(leaf_loggers, system_logging_config)
 
     assert (
@@ -210,7 +231,9 @@ def test_default_logger(tmp_path):
 def test_kwargs():
     logger = build_logger(
         data_logging_config={"identifier": [MetricFunctionConfig(func="identity")]},
-        system_logging_config=SystemLoggingConfig(),
+        system_logging_config=system_logging_config_to_groups(
+            PipelineSystemLoggingConfig()
+        ),
         loggers_config={
             "kwargs_logger": {
                 "path": "tests/deepsparse/loggers/helpers.py:KwargsLogger"
