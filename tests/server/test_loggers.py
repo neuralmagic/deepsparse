@@ -61,7 +61,7 @@ def test_default_logger():
     for _ in range(2):
         client.post("/predict", json={"sequences": "today is great"})
     assert isinstance(fetch_leaf_logger(server_logger), PythonLogger)
-    
+
 
 def test_data_logging_from_predefined():
     server_config = ServerConfig(
