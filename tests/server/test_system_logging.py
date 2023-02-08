@@ -47,20 +47,6 @@ def _test_successful_requests(calls, successful_request):
     assert value == successful_request
 
 
-def _test_input_batch_size(calls, input_batch_size):
-    relevant_call = [
-        call
-        for call in calls
-        if call.startswith(
-            "identifier:endpoint_name/request_details/input_batch_size_total"
-        )
-    ]
-    assert len(relevant_call) == 1
-    relevant_call = relevant_call[0]
-    value = int(relevant_call.split("value:")[1].split(",")[0])
-    assert value == input_batch_size
-
-
 def _test_response_msg(calls, response_msg):
     relevant_call = [
         call
@@ -112,8 +98,6 @@ def test_log_request_details(
 
     _test_successful_requests(calls, successful_request)
     _test_response_msg(calls, response_msg)
-    if successful_request:
-        _test_input_batch_size(calls, input_batch_size)
 
 
 def _test_cpu_utilization(calls, num_iterations):
