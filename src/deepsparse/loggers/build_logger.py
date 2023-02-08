@@ -263,6 +263,9 @@ def build_data_loggers(
                     metric_functions, loggers, identifier_prefix
                 )
             )
+            # if `from_predefined` is True, we want to skip the rest of the loop
+            # as `target_identifier` is a placeholder and not actual identifier
+            # name
             continue
 
         for metric_function in metric_functions:
