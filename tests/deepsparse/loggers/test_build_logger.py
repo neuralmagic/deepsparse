@@ -27,11 +27,7 @@ from deepsparse.loggers.build_logger import (
     build_system_loggers,
     system_logging_config_to_groups,
 )
-from deepsparse.loggers.config import (
-    MetricFunctionConfig,
-    PipelineSystemLoggingConfig,
-    SystemLoggingConfig,
-)
+from deepsparse.loggers.config import MetricFunctionConfig, PipelineSystemLoggingConfig
 from tests.deepsparse.loggers.helpers import ListLogger, fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
