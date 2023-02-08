@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
-FROM_PREDEFINED = "from_predefined"
+FROM_PREDEFINED = "predefined"
 
 
 class MetricCategories(Enum):
