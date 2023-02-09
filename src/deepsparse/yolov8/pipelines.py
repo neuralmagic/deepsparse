@@ -12,7 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-from .annotate import *
-from .pipelines import *
-from .utils import *
+from typing import Callable
+
+from deepsparse import Pipeline
+from deepsparse.yolo import YOLOPipeline
+from deepsparse.yolov8.utils import non_max_suppression
+
+
+@Pipeline.register(
+    task="yolov8",
+    default_model_path=None,
+)
+class YOLOv8Pipeline(YOLOPipeline):
+    def __init__(self, nms_function: Callable = non_max_suppression, **kwargs):
+        self.nms_function = nms_function
+        super().__init__(nms_function=nms_function, **kwargs)

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
@@ -78,10 +78,15 @@ class YOLOPipeline(Pipeline):
         class_names: Optional[Union[str, Dict[str, str]]] = None,
         model_config: Optional[str] = None,
         image_size: Union[int, Tuple[int, int], None] = None,
+        nms_function: Callable[
+            [Union["torch.Tensor", numpy.ndarray], float, float, bool],  # noqa F821
+            List[numpy.ndarray],
+        ] = postprocess_nms,
         **kwargs,
     ):
 
         self._image_size = image_size
+        self.nms_function = nms_function
         self._onnx_temp_file = None  # placeholder for potential tmpfile reference
 
         super().__init__(
@@ -236,7 +241,7 @@ class YOLOPipeline(Pipeline):
             ]  # post-processed values stored in first output
 
         # NMS
-        batch_output = postprocess_nms(
+        batch_output = self.nms_function(
             batch_output,
             iou_thres=kwargs.get("iou_thres", 0.25),
             conf_thres=kwargs.get("conf_thres", 0.45),
