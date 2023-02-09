@@ -16,7 +16,7 @@ import click
 
 from deepsparse import Pipeline
 from deepsparse.yolo.utils import COCO_CLASSES
-from deepsparse.yolov8.utils import DetectionValidator
+from deepsparse.yolov8.utils import DeepSparseDetectionValidator
 from ultralytics.yolo.cfg import get_cfg
 from ultralytics.yolo.utils import DEFAULT_CFG
 
@@ -115,7 +115,7 @@ def main(
 
     classes = {label: class_ for (label, class_) in enumerate(COCO_CLASSES)}
 
-    validator = DetectionValidator(pipeline=pipeline, args=args)
+    validator = DeepSparseDetectionValidator(pipeline=pipeline, args=args)
     validator(stride=stride, classes=classes)
 
 
