@@ -260,11 +260,13 @@ def _setup_entry_points() -> Dict:
     data_api_entrypoint = "deepsparse.transformers.pipelines_cli:cli"
     eval_downstream = "deepsparse.transformers.eval_downstream:main"
     ic_eval = "deepsparse.image_classification.validation_script:main"
+    analysis_entrypoint = "deepsparse.performance_analysis.model_analysis"
 
     return {
         "console_scripts": [
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             f"deepsparse.transformers.eval_downstream={eval_downstream}",
+            f"{analysis_entrypoint}=sparsezoo.analysis_cli:main",
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
