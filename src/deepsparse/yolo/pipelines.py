@@ -273,7 +273,7 @@ class YOLOPipeline(Pipeline):
 
         # NMS
         batch_output = self.nms_function(
-            batch_output,
+            outputs=batch_output,
             iou_thres=kwargs.get("iou_thres", 0.25),
             conf_thres=kwargs.get("conf_thres", 0.45),
             multi_label=kwargs.get("multi_label", False),

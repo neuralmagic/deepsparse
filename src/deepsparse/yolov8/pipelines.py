@@ -14,9 +14,20 @@
 
 from typing import Callable
 
+import numpy
+
+import torch
 from deepsparse import Pipeline
 from deepsparse.yolo import YOLOPipeline
-from deepsparse.yolov8.utils import non_max_suppression
+from ultralytics.yolo.utils.ops import non_max_suppression as non_max_supression_torch
+
+
+def non_max_supression_numpy(outputs: numpy.ndarray, **kwargs) -> torch.Tensor:
+    """
+    Helper function to convert engine outputs (numpy array) to torch tensor, so that
+    the non_max_supression_torch function can be used.
+    """
+    return non_max_supression_torch(prediction=torch.from_numpy(outputs), **kwargs)
 
 
 @Pipeline.register(
@@ -24,6 +35,6 @@ from deepsparse.yolov8.utils import non_max_suppression
     default_model_path=None,
 )
 class YOLOv8Pipeline(YOLOPipeline):
-    def __init__(self, nms_function: Callable = non_max_suppression, **kwargs):
+    def __init__(self, nms_function: Callable = non_max_supression_numpy, **kwargs):
         self.nms_function = nms_function
         super().__init__(nms_function=nms_function, **kwargs)

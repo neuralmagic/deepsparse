@@ -54,8 +54,6 @@ and quantization—techniques that dramatically shrink the required compute with
 product called Sparsify, we have produced YOLOv8s and YOLOv8n ONNX models that have been quantized to INT8 while maintaining at least 99% of the original FP32 mAP@0.5. 
 This was achieved with just 1024 samples and no back-propagation. You can download the quantized models [here](https://drive.google.com/drive/folders/1vf4Es-8bxhx348TzzfhvljMQUo62XhQ4?usp=sharing).
 
-## Deployment APIs
-
 ## Deployment Example
 The following example uses pipelines to run a pruned and quantized YOLOv8 model for inference. As input, the pipeline ingests a list of images and returns for each image the detection boxes in numeric form.
 
@@ -67,7 +65,8 @@ wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 
 ```python
 from deepsparse import Pipeline
-model_path = "yolov8n.onnx" # or "yolov8n_quant.onnx"
+
+model_path = "../../../yolov8n.onnx"  # or "yolov8n_quant.onnx"
 images = ["basilica.jpg"]
 yolo_pipeline = Pipeline.create(
     task="yolov8",
@@ -78,13 +77,33 @@ pipeline_outputs = yolo_pipeline(images=images)
 <img width="1041" alt="Screenshot 2023-01-11 at 6 53 46 PM" src="https://user-images.githubusercontent.com/3195154/211942937-1d32193a-6dda-473d-a7ad-e2162bbb42e9.png">
 
 #### Annotate CLI
-You can also use the annotate command to have the engine save an annotated photo on the disk.
+You can also use the `annotate` command to have the engine save an annotated photo on the disk.
 ```bash
 deepsparse.yolov8.annotate --source basilica.jpg --model_filepath "yolov8n.onnx" # or "yolov8n_quant.onnx"
 ```
 
 Running the above command will create an `annotation-results` folder and save the annotated image inside.
 
+#### Annotate CLI
+You can also use the `eval` command to have the engine run inference on a dataset (in the same fashion as it is being done in `ultralytics` module)
+```bash
+deepsparse.yolov8.eval --model_path yolov8n.onnx
+```
+Output:
+```bash
+DeepSparse, Copyright 2021-present / Neuralmagic, Inc. version: 1.4.0.20230211 COMMUNITY | (bacdaef4) (release) (optimized) (system=avx2, binary=avx2)
+Ultralytics YOLOv8.0.36 🚀 Python-3.8.10 torch-1.12.1+cu116 CUDA:0 (NVIDIA RTX A4000, 16117MiB)
+val: Scanning /home/ubuntu/damian/deepsparse/datasets/coco128/labels/train2017.cache... 126 images, 2 backgrounds, 0 corrupt: 100%|██████████| 128/128 [00:00<?, ?it/s]
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95): 100%|██████████| 8/8 [00:07<00:00,  1.04it/s]
+                   all        128        929      0.651      0.532      0.606      0.453
+                person        128        254      0.805      0.667      0.764      0.543
+               bicycle        128          6      0.661      0.328      0.329      0.232
+                   car        128         46      0.817      0.196      0.269      0.181
+            motorcycle        128          5      0.602        0.8       0.88      0.684
+...
+```
+
+Running the above command will create an `annotation-results` folder and save the annotated image inside.
 
 ### Benchmarking
 The mission of Neural Magic is to enable GPU-class inference performance on commodity CPUs. Want to find out how fast our sparse YOLOv8 ONNX models perform inference? 

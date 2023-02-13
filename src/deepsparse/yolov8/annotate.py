@@ -28,9 +28,9 @@ Options:
                                   Inference engine backend to run on. Choices
                                   are 'deepsparse', 'onnxruntime', and
                                   'torch'. Default is 'deepsparse'
-  --image_shape, --image_shape INTEGER
-                                  Image shape to use for inference, must be
-                                  two integers  [default: 640, 640]
+  --model_input_image_shape, --model-input-shape INTEGER...
+                                  Image shape to override model with for
+                                  inference, must be two integers
   --num_cores, --num-cores INTEGER
                                   The number of physical cores to run the
                                   annotations with, defaults to using all
@@ -63,7 +63,7 @@ Examples:
 4) deepsparse.yolov8.annotate --source PATH/TO/IMAGE_DIR
 """
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 import click
 
@@ -111,12 +111,12 @@ _LOGGER = logging.getLogger(__name__)
     "'onnxruntime', and 'torch'. Default is 'deepsparse'",
 )
 @click.option(
-    "--image_shape",
-    "--image-shape",
+    "--model_input_image_shape",
+    "--model-input-image-shape",
     type=int,
     nargs=2,
-    default=(640, 640),
-    help="Image shape to use for inference, must be two integers",
+    default=None,
+    help="Image shape to override model with for inference, must be two integers",
     show_default=True,
 )
 @click.option(
@@ -169,12 +169,12 @@ def main(
     model_filepath: str,
     source: str,
     engine: str,
-    image_shape: tuple,
     num_cores: Optional[int],
     save_dir: str,
     name: Optional[str],
     target_fps: Optional[float],
     no_save: bool,
+    model_input_image_shape: Optional[Tuple[int, ...]],
 ) -> None:
     """
     Annotation Script for YOLOv8 with DeepSparse
@@ -188,7 +188,7 @@ def main(
     loader, saver, is_video = get_image_loader_and_saver(
         path=source,
         save_dir=save_dir,
-        image_shape=image_shape,
+        image_shape=None,
         target_fps=target_fps,
         no_save=no_save,
     )
@@ -200,6 +200,7 @@ def main(
         class_names="coco",
         engine_type=engine,
         num_cores=num_cores,
+        image_size=model_input_image_shape,
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
@@ -212,7 +213,6 @@ def main(
             target_fps=target_fps,
             calc_fps=is_video,
             original_image=source_image,
-            model_input_size=image_shape,
         )
 
         if is_webcam:
