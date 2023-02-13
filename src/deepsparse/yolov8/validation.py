@@ -26,17 +26,18 @@ ORT_ENGINE = "onnxruntime"
 SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
 
 
-@click.command()
+@click.command(
+    context_settings=(
+        dict(token_normalize_func=lambda x: x.replace("-", "_"), show_default=True)
+    )
+)
 @click.option(
     "--model-path",
-    "--model_path",
     required=True,
-    help="Path to SparseZoo/onnx model or SparseZoo stub f"
-    "or the YOLOv8 model to be evaluated.",
+    help="Path to the YOLOv8 onnx model or" "SparseZoo stub to be evaluated.",
 )
 @click.option(
     "--dataset-yaml",
-    "--dataset_yaml",
     type=str,
     default="coco128.yaml",
     show_default=True,
@@ -46,7 +47,6 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
 )
 @click.option(
     "--num-cores",
-    "--num_cores",
     type=int,
     default=None,
     show_default=True,
@@ -54,7 +54,6 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
 )
 @click.option(
     "--batch-size",
-    "--batch_size",
     type=int,
     default=16,
     show_default=True,
@@ -71,7 +70,7 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
     "convolutional network.",
 )
 @click.option(
-    "--engine_type",
+    "--engine-type",
     default=DEEPSPARSE_ENGINE,
     type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE]),
     show_default=True,

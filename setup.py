@@ -136,7 +136,7 @@ _openpifpaf_integration_deps = [
     "openpifpaf==0.13.6",
     "opencv-python<=4.6.0.66",
 ]
-_yolov8_integration_deps = _yolo_integration_deps
+_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics"]
 
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
