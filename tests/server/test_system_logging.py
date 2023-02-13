@@ -25,7 +25,7 @@ from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from deepsparse.server.system_logging import log_resource_utilization
 from fastapi.testclient import TestClient
-from tests.deepsparse.loggers.helpers import ListLogger
+from tests.deepsparse.loggers.helpers import ListLogger, fetch_leaf_logger
 from tests.utils import mock_engine
 
 
@@ -94,7 +94,7 @@ def test_log_request_details(
     client = TestClient(app)
     client.post("/predict", json=json_payload)
 
-    calls = server_logger.logger.loggers[0].logger.loggers[0].calls
+    calls = fetch_leaf_logger(server_logger).calls
 
     _test_successful_requests(calls, successful_request)
     _test_response_msg(calls, response_msg)
