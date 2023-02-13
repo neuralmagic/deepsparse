@@ -85,26 +85,28 @@ class SystemLoggingGroup(BaseModel):
 
 
 class SystemLoggingConfig(BaseModel):
-    """
-    Holds the configuration for the system logging
-    in the context of a single pipeline
-    """
-
     # Global Logging Config
     enable: bool = Field(
         default=True, description="Whether to enable system logging. Defaults to True"
     )
 
-    # System Logging Groups
-    resource_utilization: SystemLoggingGroup = Field(
+
+class PipelineSystemLoggingConfig(SystemLoggingConfig):
+    """
+    Holds the configuration for the system logging
+    in the context of a single pipeline
+    """
+
+    # Pipeline System Logging Groups
+    inference_details: SystemLoggingGroup = Field(
         default=SystemLoggingGroup(enable=False),
-        description="The configuration group for the resource "
-        "utilization system logging group. By default this group is disabled.",
+        description="The configuration group for the inference details "
+        "logging group. By default this group is disabled.",
     )
     prediction_latency: SystemLoggingGroup = Field(
         default=SystemLoggingGroup(enable=True),
         description="The configuration group for the prediction latency "
-        "system logging group. By default this group is enabled.",
+        "logging group. By default this group is enabled.",
     )
 
 
@@ -121,17 +123,9 @@ class PipelineLoggingConfig(BaseModel):
             "Set to {} for no loggers. Default is {}."
         ),
     )
-    add_predefined: Optional[List[MetricFunctionConfig]] = Field(
-        default=None,
-        description=(
-            "Optional list of predefined metric function groups - configurations of "
-            "identifiers with their built-in functions, specific for a given "
-            "predefined logger integration names. Default is []."
-        ),
-    )
 
-    system_logging: SystemLoggingConfig = Field(
-        default=SystemLoggingConfig(),
+    system_logging: PipelineSystemLoggingConfig = Field(
+        default=PipelineSystemLoggingConfig(),
         description="A model that holds the system logging configuration. "
         "If not specified explicitly in the yaml config, the "
         "default SystemLoggingConfig model is used.",

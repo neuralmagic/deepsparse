@@ -18,6 +18,7 @@ import pytest
 from deepsparse.loggers import AsyncLogger, MultiLogger, PythonLogger
 from deepsparse.server.config import ServerConfig
 from deepsparse.server.helpers import server_logger_from_config
+from tests.deepsparse.loggers.helpers import fetch_leaf_logger
 from tests.helpers import find_free_port
 
 
@@ -153,16 +154,15 @@ def test_server_logger_from_config(
     assert isinstance(logger, AsyncLogger)
     assert isinstance(logger.logger, MultiLogger)
     if default_logger:
-        assert isinstance(logger.logger.loggers[0].logger.loggers[0], PythonLogger)
+        assert isinstance(fetch_leaf_logger(logger), PythonLogger)
         return
     assert len(logger.logger.loggers) == num_function_loggers + 1
 
     # check for default system logger behaviour
     system_logger = logger.logger.loggers[-1]
-    assert system_logger.target_identifier == "prediction_latency"
+    assert (
+        system_logger.target_identifier
+        == f"{server_config.endpoints[0].name}/prediction_latency"
+    )
     assert system_logger.function_name == "identity"
     assert system_logger.frequency == 1
-
-
-def test_server_logger_from_predefined():
-    pass

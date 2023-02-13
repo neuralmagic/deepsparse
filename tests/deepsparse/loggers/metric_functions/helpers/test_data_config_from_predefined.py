@@ -49,7 +49,7 @@ def test_data_config_from_predefined(group_name, frequency, path_to_config):
         group_names=group_name,
         frequency=frequency,
         save_name=save_name,
-        save_dir=save_dir if os.environ.get("GENERATE_CONFIGS") else None,
+        save_dir=save_dir if os.environ.get("NM_GENERATE_CONFIGS") else None,
     )
     with open(path_to_config, "r") as f:
         expected_config = yaml.safe_load(f)
