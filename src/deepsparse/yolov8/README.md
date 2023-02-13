@@ -29,12 +29,11 @@ Below we describe three possibilities to obtain the required ONNX model.
 ### Fetching the original (non-compressed) YOLOv8 directly from the Ultralytics repository
 ```bash
 # Install packages for DeepSparse and YOLOv8
-pip install deepsparse[yolov8] ultralytics
+pip install deepsparse[yolov8]
 # Export YOLOv8n and YOLOv8s ONNX models
 yolo task=detect mode=export model=yolov8n.pt format=onnx opset=13
-yolo task=detect mode=export model=yolov8s.pt format=onnx opset=13
 ```
-This will save `yolov8n.onnx` and `yolov8s.onnx` to your disk.
+This will save `yolov8n.onnx` to your disk.
 
 ### Exporting the ONNX File From the Contents of a Local Directory
 This pathway is relevant if you intend to deploy a model created using the [SparseML](https://github.com/neuralmagic/sparseml) library. 
