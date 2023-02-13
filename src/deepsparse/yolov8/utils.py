@@ -16,7 +16,7 @@
 This code is fully ported from the ultralytics repository:
 https://github.com/ultralytics/ultralytics/blob/main/ultralytics/yolo/utils/ops.py
 the intention is to fuse this code with the already existing NMS code in
-/home/ubuntu/damian/deepsparse/src/deepsparse/yolo/utils/utils.py
+deepsparse/src/deepsparse/yolo/utils/utils.py
 """
 import time
 import warnings
