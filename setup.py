@@ -136,7 +136,7 @@ _openpifpaf_integration_deps = [
     "openpifpaf==0.13.6",
     "opencv-python<=4.6.0.66",
 ]
-_yolov8_integration_deps = _yolo_integration_deps
+_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics"]
 
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
@@ -275,6 +275,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
             "deepsparse.yolov8.annotate=deepsparse.yolov8.annotate:main",
+            "deepsparse.yolov8.eval=deepsparse.yolov8.validation:main",
             "deepsparse.pose_estimation.annotate=deepsparse.open_pif_paf.annotate:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
