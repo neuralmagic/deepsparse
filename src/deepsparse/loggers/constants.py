@@ -23,9 +23,11 @@ __all__ = [
     "MetricCategories",
     "validate_identifier",
     "SystemGroups",
+    "FROM_PREDEFINED",
 ]
 
 UNSUPPORTED_IDENTIFIER_CHARS = {".", "[", "]"}
+FROM_PREDEFINED = "predefined"
 
 
 class MetricCategories(Enum):
@@ -44,6 +46,7 @@ class MetricCategories(Enum):
 @dataclass(frozen=True)
 class SystemGroups:
     # Pipeline System Groups
+    INFERENCE_DETAILS: str = "inference_details"
     PREDICTION_LATENCY: str = "prediction_latency"
     # Server System Groups
     REQUEST_DETAILS: str = "request_details"

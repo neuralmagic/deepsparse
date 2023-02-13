@@ -301,4 +301,7 @@ def _assert_numpy_image(
         img = img.numpy()
     if isinstance(img, list):
         img = numpy.stack(img)
+        if img.shape[0] == 1:
+            img = img[0]
+
     return img

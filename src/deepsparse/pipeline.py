@@ -207,7 +207,7 @@ class Pipeline(ABC):
         self._batch_size = self._batch_size or 1
 
         self.log(
-            identifier=f"{SystemGroups.RESOURCE_UTILIZATION}/num_cores_total",
+            identifier=f"{SystemGroups.INFERENCE_DETAILS}/num_cores_total",
             value=num_cores,
             category=MetricCategories.SYSTEM,
         )
@@ -270,7 +270,7 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
         self.log(
-            identifier=f"{SystemGroups.REQUEST_DETAILS}/input_batch_size_total",
+            identifier=f"{SystemGroups.INFERENCE_DETAILS}/input_batch_size_total",
             # to get the batch size of the inputs, we need to look
             # to multiply the engine batch size (self._batch_size)
             # by the number of batches processed by the engine during
