@@ -15,13 +15,13 @@
 from unittest import mock
 
 import pytest
-from deepsparse.server.build_logger import build_logger
+from deepsparse.loggers.config import SystemLoggingGroup
 from deepsparse.server.config import (
     EndpointConfig,
     ServerConfig,
-    SystemLoggingConfig,
-    SystemLoggingGroup,
+    ServerSystemLoggingConfig,
 )
+from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from deepsparse.server.system_logging import log_resource_utilization
 from fastapi.testclient import TestClient
@@ -39,24 +39,12 @@ def _test_successful_requests(calls, successful_request):
     relevant_call = [
         call
         for call in calls
-        if call.startswith("identifier:request_details/successful_request")
+        if call.startswith("identifier:request_details/successful_request_count")
     ]
     assert len(relevant_call) == 1
     relevant_call = relevant_call[0]
     value = bool(int(relevant_call.split("value:")[1].split(",")[0]))
     assert value == successful_request
-
-
-def _test_input_batch_size(calls, input_batch_size):
-    relevant_call = [
-        call
-        for call in calls
-        if call.startswith("identifier:endpoint_name/request_details/input_batch_size")
-    ]
-    assert len(relevant_call) == 1
-    relevant_call = relevant_call[0]
-    value = int(relevant_call.split("value:")[1].split(",")[0])
-    assert value == input_batch_size
 
 
 def _test_response_msg(calls, response_msg):
@@ -94,13 +82,13 @@ def test_log_request_details(
             )
         ],
         loggers={"logger_1": {"path": logger_identifier}},
-        system_logging=SystemLoggingConfig(
+        system_logging=ServerSystemLoggingConfig(
             request_details=SystemLoggingGroup(enable=True)
         ),
     )
-    server_logger = build_logger(server_config)
+    server_logger = server_logger_from_config(server_config)
     with mock.patch(
-        "deepsparse.server.server.build_logger", return_value=server_logger
+        "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
@@ -110,8 +98,6 @@ def test_log_request_details(
 
     _test_successful_requests(calls, successful_request)
     _test_response_msg(calls, response_msg)
-    if successful_request:
-        _test_input_batch_size(calls, input_batch_size)
 
 
 def _test_cpu_utilization(calls, num_iterations):
@@ -139,7 +125,9 @@ def _test_total_memory_available(calls, num_iterations):
     relevant_calls = [
         call
         for call in calls
-        if call.startswith("identifier:resource_utilization/total_memory_available_MB")
+        if call.startswith(
+            "identifier:resource_utilization/total_memory_available_bytes"
+        )
     ]
     values = [float(call.split("value:")[1].split(",")[0]) for call in relevant_calls]
     assert len(relevant_calls) == num_iterations

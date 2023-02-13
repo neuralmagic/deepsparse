@@ -12,142 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
-
 import pytest
-from deepsparse.loggers.metric_functions import (
-    bounding_box_count,
-    fraction_zeros,
-    image_shape,
-    max_pixels_per_channel,
-    mean_pixels_per_channel,
-    std_pixels_per_channel,
-)
-
-
-def _generate_array_and_fill_with_n_zeros(fill_value, shape, n_zeros):
-    array = numpy.full(fill_value=fill_value, shape=shape)
-    array = array.flatten()
-    array[:n_zeros] = 0.0
-    array = numpy.reshape(array, shape)
-    return array
-
-
-BBOX = [500.0, 500.0, 400.0, 400.0]
+from deepsparse.loggers.metric_functions import predicted_classes, predicted_top_score
+from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
 @pytest.mark.parametrize(
-    "image, expected_shape",
+    "classes, expected_result",
     [
-        (numpy.random.rand(2, 3, 16, 16), (3, 16, 16)),
-        (numpy.random.rand(2, 16, 16, 3), (16, 16, 3)),
-        (numpy.random.rand(16, 16, 1), (16, 16, 1)),
+        ([1, 2, 3, 4], BatchResult([1, 2, 3, 4])),
+        (["1", "2", "3", "4"], BatchResult([1, 2, 3, 4])),
+        (
+            [[1, 2, 3, 4], [5, 6, 7, 8]],
+            BatchResult([BatchResult([1, 2, 3, 4]), BatchResult([5, 6, 7, 8])]),
+        ),
+        (
+            [["1", "2", "3", "4"], [5, 6, 7, 8]],
+            BatchResult([BatchResult([1, 2, 3, 4]), BatchResult([5, 6, 7, 8])]),
+        ),
     ],
 )
-def test_image_shape(image, expected_shape):
-    assert expected_shape == image_shape(image)
+def test_predicted_classes(classes, expected_result):
+    assert predicted_classes(classes) == expected_result
 
 
 @pytest.mark.parametrize(
-    "image, expected_means",
+    "batch_scores, expected_result",
     [
+        ([[0.7, 0.8, 0.1], [0.6, 0.4, 0.1]], BatchResult([0.8, 0.6])),
         (
-            numpy.full(fill_value=0.3, shape=(2, 3, 16, 16)),
-            numpy.full(fill_value=0.3, shape=3),
-        ),
-        (
-            numpy.full(fill_value=0.3, shape=(2, 1, 16, 16)),
-            numpy.full(fill_value=0.3, shape=1),
-        ),
-        (
-            numpy.full(fill_value=0.5, shape=(1, 16, 16)),
-            numpy.full(fill_value=0.5, shape=1),
-        ),
-        (
-            numpy.full(fill_value=0.5, shape=(16, 16, 1)),
-            numpy.full(fill_value=0.5, shape=1),
-        ),
-        (
-            numpy.full(fill_value=0.5, shape=(3, 16, 16)),
-            numpy.full(fill_value=0.5, shape=3),
+            [0.7, 0.8, 0.1],
+            0.8,
         ),
     ],
 )
-def test_mean_pixel_per_channel(image, expected_means):
-    numpy.testing.assert_allclose(expected_means, mean_pixels_per_channel(image))
-
-
-@pytest.mark.parametrize(
-    "image, expected_stds",
-    [
-        (numpy.full(fill_value=0.3, shape=(2, 3, 16, 16)), numpy.zeros(3)),
-        (numpy.full(fill_value=0.3, shape=(2, 1, 16, 16)), numpy.zeros(1)),
-        (numpy.full(fill_value=0.5, shape=(1, 16, 16)), numpy.zeros(1)),
-        (numpy.full(fill_value=0.5, shape=(16, 16, 1)), numpy.zeros(1)),
-        (numpy.full(fill_value=0.5, shape=(3, 16, 16)), numpy.zeros(3)),
-    ],
-)
-def test_std_pixels_per_channel(image, expected_stds):
-    numpy.testing.assert_allclose(
-        expected_stds, std_pixels_per_channel(image), atol=1e-16
-    )
-
-
-@pytest.mark.parametrize(
-    "image, expected_max",
-    [
-        (
-            numpy.full(fill_value=0.3, shape=(2, 3, 16, 16)),
-            numpy.full(fill_value=0.3, shape=3),
-        ),
-        (
-            numpy.full(fill_value=0.5, shape=(3, 16, 16)),
-            numpy.full(fill_value=0.5, shape=3),
-        ),
-        (
-            numpy.full(fill_value=120, shape=(16, 16, 1)),
-            numpy.full(fill_value=120, shape=1),
-        ),
-    ],
-)
-def test_max_pixels_per_channel(image, expected_max):
-    numpy.testing.assert_allclose(
-        expected_max, max_pixels_per_channel(image), atol=1e-16
-    )
-
-
-@pytest.mark.parametrize(
-    "image, expected_percentage",
-    [
-        (_generate_array_and_fill_with_n_zeros(0.5, (2, 16, 16, 3), 0), 0.0),
-        (
-            _generate_array_and_fill_with_n_zeros(120, (3, 3, 16, 16), 3 * 3 * 16 * 8),
-            0.5,
-        ),
-        (_generate_array_and_fill_with_n_zeros(0.1, (16, 16, 1), 16 * 16 * 1), 1.0),
-    ],
-)
-def test_percentage_zeros_per_channel(image, expected_percentage):
-    assert expected_percentage == fraction_zeros(image)
-
-
-@pytest.mark.parametrize(
-    "bboxes, expected_num_bboxes, should_raise_error",
-    [
-        ([[]], 0, False),
-        ([], 0, False),
-        ([[BBOX, BBOX, BBOX], [BBOX, BBOX, BBOX, BBOX]], {0: 3, 1: 4}, False),
-        ([[BBOX, BBOX, BBOX]], {0: 3}, False),
-        ([[[10, 10, 10, 10]]], None, True),
-        ([[BBOX[:3]]], None, True),
-        ([["string"]], None, True),
-        (["string"], None, True),
-    ],
-)
-def test_num_bounding_boxes(bboxes, expected_num_bboxes, should_raise_error):
-    if should_raise_error:
-        with pytest.raises(ValueError):
-            bounding_box_count(bboxes)
-        return
-
-    assert expected_num_bboxes == bounding_box_count(bboxes)
+def test_predicted_top_score(batch_scores, expected_result):
+    assert predicted_top_score(batch_scores) == expected_result

@@ -296,6 +296,8 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
     # "elastic", use the value of num_streams given to us by the model, otherwise
     # use a semi-sane default value.
     if scenario == "sync" or scenario == "singlestream":
+        if num_streams and num_streams > 1:
+            _LOGGER.info("num_streams reduced to 1 for singlestream scenario.")
         return 1
     else:
         if num_streams:
@@ -387,6 +389,8 @@ def benchmark_model(
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as model_path:
             input_list = generate_random_inputs(model_path, batch_size)
+    elif hasattr(model, "generate_random_inputs"):
+        input_list = model.generate_random_inputs()
     elif hasattr(engine, "generate_random_inputs"):
         input_list = engine.generate_random_inputs(batch_size=batch_size)
     else:

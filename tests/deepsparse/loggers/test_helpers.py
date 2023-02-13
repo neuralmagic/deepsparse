@@ -23,8 +23,10 @@ from deepsparse.loggers.helpers import (
     check_identifier_match,
     get_function_and_function_name,
     possibly_extract_value,
+    unwrap_logged_value,
 )
 from deepsparse.loggers.metric_functions import identity
+from deepsparse.loggers.metric_functions.utils import BatchResult
 from tests.test_data.metric_functions import user_defined_identity
 
 
@@ -50,13 +52,15 @@ def test_get_function_and_function_name(
 @pytest.mark.parametrize(
     "template, identifier,expected_output",
     [
-        ("string_1/string_2[1:3]", "string_1/string_2", (True, "[1:3]")),
+        ("string_1.string_2[1:3]", "string_1", (True, "string_2[1:3]")),
+        ("string_1/string_2.string_3", "string_1/string_2", (True, "string_3")),
+        ("string_2", "string_1/string_2/string_3", (True, None)),
         ("string_1/string_2", "string_1/string_2", (True, None)),
         ("string_1/string_3", "string_1/string_2", (False, None)),
         (
             "string_1/string_2/string_3.string_4",
-            "string_1/string_2",
-            (True, "string_3.string_4"),
+            "string_1/string_2/string_3",
+            (True, "string_4"),
         ),
         ("re:string_*..*.string.*", "string_1/string_2", (True, None)),
         ("re:string_*..*.string.*", "string_3/string_4", (True, None)),
@@ -126,3 +130,38 @@ def test_access_nested_value(value, square_brackets, expected_value):
     assert expected_value == access_nested_value(
         value=value, square_brackets=square_brackets
     )
+
+
+@pytest.mark.parametrize(
+    "value, expected_result",
+    [
+        (10, set([("", 10)])),
+        (
+            {"level_1a": 1, "level_1b": BatchResult([1, 2, 3])},
+            set([("level_1a", 1), ("level_1b", 1), ("level_1b", 2), ("level_1b", 3)]),
+        ),
+        (
+            {"level_1a": {"level_2a": 1, "level_2b": 2}, "level_1b": 2},
+            set(
+                [("level_1a__level_2a", 1), ("level_1a__level_2b", 2), ("level_1b", 2)]
+            ),
+        ),
+        (
+            {
+                "level_1a": {"level_2a": 1, "level_2b": 2},
+                "level_1b": {"level_2a": {"level_3a": 1, "level_3b": 2}},
+            },
+            set(
+                [
+                    ("level_1a__level_2a", 1),
+                    ("level_1a__level_2b", 2),
+                    ("level_1b__level_2a__level_3a", 1),
+                    ("level_1b__level_2a__level_3b", 2),
+                ]
+            ),
+        ),
+    ],
+)
+def test_unwrap_logs_dictionary(value, expected_result):
+    result = set(result for result in unwrap_logged_value(value))
+    assert result == expected_result

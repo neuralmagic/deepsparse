@@ -91,7 +91,7 @@ _deps = [
     "requests>=2.0.0",
     "tqdm>=4.0.0",
     "protobuf>=3.12.2,<=3.20.1",
-    "click~=8.0.0",
+    "click>=7.1.2,!=8.0.0",  # latest version < 8.0 + blocked version with reported bug
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
@@ -130,11 +130,11 @@ _onnxruntime_deps = [
 ]
 _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.13",
-    "opencv-python",
+    "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
     "openpifpaf==0.13.6",
-    "opencv-python",
+    "opencv-python<=4.6.0.66",
 ]
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
@@ -268,9 +268,10 @@ def _setup_entry_points() -> Dict:
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
+            "deepsparse.benchmark_sweep=deepsparse.benchmark.benchmark_sweep:main",
             "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
-            "deepsparse.pose_estimation.annotate=deepsparse.openpifpaf.annotate:main",
+            "deepsparse.pose_estimation.annotate=deepsparse.open_pif_paf.annotate:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",

@@ -135,7 +135,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        doc_stride: int = 128,
+        doc_stride: int = 64,
         max_question_length: int = 64,
         max_answer_length: int = 15,
         n_best_size: int = 20,

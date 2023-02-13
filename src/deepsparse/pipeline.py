@@ -28,11 +28,11 @@ from pydantic import BaseModel, Field
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
-from deepsparse.loggers import (
-    REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
-    BaseLogger,
+from deepsparse.loggers.base_logger import BaseLogger
+from deepsparse.loggers.build_logger import logger_from_config
+from deepsparse.loggers.constants import (
     MetricCategories,
+    SystemGroups,
     validate_identifier,
 )
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
@@ -136,8 +136,11 @@ class Pipeline(ABC):
         synchronous execution - if running in dynamic batch mode a default
         ThreadPoolExecutor with default workers equal to the number of available
         cores / 2
-    :param logger: An optional DeepSparse Logger object for inference logging.
-        Default is None
+    :param logger: An optional item that can be either a DeepSparse Logger object,
+        or an object that can be transformed into one. Those object can be either
+        a path to the logging config, or yaml string representation the logging
+        config. If logger provided (in any form), the pipeline will log inference
+        metrics to the logger. Default is None
     """
 
     def __init__(
@@ -151,7 +154,7 @@ class Pipeline(ABC):
         alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
-        logger: Optional[BaseLogger] = None,
+        logger: Optional[Union[BaseLogger, str]] = None,
         _delay_engine_initialize: bool = False,  # internal use only
     ):
         self._model_path_orig = model_path
@@ -160,7 +163,17 @@ class Pipeline(ABC):
         self._batch_size = batch_size
         self._alias = alias
         self.context = context
-        self.logger = logger
+        self.logger = (
+            logger
+            if isinstance(logger, BaseLogger)
+            else (
+                logger_from_config(
+                    config=logger, pipeline_identifier=self._identifier()
+                )
+                if isinstance(logger, str)
+                else None
+            )
+        )
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -194,7 +207,7 @@ class Pipeline(ABC):
         self._batch_size = self._batch_size or 1
 
         self.log(
-            identifier=f"{RESOURCE_UTILIZATION_IDENTIFIER_PREFIX}/num_cores",
+            identifier=f"{SystemGroups.INFERENCE_DETAILS}/num_cores_total",
             value=num_cores,
             category=MetricCategories.SYSTEM,
         )
@@ -239,9 +252,7 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            # note, will be replaced by a reference instead of "bare" string
-            # with the upcoming PR for system logging
-            identifier=f"prediction_latency/{InferencePhases.PRE_PROCESS}",
+            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.PRE_PROCESS}_seconds",  # noqa E501
             value=timer.time_delta(InferencePhases.PRE_PROCESS),
             category=MetricCategories.SYSTEM,
         )
@@ -259,7 +270,7 @@ class Pipeline(ABC):
         timer.stop(InferencePhases.ENGINE_FORWARD)
 
         self.log(
-            identifier=f"{REQUEST_DETAILS_IDENTIFIER_PREFIX}/input_batch_size",
+            identifier=f"{SystemGroups.INFERENCE_DETAILS}/input_batch_size_total",
             # to get the batch size of the inputs, we need to look
             # to multiply the engine batch size (self._batch_size)
             # by the number of batches processed by the engine during
@@ -274,7 +285,7 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.ENGINE_FORWARD}",
+            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.ENGINE_FORWARD}_seconds",  # noqa E501
             value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
             category=MetricCategories.SYSTEM,
         )
@@ -298,12 +309,12 @@ class Pipeline(ABC):
             category=MetricCategories.DATA,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.POST_PROCESS}",
+            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.POST_PROCESS}_seconds",  # noqa E501
             value=timer.time_delta(InferencePhases.POST_PROCESS),
             category=MetricCategories.SYSTEM,
         )
         self.log(
-            identifier=f"prediction_latency/{InferencePhases.TOTAL_INFERENCE}",
+            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.TOTAL_INFERENCE}_seconds",  # noqa E501
             value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
             category=MetricCategories.SYSTEM,
         )
@@ -740,15 +751,13 @@ class Pipeline(ABC):
         if not self.logger:
             return
 
-        if not hasattr(self, "task"):
-            self.task = None
-
-        identifier = f"{self.alias or self.task or 'unknown_pipeline'}/{identifier}"
+        identifier = f"{self._identifier()}/{identifier}"
         validate_identifier(identifier)
         self.logger.log(
             identifier=identifier,
             value=value,
             category=category,
+            pipeline_name=self._identifier(),
         )
         return
 
@@ -802,6 +811,12 @@ class Pipeline(ABC):
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
                 f"{SUPPORTED_PIPELINE_ENGINES}"
             )
+
+    def _identifier(self):
+        # get pipeline identifier; used in the context of logging
+        if not hasattr(self, "task"):
+            self.task = None
+        return f"{self.alias or self.task or 'unknown_pipeline'}"
 
 
 class PipelineConfig(BaseModel):

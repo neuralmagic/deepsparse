@@ -18,12 +18,7 @@ from os import getpid
 from typing import Any, Dict, List, Optional, Union
 
 import psutil
-from deepsparse.loggers import (
-    REQUEST_DETAILS_IDENTIFIER_PREFIX,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
-    BaseLogger,
-    MetricCategories,
-)
+from deepsparse.loggers import BaseLogger, MetricCategories, SystemGroups
 from deepsparse.server.config import SystemLoggingConfig, SystemLoggingGroup
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -64,14 +59,14 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
             log_system_information(
                 self.server_logger,
                 self.system_logging_config,
-                REQUEST_DETAILS_IDENTIFIER_PREFIX,
+                SystemGroups.REQUEST_DETAILS,
                 response_message=f"{err.__class__.__name__}: {err}",
             )
             log_system_information(
                 self.server_logger,
                 self.system_logging_config,
-                REQUEST_DETAILS_IDENTIFIER_PREFIX,
-                successful_request=0,
+                SystemGroups.REQUEST_DETAILS,
+                successful_request_count=0,
             )
             _LOGGER.error(err)
             raise
@@ -79,21 +74,21 @@ class SystemLoggingMiddleware(BaseHTTPMiddleware):
         log_system_information(
             self.server_logger,
             self.system_logging_config,
-            REQUEST_DETAILS_IDENTIFIER_PREFIX,
+            SystemGroups.REQUEST_DETAILS,
             response_message=f"Response status code: {response.status_code}",
         )
         log_system_information(
             self.server_logger,
             self.system_logging_config,
-            REQUEST_DETAILS_IDENTIFIER_PREFIX,
-            successful_request=int((response.status_code == 200)),
+            SystemGroups.REQUEST_DETAILS,
+            successful_request_count=int((response.status_code == 200)),
         )
         return response
 
 
 def log_resource_utilization(
     server_logger: BaseLogger,
-    prefix: str = RESOURCE_UTILIZATION_IDENTIFIER_PREFIX,
+    prefix: str = SystemGroups.RESOURCE_UTILIZATION,
     **items_to_log: Dict[str, Any],
 ):
     """
@@ -119,12 +114,11 @@ def log_resource_utilization(
     memory_percent = process.memory_percent()
     # Total physical memory
     total_memory_bytes = psutil.virtual_memory().total
-    total_memory_megabytes = total_memory_bytes / 1024 / 1024
 
     identifier_to_value = {
         "cpu_utilization_percent": cpu_percent,
         "memory_utilization_percent": memory_percent,
-        "total_memory_available_MB": total_memory_megabytes,
+        "total_memory_available_bytes": total_memory_bytes,
     }
     if items_to_log:
         identifier_to_value.update(items_to_log)
@@ -136,7 +130,7 @@ def log_resource_utilization(
 
 def log_request_details(
     server_logger: BaseLogger,
-    prefix: str = REQUEST_DETAILS_IDENTIFIER_PREFIX,
+    prefix: str = SystemGroups.REQUEST_DETAILS,
     **items_to_log: Dict[str, Any],
 ):
     """
@@ -172,8 +166,8 @@ def log_request_details(
 # maps the metric group name to the function that logs the information
 # pertaining to this metric group name
 _PREFIX_MAPPING = {
-    REQUEST_DETAILS_IDENTIFIER_PREFIX: log_request_details,
-    RESOURCE_UTILIZATION_IDENTIFIER_PREFIX: log_resource_utilization,
+    SystemGroups.REQUEST_DETAILS: log_request_details,
+    SystemGroups.RESOURCE_UTILIZATION: log_resource_utilization,
 }
 
 
