@@ -25,7 +25,7 @@ _Dependency = namedtuple("_Dependency", ["name", "version", "necessary"])
 
 def _auto_install_dependencies():
     dependencies = [
-        _Dependency(name="torchvision", version=">=0.3.0,<=0.13.0", necessary=True),
+        _Dependency(name="torchvision", version=">=0.3.0,<=0.14.0", necessary=True),
     ]
 
     for dependency in dependencies:
