@@ -50,14 +50,6 @@ def preprocess_array(
     """
     image = image.astype(numpy.float32)
     image = _assert_channels_last(image)
-    if image.ndim == 4 and image.shape[:2] != input_image_size:
-        image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
-
-    else:
-        if image.shape[:2] != input_image_size:
-            image = cv2.resize(image, input_image_size)
-        image = numpy.expand_dims(image, 0)
-
     image = image.transpose(0, 3, 1, 2)
     image /= 255
     image = numpy.ascontiguousarray(image)

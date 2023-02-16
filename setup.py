@@ -93,7 +93,7 @@ _deps = [
     "protobuf>=3.12.2,<=3.20.1",
     "click>=7.1.2,!=8.0.0",  # latest version < 8.0 + blocked version with reported bug
 ]
-_nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
+_nm_deps = []#[f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
     "beautifulsoup4>=4.9.3",
     "black==22.12.0",
@@ -133,7 +133,7 @@ _yolo_integration_deps = [
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
-    "openpifpaf==0.13.6",
+    "openpifpaf==0.13.11",
     "opencv-python<=4.6.0.66",
 ]
 # haystack dependencies are installed from a requirements file to avoid

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from typing import List, Tuple
-
+import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -22,6 +22,7 @@ from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 __all__ = [
     "OpenPifPafInput",
     "OpenPifPafOutput",
+    "OpenPifPafFields",
 ]
 
 
@@ -31,6 +32,16 @@ class OpenPifPafInput(ComputerVisionSchema):
     """
 
     pass
+
+class OpenPifPafFields(BaseModel):
+    """
+    # TODO
+    """
+
+    fields: List[numpy.ndarray] = Field(description="")
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class OpenPifPafOutput(BaseModel):
