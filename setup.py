@@ -93,7 +93,9 @@ _deps = [
     "protobuf>=3.12.2,<=3.20.1",
     "click>=7.1.2,!=8.0.0",  # latest version < 8.0 + blocked version with reported bug
 ]
-_nm_deps = []#[f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
+_nm_deps = (
+    []
+)  # [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
     "beautifulsoup4>=4.9.3",
     "black==22.12.0",

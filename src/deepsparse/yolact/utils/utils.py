@@ -48,10 +48,20 @@ def preprocess_array(
     :return: preprocessed numpy array (B, C, D, D); where (D,D) is image size expected
         by the network. It is a contiguous array with RGB channel order.
     """
-    image = image.astype(numpy.float32)
+    uint8_image = image[0].dtype == numpy.uint8
     image = _assert_channels_last(image)
+    if image.ndim == 4 and image.shape[:2] != input_image_size:
+        image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
+
+    else:
+        if image.shape[:2] != input_image_size:
+            image = cv2.resize(image, input_image_size)
+        image = numpy.expand_dims(image, 0)
+
     image = image.transpose(0, 3, 1, 2)
-    image /= 255
+    if uint8_image:
+        image = image.astype(numpy.float32)
+        image /= 255
     image = numpy.ascontiguousarray(image)
 
     return image

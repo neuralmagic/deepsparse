@@ -22,7 +22,11 @@ import numpy
 
 import cv2
 import torch
-from deepsparse.open_pif_paf.schemas import OpenPifPafInput, OpenPifPafOutput, OpenPifPafFields
+from deepsparse.open_pif_paf.schemas import (
+    OpenPifPafFields,
+    OpenPifPafInput,
+    OpenPifPafOutput,
+)
 from deepsparse.pipeline import Pipeline
 from deepsparse.yolact.utils import preprocess_array
 from openpifpaf import decoder, network
@@ -57,10 +61,19 @@ class OpenPifPafPipeline(Pipeline):
     """
 
     def __init__(
-        self, *, output_fields = False, **kwargs
+        self,
+        *,
+        image_size: Union[int, Tuple[int, int]] = (384, 384),
+        return_cifcaf_fields: bool = False,
+        **kwargs,
     ):
         super().__init__(**kwargs)
-        self.output_fields = output_fields
+        self._image_size = (
+            image_size if isinstance(image_size, Tuple) else (image_size, image_size)
+        )
+        # whether to return the cif and caf fields or the
+        # complete decoded output
+        self.return_cifcaf_fields = return_cifcaf_fields
         # necessary openpifpaf dependencies for now
         model_cpu, _ = network.Factory().factory(head_metas=None)
         self.processor = decoder.factory(model_cpu.head_metas)
@@ -77,7 +90,7 @@ class OpenPifPafPipeline(Pipeline):
         """
         :return: pydantic model class that outputs to this pipeline must comply to
         """
-        return OpenPifPafOutput if not self.output_fields else OpenPifPafFields
+        return OpenPifPafOutput if not self.return_cifcaf_fields else OpenPifPafFields
 
     def setup_onnx_file_path(self) -> str:
         """
@@ -91,13 +104,14 @@ class OpenPifPafPipeline(Pipeline):
 
     def process_inputs(self, inputs: OpenPifPafInput) -> List[numpy.ndarray]:
 
-        image = inputs.images
-        image = image.astype(numpy.float32)
-        #image = image.transpose(0, 2, 3, 1)
-        #image /= 255
-        image = numpy.ascontiguousarray(image)
+        images = inputs.images
+        if not isinstance(images, list):
+            images = [images]
 
-        return [image]
+        image_batch = list(self.executor.map(self._preprocess_image, images))
+        image_batch = numpy.concatenate(image_batch, axis=0)
+
+        return [image_batch]
 
     def process_engine_outputs(
         self, fields: List[numpy.ndarray], **kwargs
@@ -109,8 +123,11 @@ class OpenPifPafPipeline(Pipeline):
         :return: Outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        if self.output_fields:
-            return OpenPifPafFields(fields=fields)
+        if self.return_cifcaf_fields:
+            batch_fields = []
+            for cif, caf in zip(*fields):
+                batch_fields.append([cif, caf])
+            return OpenPifPafFields(fields=batch_fields)
 
         data_batch, skeletons_batch, scores_batch, keypoints_batch = [], [], [], []
 
@@ -134,4 +151,4 @@ class OpenPifPafPipeline(Pipeline):
         if isinstance(image, str):
             image = cv2.imread(image)
 
-        return preprocess_array(image)
+        return preprocess_array(image, input_image_size=self._image_size)

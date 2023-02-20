@@ -1,17 +1,36 @@
-import time
-import torch
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
+import time
+from typing import List, Union
+
+from deepsparse import Pipeline
+from deepsparse.open_pif_paf.utils.validation.helpers import deepsparse_fields_to_torch
 from openpifpaf.decoder import CifCaf
 from openpifpaf.decoder.decoder import DummyPool
-from typing import List
-from deepsparse import Pipeline
 
-from deepsparse.open_pif_paf.utils.validation.helpers import deepsparse_fields_to_torch
 
 LOG = logging.getLogger(__name__)
 
+
 class DeepSparseCifCaf(CifCaf):
-    def __init__(self, pipeline: Pipeline, head_metas: List[None]):
+    def __init__(
+        self,
+        head_metas: List[Union["Cif", "Caf"]],  # noqa: F821
+        pipeline: Pipeline,
+    ):
         self.pipeline = pipeline
         cif_metas, caf_metas = head_metas
         super().__init__([cif_metas], [caf_metas])
@@ -23,7 +42,9 @@ class DeepSparseCifCaf(CifCaf):
         """From image batch straight to annotations batch."""
         start_nn = time.perf_counter()
         fields_batch = self.fields_batch(model, image_batch, device=device)
-        fields_batch = deepsparse_fields_to_torch(self.pipeline(images=image_batch.numpy()))
+        fields_batch = deepsparse_fields_to_torch(
+            self.pipeline(images=image_batch.numpy())
+        )
         self.last_nn_time = time.perf_counter() - start_nn
 
         if gt_anns_batch is None:
@@ -34,14 +55,16 @@ class DeepSparseCifCaf(CifCaf):
             image_batch = [None for _ in fields_batch]
             gt_anns_batch = [None for _ in fields_batch]
 
-        LOG.debug('parallel execution with worker %s', self.worker_pool)
+        LOG.debug("parallel execution with worker %s", self.worker_pool)
         start_decoder = time.perf_counter()
         result = self.worker_pool.starmap(
-            self._mappable_annotations, zip(fields_batch, image_batch, gt_anns_batch))
+            self._mappable_annotations, zip(fields_batch, image_batch, gt_anns_batch)
+        )
         self.last_decoder_time = time.perf_counter() - start_decoder
 
-        LOG.debug('time: nn = %.1fms, dec = %.1fms',
-                  self.last_nn_time * 1000.0,
-                  self.last_decoder_time * 1000.0)
+        LOG.debug(
+            "time: nn = %.1fms, dec = %.1fms",
+            self.last_nn_time * 1000.0,
+            self.last_decoder_time * 1000.0,
+        )
         return result
-
