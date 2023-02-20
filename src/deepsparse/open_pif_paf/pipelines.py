@@ -94,7 +94,7 @@ class OpenPifPafPipeline(Pipeline):
         image = inputs.images
         image = image.astype(numpy.float32)
         #image = image.transpose(0, 2, 3, 1)
-        image /= 255
+        #image /= 255
         image = numpy.ascontiguousarray(image)
 
         return [image]
