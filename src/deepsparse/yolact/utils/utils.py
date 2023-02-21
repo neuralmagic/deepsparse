@@ -48,23 +48,25 @@ def preprocess_array(
     :return: preprocessed numpy array (B, C, D, D); where (D,D) is image size expected
         by the network. It is a contiguous array with RGB channel order.
     """
-    uint8_image = image[0].dtype == numpy.uint8
+
+    uint8_image = image.dtype == numpy.uint8
+
+    # put channel last to be compatible with cv2.resize
     image = _assert_channels_last(image)
+    # resize image to expected size (if needed)
     if image.ndim == 4 and image.shape[:2] != input_image_size:
         image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
-
     else:
         if image.shape[:2] != input_image_size:
             image = cv2.resize(image, input_image_size)
         image = numpy.expand_dims(image, 0)
-
+    # put channel "first"
     image = image.transpose(0, 3, 1, 2)
+    # if uint8 image, convert to float32 and normalize
     if uint8_image:
         image = image.astype(numpy.float32)
         image /= 255
-    image = numpy.ascontiguousarray(image)
-
-    return image
+    return numpy.ascontiguousarray(image)
 
 
 def jaccard(
