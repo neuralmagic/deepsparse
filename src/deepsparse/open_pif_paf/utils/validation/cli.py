@@ -73,7 +73,7 @@ def cli():
     )
 
     # deepsparse edit: replace the parse_args call with parse_known_args
-    args, unknown = parser.parse_known_args()
+    args, _ = parser.parse_known_args()
 
     # add args.device
     args.device = torch.device("cpu")
