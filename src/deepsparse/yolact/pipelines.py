@@ -139,7 +139,7 @@ class YOLACTPipeline(Pipeline):
         if not isinstance(images, list):
             images = [images]
 
-        image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
+        image_batch = list(self.executor.map(self._preprocess_image, images))
 
         image_batch = numpy.concatenate(image_batch, axis=0)
 

@@ -62,9 +62,10 @@ def preprocess_array(
         image = numpy.expand_dims(image, 0)
     # put channel "first"
     image = image.transpose(0, 3, 1, 2)
-    # if uint8 image, convert to float32 and normalize
+    # convert to float32
+    image = image.astype(numpy.float32)
+    # if image is uint8, convert to [0,1] range
     if is_uint8:
-        image = image.astype(numpy.float32)
         image /= 255
     return numpy.ascontiguousarray(image)
 
