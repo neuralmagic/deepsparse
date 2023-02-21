@@ -33,8 +33,7 @@ SUPPORTED_DATASET_CONFIGS = ["cocokp"]
 )
 @click.option(
     "--model-path",
-    # required=True,
-    default="openpifpaf-resnet50.onnx",
+    required=True,
     help="Path to the OpenPifPaf onnx model or" "SparseZoo stub to be evaluated.",
 )
 @click.option(
@@ -50,13 +49,6 @@ SUPPORTED_DATASET_CONFIGS = ["cocokp"]
     default=None,
     show_default=True,
     help="Number of CPU cores to run deepsparse with, default is all available",
-)
-@click.option(
-    "--batch-size",
-    type=int,
-    default=1,
-    show_default=True,
-    help="Validation batch size",
 )
 @click.option(
     "--image_size",
@@ -93,7 +85,6 @@ def main(
     model_path: str,
     dataset: str,
     num_cores: Optional[int],
-    batch_size: int,
     image_size: int,
     name_validation_run: str,
     engine_type: str,
@@ -107,9 +98,7 @@ def main(
         )
     args = cli()
     args.dataset = dataset
-    args.batch_size = batch_size
     args.output = name_validation_run
-    args.checkpoint = "shufflenetv2k16"
     args.device = device
 
     if dataset == "cocokp":

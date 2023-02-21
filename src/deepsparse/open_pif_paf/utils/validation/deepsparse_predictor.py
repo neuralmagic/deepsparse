@@ -35,7 +35,9 @@ class DeepSparsePredictor(Predictor):
     def __init__(self, pipeline: Pipeline, **kwargs):
         super().__init__(**kwargs)
         # deepsparse edit: allow for passing in a pipeline and fix the processor
-        # to CifCaf processor
+        # to CifCaf processor. Note: we are creating here a default torch model
+        # but we only use it to get its head metas. This is required to
+        # initialize the DeepSparseCifCaf processor.
         self.processor = DeepSparseCifCaf(
             pipeline=pipeline, head_metas=self.model_cpu.head_metas
         )

@@ -38,12 +38,13 @@ class DeepSparseCifCaf(CifCaf):
     # adapted from OPENPIFPAF GITHUB:
     # https://github.com/openpifpaf/openpifpaf/blob/main/src/openpifpaf/decoder/decoder.py
     # the appropriate edits are marked with # deepsparse edit: <edit comment>
-    def batch(self, model, image_batch, *, device=None, gt_anns_batch=None):
+
+    # deepsparse edit: removed model argument (not needed, substituted with '_')
+    def batch(self, _, image_batch, *, device=None, gt_anns_batch=None):
         """From image batch straight to annotations batch."""
         start_nn = time.perf_counter()
         # deepsparse edit: inference using deepsparse pipeline
         # instead of torch model
-        # fields_batch = self.fields_batch(model, image_batch, device=device)
         fields_batch = deepsparse_fields_to_torch(
             self.pipeline(images=image_batch.numpy())
         )
