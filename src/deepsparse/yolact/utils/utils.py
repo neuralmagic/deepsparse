@@ -49,7 +49,7 @@ def preprocess_array(
         by the network. It is a contiguous array with RGB channel order.
     """
 
-    uint8_image = image.dtype == numpy.uint8
+    is_uint8 = image.dtype == numpy.uint8
 
     # put channel last to be compatible with cv2.resize
     image = _assert_channels_last(image)
@@ -63,7 +63,7 @@ def preprocess_array(
     # put channel "first"
     image = image.transpose(0, 3, 1, 2)
     # if uint8 image, convert to float32 and normalize
-    if uint8_image:
+    if is_uint8:
         image = image.astype(numpy.float32)
         image /= 255
     return numpy.ascontiguousarray(image)
