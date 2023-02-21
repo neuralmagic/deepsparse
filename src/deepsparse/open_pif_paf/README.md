@@ -10,14 +10,44 @@ DeepSparse pipeline for OpenPifPaf
 ```python
 from deepsparse import Pipeline
 
-model_path: str = ... # path to open_pif_paf model
-pipeline = Pipeline.create(task="open_pif_paf", batch_size=1, model_path=model_path)
+model_path: str = ... # path to open_pif_paf model (SparseZoo stub or onnx model)
+pipeline = Pipeline.create(task="open_pif_paf", model_path=model_path)
 predictions = pipeline(images=['dancers.jpg'])
 # predictions have attributes `data', 'keypoints', 'scores', 'skeletons'
 predictions[0].scores
 >> scores=[0.8542259724243828, 0.7930507659912109]
 ```
-# predictions have attributes `data', 'keypoints', 'scores', 'skeletons'
+### Output CifCaf fields
+Alternatively, instead of returning the detected poses, it is possible to return the intermediate output - the CifCaf fields.
+This is the representation returned directly by the neural network, but not yet processed by the matching algorithm
+
+```python
+...
+pipeline = Pipeline.create(task="open_pif_paf", model_path=model_path,  return_cifcaf_fields=True)
+predictions = pipeline(images=['dancers.jpg'])
+predictions.fields
+```
+
+## Validation script:
+This paragraph describes how to run validation of the ONNX model/SparseZoo stub
+
+### Dataset
+For evaluation, you need to download the dataset. The [Open Pif Paf documentation](https://openpifpaf.github.io/) describes 
+thoroughly how to prepare different datasets for validation. This is the example for `crowdpose` dataset:
+
+```bash
+mkdir data-crowdpose
+cd data-crowdpose
+# download links here: https://github.com/Jeff-sjtu/CrowdPose
+unzip annotations.zip
+unzip images.zip
+# Now you can use the standard openpifpaf.train and openpifpaf.eval 
+# commands as documented in Training with --dataset=crowdpose.
+```
+
+### Validation command
+Once the dataset has been downloaded, run the command:
+...
 
 ## The necessity of external OpenPifPaf helper function 
 <img width="678" alt="image" src="https://user-images.githubusercontent.com/97082108/203295520-42fa325f-8a94-4241-af6f-75938ef26b14.png">

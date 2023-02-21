@@ -135,6 +135,7 @@ _yolo_integration_deps = [
 _openpifpaf_integration_deps = [
     "openpifpaf==0.13.11",
     "opencv-python<=4.6.0.66",
+    "pycocotools >=2.0.6",
 ]
 _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
 
