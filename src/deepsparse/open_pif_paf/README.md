@@ -56,6 +56,23 @@ Once the dataset has been downloaded, run the command:
 deepsparse.pose_estimation.eval --model-path openpifpaf-resnet50.onnx  --dataset cocokp --image_size 641
 ```
 
+This should result in the evaluation output similar to this:
+```bash
+...
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.502
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.732
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.523
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.429
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.605
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.534
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.744
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.554
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.457
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.643
+...
+````
+
+
 ### Expected output:
 
 ## The necessity of external OpenPifPaf helper function 

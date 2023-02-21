@@ -24,6 +24,8 @@ from openpifpaf.decoder.decoder import DummyPool
 
 LOG = logging.getLogger(__name__)
 
+__all__ = ["DeepSparseCifCaf"]
+
 
 class DeepSparseCifCaf(CifCaf):
     def __init__(

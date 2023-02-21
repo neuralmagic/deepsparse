@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import Optional
 
 import click
@@ -23,6 +24,8 @@ from deepsparse.open_pif_paf.utils.validation import DeepSparseEvaluator, cli
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 SUPPORTED_DATASET_CONFIGS = ["cocokp"]
+
+logging.basicConfig(level=logging.INFO)
 
 
 @click.command(

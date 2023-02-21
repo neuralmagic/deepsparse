@@ -21,6 +21,8 @@ from openpifpaf import Predictor
 
 LOG = logging.getLogger(__name__)
 
+__all__ = ["DeepSparsePredictor"]
+
 
 # adapted from OPENPIFPAF GITHUB:
 # https://github.com/openpifpaf/openpifpaf/blob/main/src/openpifpaf/predictor.py
