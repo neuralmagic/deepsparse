@@ -41,7 +41,9 @@ class DeepSparseCifCaf(CifCaf):
     def batch(self, model, image_batch, *, device=None, gt_anns_batch=None):
         """From image batch straight to annotations batch."""
         start_nn = time.perf_counter()
-        fields_batch = self.fields_batch(model, image_batch, device=device)
+        # deepsparse edit: inference using deepsparse pipeline
+        # instead of torch model
+        # fields_batch = self.fields_batch(model, image_batch, device=device)
         fields_batch = deepsparse_fields_to_torch(
             self.pipeline(images=image_batch.numpy())
         )

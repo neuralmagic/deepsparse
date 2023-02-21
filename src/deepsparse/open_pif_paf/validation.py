@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Evaluation on COCO data."""
 from typing import Optional
 
 import click
 
 from deepsparse import Pipeline
-from deepsparse.open_pif_paf.utils.validation.deepsparse_evaluator import (
-    DeepSparseEvaluator,
-)
+from deepsparse.open_pif_paf.utils.validation import DeepSparseEvaluator
 from openpifpaf.eval import cli
 
 
@@ -124,7 +121,7 @@ def main(
         model_path=model_path,
         engine_type=engine_type,
         num_cores=num_cores,
-        image_size=args.coco_eval_long_edge,
+        image_size=image_size,
         return_cifcaf_fields=True,
     )
 
@@ -132,9 +129,11 @@ def main(
         pipeline=pipeline,
         dataset_name=args.dataset,
         skip_epoch0=False,
-        img_size=args.coco_eval_long_edge,
+        img_size=image_size,
     )
     if args.watch:
+        # this pathway has not been tested
+        # and is not supported
         assert args.output is None
         evaluator.watch(args.checkpoint, args.watch)
     else:

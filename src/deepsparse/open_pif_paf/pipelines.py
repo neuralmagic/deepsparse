@@ -105,10 +105,12 @@ class OpenPifPafPipeline(Pipeline):
     def process_inputs(self, inputs: OpenPifPafInput) -> List[numpy.ndarray]:
 
         images = inputs.images
+
         if not isinstance(images, list):
             images = [images]
 
         image_batch = list(self.executor.map(self._preprocess_image, images))
+
         image_batch = numpy.concatenate(image_batch, axis=0)
 
         return [image_batch]

@@ -93,9 +93,7 @@ _deps = [
     "protobuf>=3.12.2,<=3.20.1",
     "click>=7.1.2,!=8.0.0",  # latest version < 8.0 + blocked version with reported bug
 ]
-_nm_deps = (
-    []
-)  # [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
+_nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
 _dev_deps = [
     "beautifulsoup4>=4.9.3",
     "black==22.12.0",
@@ -279,6 +277,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.yolov8.annotate=deepsparse.yolov8.annotate:main",
             "deepsparse.yolov8.eval=deepsparse.yolov8.validation:main",
             "deepsparse.pose_estimation.annotate=deepsparse.open_pif_paf.annotate:main",
+            "deepsparse.pose_estimation.eval=deepsparse.open_pif_paf.validation:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
