@@ -44,10 +44,19 @@ unzip images.zip
 # Now you can use the standard openpifpaf.train and openpifpaf.eval 
 # commands as documented in Training with --dataset=crowdpose.
 ```
+### Create an ONNX model:
+
+```bash
+python3 -m openpifpaf.export_onnx --input-width 641 --input-height 641
+```
 
 ### Validation command
 Once the dataset has been downloaded, run the command:
-...
+```bash
+deepsparse.pose_estimation.eval --model-path openpifpaf-resnet50.onnx  --dataset cocokp --image_size 641
+```
+
+### Expected output:
 
 ## The necessity of external OpenPifPaf helper function 
 <img width="678" alt="image" src="https://user-images.githubusercontent.com/97082108/203295520-42fa325f-8a94-4241-af6f-75938ef26b14.png">

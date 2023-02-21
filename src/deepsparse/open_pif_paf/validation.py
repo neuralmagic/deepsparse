@@ -17,8 +17,7 @@ from typing import Optional
 import click
 
 from deepsparse import Pipeline
-from deepsparse.open_pif_paf.utils.validation import DeepSparseEvaluator
-from openpifpaf.eval import cli
+from deepsparse.open_pif_paf.utils.validation import DeepSparseEvaluator, cli
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
