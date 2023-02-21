@@ -68,6 +68,47 @@ ONNX_TENSOR_TYPE_MAP = {
 }
 
 
+def save_onnx(model: Model, model_path: str, external_data_file: str) -> bool:
+    """
+    Save model to the given path.  If the model has external data, store the
+    external data in 'external_data_file'.
+    Returns False if the model had no external data, True otherwise.
+    """
+    if model.ByteSize() < onnx.checker.MAXIMUM_PROTOBUF:
+        onnx.save(model, model_path)
+        return False
+    else:
+        onnx.save_model(
+            model,
+            model_path,
+            save_as_external_data=True,
+            all_tensors_to_one_file=True,
+            location=external_data_file,
+        )
+        return True
+
+
+@contextlib.contextmanager
+def save_onnx_to_temp_files(model: Model) -> str:
+    """
+    Save model to a temporary file.  Works for models with external data.
+    """
+    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
+    external_data = next(tempfile._get_candidate_names())
+    has_external_data = save_onnx(model, shaped_model.name, external_data)
+
+    try:
+        yield shaped_model.name
+    finally:
+        os.unlink(shaped_model.name)
+        shaped_model.close()
+        if has_external_data:
+            external_data_path = os.path.join(
+                os.path.dirname(shaped_model.name), external_data
+            )
+            os.unlink(external_data_path)
+
+
 def translate_onnx_type_to_numpy(tensor_type: int):
     """
     Translates ONNX types to numpy types
@@ -186,7 +227,6 @@ def generate_random_inputs(
     return input_data_list
 
 
-@contextlib.contextmanager
 def override_onnx_batch_size(onnx_filepath: str, batch_size: int) -> str:
     """
     Rewrite batch sizes of ONNX model, saving the modified model and returning its path
@@ -204,17 +244,9 @@ def override_onnx_batch_size(onnx_filepath: str, batch_size: int) -> str:
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
     # Save modified model, this will be cleaned up when context is exited
-    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    onnx.save(model, shaped_model.name)
-
-    try:
-        yield shaped_model.name
-    finally:
-        os.unlink(shaped_model.name)
-        shaped_model.close()
+    return save_onnx_to_temp_files(model)
 
 
-@contextlib.contextmanager
 def override_onnx_input_shapes(
     onnx_filepath: str, input_shapes: Union[List[int], List[List[int]]]
 ) -> str:
@@ -263,14 +295,7 @@ def override_onnx_input_shapes(
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
     # Save modified model, this will be cleaned up when context is exited
-    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    onnx.save(model, shaped_model.name)
-
-    try:
-        yield shaped_model.name
-    finally:
-        os.unlink(shaped_model.name)
-        shaped_model.close()
+    return save_onnx_to_temp_files(model)
 
 
 def truncate_onnx_model(
@@ -349,7 +374,7 @@ def truncate_onnx_model(
             output.type.tensor_type.shape.Clear()
 
     # save and check model
-    onnx.save(extracted_model, output_filepath)
+    save_onnx(extracted_model, output_filepath, "external_data")
     onnx.checker.check_model(output_filepath)
 
 
