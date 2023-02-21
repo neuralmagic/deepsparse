@@ -14,6 +14,7 @@
 
 from typing import List, Tuple
 
+import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -22,6 +23,7 @@ from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 __all__ = [
     "OpenPifPafInput",
     "OpenPifPafOutput",
+    "OpenPifPafFields",
 ]
 
 
@@ -31,6 +33,26 @@ class OpenPifPafInput(ComputerVisionSchema):
     """
 
     pass
+
+
+class OpenPifPafFields(BaseModel):
+    """
+    Open Pif Paf is composed of two stages:
+     - Computing Cif/Caf fields using a parametrized model
+     - Applying a matching algorithm to obtain the final pose
+        predictions
+    In some cases (e.g. for validation), it may be useful to
+    obtain the Cif/Caf fields as output.
+    """
+
+    fields: List[List[numpy.ndarray]] = Field(
+        description="Cif/Caf fields returned by the network. "
+        "The outer list is the batch dimension, while the second "
+        "list contains two numpy arrays: Cif and Caf field values"
+    )
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class OpenPifPafOutput(BaseModel):
