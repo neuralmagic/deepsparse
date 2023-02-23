@@ -133,14 +133,14 @@ def _parse_arch_bin() -> architecture:
     except subprocess.CalledProcessError as ex:
         error = json.loads(ex.stdout)
         raise OSError(
-            "Neural Magic: Encountered exception while trying read arch.bin: {}".format(
+            "Neural Magic: Encountered exception while trying to read arch.bin: {}".format(
                 error["error"]
             )
         )
 
     except Exception as ex:
         raise OSError(
-            "Neural Magic: Encountered exception while trying read arch.bin: {}".format(
+            "Neural Magic: Encountered exception while trying to read arch.bin: {}".format(
                 ex
             )
         )
