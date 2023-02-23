@@ -18,4 +18,4 @@ limitations under the License.
 
 Ultralytics YOLOv8 integration and example has been moved to the main
 deepsparse package.  See docs, code, and examples at
-https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolov8.
+[src/deepsparse/yolov8](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolov8).
