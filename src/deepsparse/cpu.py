@@ -126,24 +126,18 @@ def _parse_arch_bin() -> architecture:
     package_path = os.path.dirname(os.path.realpath(__file__))
     file_path = os.path.join(package_path, "arch.bin")
 
+    error_msg = "Neural Magic: Encountered exception while trying to read arch.bin: {}"
+
     try:
         info_str = subprocess.check_output(file_path).decode("utf-8")
         return architecture(json.loads(info_str))
 
     except subprocess.CalledProcessError as ex:
         error = json.loads(ex.stdout)
-        raise OSError(
-            "Neural Magic: Encountered exception while trying to read arch.bin: {}".format(
-                error["error"]
-            )
-        )
+        raise OSError(error_msg.format(error["error"]))
 
     except Exception as ex:
-        raise OSError(
-            "Neural Magic: Encountered exception while trying to read arch.bin: {}".format(
-                ex
-            )
-        )
+        raise OSError(error_msg.format(ex))
 
 
 def cpu_architecture() -> architecture:
