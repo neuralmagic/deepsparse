@@ -75,7 +75,8 @@ from deepsparse.utils.annotate import (
     get_image_loader_and_saver,
 )
 from deepsparse.utils.cli_helpers import create_dir_callback
-from deepsparse.yolo.utils import annotate_image
+from deepsparse.yolact.utils import annotate_image as annotate_image_segmentation
+from deepsparse.yolo.utils import annotate_image as annotate_image_detection
 
 
 yolo_v8_default_stub = None
@@ -95,6 +96,12 @@ _LOGGER = logging.getLogger(__name__)
     default=yolo_v8_default_stub,
     help="Path/SparseZoo stub to the model file to be used for annotation",
     show_default=True,
+)
+@click.option(
+    "--subtask",
+    type=str,
+    default="detection",
+    help="A subtask to run the YOLOv8 model on. Defaults to 'detection'",
 )
 @click.option(
     "--source",
@@ -167,6 +174,7 @@ _LOGGER = logging.getLogger(__name__)
 )
 def main(
     model_filepath: str,
+    subtask: str,
     source: str,
     engine: str,
     num_cores: Optional[int],
@@ -196,11 +204,17 @@ def main(
     is_webcam = source.isnumeric()
     yolo_pipeline = Pipeline.create(
         task="yolov8",
+        subtask=subtask,
         model_path=model_filepath,
         class_names="coco",
         engine_type=engine,
         num_cores=num_cores,
         image_size=model_input_image_shape,
+    )
+    annotation_func = (
+        annotate_image_detection
+        if subtask == "detection"
+        else annotate_image_segmentation
     )
 
     for iteration, (input_image, source_image) in enumerate(loader):
@@ -208,7 +222,7 @@ def main(
         # annotate
         annotated_image = annotate(
             pipeline=yolo_pipeline,
-            annotation_func=annotate_image,
+            annotation_func=annotation_func,
             image=input_image,
             target_fps=target_fps,
             calc_fps=is_video,

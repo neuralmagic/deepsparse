@@ -12,10 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
+from typing import Any, List
 
-from .annotate import *
-from .pipelines import *
-from .schemas import *
-from .utils import *
-from .validation import *
+from pydantic import BaseModel, Field
+
+
+__all__ = ["YOLOSegOutput"]
+
+
+class YOLOSegOutput(BaseModel):
+    """
+    Output model for YOLOv8 Segmentation model
+    """
+
+    boxes: List[List[List[float]]] = Field(
+        description="List of bounding boxes, one for each prediction"
+    )
+    scores: List[List[float]] = Field(
+        description="List of scores, one for each prediction"
+    )
+    classes: List[List[str]] = Field(
+        description="List of labels, one for each prediction"
+    )
+    masks: List[Any] = Field(description="List of masks, one for each prediction")
