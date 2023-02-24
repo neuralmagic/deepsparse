@@ -14,3 +14,4 @@
 
 # flake8: noqa
 from .detection_validator import *
+from .segmentation_validator import *

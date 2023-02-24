@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import click
-
+import warnings
 from deepsparse import Pipeline
 from deepsparse.yolo.utils import COCO_CLASSES
-from deepsparse.yolov8.utils import DeepSparseDetectionValidator
+from deepsparse.yolov8.utils import DeepSparseDetectionValidator, DeepSparseSegmentationValidator
 from ultralytics.yolo.cfg import get_cfg
 from ultralytics.yolo.utils import DEFAULT_CFG
 
@@ -84,6 +84,13 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
     help="Use 'device=cpu' or pass valid CUDA device(s) if available, "
     "i.e. 'device=0' or 'device=0,1,2,3' for Multi-GPU",
 )
+@click.option(
+    "--subtask",
+    default="detection",
+    type=click.Choice(["detection", "classification", "segmentation"]),
+    show_default=True,
+    help="A subtask of YOLOv8 to run."
+)
 def main(
     dataset_yaml: str,
     model_path: str,
@@ -92,11 +99,13 @@ def main(
     engine_type: str,
     stride: int,
     device: str,
+    subtask: str,
 ):
 
     pipeline = Pipeline.create(
         task="yolov8",
-        model_path=model_path,
+        subtask = "detection",
+        model_path="yolov8n.onnx",
         num_cores=num_cores,
         engine_type=engine_type,
     )
@@ -111,11 +120,25 @@ def main(
             f"Dataset yaml {dataset_yaml} is not supported. "
             f"Supported dataset configs are {SUPPORTED_DATASET_CONFIGS})"
         )
-
     classes = {label: class_ for (label, class_) in enumerate(COCO_CLASSES)}
 
-    validator = DeepSparseDetectionValidator(pipeline=pipeline, args=args)
-    validator(stride=stride, classes=classes)
+    if subtask == "detection":
+        validator = DeepSparseDetectionValidator(pipeline=pipeline, args=args)
+        validator(stride=stride, classes=classes)
+
+    elif subtask == "segmentation":
+        # if dataset_yaml does not have "-seg" component, raise value error and announce it
+        if "-seg" not in dataset_yaml:
+            dataset_name, dataset_extension = os.path.splitext(dataset_yaml)
+            dataset_yaml = dataset_name + "-seg" + dataset_extension
+            warnings.warn(
+                f"Dataset yaml {dataset_yaml} is not supported for segmentation. "
+                f"Attempting to enforce the convention and use {dataset_yaml} instead.")
+            args.data = dataset_yaml
+        args.model = "yolov8s-seg.pt"
+        validator = DeepSparseSegmentationValidator(pipeline=pipeline, args=args)
+        validator(model = args.model)
+        #validator(stride=stride, classes=classes)
 
 
 if __name__ == "__main__":

@@ -144,6 +144,13 @@ class YOLOv8Pipeline(YOLOPipeline):
                 original_image_shapes[idx] if idx < len(original_image_shapes) else None
             )
 
+            if detection_output.shape[0] == 0:
+                batch_boxes.append([])
+                batch_scores.append([])
+                batch_labels.append([])
+                batch_masks.append([])
+                continue
+
             bboxes = detection_output[:, :4]
             bboxes = self._scale_boxes(bboxes, original_image_shape)
             scores = detection_output[:, 4]
@@ -155,14 +162,15 @@ class YOLOv8Pipeline(YOLOPipeline):
             batch_boxes.append(bboxes.tolist())
             batch_scores.append(scores.tolist())
             batch_labels.append(labels.tolist())
-            batch_masks.append(
-                process_mask_upsample(
-                    protos=protos,
-                    masks_in=masks_in,
-                    bboxes=bboxes,
-                    shape=original_image_shape,
-                ).numpy()
-            )
+            # batch_masks.append(
+            #     process_mask_upsample(
+            #         protos=protos,
+            #         masks_in=masks_in,
+            #         bboxes=bboxes,
+            #         shape=original_image_shape,
+            #     ).numpy()
+            # )
+            batch_masks.append(protos)
 
             if self.class_names is not None:
                 batch_labels_as_strings = [
