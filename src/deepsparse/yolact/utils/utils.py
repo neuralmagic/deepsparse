@@ -32,14 +32,21 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 
-_all__ = ["detect", "decode", "postprocess", "preprocess_array"]
+_all__ = ["resize_to_fit", "detect", "decode", "postprocess", "preprocess_array"]
 
 
-def resize_to_fit_img(
+def resize_to_fit(
     original_image_shape: Tuple[int], masks: torch.Tensor, boxes: torch.Tensor
-) -> Tuple[numpy.ndarray, numpy.ndarray]:
-    # Ported from from
-    # https://github.com/neuralmagic/yolact/blob/master/layers/output_utils.py
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Given reshape the masks and boxes to fit the original image shape
+
+    :param original_image_shape: original image shape
+    :param masks: masks tensor
+    :param boxes: boxes tensor
+    :return: resized masks and boxes
+    """
+
     h, w = original_image_shape
 
     # Resize the masks
@@ -49,9 +56,6 @@ def resize_to_fit_img(
         mode="bilinear",
         align_corners=False,
     ).squeeze(0)
-
-    # Binarize the masks
-    masks.gt_(0.5)
 
     boxes[:, 0], boxes[:, 2] = sanitize_coordinates(boxes[:, 0], boxes[:, 2], w)
     boxes[:, 1], boxes[:, 3] = sanitize_coordinates(boxes[:, 1], boxes[:, 3], h)

@@ -26,7 +26,7 @@ from deepsparse.yolact.utils import (
     detect,
     postprocess,
     preprocess_array,
-    resize_to_fit_img,
+    resize_to_fit,
 )
 from deepsparse.yolo.utils import COCO_CLASSES
 
@@ -247,7 +247,10 @@ class YOLACTPipeline(Pipeline):
                     score_threshold=kwargs["score_threshold"],
                 )
 
-                masks, boxes = resize_to_fit_img(original_image_shape, masks, boxes)
+                masks, boxes = resize_to_fit(original_image_shape, masks, boxes)
+
+                # Binarize the masks
+                masks.gt_(0.5)
 
                 classes = classes.numpy()
                 scores = scores.numpy()
