@@ -20,6 +20,7 @@ from typing import Dict, Tuple
 import numpy
 
 import torch
+import torch.nn.functional as F
 
 
 try:
@@ -32,6 +33,31 @@ except ModuleNotFoundError as cv2_import_error:
 
 
 _all__ = ["detect", "decode", "postprocess", "preprocess_array"]
+
+
+def resize_to_fit_img(
+    original_image_shape: Tuple[int], masks: torch.Tensor, boxes: torch.Tensor
+) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    # Ported from from
+    # https://github.com/neuralmagic/yolact/blob/master/layers/output_utils.py
+    h, w = original_image_shape
+
+    # Resize the masks
+    masks = F.interpolate(
+        masks.cpu().unsqueeze(0),
+        (h, w),
+        mode="bilinear",
+        align_corners=False,
+    ).squeeze(0)
+
+    # Binarize the masks
+    masks.gt_(0.5)
+
+    boxes[:, 0], boxes[:, 2] = sanitize_coordinates(boxes[:, 0], boxes[:, 2], w)
+    boxes[:, 1], boxes[:, 3] = sanitize_coordinates(boxes[:, 1], boxes[:, 3], h)
+    boxes = boxes.long()
+
+    return masks, boxes
 
 
 def preprocess_array(
@@ -50,6 +76,10 @@ def preprocess_array(
     """
     image = image.astype(numpy.float32)
     image = _assert_channels_last(image)
+
+    # extract (H, W) shapes from (H, W, C) and (B, H, W, C) shaped input
+    original_image_shape = image.shape[:2] if image.ndim == 3 else image.shape[1:-1]
+
     if image.ndim == 4 and image.shape[:2] != input_image_size:
         image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
 
@@ -62,7 +92,7 @@ def preprocess_array(
     image /= 255
     image = numpy.ascontiguousarray(image)
 
-    return image
+    return image, original_image_shape
 
 
 def jaccard(
