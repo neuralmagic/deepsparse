@@ -20,6 +20,7 @@ from typing import Dict, Tuple
 import numpy
 
 import torch
+import torch.nn.functional as F
 
 
 try:
@@ -31,7 +32,36 @@ except ModuleNotFoundError as cv2_import_error:
     cv2_error = cv2_import_error
 
 
-_all__ = ["detect", "decode", "postprocess", "preprocess_array"]
+_all__ = ["resize_to_fit", "detect", "decode", "postprocess", "preprocess_array"]
+
+
+def resize_to_fit(
+    original_image_shape: Tuple[int], masks: torch.Tensor, boxes: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Given reshape the masks and boxes to fit the original image shape
+
+    :param original_image_shape: original image shape
+    :param masks: masks tensor
+    :param boxes: boxes tensor
+    :return: resized masks and boxes
+    """
+
+    h, w = original_image_shape
+
+    # Resize the masks
+    masks = F.interpolate(
+        masks.cpu().unsqueeze(0),
+        (h, w),
+        mode="bilinear",
+        align_corners=False,
+    ).squeeze(0)
+
+    boxes[:, 0], boxes[:, 2] = sanitize_coordinates(boxes[:, 0], boxes[:, 2], w)
+    boxes[:, 1], boxes[:, 3] = sanitize_coordinates(boxes[:, 1], boxes[:, 3], h)
+    boxes = boxes.long()
+
+    return masks, boxes
 
 
 def preprocess_array(
@@ -50,6 +80,10 @@ def preprocess_array(
     """
     image = image.astype(numpy.float32)
     image = _assert_channels_last(image)
+
+    # extract (H, W) shapes from (H, W, C) and (B, H, W, C) shaped input
+    original_image_shape = image.shape[:2] if image.ndim == 3 else image.shape[1:-1]
+
     if image.ndim == 4 and image.shape[:2] != input_image_size:
         image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
 
@@ -62,7 +96,7 @@ def preprocess_array(
     image /= 255
     image = numpy.ascontiguousarray(image)
 
-    return image
+    return image, original_image_shape
 
 
 def jaccard(
