@@ -21,7 +21,13 @@ import torch
 from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
-from deepsparse.yolact.utils import decode, detect, postprocess, preprocess_array
+from deepsparse.yolact.utils import (
+    decode,
+    detect,
+    postprocess,
+    preprocess_array,
+    resize_to_fit,
+)
 from deepsparse.yolo.utils import COCO_CLASSES
 
 
@@ -141,9 +147,16 @@ class YOLACTPipeline(Pipeline):
 
         image_batch = list(self.executor.map(self._preprocess_image, inputs.images))
 
+        original_image_shapes = None
+        if image_batch and isinstance(image_batch[0], tuple):
+            # splits image batch is of format:
+            #  [(preprocesses_img, original_image_shape), ...] into separate lists
+            image_batch, original_image_shapes = list(map(list, zip(*image_batch)))
+
         image_batch = numpy.concatenate(image_batch, axis=0)
 
         postprocessing_kwargs = dict(
+            original_image_shapes=original_image_shapes,
             confidence_threshold=inputs.confidence_threshold,
             nms_threshold=inputs.nms_threshold,
             score_threshold=inputs.score_threshold,
@@ -186,6 +199,8 @@ class YOLACTPipeline(Pipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
+        original_image_shapes = kwargs.get("original_image_shapes")
+
         boxes, confidence, masks, priors, protos = engine_outputs
 
         boxes = torch.from_numpy(boxes).cpu()
@@ -204,6 +219,12 @@ class YOLACTPipeline(Pipeline):
             masks_single_image,
             confidence_single_image,
         ) in enumerate(zip(boxes, masks, confidence)):
+
+            original_image_shape = (
+                original_image_shapes[batch_idx]
+                if batch_idx < len(original_image_shapes)
+                else None
+            )
 
             decoded_boxes = decode(boxes_single_image, priors)
 
@@ -225,6 +246,11 @@ class YOLACTPipeline(Pipeline):
                     crop_masks=True,
                     score_threshold=kwargs["score_threshold"],
                 )
+
+                masks, boxes = resize_to_fit(original_image_shape, masks, boxes)
+
+                # Binarize the masks
+                masks.gt_(0.5)
 
                 classes = classes.numpy()
                 scores = scores.numpy()
