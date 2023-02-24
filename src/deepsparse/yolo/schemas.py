@@ -59,7 +59,7 @@ class YOLOInput(ComputerVisionSchema):
     return_masks: bool = Field(
         default=True,
         description="Controls whether the pipeline should additionally "
-        "return segmentation masks (if running a segmentation model",
+        "return segmentation masks (if running a segmentation model)",
     )
 
     @classmethod
