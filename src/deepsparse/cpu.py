@@ -155,9 +155,10 @@ def cpu_architecture() -> architecture:
 
     :return: an instance of the architecture class
     """
-    if not sys.platform.startswith("linux"):
+    if not (sys.platform.startswith("linux") or
+            sys.platform.startswith("darwin")):
         raise OSError(
-            "Neural Magic: Only Linux is supported, not '{}'.".format(sys.platform)
+            "Neural Magic: Only Linux or MacOS is supported, not '{}'.".format(sys.platform)
         )
 
     arch = _parse_arch_bin()
