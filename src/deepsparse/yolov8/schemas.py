@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -35,3 +35,7 @@ class YOLOSegOutput(BaseModel):
         description="List of labels, one for each prediction"
     )
     masks: List[Any] = Field(description="List of masks, one for each prediction")
+
+    intermediate_outputs: Optional[Any] = Field(
+        description="List of intermediate outputs, one for each prediction"
+    )

@@ -61,6 +61,13 @@ class YOLOInput(ComputerVisionSchema):
         description="Controls whether the pipeline should additionally "
         "return segmentation masks (if running a segmentation model)",
     )
+    return_intermediate_outputs: bool = Field(
+        default=False,
+        description="Controls whether the pipeline should additionally "
+        "return intermediate outputs from the model",
+    )
+
+
 
     @classmethod
     def from_files(

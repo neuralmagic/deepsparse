@@ -14,20 +14,9 @@ def schema_to_tensor(pipeline_outputs: Union[YOLOSegOutput, YOLODetOutput], devi
     :return list of tensor with the format [x1, y1, x2, y2, confidence, class]
     """
 
-    preds = []
+    preds = pipeline_outputs.intermediate_outputs
 
-    for boxes, labels, confidence in zip(
-        pipeline_outputs.boxes, pipeline_outputs.labels, pipeline_outputs.scores
-    ):
-
-        boxes = torch.tensor(boxes)
-
-        # map labels to integers and reshape for concatenation
-        labels = list(map(int, list(map(float, labels))))
-        labels = torch.tensor(labels).view(-1, 1)
-
-        # reshape for concatenation
-        scores = torch.tensor(confidence).view(-1, 1)
-        # concatenate and append to preds
-        preds.append(torch.cat([boxes, scores, labels], axis=1).to(device))
-    return preds
+    output, mask_protos = preds
+    output = torch.from_numpy(output).to(device)
+    mask_protos = torch.from_numpy(mask_protos).to(device)
+    return [output, [None, None, mask_protos]]

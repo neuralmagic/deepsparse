@@ -137,8 +137,7 @@ def main(
             args.data = dataset_yaml
         args.model = "yolov8s-seg.pt"
         validator = DeepSparseSegmentationValidator(pipeline=pipeline, args=args)
-        validator(model = args.model)
-        #validator(stride=stride, classes=classes)
+        validator(classes = classes)
 
 
 if __name__ == "__main__":

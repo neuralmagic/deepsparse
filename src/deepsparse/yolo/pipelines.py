@@ -210,6 +210,7 @@ class YOLOPipeline(Pipeline):
             multi_label=inputs.multi_label,
             original_image_shapes=original_image_shapes,
             return_masks=inputs.return_masks,
+            return_intermediate_outputs = inputs.return_intermediate_outputs,
         )
         return [image_batch], postprocessing_kwargs
 
