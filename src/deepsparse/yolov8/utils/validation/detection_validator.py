@@ -26,13 +26,8 @@ class DeepSparseDetectionValidator(DeepSparseValidator, DetectionValidator):
         logger=None,
         args=None,
     ):
-        super().__init__(pipeline, dataloader, save_dir, pbar, logger, args)
-        self.args.task = "detect"
-        self.is_coco = False
-        self.class_map = None
-        self.metrics = DetMetrics(save_dir=self.save_dir)
-        self.iouv = torch.linspace(0.5, 0.95, 10)  # iou vector for mAP@0.5:0.95
-        self.niou = self.iouv.numel()
+        DetectionValidatorValidator.__init__(self, dataloader, save_dir, pbar, logger, args)
+        DeepSparseValidator.__init__(self, pipeline)
 
     # deepsparse edit: replaced argument `model` with `classes`
     def init_metrics(self, classes):
