@@ -110,7 +110,10 @@ class YOLOOutput(BaseModel):
     labels: List[List[str]] = Field(
         description="List of labels, one for each prediction"
     )
-    intermediate_outputs: Optional[Any]
+    intermediate_outputs: Optional[Any] = Field(
+        default=None,
+        description="Intermediate outputs " "from the YOLOv8 segmentation model.",
+    )
 
     def __getitem__(self, index):
         if index >= len(self.boxes):

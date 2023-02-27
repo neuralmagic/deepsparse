@@ -131,7 +131,7 @@ class YOLOv8Pipeline(YOLOPipeline):
             nm=nm,
             multi_label=kwargs.get("multi_label", False),
         )
-        detections_output = torch.stack(detections_output)
+
         mask_protos = numpy.stack(mask_protos)
         original_image_shapes = kwargs.get("original_image_shapes")
         batch_boxes, batch_scores, batch_labels, batch_masks = [], [], [], []
@@ -145,6 +145,15 @@ class YOLOv8Pipeline(YOLOPipeline):
             )
 
             bboxes = detection_output[:, :4]
+
+            # check if empty detection
+            if bboxes.shape[0] == 0:
+                batch_boxes.append([None])
+                batch_scores.append([None])
+                batch_labels.append([None])
+                batch_masks.append([None])
+                continue
+
             bboxes = self._scale_boxes(bboxes, original_image_shape)
             scores = detection_output[:, 4]
             labels = detection_output[:, 5]
@@ -155,6 +164,7 @@ class YOLOv8Pipeline(YOLOPipeline):
             batch_boxes.append(bboxes.tolist())
             batch_scores.append(scores.tolist())
             batch_labels.append(labels.tolist())
+
             batch_masks.append(
                 process_mask_upsample(
                     protos=protos,
