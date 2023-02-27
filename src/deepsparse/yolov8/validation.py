@@ -104,8 +104,8 @@ def main(
 
     pipeline = Pipeline.create(
         task="yolov8",
-        subtask = "detection",
-        model_path="yolov8n.onnx",
+        subtask = subtask,
+        model_path=model_path,
         num_cores=num_cores,
         engine_type=engine_type,
     )

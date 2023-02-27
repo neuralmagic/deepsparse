@@ -26,6 +26,7 @@ from ultralytics.yolo.utils.ops import Profile
 from ultralytics.yolo.utils.torch_utils import de_parallel, select_device, smart_inference_mode
 
 from deepsparse import Pipeline
+from deepsparse.yolov8.utils.validation.helpers import schema_to_tensor
 
 __all__ = ["DeepSparseSegmentationValidator"]
 
@@ -330,13 +331,11 @@ class DeepSparseSegmentationValidator(DetectionValidator):
             # inference
             with dt[1]:
                 preds = model(batch["img"])
-                _preds = self.pipeline(images=batch["img"].cpu().numpy())
-
-
-            # loss
-            with dt[2]:
-                if self.training:
-                    self.loss += trainer.criterion(preds, batch)[1]
+                outputs = self.pipeline(images=[x.cpu().numpy() * 255 for x in batch["img"]], iou_thres = self.args.iou,
+                conf_thres = self.args.conf,
+                multi_label = True,
+            )
+            preds = schema_to_tensor(pipeline_outputs=outputs, device=self.device)
 
             # pre-process predictions
             with dt[3]:

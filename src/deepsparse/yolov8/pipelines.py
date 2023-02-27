@@ -131,10 +131,10 @@ class YOLOv8Pipeline(YOLOPipeline):
             nm=nm,
             multi_label=kwargs.get("multi_label", False),
         )
-        detections_output = torch.stack(detections_output)
-        mask_protos = numpy.stack(mask_protos)
+
+        # TODO no stacking, need to resolve it for batch size = 1
         original_image_shapes = kwargs.get("original_image_shapes")
-        batch_boxes, batch_scores, batch_labels, batch_masks = [], [], [], []
+        batch_boxes, batch_scores, batch_labels, batch_masks, batch_protos = [], [], [], [], []
 
         for idx, (detection_output, protos) in enumerate(
             zip(detections_output, mask_protos)
@@ -145,21 +145,21 @@ class YOLOv8Pipeline(YOLOPipeline):
             )
 
             bboxes = detection_output[:, :4]
-            bboxes = self._scale_boxes(bboxes, original_image_shape)
             scores = detection_output[:, 4]
             labels = detection_output[:, 5]
             masks_in = detection_output[:, 6:]
 
-            protos = torch.from_numpy(protos)
-
             batch_boxes.append(bboxes.tolist())
             batch_scores.append(scores.tolist())
             batch_labels.append(labels.tolist())
+            batch_protos.append(protos)
+
+            protos = torch.from_numpy(protos)
             batch_masks.append(
                 process_mask_upsample(
                     protos=protos,
                     masks_in=masks_in,
-                    bboxes=bboxes,
+                    bboxes=self._scale_boxes(bboxes, original_image_shape),
                     shape=original_image_shape,
                 ).numpy()
             )
@@ -179,4 +179,5 @@ class YOLOv8Pipeline(YOLOPipeline):
             scores=batch_scores,
             classes=batch_labels,
             masks=batch_masks if kwargs.get("return_masks") else None,
+            mask_protos = protos if kwargs.get("return_masks") else None,
         )
