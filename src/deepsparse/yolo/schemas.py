@@ -18,7 +18,7 @@ Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from typing import Iterable, List, TextIO
+from typing import Any, Iterable, List, Optional, TextIO
 
 import numpy
 from PIL import Image
@@ -67,8 +67,6 @@ class YOLOInput(ComputerVisionSchema):
         "return intermediate outputs from the model",
     )
 
-
-
     @classmethod
     def from_files(
         cls, files: Iterable[TextIO], *args, from_server: bool = False, **kwargs
@@ -112,6 +110,7 @@ class YOLOOutput(BaseModel):
     labels: List[List[str]] = Field(
         description="List of labels, one for each prediction"
     )
+    intermediate_outputs: Optional[Any]
 
     def __getitem__(self, index):
         if index >= len(self.boxes):

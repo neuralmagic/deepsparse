@@ -210,7 +210,7 @@ class YOLOPipeline(Pipeline):
             multi_label=inputs.multi_label,
             original_image_shapes=original_image_shapes,
             return_masks=inputs.return_masks,
-            return_intermediate_outputs = inputs.return_intermediate_outputs,
+            return_intermediate_outputs=inputs.return_intermediate_outputs,
         )
         return [image_batch], postprocessing_kwargs
 
@@ -310,6 +310,9 @@ class YOLOPipeline(Pipeline):
             boxes=batch_boxes,
             scores=batch_scores,
             labels=batch_labels,
+            intermediate_outputs=engine_outputs[0]
+            if kwargs.get("return_intermediate_outputs")
+            else None,
         )
 
     def _make_batch(self, image_batch: List[numpy.ndarray]) -> numpy.ndarray:

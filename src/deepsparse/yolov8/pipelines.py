@@ -131,8 +131,8 @@ class YOLOv8Pipeline(YOLOPipeline):
             nm=nm,
             multi_label=kwargs.get("multi_label", False),
         )
-
-        # TODO no stacking, need to resolve it for batch size = 1
+        detections_output = torch.stack(detections_output)
+        mask_protos = numpy.stack(mask_protos)
         original_image_shapes = kwargs.get("original_image_shapes")
         batch_boxes, batch_scores, batch_labels, batch_masks = [], [], [], []
 
@@ -150,16 +150,16 @@ class YOLOv8Pipeline(YOLOPipeline):
             labels = detection_output[:, 5]
             masks_in = detection_output[:, 6:]
 
+            protos = torch.from_numpy(protos)
+
             batch_boxes.append(bboxes.tolist())
             batch_scores.append(scores.tolist())
             batch_labels.append(labels.tolist())
-
-            protos = torch.from_numpy(protos)
             batch_masks.append(
                 process_mask_upsample(
                     protos=protos,
                     masks_in=masks_in,
-                    bboxes=self._scale_boxes(bboxes, original_image_shape),
+                    bboxes=bboxes,
                     shape=original_image_shape,
                 ).numpy()
             )
@@ -179,5 +179,7 @@ class YOLOv8Pipeline(YOLOPipeline):
             scores=batch_scores,
             classes=batch_labels,
             masks=batch_masks if kwargs.get("return_masks") else None,
-            intermediate_outputs = (detections, mask_protos ) if kwargs.get("return_intermediate_outputs") else None,
+            intermediate_outputs=(detections, mask_protos)
+            if kwargs.get("return_intermediate_outputs")
+            else None,
         )

@@ -3,7 +3,6 @@
 
 import os
 
-import torch
 from deepsparse import Pipeline
 from deepsparse.yolov8.utils.validation.deepsparse_validator import DeepSparseValidator
 from ultralytics.yolo.utils import ops
@@ -12,6 +11,7 @@ from ultralytics.yolo.v8.detect.val import DetectionValidator
 
 
 __all__ = ["DeepSparseDetectionValidator"]
+
 
 # adapted from ULTRALYTICS GITHUB:
 # https://github.com/ultralytics/ultralytics/blob/main/ultralytics/yolo/v8/detect/val.py
@@ -26,7 +26,7 @@ class DeepSparseDetectionValidator(DeepSparseValidator, DetectionValidator):
         logger=None,
         args=None,
     ):
-        DetectionValidatorValidator.__init__(self, dataloader, save_dir, pbar, logger, args)
+        DetectionValidator.__init__(self, dataloader, save_dir, pbar, logger, args)
         DeepSparseValidator.__init__(self, pipeline)
 
     # deepsparse edit: replaced argument `model` with `classes`

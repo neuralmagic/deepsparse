@@ -11,19 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
+
 import click
-import warnings
+
 from deepsparse import Pipeline
 from deepsparse.yolo.utils import COCO_CLASSES
-from deepsparse.yolov8.utils import DeepSparseDetectionValidator, DeepSparseSegmentationValidator
+from deepsparse.yolov8.utils import (
+    DeepSparseDetectionValidator,
+    DeepSparseSegmentationValidator,
+    check_coco128_segmentation,
+)
 from ultralytics.yolo.cfg import get_cfg
 from ultralytics.yolo.utils import DEFAULT_CFG
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
+SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml", "coco128-seg.yaml"]
 
 
 @click.command(
@@ -43,7 +47,7 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
     show_default=True,
     help="Dataset yaml supported by the ultralytics framework. "
     "Could be e.g. `coco128.yaml` or `coco.yaml`. "
-    "Defaults to `coco128.yaml",
+    "Defaults to `coco128.yaml.`",
 )
 @click.option(
     "--num-cores",
@@ -89,7 +93,7 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
     default="detection",
     type=click.Choice(["detection", "classification", "segmentation"]),
     show_default=True,
-    help="A subtask of YOLOv8 to run."
+    help="A subtask of YOLOv8 to run. Default is `detection`.",
 )
 def main(
     dataset_yaml: str,
@@ -104,7 +108,7 @@ def main(
 
     pipeline = Pipeline.create(
         task="yolov8",
-        subtask = subtask,
+        subtask=subtask,
         model_path=model_path,
         num_cores=num_cores,
         engine_type=engine_type,
@@ -124,20 +128,14 @@ def main(
 
     if subtask == "detection":
         validator = DeepSparseDetectionValidator(pipeline=pipeline, args=args)
-        validator(stride=stride, classes=classes)
+        validator(classes=classes)
 
     elif subtask == "segmentation":
-        # if dataset_yaml does not have "-seg" component, raise value error and announce it
-        if "-seg" not in dataset_yaml:
-            dataset_name, dataset_extension = os.path.splitext(dataset_yaml)
-            dataset_yaml = dataset_name + "-seg" + dataset_extension
-            warnings.warn(
-                f"Dataset yaml {dataset_yaml} is not supported for segmentation. "
-                f"Attempting to enforce the convention and use {dataset_yaml} instead.")
-            args.data = dataset_yaml
-        args.model = "yolov8s-seg.pt"
+        args = check_coco128_segmentation(args)
         validator = DeepSparseSegmentationValidator(pipeline=pipeline, args=args)
-        validator(classes = classes)
+        validator(classes=classes)
+    else:
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":
