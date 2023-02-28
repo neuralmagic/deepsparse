@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple
+from typing import Iterable, List, TextIO, Tuple
 
+import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -22,6 +24,7 @@ from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 __all__ = [
     "OpenPifPafInput",
     "OpenPifPafOutput",
+    "OpenPifPafFields",
 ]
 
 
@@ -31,6 +34,50 @@ class OpenPifPafInput(ComputerVisionSchema):
     """
 
     pass
+
+
+class OpenPifPafFields(BaseModel):
+    """
+    Open Pif Paf is composed of two stages:
+     - Computing Cif/Caf fields using a parametrized model
+     - Applying a matching algorithm to obtain the final pose
+        predictions
+    In some cases (e.g. for validation), it may be useful to
+    obtain the Cif/Caf fields as output.
+    """
+
+    fields: List[List[numpy.ndarray]] = Field(
+        description="Cif/Caf fields returned by the network. "
+        "The outer list is the batch dimension, while the second "
+        "list contains two numpy arrays: Cif and Caf field values. "
+    )
+
+    @classmethod
+    def from_files(
+        cls, files: Iterable[TextIO], *args, from_server: bool = False, **kwargs
+    ) -> "OpenPifPafFields":
+        """
+        :param files: Iterable of file pointers to create OpenPifPafFields from
+        :param kwargs: extra keyword args to pass to OpenPifPafFields constructor
+        :return: OpenPifPafFields constructed from files
+        """
+        if "images" in kwargs:
+            raise ValueError(
+                f"argument 'images' cannot be specified in {cls.__name__} when "
+                "constructing from file(s)"
+            )
+        if from_server:
+            raise ValueError(
+                "Cannot construct OpenPifPafFields from server. This will create"
+                "numpy arrays that are not serializable."
+            )
+
+        files_numpy = [numpy.array(Image.open(file)) for file in files]
+        input_schema = cls(*args, images=files_numpy, **kwargs)
+        return input_schema
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class OpenPifPafOutput(BaseModel):
