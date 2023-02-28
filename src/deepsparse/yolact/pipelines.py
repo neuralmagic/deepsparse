@@ -220,12 +220,7 @@ class YOLACTPipeline(Pipeline):
             confidence_single_image,
         ) in enumerate(zip(boxes, masks, confidence)):
 
-            original_image_shape = (
-                original_image_shapes[batch_idx]
-                if batch_idx < len(original_image_shapes)
-                else None
-            )
-
+            original_image_shape = original_image_shapes[0]
             decoded_boxes = decode(boxes_single_image, priors)
 
             results = detect(
