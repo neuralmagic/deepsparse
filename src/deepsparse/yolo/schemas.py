@@ -112,7 +112,7 @@ class YOLOOutput(BaseModel):
     )
     intermediate_outputs: Optional[Any] = Field(
         default=None,
-        description="Intermediate outputs " "from the YOLOv8 segmentation model.",
+        description="Intermediate outputs from the YOLOv8 segmentation model.",
     )
 
     def __getitem__(self, index):
