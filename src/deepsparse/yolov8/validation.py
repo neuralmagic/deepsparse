@@ -16,14 +16,18 @@ import click
 
 from deepsparse import Pipeline
 from deepsparse.yolo.utils import COCO_CLASSES
-from deepsparse.yolov8.utils import DeepSparseDetectionValidator
+from deepsparse.yolov8.utils import (
+    DeepSparseDetectionValidator,
+    DeepSparseSegmentationValidator,
+    check_coco128_segmentation,
+)
 from ultralytics.yolo.cfg import get_cfg
 from ultralytics.yolo.utils import DEFAULT_CFG
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
+SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml", "coco128-seg.yaml"]
 
 
 @click.command(
@@ -43,7 +47,7 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
     show_default=True,
     help="Dataset yaml supported by the ultralytics framework. "
     "Could be e.g. `coco128.yaml` or `coco.yaml`. "
-    "Defaults to `coco128.yaml",
+    "Defaults to `coco128.yaml.`",
 )
 @click.option(
     "--num-cores",
@@ -84,6 +88,13 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml"]
     help="Use 'device=cpu' or pass valid CUDA device(s) if available, "
     "i.e. 'device=0' or 'device=0,1,2,3' for Multi-GPU",
 )
+@click.option(
+    "--subtask",
+    default="detection",
+    type=click.Choice(["detection", "classification", "segmentation"]),
+    show_default=True,
+    help="A subtask of YOLOv8 to run. Default is `detection`.",
+)
 def main(
     dataset_yaml: str,
     model_path: str,
@@ -92,10 +103,12 @@ def main(
     engine_type: str,
     stride: int,
     device: str,
+    subtask: str,
 ):
 
     pipeline = Pipeline.create(
         task="yolov8",
+        subtask=subtask,
         model_path=model_path,
         num_cores=num_cores,
         engine_type=engine_type,
@@ -111,11 +124,18 @@ def main(
             f"Dataset yaml {dataset_yaml} is not supported. "
             f"Supported dataset configs are {SUPPORTED_DATASET_CONFIGS})"
         )
-
     classes = {label: class_ for (label, class_) in enumerate(COCO_CLASSES)}
 
-    validator = DeepSparseDetectionValidator(pipeline=pipeline, args=args)
-    validator(stride=stride, classes=classes)
+    if subtask == "detection":
+        validator = DeepSparseDetectionValidator(pipeline=pipeline, args=args)
+        validator(classes=classes)
+
+    elif subtask == "segmentation":
+        args = check_coco128_segmentation(args)
+        validator = DeepSparseSegmentationValidator(pipeline=pipeline, args=args)
+        validator(classes=classes)
+    else:
+        raise NotImplementedError()
 
 
 if __name__ == "__main__":
