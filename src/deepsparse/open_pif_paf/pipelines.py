@@ -111,9 +111,18 @@ class OpenPifPafPipeline(Pipeline):
 
         image_batch = list(self.executor.map(self._preprocess_image, images))
 
+        original_image_shapes = None
+        if image_batch and isinstance(image_batch[0], tuple):
+            # splits image batch is of format:
+            #  [(preprocesses_img, original_image_shape), ...] into separate lists
+            image_batch, original_image_shapes = list(map(list, zip(*image_batch)))
+
         image_batch = numpy.concatenate(image_batch, axis=0)
 
-        return [image_batch]
+        postprocessing_kwargs = dict(
+            original_image_shapes=original_image_shapes,
+        )
+        return [image_batch], postprocessing_kwargs
 
     def process_engine_outputs(
         self, fields: List[numpy.ndarray], **kwargs
