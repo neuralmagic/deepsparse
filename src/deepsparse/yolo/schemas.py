@@ -18,8 +18,10 @@ Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from typing import List
+from typing import Iterable, List, TextIO
 
+import numpy
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -54,6 +56,39 @@ class YOLOInput(ComputerVisionSchema):
             "pathway by default run with multi_label on"
         ),
     )
+    return_masks: bool = Field(
+        default=True,
+        description="Controls whether the pipeline should additionally "
+        "return segmentation masks (if running a segmentation model)",
+    )
+
+    @classmethod
+    def from_files(
+        cls, files: Iterable[TextIO], *args, from_server: bool = False, **kwargs
+    ) -> "YOLOInput":
+        """
+        :param files: Iterable of file pointers to create YOLOInput from
+        :param kwargs: extra keyword args to pass to YOLOInput constructor
+        :return: YOLOInput constructed from files
+        """
+        if "images" in kwargs:
+            raise ValueError(
+                f"argument 'images' cannot be specified in {cls.__name__} when "
+                "constructing from file(s)"
+            )
+        files_numpy = [numpy.array(Image.open(file)) for file in files]
+        input_schema = cls(
+            # if the input comes through the client-server communication
+            # do not return segmentation masks
+            *args,
+            images=files_numpy,
+            return_masks=not from_server,
+            **kwargs,
+        )
+        return input_schema
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class YOLOOutput(BaseModel):
