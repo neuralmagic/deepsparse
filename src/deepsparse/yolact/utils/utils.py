@@ -78,12 +78,16 @@ def preprocess_array(
     :return: preprocessed numpy array (B, C, D, D); where (D,D) is image size expected
         by the network. It is a contiguous array with RGB channel order.
     """
-    image = image.astype(numpy.float32)
+
+    is_uint8 = image.dtype == numpy.uint8
+
+    # put channel last to be compatible with cv2.resize
     image = _assert_channels_last(image)
 
     # extract (H, W) shapes from (H, W, C) and (B, H, W, C) shaped input
     original_image_shape = image.shape[:2] if image.ndim == 3 else image.shape[1:-1]
 
+    # resize image to expected size (if needed)
     if image.ndim == 4 and image.shape[:2] != input_image_size:
         image = numpy.stack([cv2.resize(img, input_image_size) for img in image])
 
@@ -92,11 +96,14 @@ def preprocess_array(
             image = cv2.resize(image, input_image_size)
         image = numpy.expand_dims(image, 0)
 
+    # put channel "first"
     image = image.transpose(0, 3, 1, 2)
-    image /= 255
-    image = numpy.ascontiguousarray(image)
-
-    return image, original_image_shape
+    # convert to float32
+    image = image.astype(numpy.float32)
+    # if image is uint8, convert to [0,1] range
+    if is_uint8:
+        image /= 255
+    return numpy.ascontiguousarray(image), original_image_shape
 
 
 def jaccard(
