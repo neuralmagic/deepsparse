@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List, Optional, Tuple
+from typing import Any, List
 
 from pydantic import BaseModel, Field
 
@@ -25,23 +25,13 @@ class YOLOSegOutput(BaseModel):
     Output model for YOLOv8 Segmentation model
     """
 
-    boxes: List[List[Optional[List[float]]]] = Field(
+    boxes: List[List[List[float]]] = Field(
         description="List of bounding boxes, one for each prediction"
     )
-    scores: List[List[Optional[float]]] = Field(
+    scores: List[List[float]] = Field(
         description="List of scores, one for each prediction"
     )
-    classes: List[List[Optional[str]]] = Field(
+    classes: List[List[str]] = Field(
         description="List of labels, one for each prediction"
     )
-    masks: Optional[List[Any]] = Field(
-        description="List of masks, one for each prediction"
-    )
-
-    intermediate_outputs: Optional[Tuple[Any, Any]] = Field(
-        default=None,
-        description="A tuple that contains of intermediate outputs "
-        "from the YOLOv8 segmentation model. The tuple"
-        "contains two items: predictions from the model"
-        "and mask prototypes",
-    )
+    masks: List[Any] = Field(description="List of masks, one for each prediction")

@@ -18,7 +18,7 @@ Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from typing import Any, Iterable, List, Optional, TextIO
+from typing import Iterable, List, TextIO
 
 import numpy
 from PIL import Image
@@ -60,11 +60,6 @@ class YOLOInput(ComputerVisionSchema):
         default=True,
         description="Controls whether the pipeline should additionally "
         "return segmentation masks (if running a segmentation model)",
-    )
-    return_intermediate_outputs: bool = Field(
-        default=False,
-        description="Controls whether the pipeline should additionally "
-        "return intermediate outputs from the model",
     )
 
     @classmethod
@@ -109,10 +104,6 @@ class YOLOOutput(BaseModel):
     )
     labels: List[List[str]] = Field(
         description="List of labels, one for each prediction"
-    )
-    intermediate_outputs: Optional[Any] = Field(
-        default=None,
-        description="Intermediate outputs from the YOLOv8 segmentation model.",
     )
 
     def __getitem__(self, index):
