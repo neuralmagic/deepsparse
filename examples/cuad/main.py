@@ -12,25 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from deepsparse.transformers import QuestionAnsweringPipeline
+from deepsparse import Pipeline
 import argparse
 import datasets
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--doc-stride", type=int, default=256)
-parser.add_argument("--max-sequence-length", type=int, default=512)
-parser.add_argument("--max-question-length", type=int, default=512)
-parser.add_argument("--max-answer-length", type=int, default=512)
 parser.add_argument("model")
 args = parser.parse_args()
 
-pipeline = QuestionAnsweringPipeline(
+pipeline = Pipeline.create(
+    task="question-answering",
     model_path=args.model,
     version_2_with_negative=True,
-    doc_stride=args.doc_stride,
-    max_answer_length=args.max_answer_length,
-    max_question_length=args.max_question_length,
-    sequence_length=args.max_sequence_length,
 )
 
 cuad = datasets.load_dataset("cuad")["test"]
