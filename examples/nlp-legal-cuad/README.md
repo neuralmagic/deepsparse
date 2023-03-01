@@ -1,6 +1,6 @@
 # CUAD
 
-CUAD is a legal question answering dataset, which means you can use our built in question-answering pipeline
+CUAD is a [legal question answering dataset](https://huggingface.co/datasets/cuad), which means you can use our built in question-answering pipeline
 to answer questions given a model.
 
 For an example, see the included `main.py` file.
@@ -8,7 +8,7 @@ For an example, see the included `main.py` file.
 Running this on a model fine tuned on the cuad dataset outputs something like the following:
 
 ```bash
-$ python examples/cuad/main.py <path to model deployent dir>
+$ python examples/cuad/main.py <path to model deployment dir>
 ...
 Answered: SUPPLY CONTRACT Contract
 Expected: {'text': ['SUPPLY CONTRACT'], 'answer_start': [14]}
