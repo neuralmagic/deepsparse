@@ -1,3 +1,18 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import deepsparse
 from deepsparse.transformers import QuestionAnsweringPipeline
 import datasets
 import numpy
@@ -11,7 +26,7 @@ from tqdm import tqdm
 import time
 from cuad_eval import CUAD
 
-PATH = "/nm/drive3/tuan/models/CUAD/sparse_transfer/potential/CUAD@oberta-pruned90@sparse_transfer_decay_cuad@EP10@BS32@H1.0@T5.0@WD0.0001@LR8e-5@ID20943/checkpoint-1536/deployment"
+PATH = "/home/corey/cuad-deployment"
 
 
 class CUADPipeline(QuestionAnsweringPipeline):
@@ -90,38 +105,25 @@ def main():
         max_question_length=512,
         sequence_length=512,
     )
-    cuad = datasets.load_dataset("cuad")["test"]
+    cuad = datasets.load_dataset("cuad", streaming=True)["test"]
     metric = CUAD()
 
-    outputs = []
-
-    for i in tqdm(range(1000)):
-        example = cuad[i]
-
+    for i, example in tqdm(enumerate(cuad)):
+        if i > 1000:
+            break
         output = pipeline(question=example["question"], context=example["context"])
 
-        outputs.append((example, output))
+        metric.add_batch(
+            predictions=[
+                {
+                    "id": example["id"],
+                    "prediction_text": [{"text": output.answer, "probability": 1.0}],
+                }
+            ],
+            references=[{"id": example["id"], "answers": example["answers"]}],
+        )
 
-        # print("=" * 50)
-        # print(f"Answered: {output.answer}")
-        # print()
-        # print(f"Question: {example['question']}")
-        # print()
-        # print(f"Expected: {example['answers']}")
-        # print()
-
-    predictions = [
-        {
-            "id": example["id"],
-            "prediction_text": [{"text": output.answer, "probability": 1.0}],
-        }
-        for example, output in outputs
-    ]
-    references = [
-        {"id": example["id"], "answers": example["answers"]} for example, _ in outputs
-    ]
-
-    print(metric.compute(predictions=predictions, references=references))
+    print(metric.compute())
 
 
 if __name__ == "__main__":
