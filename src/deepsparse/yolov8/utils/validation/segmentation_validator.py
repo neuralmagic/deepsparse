@@ -6,17 +6,18 @@ import os
 from deepsparse import Pipeline
 from deepsparse.yolov8.utils.validation.deepsparse_validator import DeepSparseValidator
 from ultralytics.yolo.utils import ops
-from ultralytics.yolo.utils.metrics import ConfusionMatrix, DetMetrics
-from ultralytics.yolo.v8.detect.val import DetectionValidator
+from ultralytics.yolo.utils.checks import check_requirements
+from ultralytics.yolo.utils.metrics import ConfusionMatrix
+from ultralytics.yolo.v8.segment import SegmentationValidator
 
 
-__all__ = ["DeepSparseDetectionValidator"]
+__all__ = ["DeepSparseSegmentationValidator"]
 
 
 # adapted from ULTRALYTICS GITHUB:
-# https://github.com/ultralytics/ultralytics/blob/main/ultralytics/yolo/v8/detect/val.py
+# https://github.com/ultralytics/ultralytics/blob/main/ultralytics/yolo/v8/segment/val.py
 # the appropriate edits are marked with # deepsparse edit: <edit comment>
-class DeepSparseDetectionValidator(DeepSparseValidator, DetectionValidator):
+class DeepSparseSegmentationValidator(DeepSparseValidator, SegmentationValidator):
     def __init__(
         self,
         pipeline: Pipeline,
@@ -26,7 +27,7 @@ class DeepSparseDetectionValidator(DeepSparseValidator, DetectionValidator):
         logger=None,
         args=None,
     ):
-        DetectionValidator.__init__(self, dataloader, save_dir, pbar, logger, args)
+        SegmentationValidator.__init__(self, dataloader, save_dir, pbar, logger, args)
         DeepSparseValidator.__init__(self, pipeline)
 
     # deepsparse edit: replaced argument `model` with `classes`
@@ -42,10 +43,18 @@ class DeepSparseDetectionValidator(DeepSparseValidator, DetectionValidator):
             self.is_coco and not self.training
         )  # run on final val if training COCO
         self.nc = len(classes)
+        # deepsparse edit: set number of mask protos to 32
+        self.nm = 32
         self.names = classes
         self.metrics.names = self.names
         self.metrics.plot = self.args.plots
         self.confusion_matrix = ConfusionMatrix(nc=self.nc)
+        self.plot_masks = []
         self.seen = 0
         self.jdict = []
         self.stats = []
+        if self.args.save_json:
+            check_requirements("pycocotools>=2.0.6")
+            self.process = ops.process_mask_upsample  # more accurate
+        else:
+            self.process = ops.process_mask  # faster
