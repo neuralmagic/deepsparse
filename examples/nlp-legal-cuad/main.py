@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from deepsparse import Pipeline
 import argparse
+
 import datasets
+from deepsparse import Pipeline
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("model")
