@@ -133,8 +133,10 @@ _yolo_integration_deps = [
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
-    "openpifpaf==0.13.6",
+    "openpifpaf==0.13.11",
     "opencv-python<=4.6.0.66",
+    "pycocotools >=2.0.6",
+    "scipy==1.10.1",
 ]
 _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
 
@@ -277,6 +279,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.yolov8.annotate=deepsparse.yolov8.annotate:main",
             "deepsparse.yolov8.eval=deepsparse.yolov8.validation:main",
             "deepsparse.pose_estimation.annotate=deepsparse.open_pif_paf.annotate:main",
+            "deepsparse.pose_estimation.eval=deepsparse.open_pif_paf.validation:main",
             "deepsparse.image_classification.annotate=deepsparse.image_classification.annotate:main",  # noqa E501
             "deepsparse.instance_segmentation.annotate=deepsparse.yolact.annotate:main",
             f"deepsparse.image_classification.eval={ic_eval}",
