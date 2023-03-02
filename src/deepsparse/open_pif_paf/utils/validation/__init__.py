@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # flake8: noqa
-from .annotate import *
-from .validation import *
+from .cli import *
+from .deepsparse_evaluator import *
