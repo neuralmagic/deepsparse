@@ -57,10 +57,14 @@ Options:
 #######
 Examples:
 
-1) deepsparse.open_pif_paf.annotate --source PATH/TO/IMAGE.jpg
-2) deepsparse.open_pif_paf.annotate --source PATH/TO/VIDEO.mp4
-3) deepsparse.open_pif_paf.annotate --source 0
-4) deepsparse.open_pif_paf.annotate --source PATH/TO/IMAGE_DIR
+1) deepsparse.pose_estimation.annotate --model_filepath PATH/TO/MODEL.ONNX \
+       --source PATH/TO/IMAGE.jpg
+2) deepsparse.pose_estimation.annotate --model_filepath PATH/TO/MODEL.ONNX \
+       --source PATH/TO/VIDEO.mp4
+3) deepsparse.pose_estimation.annotate --model_filepath PATH/TO/MODEL.ONNX \
+       --source 0
+4) deepsparse.pose_estimation.annotate --model_filepath PATH/TO/MODEL.ONNX \
+       --source PATH/TO/IMAGE_DIR
 """
 import logging
 from typing import Optional, Tuple

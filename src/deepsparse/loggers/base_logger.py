@@ -26,7 +26,9 @@ class BaseLogger(ABC):
     """
 
     @abstractmethod
-    def log(self, identifier: str, value: Any, category: Optional[str] = None):
+    def log(
+        self, identifier: str, value: Any, category: Optional[str] = None, **kwargs
+    ):
         """
         The main method to collect information from the pipeline
         and then possibly process the information and pass it to
@@ -35,5 +37,9 @@ class BaseLogger(ABC):
         :param identifier: The name of the item that is being logged.
         :param value: The data structure that is logged
         :param category: The metric category that the log belongs to
+        :param kwargs: Additional keyword arguments to pass to the logger
         """
         raise NotImplementedError()
+
+    def __str__(self):
+        return f"{self.__class__.__name__}"

@@ -12,22 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The set of all the built-in metric functions
+The set of the general built-in metric functions
 """
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List, Union
 
-import numpy
+from deepsparse.loggers.metric_functions.registry import (
+    register as register_metric_function,
+)
+from deepsparse.loggers.metric_functions.utils import BatchResult
 
 
-__all__ = [
-    "identity",
-    "image_shape",
-    "mean_pixels_per_channel",
-    "std_pixels_per_channel",
-    "max_pixels_per_channel",
-    "fraction_zeros",
-    "bounding_box_count",
-]
+__all__ = ["identity", "predicted_classes", "predicted_top_score"]
 
 
 def identity(x: Any):
@@ -40,165 +35,66 @@ def identity(x: Any):
     return x
 
 
-def image_shape(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
-) -> Tuple[int, int, int]:
+@register_metric_function(
+    group=[
+        "image_classification",
+        "sentiment_analysis",
+        "zero_shot_text_classification",
+        "text_classification",
+    ],
+    identifier="pipeline_outputs.labels",
+)
+def predicted_classes(
+    classes: List[Union[int, str, List[int], List[str]]]
+) -> BatchResult:
     """
-    Return the shape of the image.
+    Returns the predicted classes from the model output
+    schema in the form of a BatchResult object
 
-    :param img: An image represented as a numpy array or a torch tensor.
-        Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
-              tensor/array
-            - the image has 3 or 1 channels
-    :return: Tuple containing the image shape; three integers
+    :param classes: The classes to convert to a BatchResult
     """
-    img_numpy = _assert_numpy_image(img)
-    num_dims, _ = _check_valid_image(img_numpy)
-    if num_dims == 4:
-        img_numpy = img_numpy[0]
-    return img_numpy.shape
+
+    if isinstance(classes[0], list):
+        result = BatchResult()
+        for class_ in classes:
+            result.append(
+                BatchResult([_check_if_convertable_to_int(value) for value in class_])
+            )
+        return result
+    else:
+        return BatchResult([_check_if_convertable_to_int(value) for value in classes])
 
 
-def mean_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
-) -> Union[Tuple[float, float, float], Tuple[float]]:
+@register_metric_function(
+    group=[
+        "image_classification",
+        "sentiment_analysis",
+        "zero_shot_text_classification",
+        "text_classification",
+    ],
+    identifier="pipeline_outputs.scores",
+)
+def predicted_top_score(
+    scores: List[Union[float, List[float]]]
+) -> Union[float, BatchResult]:
     """
-    Return the mean pixel value per image channel
+    Returns the top score from the model output
+    schema in the form of a BatchResult object
+    (or a single float)
 
-    :param img: An image represented as a numpy array or a torch tensor.
-        Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
-              tensor/array
-            - the image has 3 or 1 channels
-    :return: Tuple containing the mean pixel values:
-        - 3 floats if image has 3 channels
-        - 1 float if image has 1 channel
+    :param scores: The scores to convert to a BatchResult
     """
-    img_numpy = _assert_numpy_image(img)
-    num_dims, channel_dim = _check_valid_image(img_numpy)
-    dims = numpy.arange(0, num_dims, 1)
-    dims = numpy.delete(dims, channel_dim)
-    return tuple(numpy.mean(img_numpy, axis=tuple(dims)))
+    if isinstance(scores[0], list):
+        result = BatchResult()
+        for scores_ in scores:
+            result.append(max(scores_))
+        return result
+    else:
+        return max(scores)
 
 
-def std_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
-) -> Union[Tuple[float, float, float], Tuple[float]]:
-    """
-    Return the standard deviation of pixel values per image channel
-    :param img: An image represented as a numpy array or a torch tensor.
-        Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
-              tensor/array
-            - the image has 3 or 1 channels
-    :return: Tuple containing the standard deviation of pixel values:
-        - 3 floats if image has 3 channels
-        - 1 float if image has 1 channel
-    """
-    img_numpy = _assert_numpy_image(img)
-    num_dims, channel_dim = _check_valid_image(img)
-    dims = numpy.arange(0, num_dims, 1)
-    dims = numpy.delete(dims, channel_dim)
-    return tuple(numpy.std(img_numpy, axis=tuple(dims)))
-
-
-def max_pixels_per_channel(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
-) -> Union[Tuple[float, float, float], Tuple[float]]:
-    """
-    Return the max pixel value per image channel
-    :param img: An image represented as a numpy array or a torch tensor.
-        Assumptions:
-            - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
-              tensor/array
-            - the image has 3 or 1 channels
-    :return: Tuple containing the max pixel values:
-        - 3 floats if image has 3 channels
-        - 1 float if image has 1 channel
-    """
-    img_numpy = _assert_numpy_image(img)
-    num_dims, channel_dim = _check_valid_image(img)
-    dims = numpy.arange(0, num_dims, 1)
-    dims = numpy.delete(dims, channel_dim)
-    return tuple(numpy.max(img_numpy, axis=tuple(dims)))
-
-
-def fraction_zeros(img: Union[numpy.ndarray, "torch.tensor"]) -> float:  # noqa F821
-    """
-    Return the float the represents the fraction of zeros in the
-    image tensor/array
-
-    :param img: An image represented as a numpy array or a torch tensor.
-       Assumptions:
-           - 3 dimensional or 4 dimensional (num_batches in zeroth dimension)
-             tensor/array
-           - the image has 3 or 1 channels
-    :return: A float in range from 0. to 1.
-    """
-    image_numpy = _assert_numpy_image(img)
-    _check_valid_image(image_numpy)
-    return (image_numpy.size - numpy.count_nonzero(image_numpy)) / image_numpy.size
-
-
-def bounding_box_count(bboxes: List[List[Optional[List[float]]]]) -> Dict[int, int]:
-    """
-    Extract the number of bounding boxes from the (nested) list of bbox corners
-
-    :param bboxes: A (nested) list, where the leaf list has length four and contains
-        float values (top left and bottom right coordinates of the bounding box corners)
-    :return: Dictionary, where the keys are image indices within
-        a batch and the values are the bbox counts
-    """
-    if not bboxes or _is_nested_list_empty(bboxes):
-        return 0
-
-    if not (isinstance(bboxes[0][0][0], float) and len(bboxes[0][0]) == 4):
-        raise ValueError(
-            "A valid argument `bboxes` should be of "
-            "type: List[List[Optional[List[float]]]])."
-        )
-
-    bboxes_count = {}
-    for batch_idx, bboxes_ in enumerate(bboxes):
-        num_bboxes = len(bboxes_)
-        bboxes_count[batch_idx] = num_bboxes
-
-    return bboxes_count
-
-
-def _check_valid_image(img: numpy.ndarray) -> Tuple[int, int]:
-    num_dims = img.ndim
-    if num_dims == 4:
-        img = img[0]
-
-    channel_dim = [i for i, dim in enumerate(img.shape) if (dim == 1) or (dim == 3)]
-
-    if img.ndim != 3:
-        raise ValueError(
-            "A valid image must have three or four (incl. batch dimension) dimensions"
-        )
-
-    if len(channel_dim) != 1:
-        raise ValueError(
-            "Could not infer a channel dimension from the image tensor/array"
-        )
-
-    channel_dim = channel_dim[0]
-    return num_dims, channel_dim if num_dims == 3 else channel_dim + 1
-
-
-def _assert_numpy_image(
-    img: Union[numpy.ndarray, "torch.tensor"]  # noqa F821
-) -> numpy.ndarray:
-    if hasattr(img, "numpy"):
-        img = img.numpy()
-    return img
-
-
-def _is_nested_list_empty(nested_list: List) -> bool:
-    if not nested_list:
-        return True
-    if isinstance(nested_list[0], list):
-        return _is_nested_list_empty(nested_list[0])
-    return False
+def _check_if_convertable_to_int(value):
+    if isinstance(value, str):
+        if value.isdigit():
+            return int(value)
+    return value

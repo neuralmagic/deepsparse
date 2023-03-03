@@ -243,14 +243,14 @@ def _get_models(
     all_model_paths = model_paths.split(",")
     for model in all_model_paths:
         model = model.strip()
+        if not model:
+            continue
 
         if Path(model).is_file() or model.startswith("zoo:"):
             models.append(model)
-        elif Path(model).is_dir():
-            models.extend([str(model) for model in Path.rglob("*.onnx")])
         else:
             raise ValueError(
-                "The specified models must either be valid paths that exist,"
+                "The specified models must either be valid files that exist,"
                 f"or a valid SparseZoo stub but found {model}"
             )
     if not models:
@@ -261,7 +261,14 @@ def _get_models(
     return models
 
 
-@click.command()
+@click.command(
+    context_settings=dict(
+        token_normalize_func=lambda x: x.replace("-", "_"),
+        show_default=True,
+        ignore_unknown_options=True,
+        allow_extra_args=True,
+    )
+)
 @click.option(
     "--num-cores",
     help="Comma separated values for different num_cores to benchmark against, "
@@ -275,8 +282,7 @@ def _get_models(
     "--model_paths",
     type=str,
     default=None,
-    help="Comma separated list of model paths, or Sparsezoo stubs, or "
-    "directories containing onnx models",
+    help="Comma separated list of model paths, or Sparsezoo stubs",
 )
 @click.option(
     "--save-dir",
@@ -343,7 +349,7 @@ def main(
         if model.startswith("zoo:"):
             model_name = ""
         else:
-            model_name = Path(model).name
+            model_name = Path(model).stem
 
         export_csv_name = f'benchmark_{model_name}_{time.strftime("%Y%m%d_%H%M%S")}.csv'
         export_csv_path = save_dir_path / export_csv_name
@@ -366,7 +372,11 @@ def _remove_duplicates(items: List[Any]):
 
 
 def _validate_batch_sizes(batch_sizes: str):
-    batch_sizes = [int(batch_size.strip()) for batch_size in batch_sizes.split(",")]
+    batch_sizes = [
+        int(batch_size.strip())
+        for batch_size in batch_sizes.split(",")
+        if batch_size.strip()
+    ]
     return _remove_duplicates(items=batch_sizes)
 
 
@@ -374,6 +384,8 @@ def _validate_num_cores(num_cores: str):
     valid_num_cores = []
     for cores in num_cores.split(","):
         cores = cores.strip()
+        if not cores:
+            continue
         if cores == "max":
             new_core_value = cpu_details()[0]
         else:

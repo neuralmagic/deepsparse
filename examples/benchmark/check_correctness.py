@@ -22,9 +22,11 @@ In this method, we can assume that ONNXRuntime will give the
 
 ##########
 Command help:
-usage: check_correctness.py [-h] [-s BATCH_SIZE] onnx_filepath
+usage: check_correctness.py [-h] [-s BATCH_SIZE] [-shapes INPUT_SHAPES]
+                            onnx_filepath
 
-Run an ONNX model, comparing outputs between the DeepSparse Engine and ONNXRuntime
+Run an ONNX model, comparing outputs between the DeepSparse Engine and
+ONNXRuntime
 
 positional arguments:
   onnx_filepath         The full filepath of the ONNX model file being run
@@ -33,6 +35,10 @@ optional arguments:
   -h, --help            show this help message and exit
   -s BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for
+  -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
+                        Override the shapes of the inputs, i.e., -shapes
+                        "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
+                        input1=[4,5,6] input2=[7,8,9].
 
 ##########
 Example command for checking a downloaded resnet50 model
@@ -124,8 +130,6 @@ def main():
     dse_outputs = dse_network(inputs)
 
     verify_outputs(dse_outputs, ort_outputs)
-
-    print("DeepSparse Engine output matches ONNXRuntime output")
 
 
 if __name__ == "__main__":
