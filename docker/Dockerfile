@@ -1,26 +1,83 @@
-# Setup the base image
-FROM python:3.8-slim-bullseye
+FROM python:3.8.16-slim-bullseye@sha256:322e38e3056cf87280ad80be615a6282aae768090f30d43d99abe413e1dd081a AS base
+ARG VENV="/venv"
+# Can be have the following values: all, server, transformers,
+#  ultralytics, base
+ARG DEPS="all"
+ARG VERSION
+ARG BRANCH
 
-# Install git
-RUN : \
+RUN set -Eeuxo \
     && apt-get update \
+    && apt-get install ffmpeg libsm6 libxext6  -y \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && python3.8 -m venv $VENV \
+    && $VENV/bin/pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Activate venv
-RUN python3.8 -m venv /venv
-ENV PATH="venv/bin:$PATH"
+RUN \
+    if [ -z "${VERSION}" ] ; then  \
+    echo VERSION not provided && \
+      if [ -z "${BRANCH}" ]; then  \
+        git clone https://github.com/neuralmagic/deepsparse.git --depth 1 -b main; \
+      else clone https://github.com/neuralmagic/deepsparse.git --depth 1 -b $BRANCH; \
+      fi; \
+    else echo VERSION is $VERSION &&  \
+      git clone https://github.com/neuralmagic/deepsparse.git --depth 1 -b release/${VERSION}; \
+    fi;
 
-RUN pip3 install --upgrade setuptools wheel
 
-# Setup DeepSparse
 
-ARG GIT_CHECKOUT
-# if $GIT_CHECKOUT is not specified - just install from pypi
-RUN if [ -z "${GIT_CHECKOUT}" ] ; then pip3 install --no-cache-dir --upgrade deepsparse[server] ; fi
+FROM base AS container_branch_all
+ARG VENV
+ENV PATH="${VENV}/bin:$PATH"
+ENV PIP_DEFAULT_TIMEOUT=200
+ARG DEEPSPARSE_COMMAND=./deepsparse[server,yolo,onnxruntime,yolov8]
+RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
 
-# if $GIT_CHECKOUT is specified - clone, checkout $GIT_CHECKOUT, and install with -e
-RUN if [ -n "${GIT_CHECKOUT}" ] ; then git clone https://github.com/neuralmagic/deepsparse.git --depth 1 -b $GIT_CHECKOUT; fi
-RUN if [ -n "${GIT_CHECKOUT}" ] ; then pip3 install --no-cache-dir --upgrade -e "./deepsparse[server]" ; fi
+RUN deepsparse.transformers.run_inference --help \
+    && deepsparse.image_classification.annotate --help
 
+
+FROM base AS container_branch_server
+ARG VENV
+ENV PATH="${VENV}/bin:$PATH"
+ENV PIP_DEFAULT_TIMEOUT=200
+ARG DEEPSPARSE_COMMAND=./deepsparse[server]
+RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+
+FROM container_branch_server AS container_branch_transformers
+RUN deepsparse.transformers.run_inference --help
+
+
+FROM container_branch_server AS container_branch_torchvision
+RUN deepsparse.image_classification.annotate --help
+
+
+FROM base AS container_branch_ultralytics
+ARG VENV
+ENV PATH="${VENV}/bin:$PATH"
+ENV PIP_DEFAULT_TIMEOUT=200
+ARG DEEPSPARSE_COMMAND=./deepsparse[server,yolo,yolov8]
+RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+
+
+FROM base AS container_branch_base
+ARG VENV
+ENV PATH="${VENV}/bin:$PATH"
+ENV PIP_DEFAULT_TIMEOUT=200
+ARG DEEPSPARSE_COMMAND=./deepsparse
+RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+
+FROM base AS container_branch_dev
+ARG VENV
+ENV PATH="${VENV}/bin:$PATH"
+ENV PIP_DEFAULT_TIMEOUT=200
+ARG DEEPSPARSE_COMMAND=./deepsparse[dev]
+RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+
+
+FROM container_branch_${DEPS} AS prod
+ARG VENV
+COPY --from=build $VENV $VENV
+ENV PATH="${VENV}/bin:$PATH"
+HEALTHCHECK CMD python -c 'import deepsparse'
+ENTRYPOINT bash
