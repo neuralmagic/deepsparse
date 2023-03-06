@@ -1,0 +1,9 @@
+# make sure you have installed `pip install netron`
+# example use:
+# bash start_netron.sh <model_path> <port_number> (on server)
+# ssh -N -f -L localhost:<port_number>:localhost:<port_number> name@server_address (on local machine)
+
+echo "Displaying model $1 on address $2"
+netron -b $1 --port $2
+
+
