@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -41,15 +41,17 @@ class TextGenerationOutput(BaseModel):
     Schema for inputs to text_classification pipelines
     """
 
-    sequences: Union[List[List[str]], List[str], str] = Field(
+    sequences: Union[List[List[str]], List[str], str, None] = Field(
         description="A string or List of strings representing output from "
         "text generation task. This would be the the initial input extended "
         "by the next word predicted by the model."
     )
+    next_token: Optional[Any] = Field(description="")
     is_done: Union[List[List[bool]], List[bool], bool] = Field(
         description="A boolean flag that indicates whether the model has "
         "finished generating the text."
     )
+    kv_cache: List[Any]
 
 
 @Pipeline.register(
@@ -92,7 +94,7 @@ class TextGenerationPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        maximum_generation_length: int = 256,
+        maximum_generation_length: int = 258,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -156,6 +158,13 @@ class TextGenerationPipeline(TransformersPipeline):
             padding=PaddingStrategy.MAX_LENGTH.value,
             truncation=TruncationStrategy.LONGEST_FIRST.value,
         )
+
+        kv_cache_inputs = {
+            name: numpy.zeros((2, 16, 128, 64), dtype=numpy.float32)
+            for name in self.onnx_input_names
+            if name.startswith("past_key_values")
+        }
+        tokens.update(kv_cache_inputs)
         engine_input = self.tokens_to_engine_input(tokens)
 
         # a boolean mask that indicates which tokens are valid (are non-padding tokens)
@@ -209,6 +218,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 "This is the current assumption for the text generation pipeline."
             )
 
+        next_token_array = numpy.zeros(batch_num, dtype=numpy.int64)
         # Using the mask to keep the valid tokens only
         valid_tokens = numpy.ma.masked_array(input_sequence, valid_tokens_mask)
         for batch_idx, valid_tokens_sequence in enumerate(valid_tokens):
@@ -219,21 +229,8 @@ class TextGenerationPipeline(TransformersPipeline):
             # get the logits that emerge after processing the last valid token
             last_logits = logits[batch_idx, last_valid_token_idx - 1, :]
             next_token = numpy.argmax(last_logits)
-            if last_valid_token_idx >= self.sequence_length:
-                raise ValueError(
-                    f"The set input sequence length {self.sequence_length} "
-                    "is too short to generate the next token."
-                    "The point has been reached where the autoregressive "
-                    f"sequence has generated {self.sequence_length} tokens"
-                    f"and will continue generating more. "
-                    f"To solve the problem, either increase the `sequence_length` "
-                    f"of the pipeline so that it exceeds the "
-                    f"`maximum_generation_length`= {self.maximum_generation_length}, "
-                    f"or try to reduce `maximum_generation_length`."
-                )
 
-            input_sequence[batch_idx, last_valid_token_idx] = next_token
-
+            next_token_array[batch_idx] = next_token
             if next_token == self.tokenizer.eos_token_id:
                 # if the next token is the end of sequence token,
                 # then the sequence is done
@@ -243,7 +240,9 @@ class TextGenerationPipeline(TransformersPipeline):
             sequences=self.tokenizer.batch_decode(
                 input_sequence, skip_special_tokens=True
             ),
+            next_token=next_token_array,
             is_done=is_done,
+            kv_cache=engine_outputs[1:],
         )
 
     @staticmethod
