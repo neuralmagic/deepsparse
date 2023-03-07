@@ -14,7 +14,7 @@ pip install -r requirements.txt
 
 ## Local Start
 
-Run the following command to spin up the Gradio demo locally. In addition, there is an option of using Gradio's public URL for sharing with this demo with others.
+Run the following command to spin up the Gradio demo locally. In addition, there is an option of using Gradio's public URL for sharing this demo with others.
 
 ```bash
 python app.py
