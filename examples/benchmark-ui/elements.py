@@ -21,22 +21,23 @@ class TextElements:
     md_body = """
 
     ## Hey There 👋
-    
-    Welcome to Neural Magic's Benchmarking Demo where you can put DeepSparse runtime on DigitalOcean's CPUs to the test! 
-    Our goal is to provide an easy-to-use platform for users to benchmark select models from Computer Vision and NLP domains, 
+    Welcome to Neural Magic's Benchmarking Demo where you can put DeepSparse \
+    runtime on DigitalOcean's CPUs to the test! \
+    Our goal is to provide an easy-to-use platform for users to \
+    benchmark select models from Computer Vision and NLP domains, \
     and to do so with a variety of different configurations.
 
-    Whether you're an expert in the field or just getting started, 
-    our demo provides a straightforward way to load sparse deep learning models into DeepSparse and get valuable insights into its performance on CPUs.
-    
+    Whether you're an expert in the field or just getting started, \
+    our demo provides a straightforward way to load sparse deep learning \
+    models into DeepSparse and get valuable insights into its performance on CPUs.
     To get started:
-    
     1.  Select your AI task in the tabs.
     2.  Select your model. You have the choice of benchmarking a sparse or dense model.
     3.  Select your engine.
-    4.  Set your batch size, which refers to the number of input samples that are processed.
+    4.  Set your batch size, which refers to the number of input samples that are \
+        processed.
     5.  Set the time of how long the benchmarking will take.
-    6.  Select your inference scenario. 
+    6.  Select your inference scenario.
         - SYNC is used to simulate model latency/synchronous scenarios.
         - ASYNC is used to simulate model throughput/asynchronous scenarios.
     """
@@ -133,17 +134,17 @@ class TextElements:
 
     embd_video = """
     <html>
-        <body>
-            <div style="max-width: 700px;">
-                <iframe
-                    width="100%" height="315"
-                    src="https://www.youtube.com/embed/gGErxSqf05o?autoplay=1&mute=1&modestbranding=0"
-                    title="YOLOv5 on CPUs: Sparsifying to Achieve GPU-Level Performance and Tiny Footprint"
-                    frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowfullscreen>
-                </iframe>
-            </div>
-        </body>
+    <body>
+    <div style="max-width: 700px;">
+    <iframe
+    width="100%" height="315"
+    src="https://www.youtube.com/embed/gGErxSqf05o?autoplay=1&mute=1&modestbranding=0"
+    title="YOLOv5 on CPUs: Sparsifying to Achieve GPU-Level Performance"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; web-share"
+    allowfullscreen>
+    </iframe>
+    </div>
+    </body>
     </html>
     """
