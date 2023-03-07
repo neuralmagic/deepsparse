@@ -18,15 +18,15 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
 
       1. `deepsparse.server --config_file [OPTIONS] <config path>`
 
-      2. `deepsparse.server task [OPTIONS] <task>
+      2. `deepsparse.server --task [OPTIONS] <task>
 
   Examples for using the server:
 
       `deepsparse.server --config_file server-config.yaml`
 
-      `deepsparse.server task question_answering --batch-size 2`
+      `deepsparse.server --task question_answering --batch-size 2`
 
-      `deepsparse.server task question_answering --host "0.0.0.0"`
+      `deepsparse.server --task question_answering --host "0.0.0.0"`
 
   Example config.yaml for serving:
 
@@ -75,7 +75,7 @@ Example CLI command for serving a single model for the **question answering** ta
 
 ```bash
 deepsparse.server \
-    task question_answering \
+    --task question_answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
@@ -127,7 +127,7 @@ endpoints:
 You can now run the server with the config file path using the `config` sub command:
 
 ```bash
-deepsparse.server config config.yaml
+deepsparse.server --config_file config.yaml
 ```
 
 You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, you can send a request to its configured route:
