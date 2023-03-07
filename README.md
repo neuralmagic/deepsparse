@@ -102,7 +102,7 @@ Once installed, the following example CLI command is available for running infer
 
 ```bash
 deepsparse.server \
-    task question_answering \
+    --task question_answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
@@ -127,7 +127,7 @@ endpoints:
 
 Finally, after your `config.yaml` file is built, run the server with the config file path as an argument:
 ```bash
-deepsparse.server config config.yaml
+deepsparse.server --config_file config.yaml
 ```
 
 [Getting Started with DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) for more info.
