@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
+import onnx
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
@@ -30,10 +32,8 @@ class TextGenerationInput(BaseModel):
     Schema for inputs to text_classification pipelines
     """
 
-    sequences: Union[List[List[str]], List[str], str] = Field(
-        description="A string or List of strings representing input to "
-        "text generation task"
-    )
+    data: Dict[str, Any]
+    cache: Optional[Dict[str, Any]]
 
 
 class TextGenerationOutput(BaseModel):
@@ -41,17 +41,9 @@ class TextGenerationOutput(BaseModel):
     Schema for inputs to text_classification pipelines
     """
 
-    sequences: Union[List[List[str]], List[str], str, None] = Field(
-        description="A string or List of strings representing output from "
-        "text generation task. This would be the the initial input extended "
-        "by the next word predicted by the model."
-    )
-    next_token: Optional[Any] = Field(description="")
-    is_done: Union[List[List[bool]], List[bool], bool] = Field(
-        description="A boolean flag that indicates whether the model has "
-        "finished generating the text."
-    )
-    kv_cache: List[Any]
+    generated_str: str
+    next_token: int
+    cache: Dict[str, Any]
 
 
 @Pipeline.register(
@@ -122,15 +114,13 @@ class TextGenerationPipeline(TransformersPipeline):
         fashion, with the possibility of earlier termination
         when end of sequence tokens are encountered for all the batches
         """
-        for iteration in range(self.maximum_generation_length):
-            # this is also the part of the code that could potentially
-            # store KV lookups for the next iteration
-            output = super().__call__(*args, **kwargs)
-            if all(output.is_done):
-                return output
-            kwargs = dict(sequences=output.sequences)
 
-        return output
+        return super().__call__(*args, **kwargs)
+
+    def _process_token_inputs(self, inputs):
+        tokens = inputs.data
+        engine_input = self.tokens_to_engine_input(tokens)
+        return engine_input
 
     def process_inputs(
         self, inputs: BaseModel
@@ -141,42 +131,20 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: inputs of this model processed into a list of numpy arrays that
             can be directly passed into the forward pass of the pipeline engine
         """
-        sequences = inputs.sequences
-        if isinstance(sequences, List) and all(
-            isinstance(sequence, List) and len(sequence) == 1 for sequence in sequences
-        ):
-            # if batch items contain only one sequence but are wrapped in lists, unwrap
-            # for use as tokenizer input
-            sequences = [sequence[0] for sequence in sequences]
 
-        self.tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-
-        tokens = self.tokenizer(
-            sequences,
-            add_special_tokens=True,
-            return_tensors="np",
-            padding=PaddingStrategy.MAX_LENGTH.value,
-            truncation=TruncationStrategy.LONGEST_FIRST.value,
-        )
-
-        kv_cache_inputs = {
-            name: numpy.zeros((2, 16, 128, 64), dtype=numpy.float32)
-            for name in self.onnx_input_names
-            if name.startswith("past_key_values")
-        }
-        tokens.update(kv_cache_inputs)
+        tokens = inputs.data
+        cache = inputs.cache
+        if cache:
+            cache_ = dict()
+            for k_old, v in cache.items():
+                k_new = k_old
+                if k_new.startswith("present"):
+                    k_new = k_new.replace("present", "past_key_values")
+                cache_[k_new] = v
+            tokens.update(cache_)
         engine_input = self.tokens_to_engine_input(tokens)
 
-        # a boolean mask that indicates which tokens are valid (are non-padding tokens)
-        valid_tokens_mask = numpy.where(
-            engine_input[0] == self.tokenizer.pad_token_id, 1, 0
-        )
-
-        preprocessing_kwargs = dict(
-            input_sequence=engine_input[0], valid_tokens_mask=valid_tokens_mask
-        )
-
-        return engine_input, preprocessing_kwargs
+        return engine_input
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
@@ -187,62 +155,20 @@ class TextGenerationPipeline(TransformersPipeline):
         :param kwargs: additional keyword arguments to pass to the pipeline
         :return: outputs of this model embedded in a TextGenerationOutput object
         """
+        assert len(engine_outputs) == 41
 
-        input_sequence = kwargs.get("input_sequence", None)
-        valid_tokens_mask = kwargs.get("valid_tokens_mask", None)
+        model = onnx.load(os.path.join(self.model_path, "model.onnx"))
+        onnx_output_names = [x.name for x in model.graph.output]
+        output_dict = {
+            name: arr for name, arr in zip(onnx_output_names, engine_outputs)
+        }
 
-        if input_sequence is None:
-            raise ValueError(
-                "Expected input_sequence to be passed as a keyword argument. "
-                "This is required for text generation pipeline."
-            )
-        if valid_tokens_mask is None:
-            raise ValueError(
-                "Expected valid_tokens_mask to be passed as a keyword argument. "
-                "This is required for text generation pipeline."
-            )
-
-        # a list of booleans that indicates whether the sequence in the batch is done
-        batch_num = engine_outputs[0].shape[0]
-        is_done = [False] * batch_num
-
-        if len(engine_outputs) == 41:
-            # onnx model comes from sparseml.transformers.export
-            logits = engine_outputs[0]  # logits are (Batch, Sequence_Len, Vocab_Size)
-        elif len(engine_outputs) == 1:
-            # onnx model comes from transformers.convert_graph_to_onnx
-            logits = engine_outputs[0]
-        else:
-            raise ValueError(
-                "Expected engine_outputs to be a list of length 1 or 41. "
-                "This is the current assumption for the text generation pipeline."
-            )
-
-        next_token_array = numpy.zeros(batch_num, dtype=numpy.int64)
-        # Using the mask to keep the valid tokens only
-        valid_tokens = numpy.ma.masked_array(input_sequence, valid_tokens_mask)
-        for batch_idx, valid_tokens_sequence in enumerate(valid_tokens):
-            # by counting the number of valid tokens,
-            # we can get the index of the last valid token
-            # Is this assumption always valid?
-            last_valid_token_idx = numpy.ma.count(valid_tokens_sequence)
-            # get the logits that emerge after processing the last valid token
-            last_logits = logits[batch_idx, last_valid_token_idx - 1, :]
-            next_token = numpy.argmax(last_logits)
-
-            next_token_array[batch_idx] = next_token
-            if next_token == self.tokenizer.eos_token_id:
-                # if the next token is the end of sequence token,
-                # then the sequence is done
-                is_done[batch_idx] = True
+        kv_cache = {k: v for k, v in output_dict.items() if k.startswith("present")}
+        next_token = numpy.argmax(output_dict["logits"], axis=2)[0][-1]
+        generated_str = self.tokenizer.decode(next_token, skip_special_tokens=True)
 
         return TextGenerationOutput(
-            sequences=self.tokenizer.batch_decode(
-                input_sequence, skip_special_tokens=True
-            ),
-            next_token=next_token_array,
-            is_done=is_done,
-            kv_cache=engine_outputs[1:],
+            generated_str=generated_str, next_token=next_token, cache=kv_cache
         )
 
     @staticmethod

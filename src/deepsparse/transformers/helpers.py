@@ -159,8 +159,8 @@ def overwrite_transformer_onnx_model_inputs(
     ]
     input_names = []
     for external_input in external_inputs:
-        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-        if not external_input.name.startswith("past_key_values"):
+        if external_input.name.startswith("input_ids"):
+            external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
             external_input.type.tensor_type.shape.dim[1].dim_value = max_length
         input_names.append(external_input.name)
 
