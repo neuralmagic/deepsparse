@@ -53,6 +53,16 @@ def _matmul_counts(model):
 def main(args):
 
     model = onnx.load(args.model)
+    list_inputs = model.graph.input
+    sample_input = []
+    for input_ in list_inputs:
+        if input_.name.startswith("input"):
+            sample_input.append(numpy.random.randint(0,1,(1,1)))
+        elif input_.name.startswith("attention"):
+            sample_input.append(numpy.random.randint(0,1,(1,384)))
+        else:
+            sample_input.append(numpy.random.randn(1, 16, 383, 64))
+
 
     sparsify_fast(
         model=args.model,
@@ -64,7 +74,7 @@ def main(args):
                 if node.op_type not in ["MatMul", "Gemm"]
             ]
         ),
-        sample_input=[[numpy.random.randint(0, 1, (384)), numpy.ones((384))]],
+        #sample_input=sample_input,
         save_path=os.path.join(args.save_dir, "model_quant.onnx"),
     )
 
