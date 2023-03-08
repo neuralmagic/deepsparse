@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
-
 import pytest
 from deepsparse import Pipeline
 from tests.utils import mock_engine
@@ -54,9 +52,7 @@ def test_aggregation_strategy(
         aggregation_strategy=aggregation_strategy,
     )
 
-    print(sequences)
-    out = pipeline(sequences)
-    print(out)
+    pipeline(sequences)
 
 
 def _generate_texts(num_texts):
