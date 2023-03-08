@@ -21,3 +21,4 @@ from .text_classification import *
 from .token_classification import *
 from .zero_shot_text_classification import *
 from .embedding_extraction import *
+from .text_generation import *

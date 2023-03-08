@@ -82,6 +82,7 @@ class SupportedTasks:
             "token_classification",
             "zero_shot_text_classification",
             "transformers_embedding_extraction",
+            "text_generation"
         ],
     )(
         question_answering=AliasedTask("question_answering", ["qa"]),
@@ -93,6 +94,7 @@ class SupportedTasks:
         transformers_embedding_extraction=AliasedTask(
             "transformers_embedding_extraction", []
         ),
+        text_generation=AliasedTask("text_generation", ["codegen"]),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(
