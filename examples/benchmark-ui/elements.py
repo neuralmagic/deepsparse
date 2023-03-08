@@ -20,9 +20,11 @@ class TextElements:
 
     md_body = """
 
-    ## Hey There 👋
-    Welcome to Neural Magic's Benchmarking Demo where you can put DeepSparse \
-    runtime on DigitalOcean's CPUs to the test! \
+    ### Hey There 👋
+    
+    Welcome to Neural Magic's Benchmarking Demo where you can put \
+    [DeepSparse](https://github.com/neuralmagic/deepsparse) on \
+    DigitalOcean's CPUs to the test! \
     Our goal is to provide an easy-to-use platform for users to \
     benchmark select models from Computer Vision and NLP domains, \
     and to do so with a variety of different configurations.
@@ -109,7 +111,7 @@ class TextElements:
     # Parameters
     batch_min = 1
     batch_max = 128
-    batch_step = 1
+    batch_step = 8
     batch_value = 1
 
     time_min = 1
