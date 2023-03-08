@@ -21,7 +21,6 @@ class TextElements:
     md_body = """
 
     ### Hey There 👋
-    
     Welcome to Neural Magic's Benchmarking Demo where you can put \
     [DeepSparse](https://github.com/neuralmagic/deepsparse) on \
     DigitalOcean's CPUs to the test! \
