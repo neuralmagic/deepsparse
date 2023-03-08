@@ -18,7 +18,7 @@ limitations under the License.
 
 ![alt text](pic.png)
 
-This demo gives users the ability to interact with 28 Sparse and Dense deep learning models from the Neural Magic Sparse Zoo. The Benchmark UI uses Gradio as its front-end and DeepSparse for running benchmarking on the back-end. In addition, the `vm.py` module includes an integration with the `python-digitalocean` client to spin up Droplets on DigitalOcean with the intention for users to host and benchmark DeepSparse models on DigitalOcean machines. Given this integration, the `app.py` module already includes a FastAPI mount for users who are more serious in hosting this demo on a VM like DO's Droplets or on any other instance from other cloud providers.
+This demo gives users the ability to interact with 28 sparse and dense deep learning models from the Neural Magic SparseZoo. The Benchmark UI uses Gradio as its front-end and DeepSparse for running benchmarking on the back-end. In addition, the `vm.py` module includes an integration with the `python-digitalocean` client to spin up Droplets on DigitalOcean with the intention for users to host and benchmark models on DigitalOcean machines. Given this integration, the `app.py` module already includes a FastAPI mount for users who are more serious in hosting this demo on a VM like DO's Droplets or on any other instance from other cloud providers.
 
 ## Install
 
@@ -68,14 +68,14 @@ DO.create_droplet()
 
 ## Starting FastAPI and Uvicorn in Droplet
 
-After Droplet creation, and setting up a Python environment, you can spin up a server with the following command:
+After Droplet creation, and setting up a Python environment, you can spin up a server by first following the steps in the `Install` section, and then starting a server with the following command:
 
 ```bash
 uvicorn app:app --host 0.0.0.0
 ```
 
-This will start the Gradio Demo via FastAPI on Uvicorn's default `port 8000`. To start demo in browser, call the `deepsparse` route with the IPv4 address of your VM in the URL:
+This will start the Gradio Demo on Uvicorn's default `port 8000`. To start demo in browser, call the `deepsparse` route with the IPv4 address of your VM in the URL:
 
     http://<ipaddress>:8000/deepsparse/
 
-For further details on how to configure a Droplet for launching this demo you can follow the directions in the following Neural Magic blog.
+For further details on how to configure a Droplet for launching this demo you can follow the guide in the following Neural Magic blog.
