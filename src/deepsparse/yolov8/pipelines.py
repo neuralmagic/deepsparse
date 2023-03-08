@@ -93,11 +93,11 @@ class YOLOv8Pipeline(YOLOPipeline):
 
         else:
             if len(engine_outputs) != 1:
-                raise ValueError(
-                    "Error: Detection pipeline "
-                    "expects 1 output from engine"
-                    "(detections), got {}".format(len(engine_outputs))
-                )
+                # if the returns more then 1 output,
+                # we assume that the first one is
+                # the detection output
+                engine_outputs = [engine_outputs[0]]
+
             return super().process_engine_outputs(
                 engine_outputs=engine_outputs, **kwargs
             )
