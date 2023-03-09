@@ -36,12 +36,12 @@ dependencies installed:
 
 | Image Name                	| Description                                                            	|
 |---------------------------	|------------------------------------------------------------------------	|
-| deepsparse-base           	| Base DeepSparse container with no integration specific dependencies    	|
-| deepsparse/deepsparse-all 	| DeepSparse container with all major integration dependencies installed 	|
-| deepsparse-server         	| DeepSparse container with `[server]` dependencies installed              	|
-| deepsparse-transformers   	| DeepSparse container with all transformer dependencies installed       	|
-| deepsparse-torchvision    	| DeepSparse container with torchvision dependencies installed           	|
-| deepsparse-ultralytics    	|  DeepSparse container with yolov5 and yolov8 dependencies installed    	|
+| deepsparse-base           	| Base DeepSparse image with no integration specific dependencies    	|
+| deepsparse/deepsparse-all 	| DeepSparse image with all major integration dependencies installed 	|
+| deepsparse-server         	| DeepSparse image with `[server]` dependencies installed              	|
+| deepsparse-transformers   	| DeepSparse image with all transformer dependencies installed       	|
+| deepsparse-torchvision    	| DeepSparse image with torchvision dependencies installed           	|
+| deepsparse-ultralytics    	|  DeepSparse image with yolov5 and yolov8 dependencies installed    	|
 
 
 To build a development image for a specific branch use the  following  command:

@@ -81,3 +81,4 @@ COPY --from=build $VENV $VENV
 ENV PATH="${VENV}/bin:$PATH"
 HEALTHCHECK CMD python -c 'import deepsparse'
 ENTRYPOINT bash
+
