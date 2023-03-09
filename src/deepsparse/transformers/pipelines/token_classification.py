@@ -93,7 +93,6 @@ class TokenClassificationResult(BaseModel):
 
     entity: str = Field(description="entity predicted for that token/word")
     score: float = Field(description="The corresponding probability for `entity`")
-    index: int = Field(description="index of the corresponding token in the sentence")
     word: str = Field(description="token/word classified")
     start: Optional[int] = Field(
         description=(
@@ -106,6 +105,13 @@ class TokenClassificationResult(BaseModel):
             "index of the end of the corresponding entity in the sentence. "
             "Only exists if the offsets are available within the tokenizer"
         )
+    )
+    index: Optional[int] = Field(
+        description=(
+            "index of the corresponding token in the sentence. "
+            "Only supplied when aggregation_strategy='none'"
+        ),
+        default=None,
     )
     is_grouped: bool = Field(
         default=False,
