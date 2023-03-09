@@ -23,7 +23,7 @@ for i, graph_input in enumerate(tmp_net.graph.input):
     elif graph_input.name.startswith("past"):
         input_shapes = [10, 16, 383, 64]
     elif graph_input.name.startswith("attention"):
-        input_shapes = [10, 384]
+        input_shapes = [10, 1] #384]
     else:
         raise ValueError("")
 

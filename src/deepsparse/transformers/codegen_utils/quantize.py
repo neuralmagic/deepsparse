@@ -57,11 +57,11 @@ def main(args):
     sample_input = []
     for input_ in list_inputs:
         if input_.name.startswith("input"):
-            sample_input.append(numpy.random.randint(0,1,(1,1)))
+            sample_input.append([numpy.random.randint(0,1,(1))])
         elif input_.name.startswith("attention"):
-            sample_input.append(numpy.random.randint(0,1,(1,384)))
+            sample_input.append([numpy.random.randint(0,1,(384))])
         else:
-            sample_input.append(numpy.random.randn(1, 16, 383, 64))
+            sample_input.append([numpy.random.randn(1, 16, 383, 64)])
 
 
     sparsify_fast(
@@ -74,7 +74,6 @@ def main(args):
                 if node.op_type not in ["MatMul", "Gemm"]
             ]
         ),
-        #sample_input=sample_input,
         save_path=os.path.join(args.save_dir, "model_quant.onnx"),
     )
 
@@ -85,8 +84,8 @@ def main(args):
 
     print(f"matmul op counts post transform: {_matmul_counts(model)}")
 
-    model, _ = simplify(model)
-    convert_model_to_external_data(model, all_tensors_to_one_file=False)
+    # model, _ = simplify(model)
+    # convert_model_to_external_data(model, all_tensors_to_one_file=False)
     onnx.save(model, args.save_dir + "/model_quant_final.onnx")
 
 
