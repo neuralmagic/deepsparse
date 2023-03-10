@@ -135,6 +135,7 @@ def overwrite_transformer_onnx_model_inputs(
     batch_size: int = 1,
     max_length: int = 128,
     output_path: Optional[str] = None,
+    input_names_to_overwrite: Optional[List[str]] = ["input_ids"],
 ) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
     """
     Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
@@ -159,17 +160,18 @@ def overwrite_transformer_onnx_model_inputs(
     ]
     input_names = []
     for external_input in external_inputs:
-        # this is a hack for now, we will need to think a smart way to implement
-        # this in the future
-        if external_input.name.startswith("input_ids"):
-            external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-            external_input.type.tensor_type.shape.dim[1].dim_value = max_length
+        if input_names_to_overwrite is not None:
+            if external_input.name not in input_names_to_overwrite:
+                input_names.append(external_input.name)
+                continue
+
+        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
         input_names.append(external_input.name)
 
     # Save modified model
     if output_path is None:
-        # hack for now, otherwise temporary files disappear for some reason
-        tmp_file = NamedTemporaryFile(delete=False)  # file will be deleted after program exit
+        tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
         onnx.save(model, tmp_file.name)
 
         return tmp_file.name, input_names, tmp_file

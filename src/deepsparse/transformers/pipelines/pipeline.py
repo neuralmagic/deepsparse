@@ -126,7 +126,9 @@ class TransformersPipeline(Pipeline, Bucketable):
         return onnx_path
 
     def tokens_to_engine_input(
-        self, tokens: Mapping[Any, numpy.ndarray], onnx_input_names: Optional[List[str]] = None
+        self,
+        tokens: Mapping[Any, numpy.ndarray],
+        onnx_input_names: Optional[List[str]] = None,
     ) -> List[numpy.ndarray]:
         """
         :param tokens: outputs of the pipeline tokenizer

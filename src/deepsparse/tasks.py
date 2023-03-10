@@ -82,7 +82,7 @@ class SupportedTasks:
             "token_classification",
             "zero_shot_text_classification",
             "transformers_embedding_extraction",
-            "text_generation"
+            "text_generation",
         ],
     )(
         question_answering=AliasedTask("question_answering", ["qa"]),
