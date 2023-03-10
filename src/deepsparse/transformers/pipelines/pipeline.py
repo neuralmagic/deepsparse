@@ -126,19 +126,20 @@ class TransformersPipeline(Pipeline, Bucketable):
         return onnx_path
 
     def tokens_to_engine_input(
-        self, tokens: Mapping[Any, numpy.ndarray]
+        self, tokens: Mapping[Any, numpy.ndarray], onnx_input_names: Optional[List[str]] = None
     ) -> List[numpy.ndarray]:
         """
         :param tokens: outputs of the pipeline tokenizer
         :return: list of numpy arrays in expected order for model input
         """
-        if not all(name in tokens for name in self.onnx_input_names):
+        onnx_input_names = onnx_input_names or self.onnx_input_names
+        if not all(name in tokens for name in onnx_input_names):
             raise ValueError(
-                f"pipeline expected arrays with names {self.onnx_input_names}, "
+                f"pipeline expected arrays with names {onnx_input_names}, "
                 f"received inputs: {list(tokens.keys())}"
             )
 
-        return [tokens[name] for name in self.onnx_input_names]
+        return [tokens[name] for name in onnx_input_names]
 
     @staticmethod
     def should_bucket(*args, **kwargs) -> bool:

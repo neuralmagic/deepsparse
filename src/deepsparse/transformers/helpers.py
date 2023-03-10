@@ -168,7 +168,7 @@ def overwrite_transformer_onnx_model_inputs(
 
     # Save modified model
     if output_path is None:
-        # hack for now, otherwise temporary files dissappear for some reason
+        # hack for now, otherwise temporary files disappear for some reason
         tmp_file = NamedTemporaryFile(delete=False)  # file will be deleted after program exit
         onnx.save(model, tmp_file.name)
 
