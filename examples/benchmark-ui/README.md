@@ -18,7 +18,7 @@ limitations under the License.
 
 ![alt text](pic.png)
 
-This demo gives users the ability to interact with 28 sparse and dense deep learning models from the Neural Magic SparseZoo. The Benchmark UI uses Gradio as its front-end and DeepSparse for running benchmarking on the back-end. In addition, the `vm.py` module includes an integration with the `python-digitalocean` client to spin up Droplets on DigitalOcean with the intention for users to host and benchmark models on DigitalOcean machines. Given this integration, the `app.py` module already includes a FastAPI mount for users who are more serious in hosting this demo on a VM like DO's Droplets or on any other instance from other cloud providers.
+This demo gives users the ability to interact with 28 sparse and dense models from Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The Benchmark UI uses Gradio as its front-end and DeepSparse for running benchmarking on the back-end. In addition, the `vm.py` module includes an integration with the `python-digitalocean` client to spin up Droplets on DigitalOcean with the intention for users to host and benchmark models on DigitalOcean machines. Given this integration, the `app.py` module already includes an optional FastAPI mount for users who are more serious in hosting this demo on a VM like DO's Droplets or on any other instance from other cloud providers.
 
 ## Install
 
@@ -30,7 +30,7 @@ pip install -r requirements.txt
 
 ## Local Start
 
-Run the following command to spin up the Gradio demo locally. In addition, there is an option of using Gradio's public URL for sharing this demo with others.
+Run the following command to spin up the Gradio demo locally. In addition, there is an option to use Gradio's public URL for sharing the demo with others.
 
 ```bash
 python app.py
@@ -41,7 +41,7 @@ Output:
     >>> Running on local URL:  http://127.0.0.1:7860
     >>> Running on public URL: https://XXXXXXXXXXXXXX.gradio.live
 
-If you wish to do further development or edit the demo, you can use the following command for Gradio to auto-update your edits:
+For users who wish to do further development on this demo, the following command allows Gradio to reload your edits:
 
 ```bash
 gradio app.py
@@ -49,7 +49,9 @@ gradio app.py
 
 ## Creating Droplet
 
-In order to use this class, you need to obtain an API token from DigitalOcean's console in the `API` menu section and have SSH access to DigitalOcean Droplets. To create a Droplet, configure the `Droplet` class according to your needs and use the `create_droplet` method to spin up a VM. The following implementation spins up a DigitalOcean Premium CPU instance with 4vCPUs and 8GB RAM on Ubuntu 22.10:
+In order to use the `Droplet` class, you need to obtain an API token from DigitalOcean's console in the `API` menu section and have SSH access to DigitalOcean Droplets. Next step is to run the `create_droplet` method to spin up a VM. 
+
+As an example, the following code snippet is configured to spin up a DigitalOcean Premium CPU instance with 4vCPUs and 8GB RAM on Ubuntu 22.10:
 
 ```python
 from vm import Droplet
@@ -68,13 +70,13 @@ DO.create_droplet()
 
 ## Starting FastAPI and Uvicorn in Droplet
 
-After Droplet creation, and setting up a Python environment, you can spin up a server by first following the steps in the `Install` section, and then starting a server with the following command:
+After Droplet creation, and setting up a Python environment, you can spin up a server by following the steps in the `Install` section, and then starting a server with the following command:
 
 ```bash
 uvicorn app:app --host 0.0.0.0
 ```
 
-This will start the Gradio Demo on Uvicorn's default `port 8000`. To start demo in browser, call the `deepsparse` route with the IPv4 address of your VM in the URL:
+This will start the demo on Uvicorn's default `port 8000`. To launch demo in the browser, call the `deepsparse` route with the IPv4 address of your VM in the URL:
 
     http://<ipaddress>:8000/deepsparse/
 
