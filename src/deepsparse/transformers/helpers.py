@@ -135,7 +135,6 @@ def overwrite_transformer_onnx_model_inputs(
     batch_size: int = 1,
     max_length: int = 128,
     output_path: Optional[str] = None,
-    input_names_to_overwrite: Optional[List[str]] = ["input_ids"],
 ) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
     """
     Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
@@ -160,13 +159,10 @@ def overwrite_transformer_onnx_model_inputs(
     ]
     input_names = []
     for external_input in external_inputs:
-        if input_names_to_overwrite is not None:
-            if external_input.name not in input_names_to_overwrite:
-                input_names.append(external_input.name)
-                continue
-
-        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
+        # Commenting this out for now, as it is not needed for the ORT backend
+        # Will be crucial for DeepSparse backend
+        # external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+        # external_input.type.tensor_type.shape.dim[1].dim_value = max_length
         input_names.append(external_input.name)
 
     # Save modified model
