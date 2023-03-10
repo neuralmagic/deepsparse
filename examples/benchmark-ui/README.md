@@ -70,13 +70,13 @@ DO.create_droplet()
 
 ## Starting FastAPI and Uvicorn in Droplet
 
-After Droplet creation, and setting up a Python environment, you can spin up a server by following the steps in the `Install` section, and then starting a server with the following command:
+After Droplet creation, and setting up a Python environment, you can spin up a server by following the steps in the `Install` section, and then starting a Uvicorn server with the following command:
 
 ```bash
 uvicorn app:app --host 0.0.0.0
 ```
 
-This will start the demo on Uvicorn's default `port 8000`. To launch demo in the browser, call the `deepsparse` route with the IPv4 address of your VM in the URL:
+This will start the demo on Uvicorn's default `port 8000`. To view the demo in the browser, add the `deepsparse` route with the IPv4 address of your VM to the URL:
 
     http://<ipaddress>:8000/deepsparse/
 

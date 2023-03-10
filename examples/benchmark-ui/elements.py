@@ -95,7 +95,6 @@ class TextElements:
     token_classification_tab = "Token Classification"
     document_classification_tab = "Document Classification"
     multi_label_classification_tab = "Multi Label Text Classification"
-    masked_language_modeling_tab = "Masked Language Modeling"
 
     # Labels
     model_label = "Select Model"
@@ -110,7 +109,7 @@ class TextElements:
     # Parameters
     batch_min = 1
     batch_max = 128
-    batch_step = 8
+    batch_step = 1
     batch_value = 1
 
     time_min = 1

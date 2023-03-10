@@ -12,25 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import psutil
 import subprocess
 
 import digitalocean
 
 
 class CPUHandler:
+    
+    def get_cpu_count(self):
+
+        return f"Total CPUs: {psutil.cpu_count()}"
+    
     def get_cpu_model_name(self):
 
         cmd = ["cat /proc/cpuinfo | grep 'model name' | uniq"]
         output = subprocess.check_output(cmd, shell=True).decode("utf-8")
 
         return output.replace("model name", "CPU Model ").strip()
+    
+    def get_ram(self):
+        
+        total_ram = psutil.virtual_memory().total
+        total_ram = psutil._common.bytes2human(total_ram)
 
-    def get_cpu_count(self):
-
-        cmd = ["nproc"]
-        output = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-        return f"Total CPUs: {output}"
+        return f"Total RAM: {total_ram}"
 
 
 class Droplet:

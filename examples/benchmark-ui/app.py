@@ -38,6 +38,7 @@ with gr.Blocks() as demo:
 
             with gr.Accordion(label=text.accordion_label, open=False):
                 gr.Tab(cpu.get_cpu_count())
+                gr.Tab(cpu.get_ram())
                 gr.Tab(cpu.get_cpu_model_name())
 
         with gr.Column():
