@@ -11,6 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# flake8: noqa
-from .annotate import *
-from .validation import *
+
+import argparse
+
+import datasets
+from deepsparse import Pipeline
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("model")
+args = parser.parse_args()
+
+pipeline = Pipeline.create(
+    task="question-answering",
+    model_path=args.model,
+    version_2_with_negative=True,
+)
+
+cuad = datasets.load_dataset("cuad")["test"]
+
+example = cuad[0]
+
+output = pipeline(question=example["question"], context=example["context"])
+
+print("Answered:", output.answer)
+print("Expected:", example["answers"])
