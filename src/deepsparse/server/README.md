@@ -16,13 +16,13 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
 
   Start a DeepSparse inference server for serving the models and pipelines.
 
-      1. `deepsparse.server config [OPTIONS] <config path>`
+      1. `deepsparse.server --config_file [OPTIONS] <config path>`
 
       2. `deepsparse.server task [OPTIONS] <task>
 
   Examples for using the server:
 
-      `deepsparse.server config server-config.yaml`
+      `deepsparse.server --config_file server-config.yaml`
 
       `deepsparse.server task question_answering --batch-size 2`
 
