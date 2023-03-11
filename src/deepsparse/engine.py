@@ -17,6 +17,7 @@ Code related to interfacing with a Neural Network in the DeepSparse Engine using
 """
 
 import logging
+from onnx import ModelProto
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
@@ -180,8 +181,10 @@ class Engine(object):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        model_proto: ModelProto = None,
     ):
         self._model_path = model_to_path(model)
+        self._model_proto = model_proto
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
         self._scheduler = _validate_scheduler(scheduler)
@@ -191,6 +194,7 @@ class Engine(object):
 
         num_streams = _validate_num_streams(num_streams, self._num_cores)
         if self._input_shapes:
+            assert(not self._model_proto)
             with override_onnx_input_shapes(
                 self._model_path, self._input_shapes
             ) as model_path:
@@ -205,6 +209,7 @@ class Engine(object):
         else:
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
+                self._model_proto,
                 self._batch_size,
                 self._num_cores,
                 num_streams,
@@ -260,6 +265,13 @@ class Engine(object):
         :return: The local path to the model file the current instance was compiled from
         """
         return self._model_path
+
+    @property
+    def model_proto(self) -> ModelProto:
+        """
+        :return: The ONNX ModelProto object the current instance was compiled from
+        """
+        return self._model_proto
 
     @property
     def batch_size(self) -> int:
@@ -675,8 +687,10 @@ class MultiModelEngine(Engine):
         batch_size: int,
         context: Context,
         input_shapes: List[List[int]] = None,
+        model_proto: ModelProto = None,
     ):
         self._model_path = model_to_path(model)
+        self._model_proto = model_proto
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = context.num_cores
         self._num_streams = context.num_streams
@@ -686,6 +700,7 @@ class MultiModelEngine(Engine):
         self._cpu_vnni = VNNI
 
         if self._input_shapes:
+            assert(not self._model_proto)
             with override_onnx_input_shapes(
                 self._model_path, self._input_shapes
             ) as model_path:
@@ -700,6 +715,7 @@ class MultiModelEngine(Engine):
         else:
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
+                self._model_proto,
                 self._batch_size,
                 self._num_cores,
                 self._num_streams,
