@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import warnings
 from typing import Callable, List, Type, Union
 
 import numpy
@@ -93,9 +94,12 @@ class YOLOv8Pipeline(YOLOPipeline):
 
         else:
             if len(engine_outputs) != 1:
-                # if the returns more then 1 output,
-                # we assume that the first one is
-                # the detection output
+                warnings.warn(
+                    "YOLOv8 Detection pipeline expects 1 output from engine, "
+                    "got {}. Assuming first output is detection output".format(
+                        len(engine_outputs)
+                    )
+                )
                 engine_outputs = [engine_outputs[0]]
 
             return super().process_engine_outputs(
