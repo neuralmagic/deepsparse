@@ -80,7 +80,7 @@ ARG VENV
 ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG DEEPSPARSE_INSTALLABLE=./deepsparse[dev]
-RUN $VENV/bin/pip install -e --no-cache-dir "${DEEPSPARSE_INSTALLABLE}"
+RUN $VENV/bin/pip install -e "${DEEPSPARSE_INSTALLABLE}"
 
 
 FROM container_branch_${DEPS} AS build
