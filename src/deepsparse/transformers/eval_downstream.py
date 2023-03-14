@@ -78,13 +78,14 @@ DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 
-def human_eval(args, dataset_name="openai_humaneval", k=10, temperatures=[1.0]):
+def human_eval(args, dataset_name="openai_humaneval", k=1, temperatures=[1.0]):
     # k is the number of predictions to generate for each prompt
     import os
 
     from examples.codegen.text_generation import TextGenerationPipeline
 
     os.environ["HF_ALLOW_CODE_EVAL"] = "1"
+    os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
     dataset = load_dataset(dataset_name)["test"]
     code_eval = load("code_eval")
@@ -100,8 +101,8 @@ def human_eval(args, dataset_name="openai_humaneval", k=10, temperatures=[1.0]):
     print(f"Engine info: {codegen.engine}")
     for idx, sample in _enumerate_progress(dataset, args.max_samples):
         pred = codegen(sequences=[sample["prompt"]] * k)
-        predictions = [seq.replace(sample["prompt"], "") for seq in pred.sequences]
-        code_eval.add_batch(references=[sample["test"]], predictions=[predictions])
+        # sequences = [seq.replace(sample["prompt"], "") for seq in pred.sequences]
+        code_eval.add_batch(references=[sample["test"]], predictions=[pred])
 
         if args.max_samples and idx >= args.max_samples:
             break
