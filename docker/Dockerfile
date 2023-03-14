@@ -31,7 +31,7 @@ ARG VENV
 ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG DEEPSPARSE_COMMAND=./deepsparse[server,yolo,onnxruntime,yolov8]
-RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+RUN $VENV/bin/pip install --no-cache-dir "${DEEPSPARSE_COMMAND}"
 
 RUN deepsparse.transformers.run_inference --help \
     && deepsparse.image_classification.annotate --help
@@ -42,7 +42,7 @@ ARG VENV
 ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG DEEPSPARSE_COMMAND=./deepsparse[server]
-RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+RUN $VENV/bin/pip install --no-cache-dir "${DEEPSPARSE_COMMAND}"
 
 FROM container_branch_server AS container_branch_transformers
 RUN deepsparse.transformers.run_inference --help
@@ -57,7 +57,7 @@ ARG VENV
 ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG DEEPSPARSE_COMMAND=./deepsparse[server,yolo,yolov8]
-RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+RUN $VENV/bin/pip install --no-cache-dir "${DEEPSPARSE_COMMAND}"
 
 
 FROM base AS container_branch_base
@@ -65,14 +65,14 @@ ARG VENV
 ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG DEEPSPARSE_COMMAND=./deepsparse
-RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+RUN $VENV/bin/pip install --no-cache-dir "${DEEPSPARSE_COMMAND}"
 
 FROM base AS container_branch_dev
 ARG VENV
 ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG DEEPSPARSE_COMMAND=./deepsparse[dev]
-RUN $VENV/bin/pip install install --no-cache-dir "${DEEPSPARSE_COMMAND}"
+RUN $VENV/bin/pip install -e --no-cache-dir "${DEEPSPARSE_COMMAND}"
 
 
 FROM container_branch_${DEPS} AS prod
