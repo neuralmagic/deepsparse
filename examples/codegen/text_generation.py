@@ -246,7 +246,12 @@ class TextGenerationPipeline(TransformersPipeline):
         # perform the remaining autoregressive passes
         num_iterations = self.sequence_length - len(tokens)
         for iter in range(num_iterations):
+            eos_token_found = self.tokenizer.eos_token_id == tokens[-1]
             if eos_token_found:
+                # fill the token list so that it has the correct sequence length
+                tokens = tokens + [self.tokenizer.pad_token_id] * (
+                    self.sequence_length - len(tokens)
+                )
                 return numpy.array([[tokens]])
 
             tokens, kv_cache = self.autoregressive_pass(
