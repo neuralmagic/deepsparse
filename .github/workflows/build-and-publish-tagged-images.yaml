@@ -55,7 +55,7 @@ jobs:
             VERSION=${{ steps.extract_tag.outputs.tag }}
           push: true
           tags: |
-            ghcr.io/neuralmagic/deepsparse-all:$${{ steps.extract_tag.outputs.tag }}
+            ghcr.io/neuralmagic/deepsparse-all:${{ steps.extract_tag.outputs.tag }}
 
       - name: Build and push deepsparse-server
         if: ${{ contains(github.ref, 'refs/heads/release/') }}
