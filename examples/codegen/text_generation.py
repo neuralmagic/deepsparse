@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import os
-from typing import Dict, List, Tuple, Type, Union
+from tempfile import NamedTemporaryFile
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
+import onnx
 from pydantic import BaseModel, Field
 
 from deepsparse import Context, MultiModelEngine, Pipeline
@@ -26,13 +28,60 @@ from deepsparse.pipeline import (
     Engine,
     ORTEngine,
 )
-from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
 from deepsparse.transformers.pipelines import TransformersPipeline
+from scipy.special import softmax
 
 
 _MODEL_DIR_ONNX_MULTI_TOKEN_NAME = "decoder_model.onnx"
+_MODEL_DIR_ONNX_NAME = "model.onnx"
 
 __all__ = ["TextGenerationPipeline"]
+
+
+def overwrite_transformer_onnx_model_inputs(
+    path: str,
+    batch_size: int = 1,
+    max_length: int = 128,
+    output_path: Optional[str] = None,
+) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
+    """
+    Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
+    Assumes that these are the first and second shape indices of the given model inputs
+    respectively
+
+    :param path: path to the ONNX model to override
+    :param batch_size: batch size to set
+    :param max_length: max sequence length to set
+    :param output_path: if provided, the model will be saved to the given path,
+        otherwise, the model will be saved to a named temporary file that will
+        be deleted after the program exits
+    :return: if no output path, a tuple of the saved path to the model, list of
+        model input names, and reference to the tempfile object will be returned
+        otherwise, only the model input names will be returned
+    """
+    # overwrite input shapes
+    model = onnx.load(path)
+    initializer_input_names = set([node.name for node in model.graph.initializer])
+    external_inputs = [
+        inp for inp in model.graph.input if inp.name not in initializer_input_names
+    ]
+    input_names = []
+    for external_input in external_inputs:
+        # this is removed for now (will need to be accounted for when we start
+        # supporting deepsparse engine
+        # external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+        # external_input.type.tensor_type.shape.dim[1].dim_value = max_length
+        input_names.append(external_input.name)
+
+    # Save modified model
+    if output_path is None:
+        tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
+        onnx.save(model, tmp_file.name)
+
+        return tmp_file.name, input_names, tmp_file
+    else:
+        onnx.save(model, output_path)
+        return input_names
 
 
 class TextGenerationInput(BaseModel):
@@ -62,12 +111,35 @@ class TextGenerationOutput(BaseModel):
     task_aliases=["codegen"],
 )
 class TextGenerationPipeline(TransformersPipeline):
-    def __init__(self, **kwargs):
+    """
+    Pipeline for text generation tasks.
+
+    :param deterministic: if True, the pipeline will sample from
+        the probability distribution computed from the logits.
+        If False, the pipeline will get the next token by applying
+        an argmax function to the logits.
+    :param sampling_temperature: the temperature to use when sampling
+        from the probability distribution computed from the logits.
+        Higher values will result in more random samples.
+    :param kwargs: kwargs to pass to the TransformersPipeline
+    """
+
+    def __init__(
+        self, deterministic: bool = True, sampling_temperature: float = 1.0, **kwargs
+    ):
         super().__init__(**kwargs)
-        # setup the auxiliary multitoken model
+        self.deterministic = deterministic
+        self.sampling_temperature = sampling_temperature
+
+        # set-up the auxiliary multitoken model
         self.onnx_multitoken_path = self._setup_multitoken_onnx_file_path()
         # initialize the auxiliary multitoken engine
         self.multitoken_engine = self._initialize_multitoken_engine()
+
+        # re-initialize the target model
+        # this will be removed once codegen is productionized
+        self.onnx_path = self._setup_onnx_file_path()
+        self.engine = self._reinitialize_engine()
 
         if self._batch_size != 1:
             raise ValueError(
@@ -168,7 +240,7 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens = [t for t in engine_inputs[0][0] if t != self.tokenizer.pad_token_id]
 
         tokens, kv_cache = self.initial_autoregressive_pass(
-            engine=self.multitoken_engine, tokens=tokens, engine_inputs=engine_inputs
+            tokens=tokens, engine_inputs=engine_inputs
         )
 
         # perform the remaining autoregressive passes
@@ -178,20 +250,16 @@ class TextGenerationPipeline(TransformersPipeline):
                 return numpy.array([[tokens]])
 
             tokens, kv_cache = self.autoregressive_pass(
-                engine=self.engine,
                 tokens=tokens,
                 kv_cache=kv_cache,
-                sequence_length=self.sequence_length,
             )
 
         return numpy.array([[tokens]])
 
-    @staticmethod
     def autoregressive_pass(
-        engine: Union[Engine, ORTEngine],
+        self,
         tokens: List[int],
         kv_cache: Dict[str, numpy.ndarray],
-        sequence_length: int,
     ) -> Tuple[List[int], Dict[str, numpy.ndarray]]:
         """
         Performs an autoregressive pass to generate the next token in the sequence
@@ -207,16 +275,14 @@ class TextGenerationPipeline(TransformersPipeline):
             autoregressive pass.
         5)  Returns the new token sequence and the updated kv cache.
 
-        :param engine: the engine to use for the autoregressive pass
         :param tokens: the current token sequence
         :param kv_cache: the current kv_cache
-        :param sequence_length: the maximum sequence length
         :return: the new token sequence and the updated kv cache
         """
 
         new_token = tokens[-1]
 
-        attention_mask = numpy.zeros((1, sequence_length), dtype=numpy.int64)
+        attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
         attention_mask[:, : len(tokens)] = 1
         attention_mask[:, -1] = 1
 
@@ -226,15 +292,15 @@ class TextGenerationPipeline(TransformersPipeline):
         }
         engine_inputs_dict.update(kv_cache)
 
-        engine_inputs = [engine_inputs_dict[name] for name in engine._input_names]
+        engine_inputs = [engine_inputs_dict[name] for name in self.engine._input_names]
 
-        new_logits, *new_kvs = engine(engine_inputs)
+        new_logits, *new_kvs = self.engine(engine_inputs)
 
         # rename the output names to match the names expected
         # in the next autoregressive pass
         kv_output_names = [
             name.replace("present", "past_key_values")
-            for name in engine._output_names
+            for name in self.engine._output_names
             if name.startswith("present")
         ]
         kv_cache = dict(zip(kv_output_names, new_kvs))
@@ -243,14 +309,17 @@ class TextGenerationPipeline(TransformersPipeline):
             kv_cache[k] = numpy.ascontiguousarray(v[:, :, :-1])
 
         # Obtain the next token from the logits
-        new_token = numpy.argmax(new_logits[0, -1, :])
+        new_token = TextGenerationPipeline.sample_new_token(
+            logits=new_logits[0, -1, :],
+            deterministic=self.deterministic,
+            temperature=self.sampling_temperature,
+        )
         tokens.append(new_token)
 
         return tokens, kv_cache
 
-    @staticmethod
     def initial_autoregressive_pass(
-        engine: Union[Engine, ORTEngine],
+        self,
         tokens: List[int],
         engine_inputs: List[numpy.ndarray],
     ) -> Tuple[List[int], Dict[str, numpy.ndarray]]:
@@ -263,20 +332,19 @@ class TextGenerationPipeline(TransformersPipeline):
             autoregressive pass.
         3)  Returns the new token sequence and the updated kv cache.
 
+        :param tokens: input tokens provided by the user
         :param engine_inputs: list of numpy inputs to Pipeline
             engine forward pass
-        :param engine: the engine to use for the forward pass
-        :param tokens: input tokens provided by the user
         :return: the extended token sequence and the kv cache
         """
 
-        past_logits, *new_kvs = engine(engine_inputs)
+        past_logits, *new_kvs = self.multitoken_engine(engine_inputs)
 
         # rename the output names to match the names expected
         # in the next autoregressive pass
         kv_output_names = [
             name.replace("present", "past_key_values")
-            for name in engine._output_names
+            for name in self.multitoken_engine._output_names
             if name.startswith("present")
         ]
         kv_cache = dict(zip(kv_output_names, new_kvs))
@@ -289,10 +357,34 @@ class TextGenerationPipeline(TransformersPipeline):
             kv_cache[k] = numpy.ascontiguousarray(v)
 
         # Obtain the next token from the logits
-        new_token = numpy.argmax(past_logits[0, len(tokens) - 1])
+        new_token = TextGenerationPipeline.sample_new_token(
+            logits=past_logits[0, len(tokens) - 1],
+            deterministic=self.deterministic,
+            temperature=self.sampling_temperature,
+        )
         tokens.append(new_token)
 
         return tokens, kv_cache
+
+    @staticmethod
+    def sample_new_token(
+        logits: numpy.ndarray, deterministic: bool, temperature: float
+    ) -> int:
+        """
+        Samples a token from the logits using the sampling temperature.
+
+        :param logits: the logits from the model
+        :param deterministic: whether to sample from the softmax or take the argmax
+        :param temperature: the sampling temperature
+
+        :return: the sampled token
+        """
+        if deterministic:
+            return numpy.argmax(logits)
+        else:
+            logits /= temperature
+            probs = softmax(logits)
+            return numpy.random.choice(len(probs), p=probs)
 
     def _setup_multitoken_onnx_file_path(self) -> str:
         # `setup_onnx_file_path` function rewritten
@@ -329,6 +421,46 @@ class TextGenerationPipeline(TransformersPipeline):
             return Engine(self.onnx_multitoken_path, **self._engine_args)
         elif engine_type == ORT_ENGINE:
             return ORTEngine(self.onnx_multitoken_path, **self._engine_args)
+        else:
+            raise ValueError(
+                f"Unknown engine_type {self.engine_type}. Supported values include: "
+                f"{SUPPORTED_PIPELINE_ENGINES}"
+            )
+
+    def _setup_onnx_file_path(self) -> str:
+        # `setup_onnx_file_path` function rewritten
+
+        onnx_path = os.path.join(self.model_path, _MODEL_DIR_ONNX_NAME)
+        (
+            onnx_path,
+            self.onnx_input_names,
+            self._temp_model_directory,
+        ) = overwrite_transformer_onnx_model_inputs(
+            onnx_path, max_length=self.sequence_length
+        )
+
+        return onnx_path
+
+    def _initialize_engine(self):
+        return None
+
+    def _reinitialize_engine(self) -> Union[Engine, ORTEngine]:
+        # `_initialize_engine` function rewritten
+
+        engine_type = self.engine_type.lower()
+
+        if engine_type == DEEPSPARSE_ENGINE:
+            if self.context is not None and isinstance(self.context, Context):
+                self._engine_args.pop("num_cores", None)
+                self._engine_args.pop("scheduler", None)
+                self._engine_args["context"] = self.context
+                return MultiModelEngine(
+                    model=self.onnx_path,
+                    **self._engine_args,
+                )
+            return Engine(self.onnx_path, **self._engine_args)
+        elif engine_type == ORT_ENGINE:
+            return ORTEngine(self.onnx_path, **self._engine_args)
         else:
             raise ValueError(
                 f"Unknown engine_type {self.engine_type}. Supported values include: "

@@ -159,10 +159,8 @@ def overwrite_transformer_onnx_model_inputs(
     ]
     input_names = []
     for external_input in external_inputs:
-        # Commenting this out for now, as it is not needed for the ORT backend
-        # Will be crucial for DeepSparse backend
-        # external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-        # external_input.type.tensor_type.shape.dim[1].dim_value = max_length
+        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
         input_names.append(external_input.name)
 
     # Save modified model
