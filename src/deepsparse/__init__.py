@@ -22,6 +22,7 @@ for Neural Networks on commodity CPUs.
 
 # be sure to import all logging first and at the root
 # this keeps other loggers in nested files creating from the root logger setups
+from .analyze import *
 from .log import *
 
 from .cpu import (
