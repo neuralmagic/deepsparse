@@ -1,8 +1,6 @@
 # DeepSparse Benchmark
 
-DeepSparse contains a CLI utitlity for benchmarking DeepSparse's performance with ONNX models.
-
-The tool will parse the arguments, download/compile the network into the engine, generate input tensors, and execute the model depending on the chosen scenario. 
+This page explains how to use DeepSparse's CLI utilties for benchmarking performance in a variety of scenarios.
 
 ## Installation Requirements
 
@@ -12,11 +10,13 @@ Install DeepSparse with `pip`:
 pip install deepsparse[onnxruntime]
 ```
 
-The following benchmarking numbers were run on an AWS `c6i.16xlarge` (32 core) instance.
+The benchmarking numbers were achieved on an AWS `c6i.16xlarge` (32 core) instance.
 
-## Quickstart - Comparing Dense and Sparse Performance
+## Quickstart
 
-Run the following to benchmark DeepSparse with a dense, unoptimized BERT ONNX model (from SparseZoo):
+Let's compare DeepSparse's performance with dense and sparse models.
+
+Run the following to benchmark DeepSparse with a [dense, unoptimized BERT ONNX model](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fbase-none):
 
 ```bash
 deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none --batch_size 64
@@ -28,7 +28,7 @@ deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/s
 >> Throughput (items/sec): 102.1683
 ```
 
-Run the following to benchmark DeepSparse with a 90% pruned and quantized BERT ONNX model (from SparseZoo):
+Run the following to benchmark DeepSparse with a [90% pruned and quantized BERT ONNX model](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none):
 
 ```bash
 deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --batch_size 64
@@ -44,9 +44,9 @@ Running the sparse model, DeepSparse achieves 889 items/second vs 102 items/seco
 
 ### Comparing to ONNX Runtime
 
-The benchmarking utility also allows you to use ONNX Runtime as the inference runtime in order to compare against DeepSparse. 
+The benchmarking utility also allows you to use ONNX Runtime as the inference runtime by passing `--engine onnxruntime`. 
 
-Run the following to benchmark ORT with the dense, unoptimized BERT ONNX model (from SparseZoo):
+Run the following to benchmark ORT with the same dense, unoptimized BERT ONNX model as above:
 ```bash
 deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none --batch_size 64 --engine onnxruntime
 
@@ -57,7 +57,7 @@ deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/s
 >> Throughput (items/sec): 64.3392
 ```
 
-Run the following to benchmark ORT with the dense, unoptimized BERT ONNX model (from SparseZoo):
+Run the following to benchmark ORT with the same 90% pruned and quantized BERT ONNX model as above:
 ```bash
 deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --batch_size 64 --engine onnxruntime
 
@@ -69,26 +69,23 @@ deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/s
 ```
 
 We can see that ORT does not gain additional performance from sparsity like DeepSparse. Additionally, DeepSparse runs the dense model
-faster than ORT at high batch sizes. 
-
-All in all, in this example **DeepSparse is 13.8x faster than ONNX Runtime**!
+faster than ORT at high batch sizes. All in all, in this example **DeepSparse is 13.8x faster than ONNX Runtime**!
 
 ## Usage 
 
 Run `deepsparse.benchmark -h` to see full command line arguments.
 
+Let's walk through a few examples of common functionality.
+
 ### Pass Your Local ONNX Model
 
-Beyond passing SparseZoo stubs, you can also pass a local path to an ONNX file to DeepSparse.
-
-As an example, let's download an ONNX file from SparseZoo using the CLI to a local directory called `./yolov5-download`.
+Beyond passing SparseZoo stubs, you can also pass a local path to an ONNX file to DeepSparse. As an example, let's download an ONNX file from SparseZoo using the CLI to a local directory called `./yolov5-download`.
 
 ```bash
 sparsezoo.download zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none --save-dir yolov5-download
 ```
 
 We can pass a local ONNX file as follows:
-
 ```bash
 deepsparse.benchmark yolov5-download/model.onnx
 >> Original Model Path: yolov5-download/model.onnx
@@ -179,6 +176,4 @@ deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/s
 >> Latency Mean (ms/batch): 3.7041
 ```
 
-We can see that the async scenario achieves higher throughput, while the synchronous scenario achieves lower latency.
-
-Especially for very high core counts, using the asynchronous scheduler is a great way to improve performance if running at low batch sizes.
+We can see that the async scenario achieves higher throughput, while the synchronous scenario achieves lower latency. Especially for very high core counts, using the asynchronous scheduler is a great way to improve performance if running at low batch sizes.
