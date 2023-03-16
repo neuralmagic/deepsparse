@@ -55,7 +55,7 @@ DeepSparse includes three deployment APIs:
 - Engine is the lowest-level API. With Engine, you pass tensors and recieve the raw logits.
 - Pipeline wraps the Engine with pre- and post-processing. With Pipeline, you pass raw data and
 recieve the prediction.
-- Server wraps Pipelines with a REST API using FastAPI. With Server, you send raw data to an endpoint over HTTP
+- Server wraps Pipelines with a REST API using FastAPI. With Server, you send raw data over HTTP
 and recieve the prediction.
 
 Let's walk through a simple example of each API to give a sense of usage. As an example, we will use
