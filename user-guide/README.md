@@ -211,3 +211,5 @@ DeepSparse supports many common CV and NLP use cases out of the box. Check out t
 - Sentiment Analysis: `task="sentiment-analysis"`
 - Token Classification: `task="token-classification"`
 - Question Answering: `task="question-answering"`
+
+Check out the [pipeline page](deepsparse-pipeline.md) for details on creating a custom pipeline.
