@@ -1,7 +1,7 @@
 # DeepSparse User Guide
 
 This directory demonstrates usage of DeepSparse's key API, including:
-- [Performance Benchmarking](#performance-benchmarking)
+- [Benchmarking CLI](#performance-benchmarking)
 - [Engine API](#engine)
 - [Pipeline API](#pipeline)
 - [Server API](#server)
