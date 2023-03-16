@@ -20,10 +20,9 @@ See the [DeepSparse Installation page](https://docs.neuralmagic.com/get-started/
 
 DeepSparse's key feature is its performance on commodity CPUs. DeepSparse is competitive with other CPU runtimes
 like ONNX Runtime for unoptimized dense models. However, when optimization techniques like pruning and quantization 
-are applied to a model, DeepSparse can achieve an order-of-magnitude speedup.
-  
-As an example, let's compare DeepSparse and ORT's performance on BERT. In SparseZoo, there is [90% pruned-quantized 
-BERT]() which retains >99% of the accuracy of the baseline dense model. Running this model on a `c6i.16xlarge` instance, DeepSparse achieves a ***12x speedup*** over ORT!
+are applied to a model, DeepSparse can achieve an order-of-magnitude speedup. As an example, let's compare DeepSparse and ORT's performance on BERT. In SparseZoo, there is [90% pruned-quantized BERT](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none). 
+
+Running this model on a `c6i.16xlarge` instance, DeepSparse achieves a ***12x speedup*** over ORT!
 
 ORT achieves 18.5 items/second running BERT (make sure you have ORT installed `pip install onnxruntime`):
 ```bash
@@ -38,7 +37,7 @@ deepsparse.benchmark zoo:nlp/text_classification/obert-base/pytorch/huggingface/
 DeepSparse achieves 226 items/second running the pruned-quantized version of BERT:
 
 ```bash
-deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none -b 32 -s sync -nstreams 1 -e onnxruntime
+deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none -b 64 -s sync -nstreams 1 -e onnxruntime
 
 >> Original Model Path: zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none
 >> Batch Size: 64
