@@ -34,21 +34,20 @@ folder containing `model.onnx` and supporting files (e.g., the Hugging Face `tok
 
 ## Supported Use Cases
 
-DeepSparse Pipelines support many common CV and NLP use cases out of the box. Follow the links below for 
-usage examples of each use case with Pipelines.
+Pipelines support many CV and NLP use cases out of the box. Check out the use case pages for more details on task-specific APIs.
 
 **Computer Vision**:
-- [Image Classification](/use-cases/image-classification/deploying): `task="image_classification"`
-- [Object Detection](/use-cases/object-detection/deploying): `task="yolo"`
-- [Instance Segmentation](/use-cases/instance-segmentation/deploying): `task="yolact"`
+- Image Classification: `task="image_classification"`
+- Object Detection: `task="yolo"`
+- Instance Segmentation: `task="yolact"`
 
 **Natural Language Processing**:
-- [Embedding Extraction](/use-cases/embedding-extraction): `task="transformers_embedding_extraction"`
-- [Text Classification](/use-cases/use-cases/natural-language-processing/text-classification): `task="text-classification"`
-- [Zero Shot Text Classification](/use-cases/use-cases/natural-language-processing/zero-shot-text-classification): `task="zero-shot-text-classification"` 
-- [Sentiment Analysis](/use-cases/use-cases/natural-language-processing/sentiment-analysis): `task="sentiment-analysis"`
-- [Token Classification](/use-cases/use-cases/natural-language-processing/token-classification): `task="token-classification"`
-- [Question Answering](/use-cases/use-cases/natural-language-processing/question-answering): `task="question-answering"`
+- Embedding Extraction:`task="transformers_embedding_extraction"`
+- Text Classification: `task="text-classification"`
+- Zero Shot Text Classification: `task="zero-shot-text-classification"` 
+- Sentiment Analysis: `task="sentiment-analysis"`
+- Token Classification: `task="token-classification"`
+- Question Answering: `task="question-answering"`
 
 ## Custom Use Case
 
@@ -172,139 +171,6 @@ print(output)
 
 # >> labels=['positive'] scores=[0.9951152801513672] << but runs slower than if using all cores
 ```
-
-### Multi-Stream Scheduling
-
-Schedulers handle the distribution of work across cores in parallel computation. 
-The goal of a good scheduler is to ensure that while work is available, cores aren’t sitting idle. 
-On the contrary, as long as parallel tasks are available, all cores should be kept busy.
-
-The default scheduler for DeepSparse is a "synchronous" scheduler, where DeepSparse allocates
-as many resources as possible to each request. This format is optimizes per-request latency.
-
-However, DeepSparse also offers a "multi-stream" scheduler, which configures DeepSparse to
-process multiple requests at the same time. In deployment scenarios with low batch sizes and 
-high core counts, using the "multi-stream" scheduler can increase throughput by allowing DeepSparse
-to better saturate the cores.
-
-Let's walk through an example enabling the multi-stream capability with the Pipeline API.
-This example was run on a 32 core AWS `c6i.16xlarge` instance.
-
-```python
-from deepsparse import Pipeline
-from deepsparse.cpu import cpu_details
-import queue, threading, time, numpy
-
-num_cores = cpu_details()[0]
-num_streams = num_cores // 4
-
-zoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"  
-input = "This multi stream idea is awesome for getting better throughput!"
-batch_size = 1
-
-single_stream_pipeline = Pipeline.create(
-    task="sentiment_analysis",
-    model_path=zoo_stub,
-    batch_size=batch_size,
-)
-
-print(single_stream_pipeline(input))
-# >> labels=['positive'] scores=[0.9943772554397583]
-
-multi_stream_pipeline = Pipeline.create(
-    task="sentiment_analysis",
-    model_path=zoo_stub,
-    batch_size=batch_size,
-    scheduler="multi_stream",   # use multi-stream scheduler
-    executor=num_streams        # enable num_streams simultaneous streams
-)
-
-print(multi_stream_pipeline(input))
-# >> labels=['positive'] scores=[0.9943772554397583]
-
-class ExecutorThread(threading.Thread):
-    def __init__(self, pipeline, input, time_queue, max_time):
-        super(ExecutorThread, self).__init__()
-        self._pipeline = pipeline
-        self._input = input
-        self._time_queue = time_queue
-        self._max_time = max_time
-    def iteration(self):
-        start = time.perf_counter()
-        output = self._pipeline(self._input)
-        end = time.perf_counter()
-        return start, end
-    def run(self):
-        while time.perf_counter() < self._max_time:
-            start, end = self.iteration()
-            self._time_queue.put([start, end])
-
-def benchmark_performance(pipeline, num_threads):
-    seconds_to_run = 10.0
-    time_queue = queue.Queue() # threadsafe
-    max_time = time.perf_counter() + seconds_to_run
-    
-    threads = []
-    for _ in range(num_threads):
-        threads.append(ExecutorThread(multi_stream_pipeline, input, time_queue, max_time))
-    
-    for thread in threads:
-        thread.start()
-    
-    for thread in threads:
-        thread.join()
-    
-    batch_times = list(time_queue.queue)
-    first_start_time = min([b[0] for b in batch_times])
-    last_end_time = max([b[1] for b in batch_times])
-    total_time_executing = last_end_time - first_start_time
-    items_per_sec = (batch_size * len(batch_times)) / total_time_executing
-    batch_times_ms = [
-        (batch_time[1] - batch_time[0]) * 1000 for batch_time in batch_times
-    ]
-
-    print(f">> Throughput: {items_per_sec} items/sec")
-    print(f">> Median Latency: {numpy.median(batch_times_ms)} ms")
-
-print("\nMulti-Stream Performance:")
-benchmark_performance(multi_stream_pipeline, num_streams)
-
-print("\nSingle-Stream Performance:")
-benchmark_performance(single_stream_pipeline, 1)
-
-# Multi-Stream Performance:
-# >> Throughput: 310.2743200261281 items/sec
-# >> Median Latency: 25.716418500451255 ms
-
-# Single-Stream Performance:
-# >> Throughput: 241.04375983869264 items/sec
-# >> Median Latency: 4.130347000682377 ms
-```
-
-Note that the deepSparse.benchmark script reports much better numbers for multi-stream. 
-Perhaps something is going on with the pre-processing sharing resources?
-
-deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none -b 1 -s async -nstreams 8
-
-Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none
-Batch Size: 1
-Scenario: async
-Throughput (items/sec): 817.3063
-Latency Mean (ms/batch): 9.7701
-Latency Median (ms/batch): 9.7612
-Latency Std (ms/batch): 0.1710
-Iterations: 8176
-
-deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none -b 1 -s async -nstreams 8
-
-Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none
-Batch Size: 1
-Scenario: sync
-Throughput (items/sec): 272.8186
-Latency Mean (ms/batch): 3.6599
-Latency Median (ms/batch): 3.5558
-Latency Std (ms/batch): 0.2366
-Iterations: 2729
 
 ### Dynamic Batch Size
 
@@ -452,6 +318,10 @@ As a result, high traffic on one of your Pipelines can impact performance on the
 isolate your Pipelines, we recommend using an orchestration framework such as Docker and Kubernetes with 
 one DeepSparse Pipeline running in each container for proper process isolation.
 
+### Multi-Stream Scheduling
+
+Stay tuned for documentation on enabling multi-stream scheduling with DeepSparse Pipelines.
+
 ### Logging
 
-Stay tuned for documentation on enabling logging with DeepSparse.
+Stay tuned for documentation on enabling logging with DeepSparse Pipelines.
