@@ -109,7 +109,8 @@ class TransformersPipeline(Pipeline, Bucketable):
             config_path, finetuning_task=self.task if hasattr(self, "task") else None
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_path, model_max_length=self.sequence_length
+            tokenizer_path,
+            model_max_length=self.sequence_length,
         )
         self.config_path = os.path.join(config_path, "config.json")
         self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
@@ -126,19 +127,22 @@ class TransformersPipeline(Pipeline, Bucketable):
         return onnx_path
 
     def tokens_to_engine_input(
-        self, tokens: Mapping[Any, numpy.ndarray]
+        self,
+        tokens: Mapping[Any, numpy.ndarray],
+        onnx_input_names: Optional[List[str]] = None,
     ) -> List[numpy.ndarray]:
         """
         :param tokens: outputs of the pipeline tokenizer
         :return: list of numpy arrays in expected order for model input
         """
-        if not all(name in tokens for name in self.onnx_input_names):
+        onnx_input_names = onnx_input_names or self.onnx_input_names
+        if not all(name in tokens for name in onnx_input_names):
             raise ValueError(
-                f"pipeline expected arrays with names {self.onnx_input_names}, "
+                f"pipeline expected arrays with names {onnx_input_names}, "
                 f"received inputs: {list(tokens.keys())}"
             )
 
-        return [tokens[name] for name in self.onnx_input_names]
+        return [tokens[name] for name in onnx_input_names]
 
     @staticmethod
     def should_bucket(*args, **kwargs) -> bool:
