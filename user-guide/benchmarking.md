@@ -1,184 +1,184 @@
 # DeepSparse Benchmark
 
-DeepSparse includes a Benchmarking utility that enables you to profile performance on your system.
+DeepSparse contains a CLI utitlity for benchmarking DeepSparse's performance with ONNX models.
 
-
-`deepsparse.benchmark` is a command-line (CLI) tool for benchmarking DeepSparse with ONNX models.
-The tool will parse the arguments, download/compile the network into the engine, generate input tensors, and
-execute the model depending on the chosen scenario. By default, it will choose a multi-stream or asynchronous mode to optimize for throughput.
+The tool will parse the arguments, download/compile the network into the engine, generate input tensors, and execute the model depending on the chosen scenario. 
 
 ## Installation Requirements
 
-Use of the DeepSparse Benchmarking utilities requires installation of the [DeepSparse Community](/get-started/install/deepsparse).
-
-## Quickstart
-
-To benchmark a dense BERT ONNX model fine-tuned on the SST2 dataset (which is identified by its SparseZoo stub), run:
+Install DeepSparse with `pip`:
 
 ```bash
-deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none
+pip install deepsparse[onnxruntime]
 ```
 
-## Usage
+The following benchmarking numbers were run on an AWS `c6i.16xlarge` (32 core) instance.
 
-In most cases, good performance will be found in the default options so usage can be as simple as running the command with a SparseZoo model stub or your local ONNX model.
-However, if you prefer to customize benchmarking for your personal use case, you can run `deepsparse.benchmark -h` or with `--help` to view your usage options:
+## Quickstart - Comparing Dense and Sparse Performance
 
-CLI Arguments:
-```bash
-$ deepsparse.benchmark --help
-
-> positional arguments:
->
->         model_path                    Path to an ONNX model file or SparseZoo model stub.
->
-> optional arguments:
->
->         -h, --help                    show this help message and exit.
->
->         -b BATCH_SIZE, --batch_size BATCH_SIZE
->                                         The batch size to run the analysis for. Must be
->                                         greater than 0.
->
->         -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
->                                         Override the shapes of the inputs, i.e. -shapes
->                                         "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
->                                         input1=[4,5,6] input2=[7,8,9].
->
->         -ncores NUM_CORES, --num_cores NUM_CORES
->                                         The number of physical cores to run the analysis on,
->                                         defaults to all physical cores available on the system.
->
->         -s {async,sync,elastic}, --scenario {async,sync,elastic}
->                                         Choose between using the async, sync and elastic
->                                         scenarios. Sync and async are similar to the single-
->                                         stream/multi-stream scenarios. Elastic is a newer
->                                         scenario that behaves similarly to the async scenario
->                                         but uses a different scheduling backend. Default value
->                                         is async.
->
->         -t TIME, --time TIME
->                                         The number of seconds the benchmark will run. Default
->                                         is 10 seconds.
->
->         -w WARMUP_TIME, --warmup_time WARMUP_TIME
->                                         The number of seconds the benchmark will warmup before
->                                         running.Default is 2 seconds.
->
->         -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
->                                         The number of streams that will submit inferences in
->                                         parallel using async scenario. Default is
->                                         automatically determined for given hardware and may be
->                                         sub-optimal.
->
->         -pin {none,core,numa}, --thread_pinning {none,core,numa}
->                                         Enable binding threads to cores ('core' the default),
->                                         threads to cores on sockets ('numa'), or disable
->                                         ('none').
->
->         -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
->                                         Inference engine backend to run eval on. Choices are
->                                         'deepsparse', 'onnxruntime'. Default is 'deepsparse'.
->
->         -q, --quiet                     Lower logging verbosity.
->
->         -x EXPORT_PATH, --export_path EXPORT_PATH
->                                         Store results into a JSON file.
-```
-**PRO TIP:** Save your benchmark results in a convenient JSON file.
-
-The following is an example CLI command for benchmarking an ONNX model from the SparseZoo and saving the results to a `benchmark.json` file:
+Run the following to benchmark DeepSparse with a dense, unoptimized BERT ONNX model (from SparseZoo):
 
 ```bash
-deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none -x benchmark.json
+deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none --batch_size 64
+
+>> INFO:deepsparse.benchmark.benchmark_model:Starting 'singlestream' performance measurements for 10 seconds
+>> Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none
+>> Batch Size: 64
+>> Scenario: sync
+>> Throughput (items/sec): 102.1683
 ```
 
-### Sample CLI Argument Configurations
-
-To run a sparse FP32 MobileNetV1 at batch size 16 for 10 seconds for throughput using 8 streams of requests, use:
+Run the following to benchmark DeepSparse with a 90% pruned and quantized BERT ONNX model (from SparseZoo):
 
 ```bash
-deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate --batch_size 16 --time 10 --scenario async --num_streams 8
+deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --batch_size 64
+
+>> INFO:deepsparse.benchmark.benchmark_model:Starting 'singlestream' performance measurements for 10 seconds
+>> Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none
+>> Batch Size: 64
+>> Scenario: sync
+>> Throughput (items/sec): 889.1262
 ```
 
-To run a sparse quantized INT8 6-layer BERT at batch size 1 for latency, use:
+Running the sparse model, DeepSparse achieves 889 items/second vs 102 items/second with the dense model. **This is an 8.7x speedup!**
+
+### Comparing to ONNX Runtime
+
+The benchmarking utility also allows you to use ONNX Runtime as the inference runtime in order to compare against DeepSparse. 
+
+Run the following to benchmark ORT with the dense, unoptimized BERT ONNX model (from SparseZoo):
+```bash
+deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none --batch_size 64 --engine onnxruntime
+
+>> INFO:deepsparse.benchmark.benchmark_model:Starting 'singlestream' performance measurements for 10 seconds
+>> Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none
+>> Batch Size: 64
+>> Scenario: sync
+>> Throughput (items/sec): 64.3392
+```
+
+Run the following to benchmark ORT with the dense, unoptimized BERT ONNX model (from SparseZoo):
+```bash
+deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --batch_size 64 --engine onnxruntime
+
+>> INFO:deepsparse.benchmark.benchmark_model:Starting 'singlestream' performance measurements for 10 seconds
+>> Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none
+>> Batch Size: 64
+>> Scenario: sync
+>> Throughput (items/sec): 55.1905
+```
+
+We can see that ORT does not gain additional performance from sparsity like DeepSparse. Additionally, DeepSparse runs the dense model
+faster than ORT at high batch sizes. 
+
+All in all, in this example **DeepSparse is 13.8x faster than ONNX Runtime**!
+
+## Usage 
+
+Run `deepsparse.benchmark -h` to see full command line arguments.
+
+### Pass Your Local ONNX Model
+
+Beyond passing SparseZoo stubs, you can also pass a local path to an ONNX file to DeepSparse.
+
+As an example, let's download an ONNX file from SparseZoo using the CLI to a local directory called `./yolov5-download`.
 
 ```bash
-deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_96 --batch_size 1 --scenario sync
+sparsezoo.download zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none --save-dir yolov5-download
 ```
 
-## Inference Scenarios
-
-### Synchronous (Single-stream) Scenario
-
-Set by the `--scenario sync` argument, the goal metric is latency per batch (ms/batch). This scenario submits a single inference request at a time to the engine, recording the time taken for a request to return an output. This mimics an edge deployment scenario.
-
-The latency value reported is the mean of all latencies recorded during the execution period for the given batch size.
-
-### Asynchronous (Multi-stream) Scenario
-
-Set by the `--scenario async` argument, the goal metric is throughput in items per second (i/s). This scenario submits `--num_streams` concurrent inference requests to the engine, recording the time taken for each request to return an output. This mimics a model server or bulk batch deployment scenario.
-
-The throughput value reported comes from measuring the number of finished inferences within the execution time and the batch size.
-
-### Example Benchmarking Output of Synchronous vs. Asynchronous
-
-**BERT 3-layer FP32 Sparse Throughput**
-
-There is no need to add a *scenario* argument since `async` is the default option:
-```bash
-$ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_83
-
-> [INFO benchmark_model.py:202 ] Thread pinning to cores enabled
-> DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. version: 0.10.0 (9bba6971) (optimized) (system=avx512, binary=avx512)
-> [INFO benchmark_model.py:247 ] deepsparse.engine.Engine:
->         onnx_file_path: /home/mgoin/.cache/sparsezoo/c89f3128-4b87-41ae-91a3-eae8aa8c5a7c/model.onnx
->         batch_size: 1
->         num_cores: 18
->         scheduler: Scheduler.multi_stream
->         cpu_avx_type: avx512
->         cpu_vnni: False
-> [INFO            onnx.py:176 ] Generating input 'input_ids', type = int64, shape = [1, 384]
-> [INFO            onnx.py:176 ] Generating input 'attention_mask', type = int64, shape = [1, 384]
-> [INFO            onnx.py:176 ] Generating input 'token_type_ids', type = int64, shape = [1, 384]
-> [INFO benchmark_model.py:264 ] num_streams default value chosen of 9. This requires tuning and may be sub-optimal
-> [INFO benchmark_model.py:270 ] Starting 'async' performance measurements for 10 seconds
-> Original Model Path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_83
-> Batch Size: 1
-> Scenario: multistream
-> Throughput (items/sec): 83.5037
-> Latency Mean (ms/batch): 107.3422
-> Latency Median (ms/batch): 107.0099
-> Latency Std (ms/batch): 12.4016
-> Iterations: 840
-```
-
-**BERT 3-layer FP32 Sparse Latency**
-
-To select a *synchronous inference scenario*, add `-s sync`:
+We can pass a local ONNX file as follows:
 
 ```bash
-$ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_83 -s sync
-
-> [INFO benchmark_model.py:202 ] Thread pinning to cores enabled
-> DeepSparse Engine, Copyright 2021-present / Neuralmagic, Inc. version: 0.10.0 (9bba6971) (optimized) (system=avx512, binary=avx512)
-> [INFO benchmark_model.py:247 ] deepsparse.engine.Engine:
->         onnx_file_path: /home/mgoin/.cache/sparsezoo/c89f3128-4b87-41ae-91a3-eae8aa8c5a7c/model.onnx
->         batch_size: 1
->         num_cores: 18
->         scheduler: Scheduler.single_stream
->         cpu_avx_type: avx512
->         cpu_vnni: False
-> [INFO            onnx.py:176 ] Generating input 'input_ids', type = int64, shape = [1, 384]
-> [INFO            onnx.py:176 ] Generating input 'attention_mask', type = int64, shape = [1, 384]
-> [INFO            onnx.py:176 ] Generating input 'token_type_ids', type = int64, shape = [1, 384]
-> [INFO benchmark_model.py:270 ] Starting 'sync' performance measurements for 10 seconds
-> Original Model Path: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_3layers-aggressive_83
-> Batch Size: 1
-> Scenario: singlestream
-> Throughput (items/sec): 62.1568
-> Latency Mean (ms/batch): 16.0732
-> Latency Median (ms/batch): 15.7850
-> Latency Std (ms/batch): 1.0427
-> Iterations: 622
+deepsparse.benchmark yolov5-download/model.onnx
+>> Original Model Path: yolov5-download/model.onnx
+>> Batch Size: 1
+>> Scenario: sync
+>> Throughput (items/sec): 219.7396
 ```
+
+### Batch Sizes
+
+We can adjust the batch size of the inference with `-b` or `--batch_size`.
+
+The following runs a 95% pruned-quantized version of ResNet-50 at batch size 1:
+```bash
+deepsparse.benchmark zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none --batch_size 1
+
+>> Original Model Path: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
+>> Batch Size: 1
+>> Scenario: sync
+>> Throughput (items/sec): 852.7742
+```
+
+The following runs a 95% pruned-quantized version of ResNet-50 at batch size 64:
+```bash
+deepsparse.benchmark zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none --batch_size 64
+
+>> Original Model Path: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
+>> Batch Size: 64
+>> Scenario: sync
+>> Throughput (items/sec): 2456.9958
+```
+
+In general, DeepSparse is able to achieve better performance at higher batch sizes, especially on many core machines as it is better able to utilitize the underlying hardware and saturate all of the cores at high batch sizes.
+
+### Custom Input Shape
+
+We can adjust the input share of the inference with `-i` or `--input_shape`. This is generally useful for changing the size of input images or sequence length for NLP.
+
+Here's an example doing a BERT inference with sequence length 384 (vs 128 as above):
+
+```bash
+deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --input_shape [1,384]
+
+>> Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none
+>> Batch Size: 1
+>> Scenario: sync
+>> Throughput (items/sec): 121.7578
+```
+
+Here's an example doing a YOLOv5s inference with a 320x320 image (rather than 640x640 as above)
+
+```bash
+deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none -i [1,3,320,320]
+
+>> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none
+>> Batch Size: 1
+>> Scenario: sync
+>> Throughput (items/sec): 615.7185
+```
+
+### Inference Scenarios
+
+The default scenrio is synchronous inference. Set by the `--scenario sync` argument, the goal metric is latency per batch (ms/batch). This scenario submits a single inference request at a time to the engine, recording the time taken for a request to return an output. This mimics an edge deployment scenario.
+
+Additionally, DeepSparse offers asynchronous inference, where DeepSparse will allocate resources to handle multiple inferences at once. Set by the `--scenario async` argument. This scenario submits `--num_streams` concurrent inference requests to the engine. This mimics a model server deployment scenario.
+
+Here's an example handling 8 concurrent batch 1 inferences:
+
+```bash
+deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --scenario async --num_streams 8
+
+>> Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none
+>> Batch Size: 1
+>> Scenario: async
+>> Throughput (items/sec): 807.3410
+>> Latency Mean (ms/batch): 9.8906
+```
+
+Here's an example handling one batch 1 inference at a time with the same model:
+
+```bash
+deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --scenario sync
+
+>> Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none
+>> Batch Size: 1
+>> Scenario: sync
+>> Throughput (items/sec): 269.6001
+>> Latency Mean (ms/batch): 3.7041
+```
+
+We can see that the async scenario achieves higher throughput, while the synchronous scenario achieves lower latency.
+
+Especially for very high core counts, using the asynchronous scheduler is a great way to improve performance if running at low batch sizes.
