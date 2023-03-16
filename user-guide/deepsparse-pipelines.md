@@ -73,7 +73,7 @@ sparsezoo.download zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/
 We can create a custom image classification Pipeline which returns the raw logits and class probabilities 
 for the 1000 ImageNet classes with the following:
 
-For the purposes of this demo, make sure you have `torch` and `PIL` installed.
+For the purposes of this quick example, make sure you have `torch` `torchvision` and `Pillow` installed.
 ```python
 from deepsparse.pipelines.custom_pipeline import CustomTaskPipeline
 from torchvision import transforms
