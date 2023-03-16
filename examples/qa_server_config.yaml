@@ -1,6 +1,0 @@
-loggers:
-  python:
-
-endpoints:
-  - task: question_answering
-    model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none
