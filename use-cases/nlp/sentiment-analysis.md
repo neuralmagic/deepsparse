@@ -1,10 +1,3 @@
----
-title: "Deploy with DeepSparse"
-metaTitle: "Deploy Sentiment Analysis Models on CPUs with DeepSparse"
-metaDescription: "Deploy Sentiment Analysis Models on CPUs with DeepSparse"
-index: 2000
----
-
 # Deploying Sentiment Analysis Models with DeepSparse
 
 This page explains how to benchmark and deploy a sentiment analysis model with DeepSparse.
@@ -27,7 +20,7 @@ Confirm your machine is compatible with our [hardware requirements](/user-guide/
 ## Benchmarking
 
 We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 32
-core AWS c6i.8xlarge instance.
+core AWS c6i.16xlarge instance.
 
 ### ONNX Runtime Baseline
 
