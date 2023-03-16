@@ -1,14 +1,14 @@
-# User Guide
+# DeepSparse User Guide
 
-This directory demonstrates usage of DeepSparse.
-
-## Hardware Support and System Requirements
-
-Review [CPU Hardware Support for Various Architectures](https://docs.neuralmagic.com/deepsparse/source/hardware.html) to understand system requirements. DeepSparse runs natively on Linux. Mac and Windows require running Linux in a Docker or virtual machine.
-
-DeepSparse is tested on Python 3.7-3.10, ONNX 1.5.0-1.12.0, ONNX opset version 11+, and manylinux compliant systems. Using a virtual environment is highly recommended.
+This directory demonstrates usage of DeepSparse's key API, including:
+- [Performance Benchmarking](#performance-benchmarking)
+- [Engine API](#engine)
+- [Pipeline API](#pipeline)
+- [Server API](#server)
 
 ## Installation
+
+Install via `pip`. Using a virtual enviornment is highly recommended.
 
 ```bash
 pip install deepsparse
@@ -21,16 +21,11 @@ See the [DeepSparse Installation page](https://docs.neuralmagic.com/get-started/
 DeepSparse's key feature is its performance on commodity CPUs. DeepSparse is competitive with other CPU runtimes
 like ONNX Runtime for unoptimized dense models. However, when optimization techniques like pruning and quantization 
 are applied to a model, DeepSparse can achieve an order-of-magnitude speedup.
+  
+As an example, let's compare DeepSparse and ORT's performance on BERT. In SparseZoo, there is [90% pruned-quantized 
+BERT]() which retains >99% of the accuracy of the baseline dense model. Running this model on a `c6i.16xlarge` instance, DeepSparse achieves a ***12x speedup*** over ORT!
 
-As an example, let's compare DeepSparse and ORT's performance on BERT. In SparseZoo, there is 90% pruned and quantized 
-BERT which retains >99% of the accuracy of the baseline dense model. 
-Running this model on a `c6i.16xlarge` instance, DeepSparse achieves a ***12x speedup*** over ORT!
-
-![Performance Benchmarking Chart](https://raw.githubusercontent.com/neuralmagic/docs/rs/use-case-update/src/images/bert-performance-chart.png)
-
-To replicate the results, make sure you ONNX Runtime installed (`pip install onnxruntime`).
-
-ORT achieves 18.5 items/second running BERT:
+ORT achieves 18.5 items/second running BERT (make sure you have ORT installed `pip install onnxruntime`):
 ```bash
 deepsparse.benchmark zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/base-none -b 64 -s sync -nstreams 1 -i [64,384] -e onnxruntime
 
@@ -205,8 +200,7 @@ print(response.text)
 
 ## Supported Tasks
 
-DeepSparse supports many common CV and NLP use cases out of the box. Follow the links below for 
-usage examples of each use case.
+DeepSparse supports many common CV and NLP use cases out of the box. Check out the use case guide for more details on the task-specific APIs.
 
 **Computer Vision**:
 - Image Classification: `task="image_classification"`
