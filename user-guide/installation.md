@@ -1,6 +1,8 @@
 # DeepSparse Installation
 
-DeepSparse is tested on Python 3.7-3.10, ONNX 1.5.0-1.10.1, ONNX opset version 11+ and is [manylinux compliant](https://peps.python.org/pep-0513/). It currently supports Intel and AMD AVX2, AVX512, and VNNI x86 instruction sets.
+DeepSparse is tested on Python 3.7-3.10, ONNX 1.5.0-1.10.1, ONNX opset version 11+ and is [manylinux compliant](https://peps.python.org/pep-0513/). 
+
+It currently supports Intel and AMD AVX2, AVX512, and VNNI x86 instruction sets.
 
 ## General Install
 
