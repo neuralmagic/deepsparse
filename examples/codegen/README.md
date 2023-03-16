@@ -15,20 +15,22 @@ limitations under the License.
 -->
 
 ## ONNX Export
-
+Firstly, we need to install HuggingFace optimum library
 ```bash
 pip install optimum
+```
+
+### Patch the original PyTorch Model
+TODO
+
+### Export the model to ONNX
+
+```bash
 optimum-cli export onnx --model Salesforce/codegen-350M-multi codegen-350M-multi
 ```
 This saves the model to directory `codegen-350-multi`
 
-## Adapting the ONNX model
-To run the model in the pipeline, we need to slightly adjust the model:
-
 ### Updating Model's Inputs Outputs Dimension Sizes 
-TODO
-
-### Fixing the 'offset variable'
 TODO
 
 ## Running in the DeepSparse Pipeline
@@ -77,8 +79,8 @@ def hello_world_8():
 
 def hello
 ```
-Modifying pipeline behaviour:
 
+Modifying pipeline behaviour:
 1. By adding argument `deterministic=False`, the next token of the sequence will not be chosen deterministically (using argmax), but will be
 sampled from the probablility distribution.
 2. By setting `sampling_temperature` when `deterministic=False`, we are allowing more or less randomness in the sampling method (https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277)
