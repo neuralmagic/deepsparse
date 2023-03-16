@@ -157,7 +157,6 @@ one core with the following:
 from deepsparse import Pipeline
 
 zoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"  
-num_cores = 1
 sentiment_analysis_pipeline = Pipeline.create(
   task="sentiment-analysis",    # name of the task
   model_path=zoo_stub,          # zoo stub or path to local onnx file
