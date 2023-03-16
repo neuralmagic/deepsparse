@@ -271,7 +271,7 @@ def _setup_entry_points() -> Dict:
         "console_scripts": [
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             f"deepsparse.transformers.eval_downstream={eval_downstream}",
-            "deepsparse.analyze=deepsparse.analyze:main",
+            "deepsparse.debug_analysis=deepsparse.debug_analysis:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.benchmark_sweep=deepsparse.benchmark.benchmark_sweep:main",
