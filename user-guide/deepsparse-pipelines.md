@@ -7,7 +7,7 @@ pre- and post-processing, enabling you to pass raw data and recieve the predicti
 
 ## Quickstart
 
-Let's try a quick example of the Pipeline API. All we have to is pass a task and model to the
+Let's try a quick example of the Pipeline API. All we have to do is pass a task and model to the
 the `Pipeline.create` function, and then we can run inference on raw data using DeepSparse!
 
 This example creates a sentiment analysis Pipeline with a 90% pruned-quantized verion of BERT
