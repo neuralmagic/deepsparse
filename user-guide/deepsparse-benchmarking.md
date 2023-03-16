@@ -1,4 +1,4 @@
-# DeepSparse Benchmark
+# DeepSparse Benchmarking
 
 This page explains how to use DeepSparse's CLI utilties for benchmarking performance in a variety of scenarios.
 
