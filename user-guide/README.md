@@ -11,18 +11,18 @@ This directory demonstrates usage of DeepSparse's key API, including:
 Install via `pip`. Using a virtual enviornment is highly recommended.
 
 ```bash
-pip install deepsparse
+pip install deepsparse[server]
 ```
 
-See the [DeepSparse Installation page](https://docs.neuralmagic.com/get-started/install/deepsparse) for further installation options.
+See the [installation page](installation.md) for further installation options.
 
 ## [Performance Benchmarking](deepsparse-benchmarking.md)
 
-DeepSparse's key feature is its performance on commodity CPUs. DeepSparse is competitive with other CPU runtimes
-like ONNX Runtime for unoptimized dense models. However, when optimization techniques like pruning and quantization 
-are applied to a model, DeepSparse can achieve an order-of-magnitude speedup. As an example, let's compare DeepSparse and ORT's performance on BERT. In SparseZoo, there is [90% pruned-quantized BERT](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none). 
+DeepSparse's key feature is its performance on commodity CPUs. 
 
-Running this model on an AWS `c6i.16xlarge` instance, DeepSparse achieves a ***12x speedup*** over ORT!
+For dense unoptimized models, DeepSparse is competitive with other CPU runtimes like ONNX Runtime. However, when optimization techniques like pruning and quantization are applied to a model, DeepSparse can achieve an order-of-magnitude speedup. 
+
+As an example, let's compare DeepSparse and ORT's performance on BERT using a [90% pruned-quantized version](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none) in SparseZoo on an AWS `c6i.16xlarge` instance (32 cores).
 
 ORT achieves 18.5 items/second running BERT (make sure you have ORT installed `pip install onnxruntime`):
 ```bash
@@ -37,13 +37,15 @@ deepsparse.benchmark zoo:nlp/text_classification/obert-base/pytorch/huggingface/
 DeepSparse achieves 226 items/second running the pruned-quantized version of BERT:
 
 ```bash
-deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none -b 64 -s sync -nstreams 1 -e onnxruntime
+deepsparse.benchmark zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none -b 64 -s sync -nstreams 1 -i [64,384]
 
 >> Original Model Path: zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none
 >> Batch Size: 64
 >> Scenario: sync
 >> Throughput (items/sec): 226.6340
 ```
+
+DeepSparse achieves a ***12x speedup*** over ORT!
 
 **Pro-Tip:** In place of a [SparseZoo](https://sparsezoo.neuralmagic.com/) stubs, you can pass a local ONNX file to test your model.
 
@@ -107,7 +109,7 @@ wget https://github.com/onnx/models/raw/main/vision/classification/mobilenet/mod
 from deepsparse import compile_model
 from deepsparse.utils import generate_random_inputs
 onnx_filepath = "mobilenetv2-7.onnx"
-batch_size = 16
+batch_size = 1
 
 # Generate random sample input
 inputs = generate_random_inputs(onnx_filepath, batch_size)
