@@ -1,10 +1,3 @@
----
-title: "Server"
-metaTitle: "Deploying with DeepSparse Server"
-metaDescription: "Deploying with DeepSparse Server"
-index: 2000
----
-
 # DeepSparse Server
 
 DeepSparse Server wraps Pipelines with a REST API, making it easy to stand up a inference 

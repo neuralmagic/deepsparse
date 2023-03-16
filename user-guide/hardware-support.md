@@ -1,10 +1,3 @@
----
-title: "Supported Hardware"
-metaTitle: "Supported Hardware for DeepSparse"
-metaDescription: "Supported Hardware for DeepSparse including CPU types and instruction sets"
-index: 8000
----
-
 # Supported Hardware for DeepSparse
 
 With support for AVX2, AVX-512, and VNNI instruction sets, DeepSparse is validated to work on x86 Intel (Haswell generation and later) and AMD (Zen 2 and later) CPUs running Linux.

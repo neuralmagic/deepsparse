@@ -1,10 +1,3 @@
----
-title: "Inference Types"
-metaTitle: "Inference Types with DeepSparse Scheduler"
-metaDescription: "Inference Types with DeepSparse Scheduler"
-index: 9000
----
-
 # Inference Types with DeepSparse Scheduler
 
 This page explains the various settings for DeepSparse, which enable you to tune the performance to your workload.

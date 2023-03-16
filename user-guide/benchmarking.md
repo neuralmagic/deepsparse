@@ -1,10 +1,3 @@
----
-title: "Benchmarking"
-metaTitle: "Benchmarking Performance with DeepSparse"
-metaDescription: "Benchmarking Performance with DeepSparse"
-index: 3000
----
-
 # DeepSparse Benchmark
 
 DeepSparse includes a Benchmarking utility that enables you to profile performance on your system.

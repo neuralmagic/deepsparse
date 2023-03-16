@@ -1,10 +1,3 @@
----
-title: "Pipelines"
-metaTitle: "Deploying with DeepSparse Pipelines"
-metaDescription: "Deploying with DeepSparse Pipelines"
-index: 1000
----
-
 # DeepSparse Pipelines
 
 Pipelines are the default API for deploying a model with DeepSparse. 
