@@ -78,8 +78,18 @@ DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 
-def human_eval(args, dataset_name="openai_humaneval", k=1, temperatures=[1.0]):
+def human_eval(
+    args, dataset_name="openai_humaneval", k=1, temperatures=[0.8], debug=True
+):
     # k is the number of predictions to generate for each prompt
+    # (in the original paper k = [1, 10, 100]
+
+    # temperatures is the temperature to use for each prediction
+    # (in the original paper temperatures = [0.2, 0.6, 0.8]
+
+    # also, the original paper uses nucleus sampling, that
+    # is not supported by easy to implement
+
     import os
 
     from examples.codegen.text_generation import TextGenerationPipeline
@@ -97,16 +107,32 @@ def human_eval(args, dataset_name="openai_humaneval", k=1, temperatures=[1.0]):
         sampling_temperature=temperatures[0],
         sequence_length=args.max_sequence_length,
     )
-
+    if debug:
+        result = dict()
     print(f"Engine info: {codegen.engine}")
     for idx, sample in _enumerate_progress(dataset, args.max_samples):
         pred = codegen(sequences=[sample["prompt"]] * k)
-        # sequences = [seq.replace(sample["prompt"], "") for seq in pred.sequences]
-        code_eval.add_batch(references=[sample["test"]], predictions=[pred])
+        pred = pred.sequences
+        if not debug:
+            code_eval.add_batch(references=[sample["test"]], predictions=[pred])
+        else:
+            pass_at_k, results = code_eval.compute(
+                references=[sample["test"]], predictions=[pred], k=[1]
+            )
+            result[str(idx)] = {
+                "prompt": sample["prompt"],
+                "test": sample["test"],
+                "pred": pred[0],
+                "passed": results[0][0][1]["passed"],
+            }
 
         if args.max_samples and idx >= args.max_samples:
             break
 
+    # save result to json file
+    if debug:
+        with open("result.json", "w") as fp:
+            json.dump(result, fp)
     return code_eval
 
 
