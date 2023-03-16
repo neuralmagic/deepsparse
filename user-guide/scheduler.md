@@ -12,6 +12,7 @@ The default scheduler is highly optimized for minimum per-request latency, using
 Often, particularly when working with large batch sizes, the scheduler is able to distribute the workload of a single request across as many cores as it's provided.
 
 *Single-stream scheduling; requests execute serially by default:*
+
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/single-stream.png" alt="single stream diagram" />
 
 ## Multi-Stream
