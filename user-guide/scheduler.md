@@ -12,17 +12,20 @@ The default scheduler is highly optimized for minimum per-request latency, using
 Often, particularly when working with large batch sizes, the scheduler is able to distribute the workload of a single request across as many cores as it's provided.
 
 *Single-stream scheduling; requests execute serially by default:*
+
+
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/single-stream.png" alt="single stream diagram" />
 
 ## Multi-Stream
 
-There are circumstances in which more cores does not imply better performance. If the computation can't be divided up to produce enough parallelism (while maximizing use of the CPU cache), then adding more cores simply adds more compute power with little to apply it to.
+There are circumstances in which more cores does not imply better performance. If the computation can't be divided up to produce enough parallelism (while maximizing use of the CPU cache), then adding more cores simply adds more compute power with little work to apply it to.
 
 An alternative, multi-stream scheduler is provided with the software. In cases where parallelism is low, sending multiple requests simultaneously can more adequately saturate the available cores. In other words, if speedup can't be achieved by adding more cores, then perhaps speedup can be achieved by adding more work.
 
 If increasing core count does not decrease latency, that's a strong indicator that parallelism is low in your particular model/batch-size combination. It may be that total throughput can be increased by making more requests simultaneously. Using the [deepsparse.engine.Scheduler API,](https://docs.neuralmagic.com/deepsparse/api/deepsparse.html) the multi-stream scheduler can be selected, and requests made by multiple Python threads will be handled concurrently.
 
 *Multi-stream scheduling; requests execute in parallel and may better utilize hardware resources:*
+
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/multi-stream.png" alt="multi stream diagram" />
 
 

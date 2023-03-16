@@ -1,6 +1,6 @@
 # DeepSparse Server
 
-DeepSparse Server wraps Pipelines with a REST API, making it easy to stand up a inference 
+DeepSparse Server wraps [Pipelines](deepsparse-pipelines.md) with a REST API, making it easy to stand up a inference 
 serving endpoint running DeepSparse.
 
 ## Quickstart
@@ -38,21 +38,20 @@ deepsparse.server --help
 
 ## Supported Use Cases
 
-DeepSparse Server supports all tasks available in DeepSparse Pipelines. Follow the links below 
-for usage examples of each task.
+DeepSparse Server supports all tasks available in DeepSparse Pipelines. Check out the use case guides for more details on task-specific APIs.
 
 **Computer Vision**:
-- [Image Classification](/use-cases/image-classification/deploying): `task="image_classification"`
-- [Object Detection](/use-cases/object-detection/deploying): `task="yolo"`
-- [Instance Segmentation](/use-cases/instance-segmentation/deploying): `task="yolact"`
+- Image Classification: `task="image_classification"`
+- Object Detection: `task="yolo"`
+- Instance Segmentation: `task="yolact"`
 
 **Natural Language Processing**:
-- [Embedding Extraction](/use-cases/embedding-extraction): `task="transformers_embedding_extraction"`
-- [Text Classification](/use-cases/use-cases/natural-language-processing/text-classification): `task="text-classification"`
-- [Zero Shot Text Classification](/use-cases/use-cases/natural-language-processing/zero-shot-text-classification): `task="zero-shot-text-classification"` 
-- [Sentiment Analysis](/use-cases/use-cases/natural-language-processing/sentiment-analysis): `task="sentiment-analysis"`
-- [Token Classification](/use-cases/use-cases/natural-language-processing/token-classification): `task="token-classification"`
-- [Question Answering](/use-cases/use-cases/natural-language-processing/question-answering): `task="question-answering"`
+- Embedding Extraction: `task="transformers_embedding_extraction"`
+- Text Classification: `task="text-classification"`
+- Zero Shot Text Classification: `task="zero-shot-text-classification"` 
+- Sentiment Analysis: `task="sentiment-analysis"`
+- Token Classification: `task="token-classification"`
+- Question Answering: `task="question-answering"`
 
 ## Swagger UI
 
@@ -89,7 +88,7 @@ deepsparse.server \
 ```
 
 Sending a request:
-```
+```python
 import requests
 url = "http://localhost:5543/predict"
 obj = {"sequences": "I love querying DeepSparse launched from a config file!"}
@@ -115,16 +114,6 @@ utilizes its multi-stream scheduler, which processes multiple requests at the sa
 In deployment scenarios with low batch sizes and high core counts, using the "multi-stream" scheduler 
 can increase throughput by allowing DeepSparse to better saturate the cores.
 
-#### Thread Pinning
-engine_thread_pinning
-
-TBU
-
-#### PyTorch Threads
-pytorch_num_threads
-
-TBU
-
 The following configuration creates a Server with DeepSparse running on 2 cores, with 2 input streams,
 DeepSparse threads pinned to cores, and PyTorch provided with 2 threads.
 
@@ -132,8 +121,6 @@ DeepSparse threads pinned to cores, and PyTorch provided with 2 threads.
 # server-level-options-config.yaml
 num_cores: 2
 num_workers: 2
-engine_thread_pinning: core
-pytorch_num_threads: 2
 
 endpoints:
   - task: sentiment-analysis
@@ -150,7 +137,7 @@ deepsparse.server \
 ```
 
 We can then query the Server with the same pattern, querying on port 5555:
-```
+```python
 import requests
 url = "http://localhost:5555/predict"
 obj = {"sequences": "I love querying DeepSparse launched from a config file!"}
@@ -278,9 +265,7 @@ print(requests.post(sentiment_analysis_url, json=short_obj).text)
 # >>> {"labels":["positive","negative","positive"],"scores":[0.9665533900260925,0.9952980279922485,0.9939143061637878]}
 ```
 
-Checkout the [use case pages](/use-cases) for detailed documentation on task-specific
-arguments that can be applied to the Server via `kwargs`.
-
+Checkout the use case pages for detailed documentation on task-specific arguments that can be applied to the Server via `kwargs`.
 
 ## Custom Use Cases
 
