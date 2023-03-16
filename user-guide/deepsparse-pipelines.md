@@ -28,7 +28,7 @@ print(sentiment_analysis_pipeline("I love using DeepSparse Pipelines"))
 # >>> labels=['positive'] scores=[0.9954759478569031]
 ```
 
-In this case, we passed a SparseZoo stub as the model, which instructs the DeepSparse to download the 
+In this case we passed a SparseZoo stub as the model, which instructs DeepSparse to download the 
 relevant ONNX file from the SparseZoo. To deploy your own model, pass a path to a `model.onnx` file or to a 
 folder containing `model.onnx` and supporting files (e.g., the Hugging Face `tokenizer.json` and `config.json`).
 
