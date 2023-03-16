@@ -17,7 +17,7 @@ Analysis script for ONNX models with the DeepSparse engine.
 
 ##########
 Command help:
-usage: deepsparse.analyze [-h] [-wi NUM_WARMUP_ITERATIONS]
+usage: deepsparse.debug_analysis [-h] [-wi NUM_WARMUP_ITERATIONS]
                           [-bi NUM_ITERATIONS] [-ncores NUM_CORES]
                           [-b BATCH_SIZE] [-ks KERNEL_SPARSITY]
                           [-ksf KERNEL_SPARSITY_FILE]
@@ -62,7 +62,7 @@ import argparse
 import json
 import os
 
-from deepsparse import analyze_model
+from deepsparse import model_debug_analysis
 from deepsparse.utils import (
     generate_random_inputs,
     model_to_path,
@@ -301,7 +301,7 @@ def main():
     else:
         input_list = generate_random_inputs(model_path, args.batch_size)
 
-    result = analyze_model(
+    result = model_debug_analysis(
         model_path,
         input_list,
         batch_size=args.batch_size,

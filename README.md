@@ -52,7 +52,7 @@ limitations under the License.
   </div>
 </div>
 
-A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read [more about sparsification](https://docs.neuralmagic.com/user-guide/sparsification).
+A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read [more about sparsification](https://docs.neuralmagic.com/user-guides/sparsification).
 
 Neural Magic's DeepSparse is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. 
 ONNX gives the flexibility to serve your model in a framework-agnostic environment. 
