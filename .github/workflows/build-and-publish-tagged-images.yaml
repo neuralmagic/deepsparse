@@ -1,0 +1,124 @@
+name: Build and Publish
+
+on:
+  create
+
+jobs:
+  build-and-push-docker-image:
+    name: Build and Push Version Tagged Docker Images to GitHub Container Registry
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          buildkitd-flags: --debug
+
+      - name: Login to Github Packages
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout code
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Get Tag
+        id: extract_tag
+        run: echo "##[set-output name=tag;]$(echo ${GITHUB_REF_NAME#*/})"
+
+      - name: Current Version Name
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        run: |
+          echo ${{ steps.extract_tag.outputs.tag }}
+
+      - name: Build and  push deepsparse-all
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        uses: docker/build-push-action@v2
+        with:
+          context: ./docker
+          build-args: |
+            DEPS=all
+            VERSION=${{ steps.extract_tag.outputs.tag }}
+          push: true
+          tags: |
+            ghcr.io/neuralmagic/deepsparse-all:${{ steps.extract_tag.outputs.tag }}
+
+      - name: Build and push deepsparse-server
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        uses: docker/build-push-action@v2
+        with:
+          context: ./docker
+          build-args: |
+            DEPS=server
+            VERSION=${{ steps.extract_tag.outputs.tag }}
+          push: true
+          tags: |
+            ghcr.io/neuralmagic/deepsparse-server:${{ steps.extract_tag.outputs.tag }}
+            
+
+      - name: Build and push deepsparse-transformers
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        uses: docker/build-push-action@v2
+        with:
+          context: ./docker
+          build-args: |
+            DEPS=transformers
+            VERSION=${{ steps.extract_tag.outputs.tag }}
+          tags: |
+            ghcr.io/neuralmagic/deepsparse-transformers:${{ steps.extract_tag.outputs.tag }}            
+
+      - name: Build and push deepsparse-torchvision
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        uses: docker/build-push-action@v2
+        with:
+          context: ./docker
+          push: true
+          build-args: |
+            DEPS=torchvision
+            VERSION=${{ steps.extract_tag.outputs.tag }}
+          tags: |
+            ghcr.io/neuralmagic/deepsparse-torchvision:${{ steps.extract_tag.outputs.tag }}
+            
+
+      - name: Build and push deepsparse-ultralytics
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        uses: docker/build-push-action@v2
+        with:
+          context: ./docker
+          push: true
+          build-args: |
+            DEPS=ultralytics
+            VERSION=${{ steps.extract_tag.outputs.tag }}
+          tags: |
+            ghcr.io/neuralmagic/deepsparse-ultralytics:${{ steps.extract_tag.outputs.tag }}
+
+      - name: Build and push deepsparse-base
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        uses: docker/build-push-action@v2
+        with:
+          context: ./docker
+          push: true
+          build-args: |
+            DEPS=base
+            VERSION=${{ steps.extract_tag.outputs.tag }}
+          tags: |
+            ghcr.io/neuralmagic/deepsparse-base:${{ steps.extract_tag.outputs.tag }}
+            
+
+      - name: Image digest
+        if: ${{ contains(github.ref, 'refs/heads/release/') }}
+        run: echo ${{ steps.docker_build.outputs.digest }}
