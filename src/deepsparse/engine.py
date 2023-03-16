@@ -44,7 +44,7 @@ __all__ = [
     "Engine",
     "compile_model",
     "benchmark_model",
-    "analyze_model",
+    "model_debug_analysis",
     "Scheduler",
     "Context",
     "MultiModelEngine",
@@ -813,7 +813,7 @@ def benchmark_model(
     )
 
 
-def analyze_model(
+def model_debug_analysis(
     model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
     batch_size: int = 1,

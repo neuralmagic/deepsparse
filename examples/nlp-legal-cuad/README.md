@@ -24,7 +24,7 @@ For an example, see the included `main.py` file.
 Running this on a model fine tuned on the cuad dataset outputs something like the following:
 
 ```bash
-$ python examples/cuad/main.py <path to model deployment dir>
+$ python examples/nlp-legal-cuad/main.py <path to model deployment dir>
 ...
 Answered: SUPPLY CONTRACT Contract
 Expected: {'text': ['SUPPLY CONTRACT'], 'answer_start': [14]}
