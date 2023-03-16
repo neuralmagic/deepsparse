@@ -13,6 +13,7 @@ Often, particularly when working with large batch sizes, the scheduler is able t
 
 *Single-stream scheduling; requests execute serially by default:*
 
+
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/single-stream.png" alt="single stream diagram" />
 
 ## Multi-Stream
