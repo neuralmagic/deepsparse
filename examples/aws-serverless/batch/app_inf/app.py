@@ -12,6 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+"""
+This module performs sentiment analysis on a list of input data using a 
+sparse model from the SparseZoo, and writes the results to a CSV file. It also uploads 
+the output file to an S3 bucket.
+
+The module uses the boto3 library to interact with AWS services, 
+and the csv and os libraries for handling the CSV file and file system operations.
+
+Functions:
+
+write_list_to_csv: Takes a list and a file name as input, writes the elements 
+    of the list to a CSV file in the 'output' directory, and returns the file path.
+
+upload_file_to_s3: Takes a file path, a bucket name, and an S3 key as input, 
+    and uploads the file to the specified S3 bucket with the given key.
+
+"""
+
 import boto3
 import os
 import csv
