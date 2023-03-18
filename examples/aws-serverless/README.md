@@ -66,7 +66,7 @@ After building your batch job for serverless compute, you can upload a CSV file 
 ```bash
 aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/ --recursive
 ```
-A batch job will automatically be triggered and a Fargate instance will be initialized with DeepSparse. The CSV file will be read and the inputs will be passed into DeepSparse for predictions. Aftewards, the output will be automatically saved in the `batch-output-deepsparse` S3 bucket as a CSV file called 'outputs.csv`.
+A batch job will automatically be triggered and a Fargate instance will be initialized with DeepSparse. The CSV file will be read and the inputs will be passed into DeepSparse for predictions. Aftewards, the output will be automatically saved in the `batch-output-deepsparse` S3 bucket as a CSV file called `outputs.csv`.
 
 The example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to run the sentiment analysis task.
 
