@@ -66,14 +66,14 @@ python endpoint.py create-batch
 
 ### Batch Job Flow
 
-After build, upload a CSV file to the `batch-input-deepsparse` S3 bucket (which was auto-generated) via the AWS console or from the following CLI command:
+After build, upload a CSV file to the `batch-input-deepsparse` S3 bucket (which was auto-generated) via the AWS console or from the following CLI command to start the batch job:
 
 ```bash
 aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/ --recursive
 ```
-Afterwards, a batch job will trigger and a Fargate instance will be initialized with DeepSparse. The CSV file will be read and inputs will be passed into DeepSparse for prediction. Aftewards, the output will be automatically written to a CSV file called `outputs.csv` and pushed to the `batch-output-deepsparse` S3 bucket.
+Afterwards, a Lambda function will trigger a batch job to spin up a Fargate instance running DeepSparse. The CSV file will be read and inputs will be passed into DeepSparse for prediction. Aftewards, the output will be automatically written to a CSV file called `outputs.csv` and pushed to the `batch-output-deepsparse` S3 bucket.
 
-An example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to receive to perform the sentiment analysis task.
+An example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to receive to perform sentiment analysis.
 
 ## Create Realtime Infra
 
