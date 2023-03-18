@@ -54,7 +54,7 @@ cd deepsparse/examples/aws-serverless
 pip install -r requirements.txt
 ```
 
-After installation, you can choose to build either a batch or realtime serverless infracture. Both options are detailed below.
+After installation, you can choose to build either a batch or a realtime serverless infracture. Both options are detailed below.
 
 ## Create Batch Infra
 
@@ -66,7 +66,7 @@ python endpoint.py create-batch
 
 ### Batch Job Flow
 
-After building the batch job infrastructure, upload a CSV file to `batch-input-deepsparse` S3 bucket (which as auto-generated) via the AWS console or from the following CLI command:
+After build, upload a CSV file to the `batch-input-deepsparse` S3 bucket (which was auto-generated) via the AWS console or from the following CLI command:
 
 ```bash
 aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/ --recursive
