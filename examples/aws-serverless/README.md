@@ -54,7 +54,7 @@ cd deepsparse/examples/aws-serverless
 pip install -r requirements.txt
 ```
 
-After installation, you can choose to build either a batch or a realtime serverless infracture. Both options are detailed below.
+After installation, you can choose to build either a batch or a realtime serverless infrastructure. Both options are detailed below.
 
 ## Create Batch Infra
 
