@@ -56,7 +56,7 @@ pip install -r requirements.txt
 
 After installation, you can choose to build either a batch or a realtime serverless infrastructure. Both options are detailed below.
 
-## Create Batch Infra
+## Option 1: Create Batch Infra
 
 Run the following command to build a batch inference infrastructure:
 
@@ -64,7 +64,7 @@ Run the following command to build a batch inference infrastructure:
 python endpoint.py create-batch
 ```
 
-### Batch Job Flow
+#### Batch Job Flow
 
 After build, upload a CSV file to the `batch-input-deepsparse` S3 bucket (which was auto-generated) via the AWS console or from the following CLI command to start the batch job:
 
@@ -75,7 +75,7 @@ Afterwards, a Lambda function will trigger a batch job to spin up a Fargate inst
 
 An example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to receive to perform sentiment analysis.
 
-## Create Realtime Infra
+## Option 2: Create Realtime Infra
 
 Run the following command to build a realtime infrastructure.
 
@@ -83,7 +83,7 @@ Run the following command to build a realtime infrastructure.
 python endpoint.py create-realtime
 ```
 
-### Call Realtime Endpoint
+#### Call Realtime Endpoint
 
 After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
 
