@@ -35,7 +35,7 @@ The scope of this application encompasses:
 The following credentials, tools, and libraries are also required:
 * The [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) version 2.X that is [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html). Double check if the `region` that is configured in your AWS CLI matches the region passed in the SparseLambda class found in the `endpoint.py` file. Currently, the default region being used is `us-east-1`.
 * Permissions for select AWS resources: ECR, API Gateway, Cloudformation, Lambda, ECS, S3, and Batch.
-   - IAM permissions for batch and realtime inference are auto-generated at startup.
+   - IAM permissions for batch and realtime inference are auto-generated at startup. For IAM permission roles and their policies, please refer to the `template.yaml` files in the `batch` and `realtime` directories.
 * The AWS Serverless Application Model [(AWS SAM)](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html), an open-source CLI framework used for building serverless applications on AWS.
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
 * The `boto3` python AWS SDK and the `click` library.
