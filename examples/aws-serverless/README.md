@@ -71,9 +71,15 @@ After build, upload a CSV file to the `batch-input-deepsparse` S3 bucket (which 
 ```bash
 aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/ --recursive
 ```
-Afterwards, a Lambda function will trigger a batch job to spin up a Fargate instance running DeepSparse. The CSV file will be read and inputs will be passed into DeepSparse for prediction. Aftewards, the output will be automatically written to a CSV file called `outputs.csv` and pushed to the `batch-output-deepsparse` S3 bucket.
+This upload will trigger a Lambda function to start a batch job with a Fargate instance running DeepSparse. The CSV file will be read and inputs will be passed into DeepSparse for prediction. Aftewards, the output will be automatically written to a CSV file called `outputs.csv` and pushed to the `batch-output-deepsparse` S3 bucket.
 
 An example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to receive to perform sentiment analysis.
+
+#### Fargate Compute Configuration
+
+To edit the hardware configuration of the Fargate instance, you can edit the default values in the `template.yaml` file in the `batch` directory.
+
+Fargate is currently configured to deploy with 4 VCPUs and 8GB of RAM.
 
 ## Option 2: Create Realtime Infra
 
@@ -100,10 +106,16 @@ answer: `{'labels': ['positive'], 'scores': [0.9990884065628052]}`
 
 On your first cold start, it will take a ~60 seconds to invoque your first inference, but afterwards, it should be in milliseconds.
 
-## Delete Endpoint
+## Delete Infrastructure
 
-If you want to delete your batch/realtime infrastructure, run:
+If you want to delete your batch or realtime infrastructure, run:
 
 ```bash
 python endpoint.py destroy
+```
+
+If you want to delete batch or realtime infrastructure **AND** S3 buckets plus files, run:
+
+```bash
+python endpoint.py destroy-all
 ```

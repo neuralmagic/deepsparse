@@ -28,8 +28,9 @@ Command help:
 usage: python endpoint.py [-h] [action]
 
 Args:
-  action [create-batch, create-realtime, destroy]  choose between creating
-  a batch inference, realtime inference endpoints or destroying an endpoint
+  action [create-batch, create-realtime, destroy, destroy-all]  choose between creating
+  a batch inference, realtime inference endpoints, destroying an endpoint, and destroying
+  endpoint and S3 buckets.
 
 ##########
 Example command for creating a batch inference architecture:
@@ -39,6 +40,11 @@ python endpoint.py create-batch
 Example command for destroying either a batch or realtime inference endpoint:
 
 python endpoint.py destroy
+
+Example command for destroying either a batch or realtime inference endpoint
+and S3 buckets (if they exist):
+
+python endpoint.py destroy-all
 """
 
 
@@ -64,6 +70,7 @@ class SparseLambda:
         self.realtime_script = "./scripts/realtime-startup.sh"
         self.ecr = boto3.client("ecr", region_name=self.region_name)
         self.cloudformation = boto3.client("cloudformation")
+        self.s3 = boto3.resource('s3')
 
     def create_ecr_repo(self):
 
@@ -92,11 +99,27 @@ class SparseLambda:
 
     def destroy_endpoint(self):
 
+        # self.cloudformation.delete_stack(StackName=self.stack_name)
+        # self.ecr.delete_repository(repositoryName=self.ecr_repo_name, force=True)
+        # print(
+        #     f"Your '{self.stack_name}' and ECR repo '{self.ecr_repo_name}' were killed."
+        # )
+        
         self.cloudformation.delete_stack(StackName=self.stack_name)
+        print(f"CloudFormation stack '{self.stack_name}' was deleted.")
+        
         self.ecr.delete_repository(repositoryName=self.ecr_repo_name, force=True)
-        print(
-            f"Your '{self.stack_name}' and ECR repo '{self.ecr_repo_name}' were killed."
-        )
+        print(f"ECR repository '{self.ecr_repo_name}' was deleted.")
+
+    def destroy_buckets(self):
+
+        for bucket_name in ["batch-input-deepsparse", "batch-output-deepsparse"]:
+            bucket = self.s3.Bucket(bucket_name)
+            if bucket in self.s3.buckets.all():
+                bucket.objects.all().delete()
+                bucket.delete()
+                
+        print(f"S3 buckets and their content were deleted.")
 
 
 def construct_sparselambda():
@@ -130,6 +153,13 @@ def create_batch():
 def destroy():
     SL = construct_sparselambda()
     SL.destroy_endpoint()
+  
+    
+@main.command("destroy-all")
+def destroy_all():
+    SL = construct_sparselambda()
+    SL.destroy_endpoint()
+    SL.destroy_buckets()
 
 
 if __name__ == "__main__":

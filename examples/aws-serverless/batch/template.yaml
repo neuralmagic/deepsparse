@@ -9,15 +9,18 @@ Parameters:
   OutputBucketName: 
     Type: String
     Default: batch-output-deepsparse
-  Instance: 
-    Type: String
-    Default: m5.xlarge
   JobQueueName: 
     Type: String
     Default: deepsparse-batch
   JobDefinitionName: 
     Type: String
     Default: batch-definition
+  Vcpus:
+    Type: Number
+    Default: 4.00
+  Memory:
+    Type: Number
+    Default: 8192
 
 Resources:
   BatchInputBucket:
@@ -135,9 +138,9 @@ Resources:
         FargatePlatformConfiguration:
           PlatformVersion: LATEST
         ResourceRequirements:
-          - Value: 4.00
+          - Value: !Ref Vcpus
             Type: VCPU
-          - Value: 8192
+          - Value: !Ref Memory
             Type: MEMORY
         JobRoleArn:  !GetAtt 'BatchTaskExecutionRole.Arn'
         ExecutionRoleArn:  !GetAtt 'BatchTaskExecutionRole.Arn'
