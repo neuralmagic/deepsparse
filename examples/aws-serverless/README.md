@@ -50,7 +50,7 @@ To change pipeline configuration (i.e., change task, engine etc.), edit the pipe
 
 ```bash 
 git clone https://github.com/neuralmagic/deepsparse.git
-cd deepsparse/examples/aws-lambda
+cd deepsparse/examples/aws-serverless
 pip install -r requirements.txt
 ```
 
