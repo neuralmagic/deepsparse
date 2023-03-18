@@ -26,7 +26,9 @@ The scope of this application encompasses:
 3. Pushing the local images to ECR.
 4. Deploying a:
    - **Realtime Inference Infrastructure**: the creation of a Lambda function via API Gateway in a Cloudformation stack.
+
    or
+   
    - **Batch Inference Infrastructure**: the creation of a serverless instance on AWS Fargate via AWS Batch in a Cloudformation stack.
 
 ## Requirements
