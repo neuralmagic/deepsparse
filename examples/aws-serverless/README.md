@@ -28,7 +28,7 @@ The scope of this application encompasses:
    - **Realtime Inference Infrastructure**: the creation of a Lambda function via API Gateway in a Cloudformation stack.
 
    or
-   
+
    - **Batch Inference Infrastructure**: the creation of a serverless instance on AWS Fargate via AWS Batch in a Cloudformation stack.
 
 ## Requirements
@@ -63,14 +63,14 @@ python endpoint.py create-batch
 
 ### Batch Job Flow
 
-After building your batch job for serverless compute, you can upload a CSV file to `batch-input-deepsparse` S3 bucket (which as auto-generated) via the AWS console or from the following CLI command:
+After building the batch job infrastructure, upload a CSV file to `batch-input-deepsparse` S3 bucket (which as auto-generated) via the AWS console or from the following CLI command:
 
 ```bash
 aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/ --recursive
 ```
-A batch job will automatically be triggered and a Fargate instance will be initialized with DeepSparse. The CSV file will be read and the inputs will be passed into DeepSparse for predictions. Aftewards, the output will be automatically saved in the `batch-output-deepsparse` S3 bucket as a CSV file called `outputs.csv`.
+Afterwards, a batch job will trigger and a Fargate instance will be initialized with DeepSparse. The CSV file will be read and inputs will be passed into DeepSparse for prediction. Aftewards, the output will be automatically written to a CSV file called `outputs.csv` and pushed to the `batch-output-deepsparse` S3 bucket.
 
-The example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to run the sentiment analysis task.
+An example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to receive to perform the sentiment analysis task.
 
 ## Create Realtime Infra
 
