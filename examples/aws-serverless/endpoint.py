@@ -60,7 +60,7 @@ class SparseLambda:
         self.ecr_repo_name = ecr_repo_name
         self.stack_name = stack_name
         
-        self.bash_script = "./scripts/batch-startup.sh"
+        self.batch_script = "./scripts/batch-startup.sh"
         self.realtime_script = "./scripts/realtime-startup.sh"
         self.ecr = boto3.client("ecr", region_name=self.region_name)
         self.cloudformation = boto3.client("cloudformation")
@@ -83,7 +83,7 @@ class SparseLambda:
             subprocess.call(
                 [
                     "sh",
-                    self.bash_script if batch else self.realtime_script,
+                    self.batch_script if batch else self.realtime_script,
                     self.region_name,
                     self.stack_name,
                     self.ecr_repo_name,
