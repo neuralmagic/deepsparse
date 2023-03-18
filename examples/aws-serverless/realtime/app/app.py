@@ -13,26 +13,26 @@
 # limitations under the License.
 
 """
-This Lambda function performs sentiment analysis on input data passed 
-in as a JSON payload using a pre-trained model. It returns the results 
+This Lambda function performs sentiment analysis on input data passed
+in as a JSON payload using a pre-trained model. It returns the results
 of the sentiment analysis as a JSON response.
 
-The function uses the json library to parse the JSON payload and the 
-deepsparse package . The sentiment analysis model is defined by a 
-Pipeline object, which is created by specifying the task, model path, 
+The function uses the json library to parse the JSON payload and the
+deepsparse package . The sentiment analysis model is defined by a
+Pipeline object, which is created by specifying the task, model path,
 and batch size.
 
 Args:
-event (dict): 
-    AWS Lambda uses this parameter to pass in event data to the handler. 
-    This parameter is usually of the Python dict type. It contains 
+event (dict):
+    AWS Lambda uses this parameter to pass in event data to the handler.
+    This parameter is usually of the Python dict type. It contains
     information about the API Gateway event that triggered this function.
-    
-context (object): AWS Lambda uses this parameter to provide runtime 
+
+context (object): AWS Lambda uses this parameter to provide runtime
     information to your handler. This parameter is of the LambdaContext type.
 
 Returns:
-A dictionary containing the HTTP status code and the sentiment analysis results 
+A dictionary containing the HTTP status code and the sentiment analysis results
 as a JSON response.
 """
 

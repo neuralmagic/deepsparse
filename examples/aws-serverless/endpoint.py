@@ -59,7 +59,7 @@ class SparseLambda:
         self.region_name = region_name
         self.ecr_repo_name = ecr_repo_name
         self.stack_name = stack_name
-        
+
         self.batch_script = "./scripts/batch-startup.sh"
         self.realtime_script = "./scripts/realtime-startup.sh"
         self.ecr = boto3.client("ecr", region_name=self.region_name)
@@ -78,18 +78,18 @@ class SparseLambda:
         )
         pp.pprint(repo_check["repositories"])
 
-    def create_endpoint(self, batch: bool=True):
+    def create_endpoint(self, batch: bool = True):
 
-            subprocess.call(
-                [
-                    "sh",
-                    self.batch_script if batch else self.realtime_script,
-                    self.region_name,
-                    self.stack_name,
-                    self.ecr_repo_name,
-                ]
-            )
-            
+        subprocess.call(
+            [
+                "sh",
+                self.batch_script if batch else self.realtime_script,
+                self.region_name,
+                self.stack_name,
+                self.ecr_repo_name,
+            ]
+        )
+
     def destroy_endpoint(self):
 
         self.cloudformation.delete_stack(StackName=self.stack_name)
@@ -103,7 +103,7 @@ def construct_sparselambda():
     return SparseLambda(
         region_name="us-east-1",
         ecr_repo_name="serverless-deepsparse",
-        stack_name="serverless-batch-stack",
+        stack_name="serverless-stack",
     )
 
 
@@ -111,17 +111,20 @@ def construct_sparselambda():
 def main():
     pass
 
+
 @main.command("create-realtime")
-def create():
+def create_realtime():
     SL = construct_sparselambda()
     SL.create_ecr_repo()
     SL.create_endpoint(batch=False)
 
+
 @main.command("create-batch")
-def create():
+def create_batch():
     SL = construct_sparselambda()
     SL.create_ecr_repo()
     SL.create_endpoint()
+
 
 @main.command("destroy")
 def destroy():

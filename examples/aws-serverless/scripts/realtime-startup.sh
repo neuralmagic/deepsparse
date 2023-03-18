@@ -5,7 +5,7 @@ stackname=$2
 imagename=$3
 
 # Set the IAM capabilities for the deployment
-capabilities=CAPABILITY_IAM
+capabilities=CAPABILITY_NAMED_IAM
 
 # Get the AWS account ID
 account=$(aws sts get-caller-identity --query Account | sed -e 's/^"//' -e 's/"$//')
