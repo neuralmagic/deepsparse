@@ -40,6 +40,12 @@ The following credentials, tools, and libraries are also required:
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
 * The `boto3` python AWS SDK and the `click` library.
 
+## Model & Pipeline Configuration
+
+To use a different sparse model for batch inference, please edit the model zoo stub in the Dockerfile here: `/batch/app_inf/Dockerfile`. To edit the model for realtime inference, edit here `/realtime/app/Dockerfile`. 
+
+To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in either `app.py` files. Both files can be found in the `/realtime/app/` and `/batch/app/` directories.
+
 ## Quick Start
 
 ```bash 
@@ -47,15 +53,12 @@ git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/aws-lambda
 pip install -r requirements.txt
 ```
-## Model & Pipeline Configuration
 
-To use a different sparse model for batch inference, please edit the model zoo stub in the Dockerfile here: `/batch/app_inf/Dockerfile`. To edit the model for realtime inference, edit here `/realtime/app/Dockerfile`. 
-
-To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in either `app.py` files. Both files can be found in the `/realtime/app/` and `/batch/app/` directories.
+After installation, you can choose to build either a batch or realtime serverless infracture. Both options are detailed below.
 
 ## Create Batch Infra
 
-Run the following command to build your batch job infrastructure:
+Run the following command to build a batch inference infrastructure:
 
 ```bash
 python endpoint.py create-batch
@@ -74,7 +77,7 @@ An example `sentiment-inputs.csv` file in the `sample` directory is available to
 
 ## Create Realtime Infra
 
-Run the following command to build your Lambda realtime infrastructure.
+Run the following command to build a realtime infrastructure.
 
 ```bash
 python endpoint.py create-realtime
