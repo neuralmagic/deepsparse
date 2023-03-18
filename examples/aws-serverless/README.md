@@ -25,11 +25,11 @@ The scope of this application encompasses:
 2. The creation of an ECR repo in AWS.
 3. Pushing the local images to ECR.
 4. Deploying a:
-   - **Realtime Inference Infrastructure**: the creation of a Lambda function via API Gateway in a Cloudformation stack.
+   - **Realtime Inference Infrastructure**: creates a Lambda function via API Gateway in a Cloudformation stack.
 
    or
 
-   - **Batch Inference Infrastructure**: the creation of a serverless instance on AWS Fargate via AWS Batch in a Cloudformation stack.
+   - **Batch Inference Infrastructure**: creates a serverless instance on AWS Fargate via AWS Batch in a Cloudformation stack.
 
 ## Requirements
 The following credentials, tools, and libraries are also required:
@@ -44,7 +44,7 @@ The following credentials, tools, and libraries are also required:
 
 To use a different sparse model for batch inference, please edit the model zoo stub in the Dockerfile here: `/batch/app_inf/Dockerfile`. To edit the model for realtime inference, edit here `/realtime/app/Dockerfile`. 
 
-To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in either `app.py` files. Both files can be found in the `/realtime/app/` and `/batch/app/` directories.
+To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in either `app.py` files. Both files can be found in the `/realtime/app/` and `/batch/app_inf/` directories.
 
 ## Quick Start
 
