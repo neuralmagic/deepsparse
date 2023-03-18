@@ -14,20 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# 🐑 Deploy a DeepSparse Pipeline in AWS Lambda
+# DeepSparse Inference Using AWS Serverless
 
-AWS Lambda is an event-driven, serverless computing infrastructure for deploying applications at minimal cost. This directory provides a guided example for deploying a DeepSparse pipeline on AWS Lambda for the sentiment analysis task.
+![image](./img/aws_serverless_arch.png)
+
+This repo allows users to build a serverless computing infrastructure for deploying inference at scale. This guided example can be used to deploy a DeepSparse pipeline on AWS Lambda for realtime inference or on AWS Fargate for batch inference. This is demonstrated using a sentiment analysis use case.
 
 The scope of this application encompasses:
-1. The construction of a local Docker image.
+1. The construction of local Docker images.
 2. The creation of an ECR repo in AWS.
-3. Pushing the local image to ECR.
-4. The creation of a Lambda function via API Gateway in a Cloudformation stack. 
+3. Pushing the local images to ECR.
+4. Deploying a:
+   - **Realtime Inference Infrastructure**: the creation of a Lambda function via API Gateway in a Cloudformation stack.
+   or
+   - **Batch Inference Infrastructure**: the creation of a serverless instance on AWS Fargate via AWS Batch in a Cloudformation stack.
 
 ## Requirements
 The following credentials, tools, and libraries are also required:
 * The [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) version 2.X that is [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html). Double check if the `region` that is configured in your AWS CLI matches the region passed in the SparseLambda class found in the `endpoint.py` file. Currently, the default region being used is `us-east-1`.
 * Full permissions to select AWS resources: ECR, API Gateway, Cloudformation, and Lambda.
+   - The IAM permissions for batch inference are auto-generated at startup.
 * The AWS Serverless Application Model [(AWS SAM)](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html), an open-source CLI framework used for building serverless applications on AWS.
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
 * The `boto3` python AWS SDK and the `click` library.
@@ -39,18 +45,40 @@ git clone https://github.com/neuralmagic/deepsparse.git
 cd deepsparse/examples/aws-lambda
 pip install -r requirements.txt
 ```
-## Model Configuration
+## Model & Pipeline Configuration
 
-To use a different sparse model please edit the model zoo stub in the `Dockerfile`. To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in the `app.py` file. Both files can be found in the `/lambda-deepsparse/app` directory.
+To use a different sparse model for batch inference, please edit the model zoo stub in the Dockerfile here: `/batch/app_inf/Dockerfile`. To edit the model for realtime inference, edit here `/realtime/app/Dockerfile`. 
 
-## Create Endpoint
+To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in either `app.py` files. Both files can be found in the `/realtime/app/` and `/batch/app/` directories.
 
-Run the following command to build your Lambda endpoint.
+## Create Batch Infra
+
+Run the following command to build your batch job infrastructure:
 
 ```bash
-python endpoint.py create
+python endpoint.py create-batch
 ```
-## Call Endpoint
+
+### Batch Job Flow
+
+After building your batch job for serverless compute, you can upload a CSV file to `batch-input-deepsparse` S3 bucket (which as auto-generated) via the AWS console or from the following CLI command:
+
+```bash
+aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/ --recursive
+```
+A batch job will automatically be triggered and a Fargate instance will be initialized with DeepSparse. The CSV file will be read and the inputs will be passed into DeepSparse for predictions. Aftewards, the output will be automatically saved in the `batch-output-deepsparse` S3 bucket as a CSV file called 'outputs.csv`.
+
+The example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to run the sentiment analysis task.
+
+## Create Realtime Infra
+
+Run the following command to build your Lambda realtime infrastructure.
+
+```bash
+python endpoint.py create-realtime
+```
+
+### Call Realtime Endpoint
 
 After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
 
@@ -69,7 +97,7 @@ On your first cold start, it will take a ~60 seconds to invoque your first infer
 
 ## Delete Endpoint
 
-If you want to delete your Lambda endpoint, run:
+If you want to delete your batch/realtime infrastructure, run:
 
 ```bash
 python endpoint.py destroy
