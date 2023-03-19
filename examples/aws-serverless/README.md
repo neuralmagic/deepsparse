@@ -56,7 +56,7 @@ pip install -r requirements.txt
 
 After installation, you can choose to build either a batch or a realtime serverless infrastructure. Both options are detailed below.
 
-## Option 1: Create Batch Infra
+## Option 1: Create Batch Inference Infra
 
 Run the following command to build a batch inference infrastructure:
 
@@ -81,9 +81,9 @@ To edit the hardware configuration of the Fargate instance, you can edit the def
 
 Fargate is currently configured to deploy with 4 VCPUs and 8GB of RAM.
 
-## Option 2: Create Realtime Infra
+## Option 2: Create Realtime Inference Infra
 
-Run the following command to build a realtime infrastructure.
+Run the following command to build a realtime inference infrastructure.
 
 ```bash
 python endpoint.py create-realtime
