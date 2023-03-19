@@ -29,7 +29,7 @@ The scope of this application encompasses:
 
    or
 
-   - **Batch Inference Infrastructure** which creates a serverless instance on AWS Fargate via AWS Batch in a Cloudformation stack.
+   - **Batch Inference Infrastructure** which creates a serverless environment on AWS Fargate via a AWS Batch job triggered by Lambda in a Cloudformation stack.
 
 ## Requirements
 The following credentials, tools, and libraries are also required:
