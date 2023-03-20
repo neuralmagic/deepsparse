@@ -18,7 +18,7 @@ limitations under the License.
 
 ![image](./img//aws-serverless-logo1.png)
 
-This repo allows users to build a serverless computing infrastructure for deploying inference at scale. This guided example can be used to deploy a DeepSparse pipeline on AWS Lambda for realtime inference or on AWS Fargate for batch inference. This is demonstrated using a sentiment analysis use case.
+This repo allows users to build a serverless computing infrastructure for deploying inference at scale. This guided example can be used to deploy a DeepSparse pipeline on AWS Lambda for realtime inference or on a AWS Fargate container for batch inference. This is demonstrated using a sentiment analysis use case.
 
 The scope of this application encompasses:
 1. The construction of local Docker images.
