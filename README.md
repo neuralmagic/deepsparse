@@ -231,27 +231,18 @@ Use Case: A workload that might benefit from the elastic scheduler is one in whi
 ## Resources
 #### Libraries
 - [DeepSparse](https://docs.neuralmagic.com/deepsparse/)
-
 - [SparseML](https://docs.neuralmagic.com/sparseml/)
-
 - [SparseZoo](https://docs.neuralmagic.com/sparsezoo/)
-
 - [Sparsify](https://docs.neuralmagic.com/sparsify/)
-
 
 #### Versions
 - [DeepSparse](https://pypi.org/project/deepsparse) | stable
-
 - [DeepSparse-Nightly](https://pypi.org/project/deepsparse-nightly/) | nightly (dev)
-
 - [GitHub](https://github.com/neuralmagic/deepsparse/releases) | releases
 
 #### Info
-
 - [Blog](https://www.neuralmagic.com/blog/) 
-
 - [Resources](https://www.neuralmagic.com/resources/)
-
 
 ## Community
 

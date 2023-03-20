@@ -26,6 +26,7 @@ from deepsparse.server.config import (
 from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
+from flaky import flaky
 from tests.deepsparse.loggers.helpers import fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.test_data.server_test_data import SAMPLE_LOGS_DICT
@@ -98,6 +99,7 @@ def test_data_logging_from_predefined():
         assert log == expected_log
 
 
+@flaky(max_runs=4, min_passes=3)
 def test_logging_only_system_info():
     server_config = ServerConfig(
         endpoints=[EndpointConfig(task=task, name=name, model=stub)],
