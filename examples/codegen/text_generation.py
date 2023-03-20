@@ -17,6 +17,7 @@ from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
+import numpy as np
 import onnx
 from pydantic import BaseModel, Field
 
@@ -246,9 +247,21 @@ class TextGenerationPipeline(TransformersPipeline):
         # list of the meaningful tokens in the sequence
         tokens = [t for t in engine_inputs[0][0] if t != self.tokenizer.pad_token_id]
 
-        tokens, kv_cache = self.initial_autoregressive_pass(
+
+
+        _, kv_cache = self.initial_autoregressive_pass(
             tokens=tokens, engine_inputs=engine_inputs
         )
+        for k,v in kv_cache.copy().items():
+            kv_cache[k] = np.zeros_like(v)
+
+        for i in range(len(tokens)):
+            _, kv_cache = self.autoregressive_pass(
+                tokens=tokens[:i+1],
+                kv_cache=kv_cache,
+            )
+
+
 
         # establish the number of autoregressive passes to perform
         num_iterations = self.sequence_length - len(tokens)
@@ -260,6 +273,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     f"minus the number of tokens in the input sequence ({len(tokens)})."
                 )
             num_iterations = self.num_tokens_to_generate
+
 
         # perform the remaining autoregressive passes
         for iter in range(num_iterations):
