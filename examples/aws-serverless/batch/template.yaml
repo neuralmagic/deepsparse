@@ -1,8 +1,14 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: "AWS::Serverless-2016-10-31"
-Description: "Stages a Lambda, AWS Batch, EC2 Instance for Batch Inference using CloudFormation"
+Description: "Stages a Lambda, AWS Batch, Fargate Container for Batch Inference using CloudFormation"
 
 Parameters:
+  Vcpus:
+    Type: Number
+    Default: 4.00
+  Memory:
+    Type: Number
+    Default: 8192
   InputBucketName: 
     Type: String
     Default: batch-input-deepsparse
@@ -15,12 +21,6 @@ Parameters:
   JobDefinitionName: 
     Type: String
     Default: batch-definition
-  Vcpus:
-    Type: Number
-    Default: 4.00
-  Memory:
-    Type: Number
-    Default: 8192
 
 Resources:
   BatchInputBucket:
@@ -53,17 +53,6 @@ Resources:
                 Rules:
                   - Name: suffix
                     Value: .csv
-        BatchInferenceEvent1:
-          Type: S3
-          Properties:
-            Bucket: !Ref BatchInputBucket
-            Events:
-              - s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: suffix
-                    Value: .jpeg
     Metadata:
       Dockerfile: Dockerfile
       DockerContext: ./app

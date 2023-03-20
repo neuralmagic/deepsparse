@@ -29,7 +29,7 @@ The scope of this application encompasses:
 
    or
 
-   - **Batch Inference Infrastructure** which creates a serverless environment on AWS Fargate via a AWS Batch job triggered by Lambda in a Cloudformation stack.
+   - **Batch Inference Infrastructure** which creates a serverless environment on AWS Fargate via an AWS Batch job triggered by Lambda in a Cloudformation stack.
 
 ## Requirements
 The following credentials, tools, and libraries are also required:
@@ -38,7 +38,6 @@ The following credentials, tools, and libraries are also required:
    - IAM permissions for batch and realtime inference are auto-generated at startup. For IAM permission roles and their policies, please refer to the `template.yaml` files in the `batch` and `realtime` directories.
 * The AWS Serverless Application Model [(AWS SAM)](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html), an open-source CLI framework used for building serverless applications on AWS.
 * [Docker and the `docker` cli](https://docs.docker.com/get-docker/).
-* The `boto3` python AWS SDK and the `click` library.
 
 ## Model & Pipeline Configuration
 
@@ -71,13 +70,13 @@ After build, upload a CSV file to the `batch-input-deepsparse` S3 bucket (which 
 ```bash
 aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/ --recursive
 ```
-This upload will trigger a Lambda function to start a batch job with a Fargate instance running DeepSparse. The CSV file will be read and inputs will be passed into DeepSparse for prediction. Aftewards, the output will be automatically written to a CSV file called `outputs.csv` and pushed to the `batch-output-deepsparse` S3 bucket.
+This upload will trigger a Lambda function to start a batch job with a Fargate container running DeepSparse. The CSV file will be read and inputs will be passed into DeepSparse for prediction. Aftewards, the output will be automatically written to a CSV file called `outputs.csv` and pushed to the `batch-output-deepsparse` S3 bucket.
 
 An example `sentiment-inputs.csv` file in the `sample` directory is available to familiarize yourself with the file structure the batch architecture is expecting to receive to perform sentiment analysis.
 
 #### Fargate Compute Configuration
 
-To edit the hardware configuration of the Fargate instance, you can edit the default values in the `template.yaml` file in the `batch` directory.
+To edit the hardware configuration of the Fargate container, you can edit the default values in the `template.yaml` file in the `batch` directory.
 
 Fargate is currently configured to deploy with 4 VCPUs and 8GB of RAM.
 
