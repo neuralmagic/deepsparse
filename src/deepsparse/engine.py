@@ -25,7 +25,11 @@ import numpy
 from tqdm.auto import tqdm
 
 from deepsparse.benchmark import BenchmarkResults
-from deepsparse.utils import model_to_path, override_onnx_input_shapes
+from deepsparse.utils import (
+    generate_random_inputs,
+    model_to_path,
+    override_onnx_input_shapes,
+)
 
 
 try:
@@ -313,6 +317,13 @@ class Engine(object):
             VNNI gives performance benefits for quantized networks.
         """
         return self._cpu_vnni
+
+    def generate_random_inputs(self) -> List[numpy.ndarray]:
+        """
+        Generate random data that matches the type and shape of the ONNX model
+        :return: List of random tensors
+        """
+        return generate_random_inputs(self.model_path, self.batch_size)
 
     def run(
         self,
