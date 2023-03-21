@@ -21,33 +21,33 @@ limitations under the License.
     &nbsp;&nbsp;DeepSparse
   </h1>
   <h3> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h3>
-  <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap">
+  <div align="center">
     <a href="https://docs.neuralmagic.com/deepsparse/">
-      <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="25" />
+      <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
     </a>
     <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
-      <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="25" />
+      <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="20" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/issues/">
-      <img alt="Support" src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height="25" />
+      <img alt="Support" src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height="20" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/actions/workflows/quality-check.yaml">
-      <img alt="Main" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=build&style=for-the-badge" height="25" />
+      <img alt="Main" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=build&style=for-the-badge" height="20" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/releases">
-      <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height="25" />
+      <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height="20" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/CODE_OF_CONDUCT.md">
-      <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height="25" />
+      <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height="20" />
     </a>
     <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
-      <img alt="YouTube" src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height="25" />
+      <img alt="YouTube" src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height="20" />
     </a>
     <a href="https://medium.com/limitlessai">
-      <img alt="Medium" src="https://img.shields.io/badge/medium-%2312100E.svg?&style=for-the-badge&logo=medium&logoColor=white" height="25" />
+      <img alt="Medium" src="https://img.shields.io/badge/medium-%2312100E.svg?&style=for-the-badge&logo=medium&logoColor=white" height="20" />
     </a>
     <a href="https://twitter.com/neuralmagic">
-      <img alt="Twitter" src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height="25" />
+      <img alt="Twitter" src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height="20" />
     </a>
   </div>
 </div>
@@ -91,7 +91,7 @@ To install the DeepSparse Enterprise, trial or inquire about licensing for DeepS
 
 ### 👩‍💻 Pipelines
 
-Pipelines are the default interface for running inference with DeepSparse across several tasks in NLP and CV:
+Pipelines are a high-level Python interface for running inference with DeepSparse across select tasks in NLP and CV:
 
 |          NLP          |            CV             |
 |-----------------------|---------------------------|
