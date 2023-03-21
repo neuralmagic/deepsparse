@@ -214,11 +214,6 @@ def generate_random_inputs(
         input_tensor_type = external_input.type.tensor_type
         elem_type = translate_onnx_type_to_numpy(input_tensor_type.elem_type)
         in_shape = [int(d.dim_value) for d in input_tensor_type.shape.dim]
-        if 0 in in_shape:
-            raise ValueError(
-                "Attempting to benchmark a model with dynamic shape using "
-                "randomly generated inputs. Please set the inputs to static"
-            )
 
         if batch_size is not None:
             in_shape[0] = batch_size
