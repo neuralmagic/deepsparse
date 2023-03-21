@@ -20,7 +20,7 @@ limitations under the License.
     <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />
     &nbsp;&nbsp;DeepSparse
   </h1>
-  <h3> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h3>
+  <h4> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h4>
   <div align="center">
     <a href="https://docs.neuralmagic.com/deepsparse/">
       <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
@@ -107,24 +107,23 @@ Pipelines are a high-level Python interface for running inference with DeepSpars
 ```python
 from deepsparse import Pipeline
 
-# SparseZoo model stub or path to ONNX file
-model_path = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
-
 qa_pipeline = Pipeline.create(
     task="question-answering",
-    model_path=model_path,
+    model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni",
 )
 
-my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
+inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
 ```
 **CV Example** | Image Classification
 
 ```python
 from deepsparse import Pipeline
+
 cv_pipeline = Pipeline.create(
   task='image_classification', 
   model_path='zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none',
 )
+
 input_image = "my_image.png"
 inference = cv_pipeline(images=input_image)
 ```
