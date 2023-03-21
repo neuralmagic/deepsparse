@@ -41,7 +41,7 @@ The following credentials, tools, and libraries are also required:
 
 ## Model & Pipeline Configuration
 
-To use a different sparse model for batch inference, please edit the model zoo stub in the Dockerfile here: `/batch/app_inf/Dockerfile`. To edit the model for realtime inference, edit here `/realtime/app/Dockerfile`. 
+To use a different sparse model for batch inference, please edit the model zoo stub in this Dockerfile: [batch/app_inf/Dockerfile](https://github.com/neuralmagic/deepsparse/examples/aws-serverless/batch/app_inf/Dockerfile). For realtime inference, edit here: [realtime/app/Dockerfile](./realtime/app/Dockerfile).
 
 To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in either `app.py` files. Both files can be found in the `/realtime/app/` and `/batch/app_inf/` directories.
 
@@ -78,7 +78,7 @@ An example `sentiment-inputs.csv` file in the `sample` directory is available to
 
 To edit the hardware configuration of the Fargate container, you can edit the default values in the `template.yaml` file in the `batch` directory.
 
-Fargate is currently configured to deploy with 4 VCPUs and 8GB of RAM.
+Fargate is currently configured to deploy with 4 vCPUs and 8GB of RAM.
 
 ## Option 2: Create Realtime Inference Infra
 
