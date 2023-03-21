@@ -41,7 +41,7 @@ The following credentials, tools, and libraries are also required:
 
 ## Model & Pipeline Configuration
 
-To use a different sparse model for batch inference, please edit the model zoo stub in this Dockerfile: [batch/app_inf/Dockerfile](https://github.com/neuralmagic/deepsparse/examples/aws-serverless/batch/app_inf/Dockerfile). For realtime inference, edit here: [realtime/app/Dockerfile](./realtime/app/Dockerfile).
+To use a different sparse model for batch inference, please edit the model zoo stub in this Dockerfile: [batch/app_inf/Dockerfile](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-serverless/batch/app_inf/Dockerfile). For realtime inference, edit here: [realtime/app/Dockerfile](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-serverless/realtime/app/Dockerfile).
 
 To change pipeline configuration (i.e., change task, engine etc.), edit the pipeline object in either `app.py` files. Both files can be found in the `/realtime/app/` and `/batch/app_inf/` directories.
 
