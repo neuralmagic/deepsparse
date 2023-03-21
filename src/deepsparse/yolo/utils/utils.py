@@ -359,6 +359,8 @@ def modify_yolo_onnx_input_shape(
     model_input = model.graph.input[0]
 
     initial_x, initial_y = get_onnx_expected_image_shape(model)
+    if initial_x == initial_y == 0:
+        initial_x, initial_y = image_shape
 
     if not (isinstance(initial_x, int) and isinstance(initial_y, int)):
         return model_path, None  # model graph does not have static integer input shape
