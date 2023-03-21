@@ -165,7 +165,7 @@ class YOLOPipeline(Pipeline):
             self._image_size = get_onnx_expected_image_shape(onnx.load(model_path))
             if self._image_size == (0, 0):
                 raise ValueError(
-                    "The model does not have a static image size shape."
+                    "The model does not have a static image size shape. "
                     "Specify the expected image size by passing the"
                     "`image_size` argument to the pipeline."
                 )
