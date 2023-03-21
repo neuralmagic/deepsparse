@@ -68,7 +68,7 @@ python endpoint.py create-batch
 After build, upload a CSV file to the `batch-input-deepsparse` S3 bucket (which was auto-generated) via the AWS console or from the following CLI command to start the batch job:
 
 ```bash
-aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/ --recursive
+aws s3 cp <path/to/csv/file> s3://batch-input-deepsparse/
 ```
 This upload will trigger a Lambda function to start a batch job with a Fargate container running DeepSparse. The CSV file will be read and inputs will be passed into DeepSparse for prediction. Aftewards, the output will be automatically written to a CSV file called `outputs.csv` and pushed to the `batch-output-deepsparse` S3 bucket.
 
@@ -76,7 +76,7 @@ An example `sentiment-inputs.csv` file in the `sample` directory is available to
 
 #### Fargate Compute Configuration
 
-To edit the hardware configuration of the Fargate container, you can edit the default values in the `template.yaml` file in the `batch` directory.
+To edit the hardware configuration of the Fargate container, you can edit the default values in the [template.yaml](https://github.com/neuralmagic/deepsparse/examples/aws-serverless/batch/template.yaml) file in the `batch` directory.
 
 Fargate is currently configured to deploy with 4 vCPUs and 8GB of RAM.
 
