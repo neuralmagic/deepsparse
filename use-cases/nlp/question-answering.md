@@ -105,7 +105,7 @@ output = qa_pipeline(question=question, context=q_context)
 print(output)
 # QuestionAnsweringOutput(score=23.620140075683594, answer='sparsity-aware inference runtime', start=14, end=46)
 ```
-#### Use Case Specific Arguments
+### Use Case Specific Arguments
 The Question Answering Pipeline contains additional arguments for configuring a `Pipeline`.
 
 #### Sequence Length
