@@ -14,11 +14,23 @@
 
 import copy
 import logging
+from typing import Any, Dict, List, Optional
 
 import click
+import onnx
+from onnx import ModelProto
 
 import pandas as pd
-from sparsezoo.analyze import ModelAnalysis
+from deepsparse import model_debug_analysis
+from deepsparse.benchmark.benchmark_model import benchmark_model
+from deepsparse.utils import generate_random_inputs, model_to_path
+from sparseml.benchmark import BenchmarkResult
+from sparsezoo.analyze import (
+    BenchmarkScenario,
+    ImposedSparsificationInfo,
+    ModelAnalysis,
+    NodeInferenceResult,
+)
 from sparsezoo.analyze.cli import analyze_options, analyze_performance_options
 
 
@@ -31,6 +43,8 @@ LOGGER = logging.getLogger()
 def main(
     model_path: str,
     save: str,
+    batch_size_throughput: int,
+    benchmark_engine: str,
     **kwargs,
 ):
     """
@@ -62,10 +76,21 @@ def main(
     LOGGER.info("Starting Analysis ...")
     analysis = ModelAnalysis.create(model_path)
     LOGGER.info("Analysis complete, collating results...")
+    scenario = BenchmarkScenario(
+        batch_size=batch_size_throughput,
+        num_cores=None,
+        engine=benchmark_engine,
+    )
+    performance_summary = run_benchmark_and_analysis(
+        onnx_model=model_to_path(model_path),
+        scenario=scenario,
+    )
+    analysis.benchmark_results = performance_summary
     summary = analysis.summary()
 
     summary["MODEL"] = model_path
     _display_summary_as_table(summary)
+    print(analysis.benchmark_results)
 
     if save:
         LOGGER.info(f"Writing results to {save}")
@@ -84,6 +109,101 @@ def _display_summary_as_table(summary):
     print("SUMMARY:")
     for footer_key, footer_value in footer.items():
         print(f"{footer_key}: {footer_value}")
+
+
+def run_benchmark_and_analysis(
+    onnx_model: str,
+    scenario: BenchmarkScenario,
+    sparsity: Optional[float] = None,
+    quantization: bool = False,
+) -> BenchmarkResult:
+    """
+    A utility method to run benchmark and performance analysis on an ONNX model
+    based off of specified setup and sparsification info
+    :param onnx_model: Local filepath onnx model
+    :param scenario: `BenchmarkScenario` object with specification for running
+        benchmark on an onnx model
+    :param sparsity: Globally imposed sparsity level, should be within (0, 1.0]
+    :param quantization: Flag to turn quantization on/off, default is `False`
+    :return: A `BenchmarkResult` object encapsulating results from running
+        specified benchmark and performance analysis
+    """
+    benchmark_results = benchmark_model(
+        model_path=onnx_model,
+        batch_size=scenario.batch_size,
+        num_cores=scenario.num_cores,
+        scenario=scenario.scenario,
+        time=scenario.duration,
+        warmup_time=scenario.warmup_duration,
+        num_streams=scenario.num_streams,
+        quiet=False,
+    )
+    input_list = generate_random_inputs(
+        onnx_filepath=onnx_model, batch_size=scenario.batch_size
+    )
+    analysis_results = model_debug_analysis(
+        model=onnx_model,
+        inp=input_list,
+        batch_size=scenario.batch_size,
+        num_cores=scenario.num_cores,
+    )
+
+    items_per_second: float = benchmark_results.get("benchmark_result", {}).get(
+        "items_per_sec", 0.0
+    )
+    average_latency: float = (
+        1000.0 / items_per_second if items_per_second > 0 else float("inf")
+    )
+
+    node_timings = _get_node_timings_from_analysis_results(
+        onnx_model_file=onnx_model, analysis_results=analysis_results
+    )
+
+    # recipe = str(manager)
+    imposed_sparsification = ImposedSparsificationInfo(
+        sparsity=sparsity,
+        quantization=quantization,  # recipe=recipe
+    )
+    results = BenchmarkResult(
+        setup=scenario,
+        imposed_sparsification=imposed_sparsification,
+        items_per_second=items_per_second,
+        average_latency=average_latency,
+        node_timings=node_timings,
+    )
+    return results
+
+
+def _get_node_timings_from_analysis_results(
+    onnx_model_file: str, analysis_results: Dict[str, Any]
+) -> Optional[List[NodeInferenceResult]]:
+    if not (analysis_results and analysis_results.get("layer_info")):
+        return None
+
+    model: ModelProto = onnx.load(onnx_model_file)
+    canonical_name_to_node_name = {
+        output: node.name for node in model.graph.node for output in node.output
+    }
+
+    layer_info = analysis_results["layer_info"]
+    node_timings: List[NodeInferenceResult] = []
+
+    for layer in layer_info:
+        canonical_name = layer.get("canonical_name")
+        if canonical_name in canonical_name_to_node_name:
+            name = canonical_name_to_node_name[canonical_name]
+
+            layer_copy = copy.copy(layer)
+            avg_run_time = layer_copy.pop("average_run_time_in_ms", None)
+
+            node_timing = NodeInferenceResult(
+                name=name,
+                avg_run_time=avg_run_time,
+                extras=layer_copy,
+            )
+            node_timings.append(node_timing)
+
+    return node_timings
 
 
 if __name__ == "__main__":
