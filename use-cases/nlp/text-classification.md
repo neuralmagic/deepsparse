@@ -19,27 +19,27 @@ Confirm your machine is compatible with our [hardware requirements](/user-guide/
 
 ## Benchmarking
 
-We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 23-core server.
+We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 12-core server.
 
 ### ONNX Runtime Baseline
 
 As a baseline, let's check out ONNX Runtime's performance on oBERT. Make sure you have ORT installed (`pip install onnxruntime`).
 ```bash
 deepsparse.benchmark \
-  zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none \
+  zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/base-none \
   -b 64 -s sync -nstreams 1 -i [64,384] \
   -e onnxruntime
 
-> Original Model Path: zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none
+> Original Model Path: zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/base-none
 > Batch Size: 64
 > Scenario: sync
-> Throughput (items/sec): 10.7702
-> Latency Mean (ms/batch): 5942.3135
-> Latency Median (ms/batch): 5942.3135
-> Latency Std (ms/batch): 309.5893
-> Iterations: 2
+> Throughput (items/sec): 13.0320
+> Latency Mean (ms/batch): 4910.9819
+> Latency Median (ms/batch): 4900.1473
+> Latency Std (ms/batch): 63.6517
+> Iterations: 3
 ```
-ONNX Runtime achieves 11 items/second with batch 64 and sequence length 384.
+ONNX Runtime achieves 13 items/second with batch 64 and sequence length 384.
 
 ### DeepSparse Speedup
 Now, let's run DeepSparse on an inference-optimized sparse version of oBERT. This model has been 90% pruned and quantized, while retaining >99% accuracy of the dense baseline on the MNLI dataset.
@@ -52,13 +52,13 @@ Now, let's run DeepSparse on an inference-optimized sparse version of oBERT. Thi
 > Original Model Path: zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none
 > Batch Size: 64
 > Scenario: sync
-> Throughput (items/sec): 84.7056
-> Latency Mean (ms/batch): 755.5426
-> Latency Median (ms/batch): 758.5148
-> Latency Std (ms/batch): 5.9118
-> Iterations: 14
+> Throughput (items/sec): 89.7097
+> Latency Mean (ms/batch): 713.3987
+> Latency Median (ms/batch): 710.9072
+> Latency Std (ms/batch): 8.0025
+> Iterations: 15
 ```
-DeepSparse achieves 85 items/second, an 7.7x speed-up over ONNX Runtime!
+DeepSparse achieves 85 items/second, an 7x speed-up over ONNX Runtime!
 
 ## DeepSparse Engine
 Engine is the lowest-level API for interacting with DeepSparse. As much as possible, we recommended you use the Pipeline API but Engine is available as needed if you want to handle pre- or post-processing yourself.

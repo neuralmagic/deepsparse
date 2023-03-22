@@ -18,7 +18,7 @@ Confirm your machine is compatible with our [hardware requirements](/user-guide/
 
 ## Benchmarking
 
-We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 23-core server.
+We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 12-core server.
 
 ### ONNX Runtime Baseline
 As a baseline, let's check out ONNX Runtime's performance on BERT. Make sure you have ORT installed (`pip install onnxruntime`).

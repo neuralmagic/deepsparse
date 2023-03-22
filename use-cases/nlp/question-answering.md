@@ -18,7 +18,7 @@ Confirm your machine is compatible with our [hardware requirements](/user-guide/
 
 ## Benchmarking
 
-We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 23-core server.
+We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 12-core server.
 
 ### ONNX Runtime Baseline
 
@@ -28,36 +28,36 @@ deepsparse.benchmark \
   zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none \
   -b 64 -s sync -nstreams 1 -i [64,384] \
   -e onnxruntime
-> Original Model Path: zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none
+> Original Model Path: zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/base-none
 > Batch Size: 64
 > Scenario: sync
-> Throughput (items/sec): 9.3279
-> Latency Mean (ms/batch): 6861.1296
-> Latency Median (ms/batch): 6861.1296
-> Latency Std (ms/batch): 876.7494
-> Iterations: 2
+> Throughput (items/sec): 13.1489
+> Latency Mean (ms/batch): 4867.3156
+> Latency Median (ms/batch): 4834.5695
+> Latency Std (ms/batch): 51.7144
+> Iterations: 3
 ````
 
-ONNX Runtime achieves 9 items/second with batch 64 and sequence length 384.
+ONNX Runtime achieves 13 items/second with batch 64 and sequence length 384.
 
 ## DeepSparse Engine
 Now, let's run DeepSparse on an inference-optimized sparse version of BERT. This model has been 90% pruned and quantized, while retaining >99% accuracy of the dense baseline on the [SQuAD](https://huggingface.co/datasets/squad) dataset.
 ```bash
 deepsparse.benchmark \
-  zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none \
+  zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/base-none \
   -b 64 -s sync -nstreams 1 -i [64,384] \
   -e deepsparse
   
- > Original Model Path: zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none
+> Original Model Path: zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none
 > Batch Size: 64
 > Scenario: sync
-> Throughput (items/sec): 83.3859
-> Latency Mean (ms/batch): 767.5012
-> Latency Median (ms/batch): 767.5222
-> Latency Std (ms/batch): 3.5643
+> Throughput (items/sec): 89.1442
+> Latency Mean (ms/batch): 717.9248
+> Latency Median (ms/batch): 717.2859
+> Latency Std (ms/batch): 4.5779
 > Iterations: 14
 ```
-DeepSparse achieves 83 items/second, an 9.2x speed-up over ONNX Runtime!
+DeepSparse achieves 89 items/second, an 7x speed-up over ONNX Runtime!
 ## DeepSparse Engine
 Engine is the lowest-level API for interacting with DeepSparse. As much as possible, we recommended using the Pipeline API but Engine is available if you want to handle pre- or post-processing yourself.
 
