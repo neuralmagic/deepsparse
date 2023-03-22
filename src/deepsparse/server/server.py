@@ -39,7 +39,7 @@ from deepsparse.server.system_logging import (
     SystemLoggingMiddleware,
     log_system_information,
 )
-from fastapi import Depends, FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile
 from starlette.responses import RedirectResponse
 
 
@@ -253,17 +253,13 @@ def _add_pipeline_endpoint(
     input_schema = pipeline.input_schema
     output_schema = pipeline.output_schema
 
-    async def endpoints_params():
-        # global parameters that will be passed to all the endpoints of the server
-        return {"system_logging_config": system_logging_config}
-
-    def _predict(request: pipeline.input_schema, params=Depends(endpoints_params)):
+    def _predict(request: pipeline.input_schema):
         pipeline_outputs = pipeline(request)
         server_logger = pipeline.logger
         if server_logger:
             log_system_information(
                 server_logger=server_logger,
-                system_logging_config=params.get("system_logging_config"),
+                system_logging_config=system_logging_config,
             )
         return pipeline_outputs
 
