@@ -24,8 +24,8 @@ import pandas as pd
 from deepsparse import model_debug_analysis
 from deepsparse.benchmark.benchmark_model import benchmark_model
 from deepsparse.utils import generate_random_inputs, model_to_path
-from sparseml.benchmark import BenchmarkResult
 from sparsezoo.analyze import (
+    BenchmarkResult,
     BenchmarkScenario,
     ImposedSparsificationInfo,
     ModelAnalysis,
@@ -85,12 +85,11 @@ def main(
         onnx_model=model_to_path(model_path),
         scenario=scenario,
     )
-    analysis.benchmark_results = performance_summary
+    analysis.benchmark_results = [performance_summary]
     summary = analysis.summary()
 
     summary["MODEL"] = model_path
     _display_summary_as_table(summary)
-    print(analysis.benchmark_results)
 
     if save:
         LOGGER.info(f"Writing results to {save}")
@@ -128,6 +127,7 @@ def run_benchmark_and_analysis(
     :return: A `BenchmarkResult` object encapsulating results from running
         specified benchmark and performance analysis
     """
+
     benchmark_results = benchmark_model(
         model_path=onnx_model,
         batch_size=scenario.batch_size,
@@ -146,6 +146,8 @@ def run_benchmark_and_analysis(
         inp=input_list,
         batch_size=scenario.batch_size,
         num_cores=scenario.num_cores,
+        imposed_ks=sparsity,
+        num_warmup_iterations=scenario.warmup_duration,
     )
 
     items_per_second: float = benchmark_results.get("benchmark_result", {}).get(
@@ -159,10 +161,10 @@ def run_benchmark_and_analysis(
         onnx_model_file=onnx_model, analysis_results=analysis_results
     )
 
-    # recipe = str(manager)
+    # TODO: Add recipe info
     imposed_sparsification = ImposedSparsificationInfo(
         sparsity=sparsity,
-        quantization=quantization,  # recipe=recipe
+        quantization=quantization,
     )
     results = BenchmarkResult(
         setup=scenario,
