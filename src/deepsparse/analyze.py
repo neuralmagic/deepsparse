@@ -34,7 +34,7 @@ from sparsezoo.analyze import (
 from sparsezoo.analyze.cli import analyze_options, analyze_performance_options
 
 
-LOGGER = logging.getLogger()
+LOGGER = logging.getLogger(__name__)
 
 
 @click.command()
