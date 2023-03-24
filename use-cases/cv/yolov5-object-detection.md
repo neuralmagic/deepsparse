@@ -139,6 +139,14 @@ print(len(pipeline_outputs.labels[0]))
 # 300
 # 300
 ```
+### Annotate CLI
+You can also use the annotate command to have the engine save an annotated photo on disk.
+```bash
+deepsparse.object_detection.annotate --model_filepath zoo:cv/detection/yolov5-x6/pytorch/ultralytics/coco/pruned75-none --source thailand.jpg
+```
+Running the above command will create an `annotation-results` folder and save the annotated image inside.
+
+![Annotation Results](images/result.jpg)
 ### Cross Use Case Functionality
 Check out the [Pipeline User Guide](/user-guide/deepsparse/deepsparse-pipelines) for more details on configuring a Pipeline.
 ## DeepSparse Server
