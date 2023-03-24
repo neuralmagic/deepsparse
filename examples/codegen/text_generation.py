@@ -19,15 +19,11 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 import numpy
 import onnx
 from pydantic import BaseModel, Field
+from transformers import BatchEncoding
+from transformers.models.auto import AutoConfig, AutoTokenizer
 
-from deepsparse import Context, MultiModelEngine, Pipeline
-from deepsparse.pipeline import (
-    DEEPSPARSE_ENGINE,
-    ORT_ENGINE,
-    SUPPORTED_PIPELINE_ENGINES,
-    Engine,
-    ORTEngine,
-)
+from deepsparse import Pipeline
+from deepsparse.transformers.helpers import get_onnx_path_and_configs
 from deepsparse.transformers.pipelines import TransformersPipeline
 from scipy.special import softmax
 
@@ -139,16 +135,6 @@ class TextGenerationPipeline(TransformersPipeline):
         self.sampling_temperature = sampling_temperature
         self.num_tokens_to_generate = num_tokens_to_generate
 
-        # set-up the auxiliary multitoken model
-        self.onnx_multitoken_path = self._setup_multitoken_onnx_file_path()
-        # initialize the auxiliary multitoken engine
-        self.multitoken_engine = self._initialize_multitoken_engine()
-
-        # re-initialize the target model
-        # this will be removed once codegen is productionized
-        self.onnx_path = self._setup_onnx_file_path()
-        self.engine = self._reinitialize_engine()
-
         if self._batch_size != 1:
             raise ValueError(
                 "For the sake of simplicity, only dynamic"
@@ -228,11 +214,35 @@ class TextGenerationPipeline(TransformersPipeline):
             padding="max_length",
         )
 
-        engine_input = self.tokens_to_engine_input(
-            input_tokens, onnx_input_names=self.multitoken_engine._input_names
+        input_tokens = self.add_empty_kv_cache(
+            # hard-coding the shape for now
+            input_tokens,
+            shape=(16, self.sequence_length - 1, 64),
         )
+        engine_input = self.tokens_to_engine_input(input_tokens)
 
         return engine_input
+
+    def add_empty_kv_cache(
+        self, input_tokens: BatchEncoding, shape: Tuple[int, ...]
+    ) -> BatchEncoding:
+        """
+        Add empty kv_cache to the input tokens.
+
+        :param input_tokens: the input tokens to add the kv_cache to
+        :param shape: the shape of the kv_cache
+        :return: the input tokens with the kv_cache added
+        """
+        if len(shape) == 3:
+            batch_size = input_tokens["input_ids"].shape[0]
+            shape = (batch_size, shape[0], shape[1], shape[2])
+        if len(shape) != 4:
+            raise ValueError("kv_cache shape must be 3 or 4 dimensional")
+
+        for input_name in self.onnx_input_names:
+            if input_name.startswith("past_key_values"):
+                input_tokens[input_name] = numpy.zeros(shape, dtype=numpy.float32)
+        return input_tokens
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], **kwargs
@@ -246,9 +256,21 @@ class TextGenerationPipeline(TransformersPipeline):
         # list of the meaningful tokens in the sequence
         tokens = [t for t in engine_inputs[0][0] if t != self.tokenizer.pad_token_id]
 
-        tokens, kv_cache = self.initial_autoregressive_pass(
-            tokens=tokens, engine_inputs=engine_inputs
-        )
+        # create an empty, initital kv_cache
+        cache_keys = [
+            name
+            for name in self.engine._input_names
+            if name.startswith("past_key_values")
+        ]
+        cache_arrays = [array for array in engine_inputs if numpy.all(array == 0)]
+        kv_cache = dict(zip(cache_keys, cache_arrays))
+
+        for i in range(len(tokens)):
+            # pass input sequence token by token only to compute kv_cache
+            # we are only processing input tokens, not adding generated ones
+            _, kv_cache = self.autoregressive_pass(
+                tokens=tokens[: i + 1], kv_cache=kv_cache
+            )
 
         # establish the number of autoregressive passes to perform
         num_iterations = self.sequence_length - len(tokens)
@@ -344,54 +366,6 @@ class TextGenerationPipeline(TransformersPipeline):
 
         return tokens, kv_cache
 
-    def initial_autoregressive_pass(
-        self,
-        tokens: List[int],
-        engine_inputs: List[numpy.ndarray],
-    ) -> Tuple[List[int], Dict[str, numpy.ndarray]]:
-        """
-        Performs a single autoregressive pass to initialize the key, value cache.
-
-        1)  Obtains logits and kv cache for the input sequence.
-            From logits, obtains the next token.
-        2)  Preprocesses the kv cache so that it can be used as input to the next
-            autoregressive pass.
-        3)  Returns the new token sequence and the updated kv cache.
-
-        :param tokens: input tokens provided by the user
-        :param engine_inputs: list of numpy inputs to Pipeline
-            engine forward pass
-        :return: the extended token sequence and the kv cache
-        """
-
-        past_logits, *new_kvs = self.multitoken_engine(engine_inputs)
-
-        # rename the output names to match the names expected
-        # in the next autoregressive pass
-        kv_output_names = [
-            name.replace("present", "past_key_values")
-            for name in self.multitoken_engine._output_names
-            if name.startswith("present")
-        ]
-        kv_cache = dict(zip(kv_output_names, new_kvs))
-        for k, v in kv_cache.items():
-            # remove the information about the `new_token` from the cache
-            v = v[:, :, :-1]
-            # zero out all the info that does not pertain to the
-            # "seen" `token` sequence
-            v[:, :, len(tokens) :] = 0.0
-            kv_cache[k] = numpy.ascontiguousarray(v)
-
-        # Obtain the next token from the logits
-        new_token = TextGenerationPipeline.sample_new_token(
-            logits=past_logits[0, len(tokens) - 1],
-            deterministic=self.deterministic,
-            temperature=self.sampling_temperature,
-        )
-        tokens.append(new_token)
-
-        return tokens, kv_cache
-
     @staticmethod
     def sample_new_token(
         logits: numpy.ndarray, deterministic: bool, temperature: float
@@ -412,51 +386,31 @@ class TextGenerationPipeline(TransformersPipeline):
             probs = softmax(logits)
             return numpy.random.choice(len(probs), p=probs)
 
-    def _setup_multitoken_onnx_file_path(self) -> str:
-        # `setup_onnx_file_path` function rewritten
-        # to setup the multitoken_onnx_file_path
+    def setup_onnx_file_path(self) -> str:
+        # `setup_onnx_file_path` function rewritten to take into account modified
+        # `overwrite_transformer_onnx_model_inputs` function
 
-        multitoken_onnx_path = os.path.join(
-            self.model_path, _MODEL_DIR_ONNX_MULTI_TOKEN_NAME
+        """
+        Parses ONNX, tokenizer, and config file paths from the given `model_path`.
+        Supports sparsezoo stubs
+
+        :return: file path to the processed ONNX file for the engine to compile
+        """
+        onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
+            self.model_path, require_configs=True
         )
-        (
-            multitoken_onnx_path,
-            self.multitoken_onnx_input_names,
-            self._temp_model_directory,
-        ) = overwrite_transformer_onnx_model_inputs(
-            multitoken_onnx_path, max_length=self.sequence_length
+
+        self.config = AutoConfig.from_pretrained(
+            config_path, finetuning_task=self.task if hasattr(self, "task") else None
         )
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_path,
+            model_max_length=self.sequence_length,
+        )
+        self.config_path = os.path.join(config_path, "config.json")
+        self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
 
-        return multitoken_onnx_path
-
-    def _initialize_multitoken_engine(self) -> Union[Engine, ORTEngine]:
-        # `_initialize_engine` function rewritten
-        # to initialize the multitoken_engine
-
-        engine_type = self.engine_type.lower()
-
-        if engine_type == DEEPSPARSE_ENGINE:
-            if self.context is not None and isinstance(self.context, Context):
-                self._engine_args.pop("num_cores", None)
-                self._engine_args.pop("scheduler", None)
-                self._engine_args["context"] = self.context
-                return MultiModelEngine(
-                    model=self.onnx_multitoken_path,
-                    **self._engine_args,
-                )
-            return Engine(self.onnx_multitoken_path, **self._engine_args)
-        elif engine_type == ORT_ENGINE:
-            return ORTEngine(self.onnx_multitoken_path, **self._engine_args)
-        else:
-            raise ValueError(
-                f"Unknown engine_type {self.engine_type}. Supported values include: "
-                f"{SUPPORTED_PIPELINE_ENGINES}"
-            )
-
-    def _setup_onnx_file_path(self) -> str:
-        # `setup_onnx_file_path` function rewritten
-
-        onnx_path = os.path.join(self.model_path, _MODEL_DIR_ONNX_NAME)
+        # overwrite onnx graph to given required input shape
         (
             onnx_path,
             self.onnx_input_names,
@@ -466,29 +420,3 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
         return onnx_path
-
-    def _initialize_engine(self):
-        return None
-
-    def _reinitialize_engine(self) -> Union[Engine, ORTEngine]:
-        # `_initialize_engine` function rewritten
-
-        engine_type = self.engine_type.lower()
-
-        if engine_type == DEEPSPARSE_ENGINE:
-            if self.context is not None and isinstance(self.context, Context):
-                self._engine_args.pop("num_cores", None)
-                self._engine_args.pop("scheduler", None)
-                self._engine_args["context"] = self.context
-                return MultiModelEngine(
-                    model=self.onnx_path,
-                    **self._engine_args,
-                )
-            return Engine(self.onnx_path, **self._engine_args)
-        elif engine_type == ORT_ENGINE:
-            return ORTEngine(self.onnx_path, **self._engine_args)
-        else:
-            raise ValueError(
-                f"Unknown engine_type {self.engine_type}. Supported values include: "
-                f"{SUPPORTED_PIPELINE_ENGINES}"
-            )
