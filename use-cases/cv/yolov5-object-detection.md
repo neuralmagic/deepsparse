@@ -42,7 +42,7 @@ ONNX Runtime achieves 15 items/second with batch 64.
 ### DeepSparse Speedup
 Now, let's run DeepSparse on an inference-optimized sparse version of YOLOv5 . This model has been 94% pruned-quantized, while retaining >99% accuracy of the dense baseline on the `coco` dataset.
 ```bash
-!deepsparse.benchmark \
+deepsparse.benchmark \
   zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 \
   -b 64 -s sync -nstreams 1 \
   -e deepsparse
