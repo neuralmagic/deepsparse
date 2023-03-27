@@ -64,7 +64,7 @@ DeepSparse is available in two editions:
 
 ## Features
 
-- 👩‍💻 [NLP]((https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/transformers)) and [CV Classification](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/image_classification), [Detection](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo) and [Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo) Pipelines
+- 👩‍💻 [NLP](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/transformers) | CV Pipelines: [CV Classification](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/image_classification), [CV Detection](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo) and [CV  Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo)
 - 🔌 [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)
 - 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)
 - ☁️ [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples)
@@ -155,7 +155,6 @@ To look up arguments run: `deepsparse.server --help`.
 To deploy multiple models in your setup, a config.yaml file should be created. In the example provided, two BERT models are configured for the question-answering task:
 
 ```yaml
-num_cores: 1
 num_workers: 1
 endpoints:
     - task: question_answering
