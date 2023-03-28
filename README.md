@@ -87,14 +87,17 @@ To ensure that you get the best performance from DeepSparse, it has been thoroug
 
 Pipelines are a high-level Python interface for running inference with DeepSparse across select tasks in NLP and CV:
 
+['custom', 'question_answering', 'qa', 'text_classification', 'glue', 'sentiment_analysis', 'token_classification', 'ner', 'zero_shot_text_classification', 'transformers_embedding_extraction', 'image_classification', 'yolo', 'yolov8', 'yolact', 'information_retrieval_haystack', 'haystack', 'embedding_extraction', 'open_pif_paf']
+
 |          NLP          |            CV             |
 |-----------------------|---------------------------|
-|   Text Classification | Image Classification      |
-|  Token Classification | Object Detection          |
-|  Sentiment Analysis   | Object Segmentation       |
-|  Question Answering   |                           |
-| MultiLabel Text Classification |                  |
-| Document Classification |                         |
+|  Text Classification `"text_classification"`  | Image Classification `"image_classification"`      |
+|  Token Classification `"token_classification"` | Object Detection `"yolo"`          |
+|  Sentiment Analysis `"sentiment_analysis"`   | Instance Segmentation `"yolact"`       |
+|  Question Answering `"question_answering"`   | Keypoint Detection `"open_pif_paf"`       |
+| MultiLabel Text Classification `"text_classification"` |                  |
+| Document Classification `"text_classification"` |                         |
+| Zero-Shot Text Classification `"zero_shot_text_classification"` |                         |
 
 
 **NLP Example** | Question Answering
@@ -170,7 +173,7 @@ Read the [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main
 
 ### 📜 DeepSparse Benchmark
 
-The Deepsparse Benchmark, a command-line (CLI) tool, is used to evaluate the DeepSparse Engine's performance with ONNX models. This tool processes arguments, downloads and compiles the network into the engine, creates input tensors, and runs the model based on the selected scenario. 
+DeepSparse Benchmark, a command-line (CLI) tool, is used to evaluate the DeepSparse Engine's performance with ONNX models. This tool processes arguments, downloads and compiles the network into the engine, creates input tensors, and runs the model based on the selected scenario. 
 
 Run `deepsparse.benchmark -h` to look up arguments:
 
