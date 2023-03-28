@@ -87,8 +87,6 @@ To ensure that you get the best performance from DeepSparse, it has been thoroug
 
 Pipelines are a high-level Python interface for running inference with DeepSparse across select tasks in NLP and CV:
 
-['custom', 'question_answering', 'qa', 'text_classification', 'glue', 'sentiment_analysis', 'token_classification', 'ner', 'zero_shot_text_classification', 'transformers_embedding_extraction', 'image_classification', 'yolo', 'yolov8', 'yolact', 'information_retrieval_haystack', 'haystack', 'embedding_extraction', 'open_pif_paf']
-
 |          NLP          |            CV             |
 |-----------------------|---------------------------|
 |  Text Classification `"text_classification"`  | Image Classification `"image_classification"`      |
