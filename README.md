@@ -149,7 +149,7 @@ deepsparse.server \
 To look up arguments run: `deepsparse.server --help`.
 
 #### Multiple Models
-To deploy multiple models in your setup, a config.yaml file should be created. In the example provided, two BERT models are configured for the question-answering task:
+To deploy multiple models in your setup, a `config.yaml` file should be created. In the example provided, two BERT models are configured for the question-answering task:
 
 ```yaml
 num_workers: 1
@@ -164,7 +164,7 @@ endpoints:
       batch_size: 1
 ```
 
-After the config.yaml file has been created, the server can be started by passing the file path as an argument:
+After the `config.yaml` file has been created, the server can be started by passing the file path as an argument:
 ```bash
 deepsparse.server config config.yaml
 ```
