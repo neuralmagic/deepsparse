@@ -175,11 +175,9 @@ The Deepsparse Benchmark, a command-line (CLI) tool, is used to evaluate the Dee
 Run `deepsparse.benchmark -h` to look up arguments:
 
 ```shell
-deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
-                          [-ncores NUM_CORES] [-s {async,sync}] [-t TIME]
-                          [-nstreams NUM_STREAMS] [-pin {none,core,numa}]
-                          [-q] [-x EXPORT_PATH]
-                          model_path
+deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES] [-ncores NUM_CORES] [-s {async,sync,elastic}] [-t TIME]
+                     [-w WARMUP_TIME] [-nstreams NUM_STREAMS] [-pin {none,core,numa}] [-e ENGINE] [-q] [-x EXPORT_PATH]
+                     model_path
 
 ```
 
