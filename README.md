@@ -58,25 +58,6 @@ Neural Magic's DeepSparse is able to integrate into popular deep learning librar
 ONNX gives the flexibility to serve your model in a framework-agnostic environment. 
 Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
-DeepSparse is available in two editions: 
-1. [**DeepSparse Community**](#installation) is open-source and free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2. [**DeepSparse Enterprise**](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
-
-## Features
-
-- 👩‍💻 [NLP](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/transformers) | CV Pipelines: [CV Classification](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/image_classification), [CV Detection](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo) and [CV  Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo)
-- 🔌 [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)
-- 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)
-- ☁️ [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples)
-
-## 🧰 Hardware Support and System Requirements
-
-To ensure that your system is compatible with DeepSparse, it is recommended to review the [Supported Hardware for DeepSparse](https://docs.neuralmagic.com/user-guide/deepsparse-engine/hardware-support) documentation.
-
-Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
-
-To ensure that you get the best performance from DeepSparse, it has been thoroughly tested on Python versions 3.7-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. It is highly recommended to use a [virtual environment](https://docs.python.org/3/library/venv.html) when running DeepSparse.
-
 ## Installation
 
 Install DeepSparse Community as follows: 
@@ -85,9 +66,22 @@ Install DeepSparse Community as follows:
 pip install deepsparse
 ```
 
-To install the DeepSparse Enterprise, trial or inquire about licensing for DeepSparse Enterprise, see the [DeepSparse Enterprise documentation](https://docs.neuralmagic.com/products/deepsparse-ent).
+DeepSparse is available in two editions: 
+1. [**DeepSparse Community**](#installation) is open-source and free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
+2. [**DeepSparse Enterprise**](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+
+## 🧰 Hardware Support and System Requirements
+
+To ensure that your CPU is compatible with DeepSparse, it is recommended to review the [Supported Hardware for DeepSparse](https://docs.neuralmagic.com/user-guide/deepsparse-engine/hardware-support) documentation.
+
+To ensure that you get the best performance from DeepSparse, it has been thoroughly tested on Python versions 3.7-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. It is highly recommended to use a [virtual environment](https://docs.python.org/3/library/venv.html) when running DeepSparse. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
 
 ## Features
+
+- 👩‍💻 Pipelines for [NLP](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/transformers), [CV Classification](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/image_classification), [CV Detection](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo), [CV Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolact) and more!
+- 🔌 [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)
+- 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)
+- ☁️ [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples)
 
 ### 👩‍💻 Pipelines
 
@@ -190,12 +184,9 @@ deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
 ```
 
 
-Refer to the [Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark) README for examples of specific inference scenarios such as:
+Refer to the [Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark) README for examples of specific inference scenarios.
 
-- Synchronous (Single-stream) Scenario
-- Asynchronous (Multi-stream) Scenario
-
-### 🦉 SparseZoo ONNX vs. Custom ONNX Models
+### 🦉 Custom ONNX Model Support
 
 DeepSparse is capable of accepting ONNX models from two sources:
 
@@ -240,7 +231,6 @@ It's highly optimized for minimum per-request latency, using all of the system's
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/multi-stream.png" alt="multi stream diagram" />
 
 The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them.
-
 
 ## Resources
 #### Libraries
