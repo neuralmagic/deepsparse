@@ -20,34 +20,34 @@ limitations under the License.
     <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />
     &nbsp;&nbsp;DeepSparse
   </h1>
-  <h3> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h3>
-  <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap">
+  <h4> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h4>
+  <div align="center">
     <a href="https://docs.neuralmagic.com/deepsparse/">
-      <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="25" />
+      <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
     </a>
     <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
-      <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="25" />
+      <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="20" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/issues/">
-      <img alt="Support" src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height="25" />
+      <img alt="Support" src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height="20" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/actions/workflows/quality-check.yaml">
-      <img alt="Main" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=build&style=for-the-badge" height="25" />
+      <img alt="Main" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=build&style=for-the-badge" height="20" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/releases">
-      <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height="25" />
+      <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height="20" />
     </a>
     <a href="https://github.com/neuralmagic/deepsparse/blob/main/CODE_OF_CONDUCT.md">
-      <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height="25" />
+      <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height="20" />
     </a>
     <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
-      <img alt="YouTube" src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height="25" />
+      <img alt="YouTube" src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height="20" />
     </a>
     <a href="https://medium.com/limitlessai">
-      <img alt="Medium" src="https://img.shields.io/badge/medium-%2312100E.svg?&style=for-the-badge&logo=medium&logoColor=white" height="25" />
+      <img alt="Medium" src="https://img.shields.io/badge/medium-%2312100E.svg?&style=for-the-badge&logo=medium&logoColor=white" height="20" />
     </a>
     <a href="https://twitter.com/neuralmagic">
-      <img alt="Twitter" src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height="25" />
+      <img alt="Twitter" src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height="20" />
     </a>
   </div>
 </div>
@@ -58,24 +58,6 @@ Neural Magic's DeepSparse is able to integrate into popular deep learning librar
 ONNX gives the flexibility to serve your model in a framework-agnostic environment. 
 Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
 
-DeepSparse is available in two editions: 
-1. [**DeepSparse Community**](#installation) is open-source and free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2. [**DeepSparse Enterprise**](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
-
-## Features
-
-- 🔌 [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)
-- 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)
-- 👩‍💻 [NLP and Computer Vision Tasks Supported](https://github.com/neuralmagic/deepsparse/tree/main/examples)
-
-## 🧰 Hardware Support and System Requirements
-
-Review [Supported Hardware for DeepSparse](https://docs.neuralmagic.com/user-guide/deepsparse-engine/hardware-support) to understand system requirements. 
-DeepSparse works natively on Linux; Mac and Windows require running Linux in a Docker or virtual machine; it will not run natively on those operating systems.
-
-DeepSparse is tested on Python 3.7-3.10, ONNX 1.5.0-1.12.0, ONNX opset version 11+, and manylinux compliant. 
-Using a [virtual environment](https://docs.python.org/3/library/venv.html) is highly recommended. 
-
 ## Installation
 
 Install DeepSparse Community as follows: 
@@ -84,13 +66,69 @@ Install DeepSparse Community as follows:
 pip install deepsparse
 ```
 
-To install the DeepSparse Enterprise, trial or inquire about licensing for DeepSparse Enterprise, see the [DeepSparse Enterprise documentation](https://docs.neuralmagic.com/products/deepsparse-ent).
+DeepSparse is available in two editions: 
+1. [**DeepSparse Community**](#installation) is open-source and free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
+2. [**DeepSparse Enterprise**](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+
+## 🧰 Hardware Support and System Requirements
+
+To ensure that your CPU is compatible with DeepSparse, it is recommended to review the [Supported Hardware for DeepSparse](https://docs.neuralmagic.com/user-guide/deepsparse-engine/hardware-support) documentation.
+
+To ensure that you get the best performance from DeepSparse, it has been thoroughly tested on Python versions 3.7-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. It is highly recommended to use a [virtual environment](https://docs.python.org/3/library/venv.html) when running DeepSparse. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
 
 ## Features
 
+- 👩‍💻 Pipelines for [NLP](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/transformers), [CV Classification](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/image_classification), [CV Detection](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo), [CV Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolact) and more!
+- 🔌 [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)
+- 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)
+- ☁️ [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples)
+
+### 👩‍💻 Pipelines
+
+Pipelines are a high-level Python interface for running inference with DeepSparse across select tasks in NLP and CV:
+
+|          NLP          |            CV             |
+|-----------------------|---------------------------|
+|  Text Classification `"text_classification"`  | Image Classification `"image_classification"`      |
+|  Token Classification `"token_classification"` | Object Detection `"yolo"`          |
+|  Sentiment Analysis `"sentiment_analysis"`   | Instance Segmentation `"yolact"`       |
+|  Question Answering `"question_answering"`   | Keypoint Detection `"open_pif_paf"`       |
+| MultiLabel Text Classification `"text_classification"` |                  |
+| Document Classification `"text_classification"` |                         |
+| Zero-Shot Text Classification `"zero_shot_text_classification"` |                         |
+
+
+**NLP Example** | Question Answering
+```python
+from deepsparse import Pipeline
+
+qa_pipeline = Pipeline.create(
+    task="question-answering",
+    model_path="zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni",
+)
+
+inference = qa_pipeline(question="What's my name?", context="My name is Snorlax")
+```
+**CV Example** | Image Classification
+
+```python
+from deepsparse import Pipeline
+
+cv_pipeline = Pipeline.create(
+  task='image_classification', 
+  model_path='zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none',
+)
+
+input_image = "my_image.png"
+inference = cv_pipeline(images=input_image)
+```
+
+
 ### 🔌 DeepSparse Server
 
-DeepSparse Server allows you to serve models and pipelines from the terminal. The server runs on top of the popular FastAPI web framework and Uvicorn web server. Install the server using the following command:
+DeepSparse Server is a tool that enables you to serve your models and pipelines directly from your terminal.
+
+The server is built on top of two powerful libraries: the FastAPI web framework and the Uvicorn web server. This combination ensures that DeepSparse Server delivers excellent performance and reliability. Install with this command:
 
 ```bash
 pip install deepsparse[server]
@@ -109,10 +147,9 @@ deepsparse.server \
 To look up arguments run: `deepsparse.server --help`.
 
 #### Multiple Models
-To serve multiple models in your deployment you can easily build a `config.yaml`. In the example below, we define two BERT models in our configuration for the question answering task:
+To deploy multiple models in your setup, a `config.yaml` file should be created. In the example provided, two BERT models are configured for the question-answering task:
 
 ```yaml
-num_cores: 1
 num_workers: 1
 endpoints:
     - task: question_answering
@@ -125,66 +162,36 @@ endpoints:
       batch_size: 1
 ```
 
-Finally, after your `config.yaml` file is built, run the server with the config file path as an argument:
+After the `config.yaml` file has been created, the server can be started by passing the file path as an argument:
 ```bash
 deepsparse.server config config.yaml
 ```
 
-[Getting Started with DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) for more info.
+Read the [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server) README for further details.
 
 ### 📜 DeepSparse Benchmark
 
-The benchmark tool is available on your CLI to run expressive model benchmarks on DeepSparse with minimal parameters.
+DeepSparse Benchmark, a command-line (CLI) tool, is used to evaluate the DeepSparse Engine's performance with ONNX models. This tool processes arguments, downloads and compiles the network into the engine, creates input tensors, and runs the model based on the selected scenario. 
 
 Run `deepsparse.benchmark -h` to look up arguments:
 
 ```shell
-deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
-                          [-ncores NUM_CORES] [-s {async,sync}] [-t TIME]
-                          [-nstreams NUM_STREAMS] [-pin {none,core,numa}]
-                          [-q] [-x EXPORT_PATH]
-                          model_path
+deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES] [-ncores NUM_CORES] [-s {async,sync,elastic}] [-t TIME]
+                     [-w WARMUP_TIME] [-nstreams NUM_STREAMS] [-pin {none,core,numa}] [-e ENGINE] [-q] [-x EXPORT_PATH]
+                     model_path
 
 ```
 
-[Getting Started with CLI Benchmarking](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark) includes examples of select inference scenarios: 
-- Synchronous (Single-stream) Scenario
-- Asynchronous (Multi-stream) Scenario
 
+Refer to the [Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark) README for examples of specific inference scenarios.
 
-### 👩‍💻 NLP Inference Example
+### 🦉 Custom ONNX Model Support
 
-```python
-from deepsparse import Pipeline
+DeepSparse is capable of accepting ONNX models from two sources:
 
-# SparseZoo model stub or path to ONNX file
-model_path = "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
+**SparseZoo ONNX**: This is an open-source repository of sparse models available for download. [SparseZoo](https://github.com/neuralmagic/sparsezoo) offers inference-optimized models, which are trained using repeatable sparsification recipes and state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
 
-qa_pipeline = Pipeline.create(
-    task="question-answering",
-    model_path=model_path,
-)
-
-my_name = qa_pipeline(question="What's my name?", context="My name is Snorlax")
-```
-
-NLP Tutorials:
-- [Getting Started with Hugging Face Transformers 🤗](https://github.com/neuralmagic/deepsparse/tree/main/examples/huggingface-transformers)
-
-Tasks Supported: 
-- [Token Classification: Named Entity Recognition](https://neuralmagic.com/use-cases/sparse-named-entity-recognition/)
-- [Text Classification: Multi-Class](https://neuralmagic.com/use-cases/sparse-multi-class-text-classification/)
-- [Text Classification: Binary](https://neuralmagic.com/use-cases/sparse-binary-text-classification/)
-- [Text Classification: Sentiment Analysis](https://neuralmagic.com/use-cases/sparse-sentiment-analysis/)
-- [Question Answering](https://neuralmagic.com/use-cases/sparse-question-answering/)
-
-### 🦉 SparseZoo ONNX vs. Custom ONNX Models
-
-DeepSparse can accept ONNX models from two sources: 
-
-- **SparseZoo ONNX**: our open-source collection of sparse models available for download. [SparseZoo](https://github.com/neuralmagic/sparsezoo) hosts inference-optimized models, trained on repeatable sparsification recipes using state-of-the-art techniques from [SparseML](https://github.com/neuralmagic/sparseml).
-
-- **Custom ONNX**: your own ONNX model, can be dense or sparse. Plug in your model to compare performance with other solutions.
+**Custom ONNX**: Users can provide their own ONNX models, whether dense or sparse. By plugging in a custom model, users can compare its performance with other solutions.
 
 ```bash
 > wget https://github.com/onnx/models/raw/main/vision/classification/mobilenet/model/mobilenetv2-7.onnx
@@ -206,27 +213,23 @@ engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
 
-The [GitHub repository](https://github.com/neuralmagic/deepsparse) includes package APIs along with examples to quickly get started benchmarking and inferencing sparse models.
+The [GitHub repository](https://github.com/neuralmagic/deepsparse) repository contains package APIs and examples that help users swiftly begin benchmarking and performing inference on sparse models.
 
 ### Scheduling Single-Stream, Multi-Stream, and Elastic Inference
 
-DeepSparse offers up to three types of inferences based on your use case. Read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
+DeepSparse offers different inference scenarios based on your use case. Read more details here: [Inference Types](https://github.com/neuralmagic/deepsparse/blob/main/docs/source/scheduler.md).
 
-1 ⚡ Single-stream scheduling: the latency/synchronous scenario, requests execute serially. [`default`]
+⚡ **Single-stream** scheduling: the latency/synchronous scenario, requests execute serially. [`default`]
 
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/single-stream.png" alt="single stream diagram" />
 
-Use Case: It's highly optimized for minimum per-request latency, using all of the system's resources provided to it on every request it gets.
+It's highly optimized for minimum per-request latency, using all of the system's resources provided to it on every request it gets.
 
-2 ⚡ Multi-stream scheduling: the throughput/asynchronous scenario, requests execute in parallel.
+⚡ **Multi-stream** scheduling: the throughput/asynchronous scenario, requests execute in parallel.
 
 <img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/multi-stream.png" alt="multi stream diagram" />
 
-PRO TIP: The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them.
-
-3 ⚡ Elastic scheduling: requests execute in parallel, but not multiplexed on individual NUMA nodes.
-
-Use Case: A workload that might benefit from the elastic scheduler is one in which multiple requests need to be handled simultaneously, but where performance is hindered when those requests have to share an L3 cache.
+The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them.
 
 ## Resources
 #### Libraries
