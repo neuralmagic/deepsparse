@@ -22,6 +22,10 @@ huggingface/transformers
 import logging as _logging
 
 import pkg_resources
+from deepsparse.analytics import deepsparse_analytics as _analytics
+
+
+_analytics.send_event("python.transformers.init")
 
 
 _EXPECTED_VERSION = "4.23.1"

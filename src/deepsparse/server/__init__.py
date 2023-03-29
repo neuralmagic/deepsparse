@@ -19,4 +19,9 @@ DeepSparse server implementation to serve ONNX files and pipelines through
 the DeepSparse Engine.
 """
 
+from deepsparse.analytics import deepsparse_analytics as _analytics
+
 from .cli import main
+
+
+_analytics.send_event("python.server.init")
