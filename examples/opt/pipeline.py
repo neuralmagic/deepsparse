@@ -13,8 +13,8 @@
 # limitations under the License.
 """
 pip install transformers[onnx]
-optimum-cli export onnx --model bigscience/bloom-560m --task causal-lm-with-past bloom-560m/
-cd bloom-560m/
+optimum-cli export onnx --model facebook/opt-350m --task causal-lm-with-past --atol 1e-04 opt-350m
+cd opt-560m/
 mv decoder_with_past_model.onnx model.onnx
 """
 import os
@@ -33,10 +33,6 @@ def preprocess_shape(s):
     num_heads = 16
     if s == "past_sequence_length":
         return past_sequence_length
-    elif s == "batch_size x num_heads":
-        return batch_size * num_heads
-    elif s == "past_sequence_length + 1":
-        return past_sequence_length + 1
     elif s == "batch_size":
         return batch_size
     assert isinstance(s, int)
@@ -57,8 +53,8 @@ def autoregressive_pass(current_token, context_len, model, kv_cache, kv_output_n
 def main(
     input_sequence: str = "Why is Batman always",
     max_new_tokens=50,
-    model_name="bigscience/bloom-560m",
-    model_path="bloom-560m",
+    model_name="facebook/opt-350m",
+    model_path="opt-350m",
 ):
 
     generator = pipeline("text-generation", model=model_name)
