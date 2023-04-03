@@ -63,14 +63,14 @@ With Engine, we can compile an ONNX file and run inference on raw tensors.
 
 Here's an example, using a 98% pruned-quantized YOLOv5 trained on `coco` from SparseZoo:
 ```python
-from deepsparse import compile_model
+from deepsparse import Engine
 from deepsparse.utils import generate_random_inputs, model_to_path
 import numpy as np
 
 # download onnx from sparsezoo and compile with batchsize 1
 sparsezoo_stub = "zoo:cv/detection/yolov5-l/pytorch/ultralytics/coco/pruned-aggressive_98"
 batch_size = 1
-bert_engine = compile_model(
+bert_engine = Engine(
   model=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
   batch_size=batch_size   # defaults to batch size 1
 )
