@@ -24,6 +24,7 @@ from typing import Dict, Iterable, List, Optional, Tuple, Union
 import numpy
 from tqdm.auto import tqdm
 
+from deepsparse.analytics import deepsparse_analytics as _analytics
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (
     generate_random_inputs,
@@ -185,6 +186,7 @@ class Engine(object):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
     ):
+        _analytics.send_event("python.engine.init")
         self._model_path = model_to_path(model)
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = _validate_num_cores(num_cores)
