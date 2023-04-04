@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-
-from deepsparse.analytics import deepsparse_analytics as _analytics
-
-from .annotate import *
-from .pipelines import *
-from .schemas import *
-from .utils import *
-from .validation import *
+from deepsparse.version import version as deepsparse_version
+from sparsezoo.analytics import GoogleAnalytics
 
 
-_analytics.send_event("python.yolov8.init")
+__all__ = ["deepsparse_analytics"]
+
+
+# analytics client for deepsparse, to disable set NM_DISABLE_ANALYTICS=1
+deepsparse_analytics = GoogleAnalytics("deepsparse", deepsparse_version)
