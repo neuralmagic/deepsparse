@@ -38,7 +38,7 @@ from .loggers import *
 from .version import __version__, is_release
 from .analytics import deepsparse_analytics as _analytics
 
-_analytics.send_event("python.init")
+_analytics.send_event("python__init")
 
 try:
     from sparsezoo.package import check_package_version as _check_package_version

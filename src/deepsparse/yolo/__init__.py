@@ -21,4 +21,4 @@ from .pipelines import *
 from .schemas import *
 
 
-_analytics.send_event("python.yolov.init")
+_analytics.send_event("python__yolov5__init")

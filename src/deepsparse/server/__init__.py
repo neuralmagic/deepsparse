@@ -24,4 +24,4 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 from .cli import main
 
 
-_analytics.send_event("python.server.init")
+_analytics.send_event("python__server__init")

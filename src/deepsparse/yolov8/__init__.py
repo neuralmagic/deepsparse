@@ -23,4 +23,4 @@ from .utils import *
 from .validation import *
 
 
-_analytics.send_event("python.yolov8.init")
+_analytics.send_event("python__yolov8__init")

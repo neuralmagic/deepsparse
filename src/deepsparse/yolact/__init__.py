@@ -21,7 +21,7 @@ from collections import namedtuple
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
 
-_analytics.send_event("python.yolact.init")
+_analytics.send_event("python__yolact__init")
 
 _LOGGER = _logging.getLogger(__name__)
 _Dependency = namedtuple("_Dependency", ["name", "version", "necessary", "import_name"])
