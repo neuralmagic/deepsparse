@@ -20,4 +20,4 @@ from .ort_engine import *
 from .results import *
 
 
-_analytics.send_event("python.benchmark.init")
+_analytics.send_event("python__benchmark__init")

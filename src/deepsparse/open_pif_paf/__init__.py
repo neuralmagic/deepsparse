@@ -17,4 +17,4 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 from .utils import *
 
 
-_analytics.send_event("python.open_pif_paf.init")
+_analytics.send_event("python__open_pif_paf__init")
