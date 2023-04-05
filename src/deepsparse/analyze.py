@@ -86,28 +86,12 @@ def main(
         scenario=scenario,
     )
     analysis.benchmark_results = [performance_summary]
-    summary = analysis.summary()
-
-    summary["MODEL"] = model_path
-    _display_summary_as_table(summary)
+    summary = analysis.summary(**kwargs)
+    summary.pretty_print()
 
     if save:
         LOGGER.info(f"Writing results to {save}")
         analysis.yaml(file_path=save)
-
-
-def _display_summary_as_table(summary):
-    summary_copy = copy.copy(summary)
-    print(f"MODEL: {summary_copy.pop('MODEL')}", end="\n\n")
-    footer = summary_copy.pop("Summary")
-
-    for section_name, section_dict in summary_copy.items():
-        print(f"{section_name.upper()}:")
-        print(pd.DataFrame(section_dict).T.to_string(), end="\n\n")
-
-    print("SUMMARY:")
-    for footer_key, footer_value in footer.items():
-        print(f"{footer_key}: {footer_value}")
 
 
 def run_benchmark_and_analysis(
