@@ -15,6 +15,7 @@ on:
 
 env:
   SPARSEZOO_TEST_MODE: true
+  NM_DISABLE_ANALYTICS: "true"
 
 jobs:
   base-tests:

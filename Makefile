@@ -8,6 +8,7 @@ DOCDIR := docs
 MDCHECKGLOBS := 'docs/**/*.md' 'docs/**/*.rst' 'examples/**/*.md' 'scripts/**/*.md'
 MDCHECKFILES := CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPING.md README.md
 SPARSEZOO_TEST_MODE := "true"
+NM_DISABLE_ANALYTICS := "true"
 
 TARGETS := ""  # targets for running pytests: cli,nobase
 PYTEST_ARGS ?= ""
@@ -52,12 +53,12 @@ artifacts:
 # run tests for the repo
 test:
 	@echo "Running python tests";
-	@SPARSEZOO_TEST_MODE="true" pytest tests/ --ignore integrations $(PYTEST_ARGS);
+	@SPARSEZOO_TEST_MODE="true" @NM_DISABLE_ANALYTICS="true" pytest tests/ --ignore integrations $(PYTEST_ARGS);
 
 # run integrations tests for the repo
 test_integrations:
 	@echo "Running package integrations tests";
-	@SPARSEZOO_TEST_MODE="true" pytest integrations/ --ignore tests $(PYTEST_ARGS);
+	@SPARSEZOO_TEST_MODE="true" @NM_DISABLE_ANALYTICS="true" pytest integrations/ --ignore tests $(PYTEST_ARGS);
 
 # create docs
 docs:
