@@ -129,6 +129,10 @@ _server_deps = [
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
+_image_classification_deps = [
+    "torchvision>=0.3.0,<=0.13",
+    "opencv-python<=4.6.0.66",
+]
 _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.13",
     "opencv-python<=4.6.0.66",
@@ -140,6 +144,13 @@ _openpifpaf_integration_deps = [
     "scipy==1.10.1",
 ]
 _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
+_transformers_integration_deps = [
+    f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
+    f"~={version_base}",
+    "datasets<=1.18.4",
+    "scikit-learn",
+    "seqeval",
+]
 
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
@@ -255,10 +266,12 @@ def _setup_extras() -> Dict:
         "dev": _dev_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
+        "image_classification": _image_classification_deps,
         "yolo": _yolo_integration_deps,
         "haystack": _haystack_integration_deps,
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
+        "transformers": _transformers_integration_deps,
     }
 
 
