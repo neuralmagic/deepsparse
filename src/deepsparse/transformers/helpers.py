@@ -166,11 +166,11 @@ def overwrite_transformer_onnx_model_inputs(
     # Save modified model
     if output_path is None:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-        onnx.save(model, tmp_file.name)
+        onnx.save(model, tmp_file.name, all_tensors_to_one_file=True, use_external_data_format=True)
 
         return tmp_file.name, input_names, tmp_file
     else:
-        onnx.save(model, output_path)
+        onnx.save(model, output_path, all_tensors_to_one_file=True, use_external_data_format=True)
         return input_names
 
 
