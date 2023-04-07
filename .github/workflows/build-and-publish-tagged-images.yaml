@@ -43,7 +43,7 @@ jobs:
         run: |
           echo ${{ steps.extract_tag.outputs.tag }}
 
-      - name: Build and  push deepsparse with all dependencies and default cuda 11.1.1
+      - name: Build and  push deepsparse with all dependencies
         if: ${{ contains(github.ref, 'refs/heads/release/') }}
         uses: docker/build-push-action@v2
         with:
