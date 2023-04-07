@@ -38,16 +38,4 @@ from .loggers import *
 from .version import __version__, is_release
 from .analytics import deepsparse_analytics as _analytics
 
-_analytics.send_event("python.init")
-
-try:
-    from sparsezoo.package import check_package_version as _check_package_version
-
-    _check_package_version(
-        package_name=__name__ if is_release else f"{__name__}-nightly",
-        package_version=__version__,
-    )
-except Exception as err:
-    print(
-        f"Need sparsezoo version above 0.9.0 to run Neural Magic's latest-version check\n{err}"
-    )
+_analytics.send_event("python__init")
