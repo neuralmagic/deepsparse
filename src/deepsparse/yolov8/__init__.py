@@ -14,8 +14,13 @@
 
 # flake8: noqa
 
+from deepsparse.analytics import deepsparse_analytics as _analytics
+
 from .annotate import *
 from .pipelines import *
 from .schemas import *
 from .utils import *
 from .validation import *
+
+
+_analytics.send_event("python__yolov8__init")

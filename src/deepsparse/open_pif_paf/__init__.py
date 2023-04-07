@@ -12,4 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # flake8: noqa
+from deepsparse.analytics import deepsparse_analytics as _analytics
+
 from .utils import *
+
+
+_analytics.send_event("python__open_pif_paf__init")

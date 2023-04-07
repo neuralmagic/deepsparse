@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse import Engine, compile_model
+from deepsparse import Engine, compile_model, model_debug_analysis
 from deepsparse.utils import verify_outputs
 from sparsezoo import Model
 
@@ -90,7 +90,31 @@ class TestEngineParametrized:
         for output in results.outputs:
             verify_outputs(output, outputs)
 
-    def test_analyze(self, engine: Engine, engine_io):
+
+@pytest.mark.parametrize("batch_size", [1, 4, 16], scope="class")
+@pytest.mark.parametrize("zoo_stub", model_test_registry.values(), scope="class")
+@pytest.mark.smoke
+@pytest.mark.skip(reason="This won't work until the engine is updated, see D5309.")
+class TestDebugAnalysisEngineParametrized:
+    @pytest.fixture(scope="class")
+    def model(self, zoo_stub: str):
+        yield Model(zoo_stub)
+
+    @pytest.fixture(scope="class")
+    def engine_io(self, model: Model, batch_size: int):
+        batch = model.sample_batch(batch_size=batch_size)
+        input_key = next(key for key in batch.keys() if "input" in key)
+        output_key = next(key for key in batch.keys() if "output" in key)
+        yield batch[input_key], batch[output_key]
+
+    def test_analyze(self, model: Model, batch_size: int, engine_io):
         inputs, _ = engine_io
-        results = engine.analyze(inputs, num_iterations=1, num_warmup_iterations=0)
+        results = model_debug_analysis(
+            model,
+            inputs,
+            batch_size,
+            num_cores=1,
+            num_iterations=1,
+            num_warmup_iterations=0,
+        )
         assert "layer_info" in results

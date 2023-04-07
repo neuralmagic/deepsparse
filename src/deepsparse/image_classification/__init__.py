@@ -18,6 +18,10 @@ import logging as _logging
 import warnings
 from collections import namedtuple
 
+from deepsparse.analytics import deepsparse_analytics as _analytics
+
+
+_analytics.send_event("python__image_classification__init")
 
 _LOGGER = _logging.getLogger(__name__)
 _Dependency = namedtuple("_Dependency", ["name", "import_name", "version", "necessary"])

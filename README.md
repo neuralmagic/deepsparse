@@ -72,7 +72,7 @@ DeepSparse is available in two editions:
 
 ## 🧰 Hardware Support and System Requirements
 
-To ensure that your CPU is compatible with DeepSparse, it is recommended to review the [Supported Hardware for DeepSparse](https://docs.neuralmagic.com/user-guide/deepsparse-engine/hardware-support) documentation.
+To ensure that your CPU is compatible with DeepSparse, it is recommended to review the [Supported Hardware for DeepSparse](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support) documentation.
 
 To ensure that you get the best performance from DeepSparse, it has been thoroughly tested on Python versions 3.7-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. It is highly recommended to use a [virtual environment](https://docs.python.org/3/library/venv.html) when running DeepSparse. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
 
