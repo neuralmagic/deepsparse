@@ -543,47 +543,6 @@ class Engine(object):
 
         return results
 
-    def analyze(
-        self,
-        inp: List[numpy.ndarray],
-        num_iterations: int = 20,
-        num_warmup_iterations: int = 5,
-        optimization_level: int = 1,
-        imposed_as: Optional[float] = None,
-        imposed_ks: Optional[float] = None,
-    ):
-        """
-        Function to analyze a model's performance in the DeepSparse Engine.
-
-        Note 1: Analysis is currently only supported on a single socket.
-
-        :param inp: The list of inputs to pass to the engine for analyzing inference.
-            The expected order is the inputs order as defined in the ONNX graph.
-        :param num_iterations: The number of times to repeat execution of the model
-            while analyzing, default is 20
-        :param num_warmup_iterations: The number of times to repeat execution of the model
-            before analyzing, default is 5
-        :param optimization_level: The amount of graph optimizations to perform.
-            The current choices are either 0 (minimal) or 1 (all), default is 1
-        :param imposed_as: Imposed activation sparsity, defaults to None.
-            Will force the activation sparsity from all ReLu layers in the graph
-            to match this desired sparsity level (percentage of 0's in the tensor).
-            Beneficial for seeing how AS affects the performance of the model.
-        :param imposed_ks: Imposed kernel sparsity, defaults to None.
-            Will force all prunable layers in the graph to have weights with
-            this desired sparsity level (percentage of 0's in the tensor).
-            Beneficial for seeing how pruning affects the performance of the model.
-        :return: the analysis structure containing the performance details of each layer
-        """
-        return self._eng_net.benchmark(
-            inp,
-            num_iterations,
-            num_warmup_iterations,
-            optimization_level,
-            imposed_as,
-            imposed_ks,
-        )
-
     def _validate_inputs(self, inp: List[numpy.ndarray]):
         if isinstance(inp, str) or not isinstance(inp, List):
             raise ValueError("inp must be a list, given {}".format(type(inp)))
@@ -614,6 +573,115 @@ class Engine(object):
             "cpu_avx_type": self.cpu_avx_type,
             "cpu_vnni": self.cpu_vnni,
         }
+
+
+class DebugAnalysisEngine(Engine):
+    """
+    A subclass of Engine that supports debug analysis.
+
+    :param model: Either a path to the model's onnx file, a SparseZoo model stub
+        prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
+        object that defines the neural network
+    :param batch_size: The batch size of the inputs to be used with the engine
+    :param num_cores: The number of physical cores to run the model on. If more
+        cores are requested than are available on a single socket, the engine
+        will try to distribute them evenly across as few sockets as possible.
+    :param num_streams: The max number of requests the model can handle
+        concurrently.
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param num_iterations: The number of iterations to run benchmarking for.
+        Default is 20
+    :param num_warmup_iterations: T number of iterations to warm up engine before
+        benchmarking. These executions will not be counted in the benchmark
+        results that are returned. Useful and recommended to bring
+        the system to a steady state. Default is 5
+    :param include_inputs: If True, inputs from forward passes during benchmarking
+        will be added to the results. Default is False
+    :param include_outputs: If True, outputs from forward passes during benchmarking
+        will be added to the results. Default is False
+    :param show_progress: If True, will display a progress bar. Default is False
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    """
+
+    def __init__(
+        self,
+        model: Union[str, "Model", "File"],
+        batch_size: int = 1,
+        num_cores: int = None,
+        scheduler: Scheduler = None,
+        input_shapes: List[List[int]] = None,
+        num_iterations: int = 20,
+        num_warmup_iterations: int = 5,
+        optimization_level: int = 1,
+        imposed_as: Optional[float] = None,
+        imposed_ks: Optional[float] = None,
+    ):
+        self._model_path = model_to_path(model)
+        self._batch_size = _validate_batch_size(batch_size)
+        self._num_cores = _validate_num_cores(num_cores)
+        self._scheduler = _validate_scheduler(scheduler)
+        self._input_shapes = input_shapes
+        self._cpu_avx_type = AVX_TYPE
+        self._cpu_vnni = VNNI
+
+        num_streams = _validate_num_streams(None, self._num_cores)
+        if self._input_shapes:
+            with override_onnx_input_shapes(
+                self._model_path, self._input_shapes
+            ) as model_path:
+                self._eng_net = LIB.deepsparse_engine(
+                    model_path,
+                    self._batch_size,
+                    self._num_cores,
+                    num_streams,
+                    self._scheduler.value,
+                    None,
+                    "external",
+                    num_iterations,
+                    num_warmup_iterations,
+                    optimization_level,
+                    imposed_as,
+                    imposed_ks,
+                )
+        else:
+            self._eng_net = LIB.deepsparse_engine(
+                self._model_path,
+                self._batch_size,
+                self._num_cores,
+                num_streams,
+                self._scheduler.value,
+                None,
+                "external",
+                num_iterations,
+                num_warmup_iterations,
+                optimization_level,
+                imposed_as,
+                imposed_ks,
+            )
+
+    def analyze(
+        self,
+        inp: List[numpy.ndarray],
+        val_inp: bool = True,
+    ) -> List[numpy.ndarray]:
+        """
+        Function to analyze a model's performance in the DeepSparse Engine.
+
+        Note 1: Analysis is currently only supported on a single socket.
+
+        :param inp: The list of inputs to pass to the engine for analyzing inference.
+            The expected order is the inputs order as defined in the ONNX graph.
+        :param val_inp: Validate the input to the model to ensure numpy array inputs
+            are setup correctly for the DeepSparse Engine
+        :return: the analysis structure containing the performance details of each layer
+        """
+        if val_inp:
+            self._validate_inputs(inp)
+
+        [out, bench_info] = self._eng_net.benchmark_execute(inp)
+
+        return bench_info
 
 
 class Context(object):
@@ -873,19 +941,17 @@ def model_debug_analysis(
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :return: the analysis structure containing the performance details of each layer
     """
-    model = compile_model(
+    model = DebugAnalysisEngine(
         model=model,
         batch_size=batch_size,
         num_cores=num_cores,
         scheduler=scheduler,
         input_shapes=input_shapes,
-    )
-
-    return model.analyze(
-        inp,
         num_iterations=num_iterations,
         num_warmup_iterations=num_warmup_iterations,
         optimization_level=optimization_level,
         imposed_as=imposed_as,
         imposed_ks=imposed_ks,
     )
+
+    return model.analyze(inp)
