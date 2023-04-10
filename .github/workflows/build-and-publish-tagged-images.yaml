@@ -1,7 +1,8 @@
-name: Build and Publish
+name: Build and Publish Docker Images
 
 on:
-  create
+  release:
+    types: [published]
 
 jobs:
   build-and-push-docker-image:
@@ -12,9 +13,6 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
       - name: Set up Docker Buildx
         if: ${{ contains(github.ref, 'refs/heads/release/') }}
         id: buildx
@@ -45,7 +43,7 @@ jobs:
         run: |
           echo ${{ steps.extract_tag.outputs.tag }}
 
-      - name: Build and  push deepsparse-all
+      - name: Build and  push deepsparse with all dependencies
         if: ${{ contains(github.ref, 'refs/heads/release/') }}
         uses: docker/build-push-action@v2
         with:
@@ -55,69 +53,20 @@ jobs:
             VERSION=${{ steps.extract_tag.outputs.tag }}
           push: true
           tags: |
-            ghcr.io/neuralmagic/deepsparse-all:${{ steps.extract_tag.outputs.tag }}
-
-      - name: Build and push deepsparse-server
-        if: ${{ contains(github.ref, 'refs/heads/release/') }}
-        uses: docker/build-push-action@v2
-        with:
-          context: ./docker
-          build-args: |
-            DEPS=server
-            VERSION=${{ steps.extract_tag.outputs.tag }}
-          push: true
-          tags: |
-            ghcr.io/neuralmagic/deepsparse-server:${{ steps.extract_tag.outputs.tag }}
-            
-
-      - name: Build and push deepsparse-transformers
-        if: ${{ contains(github.ref, 'refs/heads/release/') }}
-        uses: docker/build-push-action@v2
-        with:
-          context: ./docker
-          build-args: |
-            DEPS=transformers
-            VERSION=${{ steps.extract_tag.outputs.tag }}
-          tags: |
-            ghcr.io/neuralmagic/deepsparse-transformers:${{ steps.extract_tag.outputs.tag }}            
-
-      - name: Build and push deepsparse-torchvision
-        if: ${{ contains(github.ref, 'refs/heads/release/') }}
-        uses: docker/build-push-action@v2
-        with:
-          context: ./docker
-          push: true
-          build-args: |
-            DEPS=torchvision
-            VERSION=${{ steps.extract_tag.outputs.tag }}
-          tags: |
-            ghcr.io/neuralmagic/deepsparse-torchvision:${{ steps.extract_tag.outputs.tag }}
-            
-
-      - name: Build and push deepsparse-ultralytics
-        if: ${{ contains(github.ref, 'refs/heads/release/') }}
-        uses: docker/build-push-action@v2
-        with:
-          context: ./docker
-          push: true
-          build-args: |
-            DEPS=ultralytics
-            VERSION=${{ steps.extract_tag.outputs.tag }}
-          tags: |
-            ghcr.io/neuralmagic/deepsparse-ultralytics:${{ steps.extract_tag.outputs.tag }}
+            ghcr.io/neuralmagic/deepsparse:${{ steps.extract_tag.outputs.tag }}
 
       - name: Build and push deepsparse-base
         if: ${{ contains(github.ref, 'refs/heads/release/') }}
         uses: docker/build-push-action@v2
         with:
           context: ./docker
-          push: true
           build-args: |
             DEPS=base
             VERSION=${{ steps.extract_tag.outputs.tag }}
+          push: true
           tags: |
             ghcr.io/neuralmagic/deepsparse-base:${{ steps.extract_tag.outputs.tag }}
-            
+
 
       - name: Image digest
         if: ${{ contains(github.ref, 'refs/heads/release/') }}
