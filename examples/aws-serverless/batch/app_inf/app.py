@@ -40,7 +40,9 @@ from deepsparse import Pipeline
 
 s3_client = boto3.client("s3")
 
-pipeline = Pipeline.create(task="sentiment_analysis", model_path="./model/deployment", batch_size=None)
+pipeline = Pipeline.create(
+    task="sentiment_analysis", model_path="./model/deployment", batch_size=None
+)
 
 input_str = os.environ.get("INPUTS")
 input_lst = input_str.split(",")
