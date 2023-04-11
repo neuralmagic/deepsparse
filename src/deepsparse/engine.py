@@ -311,7 +311,7 @@ class Engine(object):
         return self._eng_net.input_names()
 
     @property
-    def input_shapes(self) -> List[str]:
+    def input_shapes(self) -> List[Tuple]:
         """
         :return: The ordered shapes of the inputs.
         """
@@ -325,7 +325,7 @@ class Engine(object):
         return self._eng_net.output_names()
 
     @property
-    def output_shapes(self) -> List[str]:
+    def output_shapes(self) -> List[Tuple]:
         """
         :return: The ordered shapes of the outputs.
         """
