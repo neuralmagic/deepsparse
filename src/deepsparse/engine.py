@@ -304,6 +304,34 @@ class Engine(object):
         return round(self._eng_net.fraction_of_supported_ops(), 4)
 
     @property
+    def input_names(self) -> List[str]:
+        """
+        :return: The ordered names of the inputs.
+        """
+        return self._eng_net.input_names()
+
+    @property
+    def input_shapes(self) -> List[str]:
+        """
+        :return: The ordered shapes of the inputs.
+        """
+        return self._eng_net.input_dims()
+
+    @property
+    def output_names(self) -> List[str]:
+        """
+        :return: The ordered names of the outputs.
+        """
+        return self._eng_net.output_names()
+
+    @property
+    def output_shapes(self) -> List[str]:
+        """
+        :return: The ordered shapes of the outputs.
+        """
+        return self._eng_net.output_dims()
+
+    @property
     def cpu_avx_type(self) -> str:
         """
         :return: The detected cpu avx type that neural magic is running with.
