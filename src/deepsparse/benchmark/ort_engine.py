@@ -221,7 +221,7 @@ class ORTEngine(object):
         """
         :return: The ordered shapes of the inputs.
         """
-        return [node_arg.shape for node_arg in self._eng_net.get_inputs()]
+        return [tuple(node_arg.shape) for node_arg in self._eng_net.get_inputs()]
 
     @property
     def output_names(self) -> List[str]:
@@ -235,7 +235,7 @@ class ORTEngine(object):
         """
         :return: The ordered shapes of the outputs.
         """
-        return [node_arg.shape for node_arg in self._eng_net.get_outputs()]
+        return [tuple(node_arg.shape) for node_arg in self._eng_net.get_outputs()]
 
     @property
     def providers(self) -> List[str]:
