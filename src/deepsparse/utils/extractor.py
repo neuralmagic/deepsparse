@@ -38,6 +38,8 @@ from onnx import (
     defs,
 )
 
+from deepsparse.utils.onnx import save_onnx
+
 
 __all__ = [
     "Extractor",
@@ -242,7 +244,11 @@ def extract_model(
     e = Extractor(model)
     extracted = e.extract_model(input_names, output_names)
 
-    onnx.save(extracted, output_path)
+    save_onnx(
+        model=extracted,
+        model_path=output_path,
+        external_data_file=output_path.name.replace("onnx", "data"),
+    )
     if check_model:
         onnx.checker.check_model(output_path)
 

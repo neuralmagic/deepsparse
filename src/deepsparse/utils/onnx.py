@@ -70,7 +70,7 @@ ONNX_TENSOR_TYPE_MAP = {
 
 def save_onnx(model: Model, model_path: str, external_data_file: str) -> bool:
     """
-    Save model to the given path.  If the model has external data, store the
+    Save model to the given path. If the model has external data, store the
     external data in 'external_data_file'.
     Returns False if the model had no external data, True otherwise.
     """
