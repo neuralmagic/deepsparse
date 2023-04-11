@@ -19,8 +19,6 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy
 
 from deepsparse.utils import (
-    get_input_names,
-    get_output_names,
     model_to_path,
     override_onnx_batch_size,
     override_onnx_input_shapes,
@@ -101,9 +99,6 @@ class ORTEngine(object):
         self._batch_size = _validate_batch_size(batch_size)
         self._num_cores = num_cores
         self._input_shapes = input_shapes
-
-        self._input_names = get_input_names(self._model_path)
-        self._output_names = get_output_names(self._model_path)
 
         if providers is None:
             providers = onnxruntime.get_available_providers()
@@ -213,6 +208,34 @@ class ORTEngine(object):
         :return: The kind of scheduler to execute with
         """
         return None
+
+    @property
+    def input_names(self) -> List[str]:
+        """
+        :return: The ordered names of the inputs.
+        """
+        return [node_arg.name for node_arg in self._eng_net.get_inputs()]
+
+    @property
+    def input_shapes(self) -> List[Tuple]:
+        """
+        :return: The ordered shapes of the inputs.
+        """
+        return [node_arg.shape for node_arg in self._eng_net.get_inputs()]
+
+    @property
+    def output_names(self) -> List[str]:
+        """
+        :return: The ordered names of the outputs.
+        """
+        return [node_arg.name for node_arg in self._eng_net.get_outputs()]
+
+    @property
+    def output_shapes(self) -> List[Tuple]:
+        """
+        :return: The ordered shapes of the outputs.
+        """
+        return [node_arg.shape for node_arg in self._eng_net.get_outputs()]
 
     @property
     def providers(self) -> List[str]:
