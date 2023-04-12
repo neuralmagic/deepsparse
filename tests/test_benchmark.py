@@ -75,7 +75,7 @@ def test_benchmark_help():
         ),
         (
             "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none",
-            ["-pin", "numa"],
+            ["-pin", "numa", "-shapes", "[1,3,640,640]"],
         ),
         (
             "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96",
