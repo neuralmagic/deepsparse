@@ -282,8 +282,8 @@ class ORTEngine(object):
         """
         if val_inp:
             self._validate_inputs(inp)
-        inputs_dict = {name: value for name, value in zip(self._input_names, inp)}
-        return self._eng_net.run(self._output_names, inputs_dict)
+        inputs_dict = {name: value for name, value in zip(self.input_names, inp)}
+        return self._eng_net.run(self.output_names, inputs_dict)
 
     def timed_run(
         self, inp: List[numpy.ndarray], val_inp: bool = False
