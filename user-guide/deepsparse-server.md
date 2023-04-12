@@ -20,7 +20,7 @@ ONNX file from the SparseZoo. To deploy your own model, pass a path to a `model.
 folder containing the  `model.onnx` and supporting files (e.g., the Hugging Face `tokenizer.json` and `config.json`).
 
 Let's make a request over HTTP. Since the Server is a wrapper around Pipelines, 
-we can send raw data to the endpoint and recieve the post-processed predictions:
+we can send raw data to the endpoint and receive the post-processed predictions:
 
 ```python
 import requests
@@ -68,7 +68,7 @@ You can configure DeepSparse Server via YAML files.
 
 ### Basic Example
 
-Let's walk through a basic example deploying via a configuration file.
+Let us walk through a basic example of deploying via a configuration file.
 
 The following creates an endpoint running a 90% pruned-quantized version of 
 BERT trained on the SST2 dataset for the sentiment analysis task.
@@ -114,7 +114,7 @@ utilizes its multi-stream scheduler, which processes multiple requests at the sa
 In deployment scenarios with low batch sizes and high core counts, using the "multi-stream" scheduler 
 can increase throughput by allowing DeepSparse to better saturate the cores.
 
-The following configuration creates a Server with DeepSparse running on 2 cores, with 2 input streams,
+The following configuration creates a Server with DeepSparse running on two cores, with two input streams,
 DeepSparse threads pinned to cores, and PyTorch provided with 2 threads.
 
 ```yaml
@@ -192,7 +192,7 @@ print(f"From the dense model: {requests.post(dense_url, json=obj).text}")
 
 ### Endpoint Level Configuration
 
-We can also configure properties of each endpoint, including task specific
+We can also configure the properties of each endpoint, including task-specific
 arguments from within the YAML file.
 
 For instance, the following configuration file creates two endpoints.
@@ -265,11 +265,11 @@ print(requests.post(sentiment_analysis_url, json=short_obj).text)
 # >>> {"labels":["positive","negative","positive"],"scores":[0.9665533900260925,0.9952980279922485,0.9939143061637878]}
 ```
 
-Checkout the use case pages for detailed documentation on task-specific arguments that can be applied to the Server via `kwargs`.
+Check out the use case pages for detailed documentation on task-specific arguments that can be applied to the Server via `kwargs`.
 
 ## Custom Use Cases
 
-Stay tuned for documentation on Using a custom DeepSparse Pipeline wihin the Server!
+Stay tuned for documentation on using a custom DeepSparse Pipeline within the Server!
 
 ## Logging
 

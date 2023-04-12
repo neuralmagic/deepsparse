@@ -75,11 +75,11 @@ faster than ORT at high batch sizes. All in all, in this example **DeepSparse is
 
 Run `deepsparse.benchmark -h` to see full command line arguments.
 
-Let's walk through a few examples of common functionality.
+These are a few examples of common functionality.
 
 ### Pass Your Local ONNX Model
 
-Beyond passing SparseZoo stubs, you can also pass a local path to an ONNX file to DeepSparse. As an example, let's download an ONNX file from SparseZoo using the CLI to a local directory called `./yolov5-download`.
+Beyond passing SparseZoo stubs, you can also pass a local path to an ONNX file to DeepSparse. As an example, download an ONNX file from SparseZoo using the CLI to a local directory called `./yolov5-download`.
 
 ```bash
 sparsezoo.download zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none --save-dir yolov5-download
@@ -135,7 +135,7 @@ deepsparse.benchmark zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/s
 >> Throughput (items/sec): 121.7578
 ```
 
-Here's an example doing a YOLOv5s inference with a 320x320 image (rather than 640x640 as above)
+Here's an example doing a YOLOv5s inference with a 320x320 image (rather than 640x640 as above):
 
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none -i [1,3,320,320]

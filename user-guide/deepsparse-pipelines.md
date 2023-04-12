@@ -3,11 +3,11 @@
 Pipelines are the default API for deploying a model with DeepSparse. 
 
 Similar to Hugging Face Pipelines, DeepSparse Pipelines wrap inference with task-specific
-pre- and post-processing, enabling you to pass raw data and recieve the predictions.
+pre- and post-processing, enabling you to pass raw data and receive the predictions.
 
 ## Quickstart
 
-Let's try a quick example of the Pipeline API. All we have to do is pass a task and model to the
+Let us try a quick example of the Pipeline API. All we have to do is pass a task and model to the
 the `Pipeline.create` function, and then we can run inference on raw data using DeepSparse!
 
 This example creates a sentiment analysis Pipeline with a 90% pruned-quantized verion of BERT
@@ -61,8 +61,8 @@ of numpy arrays that can be passed directly to the inference forward pass
 - `process_outputs_fn` - an optional function that handles post-processing of the list of numpy arrays 
 that are the output of the engine forward pass 
 
-Let's demonstrate an example of how we could replicate the functionality of the image classification
-pipeline as a custom Pipeline.
+To replicate the functionality of the image classification
+pipeline as a custom Pipeline, an example is provided.
 
 Download an image and ONNX file (a 95% pruned-quantized ResNet-50) for the demo:
 ```
@@ -176,7 +176,7 @@ print(output)
 
 We can utilize an the multi-stream capabilites of DeepSparse to make requests with dynamic batch sizes.
 
-Let's create an example with a single sentiment analysis Pipeline with dynamic batch sizes by 
+Let us create an example with a single sentiment analysis Pipeline with dynamic batch sizes by 
 setting the `batch_size` argument to None. Under the hood, the pipeline will split the batch into 
 multiple asynchronous requests using the multi-stream scheduler.
 
@@ -206,12 +206,12 @@ print(output_b4)
 ### Deploy Multiple Models on the Same System
 
 Some deployment scenarios will require running multiple instances of DeepSparse on a single 
-machine. DeepSparse includes a concepts called Context. Contexts can be used to run multiple 
+machine. DeepSparse includes a concept called Context. Contexts can be used to run multiple 
 models with the same scheduler, enabling DeepSparse to manage the resources of the system effectively, 
 keeping engines that are running different models from fighting over resources.
 
-Let's create an example with multiple sentiment analysis Pipelines, one with batch size 1 (for maximum latency) 
-and one with batch size 32 (for maximum throughput).
+To create an example with multiple sentiment analysis Pipelines, one with batch size 1 (for maximum latency) 
+and one with batch size 32 (for maximum throughput):
 
 ```python
 from concurrent.futures import ThreadPoolExecutor

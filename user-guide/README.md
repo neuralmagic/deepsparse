@@ -51,16 +51,16 @@ DeepSparse achieves a ***12x speedup*** over ORT!
 
 ## Deployment APIs
 
-Now that we have seen DeepSparse's performance gains, let's take a look at how we can add DeepSparse to an application.
+Now that we have seen DeepSparse's performance gains, we can add DeepSparse to an application.
 
 DeepSparse includes three deployment APIs:
-- Engine is the lowest-level API. With Engine, you pass tensors and recieve the raw logits.
+- Engine is the lowest-level API. With Engine, you pass tensors and receive the raw logits.
 - Pipeline wraps the Engine with pre- and post-processing. With Pipeline, you pass raw data and
-recieve the prediction.
+receive the prediction.
 - Server wraps Pipelines with a REST API using FastAPI. With Server, you send raw data over HTTP
-and recieve the prediction.
+and receive the prediction.
 
-Let's walk through a simple example of each API to give a sense of usage. As an example, we will use
+The following are simple examples of each API to get a sense of how it is used. For the example, we will use
 the sentiment analysis use-case with a 90% pruned-quantized version of BERT. 
 
 ### Engine
@@ -123,7 +123,7 @@ outputs = engine.run(inputs)
 
 Pipeline is the default API for interacting with DeepSparse. Similar to Hugging Face Pipelines,
 DeepSparse Pipelines wrap Engine with pre- and post-processing (as well as other utilities), 
-enabling you to send raw data to DeepSparse and recieve the post-processed prediction.
+enabling you to send raw data to DeepSparse and receive the post-processed prediction.
 
 The example below downloads a 90% pruned-quantized BERT model for sentiment analysis 
 in ONNX format from SparseZoo, sets up a pipeline, and runs inference on sample data.
@@ -150,7 +150,7 @@ print(prediction)
 ### [Server](deepsparse-server.md)
 
 Server wraps Pipelines with REST APIs, that make it easy to stand up a model serving endpoint
-running DeepSparse. This enables you to send raw data to DeepSparse over HTTP and recieve the post-processed
+running DeepSparse. This enables you to send raw data to DeepSparse over HTTP and receive the post-processed
 predictions.
 
 DeepSparse Server is launched from the command line, configured via arguments or a server configuration file.
