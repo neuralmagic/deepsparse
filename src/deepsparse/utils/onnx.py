@@ -103,7 +103,7 @@ def save_onnx(
         return True
     else:
         if external_data_file:
-            onnx.save_model(
+            onnx.save(
                 model,
                 model_path,
                 save_as_external_data=True,
@@ -115,7 +115,7 @@ def save_onnx(
             f"with external data to {external_data_file}"
         )
         return True
-    onnx.save_model(model, model_path)
+    onnx.save(model, model_path)
     return False
 
 
