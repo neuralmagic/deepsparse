@@ -244,10 +244,7 @@ def extract_model(
     e = Extractor(model)
     extracted = e.extract_model(input_names, output_names)
 
-    save_onnx(
-        model=extracted,
-        model_path=output_path
-    )
+    save_onnx(model=extracted, model_path=output_path)
     if check_model:
         onnx.checker.check_model(output_path)
 
