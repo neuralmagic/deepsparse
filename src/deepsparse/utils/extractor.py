@@ -246,8 +246,7 @@ def extract_model(
 
     save_onnx(
         model=extracted,
-        model_path=output_path,
-        external_data_file=output_path.name.replace("onnx", "data"),
+        model_path=output_path
     )
     if check_model:
         onnx.checker.check_model(output_path)
