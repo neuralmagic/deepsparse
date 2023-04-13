@@ -150,7 +150,7 @@ def run_benchmark_and_analysis(
         time=scenario.duration,
         warmup_time=scenario.warmup_duration,
         num_streams=scenario.num_streams,
-        quiet=False,
+        quiet=True,
     )
     input_list = generate_random_inputs(
         onnx_filepath=onnx_model, batch_size=scenario.batch_size
@@ -174,7 +174,7 @@ def run_benchmark_and_analysis(
     node_timings = _get_node_timings_from_analysis_results(
         onnx_model_file=onnx_model, analysis_results=analysis_results
     )
-
+    supported_graph_percentage = benchmark_results.get("fraction_of_supported_ops")
     # TODO: Add recipe info
     imposed_sparsification = ImposedSparsificationInfo(
         sparsity=sparsity,
@@ -186,6 +186,7 @@ def run_benchmark_and_analysis(
         items_per_second=items_per_second,
         average_latency=average_latency,
         node_timings=node_timings,
+        supported_graph_percentage=supported_graph_percentage or 0.0
     )
     return results
 
