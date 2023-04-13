@@ -29,7 +29,7 @@ import torchvision
 import yaml
 
 import torch
-from deepsparse.utils.onnx import onnx_save
+from deepsparse.utils.onnx import save_onnx
 from deepsparse.yolo.schemas import YOLOOutput
 
 
@@ -400,7 +400,7 @@ def modify_yolo_onnx_input_shape(
         set_tensor_dim_shape(model.graph.output[0], 1, num_predictions)
 
     tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-    onnx_save(model, tmp_file.name)
+    save_onnx(model, tmp_file.name)
 
     return tmp_file.name, tmp_file
 

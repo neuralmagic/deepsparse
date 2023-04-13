@@ -22,8 +22,6 @@ from typing import List, Optional, Tuple, Union
 import numpy
 import onnx
 
-from deepsparse.utils.extractor import Extractor
-
 
 try:
     from sparsezoo import File, Model
@@ -348,6 +346,8 @@ def truncate_onnx_model(
         defaults to [None] for each output and leads to slight performance loss
     :return: None
     """
+    from deepsparse.utils.extractor import Extractor
+
     if graph_output_shapes is None:
         graph_output_shapes = [None] * len(final_node_names)
 
