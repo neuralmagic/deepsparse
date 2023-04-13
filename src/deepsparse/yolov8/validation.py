@@ -91,7 +91,7 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml", "coco128-seg.yaml"]
 @click.option(
     "--datasets-dir",
     type=str,
-    default="/home/ubuntu/damian/sparseml/funny_dir",
+    default=None,
     help="Path to override default datasets dir.",
 )
 def main(
