@@ -12,16 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import glob
 import os
 import warnings
 from typing import List, Optional, Union
 
+import yaml
+
 import torch
 from deepsparse.yolo import YOLOOutput as YOLODetOutput
 from deepsparse.yolov8.schemas import YOLOSegOutput
+from ultralytics.yolo.data.utils import ROOT
 
 
-__all__ = ["schema_to_tensor", "check_coco128_segmentation"]
+__all__ = ["data_from_datasets_dir", "schema_to_tensor", "check_coco128_segmentation"]
+
+
+def data_from_datasets_dir(data: str, datasets_dir: str) -> str:
+    """
+    Given a dataset name, fetch the yaml config for the dataset
+    from the Ultralytics dataset repo, overwrite its 'path'
+    attribute (dataset root dir) to point to the `datasets_dir`
+    and finally save it to the `datasets_dir` directory.
+    This allows to create load data yaml config files that point
+    to the arbitrary directories on the disk.
+     :param data: name of the dataset (e.g. "coco.yaml")
+     :param datasets_dir: path to the directory where the dataset is expected to be
+        (and where the new yaml config will be saved)
+     :return: a path to the new yaml config file
+    """
+    ultralytics_dataset_path = glob.glob(os.path.join(ROOT, "**", data), recursive=True)
+    if len(ultralytics_dataset_path) != 1:
+        raise ValueError(
+            "Expected to find a single path to the "
+            f"dataset yaml file: {data}, but found {ultralytics_dataset_path}"
+        )
+    ultralytics_dataset_path = ultralytics_dataset_path[0]
+    with open(ultralytics_dataset_path, "r") as f:
+        yaml_config = yaml.safe_load(f)
+
+        local_dataset_path = os.path.join(
+            datasets_dir, os.path.basename(yaml_config["path"])
+        )
+        yaml_config["path"] = local_dataset_path
+
+        yaml_save_path = os.path.join(datasets_dir, data)
+
+        # save the new dataset yaml file
+        with open(yaml_save_path, "w") as outfile:
+            yaml.dump(yaml_config, outfile, default_flow_style=False)
+        return yaml_save_path
 
 
 def schema_to_tensor(
