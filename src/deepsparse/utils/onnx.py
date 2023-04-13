@@ -83,7 +83,7 @@ def save_onnx(
         )
         return True
     else:
-        if external_data_file:
+        if external_data_file is not None:
             onnx.save(
                 model,
                 model_path,
