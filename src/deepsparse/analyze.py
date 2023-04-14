@@ -202,6 +202,17 @@ def _get_node_timings_from_analysis_results(
         output: node.name for node in model.graph.node for output in node.output
     }
 
+    # dereference node names
+    for node in model.graph.node:
+        name = node.name
+        if node.op_type == "BatchNormalization":
+            potential_parents = node.input
+            for parent in potential_parents:
+                if "Conv" in canonical_name_to_node_name.get(parent, ""):
+                    name = canonical_name_to_node_name[parent]
+        for output in node.output:
+            canonical_name_to_node_name[output] = name
+
     layer_info = analysis_results["layer_info"]
     node_timings: List[NodeInferenceResult] = []
 
