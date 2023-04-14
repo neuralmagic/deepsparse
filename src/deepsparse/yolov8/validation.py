@@ -22,7 +22,7 @@ from deepsparse.yolov8.utils import (
     DeepSparseDetectionValidator,
     DeepSparseSegmentationValidator,
     check_coco128_segmentation,
-    data_from_datasets_dir,
+    data_from_dataset_path,
 )
 from ultralytics.yolo.cfg import get_cfg
 from ultralytics.yolo.utils import DEFAULT_CFG
@@ -89,10 +89,10 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml", "coco128-seg.yaml"]
     help="A subtask of YOLOv8 to run. Default is `detection`.",
 )
 @click.option(
-    "--datasets-dir",
+    "--dataset_path",
     type=str,
     default=None,
-    help="Path to override default datasets dir.",
+    help="Path to override default dataset path.",
 )
 def main(
     dataset_yaml: str,
@@ -102,7 +102,7 @@ def main(
     engine_type: str,
     device: str,
     subtask: str,
-    datasets_dir: Optional[str],
+    dataset_path: Optional[str],
 ):
 
     pipeline = Pipeline.create(
@@ -123,8 +123,8 @@ def main(
             f"Dataset yaml {dataset_yaml} is not supported. "
             f"Supported dataset configs are {SUPPORTED_DATASET_CONFIGS})"
         )
-    if datasets_dir is not None:
-        args.data = data_from_datasets_dir(args.data, datasets_dir)
+    if dataset_path is not None:
+        args.data = data_from_dataset_path(args.data, dataset_path)
     classes = {label: class_ for (label, class_) in enumerate(COCO_CLASSES)}
 
     if subtask == "detection":
