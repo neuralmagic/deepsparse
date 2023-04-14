@@ -186,7 +186,7 @@ def run_benchmark_and_analysis(
         items_per_second=items_per_second,
         average_latency=average_latency,
         node_timings=node_timings,
-        supported_graph_percentage=supported_graph_percentage or 0.0
+        supported_graph_percentage=supported_graph_percentage or 0.0,
     )
     return results
 
