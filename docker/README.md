@@ -7,15 +7,15 @@ This image is based off the latest official Python:3.8.16 image
 You can access the already built image detailed at https://github.com/orgs/neuralmagic/packages/container/package/deepsparse:
 
 ```bash
-docker pull ghcr.io/neuralmagic/deepsparse:1.4
-docker tag ghcr.io/neuralmagic/deepsparse:1.4 deepsparse_docker
+docker pull ghcr.io/neuralmagic/deepsparse:1.4.2
+docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse_docker
 ```
 
 ## Extend
 If you would like to customize the docker image, you can use the pre-built images as a base in your own `Dockerfile`:
 
 ```Dockerfile
-FROM ghcr.io/neuralmagic/deepsparse:1.4
+FROM ghcr.io/neuralmagic/deepsparse:1.4.2
 ...
 ```
 
@@ -37,7 +37,7 @@ dependencies installed:
 | Image Name                	| Description                                                            	|
 |---------------------------	|------------------------------------------------------------------------	|
 | deepsparse-base           	| Base DeepSparse image with no integration specific dependencies    	|
-| deepsparse/deepsparse-all 	| DeepSparse image with all major integration dependencies installed 	|
+| deepsparse/deepsparse 	    | DeepSparse image with all major integration dependencies installed 	|
 | deepsparse-server         	| DeepSparse image with `[server]` dependencies installed              	|
 | deepsparse-transformers   	| DeepSparse image with all transformer dependencies installed       	|
 | deepsparse-torchvision    	| DeepSparse image with torchvision dependencies installed           	|
