@@ -5,6 +5,7 @@ This page explains how to deploy an Embedding Extraction Pipeline with DeepSpars
 This use case requires the installation of [DeepSparse Server](/get-started/install/deepsparse).
 
 Confirm your machine is compatible with our [hardware requirements](/user-guide/deepsparse-engine/hardware-support).
+
 ## Model Format
 The Embedding Extraction Pipeline enables you to generate embeddings in any domain, meaning you can use it with any ONNX model. It (optionally) removes the projection head from the model, such that you can re-use SparseZoo models and custom models you have trained in the embedding extraction scenario.
 
@@ -12,12 +13,13 @@ There are two options for passing a model to the Embedding Extraction Pipeline:
 
 - Pass a Local ONNX File
 - Pass a SparseZoo Stub (which identifies an ONNX model in the SparseZoo)
+
 ## DeepSparse Pipelines
 Pipeline is the default interface for interacting with DeepSparse.
 
 Like Hugging Face Pipelines, DeepSparse Pipelines wrap pre- and post-processing around the inference performed by the Engine. This creates a clean API that allows you to pass raw text and images to DeepSparse and receive the post-processed predictions, making it easy to add DeepSparse to your application.
 
-We will use the `Pipeline.create()` constructor to create an instance of an embedding extraction Pipeline with a 75% pruned-quantized version of ResNet-50 trained on `imagenet`. We can then pass images the `Pipeline` and receive the embeddings. All of the pre-processing is handled by the `Pipeline`.
+We will use the `Pipeline.create()` constructor to create an instance of an embedding extraction Pipeline with a 95% pruned-quantized version of ResNet-50 trained on `imagenet`. We can then pass images the `Pipeline` and receive the embeddings. All of the pre-processing is handled by the `Pipeline`.
 
 The Embedding Extraction Pipeline handles some useful actions around inference:
 
@@ -29,9 +31,10 @@ This is an example of extracting the last layer from ResNet-50:
 
 Download an image to use with the Pipeline.
 ```bash
-wget https://huggingface.co/spaces/neuralmagic/cv-yolo/resolve/main/pets.jpg
+wget https://huggingface.co/spaces/neuralmagic/image-classification/resolve/main/lion.jpeg
 ```
-Define the Pipeline: 
+
+Run the following to extract the embedding: 
 ```python
 from deepsparse import Pipeline
 
@@ -39,15 +42,16 @@ from deepsparse import Pipeline
 rn50_embedding_pipeline = Pipeline.create(
     task="embedding-extraction",
     base_task="image-classification", # tells the pipeline to expect images and normalize input with ImageNet means/stds
-    model_path="zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/channel20_pruned75_quant-none-vnni",
+    model_path="zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none",
     emb_extraction_layer=-3, # extracts last layer before projection head and softmax
 )
 
 # this step runs pre-processing, inference and returns an embedding
-embedding = rn50_embedding_pipeline(images="pets.jpg")
+embedding = rn50_embedding_pipeline(images="lion.jpeg")
 print(len(embedding.embeddings[0][0]))
-# 2048
+# 2048 << size of final layer>>
 ```
+
 # DeepSparse Server
 As an alternative to the Python API, DeepSparse Server allows you to serve an Embedding Extraction Pipeline over HTTP. Configuring the server uses the same parameters and schemas as the Pipelines. 
 
@@ -65,7 +69,7 @@ endpoints:
 ```
 Spin up the server: 
 ```bash 
-deepsparse.server --config_file general-embedding.yaml
+deepsparse.server --config_file config.yaml
 ```
 Make requests to the server: 
 ```python
@@ -77,8 +81,9 @@ resp = requests.post(url=url, files=files)
 result = json.loads(resp.text)
 
 print(len(result["embeddings"][0][0]))
-# 2048
+
+# 2048 << size of final layer>>
 ```
 
 ### Cross Use Case Functionality
-Check out the [Server User Guide](/user-guide/deepsparse/deepsparse-server) for more details on configuring the Server.
+Check out the Server User Guide for more details on configuring the Server.
