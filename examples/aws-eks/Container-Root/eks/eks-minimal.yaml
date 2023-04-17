@@ -1,0 +1,13 @@
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: do-eks-min
+  region: us-west-2
+  version: "1.21"
+managedNodeGroups:
+- name: nodegroup
+  desiredCapacity: 2
+  iam:
+    withAddonPolicies:
+      albIngress: true

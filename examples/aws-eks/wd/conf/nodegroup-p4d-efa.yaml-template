@@ -1,0 +1,32 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: ${CLUSTER_NAME}
+  version: "${CLUSTER_K8S_VERSION}"
+  region: ${CLUSTER_REGION}
+
+iam:
+  withOIDC: true
+  
+addons:
+  - name: vpc-cni
+    version: v1.8.0-eksbuild.1  
+
+managedNodeGroups:
+  - name: p4d-24xlarge
+    instanceType: p4d.24xlarge
+    instancePrefix: p4d-worker
+    privateNetworking: true
+    availabilityZones: ["us-east-1a"]
+    efaEnabled: true
+    minSize: 2
+    desiredCapacity: 2
+    maxSize: 4
+    iam:
+      withAddonPolicies:
+        imageBuilder: true
+        autoScaler: true
+        ebs: true
+        fsx: true
+        cloudWatch: true

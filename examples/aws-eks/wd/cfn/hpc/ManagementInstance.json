@@ -1,0 +1,162 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+
+	"Description": "AWS CloudFormation Sample Template for a Management Instance",
+
+	"Mappings": {
+		"AWSRegion2AMI": {
+			"us-east-1": {
+				"ami": "ami-083d7df7fe331eedb"
+			},
+			"us-east-2": {
+				"ami": "ami-0a714e270d06489a9"
+			},
+			"us-west-1": {
+				"ami": "ami-09d540cb66f1315ee"
+			},
+			"us-west-2": {
+				"ami": "ami-0a20a878a1c1e5477"
+			}
+		}
+	},
+
+	"Resources": {
+
+		"ManagementInstance": {
+			"Type": "AWS::EC2::Instance",
+			"Properties": {
+				"ImageId": {
+					"Fn::FindInMap": ["AWSRegion2AMI", {
+						"Ref": "AWS::Region"
+					}, "ami"]
+				},
+				"InstanceType": "m5dn.xlarge",
+				"IamInstanceProfile": {
+					"Ref": "RootInstanceProfile"
+				},
+				"SecurityGroups": [{
+					"Ref": "ManagementInstanceSecurityGroup"
+				}],
+				"UserData": {
+					"Fn::Base64": {
+						"Fn::Join": ["", [
+							"#!/bin/bash \n",
+							"echo 'Executing userdata script ...' | tee -a /tmp/bootstrap.log \n",
+							"chmod 666 /tmp/bootstrap.log; chown ec2-user:ec2-user /tmp/bootstrap.log \n",
+							"date | tee -a /tmp/bootstrap.log \n",
+							"yum install -y aws-cfn-bootstrap git | tee -a /tmp/bootstrap.log \n",
+							"cd /home/ec2-user; git clone https://github.com/aws-samples/aws-do-eks.git | tee -a /tmp/bootstrap.log; cd aws-do-eks; chown -R ec2-user:ec2-user /home/ec2-user/aws-do-eks \n",
+							"bash -c /home/ec2-user/aws-do-eks/Container-Root/eks/ops/setup/install-aws-cli.sh | tee -a /tmp/bootstrap.log \n",
+							"bash -c /home/ec2-user/aws-do-eks/Container-Root/eks/ops/setup/install-eksctl.sh | tee -a /tmp/bootstrap.log \n",
+							"bash -c /home/ec2-user/aws-do-eks/Container-Root/eks/ops/setup/install-kubectl.sh | tee -a /tmp/bootstrap.log \n",
+							"bash -c /home/ec2-user/aws-do-eks/Container-Root/eks/ops/setup/install-kubectx.sh | tee -a /tmp/bootstrap.log \n",
+							"bash -c /home/ec2-user/aws-do-eks/Container-Root/eks/ops/setup/install-kubeps1.sh | tee -a /tmp/bootstrap.log \n",
+							"sudo su ec2-user bash -c '/home/ec2-user/aws-do-eks/Container-Root/eks/ops/setup/install-kubeps1.sh | tee -a /tmp/bootstrap.log' \n",
+							"sudo su ec2-user bash -c '/home/ec2-user/aws-do-eks/Container-Root/eks/ops/setup/install-cloud9.sh | tee -a /tmp/bootstrap.log' \n",
+							"sudo su ec2-user bash -c '/usr/local/bin/eksctl create cluster -f /home/ec2-user/aws-do-eks/Container-Root/eks/eks-hpc.yaml | tee -a /tmp/bootstrap.log' \n",
+							"sudo su ec2-user bash -c 'source /home/ec2-user/.bashrc; sleep 2; aws eks update-kubeconfig --name eks-hpc | tee -a /tmp/bootstrap.log' \n",
+							"sudo su ec2-user bash -c 'source /home/ec2-user/.bashrc; sed -i /home/ec2-user/aws-do-eks/Container-Root/eks/eks.conf -e \\'s/export CLUSTER_NAME=do-eks/export CLUSTER_NAME=eks-hpc/g\\' ; echo eks.conf updated | tee -a /tmp/bootstrap.log' \n",
+							"sudo su ec2-user bash -c 'source /home/ec2-user/.bashrc; kubectl get nodes | tee -a /tmp/bootstrap.log' \n",
+							"sudo su ec2-user bash -c 'source /home/ec2-user/.bashrc; cd /home/ec2-user/aws-do-eks/Container-Root/eks/nodegroup; CLUSTER_NAME=eks-hpc CLUSTER_REGION=us-east-1 nodegroup_name=c5n-18xl nodegroup_min=0 nodegroup_size=0 nodegroup_max=3 ./eks-nodegroup-scale.sh | tee -a /tmp/bootstrap.log' \n",
+							"sudo su ec2-user bash -c 'source /home/ec2-user/.bashrc; cd /home/ec2-user/aws-do-eks/Container-Root/eks/iam; CLUSTER_NAME=eks-hpc AWS_DEFAULT_REGION=us-east-1 ./node-role-expand.sh | tee -a /tmp/bootstrap.log' \n",
+							"date | tee -a /tmp/bootstrap.log \n",
+							"echo 'Done executing userdata script.' | tee -a /tmp/bootstrap.log \n"
+						]]
+					}
+				}
+			},
+			"CreationPolicy": {}
+		},
+
+		"RootRole": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"AssumeRolePolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [{
+						"Effect": "Allow",
+						"Principal": {
+							"Service": ["ec2.amazonaws.com"]
+						},
+						"Action": ["sts:AssumeRole"]
+					}]
+				},
+				"Path": "/"
+			}
+		},
+
+		"RolePolicies": {
+			"Type": "AWS::IAM::Policy",
+			"Properties": {
+				"PolicyName": "root",
+				"PolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [{
+						"Effect": "Allow",
+						"Action": "*",
+						"Resource": "*"
+					}]
+				},
+				"Roles": [{
+					"Ref": "RootRole"
+				}]
+			}
+		},
+
+		"RootInstanceProfile": {
+			"Type": "AWS::IAM::InstanceProfile",
+			"Properties": {
+				"Path": "/",
+				"Roles": [{
+					"Ref": "RootRole"
+				}]
+			}
+		},
+
+		"ManagementInstanceSecurityGroup": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Enable access to Management Instance",
+				"SecurityGroupIngress": [{
+						"IpProtocol": "tcp",
+						"FromPort": "443",
+						"ToPort": "443",
+						"CidrIp": "0.0.0.0/0"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "22",
+						"ToPort": "22",
+						"CidrIp": "0.0.0.0/0"
+					}
+				]
+			}
+		}
+
+	},
+
+	"Outputs": {
+		"ManagementInstanceDNSName": {
+			"Description": "Management Instance",
+			"Value": {
+				"Fn::Join": ["", ["", {
+					"Fn::GetAtt": ["ManagementInstance", "PublicDnsName"]
+				}]]
+			}
+		},
+		"ManagementInstanceSMLogin": {
+			"Description": "Session Manager Login",
+			"Value": {
+				"Fn::Join": ["",  [
+						"https://",
+						{ "Ref": "AWS::Region" },
+						".console.aws.amazon.com/systems-manager/session-manager/",
+						{ "Ref": "ManagementInstance" },
+						"?region=",
+						{"Ref": "AWS::Region"}
+					]
+				]
+			}
+		}
+	}
+}

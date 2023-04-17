@@ -1,0 +1,44 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: ${deployment_name}
+  namespace: ${namespace}
+  labels:
+    app: ${app_name}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${app_name}
+  template:
+    metadata:
+      labels:
+        app: ${app_name}
+    spec:
+      #nodeSelector:
+      #  beta.kubernetes.io/instance-type: "${instance_type}"
+      containers:
+      - name: main
+        image: "${image}:${tag}"
+        imagePullPolicy: Always
+        command: ["${command}"]
+        args: ["${args}"]
+        ports:
+        - name: pod-port
+          containerPort: ${pod_port}
+        #resources:
+        #  limits:
+        #    cpu: 4
+        #    memory: 4Gi
+            #nvidia.com/gpu: 1
+            #k8s.amazonaws.com/vgpu: 5
+        #  requests:
+        #    cpu: "1"
+        #    memory: 1Gi   
+        #volumeMounts:
+        #- name: nvidia-mps
+        #  mountPath: /tmp/nvidia-mps
+      #volumes:
+      #- name: nvidia-mps
+      #  hostPath:
+      #    path: /tmp/nvidia-mps

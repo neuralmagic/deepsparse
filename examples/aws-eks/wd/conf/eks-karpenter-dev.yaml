@@ -1,0 +1,25 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: eks-karpenter-dev
+  version: "1.22"
+  region: us-west-2
+  tags:
+    karpenter.sh/discovery: eks-karpenter-dev
+
+managedNodeGroups:
+  - name: c5-xl-eks-karpenter-dev-ng
+    instanceType: c5.xlarge
+    instancePrefix: c5-xl
+    privateNetworking: true
+    minSize: 0
+    desiredCapacity: 1
+    maxSize: 10
+    volumeSize: 900
+    iam:
+      withAddonPolicies:
+        cloudWatch: true
+
+iam:
+  withOIDC: true

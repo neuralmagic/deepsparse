@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scale-1az
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: scale-1az
+  template:
+    metadata:
+      labels:
+        app: scale-1az
+    spec:
+      nodeSelector:
+        node.kubernetes.io/instance-type: "g4dn.metal"
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - scale-1az
+            topologyKey: "topology.kubernetes.io/zone"
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: scale-1az
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.2
+          resources:
+            limits:
+              nvidia.com/gpu: 8
+#              vpc.amazonaws.com/efa: 1
+            requests:
+#              cpu: 30000m
+              nvidia.com/gpu: 8
+#              vpc.amazonaws.com/efa: 1

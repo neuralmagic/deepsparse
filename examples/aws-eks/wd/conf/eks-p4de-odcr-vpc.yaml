@@ -1,0 +1,43 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: eks-p4de-odcr-vpc
+  region: us-east-1
+
+vpc:
+  id: vpc-xxxxxxxxxxxxxxxxx
+  subnets:
+    public:
+      endpoint-one:
+        id: subnet-xxxxxxxxxxxxxxx11
+      endpoint-two:
+        id: subnet-xxxxxxxxxxxxxxx12
+    private:
+      p4de-1a:
+        id: subnet-xxxxxxxxxxxxxxx21
+      p4de-1c:
+        id: subnet-xxxxxxxxxxxxxxx22
+
+
+nodeGroups:
+  - name: p4de-ng-1
+    instanceType: p4de.24xlarge
+    instancePrefix: p4de-ng-1-worker
+    privateNetworking: true
+    capacityReservation:
+      capacityReservationTarget:
+        capacityReservationID: "cr-xxxxxxxxxxxxxxxxx"
+    iam:
+      withAddonPolicies:
+        imageBuilder: true
+        autoScaler: true
+        ebs: true
+        fsx: true
+        cloudWatch: true
+    subnets:
+    - subnet-xxxxxxxxxxxxxxx22
+    efaEnabled: true
+    minSize: 0
+    desiredCapacity: 2
+    maxSize: 32

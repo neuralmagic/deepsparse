@@ -1,0 +1,62 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: eks-gpu
+  version: "1.24"
+  region: us-west-2
+  tags:
+    karpenter.sh/discovery: eks-gpu
+
+availabilityZones:
+  - us-west-2a
+  - us-west-2b
+  - us-west-2c
+
+managedNodeGroups:
+
+  - name: sys
+    instanceType: c5.2xlarge
+    desiredCapacity: 1
+    iam:
+      withAddonPolicies:
+        autoScaler: true
+        cloudWatch: true
+        ebs: true
+        efs: true
+        fsx: true
+ 
+  - name: g4dn
+    instanceType: g4dn.8xlarge
+    instancePrefix: g4dn
+    privateNetworking: true
+    efaEnabled: false
+    minSize: 0
+    desiredCapacity: 2
+    maxSize: 10
+    volumeSize: 900
+    iam:
+      withAddonPolicies:
+        cloudWatch: true
+        ebs: true
+        efs: true
+        fsx: true
+
+  - name: p3dn
+    instanceType: p3dn.24xlarge
+    instancePrefix: p3dn
+    privateNetworking: true
+    efaEnabled: false
+    minSize: 0
+    desiredCapacity: 0
+    maxSize: 10
+    volumeSize: 900
+    iam:
+      withAddonPolicies:
+        cloudWatch: true
+        ebs: true
+        efs: true
+        fsx: true
+
+iam:
+  withOIDC: true

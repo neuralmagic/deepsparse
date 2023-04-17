@@ -1,0 +1,7 @@
+num_cores: 1
+num_workers: 1
+endpoints:
+    - task: sentiment_analysis
+      route: /invocations
+      model: zoo:nlp/sentiment_analysis/distilbert-none/pytorch/huggingface/sst2/pruned80_quant-none-vnni
+      batch_size: 1

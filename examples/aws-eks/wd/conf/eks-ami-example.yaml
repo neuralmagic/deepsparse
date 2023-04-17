@@ -1,0 +1,102 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: do-eks
+  version: "1.21"
+  region: us-east-1
+
+availabilityZones:
+  - us-east-1a
+  - us-east-1b
+  - us-east-1c
+  - us-east-1d
+
+iam:
+  withOIDC: true
+
+addons:
+  - name: vpc-cni
+    version: v1.9.1-eksbuild.1
+
+managedNodeGroups:
+  - name: p4d-24xlarge-efa
+    instanceType: p4d.24xlarge
+    instancePrefix: p4d-efa
+    privateNetworking: true
+    availabilityZones: ["us-east-1b"]
+    efaEnabled: true
+    minSize: 0
+    desiredCapacity: 2
+    maxSize: 10
+    volumeSize: 900
+    labels: { processor: gpu }
+    iam:
+      withAddonPolicies:
+        imageBuilder: true
+        autoScaler: true
+        ebs: true
+        fsx: true
+        cloudWatch: true
+  - name: p4d-24xlarge-efa-ami
+    instanceType: p4d.24xlarge
+    ami: ami-09fa73a7999845e86
+    overrideBootstrapCommand: |
+            #!/bin/bash
+            set -ex
+            B64_CLUSTER_CA=xxxxxxxxxxxxxxxxxxxx==
+            API_SERVER_URL=https://xxxxxxxxxxxxxx.gr7.us-east-1.eks.amazonaws.com
+            K8S_CLUSTER_DNS_IP=xx.xx.xx.xx
+            /etc/eks/bootstrap.sh do-eks --kubelet-extra-args '--node-labels=eks.amazonaws.com/sourceLaunchTemplateVersion=1,alpha.eksctl.io/cluster-name=do-eks,alpha.eksctl.io/nodegroup-name=p4d-24xlarge-efa,eks.amazonaws.com/nodegroup-image=ami-010133250fdb58a8a,eks.amazonaws.com/capacityType=ON_DEMAND,eks.amazonaws.com/nodegroup=p4d-24xlarge-efa,eks.amazonaws.com/sourceLaunchTemplateId=lt-0d4abd1293bb69933 --max-pods=250' --b64-cluster-ca $B64_CLUSTER_CA --apiserver-endpoint $API_SERVER_URL --dns-cluster-ip $K8S_CLUSTER_DNS_IP --use-max-pods false
+    instancePrefix: p4d-efa
+    privateNetworking: true
+    availabilityZones: ["us-east-1b"]
+    efaEnabled: true
+    minSize: 0
+    desiredCapacity: 0
+    maxSize: 10
+    volumeSize: 900
+    labels: { processor: gpu, ami: custom, amiId: ami-0d06c725c487449e4 }
+    iam:
+      withAddonPolicies:
+        imageBuilder: true
+        autoScaler: true
+        ebs: true
+        fsx: true
+        cloudWatch: true
+  - name: p3dn-24xlarge-efa
+    instanceType: p3dn.24xlarge
+    instancePrefix: p3dn-efa
+    privateNetworking: true
+    availabilityZones: ["us-east-1b"]
+    efaEnabled: true
+    minSize: 0
+    desiredCapacity: 2
+    maxSize: 10
+    volumeSize: 900
+    labels: { processor: gpu }
+    iam:
+      withAddonPolicies:
+        imageBuilder: true
+        autoScaler: true
+        ebs: true
+        fsx: true
+        cloudWatch: true
+  - name: g4dn-metal-efa
+    instanceType: g4dn.metal
+    instancePrefix: g4dn-efa
+    privateNetworking: true
+    availabilityZones: ["us-east-1b"]
+    efaEnabled: true
+    minSize: 0
+    desiredCapacity: 2
+    maxSize: 10
+    volumeSize: 900
+    labels: { processor: gpu }
+    iam:
+      withAddonPolicies:
+        imageBuilder: true
+        autoScaler: true
+        ebs: true
+        fsx: true
+        cloudWatch: true

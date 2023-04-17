@@ -1,0 +1,5 @@
+2-trace/traced-*
+2-trace/traced-bert-base-multilingual-cased/
+**/compile_wd_inf_*
+4-deploy/app-*
+5-test/app-*

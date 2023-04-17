@@ -1,0 +1,12 @@
+*.sh
+.env
+.fun
+build.sh
+exec.sh
+logs.sh
+pull.sh
+push.sh
+run.sh
+status.sh
+stop.sh
+

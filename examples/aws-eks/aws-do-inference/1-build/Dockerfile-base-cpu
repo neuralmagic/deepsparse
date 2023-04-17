@@ -1,0 +1,9 @@
+FROM python:3.9
+
+LABEL description="Base container for CPU models"
+
+RUN apt-get update && apt-get install -y htop dnsutils bc vim
+
+# RUN pip install torch configparser transformers
+
+RUN echo "alias ll='ls -alh --color=auto'" >> /root/.bashrc

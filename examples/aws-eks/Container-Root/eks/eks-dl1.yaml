@@ -1,0 +1,71 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+# This cluster manifest contains a node group with Habana Gaudi DL1 EC2 instances
+# To customize this cluster manifest, follow instruction s from:
+# https://docs.habana.ai/en/latest/AWS_Quick_Starts/Getting_Started_Guide_EKS/Creating_Cluster_and_Node_Group.html
+
+metadata:
+  name: do-eks
+  version: "1.21"
+  region: us-east-1
+
+availabilityZones:
+  - us-east-1a
+  - us-east-1b
+
+iam:
+  withOIDC: true
+
+managedNodeGroups:
+
+  - name: dl1
+    instanceType: dl1.24xlarge
+    instancePrefix: dl1
+    ami: ami-048c47c617cbd904f
+    availabilityZones: ["us-east-1a"]
+    volumeSize: 500
+    minSize: 0
+    desiredCapacity: 0
+    maxSize: 4
+    privateNetworking: true
+    efaEnabled: true
+    ssh:
+      publicKeyName: renatoNVirginiaKey
+    labels: 
+      processor: gaudi
+    tags:
+      k8s.io/cluster-autoscaler/node-template/resources/habana.ai/gaudi: "8"
+      k8s.io/cluster-autoscaler/node-template/resources/hugepages-2Mi: "21000Mi"
+      k8s.io/cluster-autoscaler/enabled: "true"
+    preBootstrapCommands:
+      - echo 300 | sudo tee /sys/kernel/debug/habanalabs/hl0/timeout_locked
+      - echo 300 | sudo tee /sys/kernel/debug/habanalabs/hl1/timeout_locked
+      - echo 300 | sudo tee /sys/kernel/debug/habanalabs/hl2/timeout_locked
+      - echo 300 | sudo tee /sys/kernel/debug/habanalabs/hl3/timeout_locked
+      - echo 300 | sudo tee /sys/kernel/debug/habanalabs/hl4/timeout_locked
+      - echo 300 | sudo tee /sys/kernel/debug/habanalabs/hl5/timeout_locked
+      - echo 300 | sudo tee /sys/kernel/debug/habanalabs/hl6/timeout_locked
+      - echo 300 | sudo tee /sys/kernel/debug/habanalabs/hl7/timeout_locked
+    overrideBootstrapCommand: |
+      #!/bin/bash
+      /etc/eks/bootstrap.sh do-eks
+
+  - name: c5
+    instanceType: c5.4xlarge
+    instancePrefix: c5
+    privateNetworking: true
+    availabilityZones: ["us-east-1a"]
+    efaEnabled: false
+    minSize: 0
+    desiredCapacity: 1
+    maxSize: 10
+    volumeSize: 900
+    labels: { processor: cpu }
+    iam:
+      withAddonPolicies:
+        autoScaler: true
+        ebs: true
+        fsx: true
+        cloudWatch: true
+

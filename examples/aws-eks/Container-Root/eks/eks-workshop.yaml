@@ -1,0 +1,30 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: do-eks
+  version: "1.21"
+  region: us-west-2
+
+availabilityZones:
+  - us-west-2a
+  - us-west-2b
+
+iam:
+  withOIDC: true
+
+managedNodeGroups:
+  - name: c5-9xl
+    instanceType: c5.9xlarge
+    instancePrefix: c5-9xl
+    privateNetworking: true
+    availabilityZones: ["us-west-2a","us-west-2b"]
+    efaEnabled: false
+    minSize: 0
+    desiredCapacity: 2
+    maxSize: 10
+    volumeSize: 900
+    iam:
+      withAddonPolicies:
+        autoScaler: true
+        ebs: true
