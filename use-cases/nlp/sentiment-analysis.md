@@ -5,22 +5,19 @@ This page explains how to benchmark and deploy a sentiment analysis model with D
 There are three interfaces for interacting with DeepSparse:
 - **Engine** is the lowest-level API. It enables you to compile a model and run inference on raw input tensors.
 
-- **Pipeline** is the default DeepSparse API. Similiar in concept to Hugging Face Pipelines, it wraps Engine with pre-preprocessing
-and post-processing, allowing you to make requests on raw data and recieve post-processed predictions.
+- **Pipeline** is the default DeepSparse API. Similiar in concept to Hugging Face Pipelines, it wraps Engine with pre-preprocessing and post-processing, allowing you to make requests on raw data and recieve post-processed predictions.
 
-- **Server** is a REST API wrapper around Pipelines built on FastAPI and Uvicorn. It enables you to stand up a model serving
-endpoint running DeepSparse with a single CLI.
+- **Server** is a REST API wrapper around Pipelines built on FastAPI and Uvicorn. It enables you to stand up a model serving endpoint running DeepSparse with a single CLI.
 
 ## Installation Requirements
 
-This use case requires the installation of [DeepSparse Server](/get-started/install/deepsparse).
+This use case requires the installation of [DeepSparse Server](https://docs.neuralmagic.com/get-started/install/deepsparse).
 
-Confirm your machine is compatible with our [hardware requirements](/user-guide/deepsparse-engine/hardware-support).
+Confirm your machine is compatible with our [hardware requirements](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support).
 
 ## Benchmarking
 
-We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 32
-core AWS c6i.16xlarge instance.
+We can use the benchmarking utility to demonstrate the DeepSparse's performance. We ran the numbers below on a 4 core AWS `c6i.2xlarge` instance.
 
 ### ONNX Runtime Baseline
 
@@ -29,16 +26,16 @@ As a baseline, let's check out ONNX Runtime's performance on BERT. Make sure you
 ```bash
 deepsparse.benchmark \
   zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none \
-  -b 64 -s sync -nstreams 1 -i [64,384] \
+  -b 64 -s sync -nstreams 1 \
   -e onnxruntime
 
 > Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/base-none
 > Batch Size: 64
 > Scenario: sync
-> Throughput (items/sec): 18.6350
+> Throughput (items/sec): 19.61
 ```
 
-ONNX Runtime achieves 19 items/second with batch 64 and sequence length 384.
+ONNX Runtime achieves 20 items/second with batch 64 and sequence length 128.
 
 ### DeepSparse Speedup
 
@@ -48,21 +45,20 @@ retaining >99% accuracy of the dense baseline on the SST2 dataset.
 ```bash
 deepsparse.benchmark \
   zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none \
-  -b 64 -s sync -nstreams 1 -i [64,384] \
+  -b 64 -s sync -nstreams 1 \
   -e deepsparse
 
 > Original Model Path: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none
 > Batch Size: 64
 > Scenario: sync
-> Throughput (items/sec): 217.6529
+> Throughput (items/sec): 125.80
 ```
 
-DeepSparse achieves 218 items/second, ***an 11.5x speed-up over ONNX Runtime!***
+DeepSparse achieves 126 items/second, an 6.4x speed-up over ONNX Runtime!
 
 ## DeepSparse Engine
 
-Engine is the lowest-level API for interacting with DeepSparse. As much as possible, we recommended you use the Pipeline
-API but Engine is available as needed if you want to handle pre- or post-processing yourself.
+Engine is the lowest-level API for interacting with DeepSparse. As much as possible, we recommended you use the Pipeline API but Engine is available as needed if you want to handle pre- or post-processing yourself.
 
 With Engine, we can compile an ONNX file and run inference on raw tensors.
 
@@ -76,14 +72,14 @@ import numpy as np
 # download onnx from sparsezoo and compile with batchsize 1
 sparsezoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"
 batch_size = 1
-bert_engine = Engine(
+compiled_model = Engine(
   model=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
   batch_size=batch_size   # defaults to batch size 1
 )
 
 # input is raw numpy tensors, output is raw scores for classes
 inputs = generate_random_inputs(model_to_path(sparsezoo_stub), batch_size)
-output = bert_engine(inputs)
+output = compiled_model(inputs)
 print(output)
 
 # >> [array([[-0.3380675 ,  0.09602544]], dtype=float32)]
@@ -126,8 +122,7 @@ The Sentiment Analysis Pipeline contains additional arguments for configuring a 
 
 #### Sequence Length
 
-The `sequence_length` argument adjusts the ONNX graph to handle a specific sequence length. Inside the DeepSparse pipelines,
-the tokenizers pad the input. As such, using shorter sequence lengths will have better performance.
+DeepSparse uses static input shapes. We can use the `sequence_length` argument to adjust the ONNX graph to handle a specific sequence length. Inside the DeepSparse pipelines, the tokenizers pad the input. As such, using shorter sequence lengths will have better performance.
 
 The example below compiles the model and runs inference with sequence length 64.
 
@@ -141,7 +136,7 @@ sequence_length = 64
 sa_pipeline = Pipeline.create(
   task="sentiment-analysis",
   model_path=sparsezoo_stub,    # sparsezoo stub or path to local ONNX
-  batch_size=1                  # default batch size is 1
+  batch_size=1,                 # default batch size is 1
   sequence_length=64            # default sequence length is 128
 )
 
@@ -152,14 +147,12 @@ print(prediction)
 # >>> labels=['positive'] scores=[0.9955807328224182]
 ```
 
-Alternatively, you can pass a list of sequence lengths, creating a "bucketable" pipeline. Under the hood,
-the DeepSparse Pipeline will compile multiple versions of the engine (utilizing a shared scheduler)
-and direct inputs towards the smallest bucket into which it fits.
+If your input data has a variable distribution of seuqence lengths, you can simulate dynamic shape infernece by passing a list of sequence lengths to DeepSparse, which a "bucketable" pipeline. Under the hood, the DeepSparse Pipeline compile multiple versions of the model at each sequence length (utilizing a shared scheduler) and directs inputs towards the smallest bucket into which it fits.
 
 The example below creates a bucket for smaller input lengths (16 tokens) and for larger input lengths (128 tokens).
 
 ```python
-from deepsparse import Pipeline
+from deepsparse import Pipeline, Context
 
 # download onnx from sparsezoo and compile with batch size 1
 sparsezoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"
@@ -167,9 +160,10 @@ batch_size = 1
 buckets = [16, 128]
 sa_pipeline = Pipeline.create(
   task="sentiment-analysis",
-  model_path=sparsezoo_stub,    # sparsezoo stub or path to local ONNX
-  batch_size=1,                 # default batch size is 1
-  sequence_length=buckets       # creates bucketed pipeline
+  model_path=sparsezoo_stub,        # sparsezoo stub or path to local ONNX
+  batch_size=1,                     # default batch size is 1
+  sequence_length=buckets,          # creates bucketed pipeline
+  context = Context(num_streams=1)  # creates scheduler with one stream
 )
 
 # run inference on short sequence
@@ -228,7 +222,7 @@ print(prediction_b2)
 
 ### Cross Use Case Functionality
 
-Check out the [Pipeline User Guide](/user-guide/deepsparse/deepsparse-pipelines) for more details on configuring a Pipeline.
+Check out the Pipeline User Guide for more details on configuring a Pipeline.
 
 ## DeepSparse Server
 
@@ -273,8 +267,8 @@ This configuration file sets sequence length to 64 and returns all scores:
 ```yaml
 # sentiment-analysis-config.yaml
 endpoints:
-  - task: text-classification
-    model: zoo:nlp/document_classification/obert-base/pytorch/huggingface/imdb/pruned90_quant-none
+  - task: sentiment-analysis
+    model: zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none
     kwargs:
       sequence_length: 64       # uses sequence length 64
       return_all_scores: True   # returns all scores
@@ -304,4 +298,4 @@ print(resp.text)
 
 ### Cross Use Case Functionality
 
-Check out the [Server User Guide](/user-guide/deepsparse/deepsparse-server) for more details on configuring the Server.
+Check out the Server User Guide for more details on configuring the Server.
