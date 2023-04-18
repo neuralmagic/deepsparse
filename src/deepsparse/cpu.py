@@ -173,12 +173,12 @@ def platform_error_msg() -> str:
     """
     Generate unsupported platform error message.
     """
-    darwin_ver = get_darwin_version()
     if allow_darwin():
         darwin_str = f" or MacOS >= {MINIMUM_DARWIN_VERSION}"
     else:
         darwin_str = ""
 
+    darwin_ver = get_darwin_version()
     if darwin_ver:
         current_os = f"MacOS {darwin_ver}"
     else:
