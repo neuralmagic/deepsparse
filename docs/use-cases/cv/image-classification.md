@@ -11,7 +11,7 @@ and post-processing steps, allowing you to make requests on raw data and receive
 - **Server** is a REST API wrapper around Pipelines built on [FastAPI](https://fastapi.tiangolo.com/) and [Uvicorn](https://www.uvicorn.org/). It enables you to start a model serving
 endpoint running DeepSparse with a single CLI.
 
-We will walk through an example of each.
+We will walk through an example of each using ResNet-50. For a full list of pre-sparsified image classification models, [check out the SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=classification&page=1).
 
 ## Installation Requirements
 
@@ -50,7 +50,7 @@ deepsparse.benchmark \
   -b 64 -s sync -nstreams 1 \
   -e deepsparse
   
-> Original Model Path: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned90_quant-none
+> Original Model Path: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
 > Batch Size: 64
 > Scenario: sync
 > Throughput (items/sec): 345.69
@@ -71,10 +71,9 @@ import numpy as np
 
 # download onnx from sparsezoo and compile with batchsize 1
 sparsezoo_stub = "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none"
-batch_size = 1
 compiled_model = Engine(
   model=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
-  batch_size=batch_size   # defaults to batch size 1
+  batch_size=1            # defaults to batch size 1
 )
 
 # input is raw numpy tensors, output is raw scores for classes
@@ -184,7 +183,7 @@ print(prediction.labels)
 # labels=['lion, king of beasts, Panthera leo']
 ```
 ### Cross Use Case Functionality
-Check out the Pipeline User Guide for more details on configuring a Pipeline.
+Check out the [Pipeline User Guide](../user-guide/deepsparse-pipelines.md) for more details on configuring a Pipeline.
 
 ## DeepSparse Server
 Built on the popular FastAPI and Uvicorn stack, DeepSparse Server enables you to set up a REST endpoint for serving inferences over HTTP. Since DeepSparse Server wraps the Pipeline API, it inherits all the utilities provided by Pipelines.
@@ -194,7 +193,7 @@ The CLI command below launches an image classification pipeline with a 95% prune
 ```bash
 deepsparse.server \
   --task image_classification \
-  --model_path zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none
+  --model_path zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
 ```
 You should see Uvicorn report that it is running on http://0.0.0.0:5543. Once launched, a /docs path is created with full endpoint descriptions and support for making sample requests.
 
@@ -211,14 +210,15 @@ print(resp.text)
 # {"labels":[291],"scores":[24.185693740844727]}
 ```
 #### Use Case Specific Arguments
-To use the `top_k`  argument, create a server configuration file for passing the argument via kwargs.
+
+To use a use-case specific argument, create a server configuration file for passing the argument via kwargs.
 
 This configuration file sets `top_k` classes to 3:
 ```yaml
 # image_classification-config.yaml
 endpoints:
   - task: image_classification
-    model: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none
+    model: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
     kwargs:
       top_k: 3
 ```
@@ -242,4 +242,4 @@ print(resp.text)
 ```
 ### Cross Use Case Functionality
 
-Check out the [Server User Guide](/user-guide/deepsparse/deepsparse-server) for more details on configuring the Server.
+Check out the [Server User Guide](../user-guide/deepsparse-server.md) for more details on configuring the Server.
