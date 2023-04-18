@@ -147,7 +147,11 @@ def allow_darwin() -> bool:
     """
     Check if Darwin support is allowed.
     """
-    return int(os.getenv("NM_ALLOW_DARWIN", 0)) != 0
+    try:
+        allow = int(os.getenv("NM_ALLOW_DARWIN", "0"))
+    except ValueError:
+        allow = False
+    return allow
 
 
 def get_darwin_version() -> str:
@@ -164,7 +168,7 @@ def check_darwin_support() -> bool:
     Check if the system is running Darwin and it meets the minimum version
     requirements.
     """
-    if sys.platform.startswith("darwin"):
+    if allow_darwin() and sys.platform.startswith("darwin"):
         ver = get_darwin_version()
         return StrictVersion(ver) >= StrictVersion(MINIMUM_DARWIN_VERSION)
     return False
