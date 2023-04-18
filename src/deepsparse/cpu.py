@@ -41,7 +41,8 @@ __all__ = [
 
 
 VALID_VECTOR_EXTENSIONS = {"avx2", "avx512", "neon", "sve"}
-MINIMUM_DARWIN_VERSION  = "13.0.0"
+MINIMUM_DARWIN_VERSION = "13.0.0"
+
 
 class _Memoize:
     def __init__(self, f):
