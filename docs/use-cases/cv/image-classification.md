@@ -11,7 +11,7 @@ and post-processing steps, allowing you to make requests on raw data and receive
 - **Server** is a REST API wrapper around Pipelines built on [FastAPI](https://fastapi.tiangolo.com/) and [Uvicorn](https://www.uvicorn.org/). It enables you to start a model serving
 endpoint running DeepSparse with a single CLI.
 
-We will walk through an example of each using ResNet-50. For a full list of pre-sparsified image classification models, [check out the SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=classification&page=1).
+This example uses ResNet-50. For a full list of pre-sparsified image classification models, [check out the SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=classification&page=1).
 
 ## Installation Requirements
 
