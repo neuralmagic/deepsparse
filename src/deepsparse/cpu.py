@@ -147,7 +147,7 @@ def allow_darwin() -> bool:
     """
     Check if Darwin support is allowed.
     """
-    return os.getenv("NM_ALLOW_DARWIN", None) is not None
+    return int(os.getenv("NM_ALLOW_DARWIN", 0)) != 0
 
 
 def get_darwin_version() -> str:
