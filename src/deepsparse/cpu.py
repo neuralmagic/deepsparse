@@ -16,12 +16,12 @@
 Functionality for detecting the details of the currently available cpu
 """
 
-from distutils.version import StrictVersion
 import json
 import os
 import platform
 import subprocess
 import sys
+from distutils.version import StrictVersion
 from typing import Any, Tuple
 
 
