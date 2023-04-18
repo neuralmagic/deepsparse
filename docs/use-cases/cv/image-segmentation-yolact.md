@@ -129,7 +129,6 @@ The `class_names` argument defines a dictionary containing the desired class map
 from deepsparse.pipeline import Pipeline
 
 model_stub = "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
-images = ["thailand.jpg"]
 
 yolact_pipeline = Pipeline.create(
     task="yolact",
@@ -137,6 +136,7 @@ yolact_pipeline = Pipeline.create(
     class_names="coco",
 )
 
+images = ["thailand.jpeg"]
 predictions = yolact_pipeline(images=images, confidence_threshold=0.2, nms_threshold=0.5)
 # predictions has attributes `boxes`, `classes`, `masks` and `scores`
 predictions.classes[0]
