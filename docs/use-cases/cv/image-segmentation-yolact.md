@@ -11,7 +11,7 @@ and post-processing steps, allowing you to make requests on raw data and receive
 - **Server** is a REST API wrapper around Pipelines built on [FastAPI](https://fastapi.tiangolo.com/) and [Uvicorn](https://www.uvicorn.org/). It enables you to start a model serving
 endpoint running DeepSparse with a single CLI.
 
-We will walk through an example of each.
+We will walk through an example of each using YOLACT.
 
 ## Installation Requirements
 
@@ -78,7 +78,7 @@ compiled_model = Engine(
   batch_size=batch_size   # defaults to batch size 1
 )
 
-# input is raw numpy tensors, output is raw scores for classes
+# input is raw numpy tensors, output is raw data
 inputs = generate_random_inputs(model_to_path(sparsezoo_stub), batch_size)
 output = compiled_model(inputs)
 
@@ -155,7 +155,7 @@ If a `--model_filepath` arg isn't provided, then `zoo:cv/segmentation/yolact-dar
 ![Annotation Results](images/result-0.jpg)
 
 ### Cross Use Case Functionality
-Check out the [Pipeline User Guide](/user-guide/deepsparse/deepsparse-pipelines) for more details on configuring a Pipeline.
+Check out the [Pipeline User Guide](../../user-guide/deepsparse-pipelines.md) for more details on configuring a Pipeline.
 
 ## DeepSparse Server
 Built on the popular FastAPI and Uvicorn stack, DeepSparse Server enables you to set up a REST endpoint for serving inferences over HTTP. Since DeepSparse Server wraps the Pipeline API, it inherits all the utilities provided by Pipelines.
@@ -210,4 +210,4 @@ boxes, classes, masks, scores = annotations["boxes"], annotations["classes"], an
 ```
 ### Cross Use Case Functionality
 
-Check out the Server User Guide for more details on configuring the Server.
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
