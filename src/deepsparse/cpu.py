@@ -16,9 +16,9 @@
 Functionality for detecting the details of the currently available cpu
 """
 
+from distutils.version import StrictVersion
 import json
 import os
-from distutils.version import StrictVersion
 import platform
 import subprocess
 import sys
