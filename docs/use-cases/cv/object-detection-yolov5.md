@@ -27,11 +27,11 @@ As a baseline, let's check out ONNX Runtime's performance on YOLOv5s. Make sure 
 
 ```bash
 deepsparse.benchmark \
-  zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none \
+  zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none \
   -b 64 -s sync -nstreams 1 \
   -e onnxruntime
 
-> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none
+> Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
 > Batch Size: 64
 > Scenario: sync
 > Throughput (items/sec): 13.1266
