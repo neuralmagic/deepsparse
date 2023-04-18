@@ -52,7 +52,10 @@ print(len(embedding.embeddings[0][0]))
 # 2048 << size of final layer>>
 ```
 
-# DeepSparse Server
+### Cross Use Case Functionality
+Check out the [Pipeline User Guide](../../user-guide/deepsparse-pipelines.md) for more details on configuring the Pipeline.
+
+## DeepSparse Server
 As an alternative to the Python API, DeepSparse Server allows you to serve an Embedding Extraction Pipeline over HTTP. Configuring the server uses the same parameters and schemas as the Pipelines. 
 
 Once launched, a `/docs` endpoint is created with full endpoint descriptions and support for making sample requests.
@@ -71,11 +74,12 @@ Spin up the server:
 ```bash 
 deepsparse.server --config_file config.yaml
 ```
+
 Make requests to the server: 
 ```python
 import requests, json
 url = "http://0.0.0.0:5543/predict/from_files"
-paths = ["pets.jpg"]
+paths = ["lion.jpeg"]
 files = [("request", open(img, 'rb')) for img in paths]
 resp = requests.post(url=url, files=files)
 result = json.loads(resp.text)
@@ -86,4 +90,4 @@ print(len(result["embeddings"][0][0]))
 ```
 
 ### Cross Use Case Functionality
-Check out the Server User Guide for more details on configuring the Server.
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
