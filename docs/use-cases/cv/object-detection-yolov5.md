@@ -34,12 +34,13 @@ deepsparse.benchmark \
 > Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
 > Batch Size: 64
 > Scenario: sync
-> Throughput (items/sec): 13.1266
+> Throughput (items/sec): 12.2369
 ```
-ONNX Runtime achieves 13 items/second with batch 64.
+ONNX Runtime achieves 12 items/second with batch 64.
 
 ### DeepSparse Speedup
-Now, let's run DeepSparse on an inference-optimized sparse version of YOLOv5 . This model has been 94% pruned-quantized, while retaining >99% accuracy of the dense baseline on the `coco` dataset.
+Now, let's run DeepSparse on an inference-optimized sparse version of YOLOv5s. This model has been 85% pruned and quantized.
+
 ```bash
 deepsparse.benchmark \
   zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned85_quant-none \
@@ -57,7 +58,7 @@ Engine is the lowest-level API for interacting with DeepSparse. As much as possi
 
 With Engine, we can compile an ONNX file and run inference on raw tensors.
 
-Here's an example, using a 85% pruned-quantized YOLOv5 from SparseZoo:
+Here's an example, using a 85% pruned-quantized YOLOv5s model from SparseZoo:
 
 ```python
 from deepsparse import Engine
@@ -93,7 +94,8 @@ Let's start by downloading a sample image:
 ```bash 
 wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/basilica.jpg
 ```
-We will use the `Pipeline.create()` constructor to create an instance of an object detection Pipeline with a 96% pruned version of YOLOv5 trained on `coco`. We can then pass images to the `Pipeline` and receive the predictions. All the pre-processing (such as resizing the images) is handled by the `Pipeline`.
+
+We will use the `Pipeline.create()` constructor to create an instance of an object detection Pipeline with a 85% pruned version of YOLOv5s trained on `coco`. We can then pass images to the `Pipeline` and receive the predictions. All the pre-processing (such as resizing the images and running NMS) is handled by the `Pipeline`.
 
 ```python
 from deepsparse import Pipeline
@@ -117,7 +119,7 @@ print(pipeline_outputs.labels)
 ```
 
 ### Use Case Specific Arguments
-The Object Detection Pipeline contains additional arguments for configuring a `Pipeline`.
+The YOLOv5 pipeline contains additional arguments for configuring a Pipeline.
 
 #### Image Shape
 
@@ -189,8 +191,12 @@ print(len(pipeline_outputs_low_conf.boxes[0]))
 # high threshold inference
 pipeline_outputs_high_conf = yolo_pipeline(images=images, iou_thres=0.5, conf_thres=0.8)
 print(len(pipeline_outputs_high_conf.boxes[0]))
-# 1 << only one prediction>>
+# 1 <<makes 1 prediction>>
 ```
+
+### Cross Use Case Functionality
+
+Check out the [Pipeline User Guide](../../user-guide/deepsparse-pipelines.md) for more details on configuring a Pipeline.
 
 ## DeepSparse Server
 
@@ -262,4 +268,4 @@ print(labels)
 
 ### Cross Use Case Functionality
 
-Check out the Server User Guide for more details on configuring the Server.
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring a Server.
