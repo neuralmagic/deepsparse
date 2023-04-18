@@ -18,7 +18,7 @@ Functionality for detecting the details of the currently available cpu
 
 import json
 import os
-from packaging import version
+from distutils.version import StrictVersion
 import platform
 import subprocess
 import sys
@@ -165,7 +165,7 @@ def check_darwin_support() -> bool:
     """
     if sys.platform.startswith("darwin"):
         ver = get_darwin_version()
-        return version.parse(ver) >= version.parse(MINIMUM_DARWIN_VERSION)
+        return StrictVersion(ver) >= StrictVersion(MINIMUM_DARWIN_VERSION)
     return False
 
 
