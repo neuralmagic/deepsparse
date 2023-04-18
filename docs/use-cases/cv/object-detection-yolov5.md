@@ -9,7 +9,7 @@ There are three interfaces for interacting with DeepSparse:
 
 - **Server** is a REST API wrapper around Pipelines built on [FastAPI](https://fastapi.tiangolo.com/) and [Uvicorn](https://www.uvicorn.org/). It enables you to start a model serving endpoint running DeepSparse with a single CLI.
 
-We will walk through an example of each.
+This example uses YOLOv5s. For a full list of pre-sparsified object detection models, [check out the SparseZoo](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1).
 
 ## Installation Requirements
 
