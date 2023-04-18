@@ -63,7 +63,7 @@ Engine is the lowest-level API for interacting with DeepSparse. As much as possi
 
 With Engine, we can compile an ONNX file and run inference on raw tensors.
 
-Here's an example, using a 90% pruned-quantized ResNet-50 trained on `imagenet` from SparseZoo:
+Here's an example, using a 95% pruned-quantized ResNet-50 trained on `imagenet` from SparseZoo:
 ```python
 from deepsparse import Engine
 from deepsparse.utils import generate_random_inputs, model_to_path
@@ -71,9 +71,10 @@ import numpy as np
 
 # download onnx from sparsezoo and compile with batchsize 1
 sparsezoo_stub = "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none"
+batch_size = 1
 compiled_model = Engine(
   model=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
-  batch_size=1            # defaults to batch size 1
+  batch_size=batch_size   # defaults to batch size 1
 )
 
 # input is raw numpy tensors, output is raw scores for classes
@@ -183,7 +184,7 @@ print(prediction.labels)
 # labels=['lion, king of beasts, Panthera leo']
 ```
 ### Cross Use Case Functionality
-Check out the [Pipeline User Guide](../user-guide/deepsparse-pipelines.md) for more details on configuring a Pipeline.
+Check out the [Pipeline User Guide](../../user-guide/deepsparse-pipelines.md) for more details on configuring a Pipeline.
 
 ## DeepSparse Server
 Built on the popular FastAPI and Uvicorn stack, DeepSparse Server enables you to set up a REST endpoint for serving inferences over HTTP. Since DeepSparse Server wraps the Pipeline API, it inherits all the utilities provided by Pipelines.
@@ -242,4 +243,4 @@ print(resp.text)
 ```
 ### Cross Use Case Functionality
 
-Check out the [Server User Guide](../user-guide/deepsparse-server.md) for more details on configuring the Server.
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
