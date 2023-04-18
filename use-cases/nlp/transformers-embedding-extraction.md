@@ -12,9 +12,10 @@ and post-processing steps, allowing you to make requests on raw data and receive
 endpoint running DeepSparse with a single CLI.
 
 ## Installation Requirements
-This use case requires the installation of [DeepSparse Server](/get-started/install/deepsparse).
 
-Confirm your machine is compatible with our [hardware requirements](/user-guide/deepsparse-engine/hardware-support).
+This use case requires the installation of [DeepSparse Server](https://docs.neuralmagic.com/get-started/install/deepsparse).
+
+Confirm your machine is compatible with our [hardware requirements](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support).
 
 ## DeepSparse Pipelines
 Pipeline is the default interface for interacting with DeepSparse.
