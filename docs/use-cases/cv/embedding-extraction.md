@@ -2,9 +2,9 @@
 This page explains how to deploy an Embedding Extraction Pipeline with DeepSparse.
 
 ## Installation Requirements
-This use case requires the installation of [DeepSparse Server](/get-started/install/deepsparse).
+This use case requires the installation of [DeepSparse Server](../../user-guide/installation.md).
 
-Confirm your machine is compatible with our [hardware requirements](/user-guide/deepsparse-engine/hardware-support).
+Confirm your machine is compatible with our [hardware requirements](../../user-guide/hardware-support.md).
 
 ## Model Format
 The Embedding Extraction Pipeline enables you to generate embeddings in any domain, meaning you can use it with any ONNX model. It (optionally) removes the projection head from the model, such that you can re-use SparseZoo models and custom models you have trained in the embedding extraction scenario.
