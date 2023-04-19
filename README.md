@@ -53,7 +53,7 @@ limitations under the License.
 </div>
 
 
-DeepSparse is a CPU inference runtime that takes advantage of sparsity within neural networks to execute inference quickly. Coupled with SparseML, an open-source optimization library, DeepSparse enables you to achieve GPU-class performance on commodity hardware.
+[DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity within neural networks to execute inference quickly. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), an open-source optimization library, DeepSparse enables you to achieve GPU-class performance on commodity hardware.
 
 <p align="center">
    <img alt="NM Flow" src="docs/neural-magic-workflow.png" width="60%" />
