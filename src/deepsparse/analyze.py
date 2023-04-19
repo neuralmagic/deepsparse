@@ -20,10 +20,10 @@ import click
 import onnx
 from onnx import ModelProto
 
-import pandas as pd
 from deepsparse import model_debug_analysis
 from deepsparse.benchmark.benchmark_model import benchmark_model
 from deepsparse.utils import generate_random_inputs, model_to_path
+from sparsezoo import convert_to_bool
 from sparsezoo.analyze import (
     BenchmarkResult,
     BenchmarkScenario,
@@ -34,7 +34,7 @@ from sparsezoo.analyze import (
 from sparsezoo.analyze.cli import analyze_options, analyze_performance_options
 
 
-LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 
 @click.command()
@@ -45,6 +45,9 @@ def main(
     save: str,
     batch_size_throughput: int,
     benchmark_engine: str,
+    by_layers: Optional[str],
+    by_types: Optional[str],
+    compare: Optional[str],
     **kwargs,
 ):
     """
@@ -62,9 +65,6 @@ def main(
     logging.basicConfig(level=logging.INFO)
 
     for unimplemented_feat in (
-        "compare",
-        "by_layer",
-        "by_types",
         "save_graphs",
         "impose",
     ):
@@ -73,9 +73,9 @@ def main(
                 f"--{unimplemented_feat} has not been implemented yet"
             )
 
-    LOGGER.info("Starting Analysis ...")
+    _LOGGER.info("Starting Analysis ...")
     analysis = ModelAnalysis.create(model_path)
-    LOGGER.info("Analysis complete, collating results...")
+    _LOGGER.info("Analysis complete, collating results...")
     scenario = BenchmarkScenario(
         batch_size=batch_size_throughput,
         num_cores=None,
@@ -85,29 +85,43 @@ def main(
         onnx_model=model_to_path(model_path),
         scenario=scenario,
     )
-    analysis.benchmark_results = [performance_summary]
-    summary = analysis.summary()
+    by_types: bool = convert_to_bool(by_types)
+    by_layers: bool = convert_to_bool(by_layers)
 
-    summary["MODEL"] = model_path
-    _display_summary_as_table(summary)
+    analysis.benchmark_results = [performance_summary]
+    summary = analysis.summary(
+        by_types=by_types,
+        by_layers=by_layers,
+    )
+    summary.pretty_print()
+
+    if compare is not None:
+        if "," in compare:
+            compare = compare.split(",")
+        else:
+            compare = [compare]
+
+        print("Comparison Analysis:")
+        for model_to_compare in compare:
+            compare_model_analysis = ModelAnalysis.create(model_to_compare)
+            _LOGGER.info(f"Running Performance Analysis on {model_to_compare}")
+            performance_summary = run_benchmark_and_analysis(
+                onnx_model=model_to_path(model_to_compare),
+                scenario=scenario,
+            )
+            compare_model_analysis.benchmark_results = [performance_summary]
+            summary_comparison_model = compare_model_analysis.summary(
+                by_types=by_types,
+                by_layers=by_layers,
+            )
+            print(f"Comparing {model_path} with {model_to_compare}")
+            print("Note: comparison analysis displays differences b/w models")
+            comparison = summary - summary_comparison_model
+            comparison.pretty_print()
 
     if save:
-        LOGGER.info(f"Writing results to {save}")
+        _LOGGER.info(f"Writing results to {save}")
         analysis.yaml(file_path=save)
-
-
-def _display_summary_as_table(summary):
-    summary_copy = copy.copy(summary)
-    print(f"MODEL: {summary_copy.pop('MODEL')}", end="\n\n")
-    footer = summary_copy.pop("Summary")
-
-    for section_name, section_dict in summary_copy.items():
-        print(f"{section_name.upper()}:")
-        print(pd.DataFrame(section_dict).T.to_string(), end="\n\n")
-
-    print("SUMMARY:")
-    for footer_key, footer_value in footer.items():
-        print(f"{footer_key}: {footer_value}")
 
 
 def run_benchmark_and_analysis(
@@ -136,7 +150,7 @@ def run_benchmark_and_analysis(
         time=scenario.duration,
         warmup_time=scenario.warmup_duration,
         num_streams=scenario.num_streams,
-        quiet=False,
+        quiet=True,
     )
     input_list = generate_random_inputs(
         onnx_filepath=onnx_model, batch_size=scenario.batch_size
@@ -160,7 +174,7 @@ def run_benchmark_and_analysis(
     node_timings = _get_node_timings_from_analysis_results(
         onnx_model_file=onnx_model, analysis_results=analysis_results
     )
-
+    supported_graph_percentage = benchmark_results.get("fraction_of_supported_ops")
     # TODO: Add recipe info
     imposed_sparsification = ImposedSparsificationInfo(
         sparsity=sparsity,
@@ -172,6 +186,7 @@ def run_benchmark_and_analysis(
         items_per_second=items_per_second,
         average_latency=average_latency,
         node_timings=node_timings,
+        supported_graph_percentage=supported_graph_percentage or 0.0,
     )
     return results
 
@@ -186,6 +201,17 @@ def _get_node_timings_from_analysis_results(
     canonical_name_to_node_name = {
         output: node.name for node in model.graph.node for output in node.output
     }
+
+    # dereference node names
+    for node in model.graph.node:
+        name = node.name
+        if node.op_type == "BatchNormalization":
+            potential_parents = node.input
+            for parent in potential_parents:
+                if "Conv" in canonical_name_to_node_name.get(parent, ""):
+                    name = canonical_name_to_node_name[parent]
+        for output in node.output:
+            canonical_name_to_node_name[output] = name
 
     layer_info = analysis_results["layer_info"]
     node_timings: List[NodeInferenceResult] = []
