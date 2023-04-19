@@ -38,20 +38,7 @@ deepsparse.server --help
 
 ## Supported Use Cases
 
-DeepSparse Server supports all tasks available in DeepSparse Pipelines. Check out the use case guides for more details on task-specific APIs.
-
-**Computer Vision**:
-- Image Classification: `task="image_classification"`
-- Object Detection: `task="yolo"`
-- Instance Segmentation: `task="yolact"`
-
-**Natural Language Processing**:
-- Embedding Extraction: `task="transformers_embedding_extraction"`
-- Text Classification: `task="text-classification"`
-- Zero Shot Text Classification: `task="zero-shot-text-classification"` 
-- Sentiment Analysis: `task="sentiment-analysis"`
-- Token Classification: `task="token-classification"`
-- Question Answering: `task="question-answering"`
+DeepSparse Server supports all tasks available in Pipelines. [Check out the Use Cases page for more details on task-specific APIs](../use-cases).
 
 ## Swagger UI
 
