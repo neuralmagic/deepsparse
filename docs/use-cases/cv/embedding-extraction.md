@@ -27,14 +27,13 @@ The Embedding Extraction Pipeline handles some useful actions around inference:
 
 - Second, as with all DeepSparse Pipelines, it handles pre-processing such that you can pass raw input. You will notice that in addition to the typical task argument used in `Pipeline.create()`, the Embedding Extraction Pipeline includes a `base_task` argument. This argument tells the Pipeline the domain of the model, such that the Pipeline can figure out what pre-processing to do.
 
-This is an example of extracting the last layer from ResNet-50:
-
 Download an image to use with the Pipeline.
 ```bash
 wget https://huggingface.co/spaces/neuralmagic/image-classification/resolve/main/lion.jpeg
 ```
 
-Run the following to extract the embedding: 
+This is an example of extracting the last layer from ResNet-50:
+
 ```python
 from deepsparse import Pipeline
 
