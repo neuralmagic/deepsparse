@@ -34,25 +34,11 @@ folder containing `model.onnx` and supporting files (e.g., the Hugging Face `tok
 
 ## Supported Use Cases
 
-Pipelines support many CV and NLP use cases out of the box. Check out the use case pages for more details on task-specific APIs.
-
-**Computer Vision**:
-- Image Classification: `task="image_classification"`
-- Object Detection: `task="yolo"`
-- Instance Segmentation: `task="yolact"`
-
-**Natural Language Processing**:
-- Embedding Extraction:`task="transformers_embedding_extraction"`
-- Text Classification: `task="text-classification"`
-- Zero Shot Text Classification: `task="zero-shot-text-classification"` 
-- Sentiment Analysis: `task="sentiment-analysis"`
-- Token Classification: `task="token-classification"`
-- Question Answering: `task="question-answering"`
+Pipelines support many CV and NLP use cases out of the box. Check out the [use case page](../use-cases) for more details on task-specific APIs.
 
 ## Custom Use Case
 
-Beyond officially supported use cases, Pipelines can be extended to additional tasks via the 
-`CustomTaskPipeline`.
+Beyond officially supported tasks, Pipelines can be extended to additional tasks via the `CustomTaskPipeline`.
 
 `CustomTaskPipelines` are passed the following arguments:
 - `model_path` - a SparseZoo stub or path to a local ONNX file
