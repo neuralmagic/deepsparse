@@ -17,7 +17,7 @@ We will walk through an example of each.
 
 This use case requires the installation of [DeepSparse Server](../../user-guide/installation.md).
 
-Confirm your machine is compatible with our [hardware requirements](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support).
+Confirm your machine is compatible with our [hardware requirements](../../user-guide/hardware-support.md).
 
 ## Benchmarking
 
