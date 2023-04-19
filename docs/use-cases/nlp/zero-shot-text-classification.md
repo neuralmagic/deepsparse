@@ -43,7 +43,6 @@ from deepsparse import Pipeline
 
 # download onnx from sparsezoo and compile with batch size 1
 sparsezoo_stub = "zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none"
-batch_size = 1
 pipeline = Pipeline.create(
   task="zero_shot_text_classification",
   model_path=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
