@@ -129,7 +129,7 @@ qa_pipeline = Pipeline.create(
     max_question_length=32,
 )
 
-# run inference on image file
+# run inference 
 q_context = "DeepSparse is sparsity-aware inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application"
 question = "What is DeepSparse?"
 output = qa_pipeline(question=question, context=q_context)
@@ -156,7 +156,7 @@ qa_pipeline = Pipeline.create(
     context=Context(num_streams=1)
 )
 
-# run inference on image file
+# run inference
 q_context = "DeepSparse is sparsity-aware inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application"
 question = "What is DeepSparse?"
 output = qa_pipeline(question=question, context=q_context)
@@ -183,7 +183,7 @@ qa_pipeline = Pipeline.create(
     doc_stride=4
 )
 
-# run inference on image file
+# run inference 
 q_context = "I have been trying to accelerate my inference workloads. DeepSparse is a CPU runtime that helps me."
 question = "What is DeepSparse?"
 output = qa_pipeline(question=question, context=q_context)
