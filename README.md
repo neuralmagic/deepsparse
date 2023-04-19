@@ -59,7 +59,7 @@ limitations under the License.
    <img alt="NM Flow" src="docs/neural-magic-workflow.png" width="60%" />
 </p>
 
-For details of training an inference-optimized sparse model for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
+For details of training an optimized sparse model for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
 
 ## Installation
 
