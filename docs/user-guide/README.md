@@ -10,7 +10,7 @@ This directory demonstrates usage of DeepSparse's key API, including:
 
 This page requires [DeepSparse Server installation](installation.md).
 
-## [Performance Benchmarking](deepsparse-benchmarking.md)
+## Performance Benchmarking
 
 DeepSparse's key feature is its performance on commodity CPUs. 
 
@@ -42,6 +42,8 @@ deepsparse.benchmark zoo:nlp/text_classification/obert-base/pytorch/huggingface/
 DeepSparse achieves a ***12x speedup*** over ORT!
 
 **Pro-Tip:** In place of a [SparseZoo](https://sparsezoo.neuralmagic.com/) stubs, you can pass a local ONNX file to test your model.
+
+Checkout the [Performance Benchmarking guide](deepsparse-benchmarking.md) for more details.
 
 ## Deployment APIs
 
@@ -113,7 +115,7 @@ engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
 
-### [Pipeline](deepsparse-pipelines.md)
+### Pipeline
 
 Pipeline is the default API for interacting with DeepSparse. Similar to Hugging Face Pipelines,
 DeepSparse Pipelines wrap Engine with pre- and post-processing (as well as other utilities), 
@@ -140,8 +142,9 @@ print(prediction)
 # > labels=['positive'] scores=[0.9954759478569031]
 ```
 
+Checkout the [DeepSparse Pipeline guide](deepsparse-pipelines.md) for more details.
 
-### [Server](deepsparse-server.md)
+### Server
 
 Server wraps Pipelines with REST APIs, that make it easy to stand up a model serving endpoint
 running DeepSparse. This enables you to send raw data to DeepSparse over HTTP and receive the post-processed
@@ -191,8 +194,8 @@ print(response.text)
 # {"labels":["positive"],"scores":[0.9965094327926636]}
 ```
 
+Checkout the [DeepSparse Server guide](deepsparse-server.md) for more details.
+
 ## Supported Tasks
 
-DeepSparse supports many common CV and NLP use cases out of the box. 
-
-Check out the [use cases page](../use-cases) for more details on the task-specific APIs.
+DeepSparse supports many common CV and NLP use cases out of the box. Check out the [use cases page](../use-cases) for details on the task-specific APIs.
