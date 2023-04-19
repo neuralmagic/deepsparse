@@ -308,6 +308,10 @@ one DeepSparse Pipeline running in each container for proper process isolation.
 
 Stay tuned for documentation on enabling multi-stream scheduling with DeepSparse Pipelines.
 
+### Bucketing
+
+Stay tuned for documentation on enabling bucketing with DeepSparse Pipelines.
+
 ### Logging
 
 Stay tuned for documentation on enabling logging with DeepSparse Pipelines.
