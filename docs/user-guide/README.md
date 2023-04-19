@@ -199,19 +199,6 @@ print(response.text)
 
 ## Supported Tasks
 
-DeepSparse supports many common CV and NLP use cases out of the box. Check out the use case guide for more details on the task-specific APIs.
+DeepSparse supports many common CV and NLP use cases out of the box. 
 
-**Computer Vision**:
-- [Image Classification: `task="image_classification"`](../use-cases/cv/image-classification.md)
-- Object Detection: `task="yolo"`
-- Instance Segmentation: `task="yolact"`
-
-**Natural Language Processing**:
-- Embedding Extraction: `task="transformers_embedding_extraction"`
-- Text Classification: `task="text-classification"`
-- Zero Shot Text Classification: `task="zero-shot-text-classification"` 
-- Sentiment Analysis: `task="sentiment-analysis"`
-- Token Classification: `task="token-classification"`
-- Question Answering: `task="question-answering"`
-
-Check out the [pipeline page](deepsparse-pipeline.md) for details on creating a custom pipeline.
+Check out the [use cases page](../use-cases) for more details on the task-specific APIs.
