@@ -13,7 +13,7 @@ There are three interfaces for interacting with DeepSparse:
 
 This use case requires the installation of [DeepSparse Server](../../user-guide/installation.md).
 
-Confirm your machine is compatible with our [hardware requirements](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support).
+Confirm your machine is compatible with our [hardware requirements](../../user-guide/hardware-support.md).
 
 ## Benchmarking
 
@@ -131,8 +131,6 @@ from deepsparse import Pipeline
 
 # download onnx from sparsezoo and compile with batch size 1
 sparsezoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"
-batch_size = 1
-sequence_length = 64
 sa_pipeline = Pipeline.create(
   task="sentiment-analysis",
   model_path=sparsezoo_stub,    # sparsezoo stub or path to local ONNX
@@ -156,13 +154,11 @@ from deepsparse import Pipeline, Context
 
 # download onnx from sparsezoo and compile with batch size 1
 sparsezoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"
-batch_size = 1
-buckets = [16, 128]
 sa_pipeline = Pipeline.create(
   task="sentiment-analysis",
   model_path=sparsezoo_stub,        # sparsezoo stub or path to local ONNX
   batch_size=1,                     # default batch size is 1
-  sequence_length=buckets,          # creates bucketed pipeline
+  sequence_length=[16, 128],        # creates bucketed pipeline
   context = Context(num_streams=1)  # creates scheduler with one stream
 )
 
