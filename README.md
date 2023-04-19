@@ -52,11 +52,11 @@ limitations under the License.
   </div>
 </div>
 
-A CPU runtime that takes advantage of sparsity within neural networks to reduce compute. Read [more about sparsification](https://docs.neuralmagic.com/user-guides/sparsification).
 
-Neural Magic's DeepSparse is able to integrate into popular deep learning libraries (e.g., Hugging Face, Ultralytics) allowing you to leverage DeepSparse for loading and deploying sparse models with ONNX. 
-ONNX gives the flexibility to serve your model in a framework-agnostic environment. 
-Support includes [PyTorch,](https://pytorch.org/docs/stable/onnx.html) [TensorFlow,](https://github.com/onnx/tensorflow-onnx) [Keras,](https://github.com/onnx/keras-onnx) and [many other frameworks](https://github.com/onnx/onnxmltools).
+DeepSparse is a CPU inference runtime that takes advantage of sparsity within neural networks to execute inferences quickly. Coupled with SparseML, Neural Magic's open-source optimization library, DeepSparse enables you to achieve GPU-class performance on commodity hardware.
+
+
+
 
 ## Installation
 
@@ -72,16 +72,18 @@ DeepSparse is available in two editions:
 
 ## 🧰 Hardware Support and System Requirements
 
-To ensure that your CPU is compatible with DeepSparse, it is recommended to review the [Supported Hardware for DeepSparse](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support) documentation.
+DeepSparse is tested on Python versions 3.7-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. It is highly recommended to use a [virtual environment](https://docs.python.org/3/library/venv.html) when running DeepSparse. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
 
-To ensure that you get the best performance from DeepSparse, it has been thoroughly tested on Python versions 3.7-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. It is highly recommended to use a [virtual environment](https://docs.python.org/3/library/venv.html) when running DeepSparse. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
+[Supported Hardware for DeepSparse](docs/user-guide/hardware-support.md)
 
 ## Features
 
-- 👩‍💻 Pipelines for [NLP](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/transformers), [CV Classification](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/image_classification), [CV Detection](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolo), [CV Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/yolact) and more!
-- 🔌 [DeepSparse Server](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/server)
-- 📜 [DeepSparse Benchmark](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)
-- ☁️ [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples)
+- 📜 [DeepSparse Benchmark](docs/user-guide/deepsparse-benchmarking.md)
+- 👩‍💻 [DeepSparse Pipelines](docs/user-guide/deepsparse-pipelines.md)
+- 🔌 [DeepSparse Server](docs/user-guide/deepsparse-server.md)
+- ☁️ [Cloud Deployments and Demos](examples/)
+
+###
 
 ### 👩‍💻 Pipelines
 
