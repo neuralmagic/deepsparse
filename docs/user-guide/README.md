@@ -6,15 +6,9 @@ This directory demonstrates usage of DeepSparse's key API, including:
 - [Pipeline API](#pipeline)
 - [Server API](#server)
 
-## Installation
+## Installation Requirements
 
-Install via `pip`. Using a virtual enviornment is highly recommended.
-
-```bash
-pip install deepsparse[server]
-```
-
-See the [installation page](installation.md) for further installation options.
+This page requires [DeepSparse Server installation](installation.md).
 
 ## [Performance Benchmarking](deepsparse-benchmarking.md)
 
