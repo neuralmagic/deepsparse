@@ -15,7 +15,7 @@ endpoint running DeepSparse with a single CLI.
 
 This use case requires the installation of [DeepSparse Server](../../user-guide/installation.md).
 
-Confirm your machine is compatible with our [hardware requirements](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support).
+Confirm your machine is compatible with our [hardware requirements](../../user-guide/hardware-support.md).
 
 ## Benchmarking
 
@@ -190,7 +190,7 @@ print(output.predictions)
 ```
 
 ### Cross Use Case Functionality
-Check out the Pipeline User Guide for more details on configuring a Pipeline.
+Check out the [Pipeline User Guide](../../user-guide/deepsparse-pipelines.md) for more details on configuring a Pipeline.
 
 ## DeepSparse Server
 
@@ -256,4 +256,4 @@ print(resp.text)
 
 ### Cross Use Case Functionality
 
-Check out the Server User Guide for more details on configuring the Server.
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
