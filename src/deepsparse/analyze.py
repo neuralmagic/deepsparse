@@ -101,7 +101,7 @@ def main(
         else:
             compare = [compare]
 
-        print("Comparison Analysis!!!")
+        print("Comparison Analysis:")
         for model_to_compare in compare:
             compare_model_analysis = ModelAnalysis.create(model_to_compare)
             _LOGGER.info(f"Running Performance Analysis on {model_to_compare}")
