@@ -29,11 +29,11 @@ As a baseline, let's check out ONNX Runtime's performance on BERT. Make sure you
 
 ````bash
 deepsparse.benchmark \
-  zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/base-none \
+  zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/base-none \
   -b 64 -s sync -nstreams 1 -i [64,384] \
   -e onnxruntime
 
-> Original Model Path: zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/base-none
+> Original Model Path: zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none
 > Batch Size: 64
 > Scenario: sync
 > Throughput (items/sec): 5.5482
@@ -41,7 +41,7 @@ deepsparse.benchmark \
 
 ONNX Runtime achieves 5.5 items/second with batch 64 and sequence length 384.
 
-## DeepSparse Engine
+### DeepSparse Speedup
 Now, let's run DeepSparse on an inference-optimized sparse version of BERT. This model has been 90% pruned and quantized, while retaining >99% accuracy of the dense baseline on the [SQuAD](https://huggingface.co/datasets/squad) dataset.
 ```bash
 deepsparse.benchmark \
@@ -49,7 +49,7 @@ deepsparse.benchmark \
   -b 64 -s sync -nstreams 1 -i [64,384] \
   -e deepsparse
   
-> Original Model Path: zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none
+> Original Model Path: zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/base-none
 > Batch Size: 64
 > Scenario: sync
 > Throughput (items/sec): 31.6372
@@ -70,7 +70,7 @@ from deepsparse.utils import generate_random_inputs, model_to_path
 import numpy as np
 
 # download onnx from sparsezoo and compile with batchsize 1
-sparsezoo_stub = "zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none"
+sparsezoo_stub = "zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none"
 batch_size = 1
 complied_model = Engine(
   model=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
@@ -98,7 +98,7 @@ from deepsparse import Pipeline
 task = "question-answering"
 qa_pipeline = Pipeline.create(
         task=task,
-        model_path="zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none",
+        model_path="zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none",
     )
 
 q_context = "DeepSparse is sparsity-aware inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application"
@@ -121,7 +121,7 @@ The example below compiles the model and runs inference with sequence length 64 
 from deepsparse import Pipeline
 
 # download onnx from sparsezoo and compile with batch size 1
-sparsezoo_stub = "zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none"
+sparsezoo_stub = "zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none"
 qa_pipeline = Pipeline.create(
     task="question-answering",
     model_path=sparsezoo_stub,  # sparsezoo stub or path to local ONNX
@@ -145,7 +145,7 @@ The example below creates a bucket for smaller input lengths (16 tokens) and for
 from deepsparse import Pipeline, Context
 
 # download onnx from sparsezoo and compile with batch size 1
-sparsezoo_stub = "zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none"
+sparsezoo_stub = "zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none"
 task = "question-answering"
 
 qa_pipeline = Pipeline.create(
@@ -172,7 +172,7 @@ If the context is too long to fit in the max sequence length of the model, the D
 from deepsparse import Pipeline, Context
 
 # download onnx from sparsezoo and compile with batch size 1
-sparsezoo_stub = "zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none"
+sparsezoo_stub = "zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none"
 task = "question-answering"
 
 qa_pipeline = Pipeline.create(
@@ -203,7 +203,7 @@ The CLI command below launches a question answering pipeline with a 90% pruned-q
 ```bash
 deepsparse.server \
   --task question-answering \
-  --model_path zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none # or path/to/onnx
+  --model_path zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none # or path/to/onnx
 ```
 You should see Uvicorn report that it is running on http://0.0.0.0:5543. Once launched, a /docs path is created with full endpoint descriptions and support for making sample requests.
 
@@ -235,7 +235,7 @@ This configuration file sets sequence length to 64:
 # question-answering-config.yaml
 endpoints:
   - task: question-answering
-    model: zoo:nlp/question_answering/bert-base_cased/pytorch/huggingface/squad/pruned90_quant-none 
+    model: zoo:nlp/question_answering/obert-base/pytorch/huggingface/squad/pruned90_quant-none 
     kwargs:
       sequence_length: 24       # uses sequence length 64
       max_question_length: 8
