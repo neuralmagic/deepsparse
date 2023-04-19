@@ -15,7 +15,7 @@ This example uses YOLOv5s. For a full list of pre-sparsified object detection mo
 
 This use case requires the installation of [DeepSparse Server and YOLO](../../user-guide/installation.md).
 
-Confirm your machine is compatible with our [hardware requirements](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support).
+Confirm your machine is compatible with our [hardware requirements](../../user-guide/hardware-support.md)
 
 ## Benchmarking
 
