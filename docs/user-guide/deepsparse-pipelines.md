@@ -34,7 +34,9 @@ folder containing `model.onnx` and supporting files (e.g., the Hugging Face `tok
 
 ## Supported Use Cases
 
-Pipelines support many CV and NLP use cases out of the box. Check out the [use case page](../use-cases) for more details on task-specific APIs.
+Pipelines support many CV and NLP use cases out of the box. 
+
+Check out the [use case page](../use-cases) for more details on task-specific APIs.
 
 ## Custom Use Case
 
