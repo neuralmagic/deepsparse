@@ -182,7 +182,7 @@ print(response.text)
 
 DeepSparse accepts models in the ONNX format. ONNX models can be passed in one of two ways:
 
-- **SparseZoo Stub**: [SparseZoo](https://sparsezoo.neuralmagic.com/) is an open-source repository of sparse models available for download. The examples on this page used this pathway.
+- **SparseZoo Stub**: [SparseZoo](https://sparsezoo.neuralmagic.com/) is an open-source repository of sparse models. The examples on this page use SparseZoo stubs to identify models and download them for deployment in DeepSparse.
 
 - **Local ONNX File**: Users can provide their own ONNX models, whether dense or sparse. For example:
 
@@ -206,7 +206,7 @@ print(outputs[0].shape)
 # (16, 1000) << batch, num_classes
 ```
 
-## Inference Mode
+## Inference Modes
 
 DeepSparse offers different inference scenarios based on your use case.
 
