@@ -1,6 +1,6 @@
 # Use Cases
 
-DeepSparse offers three interfaces for interacting with DeepSparse:
+There are three interfaces for interacting with DeepSparse:
 
 - **Engine** is the lowest-level API that enables you to compile a model and run inference on raw input tensors.
 
@@ -8,7 +8,7 @@ DeepSparse offers three interfaces for interacting with DeepSparse:
 
 - **Server** is a REST API wrapper around Pipelines built on FastAPI and Uvicorn. It enables you to start a model serving endpoint running DeepSparse with a single CLI.
 
-This directory offers examples 
+This directory offers examples using each API in various supported tasks. 
 
 ### Supported Tasks
 
