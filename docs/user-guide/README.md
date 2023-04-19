@@ -198,4 +198,4 @@ Checkout the [DeepSparse Server guide](deepsparse-server.md) for more details.
 
 ## Supported Tasks
 
-DeepSparse supports many common CV and NLP use cases out of the box. Check out the [use cases page](../use-cases) for details on the task-specific APIs.
+DeepSparse supports many CV and NLP use cases out of the box. Check out the [use cases page](../use-cases) for details on the task-specific APIs.
