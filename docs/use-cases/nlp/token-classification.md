@@ -13,7 +13,7 @@ endpoint running DeepSparse with a single CLI.
 
 ## Installation Requirements
 
-This use case requires the installation of [DeepSparse Server](https://docs.neuralmagic.com/get-started/install/deepsparse).
+This use case requires the installation of [DeepSparse Server](../../user-guide/installation.md).
 
 Confirm your machine is compatible with our [hardware requirements](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support).
 
