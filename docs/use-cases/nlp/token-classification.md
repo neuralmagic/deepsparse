@@ -170,7 +170,7 @@ print(output.predictions)
 #  TokenClassificationResult(entity='MISC', score=0.9991180896759033, word='italian', start=72, end=79, index=None, is_grouped=True)]]
 ```
 
-In comparison, here is the standard output withe no aggregation:
+In comparison, here is the standard output with no aggregation:
 
 ```python
 from deepsparse import Pipeline
