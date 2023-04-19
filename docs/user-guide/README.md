@@ -1,4 +1,4 @@
-# DeepSparse User Guide
+# User Guide
 
 This directory demonstrates usage of DeepSparse's key API, including:
 - [Benchmarking CLI](#performance-benchmarking)
