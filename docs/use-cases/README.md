@@ -23,6 +23,8 @@ DeepSparse supports the following tasks out of the box:
 | [Zero-Shot Text Classification `"zero-shot-text-classification"`](nlp/zero-shot-text-classification.md) |                                               |
 | [Embedding Extraction `"transformers_embedding_extraction"`](nlp/transformers-embedding-extraction.md) |                                               |
 
+### Examples
+
 **Pipeline Example** | Sentiment Analysis
 
 Here's an example of how a task is used to create a Pipeline:
