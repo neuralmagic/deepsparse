@@ -86,7 +86,7 @@ DeepSparse Community is also available via PyPI. We recommend using a virtual en
 pip install deepsparse
 ```
 
-- [Checkout the Installation page](docs/user-guide/installation.md) for optional dependencies.
+[Check out the Installation page](docs/user-guide/installation.md) for optional dependencies.
 
 ## Hardware Support and System Requirements
 
