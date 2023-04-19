@@ -188,8 +188,8 @@ print(prediction)
 ```
 
 #### Additional Resources 
-- Checkout the [Use Cases Page](docs/use-cases) for more details on supported tasks.
-- Checkout the [Pipelines User Guide](docs/user-guide/deepsparse-pipelines.md) for more usage details.
+- Check out the [Use Cases Page](docs/use-cases) for more details on supported tasks.
+- Check out the [Pipelines User Guide](docs/user-guide/deepsparse-pipelines.md) for more usage details.
 
 ### DeepSparse Server
 
