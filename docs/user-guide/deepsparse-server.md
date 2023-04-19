@@ -252,11 +252,15 @@ print(requests.post(sentiment_analysis_url, json=short_obj).text)
 # >>> {"labels":["positive","negative","positive"],"scores":[0.9665533900260925,0.9952980279922485,0.9939143061637878]}
 ```
 
-Check out the use case pages for detailed documentation on task-specific arguments that can be applied to the Server via `kwargs`.
+Check out the [Use Case](../use-cases) page for detailed documentation on task-specific arguments that can be applied to the Server via `kwargs`.
 
 ## Custom Use Cases
 
 Stay tuned for documentation on using a custom DeepSparse Pipeline within the Server!
+
+## Multi-Stream
+
+Stay tuned for documentation on multi-stream scheduling with DeepSparse!
 
 ## Logging
 
