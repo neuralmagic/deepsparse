@@ -16,12 +16,12 @@ DeepSparse supports the following tasks out of the box:
 
 |          NLP          |            CV             |
 |-----------------------|---------------------------|
-| [Text Classification `"text-classification"`](use-cases/nlp/text-classification.md)     | [Image Classification `"image_classification"`](use-cases/cv/image-classification.md)     |
-| [Token Classification `"token-classification"`](use-cases/nlp/token-classification.md)  | [Object Detection `"yolo"`](use-cases/cv/object-detection-yolov5.md)    |
-| [Sentiment Analysis `"sentiment-analysis"`](use-cases/nlp/sentiment-analysis.md)        | [Instance Segmentation `"yolact"`](image-segmentation-yolact.md)        |
-| [Question Answering `"question-answering"`](use-cases/nlp/question-answering.md)        |                                                                         |
-| [Zero-Shot Text Classification `"zero-shot-text-classification"`](use-cases/nlp/zero-shot-text-classification.md) |                                               |
-| [Embedding Extraction `"transformers_embedding_extraction"`](use-cases/nlp/transformers-embedding-extraction.md) |                                               |
+| [Text Classification `"text-classification"`](nlp/text-classification.md)     | [Image Classification `"image_classification"`](cv/image-classification.md)     |
+| [Token Classification `"token-classification"`](nlp/token-classification.md)  | [Object Detection `"yolo"`](cv/object-detection-yolov5.md)    |
+| [Sentiment Analysis `"sentiment-analysis"`](nlp/sentiment-analysis.md)        | [Instance Segmentation `"yolact"`](cv/image-segmentation-yolact.md)        |
+| [Question Answering `"question-answering"`](nlp/question-answering.md)        |                                                                         |
+| [Zero-Shot Text Classification `"zero-shot-text-classification"`](nlp/zero-shot-text-classification.md) |                                               |
+| [Embedding Extraction `"transformers_embedding_extraction"`](nlp/transformers-embedding-extraction.md) |                                               |
 
 **Pipeline Example** | Sentiment Analysis
 
