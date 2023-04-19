@@ -77,7 +77,7 @@ docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse-docker
 docker run -it deepsparse-docker
 ```
 
-- [Checkout the Docker page](docker/) for more details.
+- [Check out the Docker page](docker/) for more details.
 
 #### Install via PyPI
 DeepSparse Community is also available via PyPI. We recommend using a virtual enviornment.
