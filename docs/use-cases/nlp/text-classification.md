@@ -320,7 +320,7 @@ print(resp.text)
 # {"labels":["positive"],"scores":[0.9330279231071472]}
 ```
 
-## Multi-Input Usage 
+#### Multi-Input Usage 
 
 The CLI command below launches a single-input text classification pipeline with a 90% pruned-quantized oBERT model trained on MNLI:
 
