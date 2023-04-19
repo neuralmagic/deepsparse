@@ -59,7 +59,7 @@ DeepSparse is a CPU inference runtime that takes advantage of sparsity within ne
    <img alt="NM Flow" src="docs/neural-magic-workflow.png" width="60%" />
 </p>
 
-For details of training an inference-optimized sparse model for deployment with DeepSparse, [checkout SparseML](https://github.com/neuralmagic/sparseml).
+For details of training an inference-optimized sparse model for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
 
 ## Installation
 
