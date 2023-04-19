@@ -143,7 +143,7 @@ Additionally, we can pass a `model_config` to specify the form of the hypothesis
 For instance, rather than running the comparison with `"This text is related to {}"`, we can instead use `"This text is similiar to {}"` with the following:
 
 ```python
-from deepsparse import Pipeline, Context
+from deepsparse import Pipeline
 
 # download onnx from sparsezoo and compile with batch size 1
 sparsezoo_stub = "zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none"
