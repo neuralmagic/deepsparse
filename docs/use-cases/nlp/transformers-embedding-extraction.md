@@ -17,7 +17,7 @@ For the embedding extraction case, we will walk through an example of Pipeline a
 
 This use case requires the installation of [DeepSparse Server](../../user-guide/installation.md).
 
-Confirm your machine is compatible with our [hardware requirements](https://docs.neuralmagic.com/user-guides/deepsparse-engine/hardware-support).
+Confirm your machine is compatible with our [hardware requirements](../../user-guide/hardware-support.md).
 
 ## DeepSparse Pipelines
 
@@ -118,7 +118,7 @@ print(len(embedding.embeddings[0]))
 # 768
 ```
 ### Cross Use Case Functionality
-Check out the Pipeline User Guide for more details on configuring a Pipeline.
+Check out the [Pipeline User Guide](../../user-guide/deepsparse-pipelines.md) for more details on configuring a Pipeline.
 
 ## DeepSparse Server
 Built on the popular FastAPI and Uvicorn stack, DeepSparse Server enables you to set-up a REST endpoint  for serving inferences over HTTP. Since DeepSparse Server wraps the Pipeline API, it inherits all of the utilities provided by Pipelines.
@@ -192,4 +192,4 @@ print(len(result["embeddings"][0]))
 
 ### Cross Use Case Functionality
 
-Check out the Server User Guide for more details on configuring the Server.
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
