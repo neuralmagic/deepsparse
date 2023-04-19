@@ -192,7 +192,7 @@ print(output.answer)
 ```
 
 ### Cross Use Case Functionality
-Check out the Pipeline User Guide for more details on configuring a Pipeline.
+Check out the [Pipeline User Guide](../../user-guide/deepsparse-pipelines.md) for more details on configuring a Pipeline.
 
 ## DeepSparse Server
 
@@ -266,4 +266,4 @@ print(resp.text)
 ```
 ### Cross Use Case Functionality
 
-Check out the Server User Guide for more details on configuring the Server.
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
