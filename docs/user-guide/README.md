@@ -119,7 +119,7 @@ engine = compile_model(onnx_filepath, batch_size)
 outputs = engine.run(inputs)
 ```
 
-### [Pipeline](deepsparse-pipeline.md)
+### [Pipeline](deepsparse-pipelines.md)
 
 Pipeline is the default API for interacting with DeepSparse. Similar to Hugging Face Pipelines,
 DeepSparse Pipelines wrap Engine with pre- and post-processing (as well as other utilities), 
@@ -202,7 +202,7 @@ print(response.text)
 DeepSparse supports many common CV and NLP use cases out of the box. Check out the use case guide for more details on the task-specific APIs.
 
 **Computer Vision**:
-- Image Classification: `task="image_classification"`
+- [Image Classification: `task="image_classification"`](../use-cases/cv/image-classification.md)
 - Object Detection: `task="yolo"`
 - Instance Segmentation: `task="yolact"`
 
