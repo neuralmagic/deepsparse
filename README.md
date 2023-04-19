@@ -56,7 +56,7 @@ limitations under the License.
 [DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity within neural networks to execute inference quickly. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), an open-source optimization library, DeepSparse enables you to achieve GPU-class performance on commodity hardware.
 
 <p align="center">
-   <img alt="NM Flow" src="docs/neural-magic-workflow.png" width="60%" />
+   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/tree/main/docs/neural-magic-workflow.png" width="60%" />
 </p>
 
 For details of training a sparse model for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
@@ -77,7 +77,7 @@ docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse-docker
 docker run -it deepsparse-docker
 ```
 
-- [Check out the Docker page](docker/) for more details.
+- [Check out the Docker page](https://github.com/neuralmagic/deepsparse/tree/main/docker/) for more details.
 
 #### Install via PyPI
 DeepSparse Community is also available via PyPI. We recommend using a virtual enviornment.
@@ -86,11 +86,11 @@ DeepSparse Community is also available via PyPI. We recommend using a virtual en
 pip install deepsparse
 ```
 
-- [Check out the Installation page](docs/user-guide/installation.md) for optional dependencies.
+- [Check out the Installation page](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md) for optional dependencies.
 
 ## Hardware Support and System Requirements
 
-[Supported Hardware for DeepSparse](docs/user-guide/hardware-support.md)
+[Supported Hardware for DeepSparse](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/hardware-support.md)
 
 DeepSparse is tested on Python versions 3.7-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
 
@@ -146,8 +146,8 @@ print(prediction)
 ```
 
 #### Additional Resources 
-- Check out the [Use Cases Page](docs/use-cases) for more details on supported tasks.
-- Check out the [Pipelines User Guide](docs/user-guide/deepsparse-pipelines.md) for more usage details.
+- Check out the [Use Cases Page](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases) for more details on supported tasks.
+- Check out the [Pipelines User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-pipelines.md) for more usage details.
 
 ### DeepSparse Server
 
@@ -175,8 +175,8 @@ print(response.text)
 ```
 
 #### Additional Resources 
-- Check out the [Use Cases Page](docs/use-cases) for more details on supported tasks.
-- Check out the [Server User Guide](docs/user-guide/deepsparse-server.md) for more usage details.
+- Check out the [Use Cases Page](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases) for more details on supported tasks.
+- Check out the [Server User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-server.md) for more usage details.
 
 ## ONNX
 
@@ -222,13 +222,13 @@ It's highly optimized for minimum per-request latency, using all of the system's
 
 The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them.
 
-- [Check out the Scheduler User Guide](docs/user-guide/scheduler.md) for more details.
+- [Check out the Scheduler User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/scheduler.md) for more details.
 
 ## Additional Resources
-- [Benchmarking Performance](docs/user-guide/deepsparse-benchmarking.md)
-- [User Guide](docs/user-guide)
-- [Use Cases](docs/use-cases)
-- [Cloud Deployments and Demos](examples/)
+- [Benchmarking Performance](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-benchmarking.md)
+- [User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide)
+- [Use Cases](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases)
+- [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples/)
 
 #### Versions
 - [DeepSparse](https://pypi.org/project/deepsparse) | stable
