@@ -289,7 +289,7 @@ resp = requests.post(url=url, json=obj)
 
 # recieve the post-processed output
 print(resp.text)
-# >> {"labels":[["1","0"]],"scores":[[0.9941965341567993,0.005803497973829508]]}
+# >> {"labels":[["positive","negative"]],"scores":[[0.9330279231071472,0.06697207689285278]]}
 ```
 
 ### Cross Use Case Functionality
