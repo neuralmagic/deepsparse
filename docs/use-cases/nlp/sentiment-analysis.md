@@ -93,7 +93,7 @@ Just like Hugging Face Pipelines, DeepSparse Pipelines wrap pre- and post-proces
 This creates a clean API that allows you to pass raw images to DeepSparse and recieve back the post-processed prediction,
 making it easy to add DeepSparse to your application.
 
-We will use the `Pipeline.create()` constructor to create an instance of an image classifcation Pipeline
+We will use the `Pipeline.create()` constructor to create an instance of a sentiment analysis Pipeline
 with a 90% pruned-quantized version of BERT trained on SST2. We can then pass the Pipeline raw text and recieve the predictions. 
 All of the pre-processing (such as tokenizing the input) is handled by the Pipeline.
 
@@ -109,7 +109,7 @@ sa_pipeline = Pipeline.create(
   batch_size=1                 # default batch size is 1
 )
 
-# run inference on image file
+# run inference
 prediction = sa_pipeline("The sentiment analysis pipeline is fast and easy to use")
 print(prediction)
 
