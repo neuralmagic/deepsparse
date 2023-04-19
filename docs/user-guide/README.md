@@ -12,9 +12,7 @@ This page requires [DeepSparse Server installation](installation.md).
 
 ## Performance Benchmarking
 
-DeepSparse's key feature is its performance on commodity CPUs. 
-
-For dense unoptimized models, DeepSparse is competitive with other CPU runtimes like ONNX Runtime. However, when optimization techniques like pruning and quantization are applied to a model, DeepSparse can achieve an order-of-magnitude speedup. 
+DeepSparse's key feature is its performance on commodity CPUs. For dense unoptimized models, DeepSparse is competitive with other CPU runtimes like ONNX Runtime. However, when optimization techniques like pruning and quantization are applied to a model, DeepSparse can achieve an order-of-magnitude speedup. 
 
 As an example, let's compare DeepSparse and ORT's performance on BERT using a [90% pruned-quantized version](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none) in SparseZoo on an AWS `c6i.16xlarge` instance (32 cores).
 
