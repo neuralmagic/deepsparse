@@ -220,7 +220,7 @@ print(response.text)
 - Checkout the [Use Cases Page](docs/use-cases) for more details on supported tasks.
 - Checkout the [Server User Guide](docs/user-guide/deepsparse-server.md) for more usage details.
 
-## ONNX Model
+## ONNX
 
 DeepSparse accepts models in the ONNX format. ONNX models can be passed in one of two ways:
 
