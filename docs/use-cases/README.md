@@ -4,7 +4,7 @@ There are three interfaces for interacting with DeepSparse:
 
 - **Engine** is the lowest-level API that enables you to compile a model and run inference on raw input tensors.
 
-- **Pipeline** is the default DeepSparse API. Similar to Hugging Face Pipelines, it wraps Engine with pre-processing and post-processing steps, allowing you to make requests on raw data and receive post-processed predictions.
+- **Pipeline** is the default DeepSparse API. Similar to Hugging Face Pipelines, it wraps Engine with task-specific pre-processing and post-processing steps, allowing you to make requests on raw data and receive post-processed predictions.
 
 - **Server** is a REST API wrapper around Pipelines built on FastAPI and Uvicorn. It enables you to start a model serving endpoint running DeepSparse with a single CLI.
 
