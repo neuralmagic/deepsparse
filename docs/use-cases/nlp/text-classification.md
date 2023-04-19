@@ -108,7 +108,7 @@ pipeline = Pipeline.create(
 sequences = ["I think DeepSparse Pipelines are awesome!"]
 prediction = pipeline(sequences)
 print(prediction)
-# labels=['0'] scores=[0.9986200332641602]
+# labels=['positive'] scores=[0.9986492991447449]
 
 ```
 
@@ -121,7 +121,6 @@ from deepsparse import Pipeline
 
 # download onnx from sparsezoo and compile with batch size 1
 sparsezoo_stub = "zoo:nlp/text_classification/obert-base/pytorch/huggingface/mnli/pruned90_quant-none"
-batch_size = 1
 pipeline = Pipeline.create(
   task="text-classification",
   model_path=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
@@ -148,7 +147,6 @@ from deepsparse import Pipeline
 
 # download onnx from sparsezoo and compile with batch size 1
 sparsezoo_stub = "zoo:nlp/text_classification/obert-base/pytorch/huggingface/qqp/pruned90_quant-none"
-batch_size = 1
 pipeline = Pipeline.create(
   task="text-classification",
   model_path=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
@@ -166,7 +164,7 @@ print(prediction)
 # labels=['duplicate'] scores=[0.9978139996528625]
 ```
 
-### Single-Input Multi-Label Example (GoEmotions)
+#### Single-Input Multi-Label Example (GoEmotions)
 
 Here's an example with a single input and multi label prediction with a model trained on GoEmotions:
 
@@ -174,7 +172,7 @@ Here's an example with a single input and multi label prediction with a model tr
 from deepsparse import Pipeline
 
 # download onnx from sparsezoo and compile with batch size 1
-sparsezoo_stub = "zoo:nlp/multilabel_text_classification/obert-base/pytorch/huggingface/goemotions/pruned90-none"
+sparsezoo_stub = "zoo:nlp/multilabel_text_classification/obert-base/pytorch/huggingface/goemotions/pruned90_quant-none"
 pipeline = Pipeline.create(
   task="text-classification",
   model_path=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
