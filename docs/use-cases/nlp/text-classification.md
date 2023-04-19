@@ -388,4 +388,4 @@ print(resp.text)
 ```
 ### Cross Use Case Functionality
 
-Check out the [Server User Guide](../../deepsparse-server.md) for more details on configuring the Server.
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
