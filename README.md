@@ -55,20 +55,34 @@ limitations under the License.
 
 DeepSparse is a CPU inference runtime that takes advantage of sparsity within neural networks to execute inferences quickly. Coupled with SparseML, Neural Magic's open-source optimization library, DeepSparse enables you to achieve GPU-class performance on commodity hardware.
 
-
-
+<p align="center">
+   <img alt="SparseML Flow" src="docs/neural-magic-workflow.png" width="60%" />
+</p>
 
 ## Installation
 
-Install DeepSparse Community as follows: 
+DeepSparse is available in two editions: 
+1. **DeepSparse Community** is free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
+2. **DeepSparse Enterprise** requires a [trial license](https://neuralmagic.com/deepsparse-free-trial/) or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+
+### Install via Docker (Recommended)
+
+DeepSparse Community is available via [GitHub container registry](https://github.com/neuralmagic/deepsparse/pkgs/container/deepsparse).
+
+```bash
+sudo docker pull ghcr.io/neuralmagic/deepsparse:1.4.2
+sudo docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse-docker
+sudo docker run -it deepsparse-docker
+```
+
+### Install via PyPI
+DeepSparse Community is also available via PyPI. We recommend using a virtual enviornment.
 
 ```bash
 pip install deepsparse
 ```
 
-DeepSparse is available in two editions: 
-1. [**DeepSparse Community**](#installation) is open-source and free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2. [**DeepSparse Enterprise**](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+Note that there are some optional dependencies. Checkout the [installation page](docs/user-guide/installation.md) for more details.
 
 ## 🧰 Hardware Support and System Requirements
 
