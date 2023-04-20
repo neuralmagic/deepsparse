@@ -1,6 +1,8 @@
 # How to use the scheduler across engine, pipeline, server
-In DeepSparse the scheduler determines the Engine's execution strategy. For most synchronous cases, the default `single_stream` is recommended.
-For running a model server or parallel inferences, try `multi_stream` for
+In DeepSparse the scheduler determines the Engine's execution strategy. A scheduler ensures that cores are kept busy as long as there is work to do. 
+
+For most synchronous cases, the default `single_stream` is recommended.
+For running a model server or parallel inferences, use `multi_stream` for
 maximum utilization of hardware.
 
 The available options are: 
