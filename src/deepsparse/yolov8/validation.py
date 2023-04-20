@@ -89,7 +89,7 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml", "coco128-seg.yaml"]
     help="A subtask of YOLOv8 to run. Default is `detection`.",
 )
 @click.option(
-    "--dataset_path",
+    "--dataset-path",
     type=str,
     default=None,
     help="Path to override default dataset path.",

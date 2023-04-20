@@ -42,12 +42,6 @@ def data_from_dataset_path(data: str, dataset_path: str) -> str:
     :return: a path to the new yaml config file
        (saved in the current working directory)
     """
-    if os.path.basename(dataset_path) != os.path.splitext(data)[0]:
-        raise ValueError(
-            f"Dataset name (`data` argument): {data} "
-            f"does not match the `dataset_path` argument: {dataset_path}. "
-            f"Perhaps try setting `data` to {os.path.basename(dataset_path)}.yaml?"
-        )
     ultralytics_dataset_path = glob.glob(os.path.join(ROOT, "**", data), recursive=True)
     if len(ultralytics_dataset_path) != 1:
         raise ValueError(
