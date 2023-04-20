@@ -113,7 +113,7 @@ COPY --from=build $VENV $VENV
 COPY --from=build deepsparse deepsparse
 ENV PATH="${VENV}/bin:$PATH"
 HEALTHCHECK CMD python -c 'import deepsparse'
-ENTRYPOINT bash
+CMD bash
 
 
 FROM base as prod
@@ -121,5 +121,5 @@ ARG VENV
 COPY --from=build $VENV $VENV
 ENV PATH="${VENV}/bin:$PATH"
 HEALTHCHECK CMD python -c 'import deepsparse'
-ENTRYPOINT bash
+CMD bash
 
