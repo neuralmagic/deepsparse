@@ -34,15 +34,10 @@ docker build --build-arg BRANCH=main -t deepsparse_docker .
 We also provide the following pre-built images with all integration specific 
 dependencies installed:
 
-| Image Name                	| Description                                                            	|
-|---------------------------	|------------------------------------------------------------------------	|
-| deepsparse-base           	| Base DeepSparse image with no integration specific dependencies    	|
-| deepsparse/deepsparse 	    | DeepSparse image with all major integration dependencies installed 	|
-| deepsparse-server         	| DeepSparse image with `[server]` dependencies installed              	|
-| deepsparse-transformers   	| DeepSparse image with all transformer dependencies installed       	|
-| deepsparse-torchvision    	| DeepSparse image with torchvision dependencies installed           	|
-| deepsparse-ultralytics    	|  DeepSparse image with yolov5 and yolov8 dependencies installed    	|
-
+| Image Name      	 | Description                                                        	 |
+|-------------------|----------------------------------------------------------------------|
+| deepsparse-base 	 | Base DeepSparse image with no integration specific dependencies    	 |
+| deepsparse      	 | DeepSparse image with all major integration dependencies installed 	 |
 
 To build a development image for a specific branch use the  following  command:
 
