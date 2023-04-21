@@ -15,9 +15,15 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
+from deepsparse.loggers.config import (
+    MetricFunctionConfig,
+    PipelineSystemLoggingConfig,
+    SystemLoggingConfig,
+    SystemLoggingGroup,
+)
 from deepsparse.tasks import SupportedTasks
 
 
@@ -48,6 +54,27 @@ class ImageSizesConfig(BaseModel):
     )
 
 
+class ServerSystemLoggingConfig(SystemLoggingConfig):
+    """
+    A configuration that specifies system group metrics
+    that pertain to the Deepsparse Server.
+    """
+
+    request_details: SystemLoggingGroup = Field(
+        default=SystemLoggingGroup(enable=False),
+        description="The configuration group for the request_details system "
+        "logging group. For details refer to the DeepSparse server "
+        "system logging documentation. By default this group is disabled.",
+    )
+
+    resource_utilization: SystemLoggingGroup = Field(
+        default=SystemLoggingGroup(enable=False),
+        description="The configuration group for the request_details system "
+        "logging group. For details refer to the DeepSparse server "
+        "system logging documentation. By default this group is disabled.",
+    )
+
+
 class EndpointConfig(BaseModel):
     name: Optional[str] = Field(
         default=None,
@@ -70,6 +97,21 @@ class EndpointConfig(BaseModel):
 
     batch_size: int = Field(
         default=1, description="The batch size to compile the model for."
+    )
+
+    logging_config: PipelineSystemLoggingConfig = Field(
+        default=PipelineSystemLoggingConfig(),
+        description="A model that holds the endpoint (pipeline) logging configuration. "
+        "If not specified explicitly in the yaml config, the "
+        "default PipelineSystemLoggingConfig model is used.",
+    )
+
+    data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(
+        default=None,
+        description="Specifies the rules for the data logging. "
+        "It relates a key (name of the logging target) "
+        "to a list of metric functions that are to be applied"
+        "to this target prior to logging.",
     )
 
     bucketing: Optional[Union[ImageSizesConfig, SequenceLengthsConfig]] = Field(
@@ -144,15 +186,59 @@ class ServerConfig(BaseModel):
 
     endpoints: List[EndpointConfig] = Field(description="The models to serve.")
 
-    loggers: Union[Dict[str, Dict[str, Any]], str, None] = Field(
-        default=None,
+    loggers: Dict[str, Optional[Dict[str, Any]]] = Field(
+        default={},
         description=(
             "Optional dictionary of logger integration names to initialization kwargs."
-            " Set to 'default' for default logger based on deployment. Set to None for"
-            " no loggers. Default is `None`. Example: "
-            "{'prometheus': {'port': 8001}}."
+            "Set to {} for no loggers. Default is {}."
         ),
     )
+
+    system_logging: ServerSystemLoggingConfig = Field(
+        default_factory=ServerSystemLoggingConfig,
+        description="A model that holds the system logging configuration. "
+        "If not specified explicitly in the yaml config, the "
+        "default SystemLoggingConfig model is used.",
+    )
+
+    @validator("endpoints")
+    def assert_unique_endpoint_names(
+        cls, endpoints: List[EndpointConfig]
+    ) -> List[EndpointConfig]:
+        name_list = []
+        for endpoint in endpoints:
+            name = endpoint.name
+            if name is None:
+                continue
+            if name in name_list:
+                raise ValueError(
+                    "Endpoint names must be unique if specified. "
+                    "Found a duplicated endpoint name: {}".format(name)
+                )
+            name_list.append(name)
+        return endpoints
+
+    @validator("endpoints")
+    def set_unique_endpoint_names(
+        cls, endpoints: List[EndpointConfig]
+    ) -> List[EndpointConfig]:
+        """
+        Assert that the endpoints in ServerConfig have unique names.
+        If endpoint does not have a `name` specified, the endpoint is
+        named `{task_name}-{idx}`.
+
+        :param endpoints: configuration of server's endpoints
+        :return: configuration of server's endpoints
+        """
+        counter_task_name_used = {endpoint.task: 0 for endpoint in endpoints}
+        # make sure that the endpoints in ServerConfig have unique names.
+        for endpoint_config in endpoints:
+            if endpoint_config.name is None:
+                task_name = endpoint_config.task
+                idx = counter_task_name_used[task_name]
+                counter_task_name_used[task_name] += 1
+                endpoint_config.name = f"{endpoint_config.task}-{idx}"
+        return endpoints
 
 
 def endpoint_diff(

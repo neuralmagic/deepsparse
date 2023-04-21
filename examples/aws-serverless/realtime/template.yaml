@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: This stack creates an HTTP Endpoint on API Gateway via Lambda
+
+Resources:
+  DeepSparseEndpoint:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageUri: deepsparseendpoint:python3.8-v1
+      MemorySize: 2000
+      Timeout: 300
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEndpoint:
+          Type: HttpApi
+          Properties:
+            Path: /inference
+            Method: post
+            TimeoutInMillis: 29000
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: ./app
+      DockerTag: python3.8-v1
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lambda-role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+
+Outputs:
+  InferenceApi:
+    Description: "API Gateway endpoint URL for Prod stage for inference function"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/inference"

@@ -1,0 +1,3 @@
+identifier:text_classification/pipeline_inputs.sequences__string_length, value:21, category:MetricCategories.DATA
+identifier:text_classification/pipeline_outputs.labels__predicted_classes, value:['LABEL_0'], category:MetricCategories.DATA
+identifier:text_classification/pipeline_outputs.scores__predicted_top_score, value:0.5907761454582214, category:MetricCategories.DATA

@@ -18,7 +18,6 @@ import numpy
 
 import cv2
 import torch
-import torch.nn.functional as F
 from deepsparse.yolact.schemas import YOLACTOutputSchema
 from deepsparse.yolo.utils.utils import _get_color, _plot_fps
 
@@ -70,8 +69,6 @@ def annotate_image(
 
     image_res = copy.copy(image)
 
-    masks, boxes = _resize_to_fit_img(image, masks, boxes)
-
     for box, mask, class_, score in zip(boxes, masks, classes, scores):
         if score > score_threshold:
             color = _get_color(class_)
@@ -107,7 +104,8 @@ def annotate_image(
 def _put_mask(
     image: numpy.ndarray, mask: torch.Tensor, color: Tuple[int, int, int]
 ) -> numpy.ndarray:
-
+    if not isinstance(mask, torch.Tensor):
+        mask = torch.from_numpy(mask)
     img_with_mask = torch.where(
         mask[..., None].type(torch.uint8),
         torch.from_numpy(numpy.array(color)).cpu().type(torch.uint8),
@@ -204,31 +202,3 @@ def _sanitize_coordinates(
     numpy.clip(x2 + padding, a_min=None, a_max=img_size, out=x2)
 
     return x1, x2
-
-
-def _resize_to_fit_img(
-    original_image: numpy.ndarray, masks: numpy.ndarray, boxes: numpy.ndarray
-) -> Tuple[numpy.ndarray, numpy.ndarray]:
-    # Ported from from
-    # https://github.com/neuralmagic/yolact/blob/master/layers/output_utils.py
-    h, w, _ = original_image.shape
-
-    # Resize the masks
-    masks = F.interpolate(
-        torch.from_numpy(masks).cpu().unsqueeze(0),
-        (h, w),
-        mode="bilinear",
-        align_corners=False,
-    ).squeeze(0)
-
-    # Binarize the masks
-    masks.gt_(0.5)
-
-    # Reshape the bounding boxes
-    boxes = numpy.stack(boxes)
-
-    boxes[:, 0], boxes[:, 2] = _sanitize_coordinates(boxes[:, 0], boxes[:, 2], w)
-    boxes[:, 1], boxes[:, 3] = _sanitize_coordinates(boxes[:, 1], boxes[:, 3], h)
-    boxes = boxes.astype(numpy.int64)
-
-    return masks, boxes

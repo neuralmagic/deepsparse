@@ -11,198 +11,250 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+Implementation of the Prometheus Logger
+"""
 import logging
 import os
+import re
+import warnings
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Type, Union
 
-from deepsparse.loggers.base_logger import BaseLogger
-from prometheus_client import REGISTRY, Histogram, start_http_server, write_to_textfile
+from deepsparse.loggers import BaseLogger, MetricCategories, SystemGroups
+from deepsparse.loggers.helpers import unwrap_logged_value
+
+
+try:
+    from prometheus_client import (
+        REGISTRY,
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        Summary,
+        start_http_server,
+        write_to_textfile,
+    )
+
+    prometheus_import_error = None
+except Exception as prometheus_import_err:
+    REGISTRY = None
+    Summary = None
+    Histogram = None
+    Gauge = None
+    Counter = None
+    CollectorRegistry = None
+    start_http_server = None
+    write_to_textfile = None
+    prometheus_import_error = prometheus_import_err
 
 
 __all__ = ["PrometheusLogger"]
 
 _LOGGER = logging.getLogger(__name__)
 
+_NAMESPACE = "deepsparse"
+_PrometheusMetric = Union[Histogram, Gauge, Summary, Counter]
+_IDENTIFIER_TO_METRIC_TYPE = {
+    "prediction_latency": Histogram,
+    SystemGroups.RESOURCE_UTILIZATION: Gauge,
+    f"{SystemGroups.REQUEST_DETAILS}/successful_request": Counter,
+    f"{SystemGroups.REQUEST_DETAILS}/input_batch_size": Histogram,
+}
+_SUPPORTED_DATA_TYPES = (int, float)
+_DESCRIPTION = (
+    "{metric_name} metric for identifier: {identifier} | Category: {category}"
+)
+
 
 class PrometheusLogger(BaseLogger):
     """
-    Logger that uses the official Prometheus python client
-    (https://github.com/prometheus/client_python) to monitor the
-    inference pipeline
+    DeepSparse logger that continuously exposes the collected logs over the
+    Prometheus python client at the specified port.
 
-    :param port: the port used by the client. Default is 8000
+    :param port: the port used by the client. Default is 6100
+    :param text_log_save_frequency: the frequency of saving the text log
+        files. E.g. if `text_log_save_frequency` = 10, text logs are
+        exported after every tenth forward pass. Default set to 10
     :param text_log_save_dir: the directory where the text log files
         are saved. By default, the python working directory
-    :param text_log_save_freq: the frequency of saving the text log
-        files. E.g. if `text_log_save_freq` = 10, text logs are dumped
-        after every tenth forward pass (the number of forward passes
-        equals the number of times `log_latency` method is called).
     :param text_log_file_name: the name of the text log file.
-        Default: `prometheus_logs.prom`.
+        Default: `prometheus_logs.prom`
     """
 
     def __init__(
         self,
         port: int = 6100,
+        text_log_save_frequency: int = 10,
         text_log_save_dir: str = os.getcwd(),
-        text_log_save_freq: int = 10,
         text_log_file_name: Optional[str] = None,
     ):
+        _check_prometheus_import()
+
         self.port = port
-        self.text_log_save_freq = text_log_save_freq
+        self.text_log_save_frequency = text_log_save_frequency
         self.text_log_save_dir = text_log_save_dir
-        self.text_log_file_name = text_log_file_name or f"{self.identifier}_logs.prom"
-        self._setup_client()
-
-        # the data structure responsible for the instrumentation
-        # of the metrics
-        self.metrics = defaultdict(lambda: defaultdict(str))
-        # internal counter tracking the number of calls per each
-        # pipeline i.e. self._counter: Dict[str, int]
-        self._counter = {}
-
-        super().__init__()
-
-    def __str__(self):
-        return (
-            f"{self.__class__.__name__}(port={self.port}, text_log_save_dir="
-            f"{self.text_log_save_dir}, text_log_save_freq={self.text_log_save_freq}, "
-            f"text_log_file_name={self.text_log_file_name})"
+        self.text_log_file_path = os.path.join(
+            text_log_save_dir, text_log_file_name or "prometheus_logs.prom"
         )
+        self._prometheus_metrics = defaultdict(str)
 
-    @property
-    def identifier(self) -> str:
-        return "prometheus"
+        self._setup_client()
+        self._counter = 0
 
-    @property
-    def text_logs_path(self) -> str:
+    def log(self, identifier: str, value: Any, category: MetricCategories, **kwargs):
         """
-        :return: The path to the text file with logs
+        Collect information from the pipeline and pipe it them to the stdout
+
+        :param identifier: The name of the thing that is being logged.
+        :param value: The data structure that the logger is logging
+        :param category: The metric category that the log belongs to
+        :param kwargs: Additional keyword arguments to pass to the logger
         """
-        return os.path.join(self.text_log_save_dir, self.text_log_file_name)
 
-    @property
-    def counter(self) -> int:
-        """
-        While self._counter collects the number of forward passes per
-        pipeline inference, self.counter returns a sum of all the calls
-
-        :return: The total amount of times the logger has been called by
-            any pipeline
-        """
-        return sum(self._counter.values())
-
-    def log_latency(
-        self,
-        pipeline_name: str,
-        inference_timing: "InferenceTimingSchema",  # noqa F821
-    ):
-        """
-        Continuously logs the inference pipeline latencies
-
-        :param pipeline_name: The name of the inference pipeline from which the
-            logger consumes the inference information to be monitored
-        :param inference_timing: Pydantic model that contains information
-            about time deltas of various processes within the inference pipeline
-        """
-        if pipeline_name not in self.metrics:
-            # will be run on the first digestion of
-            # inference_timing data for the given pipeline
-            self._setup_metrics(pipeline_name, inference_timing)
-
-        self._assert_incoming_data_consistency(pipeline_name, inference_timing)
-
-        for metric_name, value_to_log in dict(inference_timing).items():
-            self._log_latency(
-                metric_name=metric_name,
-                value_to_log=value_to_log,
-                pipeline_name=pipeline_name,
+        pipeline_name = kwargs.get("pipeline_name")
+        for identifier, value in unwrap_logged_value(value, identifier):
+            prometheus_metric = self._get_prometheus_metric(
+                identifier, category, **kwargs
             )
-
-        self._update_call_count(pipeline_name)
+            if prometheus_metric is None:
+                warnings.warn(
+                    f"The identifier {identifier} cannot be matched with any "
+                    f"of the Prometheus metrics and will be ignored."
+                )
+                return
+            if pipeline_name:
+                prometheus_metric.labels(pipeline_name=pipeline_name).observe(
+                    self._validate(value)
+                )
+            else:
+                prometheus_metric.observe(self._validate(value))
         self._export_metrics_to_textfile()
 
-    def log_data(self, pipeline_name: str, inputs: Any, outputs: Any):
-        """
+    def _get_prometheus_metric(
+        self,
+        identifier: str,
+        category: MetricCategories,
+        **kwargs,
+    ) -> Optional[_PrometheusMetric]:
+        saved_metric = self._prometheus_metrics.get(identifier)
+        if saved_metric is None:
+            return self._add_metric_to_registry(identifier, category, **kwargs)
+        return saved_metric
 
-        :param pipeline_name: The name of the inference pipeline from which the
-            logger consumes the inference information to be monitored
-        :param inputs: the data received and consumed by the inference
-            pipeline
-        :param outputs: the data returned by the inference pipeline
-        """
-        pass
+    def _add_metric_to_registry(
+        self,
+        identifier: str,
+        category: str,
+        **kwargs,
+    ) -> Optional[_PrometheusMetric]:
+        # add a new metric to the registry
+        prometheus_metric = get_prometheus_metric(
+            identifier, category, REGISTRY, **kwargs
+        )
+        self._prometheus_metrics[identifier] = prometheus_metric
+        return prometheus_metric
 
-    def _log_latency(self, metric_name: str, value_to_log: float, pipeline_name: str):
-        """
-        Logs the latency value of a given metric
+    def __str__(self):
+        logger_info = f"  port: {self.port}"
+        return f"{self.__class__.__name__}:\n{logger_info}"
 
-        :param metric_name: Name of the metric
-        :param value_to_log: Time delta to be logged [in seconds]
-        """
-        histogram = self.metrics[pipeline_name][metric_name]
-        histogram.observe(value_to_log)
+    def _export_metrics_to_textfile(self):
+        # export the metrics to a text file with
+        # the specified frequency
+        os.makedirs(self.text_log_save_dir, exist_ok=True)
+        if self._counter % self.text_log_save_frequency == 0:
+            write_to_textfile(self.text_log_file_path, REGISTRY)
+            self._counter = 0
+        self._counter += 1
 
     def _setup_client(self):
-        """
-        Starts the Prometheus client
-        """
+        # starts the Prometheus client
         start_http_server(port=self.port)
         _LOGGER.info(f"Prometheus client: started. Using port: {self.port}.")
 
-    def _setup_metrics(
-        self, pipeline_name: str, inference_timing: "InferenceTimingSchema"  # noqa F821
-    ):
-        """
-        Sets up the set of metrics that the logger will expect
-        to receive continuously
-
-        :param inference_timing: Pydantic model that contains information
-            about time deltas processes within the inference pipeline
-        """
-        # set multiple Histograms to track latencies
-        # per Prometheus docs:
-        # Histograms track the size and number of events in buckets
-        for field_name, field_data in inference_timing.__fields__.items():
-            field_description = field_data.field_info.description
-            metric_name = (
-                f"{pipeline_name}:{field_name}".strip()
-                .replace(" ", "-")
-                .replace("-", "_")
-            )
-            self.metrics[pipeline_name][field_name] = Histogram(
-                metric_name, field_description, registry=REGISTRY
-            )
-        _LOGGER.info(
-            f"Prometheus client: set the metrics to track pipeline: {pipeline_name}. "
-            f"Added metrics: {[metric for metric in self.metrics[pipeline_name]]}"
-        )
-
-    def _export_metrics_to_textfile(self):
-        if self.counter % self.text_log_save_freq == 0:
-            write_to_textfile(self.text_logs_path, REGISTRY)
-
-    def _update_call_count(self, pipeline_name: str):
-        if pipeline_name in self._counter:
-            self._counter[pipeline_name] += 1
-        else:
-            self._counter[pipeline_name] = 1
-
-    def _assert_incoming_data_consistency(
-        self, pipeline_name: str, inference_timing: "InferenceTimingSchema"  # noqa F821
-    ):
-        # once the metrics for the given pipepline have been setup,
-        # make sure that the incoming `inference_timing` data
-        # is consistent with the expected tracked metrics
-        pipeline_metrics = self.metrics[pipeline_name]
-        expected_metrics_names = {metric_name for metric_name in pipeline_metrics}
-        received_metric_names = set(list(dict(inference_timing).keys()))
-        if expected_metrics_names != received_metric_names:
+    def _validate(self, value: Any) -> Any:
+        # make sure we are passing a value that is
+        # a valid metric by prometheus client's standards
+        if not isinstance(value, _SUPPORTED_DATA_TYPES):
             raise ValueError(
-                f"Prometheus client: the received metrics "
-                f"for the pipeline: {pipeline_name} "
-                "are different from the expected. "
-                f"Expected to receive metrics: {expected_metrics_names}, "
-                f"but received {received_metric_names}"
+                "Prometheus logger expects the incoming values "
+                f"to be one of the type: {_SUPPORTED_DATA_TYPES}, "
+                f"but received: {type(value)}"
             )
+        return value
+
+
+def get_prometheus_metric(
+    identifier: str, category: MetricCategories, registry: CollectorRegistry, **kwargs
+) -> Optional["MetricWrapperBase"]:  # noqa: F821
+    """
+    Get a Prometheus metric object for the given identifier and category.
+
+    :param identifier: The name of the thing that is being logged.
+    :param category: The metric category that the log belongs to
+    :param registry: The Prometheus registry to which the metric should be added
+    :return: The Prometheus metric object or None if the identifier not supported
+    """
+    if category == MetricCategories.SYSTEM:
+        metric = _get_metric_from_the_mapping(identifier)
+    else:
+        metric = Summary
+
+    if metric is None:
+        return None
+
+    pipeline_name = kwargs.get("pipeline_name")
+    return metric(
+        name=format_identifier(identifier),
+        documentation=_DESCRIPTION.format(
+            metric_name=metric._type, identifier=identifier, category=category
+        ),
+        labelnames=["pipeline_name"] if pipeline_name else [],
+        registry=registry,
+    )
+
+
+def _get_metric_from_the_mapping(
+    identifier: str, metric_type_mapping: Dict[str, str] = _IDENTIFIER_TO_METRIC_TYPE
+) -> Optional[Type["MetricWrapperBase"]]:  # noqa: F821
+    for system_group_name, metric_type in metric_type_mapping.items():
+        """
+        Attempts to get the metric type given the identifier and system_group_name.
+        There are two cases:
+        Case 1) If system_group_name contains both the group name and the identifier,
+            e.g. "request_details/successful_request", the match requires the identifier
+            to end with the system_group_name,
+            e.g. "pipeline_name/request_details/successful_request".
+        Case 2) If system_group_name contains only the group name,
+            e.g. "prediction_latency",
+            the match requires the system_group_name to be
+            contained within the identifier
+            e.g. prediction_latency/pipeline_inputs
+        """
+        if ("/" in system_group_name and identifier.endswith(system_group_name)) or (
+            system_group_name in identifier
+        ):
+            return metric_type
+
+
+def format_identifier(identifier: str, namespace: str = _NAMESPACE) -> str:
+    """
+    Replace forbidden characters with `__` so that the identifier
+    digested by prometheus adheres to
+    https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels
+    :param identifier: The identifier to be formatted
+    :return: The formatted identifier
+    """
+    return f"{namespace}_{re.sub(r'[^a-zA-Z0-9_]', '__', identifier).lower()}"
+
+
+def _check_prometheus_import():
+    if prometheus_import_error is not None:
+        _LOGGER.error(
+            "Attempting to instantiate a PrometheusLogger object but unable to import "
+            "prometheus. Check that prometheus requirements have been installed"
+        )
+        raise prometheus_import_error

@@ -1,3 +1,6 @@
+"""
+Base implementation of the logger
+"""
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +16,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any
-
-
-__all__ = ["BaseLogger"]
+from typing import Any, Optional
 
 
 class BaseLogger(ABC):
@@ -25,40 +25,21 @@ class BaseLogger(ABC):
     for the loggers that support various monitoring services APIs.
     """
 
-    def __init__(self):
-        pass
-
-    @property
     @abstractmethod
-    def identifier(self) -> str:
-        """
-        :return: The name of the monitoring service that the
-        BaseLogger uses to log the inference data
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def log_latency(
-        self, pipeline_name: str, inference_timing: "InferenceTimingSchema"  # noqa F821
+    def log(
+        self, identifier: str, value: Any, category: Optional[str] = None, **kwargs
     ):
         """
-        Logs the inference latency information to the appropriate monitoring service
-        :param pipeline_name: The name of the inference pipeline from which the
-            logger consumes the inference information to be monitored
-        :param inference_timing: pydantic model that holds the information about
-            the inference latency of a forward pass
+        The main method to collect information from the pipeline
+        and then possibly process the information and pass it to
+        the monitoring service
+
+        :param identifier: The name of the item that is being logged.
+        :param value: The data structure that is logged
+        :param category: The metric category that the log belongs to
+        :param kwargs: Additional keyword arguments to pass to the logger
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def log_data(self, pipeline_name: str, inputs: Any, outputs: Any):
-        """
-        Logs the inference inputs and outputs to the appropriate monitoring service
-
-        :param pipeline_name: The name of the inference pipeline from which the
-            logger consumes the inference information to be monitored
-        :param inputs: the data received and consumed by the inference
-            pipeline
-        :param outputs: the data returned by the inference pipeline
-        """
-        raise NotImplementedError()
+    def __str__(self):
+        return f"{self.__class__.__name__}"

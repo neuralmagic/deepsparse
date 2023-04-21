@@ -12,85 +12,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Helper functions for deepsparse.server
-"""
+from typing import Dict, List, Optional
+
+from deepsparse import (
+    BaseLogger,
+    build_logger,
+    get_target_identifier,
+    system_logging_config_to_groups,
+)
+from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingGroup
+from deepsparse.server.config import EndpointConfig, ServerConfig
 
 
-import logging
-from typing import Any, Dict, Union
-
-import yaml
-
-from deepsparse.loggers import ManagerLogger, PrometheusLogger
+__all__ = ["server_logger_from_config"]
 
 
-__all__ = [
-    "default_logger_manager",
-    "logger_manager_from_config",
-]
-
-
-_LOGGER = logging.getLogger(__name__)
-_SUPPORTED_LOGGERS = {"prometheus": PrometheusLogger}
-
-
-def default_logger_manager() -> ManagerLogger:
+def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     """
-    :return: default ManagerLogger object for the deployment scenario
+    Builds a DeepSparse Server logger from the ServerConfig.
+
+    :param config: the Server configuration model.
+        This configuration by default contains three fields relevant
+        for the instantiation of a Server logger:
+        - ServerConfig.loggers: this is a configuration of the
+            "leaf" loggers (that log information to the end destination)
+            that will be used by the Server logger
+        - ServerConfig.data_logging: this is a configuration of
+            the function loggers, responsible for system logging
+            functionality. If present, those function logger wrap
+            around the appropriate "leaf" loggers.
+        - ServerConfig.endpoints: this is a configuration of the
+            endpoints that the Server will serve. Each endpoint
+            can have its own data_logging configuration, which
+            will be merged parsed out by the logic of this function
+    :return: a DeepSparse logger instance
     """
-    # always return prometheus logger for now
-    logger = PrometheusLogger()
-    _LOGGER.info(f"Created default logger {logger}")
-    return ManagerLogger(logger)
+
+    system_logging_groups = _extract_system_logging_from_endpoints(config.endpoints)
+    system_logging_groups.update(system_logging_config_to_groups(config.system_logging))
+
+    return build_logger(
+        system_logging_config=system_logging_groups,
+        loggers_config=config.loggers,
+        data_logging_config=_extract_data_logging_from_endpoints(config.endpoints),
+    )
 
 
-def logger_manager_from_config(
-    config: Union[str, Dict[str, Dict[str, Any]]]
-) -> ManagerLogger:
-    """
-    Initializes a ManagerLogger from loggers defined by a yaml config file
-    or loaded dictionary
-
-    Config should be a logger integration name, followed by its initialization
-    kwargs as a dict
-
-    supported logger integrations:
-    ["prometheus"]
-
-    example config:
-
-    ```yaml
-    prometheus:
-        port: 8001
-        text_log_save_dir: /home/deepsparse-server/prometheus
-        text_log_save_freq: 30
-    ```
-
-    :param config: path to YAML config file or dictionary config
-    :return: constructed ManagerLogger object
-    """
-    if isinstance(config, str):
-        with open(config) as config_reader:
-            config = yaml.safe_load(config_reader)
-
-        if not isinstance(config, dict):
-            raise ValueError(
-                "Loggers config must be a yaml dict, loaded object of "
-                f"type {type(config)}"
+def _extract_system_logging_from_endpoints(
+    endpoints: List[EndpointConfig],
+) -> Dict[str, SystemLoggingGroup]:
+    system_logging_groups = {}
+    for endpoint in endpoints:
+        if endpoint.logging_config is None:
+            continue
+        system_logging_groups.update(
+            system_logging_config_to_groups(
+                endpoint.logging_config, endpoint_name=endpoint.name
             )
+        )
+    return system_logging_groups
 
-    loggers = []
 
-    for integration, logger_kwargs in config.items():
-        logger_class = _SUPPORTED_LOGGERS.get(integration.lower())
-        if logger_class is None:
-            raise ValueError(
-                f"Unknown logger integration {integration}. Supported integrations: "
-                f"{list(_SUPPORTED_LOGGERS)}"
+def _extract_data_logging_from_endpoints(
+    endpoints: List[EndpointConfig],
+) -> Optional[Dict[str, List[MetricFunctionConfig]]]:
+    data_logging = {}
+    for endpoint in endpoints:
+        if endpoint.data_logging is None:
+            continue
+        for target, metric_functions in endpoint.data_logging.items():
+            # if needed, get the new target identifier from
+            # the target and the endpoint name
+            new_target = get_target_identifier(
+                target_name=target, pipeline_identifier=endpoint.name
             )
-        logger = logger_class(**logger_kwargs)
-        _LOGGER.info(f"Created logger {logger}")
-        loggers.append(logger)
-
-    return ManagerLogger(loggers=loggers)
+            data_logging[new_target] = metric_functions
+    # if no data logging data specified, return None
+    return data_logging if data_logging else None

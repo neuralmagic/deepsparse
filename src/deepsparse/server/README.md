@@ -16,13 +16,13 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
 
   Start a DeepSparse inference server for serving the models and pipelines.
 
-      1. `deepsparse.server config [OPTIONS] <config path>`
+      1. `deepsparse.server --config_file [OPTIONS] <config path>`
 
       2. `deepsparse.server task [OPTIONS] <task>
 
   Examples for using the server:
 
-      `deepsparse.server config server-config.yaml`
+      `deepsparse.server --config_file server-config.yaml`
 
       `deepsparse.server task question_answering --batch-size 2`
 
@@ -54,7 +54,7 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
     prometheus:
         port: 6100
         text_log_save_dir: /home/deepsparse-server/prometheus
-        text_log_save_freq: 30
+        text_log_save_frequency: 30
   endpoints:
     - task: question_answering
       ...

@@ -16,10 +16,12 @@ import contextlib
 import logging
 import os
 import tempfile
-from typing import List, Optional, Union
+from tempfile import NamedTemporaryFile
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
+from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
 from deepsparse.utils.extractor import Extractor
 
@@ -33,9 +35,7 @@ except Exception as sparsezoo_err:
     File = object
     sparsezoo_import_error = sparsezoo_err
 
-
 __all__ = [
-    "ONNX_TENSOR_TYPE_MAP",
     "model_to_path",
     "get_external_inputs",
     "get_external_outputs",
@@ -45,26 +45,51 @@ __all__ = [
     "override_onnx_batch_size",
     "override_onnx_input_shapes",
     "truncate_onnx_model",
+    "truncate_onnx_embedding_model",
 ]
 
 _LOGGER = logging.getLogger(__name__)
 
-ONNX_TENSOR_TYPE_MAP = {
-    1: numpy.float32,
-    2: numpy.uint8,
-    3: numpy.int8,
-    4: numpy.uint16,
-    5: numpy.int16,
-    6: numpy.int32,
-    7: numpy.int64,
-    9: numpy.bool_,
-    10: numpy.float16,
-    11: numpy.float64,
-    12: numpy.uint32,
-    13: numpy.uint64,
-    14: numpy.complex64,
-    15: numpy.complex128,
-}
+
+def save_onnx(model: Model, model_path: str, external_data_file: str) -> bool:
+    """
+    Save model to the given path.  If the model has external data, store the
+    external data in 'external_data_file'.
+    Returns False if the model had no external data, True otherwise.
+    """
+    if model.ByteSize() < onnx.checker.MAXIMUM_PROTOBUF:
+        onnx.save(model, model_path)
+        return False
+    else:
+        onnx.save_model(
+            model,
+            model_path,
+            save_as_external_data=True,
+            all_tensors_to_one_file=True,
+            location=external_data_file,
+        )
+        return True
+
+
+@contextlib.contextmanager
+def save_onnx_to_temp_files(model: Model) -> str:
+    """
+    Save model to a temporary file.  Works for models with external data.
+    """
+    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
+    external_data = next(tempfile._get_candidate_names())
+    has_external_data = save_onnx(model, shaped_model.name, external_data)
+
+    try:
+        yield shaped_model.name
+    finally:
+        os.unlink(shaped_model.name)
+        shaped_model.close()
+        if has_external_data:
+            external_data_path = os.path.join(
+                os.path.dirname(shaped_model.name), external_data
+            )
+            os.unlink(external_data_path)
 
 
 def translate_onnx_type_to_numpy(tensor_type: int):
@@ -73,9 +98,9 @@ def translate_onnx_type_to_numpy(tensor_type: int):
     :param tensor_type: Integer representing a type in ONNX spec
     :return: Corresponding numpy type
     """
-    if tensor_type not in ONNX_TENSOR_TYPE_MAP:
+    if tensor_type not in TENSOR_TYPE_TO_NP_TYPE:
         raise Exception("Unknown ONNX tensor type = {}".format(tensor_type))
-    return ONNX_TENSOR_TYPE_MAP[tensor_type]
+    return TENSOR_TYPE_TO_NP_TYPE[tensor_type]
 
 
 def model_to_path(model: Union[str, Model, File]) -> str:
@@ -185,7 +210,6 @@ def generate_random_inputs(
     return input_data_list
 
 
-@contextlib.contextmanager
 def override_onnx_batch_size(onnx_filepath: str, batch_size: int) -> str:
     """
     Rewrite batch sizes of ONNX model, saving the modified model and returning its path
@@ -203,17 +227,9 @@ def override_onnx_batch_size(onnx_filepath: str, batch_size: int) -> str:
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
     # Save modified model, this will be cleaned up when context is exited
-    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    onnx.save(model, shaped_model.name)
-
-    try:
-        yield shaped_model.name
-    finally:
-        os.unlink(shaped_model.name)
-        shaped_model.close()
+    return save_onnx_to_temp_files(model)
 
 
-@contextlib.contextmanager
 def override_onnx_input_shapes(
     onnx_filepath: str, input_shapes: Union[List[int], List[List[int]]]
 ) -> str:
@@ -235,7 +251,8 @@ def override_onnx_input_shapes(
     ]
 
     # Input shapes should be a list of lists, even if there is only one input
-    assert all(isinstance(inp, list) for inp in input_shapes)
+    if not all(isinstance(inp, list) for inp in input_shapes):
+        input_shapes = [input_shapes]
 
     # If there is a single input shape given and multiple inputs,
     # duplicate for all inputs to apply the same shape
@@ -262,14 +279,7 @@ def override_onnx_input_shapes(
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
     # Save modified model, this will be cleaned up when context is exited
-    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    onnx.save(model, shaped_model.name)
-
-    try:
-        yield shaped_model.name
-    finally:
-        os.unlink(shaped_model.name)
-        shaped_model.close()
+    return save_onnx_to_temp_files(model)
 
 
 def truncate_onnx_model(
@@ -286,13 +296,12 @@ def truncate_onnx_model(
         outputs of the graph
     :param graph_output_names: list of names to call the graph outputs. Names
         correspond with the outputs specified in final_node_names
-    :param graph_output_types: list of numpy dtypes
     :param graph_output_shapes: list of shapes for each output. If not provided,
         defaults to [None] for each output and leads to slight performance loss
     :return: None
     """
     if graph_output_shapes is None:
-        graph_output_shapes = [[None]] * len(final_node_names)
+        graph_output_shapes = [None] * len(final_node_names)
 
     if len(final_node_names) != len(graph_output_names) != len(graph_output_shapes):
         raise ValueError(
@@ -342,6 +351,70 @@ def truncate_onnx_model(
         f"{extracted_num_nodes} remaining"
     )
 
+    for output in extracted_model.graph.output:
+        if len(output.type.tensor_type.shape.dim) == 0:
+            # ONNX checker treats None shapes and empty shapes
+            # differently, clear None shape to pass checker
+            output.type.tensor_type.shape.Clear()
+
     # save and check model
-    onnx.save(extracted_model, output_filepath)
+    save_onnx(extracted_model, output_filepath, "external_data")
     onnx.checker.check_model(output_filepath)
+
+
+def truncate_onnx_embedding_model(
+    model_path: str,
+    emb_extraction_layer: Union[int, str, None] = None,
+    output_filepath: Optional[str] = None,
+) -> Tuple[str, Optional[NamedTemporaryFile]]:
+    """
+     :param model_path: path of onnx file to be cut
+    :param emb_extraction_layer: if an int, last layer to include. If a
+        string, then the name of the last node in the truncated graph.
+        default is None.
+    :param output_filepath: path to write resulting onnx file. If not provided,
+        will create a temporary file path that will be destroyed on program end
+    :return: if no output path, a tuple of the saved path to the model, list of
+        model output names, and reference to the tempfile object will be returned
+        otherwise, a tuple containing the given output_path argument, the model
+        output names, and None
+    """
+
+    tmp_file = None
+    if output_filepath is None:
+        tmp_file = NamedTemporaryFile()
+        output_filepath = tmp_file.name
+
+    # determine where to cut the model
+    model = onnx.load(model_path)
+    if isinstance(emb_extraction_layer, str):
+        final_node = None
+        for graph_node in model.graph.node:
+            if graph_node.name == emb_extraction_layer:
+                final_node = graph_node
+
+        if final_node is None:
+            raise RuntimeError(
+                f"Unable to find node {emb_extraction_layer} for extraction in graph"
+            )
+
+        final_node_name = final_node.name
+        graph_output_name = final_node.output[0]
+    else:
+        final_node_name = model.graph.node[emb_extraction_layer].name
+        graph_output_name = model.graph.node[emb_extraction_layer].output[0]
+
+        if final_node_name is None:
+            raise ValueError(
+                f"Node at index {emb_extraction_layer} does not have a name set"
+            )
+
+    truncate_onnx_model(
+        onnx_filepath=model_path,
+        output_filepath=output_filepath,
+        final_node_names=[final_node_name],
+        graph_output_names=[graph_output_name],
+        graph_output_shapes=None,
+    )
+
+    return output_filepath, tmp_file

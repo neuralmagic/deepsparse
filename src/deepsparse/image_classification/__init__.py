@@ -18,14 +18,29 @@ import logging as _logging
 import warnings
 from collections import namedtuple
 
+from deepsparse.analytics import deepsparse_analytics as _analytics
+
+
+_analytics.send_event("python__image_classification__init")
 
 _LOGGER = _logging.getLogger(__name__)
-_Dependency = namedtuple("_Dependency", ["name", "version", "necessary"])
+_Dependency = namedtuple("_Dependency", ["name", "import_name", "version", "necessary"])
 
 
 def _auto_install_dependencies():
     dependencies = [
-        _Dependency(name="torchvision", version=">=0.3.0,<=0.12.0", necessary=True),
+        _Dependency(
+            name="torchvision",
+            import_name="torchvision",
+            version=">=0.3.0,<=0.14.0",
+            necessary=True,
+        ),
+        _Dependency(
+            name="opencv-python",
+            import_name="cv2",
+            version="<=4.6.0.66",
+            necessary=True,
+        ),
     ]
 
     for dependency in dependencies:
@@ -70,7 +85,7 @@ def _check_and_install_dependency(dependency: _Dependency):
     except Exception as dependency_exception:
         if dependency.necessary:
             raise ValueError(
-                f"Unable to import or install {install_name}, a requirement of "
+                f"Unable to import {dependency.import_name} or install {install_name}, a requirement of "
                 f"deepsparse.image_classification. Failed with exception: "
                 f"{dependency_exception}"
             )
@@ -83,7 +98,7 @@ def _check_and_install_dependency(dependency: _Dependency):
 
 def _check_if_dependency_installed(dependency: _Dependency, raise_on_fail=False):
     try:
-        _dep = importlib.import_module(dependency.name)
+        _dep = importlib.import_module(dependency.import_name)
         return None
     except Exception as dependency_import_error:
         if raise_on_fail:

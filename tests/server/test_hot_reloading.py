@@ -169,7 +169,7 @@ def test_file_monitoring(delete_mock, post_mock, tmp_path: Path):
 def test_hot_reload_config_with_start_server(
     watcher_patch: mock.Mock, run_patch: mock.Mock, tmp_path: Path
 ):
-    cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers=None)
+    cfg = ServerConfig(endpoints=[], num_cores=1, num_workers=1, loggers={})
     cfg_path = str(tmp_path / "cfg.yaml")
     with open(cfg_path, "w") as fp:
         yaml.safe_dump(cfg.dict(), fp)
@@ -190,12 +190,12 @@ def test_task_cli_hot_reload(start_server):
     runner = CliRunner()
 
     # no flag sets hot_reload_config to False
-    runner.invoke(task, ["qa"])
+    assert runner.invoke(task, ["qa"]).exception is None
     _, kwargs = start_server.call_args
     assert kwargs["hot_reload_config"] is False
 
     # using flag sets hot_reload_config to True
-    runner.invoke(task, ["qa", "--hot-reload-config"])
+    assert runner.invoke(task, ["qa", "--hot-reload-config"]).exception is None
     _, kwargs = start_server.call_args
     assert kwargs["hot_reload_config"] is True
 
@@ -205,11 +205,13 @@ def test_config_cli_hot_reload(start_server, tmp_path: Path):
     runner = CliRunner()
 
     # no flag sets hot_reload_config to False
-    runner.invoke(config, [str(tmp_path)])
+    assert runner.invoke(config, [str(tmp_path)]).exception is None
     _, kwargs = start_server.call_args
     assert kwargs["hot_reload_config"] is False
 
     # using flag sets hot_reload_config to True
-    runner.invoke(config, [str(tmp_path), "--hot-reload-config"])
+    assert (
+        runner.invoke(config, [str(tmp_path), "--hot-reload-config"]).exception is None
+    )
     _, kwargs = start_server.call_args
     assert kwargs["hot_reload_config"] is True

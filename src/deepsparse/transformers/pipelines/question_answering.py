@@ -135,7 +135,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     def __init__(
         self,
         *,
-        doc_stride: int = 128,
+        doc_stride: int = 64,
         max_question_length: int = 64,
         max_answer_length: int = 15,
         n_best_size: int = 20,
@@ -300,8 +300,8 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             or all_end_logits.shape[0] != num_spans
         ):
             raise ValueError(
-                "Engine outputs expected for {num_spans} span(s), "
-                "but found for {len(engine_outputs)}"
+                f"Engine outputs expected for {num_spans} span(s), "
+                f"but found for {len(engine_outputs)}"
             )
 
         if self.version_2_with_negative:

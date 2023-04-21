@@ -40,6 +40,10 @@ Options:
   --dataset-kwargs, --dataset_kwargs TEXT
                                   Keyword arguments to be passed to dataset
                                   constructor, should be specified as a json
+  --engine [deepsparse|onnxruntime]
+                                  engine type to use, valid choices:
+                                  ['deepsparse', 'onnxruntime']  [default:
+                                  deepsparse]
   --help                          Show this message and exit.
 
 #########
@@ -67,6 +71,9 @@ from deepsparse.image_classification.constants import (
 from deepsparse.pipeline import Pipeline
 from torch.utils.data import DataLoader
 
+
+DEEPSPARSE_ENGINE = "deepsparse"
+ORT_ENGINE = "onnxruntime"
 
 resnet50_imagenet_pruned = (
     "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenette/base-none"
@@ -138,6 +145,13 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
     help="Keyword arguments to be passed to dataset constructor, "
     "should be specified as a json object",
 )
+@click.option(
+    "--engine",
+    default=DEEPSPARSE_ENGINE,
+    type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE]),
+    show_default=True,
+    help="engine type to use, valid choices: ['deepsparse', 'onnxruntime']",
+)
 def main(
     dataset_path: str,
     model_path: str,
@@ -145,6 +159,7 @@ def main(
     image_size: int,
     num_cores: int,
     dataset_kwargs: Dict,
+    engine: str,
 ):
     """
     Validation Script for Image Classification Models
@@ -200,6 +215,7 @@ def main(
         model_path=model_path,
         batch_size=batch_size,
         num_cores=num_cores,
+        engine_type=engine,
     )
     print(f"engine info: {pipeline.engine}")
     correct = total = 0
