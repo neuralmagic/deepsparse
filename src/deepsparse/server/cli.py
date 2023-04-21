@@ -199,7 +199,7 @@ def main(
      prometheus:
          port: 6100
          text_log_save_dir: /home/deepsparse-server/prometheus
-         text_log_save_freq: 30
+         text_log_save_frequency: 30
      endpoints:
      - task: question_answering
        ...
