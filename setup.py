@@ -102,6 +102,7 @@ _dev_deps = [
     "m2r2~=0.2.7",
     "mistune==0.8.4",
     "myst-parser~=0.14.0",
+    "flaky~=3.7.0",
     "ndjson>=0.3.1",
     "rinohtype>=0.4.2",
     "sphinx>=3.4.0",
@@ -270,6 +271,7 @@ def _setup_entry_points() -> Dict:
         "console_scripts": [
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             f"deepsparse.transformers.eval_downstream={eval_downstream}",
+            "deepsparse.debug_analysis=deepsparse.debug_analysis:main",
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",

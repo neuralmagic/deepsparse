@@ -18,8 +18,10 @@ Functionality for detecting the details of the currently available cpu
 
 import json
 import os
+import platform
 import subprocess
 import sys
+from distutils.version import StrictVersion
 from typing import Any, Tuple
 
 
@@ -39,6 +41,7 @@ __all__ = [
 
 
 VALID_VECTOR_EXTENSIONS = {"avx2", "avx512", "neon", "sve"}
+MINIMUM_DARWIN_VERSION = "13.0.0"
 
 
 class _Memoize:
@@ -140,6 +143,55 @@ def _parse_arch_bin() -> architecture:
         raise OSError(error_msg.format(ex))
 
 
+def allow_experimental_darwin() -> bool:
+    """
+    Check if experimental Darwin support is allowed.
+    """
+    try:
+        allow = int(os.getenv("NM_ALLOW_DARWIN", "0"))
+    except ValueError:
+        allow = False
+    return allow
+
+
+def get_darwin_version() -> str:
+    """
+    If we are running Darwin, get the current version.  Otherwise return None.
+    """
+    if sys.platform.startswith("darwin"):
+        return platform.mac_ver()[0]
+    return None
+
+
+def check_darwin_support() -> bool:
+    """
+    Check if the system is running Darwin and it meets the minimum version
+    requirements.
+    """
+    if sys.platform.startswith("darwin") and allow_experimental_darwin():
+        ver = get_darwin_version()
+        return StrictVersion(ver) >= StrictVersion(MINIMUM_DARWIN_VERSION)
+    return False
+
+
+def platform_error_msg() -> str:
+    """
+    Generate unsupported platform error message.
+    """
+    if allow_experimental_darwin():
+        darwin_str = f" or MacOS >= {MINIMUM_DARWIN_VERSION}"
+    else:
+        darwin_str = ""
+
+    darwin_ver = get_darwin_version()
+    if darwin_ver:
+        current_os = f"MacOS {darwin_ver}"
+    else:
+        current_os = sys.platform
+
+    return f"Neural Magic: Only Linux{darwin_str} is supported, not '{current_os}'."
+
+
 def cpu_architecture() -> architecture:
     """
     Detect the CPU details on linux systems
@@ -155,10 +207,8 @@ def cpu_architecture() -> architecture:
 
     :return: an instance of the architecture class
     """
-    if not sys.platform.startswith("linux"):
-        raise OSError(
-            "Neural Magic: Only Linux is supported, not '{}'.".format(sys.platform)
-        )
+    if not (sys.platform.startswith("linux") or check_darwin_support()):
+        raise OSError(platform_error_msg())
 
     arch = _parse_arch_bin()
     isa_type_override = os.getenv("NM_ARCH", None)

@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
+import subprocess
 
-from deepsparse.analytics import deepsparse_analytics as _analytics
-
-from .annotate import *
-from .pipelines import *
-from .schemas import *
+from settings import Manager
 
 
-_analytics.send_event("python__yolov5__init")
+class Benchmarker:
+    def get_benchmarks(
+        self, model: str, engine: str, batch: int, time: int, scenario: str
+    ):
+
+        model = Manager.models[model]
+        engine = Manager.engines[engine]
+
+        cmd = [
+            f"deepsparse.benchmark {model} \
+            --engine {engine} \
+            --batch_size {batch} \
+            --time {time} \
+            --scenario {scenario}"
+        ]
+        return subprocess.check_output(cmd, shell=True).decode("utf-8")
