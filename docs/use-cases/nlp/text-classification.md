@@ -402,6 +402,37 @@ print(resp.text)
 # {"labels":[["1","0"]],"scores":[[0.9941965341567993,0.005803497973829508]]}
 
 ```
+## Using a Custom ONNX File 
+Apart from using models from the SparseZoo, DeepSparse allows you to deploy text classification pipelines with custom ONNX files. 
+
+The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
+Click Download on the [BERT base uncased page](https://sparsezoo.neuralmagic.com/models/nlp%2Ftext_classification%2Fbert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fbase-none) 
+to download an ONNX BERT base uncased model for demonstration. 
+
+Extract the downloaded file and create a folder containing the following required files: 
+- `config.json`
+- `tokenizer.json`
+- `model.onnx`
+
+Use the folder as the model path to the text classification pipeline:
+```python
+from deepsparse import Pipeline
+
+from sparsezoo import Model
+
+# download onnx from sparsezoo and compile with batch size 1
+pipeline = Pipeline.create(
+  task="text-classification",
+  model_path="text-classification",   # sparsezoo stub or path to local ONNX
+  batch_size=1                 # default batch size is 1
+)
+
+# run inference
+sequences = ["I think DeepSparse Pipelines are awesome!"]
+prediction = pipeline(sequences)
+print(prediction)
+# labels=['LABEL_1'] scores=[0.9996163845062256]
+```
 ### Cross Use Case Functionality
 
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.

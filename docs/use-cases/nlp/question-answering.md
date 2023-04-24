@@ -284,7 +284,7 @@ print(resp.text)
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy question answering pipelines with custom ONNX files. 
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
-Click Download on the [DistilBERT - SQuAD page](https://sparsezoo.neuralmagic.com/models/nlp%2Fquestion_answering%2Fdistilbert-none%2Fpytorch%2Fhuggingface%2Fsquad%2Fpruned80_quant-none-vnni) to download a ONNX DistilBERT model for demonstration. 
+Click Download on the [DistilBERT - SQuAD page](https://sparsezoo.neuralmagic.com/models/nlp%2Fquestion_answering%2Fdistilbert-none%2Fpytorch%2Fhuggingface%2Fsquad%2Fpruned80_quant-none-vnni) to download an ONNX DistilBERT model for demonstration. 
 
 Extract the downloaded file and create a folder containing the following required files: 
 - `config.json`

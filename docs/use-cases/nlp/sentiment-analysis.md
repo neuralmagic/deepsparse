@@ -312,7 +312,7 @@ Apart from using models from the SparseZoo, DeepSparse allows you to deploy sent
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
 Click Download on the [oBERT base uncased - sst2 page](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none) 
-to download a ONNX oBERT base uncased model for demonstration. 
+to download an ONNX oBERT base uncased model for demonstration. 
 
 Extract the downloaded file and create a folder containing the following required files: 
 - `config.json`
