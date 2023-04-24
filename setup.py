@@ -64,7 +64,7 @@ if is_enterprise:
     os.remove(license_nm_path)
 
 # File regexes for binaries to include in package_data
-binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
+binary_regexes = ["*/*.so", "*/*.so.*", */*.dylib", "*/*.dylib.*", "*.bin", "*/*.bin"]
 
 # regexes for things to include as license files in the .dist-info
 # see https://github.com/pypa/setuptools/blob/v65.6.0/docs/references/keywords.rst
@@ -155,8 +155,8 @@ _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_fil
 
 
 def _check_supported_system():
-    if sys.platform.startswith("linux"):
-        # linux is supported, allow install to go through
+    if sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+        # linux and darwin are supported, allow install to go through
         return
 
     if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"):
@@ -168,20 +168,11 @@ def _check_supported_system():
             "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
         )
 
-    if sys.platform.startswith("darwin"):
-        # mac is not supported, raise error on install
-        raise OSError(
-            "Native Mac is currently unsupported for DeepSparse. "
-            "Please run on a Linux system or within a Linux container on Mac. "
-            "More info can be found in our docs here: "
-            "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-        )
-
     # unknown system, raise error on install
     raise OSError(
         f"Unknown OS given of {sys.platform}; "
         "it is unsupported for DeepSparse. "
-        "Please run on a Linux system. "
+        "Please run on a Linux or Darwin system. "
         "More info can be found in our docs here: "
         "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
     )
@@ -295,6 +286,13 @@ def _setup_long_description() -> Tuple[str, str]:
     return open("README.md", "r", encoding="utf-8").read(), "text/markdown"
 
 
+def _setup_os() -> str:
+    if sys.platform.startswith("linux"):
+        return "Linux"
+    assert(sys.platform.startswith("darwin"))
+    return "Darwin"
+
+
 setup(
     name=_PACKAGE_NAME,
     version=version,
@@ -336,7 +334,7 @@ setup(
         "Intended Audience :: Science/Research",
         "License :: Other/Proprietary License",
         "License :: OSI Approved :: Apache Software License",
-        "Operating System :: POSIX :: Linux",
+        f"Operating System :: POSIX :: {_setup_os()}",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Scientific/Engineering :: Mathematics",
