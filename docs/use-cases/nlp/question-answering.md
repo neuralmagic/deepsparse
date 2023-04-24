@@ -280,6 +280,37 @@ resp = requests.post(url, json=obj)
 print(resp.text)
 # {"score":19.74649429321289,"answer":"CPU runtime","start":73,"end":84}
 ```
+## Using a Custom ONNX File 
+Apart from using models from the SparseZoo, DeepSparse allows you to deploy question answering pipelines with custom ONNX files. 
+
+The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
+Click Download on the [DistilBERT - SQuAD page](https://sparsezoo.neuralmagic.com/models/nlp%2Fquestion_answering%2Fdistilbert-none%2Fpytorch%2Fhuggingface%2Fsquad%2Fpruned80_quant-none-vnni) to download a ONNX DistilBERT model for demonstration. 
+
+Extract the downloaded file ad create folder containing the following required files: 
+- `config.json`
+- `tokenizer.json`
+- `model.onnx`
+
+Use the folder as the model path to the question answering pipeline:
+```python
+from deepsparse import Pipeline
+from sparsezoo import Model
+
+task = "question-answering"
+stub = "zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni"
+model = Model(stub)
+model_path = f"{model.path}/deployment"
+qa_pipeline = Pipeline.create(
+        task=task,
+        model_path=model_path,
+    )
+
+q_context = "DeepSparse is sparsity-aware inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application"
+question = "What is DeepSparse?"
+output = qa_pipeline(question=question, context=q_context)
+print(output.answer)
+# sparsity-aware
+```
 ### Cross Use Case Functionality
 
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
