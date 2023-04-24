@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
-
 import click
 
 from deepsparse import Pipeline
@@ -22,7 +20,6 @@ from deepsparse.yolov8.utils import (
     DeepSparseDetectionValidator,
     DeepSparseSegmentationValidator,
     check_coco128_segmentation,
-    data_from_dataset_path,
 )
 from ultralytics.yolo.cfg import get_cfg
 from ultralytics.yolo.utils import DEFAULT_CFG
@@ -67,6 +64,16 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml", "coco128-seg.yaml"]
     help="Validation batch size",
 )
 @click.option(
+    "--stride",
+    type=int,
+    default=32,
+    show_default=True,
+    help="YOLOv8 can handle arbitrary sized images as long as "
+    "both sides are a multiple of 32. This is because the "
+    "maximum stride of the backbone is 32 and it is a fully "
+    "convolutional network.",
+)
+@click.option(
     "--engine-type",
     default=DEEPSPARSE_ENGINE,
     type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE]),
@@ -88,21 +95,15 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml", "coco128-seg.yaml"]
     show_default=True,
     help="A subtask of YOLOv8 to run. Default is `detection`.",
 )
-@click.option(
-    "--dataset-path",
-    type=str,
-    default=None,
-    help="Path to override default dataset path.",
-)
 def main(
     dataset_yaml: str,
     model_path: str,
     batch_size: int,
     num_cores: int,
     engine_type: str,
+    stride: int,
     device: str,
     subtask: str,
-    dataset_path: Optional[str],
 ):
 
     pipeline = Pipeline.create(
@@ -123,8 +124,6 @@ def main(
             f"Dataset yaml {dataset_yaml} is not supported. "
             f"Supported dataset configs are {SUPPORTED_DATASET_CONFIGS})"
         )
-    if dataset_path is not None:
-        args.data = data_from_dataset_path(args.data, dataset_path)
     classes = {label: class_ for (label, class_) in enumerate(COCO_CLASSES)}
 
     if subtask == "detection":
