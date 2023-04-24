@@ -314,7 +314,7 @@ The first step is to obtain the ONNX model. You can obtain the file by convertin
 Click Download on the [oBERT base uncased - sst2 page](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none) 
 to download a ONNX oBERT base uncased model for demonstration. 
 
-Extract the downloaded file and create folder containing the following required files: 
+Extract the downloaded file and create a folder containing the following required files: 
 - `config.json`
 - `tokenizer.json`
 - `model.onnx`
