@@ -269,7 +269,29 @@ resp = requests.post(url=url, json=obj)
 print(resp.text)
 # {"predictions":[[{"entity":"PER","score":0.9966245293617249,"word":"mary","start":0,"end":4,"index":null,"is_grouped":true},{"entity":"LOC","score":0.999544084072113,"word":"nairobi","start":20,"end":27,"index":null,"is_grouped":true},{"entity":"LOC","score":0.9982004165649414,"word":"new york","start":31,"end":39,"index":null,"is_grouped":true}]]}
 ```
+## Using a Custom ONNX File 
+Apart from using models from the SparseZoo, DeepSparse allows you to deploy token classification pipelines with custom ONNX files. 
 
+The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
+Click Download on the [oBERT page](https://sparsezoo.neuralmagic.com/models/nlp%2Ftoken_classification%2Fobert-base%2Fpytorch%2Fhuggingface%2Fconll2003%2Fpruned90_quant-none) 
+to download an ONNX oBERT model for demonstration. 
+
+Extract the downloaded file and create a folder containing the following required files: 
+- `config.json`
+- `tokenizer.json`
+- `model.onnx`
+
+Use the folder as the model path to the token classification pipeline:
+```python
+from deepsparse import Pipeline
+pipeline = Pipeline.create(
+        task="token_classification",
+        model_path="token_classification",
+    )
+output = pipeline("Mary is flying from Nairobi to New York")
+print(output.predictions)
+# [[TokenClassificationResult(entity='B-PER', score=0.9971914291381836, word='mary', start=0, end=4, index=1, is_grouped=False), TokenClassificationResult(entity='B-LOC', score=0.9993892312049866, word='nairobi', start=20, end=27, index=5, is_grouped=False), TokenClassificationResult(entity='B-LOC', score=0.9993736147880554, word='new', start=31, end=34, index=7, is_grouped=False), TokenClassificationResult(entity='I-LOC', score=0.997299075126648, word='york', start=35, end=39, index=8, is_grouped=False)]]
+```
 ### Cross Use Case Functionality
 
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
