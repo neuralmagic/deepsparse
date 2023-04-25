@@ -311,10 +311,14 @@ print(resp.text)
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy sentiment analysis pipelines with custom ONNX files. 
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
-Click Download on the [oBERT base uncased - sst2 page](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none) 
-to download an ONNX oBERT base uncased model for demonstration. 
 
-Extract the downloaded file and create a folder containing the following required files: 
+Download the [oBERT base uncased - sst2](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none) 
+ONNX model for demonstration. 
+```bash 
+sparsezoo.download zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --save-dir ./sentiment_analysis
+```
+
+The `deployment` folder contains the following required files: 
 - `config.json`
 - `tokenizer.json`
 - `model.onnx`
@@ -326,8 +330,8 @@ from deepsparse import Pipeline
 # download onnx from sparsezoo and compile with batch size 1
 batch_size = 1
 sa_pipeline = Pipeline.create(
-  task="sentiment-analysis",
-  model_path="sentiment-analysis",   # sparsezoo stub or path to local ONNX
+  task="sentiment_analysis",
+  model_path="sentiment-analysis/deployment",   # sparsezoo stub or path to local ONNX
   batch_size=1                 # default batch size is 1
 )
 

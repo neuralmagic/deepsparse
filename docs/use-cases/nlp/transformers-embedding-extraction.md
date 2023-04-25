@@ -209,10 +209,15 @@ print(len(result["embeddings"][0]))
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy transformer embedding extraction pipelines with custom ONNX files. 
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
-Click Download on the [DistilBERT - wikipedia_bookcorpus page](https://sparsezoo.neuralmagic.com/models/nlp%2Fmasked_language_modeling%2Fdistilbert-none%2Fpytorch%2Fhuggingface%2Fwikipedia_bookcorpus%2Fpruned80_quant-none-vnni) 
-to download an ONNX DistilBERT model for demonstration. 
 
-Extract the downloaded file and create a folder containing the following required files: 
+Download the [DistilBERT - wikipedia_bookcorpus](https://sparsezoo.neuralmagic.com/models/nlp%2Fmasked_language_modeling%2Fdistilbert-none%2Fpytorch%2Fhuggingface%2Fwikipedia_bookcorpus%2Fpruned80_quant-none-vnni) 
+ONNX model for demonstration. 
+
+```bash 
+sparsezoo.download zoo:nlp/masked_language_modeling/distilbert-none/pytorch/huggingface/wikipedia_bookcorpus/pruned80_quant-none-vnni --save-dir ./transformers_embedding_extraction
+```
+
+The `deployment` folder contains the following required files: 
 - `config.json`
 - `tokenizer.json`
 - `model.onnx`
@@ -223,7 +228,7 @@ from deepsparse import Pipeline
 
 bert_emb_pipeline = Pipeline.create(
     task="transformers_embedding_extraction",
-    model_path="transformers_embedding_extraction",
+    model_path="transformers_embedding_extraction/deployment",
     emb_extraction_layer=-1,         # (default: detect last layer)
     extraction_strategy="per_token"  # (default: concat embedding for each token)
 )

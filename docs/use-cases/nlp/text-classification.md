@@ -406,10 +406,13 @@ print(resp.text)
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy text classification pipelines with custom ONNX files. 
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
-Click Download on the [BERT base uncased page](https://sparsezoo.neuralmagic.com/models/nlp%2Ftext_classification%2Fbert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fbase-none) 
-to download an ONNX BERT base uncased model for demonstration. 
 
-Extract the downloaded file and create a folder containing the following required files: 
+Download the [BERT base uncased](https://sparsezoo.neuralmagic.com/models/nlp%2Ftext_classification%2Fbert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fbase-none) 
+ONNX model for demonstration. 
+```bash 
+sparsezoo.download zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none --save-dir ./text-classification
+```
+The `deployment` folder contains the following required files: 
 - `config.json`
 - `tokenizer.json`
 - `model.onnx`
@@ -423,7 +426,7 @@ from sparsezoo import Model
 # download onnx from sparsezoo and compile with batch size 1
 pipeline = Pipeline.create(
   task="text-classification",
-  model_path="text-classification",   # sparsezoo stub or path to local ONNX
+  model_path="text-classification/deployment",   # sparsezoo stub or path to local ONNX
   batch_size=1                 # default batch size is 1
 )
 

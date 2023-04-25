@@ -229,15 +229,19 @@ boxes, classes, masks, scores = annotations["boxes"], annotations["classes"], an
 Apart from using models from the SparseZoo, DeepSparse allows you to define custom ONNX files when deploying a model. 
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
-Click Download on the [YOLCAT page](https://sparsezoo.neuralmagic.com/models/cv%2Fsegmentation%2Fyolact-darknet53%2Fpytorch%2Fdbolya%2Fcoco%2Fpruned82_quant-none) to download a ONNX YOLACT model for demonstration. 
 
-Extract the downloaded file and use the YOLACT ONNX model for inference: 
+Download on the [YOLCAT](https://sparsezoo.neuralmagic.com/models/cv%2Fsegmentation%2Fyolact-darknet53%2Fpytorch%2Fdbolya%2Fcoco%2Fpruned82_quant-none) ONNX model for demonstration. 
+
+```bash
+sparsezoo.download zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none --save-dir ./yolact
+```
+Use the YOLACT ONNX model for inference: 
 ```python
 from deepsparse.pipeline import Pipeline
 
 yolact_pipeline = Pipeline.create(
     task="yolact",
-    model_path="yolact.onnx",
+    model_path="yolact/model.onnx",
 )
 
 images = ["thailand.jpeg"]

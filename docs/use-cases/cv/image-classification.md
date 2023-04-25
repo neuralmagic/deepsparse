@@ -261,16 +261,21 @@ print(resp.text)
 Apart from using models from the SparseZoo, DeepSparse allows you to define custom ONNX files when deploying a model. 
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
-Click Download on the [ResNet-50 - ImageNet page](https://sparsezoo.neuralmagic.com/models/cv%2Fclassification%2Fresnet_v1-50%2Fpytorch%2Fsparseml%2Fimagenet%2Fpruned95_uniform_quant-none) to download a ONNX ResNet model for demonstration. 
 
-Extract the downloaded file and use the ResNet-50 ONNX model for inference:
+Download the [ResNet-50 - ImageNet](https://sparsezoo.neuralmagic.com/models/cv%2Fclassification%2Fresnet_v1-50%2Fpytorch%2Fsparseml%2Fimagenet%2Fpruned95_uniform_quant-none) ONNX model for demonstration. 
+
+Download the model: 
+```bash
+sparsezoo.download zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_uniform_quant-none --save-dir ./image_classification
+```
+Use the ResNet-50 ONNX model for inference:
 ```python
 from deepsparse import Pipeline
 
 # download onnx from sparsezoo and compile with batch size 1
 pipeline = Pipeline.create(
   task="image_classification",
-  model_path="resnet.onnx",   # sparsezoo stub or path to local ONNX
+  model_path="image_classification/model.onnx",   # sparsezoo stub or path to local ONNX
 )
 
 # run inference on image file

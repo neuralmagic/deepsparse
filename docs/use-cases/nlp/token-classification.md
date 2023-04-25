@@ -273,10 +273,15 @@ print(resp.text)
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy token classification pipelines with custom ONNX files. 
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
-Click Download on the [oBERT page](https://sparsezoo.neuralmagic.com/models/nlp%2Ftoken_classification%2Fobert-base%2Fpytorch%2Fhuggingface%2Fconll2003%2Fpruned90_quant-none) 
-to download an ONNX oBERT model for demonstration. 
+ 
+Download the [oBERT](https://sparsezoo.neuralmagic.com/models/nlp%2Ftoken_classification%2Fobert-base%2Fpytorch%2Fhuggingface%2Fconll2003%2Fpruned90_quant-none) 
+ ONNX model for demonstration. 
 
-Extract the downloaded file and create a folder containing the following required files: 
+```bash 
+sparsezoo.download zoo:nlp/token_classification/obert-base/pytorch/huggingface/conll2003/pruned90_quant-none --save-dir ./token_classification
+```
+
+The `deployment` folder contains the following required files: 
 - `config.json`
 - `tokenizer.json`
 - `model.onnx`
@@ -286,7 +291,7 @@ Use the folder as the model path to the token classification pipeline:
 from deepsparse import Pipeline
 pipeline = Pipeline.create(
         task="token_classification",
-        model_path="token_classification",
+        model_path="token_classification/deployment",
     )
 output = pipeline("Mary is flying from Nairobi to New York")
 print(output.predictions)
