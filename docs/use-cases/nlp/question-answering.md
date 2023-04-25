@@ -297,7 +297,7 @@ stub = "zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pru
 model = Model(stub)
 model_path = f"{model.path}/deployment"
 ```
-ExtracThe `deployment` folder contains the following required files: 
+The `deployment` folder contains the following required files: 
 - `config.json`
 - `tokenizer.json`
 - `model.onnx`
