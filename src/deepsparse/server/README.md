@@ -152,3 +152,4 @@ All you need is to add `/docs` at the end of your host URL:
     localhost:5543/docs
 
 ![alt text](./img/swagger_ui.png)
+
