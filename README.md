@@ -17,7 +17,7 @@ limitations under the License.
 
 <div style="display: flex; flex-direction: column; align-items: center;">
   <h1>
-    <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/icon-deepsparse.png" />
+    <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/icon-deepsparse.png" />
     &nbsp;&nbsp;DeepSparse
   </h1>
   <h4> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h4>
@@ -56,10 +56,16 @@ limitations under the License.
 [DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity within neural networks to execute inference quickly. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), an open-source optimization library, DeepSparse enables you to achieve GPU-class performance on commodity hardware.
 
 <p align="center">
-   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/tree/main/docs/neural-magic-workflow.png" width="60%" />
+   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/blob/7ee5e60f13b1fd321c5282c91e2873b3363ec911/docs/neural-magic-workflow.png" width="60%" />
 </p>
 
-For details of training a sparse model for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
+For details of training sparse models for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
+
+### ✨NEW✨ DeepSparse ARM Alpha 💪
+
+Neural Magic is bringing performant deep learning inference to ARM CPUs! In our recent product release, we launched alpha support for DeepSparse on AWS Graviton and Ampere. We are working towards a general release across ARM server, embedded, and mobile platforms in 2023.
+
+**If you would like to trial the alpha or want early access to the general release, [sign up for the waitlist](https://neuralmagic.com/deepsparse-arm-waitlist/).**
 
 ## Installation
 
@@ -212,13 +218,13 @@ DeepSparse offers different inference scenarios based on your use case.
 
 **Single-stream** scheduling: the latency/synchronous scenario, requests execute serially. [`default`]
 
-<img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/single-stream.png" alt="single stream diagram" />
+<img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/single-stream.png" alt="single stream diagram" />
 
 It's highly optimized for minimum per-request latency, using all of the system's resources provided to it on every request it gets.
 
 **Multi-stream** scheduling: the throughput/asynchronous scenario, requests execute in parallel.
 
-<img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/source/multi-stream.png" alt="multi stream diagram" />
+<img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/multi-stream.png" alt="multi stream diagram" />
 
 The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them.
 

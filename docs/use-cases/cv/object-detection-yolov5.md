@@ -282,7 +282,6 @@ print(labels)
 # [['person', 'person', 'car', 'person', 'motorcycle', 'person', 'person', 'person', 'motorcycle', 'person']]
 ```
 
-
 ### Cross Use Case Functionality
 
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring a Server.

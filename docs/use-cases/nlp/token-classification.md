@@ -273,6 +273,7 @@ print(resp.text)
 ### Cross Use Case Functionality
 
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
+
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy token classification pipelines with custom ONNX files. 
 
