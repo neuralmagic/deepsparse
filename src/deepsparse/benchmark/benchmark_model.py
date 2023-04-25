@@ -422,7 +422,6 @@ def benchmark_model(
         "seconds_to_run": time,
         "num_streams": num_streams,
         "benchmark_result": benchmark_result,
-        "fraction_of_supported_ops": getattr(model, "fraction_of_supported_ops", None),
     }
 
     # Export results

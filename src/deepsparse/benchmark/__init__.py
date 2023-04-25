@@ -14,10 +14,5 @@
 
 # flake8: noqa
 
-from deepsparse.analytics import deepsparse_analytics as _analytics
-
 from .ort_engine import *
 from .results import *
-
-
-_analytics.send_event("python__benchmark__init")
