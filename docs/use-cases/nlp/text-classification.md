@@ -412,7 +412,7 @@ Apart from using models from the SparseZoo, DeepSparse allows you to deploy text
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
 
 Download the [BERT base uncased](https://sparsezoo.neuralmagic.com/models/nlp%2Ftext_classification%2Fbert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fbase-none) 
-ONNX model for demonstration. 
+ONNX model for demonstration:
 ```bash 
 sparsezoo.download zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none --save-dir ./text-classification
 ```

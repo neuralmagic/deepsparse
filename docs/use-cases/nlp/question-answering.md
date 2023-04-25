@@ -290,7 +290,7 @@ Apart from using models from the SparseZoo, DeepSparse allows you to deploy ques
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
 
 Download the [DistilBERT - SQuAD page](https://sparsezoo.neuralmagic.com/models/nlp%2Fquestion_answering%2Fdistilbert-none%2Fpytorch%2Fhuggingface%2Fsquad%2Fpruned80_quant-none-vnni) 
-ONNX model for demonstration. 
+ONNX model for demonstration: 
 ```python
 from sparsezoo import Model
 stub = "zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni"

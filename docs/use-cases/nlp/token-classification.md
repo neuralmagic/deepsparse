@@ -279,7 +279,7 @@ Apart from using models from the SparseZoo, DeepSparse allows you to deploy toke
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
  
 Download the [oBERT](https://sparsezoo.neuralmagic.com/models/nlp%2Ftoken_classification%2Fobert-base%2Fpytorch%2Fhuggingface%2Fconll2003%2Fpruned90_quant-none) 
- ONNX model for demonstration. 
+ ONNX model for demonstration:
 
 ```bash 
 sparsezoo.download zoo:nlp/token_classification/obert-base/pytorch/huggingface/conll2003/pruned90_quant-none --save-dir ./token_classification

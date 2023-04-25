@@ -215,7 +215,7 @@ Apart from using models from the SparseZoo, DeepSparse allows you to deploy tran
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
 
 Download the [DistilBERT - wikipedia_bookcorpus](https://sparsezoo.neuralmagic.com/models/nlp%2Fmasked_language_modeling%2Fdistilbert-none%2Fpytorch%2Fhuggingface%2Fwikipedia_bookcorpus%2Fpruned80_quant-none-vnni) 
-ONNX model for demonstration. 
+ONNX model for demonstration: 
 
 ```bash 
 sparsezoo.download zoo:nlp/masked_language_modeling/distilbert-none/pytorch/huggingface/wikipedia_bookcorpus/pruned80_quant-none-vnni --save-dir ./transformers_embedding_extraction

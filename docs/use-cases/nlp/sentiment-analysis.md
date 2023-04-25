@@ -316,11 +316,10 @@ Apart from using models from the SparseZoo, DeepSparse allows you to deploy sent
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
 
 Download the [oBERT base uncased - sst2](https://sparsezoo.neuralmagic.com/models/nlp%2Fsentiment_analysis%2Fobert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fpruned90_quant-none) 
-ONNX model for demonstration. 
+ONNX model for demonstration: 
 ```bash 
 sparsezoo.download zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none --save-dir ./sentiment_analysis
 ```
-
 The `deployment` folder contains the following required files: 
 - `config.json`
 - `tokenizer.json`

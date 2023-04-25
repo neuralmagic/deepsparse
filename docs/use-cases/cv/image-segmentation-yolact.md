@@ -234,8 +234,7 @@ Apart from using models from the SparseZoo, DeepSparse allows you to define cust
 
 The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
 
-Download on the [YOLCAT](https://sparsezoo.neuralmagic.com/models/cv%2Fsegmentation%2Fyolact-darknet53%2Fpytorch%2Fdbolya%2Fcoco%2Fpruned82_quant-none) ONNX model for demonstration. 
-
+Download on the [YOLCAT](https://sparsezoo.neuralmagic.com/models/cv%2Fsegmentation%2Fyolact-darknet53%2Fpytorch%2Fdbolya%2Fcoco%2Fpruned82_quant-none) ONNX model for demonstration:
 ```bash
 sparsezoo.download zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none --save-dir ./yolact
 ```
