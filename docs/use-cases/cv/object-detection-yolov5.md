@@ -281,6 +281,11 @@ labels = annotations["labels"]
 print(labels)
 # [['person', 'person', 'car', 'person', 'motorcycle', 'person', 'person', 'person', 'motorcycle', 'person']]
 ```
+
+
+### Cross Use Case Functionality
+
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring a Server.
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to define custom ONNX files when deploying a model. 
 
@@ -317,7 +322,3 @@ print(pipeline_outputs.labels)
 # [[[-0.8809833526611328, 5.1244752407073975, 27.885415077209473, 57.20366072654724], [-9.014896631240845, -2.4366320967674255, 21.488688468933105, 37.2245477437973], [14.241515636444092, 11.096746131777763, 30.164274215698242, 22.02291651070118], [7.107024908065796, 5.017698150128126, 15.09239387512207, 10.45704211294651]]]
 # [['8367.0', '1274.0', '8192.0', '6344.0']]
 ```
-
-### Cross Use Case Functionality
-
-Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring a Server.

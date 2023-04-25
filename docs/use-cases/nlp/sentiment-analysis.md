@@ -307,6 +307,9 @@ resp = requests.post(url=url, json=obj)
 print(resp.text)
 # >> {"labels":[["positive","negative"]],"scores":[[0.9330279231071472,0.06697207689285278]]}
 ```
+### Cross Use Case Functionality
+
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy sentiment analysis pipelines with custom ONNX files. 
 
@@ -341,6 +344,3 @@ print(prediction)
 # labels=['positive'] scores=[0.9955807328224182]
 
 ```
-### Cross Use Case Functionality
-
-Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.

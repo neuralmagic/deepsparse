@@ -249,6 +249,10 @@ print(resp.text)
 # {"sequences":["The Boston Red Sox are my favorite baseball team!"],"labels":[["sports","politics","public health"]],"scores":[[0.7818478941917419,0.17189143598079681,0.04626065865159035]]}
 
 ```
+
+### Cross Use Case Functionality
+
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy zero-shot text classification pipelines with custom ONNX files. 
 
@@ -282,6 +286,3 @@ prediction = pipeline("Who are you voting for in the upcoming election")
 print(prediction)
 # sequences='Who are you voting for in the upcoming election' labels=['sports', 'poltics', 'public health'] scores=[0.35093653202056885, 0.3335352838039398, 0.31552815437316895]
 ```
-### Cross Use Case Functionality
-
-Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.

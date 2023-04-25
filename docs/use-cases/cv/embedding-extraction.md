@@ -103,6 +103,9 @@ print(len(result["embeddings"][0][0]))
 
 # 2048 << size of final layer>>
 ```
+
+### Cross Use Case Functionality
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to define custom ONNX files for embedding extraction. 
 
@@ -130,5 +133,3 @@ embedding = rn50_embedding_pipeline(images="lion.jpeg")
 print(len(embedding.embeddings[0][0]))
 # 2048
 ```
-### Cross Use Case Functionality
-Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.

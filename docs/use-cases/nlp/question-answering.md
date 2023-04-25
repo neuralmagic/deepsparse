@@ -280,6 +280,10 @@ resp = requests.post(url, json=obj)
 print(resp.text)
 # {"score":19.74649429321289,"answer":"CPU runtime","start":73,"end":84}
 ```
+
+### Cross Use Case Functionality
+
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy question answering pipelines with custom ONNX files. 
 
@@ -315,6 +319,3 @@ output = qa_pipeline(question=question, context=q_context)
 print(output.answer)
 # sparsity-aware
 ```
-### Cross Use Case Functionality
-
-Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.

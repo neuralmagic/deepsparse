@@ -205,6 +205,10 @@ result = json.loads(resp.text)
 print(len(result["embeddings"][0]))
 # 768
 ```
+
+### Cross Use Case Functionality
+
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy transformer embedding extraction pipelines with custom ONNX files. 
 
@@ -238,6 +242,3 @@ embedding = bert_emb_pipeline(input_sequence)
 print(len(embedding.embeddings[0]))
 # 98304
 ```
-### Cross Use Case Functionality
-
-Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.

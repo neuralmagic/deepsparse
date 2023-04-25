@@ -402,6 +402,10 @@ print(resp.text)
 # {"labels":[["1","0"]],"scores":[[0.9941965341567993,0.005803497973829508]]}
 
 ```
+
+### Cross Use Case Functionality
+
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to deploy text classification pipelines with custom ONNX files. 
 
@@ -436,6 +440,3 @@ prediction = pipeline(sequences)
 print(prediction)
 # labels=['LABEL_1'] scores=[0.9996163845062256]
 ```
-### Cross Use Case Functionality
-
-Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.

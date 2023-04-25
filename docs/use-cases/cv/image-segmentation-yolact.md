@@ -225,6 +225,10 @@ annotations = json.loads(resp.text) # dictionary of annotation results
 boxes, classes, masks, scores = annotations["boxes"], annotations["classes"], annotations["masks"], annotations["scores"]
 ```
 
+### Cross Use Case Functionality
+
+Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
+
 ## Using a Custom ONNX File 
 Apart from using models from the SparseZoo, DeepSparse allows you to define custom ONNX files when deploying a model. 
 
@@ -250,6 +254,3 @@ predictions = yolact_pipeline(images=images)
 predictions.classes[0]
 # [20,20, .......0, 0,24]
 ```
-### Cross Use Case Functionality
-
-Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
