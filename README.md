@@ -61,6 +61,12 @@ limitations under the License.
 
 For details of training sparse models for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
 
+### ✨NEW✨ DeepSparse ARM Alpha 💪
+
+Neural Magic is bringing performant deep learning inference to ARM CPUs! In our recent product release, we launched alpha support for DeepSparse on AWS Graviton and Ampere. We are working towards a general release across ARM server, embedded, and mobile platforms in 2023.
+
+**If you would like to trial the alpha or want early access to the general release, [sign up for the waitlist](https://neuralmagic.com/deepsparse-arm-waitlist/).**
+
 ## Installation
 
 DeepSparse is available in two editions: 
