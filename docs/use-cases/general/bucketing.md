@@ -16,7 +16,7 @@ limitations under the License.
 # How to Use Bucketing With DeepSparse 
 DeepSparse supports bucketing to lower latency and increase the throughput of deep learning pipelines. Bucketing sequences of different sizes increases inference speed.
 
-Input lengths in NLP problems can vary. We usually select the maximum length where sentences longer that the maximum length are truncated and shorter ones are padded to reach the maximum length. This solution can be inefficient for real-wrld application leading to more memory utilization.  
+Input lengths in NLP problems can vary. We usually select a maximum length where sentences longer that the maximum length are truncated and shorter ones are padded to reach the maximum length. This solution can be inefficient for real-world applications leading to more memory utilization.  
 
 Bucketing is a solution that places sequences of varying lengths in different buckets. It is more efficient because it reduces the amount of padding required. 
 
@@ -117,18 +117,19 @@ def run(model_path, batch_size, buckets):
     
     print(f"Items Per Second: {items_per_sec}")
     print(f"Program took: {total_time_executing} ms")
+    return predictions
 
-run("token_classification", 64, [])
-# Items Per Second: 0.3089200801858338
-# Program took: 10986.66036198847 ms
+predictions = run("token_classification", 64, [])
+# Items Per Second: 0.0060998544593741395
+# Program took: 556406.7179970443 ms
 ```
 
 Run the same script with varying input lengths: 
 ```python
 batch_size = 64
 buckets = [15,35,55,75]
-run("token_classification", batch_size, buckets)
-# Items Per Second: 0.4650720926682699
-# Program took: 7297.793295932934 ms
+predictions = run("token_classification", batch_size, buckets)
+# Items Per Second: 0.01046572543802951
+# Program took: 324296.67872493155 ms
 ```
-The pipeline using buckets achieves 1.5 more items per second compared to the one without. 
+The pipeline using buckets achieves 1.7 more items per second compared to the one without. 
