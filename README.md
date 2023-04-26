@@ -224,6 +224,16 @@ The most common use cases for the multi-stream scheduler are where parallelism i
 
 - [Check out the Scheduler User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/scheduler.md) for more details.
 
+## Product Usage Analytics
+DeepSparse Community Edition gathers basic usage telemetry including, but not limited to, Invocations, Package, Version, and IP Address for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data.
+
+To disable Product Usage Analytics, run the command:
+```bash
+export NM_DISABLE_ANALYTICS=True
+```
+
+Confirm that telemetry is shut off through info logs streamed with engine invocation by looking for the phrase "Skipping Neural Magic's latest package version check." For additional assistance, reach out through the [DeepSparse GitHub Issue queue](https://github.com/neuralmagic/deepsparse/issues).
+
 ## Additional Resources
 - [Benchmarking Performance](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-benchmarking.md)
 - [User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide)
