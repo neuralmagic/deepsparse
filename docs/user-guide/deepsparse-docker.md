@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 # How to Use DeepSparse With Docker 
-Apart from installing DeepSparse with `pip` you can also set it up using [Docker](https://www.docker.com/), enabling you to start using DeepSparse immediately without the need to manualy install all the required dependencies. 
+Apart from installing DeepSparse with `pip` you can also set it up using [Docker](https://www.docker.com/), enabling you to start using DeepSparse immediately without the need to manually install all the required dependencies. 
 
 The first step is to pull the `deepsparse` image from the GitHub Container Registry. 
 
@@ -29,7 +29,7 @@ docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse_docker
 ```
 ## DeepSparse Server Example
 
-Built on the popular FastAPI and Uvicorn stack, DeepSparse Server enables you to set-up a REST endpoint for serving inferences over HTTP. Since DeepSparse Server wraps the Pipeline API, it inherits all of the utilities provided by Pipelines.
+Built on the popular FastAPI and Uvicorn stack, DeepSparse Server enables you to set up a REST endpoint for serving inferences over HTTP. Since DeepSparse Server wraps the Pipeline API, it inherits all the utilities provided by Pipelines.
 
 Start the `deepsparse` container in interactive mode and publish the containers port 5543 to the local machine's port 5543 to expose the port outside the container. 
 
@@ -140,9 +140,11 @@ docker container run  engine_deepsparse_docker
 ## DeepSparse Pipeline Example
 Pipeline is the default interface for interacting with DeepSparse.
 
-Similar to Hugging Face Pipelines, DeepSparse Pipelines wrap pre- and post-processing around the inference performed by the Engine. This creates a clean API that allows you to pass raw images and text to DeepSparse and receive the post-processed prediction, making it easy to add DeepSparse to your application.
+Similar to Hugging Face Pipelines, DeepSparse Pipelines wrap pre- and post-processing around the inference performed by the Engine. 
+This creates a clean API that allows you to pass raw images and text to DeepSparse and receive the post-processed prediction, making it easy to add DeepSparse to your application.
 
-Use the `Pipeline.create()` constructor to create an instance of a sentiment analysis Pipeline with a 90% pruned-quantized version of BERT trained on SST2. We can then pass the Pipeline raw text and receive the predictions. All of the pre-processing (such as tokenizing the input) is handled by the Pipeline.
+Use the `Pipeline.create()` constructor to create an instance of a sentiment analysis Pipeline with a 90% pruned-quantized version of BERT trained on SST2. We can then pass the Pipeline raw text and receive the predictions. 
+All the pre-processing (such as tokenizing the input) is handled by the Pipeline.
 
 Save this script in a file called `app.py`:
 ```python
