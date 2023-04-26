@@ -23,6 +23,7 @@ import numpy
 import onnx
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
+from deepsparse.utils.extractor import Extractor
 from sparsezoo.utils import save_onnx, validate_onnx
 
 
@@ -280,8 +281,6 @@ def truncate_onnx_model(
         defaults to [None] for each output and leads to slight performance loss
     :return: None
     """
-    from deepsparse.utils.extractor import Extractor
-
     if graph_output_shapes is None:
         graph_output_shapes = [None] * len(final_node_names)
 
