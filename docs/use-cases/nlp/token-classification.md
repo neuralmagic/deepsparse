@@ -219,7 +219,9 @@ deepsparse.server \
   --task token_classification \
   --model_path "zoo:nlp/token_classification/obert-base/pytorch/huggingface/conll2003/pruned90_quant-none" # or path/to/onnx
 ```
+<!-- markdown-link-check-disable -->
 You should see Uvicorn report that it is running on http://0.0.0.0:5543. Once launched, a /docs path is created with full endpoint descriptions and support for making sample requests.
+<!-- markdown-link-check-enable -->
 
 Here is an example client request, using the Python requests library for formatting the HTTP:
 ```python
