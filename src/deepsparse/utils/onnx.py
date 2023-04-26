@@ -23,6 +23,8 @@ import numpy
 import onnx
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
+from sparsezoo.utils import save_onnx, validate_onnx
+
 
 try:
     from sparsezoo import File, Model
@@ -47,57 +49,6 @@ __all__ = [
 ]
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def save_onnx(
-    model: Model, model_path: str, external_data_file: Optional[str] = None
-) -> bool:
-    """
-    Save model to the given path.
-    If the model's size is larger than the maximum protobuf size it will be saved
-    with external data. If 'external_data_file' is not specified, it will be created
-    from the name of the model (e.g. 'model.onnx' -> 'model.data').
-    If the model's size is smaller than the maximum protobuf size and the user
-    nevertheless specifies 'external_data_file', the model will be
-    saved with external data.
-
-    :param model: The model to save.
-    :param model_path: The path to save the model to.
-    :param external_data_file: The optional name save the external data to.
-    :return True if the model was saved with external data, False otherwise.
-    """
-    if model.ByteSize() > onnx.checker.MAXIMUM_PROTOBUF:
-        external_data_file = (
-            external_data_file or os.path.basename(model_path).replace("onnx", "data"),
-        )
-        _LOGGER.info(
-            "The ONNX model is too large to be saved as a single protobuf. "
-            f"Saving with external data: {external_data_file}"
-        )
-        onnx.save(
-            model,
-            model_path,
-            save_as_external_data=True,
-            all_tensors_to_one_file=True,
-            location=external_data_file,
-        )
-        return True
-    else:
-        if external_data_file is not None:
-            onnx.save(
-                model,
-                model_path,
-                save_as_external_data=True,
-                all_tensors_to_one_file=True,
-                location=external_data_file,
-            )
-        _LOGGER.info(
-            f"Saving the ONNX model {model_path} "
-            f"with external data to {external_data_file}"
-        )
-        return True
-    onnx.save(model, model_path)
-    return False
 
 
 @contextlib.contextmanager
@@ -390,7 +341,7 @@ def truncate_onnx_model(
 
     # save and check model
     save_onnx(extracted_model, output_filepath, "external_data")
-    onnx.checker.check_model(output_filepath)
+    validate_onnx(output_filepath)
 
 
 def truncate_onnx_embedding_model(

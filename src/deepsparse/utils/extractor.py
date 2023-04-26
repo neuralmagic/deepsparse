@@ -23,7 +23,6 @@ https://github.com/onnx/onnx/blob/main/onnx/helper.py
 import os
 from typing import Any, List, Optional, Sequence, Tuple
 
-import onnx.checker
 import onnx.helper
 import onnx.shape_inference
 from onnx import (
@@ -38,7 +37,7 @@ from onnx import (
     defs,
 )
 
-from deepsparse.utils.onnx import save_onnx
+from sparsezoo.utils import save_onnx, validate_onnx
 
 
 __all__ = [
@@ -238,7 +237,7 @@ def extract_model(
     if not output_names:
         raise ValueError("Output tensor names shall not be empty!")
 
-    onnx.checker.check_model(input_path)
+    validate_onnx(input_path)
     model = onnx.load(input_path)
 
     e = Extractor(model)
@@ -246,7 +245,7 @@ def extract_model(
 
     save_onnx(model=extracted, model_path=output_path)
     if check_model:
-        onnx.checker.check_model(output_path)
+        validate_onnx(output_path)
 
 
 def make_model(graph: GraphProto, **kwargs: Any) -> ModelProto:

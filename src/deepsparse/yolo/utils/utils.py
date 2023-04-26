@@ -29,8 +29,8 @@ import torchvision
 import yaml
 
 import torch
-from deepsparse.utils.onnx import save_onnx
 from deepsparse.yolo.schemas import YOLOOutput
+from sparsezoo.utils import save_onnx
 
 
 try:

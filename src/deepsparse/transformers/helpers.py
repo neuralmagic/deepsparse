@@ -28,8 +28,9 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import save_onnx, truncate_onnx_model
+from deepsparse.utils.onnx import truncate_onnx_model
 from sparsezoo import Model
+from sparsezoo.utils import save_onnx
 
 
 __all__ = [
