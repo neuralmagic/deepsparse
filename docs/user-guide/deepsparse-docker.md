@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 # How to Use DeepSparse With Docker 
-Apart from installing DeepSparse with `pip` you can also set it up using [Docker](https://www.docker.com/), enabling you to start using DeepSparse immediately without the need to manually install all the required dependencies. 
+DeepSparse is an efficient and powerful tool for running inference on sparse and quantized models. Apart from installing DeepSparse with `pip`, it can be easily set up using [Docker](https://www.docker.com/) which allows you to start using DeepSparse without having to manually install all the required dependencies.
+
+In this guide, you will learn how to use DeepSparse with Docker for various use cases, such as running an HTTP server, working with the `Engine`, using the `Pipeline`, and benchmarking DeepSparse's performance.
 
 The first step is to pull the `deepsparse` image from the GitHub Container Registry. 
 
