@@ -184,7 +184,7 @@ docker build -t pipeline_deepsparse_docker .
 ```
 Run the Docker Container: 
 ```bash 
-docker container run  pipeline_deepsparse_docker
+docker container run pipeline_deepsparse_docker
 # labels=['positive'] scores=[0.9955807328224182]
 ```
 ## DeepSparse Benchmarking
