@@ -48,10 +48,6 @@ Here's the meaning of the commands after  `docker container run`:
 ```bash
 docker container run -it -p 5543:5543 deepsparse_docker
 ```
-You can also run the container using the [old Docker CLI syntax](https://www.docker.com/blog/whats-new-in-docker-1-13/) but using the new commands is encouraged: 
-```bash
-docker run -it -p 5543:5543 deepsparse_docker
-```
 Running the following CLI command inside the container launches a sentiment analysis pipeline with a 90% pruned-quantized BERT model identified by its SparseZoo stub:
 
 ```bash
