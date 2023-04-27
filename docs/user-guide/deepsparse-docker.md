@@ -37,7 +37,7 @@ docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse_docker
 ```
 ## DeepSparse Server Example
 
-Built on the popular FastAPI and Uvicorn stack, DeepSparse Server enables you to set up a REST endpoint for serving inferences over HTTP. Since DeepSparse Server wraps the Pipeline API, it inherits all the utilities provided by Pipelines.
+DeepSparse Server, built on the popular FastAPI and Uvicorn stack, allows you to set up a REST endpoint for serving inferences over HTTP. It wraps the Pipeline API, inheriting all the utilities provided by Pipelines.
 
 Start the `deepsparse` container in interactive mode and publish the containers port 5543 to the local machine's port 5543 to expose the port outside the container. 
 
