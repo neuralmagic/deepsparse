@@ -150,7 +150,6 @@ from deepsparse import Pipeline
 def run():
     # download onnx from sparsezoo and compile with batch size 1
     sparsezoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"
-    batch_size = 1
     sa_pipeline = Pipeline.create(
     task="sentiment-analysis",
     model_path=sparsezoo_stub,   # sparsezoo stub or path to local ONNX
