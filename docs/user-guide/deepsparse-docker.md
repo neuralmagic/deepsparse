@@ -104,27 +104,18 @@ if __name__ == "__main__":
 ```
 Next create a Dockerfile. The name of the file should be `Dokcerfile`. This file has instructions for: 
 - Pulling the DeepSparse Docker Image 
-- Setting up a new user 
-- Setting the home directory for the user 
-- Copying the Python script into the container and setting owner to the created user
+- Copying the Python script into the container 
 - Running the Python script 
 ```Dockerfile
-# Pull DeepSparse Image
 FROM ghcr.io/neuralmagic/deepsparse:1.4.2
 
-# Set up a new user named "user" with user ID 1000
-RUN useradd -m -u 1000 user
-# Switch to the "user" user
-USER user
-# Set home to the user's home directory
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
-
 # Set the working directory to the user's home directory
-WORKDIR $HOME/app
-# Copy the current directory contents into the container at $HOME/app setting the owner to the user
-COPY --chown=user . $HOME/app
+WORKDIR /app
 
+# Copy the current directory contents into the container 
+COPY . .
+
+#Run the Python script
 CMD ["python", "app.py"]
 ```
 Create a DeepSparse Container where the Python script will run in. The `-t` argument tags the container with the given name. 
@@ -172,22 +163,15 @@ if __name__ == "__main__":
 ```
 Next create a Dockerfile. The file should be named `Dockerfile`: 
 ```Dockerfile
-# Pull the DeepSparse Image
 FROM ghcr.io/neuralmagic/deepsparse:1.4.2
 
-# Set up a new user named "user" with user ID 1000
-RUN useradd -m -u 1000 user
-# Switch to the "user" user
-USER user
-# Set home to the user's home directory
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
-
 # Set the working directory to the user's home directory
-WORKDIR $HOME/app
-# Copy the current directory contents into the container at $HOME/app setting the owner to the user
-COPY --chown=user . $HOME/app
+WORKDIR /app
 
+# Copy the current directory contents into the container 
+COPY . .
+
+#Run the Python script
 CMD ["python", "app.py"]
 ```
 
