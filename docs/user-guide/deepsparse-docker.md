@@ -18,7 +18,13 @@ DeepSparse is an efficient and powerful tool for running inference on sparse and
 
 In this guide, you will learn how to use DeepSparse with Docker for various use cases, such as running an HTTP server, working with the `Engine`, using the `Pipeline`, and benchmarking DeepSparse's performance.
 
-The first step is to pull the `deepsparse` image from the GitHub Container Registry. 
+## Prerequisites
+
+Before you begin, make sure you have Docker installed on your machine. You can download and install it from the [official Docker website](https://www.docker.com/products/docker-desktop).
+
+## Pulling and Tagging the DeepSparse Docker Image
+
+First, pull the `deepsparse` image from the GitHub Container Registry:```
 
 ```bash
 docker pull ghcr.io/neuralmagic/deepsparse:1.4.2
