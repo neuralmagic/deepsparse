@@ -130,7 +130,7 @@ docker build -t engine_deepsparse_docker .
 ```
 Run your newly created DeepSparse Container: 
 ```bash 
-docker container run  engine_deepsparse_docker
+docker container run engine_deepsparse_docker
 # [array([[-0.34614536,  0.09025408]], dtype=float32)]
 ```
 
