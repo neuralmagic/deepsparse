@@ -106,7 +106,7 @@ def run():
 if __name__ == "__main__":
     run()
 ```
-Next create a Dockerfile. The name of the file should be `Dokcerfile`. This file has instructions for: 
+Next create a Dockerfile. The name of the file should be `Dockerfile`. This file has instructions for: 
 - Pulling the DeepSparse Docker Image 
 - Copying the Python script into the container 
 - Running the Python script 
