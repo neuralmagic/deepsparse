@@ -2,8 +2,8 @@
 # flake8: noqa
 
 import json
-from typing import Dict
 from pathlib import Path
+from typing import Dict
 
 from tqdm import tqdm
 
