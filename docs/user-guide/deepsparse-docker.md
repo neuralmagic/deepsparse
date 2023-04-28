@@ -202,4 +202,6 @@ docker container run -it deepsparse_docker deepsparse.benchmark "zoo:nlp/sentime
 > Latency Std (ms/batch): 465.9775
 > Iterations: 15
 ```
+## How to Make Your Own Deepsparse Docker Image
 
+To build your own DeepSparse Image [follow these instructions](https://github.com/neuralmagic/deepsparse/tree/main/docker#build). 
