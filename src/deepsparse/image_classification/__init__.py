@@ -15,6 +15,7 @@
 # flake8: noqa
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
+
 _analytics.send_event("python__image_classification__init")
 
 
