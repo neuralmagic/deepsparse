@@ -38,11 +38,8 @@ FROM base AS container_branch_all
 ARG VENV
 ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
-ARG DEEPSPARSE_INSTALLABLE=./deepsparse[server,yolo,onnxruntime,yolov8]
+ARG DEEPSPARSE_INSTALLABLE=./deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]
 RUN $VENV/bin/pip install --no-cache-dir "${DEEPSPARSE_INSTALLABLE}"
-
-RUN deepsparse.transformers.run_inference --help \
-    && deepsparse.image_classification.annotate --help
 
 
 FROM base AS container_branch_server
