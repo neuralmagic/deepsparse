@@ -57,7 +57,7 @@ python examples/benchmark/run_benchmark.py \
 import argparse
 import time
 
-from deepsparse import compile_model, cpu
+from deepsparse import Engine, cpu
 from deepsparse.benchmark import BenchmarkResults, ORTEngine
 from deepsparse.utils import (
     generate_random_inputs,
@@ -157,7 +157,9 @@ def main():
 
     # Benchmark DeepSparse Engine
     print("Benchmarking model with DeepSparse Engine...")
-    dse_network = compile_model(onnx_filepath, batch_size=batch_size)
+    dse_network = Engine(
+        onnx_filepath, batch_size=batch_size, input_shapes=input_shapes
+    )
     print(f"Engine info: {dse_network}")
     dse_results = dse_network.benchmark(
         inputs, num_iterations, num_warmup_iterations, include_outputs=True
