@@ -345,7 +345,7 @@ def benchmark_model(
 ) -> Dict:
     if quiet:
         set_logging_level(logging.WARN)
-        
+
     if num_cores is None:
         num_cores = cpu_architecture().num_available_physical_cores
 
