@@ -23,13 +23,14 @@ usage: eval_downstream.py [-h] [-d {squad,mnli,qqp,sst2,imdb,conll2003}]
                           [-e {deepsparse,onnxruntime}]
                           [--max-sequence-length MAX_SEQUENCE_LENGTH]
                           [--max-samples MAX_SAMPLES] [--zero-shot BOOL]
-                          onnx_filepath
+                          model_path
 
 Evaluate a BERT ONNX model on a downstream dataset
 
 positional arguments:
-  onnx_filepath         The full filepath of the ONNX model file or SparseZoo
-                        stub to the model
+  model_path            The path to a directory containing model.onnx,
+                        config.json, and tokenizer.json files or SparseZoo stub
+                        to the model
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -85,7 +86,7 @@ def qa_eval(args, dataset_name="squad"):
     # load QA pipeline
     question_answer = Pipeline.create(
         task="question-answering",
-        model_path=args.onnx_filepath,
+        model_path=args.model_path,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -129,7 +130,7 @@ def mnli_eval(args):
     # load pipeline
     text_classify = Pipeline.create(
         task="text-classification",
-        model_path=args.onnx_filepath,
+        model_path=args.model_path,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -172,7 +173,7 @@ def qqp_eval(args):
     # load pipeline
     text_classify = Pipeline.create(
         task="text-classification",
-        model_path=args.onnx_filepath,
+        model_path=args.model_path,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -206,7 +207,7 @@ def sst2_eval(args):
     # load pipeline
     text_classify = Pipeline.create(
         task="text-classification",
-        model_path=args.onnx_filepath,
+        model_path=args.model_path,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -248,7 +249,7 @@ def sst2_zero_shot_eval(args):
             "hypothesis_template": "The sentiment of this text is {}",
             "multi_class": True,
         },
-        model_path=args.onnx_filepath,
+        model_path=args.model_path,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -288,7 +289,7 @@ def imdb_eval(args):
     # load pipeline
     text_classify = Pipeline.create(
         task="text-classification",
-        model_path=args.onnx_filepath,
+        model_path=args.model_path,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -322,7 +323,7 @@ def conll2003_eval(args):
     # load pipeline
     token_classify = Pipeline.create(
         task="token-classification",
-        model_path=args.onnx_filepath,
+        model_path=args.model_path,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -376,7 +377,7 @@ def go_emotions_eval(args):
     # load pipeline
     text_classify = Pipeline.create(
         task="text-classification",
-        model_path=args.onnx_filepath,
+        model_path=args.model_path,
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
@@ -450,9 +451,12 @@ def parse_args():
         description="Evaluate a BERT ONNX model on a downstream dataset"
     )
     parser.add_argument(
-        "onnx_filepath",
+        "model_path",
         type=str,
-        help="The full filepath of the ONNX model file or SparseZoo stub to the model",
+        help=(
+            "The path to a directory containing model.onnx, config.json, and "
+            "tokenizer.json files or SparseZoo stub to the model"
+        ),
     )
     parser.add_argument(
         "-d",
