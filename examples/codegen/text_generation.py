@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import os
-from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
-import onnx
+from onnx import ValueInfoProto
 from pydantic import BaseModel, Field
+from transformers import AutoConfig, AutoTokenizer
 
 from deepsparse import Context, MultiModelEngine, Pipeline
 from deepsparse.pipeline import (
@@ -28,6 +28,7 @@ from deepsparse.pipeline import (
     Engine,
     ORTEngine,
 )
+from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
 from deepsparse.transformers.pipelines import TransformersPipeline
 from scipy.special import softmax
 
@@ -35,53 +36,54 @@ from scipy.special import softmax
 _MODEL_DIR_ONNX_MULTI_TOKEN_NAME = "decoder_model.onnx"
 _MODEL_DIR_ONNX_NAME = "model.onnx"
 
-__all__ = ["TextGenerationPipeline"]
 
-
-def overwrite_transformer_onnx_model_inputs(
-    path: str,
-    batch_size: int = 1,
-    max_length: int = 128,
-    output_path: Optional[str] = None,
-) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
+def overwrite_multi_token_onnx_model_inputs(
+    external_inputs: List[ValueInfoProto], batch_size: int, max_length: int
+) -> List[str]:
     """
-    Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
-    Assumes that these are the first and second shape indices of the given model inputs
-    respectively
+    Overwrite the input shape of the onnx model for multi token generation.
 
-    :param path: path to the ONNX model to override
-    :param batch_size: batch size to set
-    :param max_length: max sequence length to set
-    :param output_path: if provided, the model will be saved to the given path,
-        otherwise, the model will be saved to a named temporary file that will
-        be deleted after the program exits
-    :return: if no output path, a tuple of the saved path to the model, list of
-        model input names, and reference to the tempfile object will be returned
-        otherwise, only the model input names will be returned
+    :param external_inputs: the external inputs of the onnx model
+    :param batch_size: the batch size of the input
+    :param max_length: the max length of the input
+    :return: the input names of the onnx model
     """
-    # overwrite input shapes
-    model = onnx.load(path)
-    initializer_input_names = set([node.name for node in model.graph.initializer])
-    external_inputs = [
-        inp for inp in model.graph.input if inp.name not in initializer_input_names
-    ]
     input_names = []
     for external_input in external_inputs:
-        # this is removed for now (will need to be accounted for when we start
-        # supporting deepsparse engine
-        # external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-        # external_input.type.tensor_type.shape.dim[1].dim_value = max_length
+        for single_input in external_input.type.tensor_type.shape.dim:
+            if single_input.dim_param == "batch_size":
+                single_input.dim_value = batch_size
+            elif single_input.dim_param == "sequence_length":
+                single_input.dim_value = max_length
         input_names.append(external_input.name)
+    return input_names
 
-    # Save modified model
-    if output_path is None:
-        tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-        onnx.save(model, tmp_file.name)
 
-        return tmp_file.name, input_names, tmp_file
-    else:
-        onnx.save(model, output_path)
-        return input_names
+def overwrite_single_token_onnx_model_inputs(
+    external_inputs: List[ValueInfoProto], batch_size: int, max_length: int
+) -> List[str]:
+    """
+    Overwrite the input shapes of the onnx model of the single token model.
+
+    :param external_inputs: the external inputs of the onnx model
+    :param batch_size: the batch size to overwrite the input shapes with
+    :param max_length: the max length to overwrite the input shapes with
+    :return: the input names of the onnx model
+    """
+    input_names = []
+    for external_input in external_inputs:
+        for single_input in external_input.type.tensor_type.shape.dim:
+            if single_input.dim_param == "batch_size":
+                single_input.dim_value = batch_size
+            elif single_input.dim_param == "past_sequence_length + sequence_length":
+                single_input.dim_value = max_length
+            elif single_input.dim_param == "past_sequence_length + 1":
+                single_input.dim_value = max_length
+        input_names.append(external_input.name)
+    return input_names
+
+
+__all__ = ["TextGenerationPipeline"]
 
 
 class TextGenerationInput(BaseModel):
@@ -143,11 +145,6 @@ class TextGenerationPipeline(TransformersPipeline):
         self.onnx_multitoken_path = self._setup_multitoken_onnx_file_path()
         # initialize the auxiliary multitoken engine
         self.multitoken_engine = self._initialize_multitoken_engine()
-
-        # re-initialize the target model
-        # this will be removed once codegen is productionized
-        self.onnx_path = self._setup_onnx_file_path()
-        self.engine = self._reinitialize_engine()
 
         if self._batch_size != 1:
             raise ValueError(
@@ -412,6 +409,34 @@ class TextGenerationPipeline(TransformersPipeline):
             probs = softmax(logits)
             return numpy.random.choice(len(probs), p=probs)
 
+    def setup_onnx_file_path(self) -> str:
+        onnx_path = os.path.join(self.model_path, _MODEL_DIR_ONNX_NAME)
+
+        config_path = self.model_path
+        tokenizer_path = self.model_path
+
+        self.config = AutoConfig.from_pretrained(
+            config_path, finetuning_task=self.task if hasattr(self, "task") else None
+        )
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_path,
+            model_max_length=self.sequence_length,
+        )
+        self.config_path = os.path.join(config_path, "config.json")
+        self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
+
+        (
+            onnx_path,
+            self.onnx_input_names,
+            self._temp_model_directory,
+        ) = overwrite_transformer_onnx_model_inputs(
+            onnx_path,
+            max_length=self.sequence_length,
+            custom_input_overwrite_func=overwrite_single_token_onnx_model_inputs,
+        )
+
+        return onnx_path
+
     def _setup_multitoken_onnx_file_path(self) -> str:
         # `setup_onnx_file_path` function rewritten
         # to setup the multitoken_onnx_file_path
@@ -424,7 +449,10 @@ class TextGenerationPipeline(TransformersPipeline):
             self.multitoken_onnx_input_names,
             self._temp_model_directory,
         ) = overwrite_transformer_onnx_model_inputs(
-            multitoken_onnx_path, max_length=self.sequence_length
+            multitoken_onnx_path,
+            max_length=self.sequence_length,
+            load_external_data=False,
+            custom_input_overwrite_func=overwrite_multi_token_onnx_model_inputs,
         )
 
         return multitoken_onnx_path
@@ -447,46 +475,6 @@ class TextGenerationPipeline(TransformersPipeline):
             return Engine(self.onnx_multitoken_path, **self._engine_args)
         elif engine_type == ORT_ENGINE:
             return ORTEngine(self.onnx_multitoken_path, **self._engine_args)
-        else:
-            raise ValueError(
-                f"Unknown engine_type {self.engine_type}. Supported values include: "
-                f"{SUPPORTED_PIPELINE_ENGINES}"
-            )
-
-    def _setup_onnx_file_path(self) -> str:
-        # `setup_onnx_file_path` function rewritten
-
-        onnx_path = os.path.join(self.model_path, _MODEL_DIR_ONNX_NAME)
-        (
-            onnx_path,
-            self.onnx_input_names,
-            self._temp_model_directory,
-        ) = overwrite_transformer_onnx_model_inputs(
-            onnx_path, max_length=self.sequence_length
-        )
-
-        return onnx_path
-
-    def _initialize_engine(self):
-        return None
-
-    def _reinitialize_engine(self) -> Union[Engine, ORTEngine]:
-        # `_initialize_engine` function rewritten
-
-        engine_type = self.engine_type.lower()
-
-        if engine_type == DEEPSPARSE_ENGINE:
-            if self.context is not None and isinstance(self.context, Context):
-                self._engine_args.pop("num_cores", None)
-                self._engine_args.pop("scheduler", None)
-                self._engine_args["context"] = self.context
-                return MultiModelEngine(
-                    model=self.onnx_path,
-                    **self._engine_args,
-                )
-            return Engine(self.onnx_path, **self._engine_args)
-        elif engine_type == ORT_ENGINE:
-            return ORTEngine(self.onnx_path, **self._engine_args)
         else:
             raise ValueError(
                 f"Unknown engine_type {self.engine_type}. Supported values include: "

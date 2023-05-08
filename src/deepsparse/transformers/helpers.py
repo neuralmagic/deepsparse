@@ -21,7 +21,7 @@ import os
 import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -30,6 +30,7 @@ from onnx import ModelProto
 from deepsparse.log import get_main_logger
 from deepsparse.utils.onnx import truncate_onnx_model
 from sparsezoo import Model
+from sparsezoo.utils import save_onnx
 
 
 __all__ = [
@@ -135,6 +136,8 @@ def overwrite_transformer_onnx_model_inputs(
     batch_size: int = 1,
     max_length: int = 128,
     output_path: Optional[str] = None,
+    load_external_data: bool = True,
+    custom_input_overwrite_func: Optional[Callable] = None,
 ) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
     """
     Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
@@ -147,30 +150,41 @@ def overwrite_transformer_onnx_model_inputs(
     :param output_path: if provided, the model will be saved to the given path,
         otherwise, the model will be saved to a named temporary file that will
         be deleted after the program exits
+    :param load_external_data: if True, external data will be loaded into the model
+        graph. If False, external data will not be loaded and the model will be
+        saved without external data
+    :custom_input_overwrite_func: if provided, this function will be called instead
+        of the default input overwrite function. This function should take in a list
+        of external inputs and return a list of the overwritten input names
     :return: if no output path, a tuple of the saved path to the model, list of
         model input names, and reference to the tempfile object will be returned
         otherwise, only the model input names will be returned
     """
     # overwrite input shapes
-    model = onnx.load(path)
+    model = onnx.load_model(path, load_external_data=load_external_data)
     initializer_input_names = set([node.name for node in model.graph.initializer])
     external_inputs = [
         inp for inp in model.graph.input if inp.name not in initializer_input_names
     ]
-    input_names = []
-    for external_input in external_inputs:
-        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
-        input_names.append(external_input.name)
+    if custom_input_overwrite_func is not None:
+        input_names = custom_input_overwrite_func(
+            external_inputs, batch_size, max_length
+        )
+    else:
+        input_names = []
+        for external_input in external_inputs:
+            external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+            external_input.type.tensor_type.shape.dim[1].dim_value = max_length
+            input_names.append(external_input.name)
 
     # Save modified model
     if output_path is None:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-        onnx.save(model, tmp_file.name)
+        save_onnx(model, tmp_file.name)
 
         return tmp_file.name, input_names, tmp_file
     else:
-        onnx.save(model, output_path)
+        save_onnx(model, output_path)
         return input_names
 
 
