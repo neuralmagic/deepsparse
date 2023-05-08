@@ -64,22 +64,22 @@ ARG MODE=""
 RUN \
     if [ -n "$BRANCH" ] ; then \
       echo Installing from BRANCH && \
-      $VENV/bin/pip install --no-cache-dir "./deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
+      $VENV/bin/pip install --no-cache-dir "./deepsparse[server,yolo,onnxruntime,yolov8]"; \
     elif [ "$MODE" = "nightly" ] ; then \
       echo Installing nightlies ... && \
       if [ -z "$VERSION" ] ; then \
         echo Installing latest nightlies ...  && \
-        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
+        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8]"; \
       else \
         echo Installing nightlies ... with $VERSION && \
-        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8,transformers,image_classification]==$VERSION"; \
+        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8]==$VERSION"; \
       fi; \
     elif [ -z "$VERSION" ] ; then \
       echo Installing latest deepsparse ... from pypi && \
-      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
+      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8]"; \
     else \
       echo Installing latest deepsparse version="$VERSION" from pypi && \
-      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]==$VERSION"; \
+      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8]==$VERSION"; \
     fi;
 
 RUN deepsparse.transformers.run_inference --help \
