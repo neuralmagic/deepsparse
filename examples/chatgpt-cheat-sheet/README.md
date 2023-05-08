@@ -20,7 +20,7 @@ This cheat sheet illustrates the diverse abilities of OpenAI’s ChatGPT (3.5 Tu
 to enhance their proficiency in large language model prompting across various domains including media
 content creation, natural language processing, and programming.
 
-Given the intrinsic randomness of ChatGPT, you may encounter slightly different answers when attempting to replicate the output shown in this guide. 
+Given the intrinsic randomness of ChatGPT, answers may vary when attempting to replicate the output shown in this guide. 
 
 
 **Table of Contents**:
