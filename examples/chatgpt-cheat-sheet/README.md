@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# The ChatGPT Cheat Sheet <img align="right" width="160" height="60" src="./img/LOGO_NM_HROIZ_BLUE.png">
+# The ChatGPT Cheat Sheet <img align="right" width="160" height="60" src="./img/logo.png">
 
 This cheat sheet illustrates the diverse abilities of OpenAI’s ChatGPT (3.5 Turbo) for developers and content creators
 to enhance their proficiency in large language model prompting across various domains including media
