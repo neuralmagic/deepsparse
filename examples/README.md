@@ -32,7 +32,7 @@ Open a Pull Request to [contribute](https://github.com/neuralmagic/deepsparse/bl
 | [Image Classification](https://github.com/neuralmagic/deepsparse/tree/main/examples/classification/)  | How to use image classification models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine.  |
 | [Object Detection](https://github.com/neuralmagic/deepsparse/tree/main/examples/detection/)  | How to use object detection models from SparseZoo to perform inference and benchmarking with the DeepSparse Engine.  |
 | [Instance Segmentation](https://github.com/neuralmagic/deepsparse/tree/main/examples/dbolya-yolact/)  | How to use an optimized YOLACT model and the DeepSparse Engine to perform real-time instance segmentation. |
-| [AWS Lambda Integration](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-serverless/)  | How to deploy a DeepSparse pipeline on AWS Lambda. |
+| [AWS Serverless Integration](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-serverless/)  | How to deploy a DeepSparse pipeline for batch or real-time inference on select serverless services. |
 | [AWS Sagemaker Integration](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-sagemaker/)  | How to deploy a DeepSparse inference server on SageMaker. |
 | [Google Cloud Run](https://github.com/neuralmagic/deepsparse/tree/main/examples/google-cloud-run) | How to deploy a DeepSparse inference server on Cloud Run. |
 | [Google Kubernetes Engine](https://github.com/neuralmagic/deepsparse/tree/main/examples/google-kubernetes-engine/) | How to deploy a DeepSparse inference server on GKE. |
