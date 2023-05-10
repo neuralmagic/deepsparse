@@ -52,6 +52,7 @@ _MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
 def get_onnx_path_and_configs(
     model_path: str,
     require_configs: bool = False,
+    model_dir_onnx_name: str = _MODEL_DIR_ONNX_NAME,
 ) -> Tuple[str, Optional[str], Optional[str]]:
     """
     :param model_path: path to onnx file, transformers sparsezoo stub,
@@ -61,6 +62,7 @@ def get_onnx_path_and_configs(
     :param require_configs: if True, model_path must be a directory containing
         `model.onnx`, `config.json`, and `tokenizer.json` files. Will raise
         an exception otherwise
+    :param model_dir_onnx_name: name of onnx file in model directory
     :return: tuple of ONNX file path, parent directory of config file
         if it exists, and parent directory of tokenizer config file if it
         exists. (Parent directories returned instead of absolute path
@@ -75,13 +77,13 @@ def get_onnx_path_and_configs(
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if _MODEL_DIR_ONNX_NAME not in model_files:
+        if model_dir_onnx_name not in model_files:
             raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{model_dir_onnx_name} not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
+                f"{os.path.join(model_path, model_dir_onnx_name)}"
             )
-        onnx_path = os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
+        onnx_path = os.path.join(model_path, model_dir_onnx_name)
 
         # attempt to read config and tokenizer from sparsezoo-like framework directory
         framework_dir = None
