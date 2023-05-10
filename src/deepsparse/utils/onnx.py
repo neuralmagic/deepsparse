@@ -24,6 +24,7 @@ import onnx
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
 from deepsparse.utils.extractor import Extractor
+from sparsezoo.utils import save_onnx, validate_onnx
 
 
 try:
@@ -49,26 +50,6 @@ __all__ = [
 ]
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def save_onnx(model: Model, model_path: str, external_data_file: str) -> bool:
-    """
-    Save model to the given path.  If the model has external data, store the
-    external data in 'external_data_file'.
-    Returns False if the model had no external data, True otherwise.
-    """
-    if model.ByteSize() < onnx.checker.MAXIMUM_PROTOBUF:
-        onnx.save(model, model_path)
-        return False
-    else:
-        onnx.save_model(
-            model,
-            model_path,
-            save_as_external_data=True,
-            all_tensors_to_one_file=True,
-            location=external_data_file,
-        )
-        return True
 
 
 @contextlib.contextmanager
@@ -359,7 +340,7 @@ def truncate_onnx_model(
 
     # save and check model
     save_onnx(extracted_model, output_filepath, "external_data")
-    onnx.checker.check_model(output_filepath)
+    validate_onnx(output_filepath)
 
 
 def truncate_onnx_embedding_model(
