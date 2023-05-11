@@ -817,18 +817,20 @@ class MultiModelEngine(Engine):
                 context.value,
             )
 
+
 class KVCacheEngine(Engine):
     """
     Engine that can do kv caching.
     """
+
     def __init__(
-            self,
-            model: Union[str, "Model", "File"],
-            batch_size: int = 1,
-            num_cores: int = None,
-            num_streams: int = None,
-            scheduler: Scheduler = None,
-            input_shapes: List[List[int]] = None,
+        self,
+        model: Union[str, "Model", "File"],
+        batch_size: int = 1,
+        num_cores: int = None,
+        num_streams: int = None,
+        scheduler: Scheduler = None,
+        input_shapes: List[List[int]] = None,
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -857,7 +859,7 @@ class KVCacheEngine(Engine):
             # create a boolean list of every output of the
             # model (logits, key0, value0, key1, value1, ..., key19, value, 19)
             kv_cache_bools = [True for i in range(41)]
-            kv_cache_bools[0] = False # logits ought not to be cached
+            kv_cache_bools[0] = False  # logits ought not to be cached
 
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
@@ -866,8 +868,8 @@ class KVCacheEngine(Engine):
                 num_streams,
                 self._scheduler.value,
                 None,
-                kv_cache_bools, # pass in the boolean list
-                0 # since we start with no initial cache, pass in 0 for the initial cached position
+                kv_cache_bools,  # pass in the boolean list
+                0,  # since we start with no initial cache, pass in 0 for the initial cached position
             )
 
 
