@@ -87,7 +87,7 @@ class TextGenerationPipeline(TransformersPipeline):
         prompt_batch_threshold: float = 0.25,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(**kwargs, _delay_engine_initialize=True)
 
         if self._batch_size != 1:
             raise ValueError("Only batch size 1 is supported for generation pipelines")
@@ -97,14 +97,15 @@ class TextGenerationPipeline(TransformersPipeline):
         self.max_generated_tokens = max_generated_tokens
         self.prompt_batch_threshold = prompt_batch_threshold
 
+        self.engine = Pipeline.create_engine(
+            self.onnx_file_path, self.engine_type, self.engine_args, self.context, support_kv_cache=True)
         # additional setup the multitoken engine,
         # used for large inputs to generate kv cache
         # TODO: to be deprecated after Sage's changes
         self.onnx_multitoken_path = self.setup_onnx_file_path(multitoken=True)
         # initialize the auxiliary multitoken engine
-        self.multitoken_engine = Pipeline.create_engine(
-            self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context
-        )
+        #self.multitoken_engine = Pipeline.create_engine(
+        #    self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context)
 
     @staticmethod
     def route_input_to_bucket(
@@ -221,6 +222,7 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
 
         if len(tokens) / float(self.sequence_length) < self.prompt_batch_threshold:
+            print('first')
             # prompt size is small, run autoregressive inference to populate kv cache
             run_tokens = []
             kv_cache = {}
@@ -230,6 +232,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     run_tokens, kv_cache
                 )
         else:
+            print('second')
             # larger prompt size, run through multi-token engine in single pass
             logits, *cache_values = self.multitoken_engine(engine_inputs)
             kv_cache = self._assemble_kv_cache(
@@ -270,7 +273,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         kv_cache = kv_cache if kv_cache else self._initialize_kv_cache()
         engine_inputs.update(kv_cache)
-        engine_inputs = [engine_inputs[name] for name in self.engine._input_names]
+        engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
         new_logits, *cache_values = self.engine(engine_inputs)
         kv_cache = self._assemble_kv_cache(cache_values, tokens)
@@ -372,7 +375,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # in the next autoregressive pass
         cache_keys = [
             name.replace("present", "past_key_values")
-            for name in self.engine._output_names
+            for name in self.engine.output_names
             if name.startswith("present")
         ]
         kv_cache = dict(zip(cache_keys, cache_values))
@@ -395,7 +398,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
     @staticmethod
     def overwrite_onnx_model_inputs(
-        external_inputs: List[ValueInfoProto], batch_size: int, max_length: int
+        external_inputs: List[ValueInfoProto], batch_size: int, sequence_length: int
     ) -> List[str]:
         """
         Overwrite the input shape of the onnx model.
@@ -407,6 +410,17 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         input_names = []
         for external_input in external_inputs:
-            external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+            if external_input.name == 'input_ids':
+                external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+                external_input.type.tensor_type.shape.dim[1].dim_value = 1
+            elif external_input.name == 'attention_mask':
+                external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+                external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
+            else:
+                external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+                external_input.type.tensor_type.shape.dim[1].dim_value = 16
+                external_input.type.tensor_type.shape.dim[2].dim_value = sequence_length - 1
+                external_input.type.tensor_type.shape.dim[3].dim_value = 64
+
             input_names.append(external_input.name)
         return input_names
