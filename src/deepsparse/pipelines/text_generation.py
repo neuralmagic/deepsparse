@@ -222,7 +222,6 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
 
         if len(tokens) / float(self.sequence_length) < self.prompt_batch_threshold:
-            print('first')
             # prompt size is small, run autoregressive inference to populate kv cache
             run_tokens = []
             kv_cache = {}
@@ -232,7 +231,6 @@ class TextGenerationPipeline(TransformersPipeline):
                     run_tokens, kv_cache
                 )
         else:
-            print('second')
             # larger prompt size, run through multi-token engine in single pass
             logits, *cache_values = self.multitoken_engine(engine_inputs)
             kv_cache = self._assemble_kv_cache(
