@@ -98,13 +98,18 @@ class TextGenerationPipeline(TransformersPipeline):
         self.prompt_batch_threshold = prompt_batch_threshold
 
         self.engine = Pipeline.create_engine(
-            self.onnx_file_path, self.engine_type, self.engine_args, self.context, support_kv_cache=True)
+            self.onnx_file_path,
+            self.engine_type,
+            self.engine_args,
+            self.context,
+            support_kv_cache=True,
+        )
         # additional setup the multitoken engine,
         # used for large inputs to generate kv cache
         # TODO: to be deprecated after Sage's changes
         self.onnx_multitoken_path = self.setup_onnx_file_path(multitoken=True)
         # initialize the auxiliary multitoken engine
-        #self.multitoken_engine = Pipeline.create_engine(
+        # self.multitoken_engine = Pipeline.create_engine(
         #    self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context)
 
     @staticmethod
@@ -238,7 +243,7 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             new_token = self.generate_token(logits[0, len(tokens) - 1])
 
-            tokens.append(new_token)
+        tokens.append(new_token)
 
         return tokens, kv_cache
 
@@ -408,16 +413,18 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         input_names = []
         for external_input in external_inputs:
-            if external_input.name == 'input_ids':
+            if external_input.name == "input_ids":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
                 external_input.type.tensor_type.shape.dim[1].dim_value = 1
-            elif external_input.name == 'attention_mask':
+            elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             else:
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
                 external_input.type.tensor_type.shape.dim[1].dim_value = 16
-                external_input.type.tensor_type.shape.dim[2].dim_value = sequence_length - 1
+                external_input.type.tensor_type.shape.dim[2].dim_value = (
+                    sequence_length - 1
+                )
                 external_input.type.tensor_type.shape.dim[3].dim_value = 64
 
             input_names.append(external_input.name)
