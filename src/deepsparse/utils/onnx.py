@@ -21,8 +21,10 @@ from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
+from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
 from deepsparse.utils.extractor import Extractor
+from sparsezoo.utils import save_onnx, validate_onnx
 
 
 try:
@@ -35,7 +37,6 @@ except Exception as sparsezoo_err:
     sparsezoo_import_error = sparsezoo_err
 
 __all__ = [
-    "ONNX_TENSOR_TYPE_MAP",
     "model_to_path",
     "get_external_inputs",
     "get_external_outputs",
@@ -49,43 +50,6 @@ __all__ = [
 ]
 
 _LOGGER = logging.getLogger(__name__)
-
-ONNX_TENSOR_TYPE_MAP = {
-    1: numpy.float32,
-    2: numpy.uint8,
-    3: numpy.int8,
-    4: numpy.uint16,
-    5: numpy.int16,
-    6: numpy.int32,
-    7: numpy.int64,
-    9: numpy.bool_,
-    10: numpy.float16,
-    11: numpy.float64,
-    12: numpy.uint32,
-    13: numpy.uint64,
-    14: numpy.complex64,
-    15: numpy.complex128,
-}
-
-
-def save_onnx(model: Model, model_path: str, external_data_file: str) -> bool:
-    """
-    Save model to the given path.  If the model has external data, store the
-    external data in 'external_data_file'.
-    Returns False if the model had no external data, True otherwise.
-    """
-    if model.ByteSize() < onnx.checker.MAXIMUM_PROTOBUF:
-        onnx.save(model, model_path)
-        return False
-    else:
-        onnx.save_model(
-            model,
-            model_path,
-            save_as_external_data=True,
-            all_tensors_to_one_file=True,
-            location=external_data_file,
-        )
-        return True
 
 
 @contextlib.contextmanager
@@ -115,9 +79,9 @@ def translate_onnx_type_to_numpy(tensor_type: int):
     :param tensor_type: Integer representing a type in ONNX spec
     :return: Corresponding numpy type
     """
-    if tensor_type not in ONNX_TENSOR_TYPE_MAP:
+    if tensor_type not in TENSOR_TYPE_TO_NP_TYPE:
         raise Exception("Unknown ONNX tensor type = {}".format(tensor_type))
-    return ONNX_TENSOR_TYPE_MAP[tensor_type]
+    return TENSOR_TYPE_TO_NP_TYPE[tensor_type]
 
 
 def model_to_path(model: Union[str, Model, File]) -> str:
@@ -376,7 +340,7 @@ def truncate_onnx_model(
 
     # save and check model
     save_onnx(extracted_model, output_filepath, "external_data")
-    onnx.checker.check_model(output_filepath)
+    validate_onnx(output_filepath)
 
 
 def truncate_onnx_embedding_model(

@@ -21,31 +21,38 @@ import boto3
 
 
 """
-Example script for auto-generating a Lambda HTTP endpoint in AWS Cloud
+Example script for deploying a serverless architecture for batch and realtime inference.
 
 ##########
 Command help:
 usage: python endpoint.py [-h] [action]
 
 Args:
-  action [create, destroy]  choose between creating or destroying an endpoint
+  action [create-batch, create-realtime, destroy, destroy-all]  choose between creating
+  a batch inference, realtime inference endpoints, destroying an endpoint, and
+  destroying endpoint and S3 buckets.
 
 ##########
-Example command for creating an endpoint:
+Example command for creating a batch inference architecture:
 
-python endpoint.py create
+python endpoint.py create-batch
 
-Example command for destroying an endpoint:
+Example command for destroying either a batch or realtime inference endpoint:
 
 python endpoint.py destroy
+
+Example command for destroying either a batch or realtime inference endpoint
+and S3 buckets (if they exist):
+
+python endpoint.py destroy-all
 """
 
 
 class SparseLambda:
 
     """
-    Object for generating a docker image running a DeepSparse pipeline,
-    pushing the image to ECR and generating a Lambda API Gateway endpoint
+    Object for generating a batch or realtime inference deployment on AWS
+    serverless via AWS SAM and cloudformation orchestration.
 
     :param region_name: AWS region
     :param ecr_repo_name: ECR repo name on AWS
@@ -59,10 +66,11 @@ class SparseLambda:
         self.ecr_repo_name = ecr_repo_name
         self.stack_name = stack_name
 
-        self.create_endpoint = "./create_endpoint.sh"
+        self.batch_script = "./scripts/batch-startup.sh"
+        self.realtime_script = "./scripts/realtime-startup.sh"
         self.ecr = boto3.client("ecr", region_name=self.region_name)
-        self._lambda = boto3.client("lambda", region_name=self.region_name)
         self.cloudformation = boto3.client("cloudformation")
+        self.s3 = boto3.resource("s3")
 
     def create_ecr_repo(self):
 
@@ -77,48 +85,42 @@ class SparseLambda:
         )
         pp.pprint(repo_check["repositories"])
 
-    def create_api_endpoint(self):
-
-        """
-        runs bash script for:
-        1. building local image
-        2. pushing image to ECR
-        3. building Lambda API endpoint
-        """
+    def create_endpoint(self, batch: bool = True):
 
         subprocess.call(
             [
                 "sh",
-                self.create_endpoint,
+                self.batch_script if batch else self.realtime_script,
                 self.region_name,
                 self.stack_name,
                 self.ecr_repo_name,
             ]
         )
 
-    def list_functions(self):
-
-        response = self._lambda.list_functions()
-
-        print("*** These are your Lambda functions: ***\n")
-        for function in response["Functions"]:
-
-            print("Function name: " + function["FunctionName"], "\n")
-
     def destroy_endpoint(self):
 
         self.cloudformation.delete_stack(StackName=self.stack_name)
+        print(f"CloudFormation stack '{self.stack_name}' was deleted.")
+
         self.ecr.delete_repository(repositoryName=self.ecr_repo_name, force=True)
-        print(
-            f"Your '{self.stack_name}' and ECR repo '{self.ecr_repo_name}' were killed."
-        )
+        print(f"ECR repository '{self.ecr_repo_name}' was deleted.")
+
+    def destroy_buckets(self):
+
+        for bucket_name in ["batch-input-deepsparse", "batch-output-deepsparse"]:
+            bucket = self.s3.Bucket(bucket_name)
+            if bucket in self.s3.buckets.all():
+                bucket.objects.all().delete()
+                bucket.delete()
+
+        print("S3 buckets and their content were deleted.")
 
 
 def construct_sparselambda():
     return SparseLambda(
         region_name="us-east-1",
-        ecr_repo_name="lambda-deepsparse",
-        stack_name="lambda-stack",
+        ecr_repo_name="serverless-deepsparse",
+        stack_name="serverless-stack",
     )
 
 
@@ -127,18 +129,31 @@ def main():
     pass
 
 
-@main.command("create")
-def create():
+@main.command("create-realtime")
+def create_realtime():
     SL = construct_sparselambda()
     SL.create_ecr_repo()
-    SL.create_api_endpoint()
-    SL.list_functions()
+    SL.create_endpoint(batch=False)
+
+
+@main.command("create-batch")
+def create_batch():
+    SL = construct_sparselambda()
+    SL.create_ecr_repo()
+    SL.create_endpoint()
 
 
 @main.command("destroy")
 def destroy():
     SL = construct_sparselambda()
     SL.destroy_endpoint()
+
+
+@main.command("destroy-all")
+def destroy_all():
+    SL = construct_sparselambda()
+    SL.destroy_endpoint()
+    SL.destroy_buckets()
 
 
 if __name__ == "__main__":

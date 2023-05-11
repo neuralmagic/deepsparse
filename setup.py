@@ -102,6 +102,7 @@ _dev_deps = [
     "m2r2~=0.2.7",
     "mistune==0.8.4",
     "myst-parser~=0.14.0",
+    "flaky~=3.7.0",
     "ndjson>=0.3.1",
     "rinohtype>=0.4.2",
     "sphinx>=3.4.0",
@@ -128,6 +129,10 @@ _server_deps = [
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
+_image_classification_deps = [
+    "torchvision>=0.3.0,<=0.13",
+    "opencv-python<=4.6.0.66",
+]
 _yolo_integration_deps = [
     "torchvision>=0.3.0,<=0.13",
     "opencv-python<=4.6.0.66",
@@ -139,6 +144,13 @@ _openpifpaf_integration_deps = [
     "scipy==1.10.1",
 ]
 _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
+_transformers_integration_deps = [
+    f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
+    f"~={version_base}",
+    "datasets<=1.18.4",
+    "scikit-learn",
+    "seqeval",
+]
 
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
@@ -254,10 +266,12 @@ def _setup_extras() -> Dict:
         "dev": _dev_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
+        "image_classification": _image_classification_deps,
         "yolo": _yolo_integration_deps,
         "haystack": _haystack_integration_deps,
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
+        "transformers": _transformers_integration_deps,
     }
 
 
@@ -271,6 +285,7 @@ def _setup_entry_points() -> Dict:
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             f"deepsparse.transformers.eval_downstream={eval_downstream}",
             "deepsparse.debug_analysis=deepsparse.debug_analysis:main",
+            "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
             "deepsparse.benchmark_sweep=deepsparse.benchmark.benchmark_sweep:main",

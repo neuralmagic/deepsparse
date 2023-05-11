@@ -1,9 +1,9 @@
-# Working with DeepSparse Pipelines
+# Working With DeepSparse Pipelines
 
 ## Introduction
 
 DeepSparse Pipelines provide a simple interface for end-to-end ML inference that wraps
-the [DeepSparse Engine](https://github.com/neuralmagic/deepsparse) with task-specific
+[DeepSparse](https://github.com/neuralmagic/deepsparse) with task-specific
 processing. Pipelines are created for a given task and include support for transforming
 raw inputs into fully processed predictions with sparse acceleration.
 
@@ -85,6 +85,6 @@ custom_pipeline = Pipeline.create(task="my-custom-task", model_path="...")
 ## Support
 
 For Neural Magic Support, sign up or log in to our
-[Deep Sparse Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ).
+[Neural Magic Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ).
 Bugs, feature requests, or additional questions can also be posted to our
 [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues).

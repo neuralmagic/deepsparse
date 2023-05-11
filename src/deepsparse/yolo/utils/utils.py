@@ -30,6 +30,7 @@ import yaml
 
 import torch
 from deepsparse.yolo.schemas import YOLOOutput
+from sparsezoo.utils import save_onnx
 
 
 try:
@@ -359,6 +360,8 @@ def modify_yolo_onnx_input_shape(
     model_input = model.graph.input[0]
 
     initial_x, initial_y = get_onnx_expected_image_shape(model)
+    if initial_x == initial_y == 0:
+        initial_x, initial_y = image_shape
 
     if not (isinstance(initial_x, int) and isinstance(initial_y, int)):
         return model_path, None  # model graph does not have static integer input shape
@@ -397,7 +400,7 @@ def modify_yolo_onnx_input_shape(
         set_tensor_dim_shape(model.graph.output[0], 1, num_predictions)
 
     tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-    onnx.save(model, tmp_file.name)
+    save_onnx(model, tmp_file.name)
 
     return tmp_file.name, tmp_file
 

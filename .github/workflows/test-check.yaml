@@ -31,7 +31,7 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev,server] opencv-python
+        run: pip3 install .[dev,server,image_classification,transformers] opencv-python
       - name: Run base tests
         run: make test
   cli-smoke-tests:
@@ -48,7 +48,7 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev,server]
+        run: pip3 install .[dev,server,image_classification,transformers]
       - name: Run CLI smoke tests
         run: PYTEST_ARGS="-m smoke" make test TARGETS=cli,nobase
   integrations-tests:
@@ -65,6 +65,6 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev,server,haystack]
+        run: pip3 install .[dev,server,image_classification,transformers,haystack]
       - name: Run integrations tests
         run: make test_integrations
