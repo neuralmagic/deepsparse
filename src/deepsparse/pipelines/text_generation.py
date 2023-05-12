@@ -265,14 +265,21 @@ class TextGenerationPipeline(TransformersPipeline):
         # Create the boolean attention mask:
         # e.g. [1, 1, 1, 1, 1, 0, 0, ..., 1] where first 1's correspond
         # to the kv_cache and the last one corresponds to the new token
-        attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        attention_mask[:, : len(tokens)] = 1
-        attention_mask[:, -1] = 1
+        if self.engine_type == "onnxruntime":
+            attention_mask = numpy.ones((1, len(tokens)), dtype=numpy.int64)
+            engine_inputs = {
+                "input_ids": numpy.array([[new_token]]),
+                "attention_mask": attention_mask,
+                "cache_length": numpy.array(len(tokens) - 1, dtype=numpy.int64),
+            }
+        else:
+            attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
+            attention_mask[:, :len(tokens)] = 1
 
-        engine_inputs = {
-            "input_ids": numpy.array([[new_token]]),
-            "attention_mask": attention_mask,
-        }
+            engine_inputs = {
+                "input_ids": numpy.array([[new_token]]),
+                "attention_mask": attention_mask,
+            }
 
         kv_cache = kv_cache if kv_cache else self._initialize_kv_cache()
         engine_inputs.update(kv_cache)
@@ -318,7 +325,9 @@ class TextGenerationPipeline(TransformersPipeline):
             )
         else:
             onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
-                self.model_path, require_configs=True
+                self.model_path,
+                require_configs=True,
+                model_dir_onnx_name = "model_fixed.onnx" if self.engine_type == "onnxruntime" else "model.onnx",
             )
 
         self.config = AutoConfig.from_pretrained(
@@ -339,7 +348,7 @@ class TextGenerationPipeline(TransformersPipeline):
         ) = overwrite_transformer_onnx_model_inputs(
             onnx_path,
             max_length=self.sequence_length,
-            custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
+            custom_input_overwrite_func=self.overwrite_onnx_model_inputs if not self.engine_type == "onnxruntime" else None,
         )
 
         model = onnx.load_model(onnx_path, load_external_data=False)
@@ -355,7 +364,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 self.external_outputs[1]
                 .type.tensor_type.shape.dim[1]
                 .dim_value,  # num heads
-                self.sequence_length - 1,  # sequence length - 1
+                0 if self.engine_type == "onnxruntime" else self.sequence_length - 1,
                 self.external_outputs[1].type.tensor_type.shape.dim[3].dim_value,
             ),
             dtype=numpy.float32,
@@ -382,20 +391,22 @@ class TextGenerationPipeline(TransformersPipeline):
             if name.startswith("present")
         ]
         kv_cache = dict(zip(cache_keys, cache_values))
-        for key, val in kv_cache.items():
-            if prompt_inference:
-                # remove the information about the `new_token` from the cache
-                val = val[:, :, :-1]
-                # zero out all the info that does not pertain to the
-                # "seen" `token` sequence
-                val[:, :, len(tokens) :] = 0.0
-                kv_cache[key] = numpy.ascontiguousarray(val)
 
-            else:
-                # move the information about the `new_token` to the
-                # end of the valid cache
-                val[:, :, len(tokens) - 1] = val[:, :, -1]
-                kv_cache[key] = numpy.ascontiguousarray(val[:, :, :-1])
+        if not self.engine_type == "onnxruntime":
+            for key, val in kv_cache.items():
+                if prompt_inference:
+                    # remove the information about the `new_token` from the cache
+                    val = val[:, :, :-1]
+                    # zero out all the info that does not pertain to the
+                    # "seen" `token` sequence
+                    val[:, :, len(tokens) :] = 0.0
+                    kv_cache[key] = numpy.ascontiguousarray(val)
+
+                else:
+                    # move the information about the `new_token` to the
+                    # end of the valid cache
+                    val[:, :, len(tokens) - 1] = val[:, :, -1]
+                    kv_cache[key] = numpy.ascontiguousarray(val[:, :, :-1])
 
         return kv_cache
 
@@ -419,13 +430,15 @@ class TextGenerationPipeline(TransformersPipeline):
             elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
-            else:
+            elif external_input.name.startswith("past_key_values"):
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
                 external_input.type.tensor_type.shape.dim[1].dim_value = 16
                 external_input.type.tensor_type.shape.dim[2].dim_value = (
                     sequence_length - 1
                 )
                 external_input.type.tensor_type.shape.dim[3].dim_value = 64
+            else:
+                pass
 
             input_names.append(external_input.name)
         return input_names
