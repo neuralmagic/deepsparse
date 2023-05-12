@@ -281,7 +281,8 @@ class ORTEngine(object):
         :return: The list of outputs from the model after executing over the inputs
         """
         if val_inp:
-            self._validate_inputs(inp)
+            pass
+            #self._validate_inputs(inp)
         inputs_dict = {name: value for name, value in zip(self.input_names, inp)}
         return self._eng_net.run(self.output_names, inputs_dict)
 
