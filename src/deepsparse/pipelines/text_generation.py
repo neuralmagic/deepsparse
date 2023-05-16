@@ -402,7 +402,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-                external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
+                external_input.type.tensor_type.shape.dim[1].dim_value = 256  # sequence_length
             elif external_input.name.startswith("past_key_values"):
                 external_input.type.tensor_type.shape.dim[0].dim_value = 16  # num heads
                 external_input.type.tensor_type.shape.dim[1].dim_value = (
