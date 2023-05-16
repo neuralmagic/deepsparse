@@ -213,6 +213,8 @@ def override_onnx_batch_size(
     for external_input in external_inputs:
         if external_input.name == "cache_length":
             continue
+        if external_input.name.startswith("past_key_values"):
+            continue  # TODO: really should set to BS * num_heads, skipping for now for testing
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
     # Save modified model, this will be cleaned up when context is exited
