@@ -95,8 +95,9 @@ class SupportedTasks:
         ),
     )
 
-    text_generation = namedtuple("text_generation", ["codegen"])(
+    text_generation = namedtuple("text_generation", ["opt", "codegen"])(
         codegen=AliasedTask("codegen", []),
+        opt=AliasedTask("opt", []),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(

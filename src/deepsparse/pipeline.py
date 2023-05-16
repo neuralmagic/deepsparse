@@ -260,10 +260,12 @@ class Pipeline(ABC):
         # ------ INFERENCE ------
         # split inputs into batches of size `self._batch_size`
         timer.start(InferencePhases.ENGINE_FORWARD)
-        batches = self.split_engine_inputs(engine_inputs, self._batch_size)
+        # Hack to enable inference with `cache_length` argument
+        # batches = self.split_engine_inputs(engine_inputs, self._batch_size)
+        batches = [engine_inputs]
 
         # submit split batches to engine threadpool
-        batch_outputs = [self.engine_forward(x) for x in  batches]
+        batch_outputs = [self.engine_forward(x) for x in batches]
 
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
