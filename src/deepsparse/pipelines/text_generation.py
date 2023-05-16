@@ -58,7 +58,7 @@ class TextGenerationOutput(BaseModel):
 
 @Pipeline.register(
     task="text_generation",
-    task_aliases=["codegen"],
+    task_aliases=["codegen", "opt"],
 )
 class TextGenerationPipeline(TransformersPipeline):
     """
@@ -96,21 +96,20 @@ class TextGenerationPipeline(TransformersPipeline):
         self.sampling_temperature = sampling_temperature
         self.max_generated_tokens = max_generated_tokens
         self.prompt_batch_threshold = prompt_batch_threshold
-
+        # when we are done with the static inference in ORT,
+        # set support_kv_cache = True
         self.engine = Pipeline.create_engine(
             self.onnx_file_path,
             self.engine_type,
             self.engine_args,
             self.context,
-            support_kv_cache=True,
         )
-        # additional setup the multitoken engine,
-        # used for large inputs to generate kv cache
-        # TODO: to be deprecated after Sage's changes
+
         self.onnx_multitoken_path = self.setup_onnx_file_path(multitoken=True)
         # initialize the auxiliary multitoken engine
-        # self.multitoken_engine = Pipeline.create_engine(
-        #    self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context)
+        self.multitoken_engine = Pipeline.create_engine(
+            self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context
+        )
 
     @staticmethod
     def route_input_to_bucket(
@@ -162,6 +161,10 @@ class TextGenerationPipeline(TransformersPipeline):
             padding="max_length",
         )
 
+        kv_cache = self._initialize_kv_cache()
+        cache_length = {"cache_length": numpy.array(0, dtype=numpy.int64)}
+
+        input_tokens = {**input_tokens, **kv_cache, **cache_length}
         engine_input = self.tokens_to_engine_input(input_tokens)
 
         return engine_input
@@ -192,7 +195,7 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens, kv_cache = self.prompt_inference(engine_inputs)
 
         # create the generated output
-        # TODO: Get clarity here, are we running the sliding window there?
+        # TODO: Apply sliding window logic
         max_tokens = (
             self.max_generated_tokens
             if self.max_generated_tokens and self.max_generated_tokens > 0
@@ -238,10 +241,8 @@ class TextGenerationPipeline(TransformersPipeline):
         else:
             # larger prompt size, run through multi-token engine in single pass
             logits, *cache_values = self.multitoken_engine(engine_inputs)
-            kv_cache = self._assemble_kv_cache(
-                cache_values, tokens, prompt_inference=True
-            )
-            new_token = self.generate_token(logits[0, len(tokens) - 1])
+            kv_cache = self._assemble_kv_cache(cache_values, tokens)
+            new_token = self.generate_token(logits[0, : len(tokens) + 1])
 
         tokens.append(new_token)
 
@@ -262,26 +263,15 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         new_token = tokens[-1]
 
-        # Create the boolean attention mask:
-        # e.g. [1, 1, 1, 1, 1, 0, 0, ..., 1] where first 1's correspond
-        # to the kv_cache and the last one corresponds to the new token
-        if self.engine_type == "onnxruntime":
-            attention_mask = numpy.ones((1, len(tokens)), dtype=numpy.int64)
-            engine_inputs = {
-                "input_ids": numpy.array([[new_token]]),
-                "attention_mask": attention_mask,
-                "cache_length": numpy.array(len(tokens) - 1, dtype=numpy.int64),
-            }
-        else:
-            attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-            attention_mask[:, :len(tokens)] = 1
+        attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
+        attention_mask[:, : len(tokens) + 1] = 1
 
-            engine_inputs = {
-                "input_ids": numpy.array([[new_token]]),
-                "attention_mask": attention_mask,
-            }
+        engine_inputs = {
+            "input_ids": numpy.array([[new_token]]),
+            "attention_mask": attention_mask,
+            "cache_length": numpy.array(len(tokens), dtype=numpy.int64),
+        }
 
-        kv_cache = kv_cache if kv_cache else self._initialize_kv_cache()
         engine_inputs.update(kv_cache)
         engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
@@ -317,28 +307,20 @@ class TextGenerationPipeline(TransformersPipeline):
 
         :return: file path to the processed ONNX file for the engine to compile
         """
-        if multitoken:
-            onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
-                self.model_path,
-                require_configs=True,
-                model_dir_onnx_name=_MODEL_DIR_ONNX_MULTI_TOKEN_NAME,
-            )
-        else:
-            onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
-                self.model_path,
-                require_configs=True,
-                model_dir_onnx_name = "model_fixed.onnx" if self.engine_type == "onnxruntime" else "model.onnx",
-            )
-
-        self.config = AutoConfig.from_pretrained(
-            config_path, finetuning_task=self.task if hasattr(self, "task") else None
+        onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
+            self.model_path,
+            require_configs=True,
+            model_dir_onnx_name="model_kv_cache.onnx",
         )
+
+        self.config = AutoConfig.from_pretrained(config_path)
+
+        # So far hardcoding the tokenizer, to be figured out later
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_path,
+            "facebook/opt-350m",
             model_max_length=self.sequence_length,
         )
         self.config_path = os.path.join(config_path, "config.json")
-        self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
 
         # overwrite onnx graph to given required input shape
         (
@@ -347,8 +329,8 @@ class TextGenerationPipeline(TransformersPipeline):
             self._temp_model_directory,
         ) = overwrite_transformer_onnx_model_inputs(
             onnx_path,
-            max_length=self.sequence_length,
-            custom_input_overwrite_func=self.overwrite_onnx_model_inputs if not self.engine_type == "onnxruntime" else None,
+            max_length=self.sequence_length if multitoken else 1,
+            custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
         )
 
         model = onnx.load_model(onnx_path, load_external_data=False)
@@ -359,13 +341,13 @@ class TextGenerationPipeline(TransformersPipeline):
     def _initialize_kv_cache(self):
         # initialize empty kv cache
         empty_kv_cache_tensor = numpy.zeros(
+            # hard coded for now, we can fetch it automatically
+            # from engine output shapes, but because it overwrites
+            # 16 with 1, not feasible for now
             (
-                self._batch_size,  # batch size
-                self.external_outputs[1]
-                .type.tensor_type.shape.dim[1]
-                .dim_value,  # num heads
-                0 if self.engine_type == "onnxruntime" else self.sequence_length - 1,
-                self.external_outputs[1].type.tensor_type.shape.dim[3].dim_value,
+                16,  # num heads
+                0,
+                64,  # hidden dims
             ),
             dtype=numpy.float32,
         )  # hidden size
@@ -381,7 +363,6 @@ class TextGenerationPipeline(TransformersPipeline):
         self,
         cache_values: List[numpy.ndarray],
         tokens: List[int],
-        prompt_inference=False,
     ) -> Dict[str, numpy.ndarray]:
         # rename the output names to match the names expected
         # in the next autoregressive pass
@@ -392,21 +373,13 @@ class TextGenerationPipeline(TransformersPipeline):
         ]
         kv_cache = dict(zip(cache_keys, cache_values))
 
-        if not self.engine_type == "onnxruntime":
-            for key, val in kv_cache.items():
-                if prompt_inference:
-                    # remove the information about the `new_token` from the cache
-                    val = val[:, :, :-1]
-                    # zero out all the info that does not pertain to the
-                    # "seen" `token` sequence
-                    val[:, :, len(tokens) :] = 0.0
-                    kv_cache[key] = numpy.ascontiguousarray(val)
-
-                else:
-                    # move the information about the `new_token` to the
-                    # end of the valid cache
-                    val[:, :, len(tokens) - 1] = val[:, :, -1]
-                    kv_cache[key] = numpy.ascontiguousarray(val[:, :, :-1])
+        # uncomment if we want to isolate only the
+        # meaningful portion of the cv_cache, probably
+        # not needed in the static inference case,
+        # time will tell
+        # for key, val in kv_cache.items():
+        #     # isolate only the meaningful portion of the cv_cache
+        #     kv_cache[key] = val[:1, : :]
 
         return kv_cache
 
@@ -426,19 +399,22 @@ class TextGenerationPipeline(TransformersPipeline):
         for external_input in external_inputs:
             if external_input.name == "input_ids":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-                external_input.type.tensor_type.shape.dim[1].dim_value = 1
+                external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name.startswith("past_key_values"):
-                external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-                external_input.type.tensor_type.shape.dim[1].dim_value = 16
-                external_input.type.tensor_type.shape.dim[2].dim_value = (
-                    sequence_length - 1
-                )
-                external_input.type.tensor_type.shape.dim[3].dim_value = 64
-            else:
+                external_input.type.tensor_type.shape.dim[0].dim_value = 16  # num heads
+                external_input.type.tensor_type.shape.dim[1].dim_value = (
+                    0 if sequence_length != 1 else 256
+                )  # past_sequence_length
+                external_input.type.tensor_type.shape.dim[
+                    2
+                ].dim_value = 64  # hidden dims
+            elif external_input.name.startswith("cache_length"):
                 pass
+            else:
+                raise ValueError(f"Unexpected input name: {external_input.name}")
 
             input_names.append(external_input.name)
         return input_names
