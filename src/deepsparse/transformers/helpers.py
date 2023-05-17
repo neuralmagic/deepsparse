@@ -21,7 +21,7 @@ import os
 import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -140,6 +140,7 @@ def overwrite_transformer_onnx_model_inputs(
     output_path: Optional[str] = None,
     load_external_data: bool = True,
     custom_input_overwrite_func: Optional[Callable] = None,
+    custom_input_overwrite_func_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
     """
     Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
@@ -155,9 +156,10 @@ def overwrite_transformer_onnx_model_inputs(
     :param load_external_data: if True, external data will be loaded into the model
         graph. If False, external data will not be loaded and the model will be
         saved without external data
-    :custom_input_overwrite_func: if provided, this function will be called instead
-        of the default input overwrite function. This function should take in a list
-        of external inputs and return a list of the overwritten input names
+    :param custom_input_overwrite_func: if provided, this function will be called
+        instead of the default input overwrite function. This function should take
+         in a list of external inputs and return a list of the overwritten input names
+    :param custom_input_overwrite_func_kwargs: kwargs for the custom overwrite function
     :return: if no output path, a tuple of the saved path to the model, list of
         model input names, and reference to the tempfile object will be returned
         otherwise, only the model input names will be returned
@@ -169,8 +171,12 @@ def overwrite_transformer_onnx_model_inputs(
         inp for inp in model.graph.input if inp.name not in initializer_input_names
     ]
     if custom_input_overwrite_func is not None:
+        custom_input_overwrite_func_kwargs = custom_input_overwrite_func_kwargs or {}
         input_names = custom_input_overwrite_func(
-            external_inputs, batch_size, max_length
+            external_inputs,
+            batch_size,
+            max_length,
+            **custom_input_overwrite_func_kwargs,
         )
     else:
         input_names = []
