@@ -264,12 +264,13 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = tokens[-1]
 
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        attention_mask[:, : len(tokens) + 1] = 1
+        attention_mask[:, :len(tokens)] = 1
 
+        cache_length = min(len(tokens) - 1, self.sequence_length - 1)
         engine_inputs = {
             "input_ids": numpy.array([[new_token]]),
             "attention_mask": attention_mask,
-            "cache_length": numpy.array(len(tokens), dtype=numpy.int64),
+            "cache_length": numpy.array(cache_length, dtype=numpy.int64),
         }
 
         engine_inputs.update(kv_cache)
@@ -279,7 +280,7 @@ class TextGenerationPipeline(TransformersPipeline):
         kv_cache = self._assemble_kv_cache(cache_values, tokens)
 
         # Obtain the next token from the logits
-        generated_token = self.generate_token(new_logits[0, -1, :])
+        generated_token = self.generate_token(new_logits[0, 0, :])
 
         return generated_token, kv_cache
 
@@ -329,8 +330,11 @@ class TextGenerationPipeline(TransformersPipeline):
             self._temp_model_directory,
         ) = overwrite_transformer_onnx_model_inputs(
             onnx_path,
-            max_length=self.sequence_length if multitoken else 1,
+            max_length=self.sequence_length,
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
+            custom_input_overwrite_func_kwargs=dict(
+                multitoken=multitoken,
+            ),
         )
 
         model = onnx.load_model(onnx_path, load_external_data=False)
@@ -364,6 +368,25 @@ class TextGenerationPipeline(TransformersPipeline):
         cache_values: List[numpy.ndarray],
         tokens: List[int],
     ) -> Dict[str, numpy.ndarray]:
+
+        if cache_values[0].shape[1] > self.sequence_length - 1:
+            # adjust cache to proper shape
+            if len(tokens) > self.sequence_length - 1:
+                # all values in cache are from non-pad tokens
+                # pop from front
+                # idxs = [idx for idx in range(self.sequence_length) if idx != 9]
+                # cache_values = [
+                #     cache_value[:, idxs, :] for cache_value in cache_values
+                # ]
+                cache_values = [
+                    cache_value[:, 1:, :] for cache_value in cache_values
+                ]
+            else:
+                # some tokens are padded - pop from back
+                cache_values = [
+                    cache_value[:, :-1, :] for cache_value in cache_values
+                ]
+
         # rename the output names to match the names expected
         # in the next autoregressive pass
         cache_keys = [
@@ -373,19 +396,14 @@ class TextGenerationPipeline(TransformersPipeline):
         ]
         kv_cache = dict(zip(cache_keys, cache_values))
 
-        # uncomment if we want to isolate only the
-        # meaningful portion of the cv_cache, probably
-        # not needed in the static inference case,
-        # time will tell
-        # for key, val in kv_cache.items():
-        #     # isolate only the meaningful portion of the cv_cache
-        #     kv_cache[key] = val[:1, : :]
-
         return kv_cache
 
     @staticmethod
     def overwrite_onnx_model_inputs(
-        external_inputs: List[ValueInfoProto], batch_size: int, sequence_length: int
+        external_inputs: List[ValueInfoProto],
+        batch_size: int,
+        sequence_length: int,
+        multitoken: bool,
     ) -> List[str]:
         """
         Overwrite the input shape of the onnx model.
@@ -393,21 +411,27 @@ class TextGenerationPipeline(TransformersPipeline):
         :param external_inputs: the external inputs of the onnx model
         :param batch_size: the batch size of the input
         :param max_length: the max length of the input
+        :param multitoken: true if model is to be run with seq len > 1
         :return: the input names of the onnx model
         """
         input_names = []
         for external_input in external_inputs:
             if external_input.name == "input_ids":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-                external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
+                external_input.type.tensor_type.shape.dim[1].dim_value = (
+                    sequence_length if multitoken else 1
+                )
             elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-                external_input.type.tensor_type.shape.dim[1].dim_value = 256  # sequence_length
+                # even in single token cached runs, full attention mask
+                # will be provided
+                external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name.startswith("past_key_values"):
-                external_input.type.tensor_type.shape.dim[0].dim_value = 16  # num heads
+                external_input.type.tensor_type.shape.dim[0].dim_value = 16  # n_heads
+                # no cache for multitoken runs, otherwise max cache len is max len - 1
                 external_input.type.tensor_type.shape.dim[1].dim_value = (
-                    0 if sequence_length != 1 else 256
-                )  # past_sequence_length
+                    0 if multitoken else sequence_length - 1
+                )
                 external_input.type.tensor_type.shape.dim[
                     2
                 ].dim_value = 64  # hidden dims
