@@ -162,9 +162,13 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
         kv_cache = self._initialize_kv_cache()
-        cache_length = {"cache_length": numpy.array(0, dtype=numpy.int64)}
 
-        input_tokens = {**input_tokens, **kv_cache, **cache_length}
+        attention_mask = input_tokens["attention_mask"]
+        positions = attention_mask.cumsum(1) * attention_mask
+        positions -= 1  # zero index
+        positions_input = dict(positions=positions)
+
+        input_tokens = {**input_tokens, **kv_cache, **positions_input}
         engine_input = self.tokens_to_engine_input(input_tokens)
 
         return engine_input
@@ -193,6 +197,7 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         # run the prompt through
         tokens, kv_cache = self.prompt_inference(engine_inputs)
+        num_prompt_tokens = len(tokens) - 1
 
         # create the generated output
         # TODO: Apply sliding window logic
@@ -204,7 +209,9 @@ class TextGenerationPipeline(TransformersPipeline):
         generated = [tokens[-1]]
 
         while len(generated) < max_tokens:
-            gen_token, kv_cache = self.autoregressive_inference(tokens, kv_cache)
+            gen_token, kv_cache = self.autoregressive_inference(
+                tokens, kv_cache, num_prompt_tokens
+            )
             tokens.append(gen_token)
             generated.append(gen_token)
 
@@ -241,7 +248,9 @@ class TextGenerationPipeline(TransformersPipeline):
         else:
             # larger prompt size, run through multi-token engine in single pass
             logits, *cache_values = self.multitoken_engine(engine_inputs)
-            kv_cache = self._assemble_kv_cache(cache_values, tokens)
+            kv_cache = self._assemble_kv_cache(
+                cache_values, tokens, len(tokens) - 1
+            )
             new_token = self.generate_token(logits[0, : len(tokens) + 1])
 
         tokens.append(new_token)
@@ -249,7 +258,10 @@ class TextGenerationPipeline(TransformersPipeline):
         return tokens, kv_cache
 
     def autoregressive_inference(
-        self, tokens: List[int], kv_cache: Dict[str, numpy.ndarray]
+        self,
+        tokens: List[int],
+        kv_cache: Dict[str, numpy.ndarray],
+        num_prompt_tokens: int,
     ) -> Tuple[int, Dict[str, numpy.ndarray]]:
         """
         An inference run that processes the last token and the kv cache to
@@ -257,27 +269,37 @@ class TextGenerationPipeline(TransformersPipeline):
 
         :param tokens: The current context (prompt + generated tokens so far)
         :param kv_cache: The key-value cache from the previous inference run
+        :param num_prompt_tokens: number of tokens in the initial prompt
         :return:
             - the list of prompt tokens plus the new, generated token
             - the kv cache that was populated during the inference
         """
         new_token = tokens[-1]
+        num_generated_tokens = len(tokens) - num_prompt_tokens
 
+        # due to right hand concatenation, attention mask is:
+        # 1s for length of prompt + 1s starting from RHS for generated tokens + 1
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        attention_mask[:, :len(tokens)] = 1
+        attention_mask[:, :num_prompt_tokens + 1] = 1  # +1 because
+        # OPT adds an initial pad
+        # fill in generated tokens from RHS
+        attention_mask[:, -(min(num_generated_tokens, self.sequence_length)):] = 1
 
-        cache_length = min(len(tokens) - 1, self.sequence_length - 1)
+        # the position of the token is the number of tokens - 1 (zero indexed)
+        positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
         engine_inputs = {
             "input_ids": numpy.array([[new_token]]),
             "attention_mask": attention_mask,
-            "cache_length": numpy.array(cache_length, dtype=numpy.int64),
+            "positions": positions,
         }
 
         engine_inputs.update(kv_cache)
         engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
         new_logits, *cache_values = self.engine(engine_inputs)
-        kv_cache = self._assemble_kv_cache(cache_values, tokens)
+        kv_cache = self._assemble_kv_cache(
+            cache_values, tokens, num_prompt_tokens
+        )
 
         # Obtain the next token from the logits
         generated_token = self.generate_token(new_logits[0, 0, :])
@@ -367,25 +389,23 @@ class TextGenerationPipeline(TransformersPipeline):
         self,
         cache_values: List[numpy.ndarray],
         tokens: List[int],
+        num_prompt_tokens: int,
     ) -> Dict[str, numpy.ndarray]:
-
-        if cache_values[0].shape[1] > self.sequence_length - 1:
-            # adjust cache to proper shape
+        # first, trim the output cache (seq_len) to input cache shape (seq_len - 1)
+        for idx, cache_value in enumerate(cache_values):
             if len(tokens) > self.sequence_length - 1:
-                # all values in cache are from non-pad tokens
-                # pop from front
-                # idxs = [idx for idx in range(self.sequence_length) if idx != 9]
-                # cache_values = [
-                #     cache_value[:, idxs, :] for cache_value in cache_values
-                # ]
-                cache_values = [
-                    cache_value[:, 1:, :] for cache_value in cache_values
-                ]
+                # all values in cache are from non-pad tokens, pop from front
+                cache_values[idx] = cache_value[:, 1:, :]
             else:
-                # some tokens are padded - pop from back
-                cache_values = [
-                    cache_value[:, :-1, :] for cache_value in cache_values
+                # remove the cache key/value immediately after the prompt since this
+                # is where the last padded value will go
+                idxs_to_keep = [
+                    idx
+                    for idx in range(self.sequence_length)
+                    if idx != num_prompt_tokens + 2
+                    # adding +1 is OPT specific since they always add an extra token
                 ]
+                cache_values[idx] = cache_value[:, idxs_to_keep, :]
 
         # rename the output names to match the names expected
         # in the next autoregressive pass
@@ -416,7 +436,7 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         input_names = []
         for external_input in external_inputs:
-            if external_input.name == "input_ids":
+            if external_input.name in ["input_ids", "positions"]:
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
                 external_input.type.tensor_type.shape.dim[1].dim_value = (
                     sequence_length if multitoken else 1
@@ -435,8 +455,6 @@ class TextGenerationPipeline(TransformersPipeline):
                 external_input.type.tensor_type.shape.dim[
                     2
                 ].dim_value = 64  # hidden dims
-            elif external_input.name.startswith("cache_length"):
-                pass
             else:
                 raise ValueError(f"Unexpected input name: {external_input.name}")
 
