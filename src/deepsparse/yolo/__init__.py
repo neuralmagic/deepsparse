@@ -16,6 +16,14 @@
 
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
+
+try:
+    import torchvision as _torchvision
+
+    import cv2 as _cv2
+except ImportError:
+    raise ImportError("Please install deepsparse[yolo] to use this pathway")
+
 from .annotate import *
 from .pipelines import *
 from .schemas import *
