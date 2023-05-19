@@ -16,7 +16,6 @@ import os
 from typing import Dict, List, Optional, Tuple, Type
 
 import numpy
-import onnx
 from onnx import ValueInfoProto
 from pydantic import BaseModel, Field
 from transformers import AutoConfig, AutoTokenizer
@@ -29,8 +28,8 @@ from deepsparse.transformers.helpers import (
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
-# TODO: to be deprecated after Sage's changes, we will only need a single model
-_MODEL_DIR_ONNX_MULTI_TOKEN_NAME = "decoder_model.onnx"
+OPT_CACHE_HIDDEN_DIM = 64
+
 
 __all__ = ["TextGenerationPipeline"]
 
@@ -74,7 +73,7 @@ class TextGenerationPipeline(TransformersPipeline):
     :param max_generated_tokens: the maximum number of tokens to generate
         given the input sequence. If None, the model will generate
         tokens until the end of the sequence is reached.
-        Otherwise it will generate up to the maximum number of tokens or end of
+        Otherwise, it will generate up to the maximum number of tokens or end of
         sequence is reached.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
@@ -96,17 +95,20 @@ class TextGenerationPipeline(TransformersPipeline):
         self.sampling_temperature = sampling_temperature
         self.max_generated_tokens = max_generated_tokens
         self.prompt_batch_threshold = prompt_batch_threshold
-        # when we are done with the static inference in ORT,
-        # set support_kv_cache = True
+
         self.engine = Pipeline.create_engine(
             self.onnx_file_path,
             self.engine_type,
             self.engine_args,
             self.context,
+            support_kv_cache=True,
         )
 
-        self.onnx_multitoken_path = self.setup_onnx_file_path(multitoken=True)
         # initialize the auxiliary multitoken engine
+        (
+            self.onnx_multitoken_path,
+            self._temp_model_directory,
+        ) = self._setup_onnx_multitoken_file_path()
         self.multitoken_engine = Pipeline.create_engine(
             self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context
         )
@@ -161,9 +163,10 @@ class TextGenerationPipeline(TransformersPipeline):
             padding="max_length",
         )
 
-        kv_cache = self._initialize_kv_cache(length = 0)
+        kv_cache = self._initialize_kv_cache(length=0)
 
         attention_mask = input_tokens["attention_mask"]
+
         positions = attention_mask.cumsum(1) * attention_mask
         positions -= 1  # zero index
         positions_input = dict(positions=positions)
@@ -200,7 +203,6 @@ class TextGenerationPipeline(TransformersPipeline):
         num_prompt_tokens = len(tokens) - 1
 
         # create the generated output
-        # TODO: Apply sliding window logic
         max_tokens = (
             self.max_generated_tokens
             if self.max_generated_tokens and self.max_generated_tokens > 0
@@ -233,7 +235,11 @@ class TextGenerationPipeline(TransformersPipeline):
             - the list of prompt tokens plus the new, generated token
             - the kv cache that was populated during the inference
         """
-        tokens = [t for t in engine_inputs[0][0] if t != self.tokenizer.pad_token_id] # [pad_token] + correct_tokens + [pad_tokens] -> [pad_token] + correct_tokens
+        tokens = engine_inputs[0][0].tolist()
+        # remove trailing padding
+        while tokens[-1] == self.tokenizer.pad_token_id:
+            tokens.pop()
+
         new_token = None
 
         if len(tokens) / float(self.sequence_length) < self.prompt_batch_threshold:
@@ -248,8 +254,8 @@ class TextGenerationPipeline(TransformersPipeline):
         else:
             # larger prompt size, run through multi-token engine in single pass
             logits, *cache_values = self.multitoken_engine(engine_inputs)
-            kv_cache = self._assemble_kv_cache(cache_values, tokens, len(tokens) - 1)
-            new_token = self.generate_token(logits[0, : len(tokens) + 1])
+            kv_cache = self.assemble_kv_cache(cache_values, tokens, len(tokens) - 1)
+            new_token = self.generate_token(logits[0, len(tokens) - 1])
 
         tokens.append(new_token)
 
@@ -269,7 +275,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :param kv_cache: The key-value cache from the previous inference run
         :param num_prompt_tokens: number of tokens in the initial prompt
         :return:
-            - the list of prompt tokens plus the new, generated token
+            - the new, generated token
             - the kv cache that was populated during the inference
         """
         new_token = tokens[-1]
@@ -278,9 +284,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # due to right hand concatenation, attention mask is:
         # 1s for length of prompt + 1s starting from RHS for generated tokens + 1
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        attention_mask[:, : num_prompt_tokens + 1] = 1  # +1 because
-        # OPT adds an initial pad
-        # fill in generated tokens from RHS
+        attention_mask[:, :num_prompt_tokens] = 1
         attention_mask[:, -(min(num_generated_tokens, self.sequence_length)) :] = 1
 
         # the position of the token is the number of tokens - 1 (zero indexed)
@@ -290,13 +294,19 @@ class TextGenerationPipeline(TransformersPipeline):
             "attention_mask": attention_mask,
             "positions": positions,
         }
-        kv_cache = self._initialize_kv_cache(length = self.sequence_length - 1) if kv_cache == {} else kv_cache
+        # initialize the kv cache if it is empty
+        # (when the prompt is processed with the single-token engine)
+        kv_cache = (
+            self._initialize_kv_cache(length=self.sequence_length - 1)
+            if kv_cache == {}
+            else kv_cache
+        )
 
         engine_inputs.update(kv_cache)
         engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
         new_logits, *cache_values = self.engine(engine_inputs)
-        kv_cache = self._assemble_kv_cache(cache_values, tokens, num_prompt_tokens)
+        kv_cache = self.assemble_kv_cache(cache_values, tokens, num_prompt_tokens)
 
         # Obtain the next token from the logits
         generated_token = self.generate_token(new_logits[0, 0, :])
@@ -307,7 +317,7 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         Samples a token from the logits using the sampling temperature.
 
-        :param logits: the logits from the model
+        :param logits: the logits from the model with shape (vocab_size,)
 
         :return: the sampled token
         """
@@ -320,7 +330,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         return numpy.random.choice(len(probs), p=probs)
 
-    def setup_onnx_file_path(self, multitoken: bool = False):
+    def setup_onnx_file_path(self) -> str:
         """
         Parses ONNX, tokenizer, and config file paths from the given `model_path`.
         Supports sparsezoo stubs
@@ -330,19 +340,17 @@ class TextGenerationPipeline(TransformersPipeline):
         onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
             self.model_path,
             require_configs=True,
-            model_dir_onnx_name="model_kv_cache.onnx",
         )
 
         self.config = AutoConfig.from_pretrained(config_path)
 
-        # So far hardcoding the tokenizer, to be figured out later
+        # So far hard-coding the tokenizer, to be figured out later
         self.tokenizer = AutoTokenizer.from_pretrained(
             "facebook/opt-350m",
             model_max_length=self.sequence_length,
         )
         self.config_path = os.path.join(config_path, "config.json")
 
-        # overwrite onnx graph to given required input shape
         (
             onnx_path,
             self.onnx_input_names,
@@ -352,73 +360,105 @@ class TextGenerationPipeline(TransformersPipeline):
             max_length=self.sequence_length,
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
             custom_input_overwrite_func_kwargs=dict(
-                multitoken=multitoken,
+                multitoken=False,
+                num_attention_heads=self.config.num_attention_heads,
+                hidden_dims=OPT_CACHE_HIDDEN_DIM,
             ),
         )
-
-        model = onnx.load_model(onnx_path, load_external_data=False)
-        self.external_outputs = [out for out in model.graph.output]
 
         return onnx_path
 
     def _initialize_kv_cache(self, length: int) -> Dict[str, numpy.ndarray]:
-
-        # initialize empty kv cache
+        # initialize empty kv cache of size
+        # (num_attention_heads, length, hidden_dims)
         empty_kv_cache_tensor = numpy.zeros(
-            # hard coded for now, we can fetch it automatically
-            # from engine output shapes, but because it overwrites
-            # 16 with 1, not feasible for now
             (
-                16,  # num heads
+                self.config.num_attention_heads,
                 length,
-                64,  # hidden dims
+                OPT_CACHE_HIDDEN_DIM,
             ),
             dtype=numpy.float32,
-        )  # hidden size
+        )
 
         cache_keys = [
-            output.name.replace("present", "past_key_values")
-            for output in self.external_outputs
-            if output.name.startswith("present")
+            output_name.replace("present", "past_key_values")
+            for output_name in self.engine.output_names
+            if output_name.startswith("present")
         ]
         return {key: empty_kv_cache_tensor for key in cache_keys}
 
-    def _assemble_kv_cache(
+    def assemble_kv_cache(
         self,
         cache_values: List[numpy.ndarray],
         tokens: List[int],
         num_prompt_tokens: int,
+        consider_sos_token: bool = False,
     ) -> Dict[str, numpy.ndarray]:
-        # first, trim the output cache (seq_len) to input cache shape (seq_len - 1)
+        """
+        Restructure the kv cache values from the engine output, so
+        that it can be passed to the engine in the next inference run.
+
+        By default, every time this function is called, the cache key/value,
+        that immediately follows the cache keys/values corresponding to the
+        prompt tokens, is removed.
+        Example:
+        ```
+        (`X` are the padded cache entries)
+        attention_mask = [1, 1, 1, 0, 0, 0, 0, 1, 1]
+        cache_entries = [1, 2, 3, X, X, X, 4, 5]
+        ([1,2,3] entries correspond to the prompt tokens)
+        ([4,5] entries correspond to the tokens generated in the previous inference run)
+        assemble_kv_cache()
+        cache_entries -> [1, 2, 3, X, X, 4, 5]
+        ```
+
+        Then, once the cache is almost full -> only one padded cache entry remains,
+        we need to remove it, so that no padded entries are present in the cache.
+        Example:
+        ```
+        attention_mask = [1, 1, 1, 0, 1, 1, 1, 1]
+        cache_entries = [1, 2, 3, X, 4, 5, 6, 7]
+        assemble_kv_cache()
+        cache_entries -> [1, 2, 3, 4, 5, 6, 7]
+        ```
+
+        Finally, where all values in cache are non-padded, we pop from the front
+        of the cache (remove the oldest history from the cache):
+            - if the SOS (Start Of Sequence) token is not considered,
+            we pop from the 0th index
+            Example:
+            ```
+            attention_mask = [1, 1, 1, 1, 1, 1, 1, 1]
+            cache_entries = [1, 2, 3, 4, 5, 6, 7, 8]
+            assemble_kv_cache()
+            cache_entries -> [2, 3, 4, 5, 6, 7, 8]
+            ```
+
+            - if the SOS token is considered, we pop from the 1st index
+            (because the 0th index is the SOS token, which we want to keep)
+            Example:
+            ```
+            attention_mask = [1, 1, 1, 1, 1, 1, 1, 1]
+            cache_entries = [1, 2, 3, 4, 5, 6, 7, 8]
+            assemble_kv_cache()
+            cache_entries -> [1, 3, 4, 5, 6, 7, 8]
+            ```
+        :param cache_values: the cache values from the engine output
+        :param tokens: the tokens from the previous inference run
+        :param num_prompt_tokens: number of tokens in the initial prompt
+        :param consider_sos_token: whether to consider the SOS token in the cache
+        :return kv_cache: the restructured cache values
+        """
         for idx, cache_value in enumerate(cache_values):
-            if len(tokens) + 1 > self.sequence_length - 1:
-                # all values in cache are from non-pad tokens, pop from front
-                # cache_values[idx] = cache_value[:, 1:, :]
-                # assuming first token is always SOS token keep it and only
-                # remove the first token (not zeroeth) in first dim
-                idxs_to_keep = [idx for idx in range(self.sequence_length) if idx != 1] # double check if SOS needed
-
-            elif len(tokens) + 1 == self.sequence_length - 1:
-                # if we cannot fit more cache values, then we need to remove the
-                # last "empty" cache that remains empty at the `num_prompt_tokens` +1
-                idxs_to_keep = [
-                    idx
-                    for idx in range(self.sequence_length)
-                    if idx != num_prompt_tokens + 1
-                ]
+            if len(tokens) > self.sequence_length - 1:
+                idx_to_remove = int(not consider_sos_token)
+            elif len(tokens) == self.sequence_length - 1:
+                idx_to_remove = num_prompt_tokens
             else:
-                # remove the cache key/value immediately after the prompt since this
-                # is where the last padded value will go
-                idxs_to_keep = [
-                    idx
-                    for idx in range(self.sequence_length)
-                    if idx != num_prompt_tokens + 2
-                    # adding +1 is OPT specific since they always add an extra token
-                ]
-            cache_values[idx] = cache_value[:, idxs_to_keep, :]
+                idx_to_remove = num_prompt_tokens + 1
 
-        # rename the output names to match the names expected
-        # in the next autoregressive pass
+            cache_values[idx] = numpy.delete(cache_value, idx_to_remove, 1)
+
         cache_keys = [
             name.replace("present", "past_key_values")
             for name in self.engine.output_names
@@ -433,15 +473,29 @@ class TextGenerationPipeline(TransformersPipeline):
         external_inputs: List[ValueInfoProto],
         batch_size: int,
         sequence_length: int,
-        multitoken: bool,
+        num_attention_heads: int,
+        hidden_dims: int,
+        multitoken: bool = True,
     ) -> List[str]:
         """
-        Overwrite the input shape of the onnx model.
+        Overwrite the input shape of the onnx model. This function
+        is particular for the model with inputs:
+            - input_ids
+            - attention_mask
+            - positions
+            - past_key_values (x N)
 
-        :param external_inputs: the external inputs of the onnx model
-        :param batch_size: the batch size of the input
-        :param max_length: the max length of the input
-        :param multitoken: true if model is to be run with seq len > 1
+        :param external_inputs: The external inputs of the onnx model
+        :param batch_size: The batch size of the input
+        :param sequence_length: The sequence length of the input
+        :param num_attention_heads: The number of attention heads
+            of the model (required to set the shape of the kv_cache)
+        :param hidden_dims: The hidden dimensions of the model
+            (required to set the shape of the kv_cache)
+        :param multitoken: A boolean flag that indicates whether
+            we are overwriting inputs to the model for multi-token
+            inference (sequence_len > 1) or single token inference
+            (sequence_len = 1).
         :return: the input names of the onnx model
         """
         input_names = []
@@ -453,20 +507,40 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
             elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-                # even in single token cached runs, full attention mask
-                # will be provided
+                # regardless of multi-token or not,
+                # we always provide full attention mask
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name.startswith("past_key_values"):
-                external_input.type.tensor_type.shape.dim[0].dim_value = 16  # n_heads
-                # no cache for multitoken runs, otherwise max cache len is max len - 1
+                external_input.type.tensor_type.shape.dim[
+                    0
+                ].dim_value = num_attention_heads
+                # empty cache for multi-token runs,
+                # otherwise max cache len is max len - 1
                 external_input.type.tensor_type.shape.dim[1].dim_value = (
                     0 if multitoken else sequence_length - 1
                 )
-                external_input.type.tensor_type.shape.dim[
-                    2
-                ].dim_value = 64  # hidden dims
+                external_input.type.tensor_type.shape.dim[2].dim_value = hidden_dims
             else:
-                raise ValueError(f"Unexpected input name: {external_input.name}")
+                raise ValueError(
+                    f"Unexpected external input name: {external_input.name}"
+                )
 
             input_names.append(external_input.name)
         return input_names
+
+    def _setup_onnx_multitoken_file_path(self):
+        (
+            onnx_multitoken_file_path,
+            _,
+            temp_model_directory,
+        ) = overwrite_transformer_onnx_model_inputs(
+            self.onnx_file_path,
+            max_length=self.sequence_length,
+            load_external_data=False,
+            custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
+            custom_input_overwrite_func_kwargs=dict(
+                num_attention_heads=self.config.num_attention_heads,
+                hidden_dims=OPT_CACHE_HIDDEN_DIM,
+            ),
+        )
+        return onnx_multitoken_file_path, temp_model_directory
