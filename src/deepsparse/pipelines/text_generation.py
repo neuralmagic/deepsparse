@@ -251,6 +251,13 @@ class TextGenerationPipeline(TransformersPipeline):
                 new_token, kv_cache = self.autoregressive_inference(
                     run_tokens, kv_cache, num_prompt_tokens=0
                 )
+            # move the kv cache values corresponding to the prompt, to the front
+            for key, value in kv_cache.items():
+                prompt_values = value[:, -len(tokens) :, :]
+                padded_values = value[:, : -len(tokens), :]
+                kv_cache[key] = numpy.concatenate(
+                    [prompt_values, padded_values], axis=1
+                )
         else:
             # larger prompt size, run through multi-token engine in single pass
             logits, *cache_values = self.multitoken_engine(engine_inputs)
@@ -289,6 +296,10 @@ class TextGenerationPipeline(TransformersPipeline):
 
         # the position of the token is the number of tokens - 1 (zero indexed)
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
+        if num_prompt_tokens == 0:
+            # no prompt tokens, we are currently processing the prompt
+            positions -= 1
+
         engine_inputs = {
             "input_ids": numpy.array([[new_token]]),
             "attention_mask": attention_mask,
