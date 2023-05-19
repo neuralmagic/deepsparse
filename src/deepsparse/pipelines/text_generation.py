@@ -113,6 +113,9 @@ class TextGenerationPipeline(TransformersPipeline):
             self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context
         )
 
+        # override tokenizer to pad to left
+        self.tokenizer.padding_side = "left"
+
     @staticmethod
     def route_input_to_bucket(
         *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
@@ -156,6 +159,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
+        # ensure tokenizer pads to left
+        self.tokenizer.padding_side = "left"
+
         input_tokens = self.tokenizer(
             inputs.sequence,
             return_tensors="np",
@@ -168,7 +174,7 @@ class TextGenerationPipeline(TransformersPipeline):
         attention_mask = input_tokens["attention_mask"]
 
         positions = attention_mask.cumsum(1) * attention_mask
-        positions -= 1  # zero index
+        positions -= 1  # zero index - TODO: investigate if needed outside OPT
         positions_input = dict(positions=positions)
 
         input_tokens = {**input_tokens, **kv_cache, **positions_input}
@@ -235,10 +241,8 @@ class TextGenerationPipeline(TransformersPipeline):
             - the list of prompt tokens plus the new, generated token
             - the kv cache that was populated during the inference
         """
-        tokens = engine_inputs[0][0].tolist()
-        # remove trailing padding
-        while tokens[-1] == self.tokenizer.pad_token_id:
-            tokens.pop()
+        # get tokens by attention mask
+        tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
 
         new_token = None
 
@@ -251,18 +255,11 @@ class TextGenerationPipeline(TransformersPipeline):
                 new_token, kv_cache = self.autoregressive_inference(
                     run_tokens, kv_cache, num_prompt_tokens=0
                 )
-            # move the kv cache values corresponding to the prompt, to the front
-            for key, value in kv_cache.items():
-                prompt_values = value[:, -len(tokens) :, :]
-                padded_values = value[:, : -len(tokens), :]
-                kv_cache[key] = numpy.concatenate(
-                    [prompt_values, padded_values], axis=1
-                )
         else:
             # larger prompt size, run through multi-token engine in single pass
             logits, *cache_values = self.multitoken_engine(engine_inputs)
-            kv_cache = self.assemble_kv_cache(cache_values, tokens, len(tokens) - 1)
-            new_token = self.generate_token(logits[0, len(tokens) - 1])
+            kv_cache = self.assemble_kv_cache(cache_values, tokens)
+            new_token = self.generate_token(logits[0, -1])
 
         tokens.append(new_token)
 
@@ -286,13 +283,12 @@ class TextGenerationPipeline(TransformersPipeline):
             - the kv cache that was populated during the inference
         """
         new_token = tokens[-1]
-        num_generated_tokens = len(tokens) - num_prompt_tokens
 
-        # due to right hand concatenation, attention mask is:
-        # 1s for length of prompt + 1s starting from RHS for generated tokens + 1
+        # padding is added to left, so attention mask is 1s from the
+        # right up to the number of total tokens (prompt + generated)
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        attention_mask[:, :num_prompt_tokens] = 1
-        attention_mask[:, -(min(num_generated_tokens, self.sequence_length)) :] = 1
+        num_tokens_running = min(len(tokens), self.sequence_length)  # cap by seq len
+        attention_mask[:, -num_tokens_running:] = 1
 
         # the position of the token is the number of tokens - 1 (zero indexed)
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
@@ -317,7 +313,7 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
         new_logits, *cache_values = self.engine(engine_inputs)
-        kv_cache = self.assemble_kv_cache(cache_values, tokens, num_prompt_tokens)
+        kv_cache = self.assemble_kv_cache(cache_values, tokens)
 
         # Obtain the next token from the logits
         generated_token = self.generate_token(new_logits[0, 0, :])
@@ -402,72 +398,34 @@ class TextGenerationPipeline(TransformersPipeline):
         self,
         cache_values: List[numpy.ndarray],
         tokens: List[int],
-        num_prompt_tokens: int,
         consider_sos_token: bool = False,
     ) -> Dict[str, numpy.ndarray]:
         """
         Restructure the kv cache values from the engine output, so
         that it can be passed to the engine in the next inference run.
 
-        By default, every time this function is called, the cache key/value,
-        that immediately follows the cache keys/values corresponding to the
-        prompt tokens, is removed.
-        Example:
-        ```
-        (`X` are the padded cache entries)
-        attention_mask = [1, 1, 1, 0, 0, 0, 0, 1, 1]
-        cache_entries = [1, 2, 3, X, X, X, 4, 5]
-        ([1,2,3] entries correspond to the prompt tokens)
-        ([4,5] entries correspond to the tokens generated in the previous inference run)
-        assemble_kv_cache()
-        cache_entries -> [1, 2, 3, X, X, 4, 5]
-        ```
+        KV Cache concatenation adds an extra dimension to the output cache
+        which should be deleted
 
-        Then, once the cache is almost full -> only one padded cache entry remains,
-        we need to remove it, so that no padded entries are present in the cache.
-        Example:
-        ```
-        attention_mask = [1, 1, 1, 0, 1, 1, 1, 1]
-        cache_entries = [1, 2, 3, X, 4, 5, 6, 7]
-        assemble_kv_cache()
-        cache_entries -> [1, 2, 3, 4, 5, 6, 7]
-        ```
+        There are two modes:
+        1. Some values in the cache represent pad tokens, padding is to the left,
+            so the left most cache value is deleted
+        2. The cache is saturated with 'real' tokens, if there is a mandatory
+            start-of-sequence (SOS) token, we delete after this one (idx after 0)
+            otherwise we delete from the left as in (1)
 
-        Finally, where all values in cache are non-padded, we pop from the front
-        of the cache (remove the oldest history from the cache):
-            - if the SOS (Start Of Sequence) token is not considered,
-            we pop from the 0th index
-            Example:
-            ```
-            attention_mask = [1, 1, 1, 1, 1, 1, 1, 1]
-            cache_entries = [1, 2, 3, 4, 5, 6, 7, 8]
-            assemble_kv_cache()
-            cache_entries -> [2, 3, 4, 5, 6, 7, 8]
-            ```
-
-            - if the SOS token is considered, we pop from the 1st index
-            (because the 0th index is the SOS token, which we want to keep)
-            Example:
-            ```
-            attention_mask = [1, 1, 1, 1, 1, 1, 1, 1]
-            cache_entries = [1, 2, 3, 4, 5, 6, 7, 8]
-            assemble_kv_cache()
-            cache_entries -> [1, 3, 4, 5, 6, 7, 8]
-            ```
         :param cache_values: the cache values from the engine output
         :param tokens: the tokens from the previous inference run
-        :param num_prompt_tokens: number of tokens in the initial prompt
         :param consider_sos_token: whether to consider the SOS token in the cache
         :return kv_cache: the restructured cache values
         """
         for idx, cache_value in enumerate(cache_values):
             if len(tokens) > self.sequence_length - 1:
                 idx_to_remove = int(not consider_sos_token)
-            elif len(tokens) == self.sequence_length - 1:
-                idx_to_remove = num_prompt_tokens
             else:
-                idx_to_remove = num_prompt_tokens + 1
+                idx_to_remove = 0
 
+            # TODO: see if we can do in-place
             cache_values[idx] = numpy.delete(cache_value, idx_to_remove, 1)
 
         cache_keys = [
