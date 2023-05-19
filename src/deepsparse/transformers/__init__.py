@@ -27,6 +27,14 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 _analytics.send_event("python__transformers__init")
 
 
+try:
+    import transformers as _transformers
+
+    import datasets as _datasets
+except ImportError:
+    raise ImportError("Please install deepsparse[transformers] to use this pathway")
+
+
 _LOGGER = _logging.getLogger(__name__)
 
 
