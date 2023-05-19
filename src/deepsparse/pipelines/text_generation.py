@@ -249,7 +249,7 @@ class TextGenerationPipeline(TransformersPipeline):
             # larger prompt size, run through multi-token engine in single pass
             logits, *cache_values = self.multitoken_engine(engine_inputs)
             kv_cache = self._assemble_kv_cache(cache_values, tokens, len(tokens) - 1)
-            new_token = self.generate_token(logits[0, : len(tokens) + 1])
+            new_token = self.generate_token(logits[0, len(tokens), :])
 
         tokens.append(new_token)
 
