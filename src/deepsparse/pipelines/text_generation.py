@@ -528,19 +528,20 @@ class TextGenerationPipeline(TransformersPipeline):
             input_names.append(external_input.name)
         return input_names
 
-    def _setup_onnx_multitoken_file_path(self):
+    def _setup_onnx_multitoken_file_path(self) -> str:
         (
-            onnx_multitoken_file_path,
+            onnx_path,
             _,
-            temp_model_directory,
+            _temp_model_directory,
         ) = overwrite_transformer_onnx_model_inputs(
             self.onnx_file_path,
             max_length=self.sequence_length,
-            load_external_data=False,
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
             custom_input_overwrite_func_kwargs=dict(
+                multitoken=True,
                 num_attention_heads=self.config.num_attention_heads,
                 hidden_dims=OPT_CACHE_HIDDEN_DIM,
             ),
         )
-        return onnx_multitoken_file_path, temp_model_directory
+
+        return onnx_path, _temp_model_directory
