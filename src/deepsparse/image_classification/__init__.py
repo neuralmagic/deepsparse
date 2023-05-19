@@ -16,9 +16,19 @@
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
 
-_analytics.send_event("python__image_classification__init")
+try:
+    import torchvision as _torchvision
+
+    import cv2 as _cv2
+except ImportError:
+    raise ImportError(
+        "Please install deepsparse[image_classification] to use this pathway"
+    )
 
 
 from .constants import *
 from .pipelines import *
 from .schemas import *
+
+
+_analytics.send_event("python__image_classification__init")

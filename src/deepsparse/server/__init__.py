@@ -21,6 +21,14 @@ the DeepSparse Engine.
 
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
+
+try:
+    import uvicorn as _uvicorn
+    from fastapi import FastAPI as _FastAPI
+    from starlette.responses import RedirectResponse as _RedirectResponse
+except ImportError:
+    raise ImportError("Please install deepsparse[server] to use this pathway")
+
 from .cli import main
 
 
