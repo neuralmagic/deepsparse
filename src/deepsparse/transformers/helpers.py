@@ -183,23 +183,13 @@ def overwrite_transformer_onnx_model_inputs(
             external_input.type.tensor_type.shape.dim[1].dim_value = max_length
             input_names.append(external_input.name)
 
-    model_exceeds_protobuf_limit = model.ByteSize() > onnx.checker.MAXIMUM_PROTOBUF
-
     # Save modified model
     if output_path is None:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-        save_onnx(
-            model, tmp_file.name
-        ) if not model_exceeds_protobuf_limit else save_onnx(
-            model, tmp_file.name, external_data_file=NamedTemporaryFile()
-        )
+        save_onnx(model, tmp_file.name)
         return tmp_file.name, input_names, tmp_file
     else:
-        save_onnx(
-            model, output_path
-        ) if not model_exceeds_protobuf_limit else save_onnx(
-            model, output_path, external_data_file=NamedTemporaryFile()
-        )
+        save_onnx(model, output_path)
 
         return input_names
 
