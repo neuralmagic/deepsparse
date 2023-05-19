@@ -43,7 +43,7 @@ __all__ = [
 
 _LOGGER = get_main_logger()
 
-_MODEL_DIR_ONNX_NAME = "model.onnx"
+_MODEL_DIR_ONNX_NAME = "model_kvcache.onnx"
 _MODEL_DIR_CONFIG_NAME = "config.json"
 _MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
 _MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
@@ -185,9 +185,8 @@ def overwrite_transformer_onnx_model_inputs(
 
     # Save modified model
     if output_path is None:
-        tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-        save_onnx(model, tmp_file.name)
-        return tmp_file.name, input_names, tmp_file
+        save_onnx(model, path)
+        return path, input_names, path
     else:
         save_onnx(model, output_path)
 
