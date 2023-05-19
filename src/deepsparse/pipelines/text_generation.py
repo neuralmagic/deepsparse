@@ -355,9 +355,8 @@ class TextGenerationPipeline(TransformersPipeline):
 
         self.config = AutoConfig.from_pretrained(config_path)
 
-        # So far hard-coding the tokenizer, to be figured out later
         self.tokenizer = AutoTokenizer.from_pretrained(
-            "facebook/opt-350m",
+            self.model_path,
             model_max_length=self.sequence_length,
         )
         self.config_path = os.path.join(config_path, "config.json")
@@ -369,6 +368,7 @@ class TextGenerationPipeline(TransformersPipeline):
         ) = overwrite_transformer_onnx_model_inputs(
             onnx_path,
             max_length=self.sequence_length,
+            load_external_data=False,
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
             custom_input_overwrite_func_kwargs=dict(
                 multitoken=False,
