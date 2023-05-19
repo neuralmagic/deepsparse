@@ -547,6 +547,7 @@ class TextGenerationPipeline(TransformersPipeline):
         ) = overwrite_transformer_onnx_model_inputs(
             self.onnx_file_path,
             max_length=self.sequence_length,
+            load_external_data=False,
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
             custom_input_overwrite_func_kwargs=dict(
                 multitoken=True,
