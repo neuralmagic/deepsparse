@@ -284,9 +284,8 @@ class TextGenerationPipeline(TransformersPipeline):
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        num_tokens_running = min(len(tokens), self.sequence_length)  # cap by seq len
-        attention_mask[:, -num_tokens_running:] = 1
-        breakpoint()
+        num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
+        attention_mask[:, -num_tokens_processed:] = 1
         # the position of the token is the number of tokens - 1 (zero indexed)
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
         if num_prompt_tokens == 0:
@@ -401,15 +400,17 @@ class TextGenerationPipeline(TransformersPipeline):
         Restructure the kv cache values from the engine output, so
         that it can be passed to the engine in the next inference run.
 
-        KV Cache concatenation adds an extra dimension to the output cache
-        which should be deleted
+        KV Cache concatenation adds an extra length dimension to the output 
+        cache, that should be deleted after every inference run.
 
         There are two modes:
-        1. Some values in the cache represent pad tokens, padding is to the left,
-            so the left most cache value is deleted
-        2. The cache is saturated with 'real' tokens, if there is a mandatory
-            start-of-sequence (SOS) token, we delete after this one (idx after 0)
-            otherwise we delete from the left as in (1)
+        1. Some values in the cache represent dummy (pad) tokens, padding is 
+            to the left, so the left-most cache value is deleted
+        2. The cache is saturated with non-dummy (meaningful) tokens:
+            -   if there is a mandatory start-of-sequence (SOS) token, 
+                we delete the left-most cache value that is not a cache
+                corresponding to SOS token.
+            -   otherwise we delete from the left as in (1)
 
         :param cache_values: the cache values from the engine output
         :param tokens: the tokens from the previous inference run
