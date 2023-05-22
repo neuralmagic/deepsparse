@@ -159,9 +159,6 @@ class TextGenerationPipeline(TransformersPipeline):
 
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # ensure tokenizer pads to left
-        self.tokenizer.padding_side = "left"
-
         input_tokens = self.tokenizer(
             inputs.sequence,
             return_tensors="np",
@@ -289,7 +286,7 @@ class TextGenerationPipeline(TransformersPipeline):
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
         num_tokens_running = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_running:] = 1
-
+        breakpoint()
         # the position of the token is the number of tokens - 1 (zero indexed)
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
         if num_prompt_tokens == 0:
@@ -320,7 +317,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         return generated_token, kv_cache
 
-    def generate_token(self, logits: numpy.ndarray) -> int:
+    def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
         Samples a token from the logits using the sampling temperature.
 
