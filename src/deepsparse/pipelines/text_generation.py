@@ -284,13 +284,8 @@ class TextGenerationPipeline(TransformersPipeline):
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-<<<<<<< HEAD
         num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_processed:] = 1
-=======
-        num_tokens_running = min(len(tokens), self.sequence_length)  # cap by seq len
-        attention_mask[:, -num_tokens_running:] = 1
->>>>>>> 6d5bda3cbb2fbb33feec2033aa1cab1789a2f4d7
         # the position of the token is the number of tokens - 1 (zero indexed)
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
         if num_prompt_tokens == 0:
