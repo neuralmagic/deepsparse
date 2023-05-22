@@ -286,7 +286,6 @@ class TextGenerationPipeline(TransformersPipeline):
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
         num_tokens_running = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_running:] = 1
-        breakpoint()
         # the position of the token is the number of tokens - 1 (zero indexed)
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
         if num_prompt_tokens == 0:
