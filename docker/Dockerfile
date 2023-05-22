@@ -64,22 +64,22 @@ ARG MODE=""
 RUN \
     if [ -n "$BRANCH" ] ; then \
       echo Installing from BRANCH && \
-      $VENV/bin/pip install --no-cache-dir "./deepsparse[server,yolo,onnxruntime,yolov8]"; \
+      $VENV/bin/pip install --no-cache-dir "./deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
     elif [ "$MODE" = "nightly" ] ; then \
       echo Installing nightlies ... && \
       if [ -z "$VERSION" ] ; then \
         echo Installing latest nightlies ...  && \
-        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8]"; \
+        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
       else \
         echo Installing nightlies ... with $VERSION && \
-        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8]==$VERSION"; \
+        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8,transformers,image_classification]==$VERSION"; \
       fi; \
     elif [ -z "$VERSION" ] ; then \
       echo Installing latest deepsparse ... from pypi && \
-      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8]"; \
+      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
     else \
       echo Installing latest deepsparse version="$VERSION" from pypi && \
-      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8]==$VERSION"; \
+      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]==$VERSION"; \
     fi;
 
 RUN deepsparse.transformers.run_inference --help \
@@ -113,7 +113,7 @@ COPY --from=build $VENV $VENV
 COPY --from=build deepsparse deepsparse
 ENV PATH="${VENV}/bin:$PATH"
 HEALTHCHECK CMD python -c 'import deepsparse'
-ENTRYPOINT bash
+CMD bash
 
 
 FROM base as prod
@@ -121,5 +121,5 @@ ARG VENV
 COPY --from=build $VENV $VENV
 ENV PATH="${VENV}/bin:$PATH"
 HEALTHCHECK CMD python -c 'import deepsparse'
-ENTRYPOINT bash
+CMD bash
 
