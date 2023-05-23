@@ -211,10 +211,11 @@ def process_line_item(total_layer_time, detailed_layer_time, li, strip_name):
 
     layer_type = li["name"]
     if strip_name:
+        layer_type = layer_type.replace("-", "_")
         # peel off unique number
         layer_type = layer_type.rsplit("_", 1)[0]
         # peel off ks percentage
-        layer_type = layer_type.rsplit("-", 1)[0]
+        layer_type = layer_type.rsplit("_", 1)[0]
 
     avg_layer_time = li["average_run_time_in_ms"]
 
