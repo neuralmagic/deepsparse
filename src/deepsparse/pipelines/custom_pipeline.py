@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import importlib
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
@@ -26,7 +26,7 @@ class CustomTaskPipeline(Pipeline):
     """
     A utility class provided to make specifying custom pipelines easier.
     Instead of creating a subclass of Pipeline, you can instantiate this directly
-    by passing in functions to call for pre and post processing.
+    by passing in functions to call for pre- and post-processing.
 
     The easiest way to use this class is to just pass in the model path, which
     lets use directly interact with engine inputs/outputs:
@@ -34,7 +34,7 @@ class CustomTaskPipeline(Pipeline):
     pipeline = CustomPipeline(model_path="...")
     ```
 
-    Alternatively, you can pass the pre/post processing functions into
+    Alternatively, you can pass the pre-/post-processing functions into
     the constructor:
     ```python
     def yolo_preprocess(inputs: YOLOInput) -> List[np.ndarray]:
@@ -63,7 +63,7 @@ class CustomTaskPipeline(Pipeline):
         mapsan `InputSchema` object to a list of numpy arrays that can be directly
         passed into the forward pass of the pipeline engine. If `None`, raw data is
         passed to the engine.
-    :param process_outputs_fn: Optional callable (function, method, lambda, etc) that
+    :param process_outputs_fn: Optional callable (function, method, lambda, etc.) that
         maps the list of numpy arrays that are the output of the engine forward pass
         into an `OutputSchema` object. If `None`, engine outputs are directly returned.
     """
@@ -97,6 +97,12 @@ class CustomTaskPipeline(Pipeline):
                 f"output_schema must subclass BaseModel. Found {output_schema}"
             )
 
+        processing_file = kwargs.pop('processing_file', None)
+        if processing_file is not None:
+            process_inputs_fn, process_outputs_fn = self._read_processing_functions_from_file(
+                processing_file=processing_file
+            )
+
         if process_inputs_fn is None:
             process_inputs_fn = _passthrough
 
@@ -108,6 +114,23 @@ class CustomTaskPipeline(Pipeline):
         self._process_inputs_fn = process_inputs_fn
         self._process_outputs_fn = process_outputs_fn
         super().__init__(model_path, *args, **kwargs)
+
+    def _read_processing_functions_from_file(self, processing_file: str):
+        """
+        Parse the processing file in order to import custom pre- and/or
+        post-processing function from the user-specified python script
+
+        :pre-condition: The processing file is a valid `.py` file that
+            exists
+        """
+        print(
+            "Overriding preprocess and postprocess "
+            f"functions using {processing_file}"
+        )
+        spec = importlib.util.spec_from_file_location("custom_processing_functions", processing_file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return getattr(module, "preprocess", None), getattr(module, "postprocess", None)
 
     def setup_onnx_file_path(self) -> str:
         """
