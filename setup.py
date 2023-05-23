@@ -130,11 +130,11 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 _image_classification_deps = [
-    "torchvision>=0.3.0,<=0.13",
+    "torchvision>=0.3.0,<0.14",
     "opencv-python<=4.6.0.66",
 ]
 _yolo_integration_deps = [
-    "torchvision>=0.3.0,<=0.13",
+    "torchvision>=0.3.0,<0.14",
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
