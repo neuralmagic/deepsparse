@@ -52,6 +52,27 @@ class CustomTaskPipeline(Pipeline):
     )
     ```
 
+    Alternatively, you can also pass a processing file in kwargs containing
+    `preprocess` and `postprocess` functions into the constructor:
+
+    `processing.py`
+    ```python
+    def preprocess(inputs: YOLOInput) -> List[np.ndarray]:
+        ...
+
+    def postprocess(engine_outputs: List[np.ndarray]):
+        ...
+    ```
+
+    ```python
+    yolo = CustomPipeline(
+        model_path="...",
+        input_schema=YOLOInput,
+        output_schema=YOLOOutput,
+        kwargs={"processing_file": "processing.py"},
+    )
+    ```
+
     :param model_path: path on local system or SparseZoo stub to load the model from.
         Passed to :class:`Pipeline`.
     :param input_schema: Optional pydantic schema that describes the input to
@@ -97,9 +118,12 @@ class CustomTaskPipeline(Pipeline):
                 f"output_schema must subclass BaseModel. Found {output_schema}"
             )
 
-        processing_file = kwargs.pop('processing_file', None)
+        processing_file = kwargs.pop("processing_file", None)
         if processing_file is not None:
-            process_inputs_fn, process_outputs_fn = self._read_processing_functions_from_file(
+            (
+                process_inputs_fn,
+                process_outputs_fn,
+            ) = self._read_processing_functions_from_file(
                 processing_file=processing_file
             )
 
@@ -114,23 +138,6 @@ class CustomTaskPipeline(Pipeline):
         self._process_inputs_fn = process_inputs_fn
         self._process_outputs_fn = process_outputs_fn
         super().__init__(model_path, *args, **kwargs)
-
-    def _read_processing_functions_from_file(self, processing_file: str):
-        """
-        Parse the processing file in order to import custom pre- and/or
-        post-processing function from the user-specified python script
-
-        :pre-condition: The processing file is a valid `.py` file that
-            exists
-        """
-        print(
-            "Overriding preprocess and postprocess "
-            f"functions using {processing_file}"
-        )
-        spec = importlib.util.spec_from_file_location("custom_processing_functions", processing_file)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return getattr(module, "preprocess", None), getattr(module, "postprocess", None)
 
     def setup_onnx_file_path(self) -> str:
         """
@@ -170,6 +177,27 @@ class CustomTaskPipeline(Pipeline):
             on the `engine_outputs`.
         """
         return self._process_outputs_fn(engine_outputs, **kwargs)
+
+    def _read_processing_functions_from_file(self, processing_file: str):
+        """
+        Parses the file containing the `preprocess` and `postprocess` functions
+
+        :pre-condition: The file is a valid `.py` file that exists and may
+            contain a preprocess and a postprocess function
+        :param processing_file: The path to the file containing the preprocess
+            and postprocess functions
+        :return: The preprocess and postprocess functions from the file
+        """
+        print(
+            "Overriding preprocess and postprocess "
+            f"functions using {processing_file}"
+        )
+        spec = importlib.util.spec_from_file_location(
+            "custom_processing_functions", processing_file
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return getattr(module, "preprocess", None), getattr(module, "postprocess", None)
 
 
 def _passthrough(x, **kwargs):
