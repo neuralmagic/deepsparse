@@ -38,7 +38,8 @@ def test_mock_engine_calls(engine_mock: MagicMock):
     engine_mock.assert_called_once_with(
         os.path.join(
             os.path.expanduser("~"),
-            ".cache/sparsezoo/neuralmagic/resnet_v1-50-imagenet-pruned85.4block_quantized/model.onnx",
+            ".cache/sparsezoo/neuralmagic/",
+            "resnet_v1-50-imagenet-pruned85.4block_quantized/model.onnx",
         ),
         3,
         1,
