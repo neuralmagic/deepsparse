@@ -30,6 +30,7 @@ import yaml
 
 import torch
 from deepsparse.yolo.schemas import YOLOOutput
+from sparsezoo.utils import save_onnx
 
 
 try:
@@ -399,7 +400,7 @@ def modify_yolo_onnx_input_shape(
         set_tensor_dim_shape(model.graph.output[0], 1, num_predictions)
 
     tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-    onnx.save(model, tmp_file.name)
+    save_onnx(model, tmp_file.name)
 
     return tmp_file.name, tmp_file
 
