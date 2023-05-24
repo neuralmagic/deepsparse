@@ -75,6 +75,10 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens until the end of the sequence is reached.
         Otherwise, it will generate up to the maximum number of tokens or end of
         sequence is reached.
+    :param prompt_batch_threshold: the threshold for the ratio of running the prompt
+        as a single, batched inference vs running the prompt auto-regressively.
+    :param force_max_tokens: if True, the pipeline will generate the maximum number
+        of tokens supplied even if the stop token is reached.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
@@ -84,6 +88,7 @@ class TextGenerationPipeline(TransformersPipeline):
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
         prompt_batch_threshold: float = 0.25,
+        force_max_tokens: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs, _delay_engine_initialize=True)
@@ -95,6 +100,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.sampling_temperature = sampling_temperature
         self.max_generated_tokens = max_generated_tokens
         self.prompt_batch_threshold = prompt_batch_threshold
+        self.force_max_tokens = force_max_tokens
 
         self.engine = Pipeline.create_engine(
             self.onnx_file_path,
@@ -220,7 +226,7 @@ class TextGenerationPipeline(TransformersPipeline):
             tokens.append(gen_token)
             generated.append(gen_token)
 
-            if gen_token == self.tokenizer.eos_token_id:
+            if gen_token == self.tokenizer.eos_token_id and not self.force_max_tokens:
                 break
 
         return numpy.array([[generated]])
