@@ -115,9 +115,10 @@ class TextGenerationPipeline(TransformersPipeline):
             self.onnx_multitoken_path,
             self._temp_model_directory,
         ) = self._setup_onnx_multitoken_file_path()
-        self.multitoken_engine = Pipeline.create_engine(
-            self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context
-        )
+        self.multitoken_engine = None
+        # Pipeline.create_engine(
+        #     self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context
+        # )
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
@@ -250,7 +251,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         new_token = None
 
-        if len(tokens) / float(self.sequence_length) < self.prompt_batch_threshold:
+        if True: #len(tokens) / float(self.sequence_length) < self.prompt_batch_threshold:
             # prompt size is small, run autoregressive inference to populate kv cache
             run_tokens = []
             kv_cache = {}
