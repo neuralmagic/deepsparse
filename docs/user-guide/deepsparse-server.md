@@ -285,7 +285,8 @@ endpoints:
 ```
 
 Where `model` must be a valid onnx model that exists on the system, and `processing_file` must be a
- valid python file contain pre- and/or post-processing functions, the `preprocess` function must take return a list of `numpy.ndarray`(s) and the `postprocess` function must take in a list of `numpy.ndarray`(s) for example:
+ valid python file contain pre- and/or post-processing functions, the `preprocess` function must return
+  a list of `numpy.ndarray`(s) and the `postprocess` function must take in a list of `numpy.ndarray`(s) for example:
 
 (make sure you have torchvision installed for this exact example)
 
