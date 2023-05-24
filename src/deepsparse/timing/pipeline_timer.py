@@ -63,8 +63,7 @@ class InferenceTimer:
     def stop(self, stage: str):
         if stage not in self._staged_start_times:
             raise ValueError(
-                "Attempting to stop a stage that has not been started: "
-                f"{stage}"
+                "Attempting to stop a stage that has not been started: " f"{stage}"
             )
 
         if (

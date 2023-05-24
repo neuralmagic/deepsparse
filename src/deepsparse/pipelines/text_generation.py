@@ -262,7 +262,7 @@ class TextGenerationPipeline(TransformersPipeline):
         else:
             # larger prompt size, run through multi-token engine in single pass
             self.timer.start_inference_stage("multitoken_engine")
-            logits, *cache_values = self.multitoken_engine(engine_inputs)
+            logits, *cache_values = self.multitoken_engine(engine_inputs, val_inp=False)
             self.timer.stop_inference_stage("multitoken_engine")
             kv_cache = self.assemble_kv_cache(cache_values, tokens)
             new_token = self.generate_token(logits[0, -1])
@@ -320,7 +320,7 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
         self.timer.start_inference_stage("autoregressive_inference_engine")
-        new_logits, *cache_values = self.engine(engine_inputs)
+        new_logits, *cache_values = self.engine(engine_inputs, val_inp=False)
         self.timer.stop_inference_stage("autoregressive_inference_engine")
         kv_cache = self.assemble_kv_cache(cache_values, tokens)
 
