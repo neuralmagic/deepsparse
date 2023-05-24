@@ -238,6 +238,7 @@ class TextGenerationPipeline(TransformersPipeline):
             - the list of prompt tokens plus the new, generated token
             - the kv cache that was populated during the inference
         """
+        self.timer.start_inference_stage("prompt_inference")
         # get tokens by attention mask
         tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
 
@@ -254,11 +255,14 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
         else:
             # larger prompt size, run through multi-token engine in single pass
+            self.timer.start_inference_stage("multitoken_engine")
             logits, *cache_values = self.multitoken_engine(engine_inputs)
+            self.timer.stop_inference_stage("multitoken_engine")
             kv_cache = self.assemble_kv_cache(cache_values, tokens)
             new_token = self.generate_token(logits[0, -1])
 
         tokens.append(new_token)
+        self.timer.stop_inference_stage("prompt_inference")
 
         return tokens, kv_cache
 
@@ -279,6 +283,7 @@ class TextGenerationPipeline(TransformersPipeline):
             - the new, generated token
             - the kv cache that was populated during the inference
         """
+        self.timer.start_inference_stage("autoregressive_inference")
         new_token = tokens[-1]
 
         # padding is added to left, so attention mask is 1s from the
@@ -308,11 +313,14 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs.update(kv_cache)
         engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
+        self.timer.start_inference_stage("autoregressive_inference_engine")
         new_logits, *cache_values = self.engine(engine_inputs)
+        self.timer.stop_inference_stage("autoregressive_inference_engine")
         kv_cache = self.assemble_kv_cache(cache_values, tokens)
 
         # Obtain the next token from the logits
         generated_token = self.generate_token(new_logits[0, 0, :])
+        self.timer.stop_inference_stage("autoregressive_inference")
 
         return generated_token, kv_cache
 
@@ -400,14 +408,14 @@ class TextGenerationPipeline(TransformersPipeline):
         Restructure the kv cache values from the engine output, so
         that it can be passed to the engine in the next inference run.
 
-        KV Cache concatenation adds an extra length dimension to the output 
+        KV Cache concatenation adds an extra length dimension to the output
         cache, that should be deleted after every inference run.
 
         There are two modes:
-        1. Some values in the cache represent dummy (pad) tokens, padding is 
+        1. Some values in the cache represent dummy (pad) tokens, padding is
             to the left, so the left-most cache value is deleted
         2. The cache is saturated with non-dummy (meaningful) tokens:
-            -   if there is a mandatory start-of-sequence (SOS) token, 
+            -   if there is a mandatory start-of-sequence (SOS) token,
                 we delete the left-most cache value that is not a cache
                 corresponding to SOS token.
             -   otherwise we delete from the left as in (1)
