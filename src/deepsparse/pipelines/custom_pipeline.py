@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import importlib
+import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
@@ -19,6 +20,9 @@ from pydantic import BaseModel
 
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils.onnx import model_to_path
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @Pipeline.register(task="custom")
@@ -188,7 +192,7 @@ class CustomTaskPipeline(Pipeline):
             and postprocess functions
         :return: The preprocess and postprocess functions from the file
         """
-        print(
+        _LOGGER.info(
             "Overriding preprocess and postprocess "
             f"functions using {processing_file}"
         )

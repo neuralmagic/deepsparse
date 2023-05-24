@@ -285,7 +285,7 @@ endpoints:
 ```
 
 Where `model` must be a valid onnx model that exists on the system, and `processing_file` must be a
- valid python file contain pre- and/or post-processing functions, for example:
+ valid python file contain pre- and/or post-processing functions, the `preprocess` function must take return a list of `numpy.ndarray`(s) and the `postprocess` function must take in a list of `numpy.ndarray`(s) for example:
 
 (make sure you have torchvision installed for this exact example)
 
@@ -295,6 +295,7 @@ Where `model` must be a valid onnx model that exists on the system, and `process
 from torchvision import transforms
 from PIL import Image
 import torch
+from typing import List
 
 IMAGENET_RGB_MEANS = [0.485, 0.456, 0.406]
 IMAGENET_RGB_STDS = [0.229, 0.224, 0.225]
@@ -305,7 +306,7 @@ preprocess_transforms = transforms.Compose([
     transforms.Normalize(mean=IMAGENET_RGB_MEANS, std=IMAGENET_RGB_STDS),
 ])
 
-def preprocess(img_file):
+def preprocess(img_file) -> List["numpy.ndarray"]:
     with open(img_file, "rb") as img_file:
         img = Image.open(img_file)
         img = img.convert("RGB")
@@ -313,7 +314,7 @@ def preprocess(img_file):
     batch = torch.stack([img])
     return [batch.numpy()]
 
-def postprocess(outputs):
+def postprocess(outputs: List["numpy.ndarray"]):
     return outputs
 ```
 
