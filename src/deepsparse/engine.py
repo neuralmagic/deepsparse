@@ -28,9 +28,9 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (
     generate_random_inputs,
+    get_output_names,
     model_to_path,
     override_onnx_input_shapes,
-    get_output_names,
 )
 
 
@@ -859,6 +859,7 @@ class KVCacheEngine(Engine):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         kv_cache_bools: List[bool] = None,
+        prev_cache_length: int = 0,
     ):
         BaseEngine.construct(
             self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
@@ -885,8 +886,8 @@ class KVCacheEngine(Engine):
                 num_streams,
                 self._scheduler.value,
                 None,
-                kv_cache_bools,  # pass in the boolean list
-                0,  # since we start with no initial cache, pass in 0 for the initial cached position
+                kv_cache_bools,
+                prev_cache_length,
             )
 
 
