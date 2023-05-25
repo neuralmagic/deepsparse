@@ -199,8 +199,8 @@ class Engine(object):
         self._cpu_vnni = VNNI
 
         num_streams = _validate_num_streams(num_streams, self._num_cores)
-        if self._input_shapes is not None:
-            override_onnx_input_shapes(self._model_path, self._input_shapes, inplace=True)
+        # if self._input_shapes is not None:
+        #     override_onnx_input_shapes(self._model_path, self._input_shapes, inplace=True)
         self._eng_net = LIB.deepsparse_engine(
             self._model_path,
             self._batch_size,
