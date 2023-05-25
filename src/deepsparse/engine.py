@@ -186,6 +186,8 @@ class Engine(object):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        cache: List[bool] = None,
+        cache_start: int = None,
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -197,27 +199,17 @@ class Engine(object):
         self._cpu_vnni = VNNI
 
         num_streams = _validate_num_streams(num_streams, self._num_cores)
-        if self._input_shapes:
-            with override_onnx_input_shapes(
-                self._model_path, self._input_shapes
-            ) as model_path:
-                self._eng_net = LIB.deepsparse_engine(
-                    model_path,
-                    self._batch_size,
-                    self._num_cores,
-                    num_streams,
-                    self._scheduler.value,
-                    None,
-                )
-        else:
-            self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
-                self._batch_size,
-                self._num_cores,
-                num_streams,
-                self._scheduler.value,
-                None,
-            )
+        override_onnx_input_shapes(self._model_path, self._input_shapes, inplace=True)
+        self._eng_net = LIB.deepsparse_engine(
+            self._model_path,
+            self._batch_size,
+            self._num_cores,
+            num_streams,
+            self._scheduler.value,
+            None,
+            cache,
+            cache_start,
+        )
 
     def __call__(
         self,

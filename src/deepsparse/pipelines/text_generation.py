@@ -26,6 +26,7 @@ from deepsparse.transformers.helpers import (
     overwrite_transformer_onnx_model_inputs,
 )
 from deepsparse.transformers.pipelines import TransformersPipeline
+from deepsparse.utils import get_output_names
 
 
 OPT_CACHE_HIDDEN_DIM = 64
@@ -76,7 +77,10 @@ class TextGenerationPipeline(TransformersPipeline):
         Otherwise, it will generate up to the maximum number of tokens or end of
         sequence is reached.
     :param prompt_batch_threshold: the threshold for the ratio of running the prompt
-        as a single, batched inference vs running the prompt auto-regressively.
+        as a single inference vs running the prompt auto-regressively.
+        If the number of input sequences divided by the max sequence length is
+        greater than the threshold, the prompt will be run as a single inference.
+        Default is None, which will always run auto-regressively.
     :param force_max_tokens: if True, the pipeline will generate the maximum number
         of tokens supplied even if the stop token is reached.
     :param kwargs: kwargs to pass to the TransformersPipeline
@@ -87,7 +91,7 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
-        prompt_batch_threshold: float = 0.25,
+        prompt_batch_threshold: float = None,
         force_max_tokens: bool = False,
         **kwargs,
     ):
@@ -107,18 +111,22 @@ class TextGenerationPipeline(TransformersPipeline):
             self.engine_type,
             self.engine_args,
             self.context,
-            support_kv_cache=True,
         )
 
-        # initialize the auxiliary multitoken engine
-        (
-            self.onnx_multitoken_path,
-            self._temp_model_directory,
-        ) = self._setup_onnx_multitoken_file_path()
-        self.multitoken_engine = None
-        # Pipeline.create_engine(
-        #     self.onnx_multitoken_path, self.engine_type, self.engine_args, self.context
-        # )
+        if prompt_batch_threshold is not None and prompt_batch_threshold < 1:
+            (
+                self.onnx_multitoken_path,
+                self._temp_model_directory,
+            ) = self._setup_onnx_multitoken_file_path()
+            self.multitoken_engine = Pipeline.create_engine(
+                self.onnx_multitoken_path,
+                self.engine_type,
+                self.engine_args,
+                self.context,
+            )
+        else:
+            self.onnx_multitoken_path = None
+            self.multitoken_engine = None
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
@@ -251,7 +259,11 @@ class TextGenerationPipeline(TransformersPipeline):
 
         new_token = None
 
-        if True: #len(tokens) / float(self.sequence_length) < self.prompt_batch_threshold:
+        if (
+            self.prompt_batch_threshold is None
+            or self.prompt_batch_threshold >= 1
+            or len(tokens) / float(self.sequence_length) < self.prompt_batch_threshold
+        ):
             # prompt size is small, run autoregressive inference to populate kv cache
             run_tokens = []
             kv_cache = {}
