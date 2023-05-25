@@ -276,32 +276,23 @@ class Engine(BaseEngine):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        cache_inputs: List[bool] = None,
     ):
         BaseEngine.construct(
             self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
         )
 
-        if self._input_shapes:
-            with override_onnx_input_shapes(
-                self._model_path, self._input_shapes
-            ) as model_path:
-                self._eng_net = LIB.deepsparse_engine(
-                    model_path,
-                    self._batch_size,
-                    self._num_cores,
-                    self._num_streams,
-                    self._scheduler.value,
-                    None,
-                )
-        else:
-            self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
-                self._batch_size,
-                self._num_cores,
-                self._num_streams,
-                self._scheduler.value,
-                None,
-            )
+        num_streams = _validate_num_streams(num_streams, self._num_cores)
+        override_onnx_input_shapes(self._model_path, self._input_shapes, inplace=True)
+        self._eng_net = LIB.deepsparse_engine(
+            self._model_path,
+            self._batch_size,
+            self._num_cores,
+            num_streams,
+            self._scheduler.value,
+            None,
+            cache_inputs,
+        )
 
     def __call__(
         self,

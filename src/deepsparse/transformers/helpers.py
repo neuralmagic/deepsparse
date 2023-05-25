@@ -69,10 +69,21 @@ def get_onnx_path_and_configs(
     if os.path.isfile(model_path) and not require_configs:
         return model_path, None, None
 
-    config_path = None
-    tokenizer_path = None
+    if os.path.isfile(model_path):
+        if require_configs:
+            raise RuntimeError(
+                f"Unable to find config files for model_path {model_path}. "
+                f"model_path must be a directory containing model.onnx, config.json,"
+                f" and tokenizer.json files."
+            )
+
+        return model_path, None, None
 
     if os.path.isdir(model_path):
+        # default to model_path
+        config_path = model_path
+        tokenizer_path = model_path
+
         model_files = os.listdir(model_path)
 
         if _MODEL_DIR_ONNX_NAME not in model_files:
@@ -84,12 +95,13 @@ def get_onnx_path_and_configs(
         onnx_path = os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
 
         # attempt to read config and tokenizer from sparsezoo-like framework directory
-        framework_dir = None
-        if "framework" in model_files:
-            framework_dir = os.path.join(model_path, "framework")
-        if "pytorch" in model_files:
-            framework_dir = os.path.join(model_path, "pytorch")
-        if framework_dir and os.path.isdir(framework_dir):
+        for framework_dir in [
+            os.path.join(model_path, "framework"),
+            os.path.join(model_path, "pytorch"),
+        ]:
+            if not os.path.exists(framework_dir) or not os.path.isdir(framework_dir):
+                continue
+
             framework_files = os.listdir(framework_dir)
             if _MODEL_DIR_CONFIG_NAME in framework_files:
                 config_path = framework_dir
@@ -102,7 +114,9 @@ def get_onnx_path_and_configs(
         if _MODEL_DIR_TOKENIZER_NAME in model_files:
             tokenizer_path = model_path
 
-    elif model_path.startswith("zoo:"):
+        return onnx_path, config_path, tokenizer_path
+
+    if model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
         onnx_path = zoo_model.onnx_model.path
         config_path = _get_file_parent(
@@ -115,20 +129,13 @@ def get_onnx_path_and_configs(
             _MODEL_DIR_TOKENIZER_CONFIG_NAME
         )
         if tokenizer_config_path is not None:
-            tokenizer_config_path.path  # trigger download of tokenizer_config
-    elif require_configs and (config_path is None or tokenizer_path is None):
-        raise RuntimeError(
-            f"Unable to find model and tokenizer config for model_path {model_path}. "
-            f"model_path must be a directory containing model.onnx, config.json, and "
-            f"tokenizer.json files. Found config and tokenizer paths: {config_path}, "
-            f"{tokenizer_path}"
-        )
-    else:
-        raise ValueError(
-            f"model_path {model_path} is not a valid file, directory, or zoo stub"
-        )
+            _ = tokenizer_config_path.path  # trigger download of tokenizer_config
 
-    return onnx_path, config_path, tokenizer_path
+        return onnx_path, config_path, tokenizer_path
+
+    raise ValueError(
+        f"model_path {model_path} is not a valid file, directory, or zoo stub"
+    )
 
 
 def overwrite_transformer_onnx_model_inputs(

@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse import Context, Engine, KVCacheEngine, MultiModelEngine, Scheduler
+from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
@@ -590,7 +590,6 @@ class Pipeline(ABC):
         engine_type: str,
         engine_args: Dict,
         context: Optional[Context] = None,
-        support_kv_cache: bool = False,
     ) -> Union[Engine, MultiModelEngine, ORTEngine]:
         engine_type = engine_type.lower()
 
@@ -603,8 +602,6 @@ class Pipeline(ABC):
                     model=onnx_file_path,
                     **engine_args,
                 )
-            if support_kv_cache:
-                return KVCacheEngine(onnx_file_path, **engine_args)
             return Engine(onnx_file_path, **engine_args)
 
         if engine_type == ORT_ENGINE:
