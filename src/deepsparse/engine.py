@@ -30,6 +30,7 @@ from deepsparse.utils import (
     generate_random_inputs,
     model_to_path,
     override_onnx_input_shapes,
+    get_output_names,
 )
 
 
@@ -54,6 +55,7 @@ __all__ = [
     "Context",
     "MultiModelEngine",
     "KVCacheEngine",
+    "BaseEngine",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -179,6 +181,9 @@ class Context(object):
             _validate_num_streams(num_streams, self._num_cores),
             self._scheduler.value,
         )
+        # num_streams can be adjusted by how we map optimially to the hardware topology,
+        # so let's use the context as the source of truth to be transparent
+        self._num_streams = self._deepsparse_context.num_streams()
 
     @property
     def value(self):
@@ -190,7 +195,7 @@ class Context(object):
 
     @property
     def num_streams(self):
-        return self._deepsparse_context.num_streams()
+        return self._num_streams
 
     @property
     def scheduler(self):
@@ -201,7 +206,7 @@ class Context(object):
 
 
 class BaseEngine(object):
-    def construct_base(
+    def construct(
         self,
         model: Union[str, "Model", "File"],
         batch_size: int = 1,
@@ -272,7 +277,7 @@ class Engine(BaseEngine):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
     ):
-        BaseEngine.construct_base(
+        BaseEngine.construct(
             self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
         )
 
@@ -725,7 +730,7 @@ class DebugAnalysisEngine(Engine):
         imposed_as: Optional[float] = None,
         imposed_ks: Optional[float] = None,
     ):
-        BaseEngine.construct_base(
+        BaseEngine.construct(
             self, model, batch_size, num_cores, None, scheduler, input_shapes
         )
 
@@ -855,19 +860,18 @@ class KVCacheEngine(Engine):
         input_shapes: List[List[int]] = None,
         kv_cache_bools: List[bool] = None,
     ):
-        BaseEngine.construct_base(
+        BaseEngine.construct(
             self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
         )
 
         if kv_cache_bools is None:
-            import onnx
-
-            model = onnx.load(self._model_path)
-            output = [output for output in model.graph.output]
-            # create a boolean list of every output of the
-            # model (logits, key0, value0, key1, value1, ..., key19, value19)
-            kv_cache_bools = [True for i in range(len(output))]
-            # assume first input is logits and logits ought not to be cached
+            # If no list was provided, then we assume all outputs except for the first are KV caches
+            # Note: In the future we can look at the names of outputs to be more sure
+            #
+            # Create a boolean list of every output of the model
+            output_names = get_output_names(self._model_path)
+            kv_cache_bools = [True for i in range(len(output_names))]
+            # Assume first input is logits and logits ought not to be cached
             kv_cache_bools[0] = False
 
         num_streams = _validate_num_streams(num_streams, self._num_cores)
