@@ -63,7 +63,7 @@ def _validate_ort_import():
 
 
 def _validate_batch_size(batch_size: int) -> int:
-    if batch_size < 1:
+    if batch_size is not None and batch_size < 1:
         raise ValueError("batch_size must be greater than 0")
 
     return batch_size
@@ -130,7 +130,7 @@ class ORTEngine(object):
                         sess_options,
                         providers=providers,
                     )
-        else:
+        elif batch_size is not None:
             with override_onnx_batch_size(
                 self._model_path, batch_size
             ) as batch_override_model_path:
@@ -139,6 +139,12 @@ class ORTEngine(object):
                     sess_options,
                     providers=providers,
                 )
+        else:
+            self._eng_net = onnxruntime.InferenceSession(
+                self._model_path,
+                sess_options,
+                providers=providers,
+            )
 
     def __call__(
         self,
