@@ -22,7 +22,7 @@ your machine is compatible with our [hardware requirements].
 
 ### Installation
 
-```pip install deepsparse```
+```pip install deepsparse[image_classification]```
 
 ### Model Format
 
