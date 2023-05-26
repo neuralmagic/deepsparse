@@ -37,7 +37,7 @@ sparseml.yolov5.export_onnx \
     --weights path/to/your/model \
     --dynamic #Allows for dynamic input shape
 ```
-This creates `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
+This creates a DeepSparse_Deployment folder with a `model.onnx` file (e.g. `runs/train/exp/DeepSparse_Deployment/model.onnx`).
 
 ####  SparseZoo Stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
@@ -76,7 +76,7 @@ pip install deepsparse[yolo,server]
 The following example uses pipelines to run a pruned and quantized YOLOv5l model for inference, downloaded by default from the SparseZoo. As input the pipeline ingests a list of images and returns for each image the detection boxes in numeric form. 
 
 [List of the YOLOv5 SparseZoo Models](
-https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=detection&page=1)
+https://sparsezoo.neuralmagic.com/?useCase=detection&architectures=yolov5)
 
 If you don't have an image ready, pull a sample image down with
 
