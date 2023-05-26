@@ -112,7 +112,7 @@ You only need to provide the model path of the local ONNX model to get started:
 
 ```bash
 # Install packages for DeepSparse and YOLOv8
-pip install deepsparse[yolov8] ultralytics
+pip install deepsparse[yolov8]
 # Export YOLOv8n and YOLOv8s ONNX models
 yolo task=detect mode=export model=yolov8n.pt format=onnx opset=13
 yolo task=detect mode=export model=yolov8s.pt format=onnx opset=13
