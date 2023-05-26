@@ -272,7 +272,62 @@ Check out the [Use Case](../use-cases) page for detailed documentation on task-s
 
 ## Custom Use Cases
 
-Stay tuned for documentation on using a custom DeepSparse Pipeline within the Server!
+The endpoints can also take in a custom task, along with custom preprocess and postprocessing functions
+
+```yaml
+# custom-processing-config.yaml
+
+endpoints:
+  - task: custom
+    model: ~/models/resnet50.onnx
+    kwargs:
+      processing_file: ~/processing.py
+```
+
+Where `model` must be a valid onnx model that exists on the system, and `processing_file` must be a
+ valid python file contain pre- and/or post-processing functions, the `preprocess` function must return
+  a list of `numpy.ndarray`(s) and the `postprocess` function must take in a list of `numpy.ndarray`(s) for example:
+
+(make sure you have torchvision installed for this exact example)
+
+```python
+# processing.py
+
+from torchvision import transforms
+from PIL import Image
+import torch
+from typing import List
+
+IMAGENET_RGB_MEANS = [0.485, 0.456, 0.406]
+IMAGENET_RGB_STDS = [0.229, 0.224, 0.225]
+preprocess_transforms = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=IMAGENET_RGB_MEANS, std=IMAGENET_RGB_STDS),
+])
+
+def preprocess(img_file) -> List["numpy.ndarray"]:
+    with open(img_file, "rb") as img_file:
+        img = Image.open(img_file)
+        img = img.convert("RGB")
+    img = preprocess_transforms(img)
+    batch = torch.stack([img])
+    return [batch.numpy()]
+
+def postprocess(outputs: List["numpy.ndarray"]):
+    return outputs
+```
+
+Spinning up:
+
+```bash
+deepsparse.server \
+  --config-file custom-processing-config.yaml
+```
+
+Now the custom preprocess and postprocess functions will be used when
+requests are made to this server!
 
 ## Multi-Stream
 

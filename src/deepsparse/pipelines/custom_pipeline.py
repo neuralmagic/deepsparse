@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import importlib
+import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numpy
@@ -21,12 +22,15 @@ from deepsparse.pipeline import Pipeline
 from deepsparse.utils.onnx import model_to_path
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 @Pipeline.register(task="custom")
 class CustomTaskPipeline(Pipeline):
     """
     A utility class provided to make specifying custom pipelines easier.
     Instead of creating a subclass of Pipeline, you can instantiate this directly
-    by passing in functions to call for pre and post processing.
+    by passing in functions to call for pre- and post-processing.
 
     The easiest way to use this class is to just pass in the model path, which
     lets use directly interact with engine inputs/outputs:
@@ -34,7 +38,7 @@ class CustomTaskPipeline(Pipeline):
     pipeline = CustomPipeline(model_path="...")
     ```
 
-    Alternatively, you can pass the pre/post processing functions into
+    Alternatively, you can pass the pre-/post-processing functions into
     the constructor:
     ```python
     def yolo_preprocess(inputs: YOLOInput) -> List[np.ndarray]:
@@ -52,6 +56,27 @@ class CustomTaskPipeline(Pipeline):
     )
     ```
 
+    Alternatively, you can also pass a processing file in kwargs containing
+    `preprocess` and `postprocess` functions into the constructor:
+
+    `processing.py`
+    ```python
+    def preprocess(inputs: YOLOInput) -> List[np.ndarray]:
+        ...
+
+    def postprocess(engine_outputs: List[np.ndarray]):
+        ...
+    ```
+
+    ```python
+    yolo = CustomPipeline(
+        model_path="...",
+        input_schema=YOLOInput,
+        output_schema=YOLOOutput,
+        kwargs={"processing_file": "processing.py"},
+    )
+    ```
+
     :param model_path: path on local system or SparseZoo stub to load the model from.
         Passed to :class:`Pipeline`.
     :param input_schema: Optional pydantic schema that describes the input to
@@ -63,7 +88,7 @@ class CustomTaskPipeline(Pipeline):
         mapsan `InputSchema` object to a list of numpy arrays that can be directly
         passed into the forward pass of the pipeline engine. If `None`, raw data is
         passed to the engine.
-    :param process_outputs_fn: Optional callable (function, method, lambda, etc) that
+    :param process_outputs_fn: Optional callable (function, method, lambda, etc.) that
         maps the list of numpy arrays that are the output of the engine forward pass
         into an `OutputSchema` object. If `None`, engine outputs are directly returned.
     """
@@ -95,6 +120,15 @@ class CustomTaskPipeline(Pipeline):
         elif not issubclass(output_schema, BaseModel):
             raise ValueError(
                 f"output_schema must subclass BaseModel. Found {output_schema}"
+            )
+
+        processing_file = kwargs.pop("processing_file", None)
+        if processing_file is not None:
+            (
+                process_inputs_fn,
+                process_outputs_fn,
+            ) = self._read_processing_functions_from_file(
+                processing_file=processing_file
             )
 
         if process_inputs_fn is None:
@@ -147,6 +181,27 @@ class CustomTaskPipeline(Pipeline):
             on the `engine_outputs`.
         """
         return self._process_outputs_fn(engine_outputs, **kwargs)
+
+    def _read_processing_functions_from_file(self, processing_file: str):
+        """
+        Parses the file containing the `preprocess` and `postprocess` functions
+
+        :pre-condition: The file is a valid `.py` file that exists and may
+            contain a preprocess and a postprocess function
+        :param processing_file: The path to the file containing the preprocess
+            and postprocess functions
+        :return: The preprocess and postprocess functions from the file
+        """
+        _LOGGER.info(
+            "Overriding preprocess and postprocess "
+            f"functions using {processing_file}"
+        )
+        spec = importlib.util.spec_from_file_location(
+            "custom_processing_functions", processing_file
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return getattr(module, "preprocess", None), getattr(module, "postprocess", None)
 
 
 def _passthrough(x, **kwargs):
