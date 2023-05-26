@@ -122,7 +122,7 @@ pip install deepsparse[server]
 The following section includes example usage of the Pipeline and server APIs for
 various image classification models. 
 
-[List of Image Classification SparseZoo Models](https://sparsezoo.neuralmagic.com/?domain=cv&sub_domain=classification&page=1)
+[List of Image Classification SparseZoo Models](https://sparsezoo.neuralmagic.com/?useCase=classification)
 
 
 #### Python Pipeline
