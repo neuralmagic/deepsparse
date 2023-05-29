@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from typing import Dict, List, Optional, Tuple, Type
 
 import numpy
@@ -26,10 +25,6 @@ from deepsparse.transformers.helpers import (
     overwrite_transformer_onnx_model_inputs,
 )
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.utils import get_output_names
-
-
-OPT_CACHE_HIDDEN_DIM = 64
 
 
 __all__ = ["TextGenerationPipeline"]
@@ -275,7 +270,7 @@ class TextGenerationPipeline(TransformersPipeline):
         else:
             # larger prompt size, run through multi-token engine in single pass
             self.timer.start_inference_stage("multitoken_engine")
-            logits, *cache_values = self.multitoken_engine(engine_inputs, val_inp=False)
+            logits, *cache_values = self.multitoken_engine(engine_inputs)
             self.timer.stop_inference_stage("multitoken_engine")
             kv_cache = self.assemble_kv_cache(cache_values, tokens)
             new_token = self.generate_token(logits[0, -1])
@@ -333,7 +328,7 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
         self.timer.start_inference_stage("autoregressive_inference_engine")
-        new_logits, *cache_values = self.engine(engine_inputs, val_inp=False)
+        new_logits, *cache_values = self.engine(engine_inputs)
         self.timer.stop_inference_stage("autoregressive_inference_engine")
         kv_cache = self.assemble_kv_cache(cache_values, tokens)
 
@@ -378,8 +373,6 @@ class TextGenerationPipeline(TransformersPipeline):
             self.model_path,
             model_max_length=self.sequence_length,
         )
-        self.config_path = os.path.join(config_path, "config.json")
-
         (
             onnx_path,
             self.onnx_input_names,
@@ -391,8 +384,6 @@ class TextGenerationPipeline(TransformersPipeline):
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
             custom_input_overwrite_func_kwargs=dict(
                 multitoken=False,
-                num_attention_heads=self.config.num_attention_heads,
-                hidden_dims=OPT_CACHE_HIDDEN_DIM,
             ),
         )
 
@@ -400,13 +391,17 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def _initialize_kv_cache(self, length: int) -> Dict[str, numpy.ndarray]:
         # initialize empty kv cache of size
-        # (num_attention_heads, length, hidden_dims)
+        # (batch_size, num_attention_heads, length, hidden_dims)
+
+        cache_engine_input_index = next(
+            i for i, name in enumerate(self.engine.input_names) if "past_key" in name
+        )
+        batch_size, num_attention_heads, _, hidden_dims = self.engine.input_shapes[
+            cache_engine_input_index
+        ]
+
         empty_kv_cache_tensor = numpy.zeros(
-            (
-                self.config.num_attention_heads,
-                length,
-                OPT_CACHE_HIDDEN_DIM,
-            ),
+            (batch_size, num_attention_heads, length, hidden_dims),
             dtype=numpy.float32,
         )
 
@@ -451,7 +446,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 idx_to_remove = 0
 
             # TODO: see if we can do in-place
-            cache_values[idx] = numpy.delete(cache_value, idx_to_remove, 1)
+            cache_values[idx] = numpy.delete(cache_value, idx_to_remove, 2)
 
         cache_keys = [
             name.replace("present", "past_key_values")
@@ -467,8 +462,6 @@ class TextGenerationPipeline(TransformersPipeline):
         external_inputs: List[ValueInfoProto],
         batch_size: int,
         sequence_length: int,
-        num_attention_heads: int,
-        hidden_dims: int,
         multitoken: bool = True,
     ) -> List[str]:
         """
@@ -482,10 +475,6 @@ class TextGenerationPipeline(TransformersPipeline):
         :param external_inputs: The external inputs of the onnx model
         :param batch_size: The batch size of the input
         :param sequence_length: The sequence length of the input
-        :param num_attention_heads: The number of attention heads
-            of the model (required to set the shape of the kv_cache)
-        :param hidden_dims: The hidden dimensions of the model
-            (required to set the shape of the kv_cache)
         :param multitoken: A boolean flag that indicates whether
             we are overwriting inputs to the model for multi-token
             inference (sequence_len > 1) or single token inference
@@ -505,15 +494,17 @@ class TextGenerationPipeline(TransformersPipeline):
                 # we always provide full attention mask
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name.startswith("past_key_values"):
-                external_input.type.tensor_type.shape.dim[
-                    0
-                ].dim_value = num_attention_heads
+                """
+                KV cache shape is (batch_size, num_attention_heads, length, hidden_dims)
+                only batch_size (dim 0) and length (dim 2) are being overwritten, the
+                rest is assumed to be set to the correct value during model export.
+                """
+                external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
                 # empty cache for multi-token runs,
                 # otherwise max cache len is max len - 1
-                external_input.type.tensor_type.shape.dim[1].dim_value = (
+                external_input.type.tensor_type.shape.dim[2].dim_value = (
                     0 if multitoken else sequence_length - 1
                 )
-                external_input.type.tensor_type.shape.dim[2].dim_value = hidden_dims
             else:
                 raise ValueError(
                     f"Unexpected external input name: {external_input.name}"
@@ -534,8 +525,6 @@ class TextGenerationPipeline(TransformersPipeline):
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
             custom_input_overwrite_func_kwargs=dict(
                 multitoken=True,
-                num_attention_heads=self.config.num_attention_heads,
-                hidden_dims=OPT_CACHE_HIDDEN_DIM,
             ),
         )
 

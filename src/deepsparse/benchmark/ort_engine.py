@@ -63,7 +63,7 @@ def _validate_ort_import():
 
 
 def _validate_batch_size(batch_size: int) -> int:
-    if batch_size is not None and batch_size < 1:
+    if batch_size < 1:
         raise ValueError("batch_size must be greater than 0")
 
     return batch_size
@@ -130,7 +130,7 @@ class ORTEngine(object):
                         sess_options,
                         providers=providers,
                     )
-        elif batch_size is not None:
+        else:
             with override_onnx_batch_size(
                 self._model_path, batch_size
             ) as batch_override_model_path:
@@ -139,12 +139,6 @@ class ORTEngine(object):
                     sess_options,
                     providers=providers,
                 )
-        else:
-            self._eng_net = onnxruntime.InferenceSession(
-                self._model_path,
-                sess_options,
-                providers=providers,
-            )
 
     def __call__(
         self,
@@ -287,8 +281,7 @@ class ORTEngine(object):
         :return: The list of outputs from the model after executing over the inputs
         """
         if val_inp:
-            pass
-            # self._validate_inputs(inp)
+            self._validate_inputs(inp)
         inputs_dict = {name: value for name, value in zip(self.input_names, inp)}
         return self._eng_net.run(self.output_names, inputs_dict)
 
