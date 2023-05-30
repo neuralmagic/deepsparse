@@ -50,6 +50,8 @@ jobs:
       - name: ⚙️ Install dependencies
         run: pip3 install .[dev,server,image_classification,transformers]
       - name: Run CLI smoke tests
+        env:
+          PYTHONUNBUFFERED: 1
         run: PYTEST_ARGS="-m smoke" make test TARGETS=cli,nobase
   integrations-tests:
     runs-on: ubuntu-20.04
