@@ -58,8 +58,10 @@ def save_onnx_to_temp_files(model: Model) -> str:
     Save model to a temporary file.  Works for models with external data.
     """
     shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    external_data = next(tempfile._get_candidate_names())
-    has_external_data = save_onnx(model, shaped_model.name, external_data)
+    external_data = os.path.join(
+        tempfile.tempdir, next(tempfile._get_candidate_names())
+    )
+    has_external_data = save_onnx(model, shaped_model.name)
 
     try:
         yield shaped_model.name
@@ -67,10 +69,7 @@ def save_onnx_to_temp_files(model: Model) -> str:
         os.unlink(shaped_model.name)
         shaped_model.close()
         if has_external_data:
-            external_data_path = os.path.join(
-                os.path.dirname(shaped_model.name), external_data
-            )
-            os.unlink(external_data_path)
+            os.unlink(external_data)
 
 
 def translate_onnx_type_to_numpy(tensor_type: int):
