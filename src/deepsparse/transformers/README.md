@@ -24,7 +24,7 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 
 ### Installation
 
-```pip install deepsparse```
+```pip install deepsparse[transformers]```
 
 ### Model Format
 By default, to deploy the transformer using DeepSparse Engine it is required to supply the model in the ONNX format along with the HuggingFace supporting files. 
@@ -88,7 +88,7 @@ The DeepSparse Server requirements can be installed by specifying the `server` e
 DeepSparse.
 
 ```bash
-pip install deepsparse[server]
+pip install deepsparse[server,transformers]
 ```
 
 ## Deployment Use Cases
