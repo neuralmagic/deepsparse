@@ -41,7 +41,7 @@ For more information refer to the [appropriate YOLOv8 integration documentation 
 After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export and run the `SparseML` integrated YOLOv8 ONNX export script below.
 
 ```bash
-sparseml.yolov8.export_onnx \
+sparseml.ultralytics.export_onnx \
     --weights path/to/your/model \
     --dynamic #Allows for dynamic input shape
 ```
