@@ -41,7 +41,7 @@ For more information refer to the [appropriate YOLOv8 integration documentation 
 After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export and run the `SparseML` integrated YOLOv8 ONNX export script below.
 
 ```bash
-sparseml.yolov8.export_onnx \
+sparseml.ultralytics.export_onnx \
     --weights path/to/your/model \
     --dynamic #Allows for dynamic input shape
 ```
@@ -111,8 +111,8 @@ You can quickly do benchmarking tests on your own with a single CLI command!
 You only need to provide the model path of the local ONNX model to get started:
 
 ```bash
-# Install packages for DeepSparse and YOLOv8
-pip install deepsparse[yolov8] ultralytics
+# Install DeepSparse package with `ultralytics` (YOLOv8) dependency
+pip install deepsparse[yolov8]
 # Export YOLOv8n and YOLOv8s ONNX models
 yolo task=detect mode=export model=yolov8n.pt format=onnx opset=13
 yolo task=detect mode=export model=yolov8s.pt format=onnx opset=13
