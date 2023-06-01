@@ -14,6 +14,13 @@
 # flake8: noqa
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
+
+try:
+    import cv2 as _cv2
+    import openpifpaf as _openpifpaf
+except ImportError:
+    raise ImportError("Please install deepsparse[openpifpaf] to use this pathway")
+
 from .utils import *
 
 

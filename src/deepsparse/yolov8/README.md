@@ -41,7 +41,7 @@ For more information refer to the [appropriate YOLOv8 integration documentation 
 After training your model with `SparseML`, locate the `.pt` file for the model you'd like to export and run the `SparseML` integrated YOLOv8 ONNX export script below.
 
 ```bash
-sparseml.yolov8.export_onnx \
+sparseml.ultralytics.export_onnx \
     --weights path/to/your/model \
     --dynamic #Allows for dynamic input shape
 ```
@@ -51,7 +51,7 @@ This creates a `model.onnx` file, in the directory of your `weights` (e.g. `runs
 DeepSparse’s performance can be pushed even further by optimizing the model for inference. DeepSparse is built to take advantage of models that have been optimized with weight pruning 
 and quantization—techniques that dramatically shrink the required compute without dropping accuracy. Through our One-Shot optimization methods, which will be made available in an upcoming 
 product called Sparsify, we have produced YOLOv8s and YOLOv8n ONNX models that have been quantized to INT8 while maintaining at least 99% of the original FP32 mAP@0.5. 
-This was achieved with just 1024 samples and no back-propagation. You can download the quantized models [here](https://drive.google.com/drive/folders/1vf4Es-8bxhx348TzzfhvljMQUo62XhQ4?usp=sharing).
+This was achieved with just 1024 samples and no back-propagation. You can download the quantized models [here](https://sparsezoo.neuralmagic.com/?searchModels=yolov8). 
 
 ## Deployment Example
 The following example uses pipelines to run a pruned and quantized YOLOv8 model for inference. As input, the pipeline ingests a list of images and returns for each image the detection boxes in numeric form.
@@ -111,8 +111,8 @@ You can quickly do benchmarking tests on your own with a single CLI command!
 You only need to provide the model path of the local ONNX model to get started:
 
 ```bash
-# Install packages for DeepSparse and YOLOv8
-pip install deepsparse[yolov8] ultralytics
+# Install DeepSparse package with `ultralytics` (YOLOv8) dependency
+pip install deepsparse[yolov8]
 # Export YOLOv8n and YOLOv8s ONNX models
 yolo task=detect mode=export model=yolov8n.pt format=onnx opset=13
 yolo task=detect mode=export model=yolov8s.pt format=onnx opset=13

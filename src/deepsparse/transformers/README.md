@@ -24,7 +24,7 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 
 ### Installation
 
-```pip install deepsparse```
+```pip install deepsparse[transformers]```
 
 ### Model Format
 By default, to deploy the transformer using DeepSparse Engine it is required to supply the model in the ONNX format along with the HuggingFace supporting files. 
@@ -88,7 +88,7 @@ The DeepSparse Server requirements can be installed by specifying the `server` e
 DeepSparse.
 
 ```bash
-pip install deepsparse[server]
+pip install deepsparse[server,transformers]
 ```
 
 ## Deployment Use Cases
@@ -100,7 +100,7 @@ for the `question` as a substring of the `context`.  The following examples use 
 question answering BERT model trained on the `SQuAD` dataset downloaded by default from the SparseZoo.
 
 [List of available SparseZoo Question Answering Models](
-https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=question_answering)
+https://sparsezoo.neuralmagic.com/?useCase=question_answering)
 
 #### Python Pipeline
 
@@ -144,7 +144,7 @@ uses a pruned and quantized text sentiment analysis BERT model trained on the `s
 from the SparseZoo. This `sst2` model classifies sentences as positive or negative.
 
 [List of available SparseZoo Sentiment Analysis Models](
-https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=sentiment_analysis)
+https://sparsezoo.neuralmagic.com/?useCase=sentiment_analysis)
 
 #### Python Pipeline
 ```python
@@ -190,7 +190,7 @@ DistilBERT model trained on the `qqp` dataset downloaded from a SparseZoo stub.
 The `qqp` dataset takes pairs of questions and predicts if they are a duplicate or not.
 
 [List of available SparseZoo Text Classification Models](
-https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=text_classification)
+https://sparsezoo.neuralmagic.com/?useCase=text_classification)
 
 #### Python Pipeline
 ```python
@@ -249,7 +249,7 @@ The following example uses a pruned and quantized token classification NER BERT 
 trained on the `CoNLL` dataset downloaded from the SparseZoo.
 
 [List of available SparseZoo Token Classification Models](
-https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=token_classification)
+https://sparsezoo.neuralmagic.com/?useCase=token_classification)
 
 #### Python Pipeline
 ```python
