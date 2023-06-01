@@ -51,7 +51,7 @@ This creates a `model.onnx` file, in the directory of your `weights` (e.g. `runs
 DeepSparse’s performance can be pushed even further by optimizing the model for inference. DeepSparse is built to take advantage of models that have been optimized with weight pruning 
 and quantization—techniques that dramatically shrink the required compute without dropping accuracy. Through our One-Shot optimization methods, which will be made available in an upcoming 
 product called Sparsify, we have produced YOLOv8s and YOLOv8n ONNX models that have been quantized to INT8 while maintaining at least 99% of the original FP32 mAP@0.5. 
-This was achieved with just 1024 samples and no back-propagation. You can download the quantized models [here](https://drive.google.com/drive/folders/1vf4Es-8bxhx348TzzfhvljMQUo62XhQ4?usp=sharing).
+This was achieved with just 1024 samples and no back-propagation. You can download the quantized models [here](https://sparsezoo.neuralmagic.com/?searchModels=yolov8). 
 
 ## Deployment Example
 The following example uses pipelines to run a pruned and quantized YOLOv8 model for inference. As input, the pipeline ingests a list of images and returns for each image the detection boxes in numeric form.
