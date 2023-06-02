@@ -24,7 +24,7 @@ You will need access to the [AWS CLI](https://docs.aws.amazon.com/cli/latest/use
 
 
 ## Step 1: Subscribe to DeepSparse
-[Subscribe](https://aws.amazon.com/marketplace/pp/prodview-zx6s55xbdjgoa) to the DeepSparse Inference Runtime from the AWS Markplace.
+[Subscribe](https://aws.amazon.com/marketplace/pp/prodview-zx6s55xbdjgoa) to the DeepSparse Inference Runtime from the AWS Marketplace.
 
 
 ## Step 2: Configure your DeepSparse Runtime
