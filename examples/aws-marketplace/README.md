@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# **Getting Started with DeepSparse via the AWS Marketplace**
+# **Getting Started With DeepSparse via the AWS Marketplace**
 
-Neural Magic’s DeepSparse Inference Runtime can be deployed directly from the AWS Marketplace. DeepSparse supports more than 60 different EC2 instance types and sizes, allowing you to quickly deploy the infrastructure that works best for your use case, based on cost and performance.
+Neural Magic’s DeepSparse is an inference runtime that can be deployed directly from the AWS Marketplace. DeepSparse supports more than 60 different EC2 instance types and sizes, allowing you to quickly deploy the infrastructure that works best for your use case, based on cost and performance.
 
-An EC2 instance integrated with DeepSparse can be launched via the AWS console or programmatically via Python. For the console workflow, please follow the guide in our [blog](https://neuralmagic.com/blog/neural-magics-deepsparse-inference-runtime-now-available-in-the-aws-marketplace/). If you are interested in configuring and launching an instance with DeepSparse in Python, follow the step-by-step guide below. 
+An EC2 instance integrated with DeepSparse can be launched via the AWS console or programmatically via Python. For the console workflow, follow the guide in our [blog](https://neuralmagic.com/blog/neural-magics-deepsparse-inference-runtime-now-available-in-the-aws-marketplace/). If you are interested in configuring and launching an instance with DeepSparse in Python, follow the step-by-step guide below. 
 
 You will need access to the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) version 2.X that is [configured](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html) and the [Boto3](https://github.com/boto/boto3) library.
 
@@ -36,7 +36,7 @@ Once you click *Continue to Subscribe*, you are directed to a page to complete s
 - AWS Region
 
 
-At this point, you may continue the instance configuration in the AWS console by clicking the *Continue to Launch* button or by running the following code snippet on your local machine. This code snippet launches an ec2 instance and returns the Public IPv4 DNS so you can SSH into the instance after it finishes staging. 
+At this point, you may continue the instance configuration in the AWS console by clicking the *Continue to Launch* button or by running the following code snippet on your local machine. This code snippet launches an EC2 instance and returns the Public IPv4 DNS so you can SSH into the instance after it finishes staging. 
 
 ```python
 import boto3
@@ -99,7 +99,7 @@ Values=true" --query 'Subnets[].SubnetId'
 
 ## **Step 3: SSH Into the Instance**
 
-After running the code snippet, your Public IPv4 DNS will be printed out in terminal and should look like this: `ec2-18-234-83-194.compute-1.amazonaws.com`. Pass the IPv4 into the following CLI command to SSH into your running instance:
+After running the code snippet, your Public IPv4 DNS will be printed out in theterminal and should look like this: `ec2-18-234-83-194.compute-1.amazonaws.com`. Pass the IPv4 into the following CLI command to SSH into your running instance:
 
 ```bash
 ssh -i path/to/your/sshkey.pem ec2-user@public-ipv4-dns
@@ -107,7 +107,7 @@ ssh -i path/to/your/sshkey.pem ec2-user@public-ipv4-dns
 
 ## **Step 4: Run DeepSparse**
 
-Now that you have SSH'd into the instance, you can use all of the DeepSparse features such as benchmarking, pipelines and the server. Here's an example of benchmarking a pruned-quantized version of BERT trained on SQuAD:
+Once logged into the instance, you can use the DeepSparse features such as benchmarking, pipelines, and the server. Here's an example of benchmarking a pruned-quantized version of BERT trained on SQuAD:
 
 ```bash
 deepsparse.benchmark
