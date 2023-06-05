@@ -70,7 +70,6 @@ def add_deepsparse_license(token_or_path):
     license_file_path = _get_license_file_path()
     shutil.copy(candidate_license_file_path, license_file_path)
     _LOGGER.info(f"DeepSparse license file written to {license_file_path}")
-    os.remove(candidate_license_file_path)
 
     # re-validate and print message now that licensee is copied to expected location
     validate_license()
