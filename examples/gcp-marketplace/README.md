@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# **Getting Started with DeepSparse in the GCP Marketplace**
+# **Getting Started With DeepSparse in the GCP Marketplace**
 
-Neural Magic's DeepSparse Inference Runtime can now be deployed directly from the Google Cloud Marketplace. DeepSparse supports various machine types on Google Cloud, so you can quickly deploy the infrastructure that works best for your use case, based on cost and performance. 
+Neural Magic's DeepSparse is an inference runtime that can now be deployed directly from the Google Cloud Marketplace. DeepSparse supports various machine types on Google Cloud, so you can quickly deploy the infrastructure that works best for your use case, based on cost and performance. 
 
-A Compute Engine VM integrated with DeepSparse can be launched via the GCP console or programmatically via Python. For the console workflow, please follow the guide in our [blog](https://neuralmagic.com/blog/neural-magics-deepsparse-inference-runtime-now-available-in-the-google-cloud-marketplace/). If you are interested in configuring and launching an instance with DeepSparse in Python, follow the step-by-step guide below. 
+A Compute Engine VM integrated with DeepSparse can be launched via the GCP console or programmatically via Python. For the console workflow, follow the guide in our [blog](https://neuralmagic.com/blog/neural-magics-deepsparse-inference-runtime-now-available-in-the-google-cloud-marketplace/). If you are interested in configuring and launching an instance with DeepSparse in Python, follow the step-by-step guide below. 
 
 You will need to install the [Google Cloud Compute](https://github.com/googleapis/python-compute) and [Google API Core](https://github.com/boto/boto3) packages, and have [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed:
 
@@ -27,7 +27,7 @@ pip install google-cloud-compute google-api-core
 ```
 
 ## **Step 1: Subscribe to DeepSparse**
-Select a *Project* and [Subscribe](https://console.cloud.google.com/marketplace/product/neuralmagic-public/deepsparse-inference-runtime-vm?project=neuralmagic-public) to the  DeepSparse Inference Runtime from the Google Cloud Marketplace.
+Select a *Project* and [Subscribe](https://console.cloud.google.com/marketplace/product/neuralmagic-public/deepsparse-inference-runtime-vm?project=neuralmagic-public) to the DeepSparse Inference Runtime from the Google Cloud Marketplace.
 
 
 ## **Step 2: Enable Required APIs**
@@ -39,9 +39,9 @@ After you click *Launch*, you will land on a page where you can enable any requi
 
 ## **Step 3: Configure Your DeepSparse Runtime**
 
-At this point, you may continue the instance configuration in the GCP console. However, if you prefer launching an instance using Python from your local machine, please refer to this [script](https://github.com/neuralmagic/deepsparse/tree/main/examples/gcp-marketplace/gcp.py). This module launches a virtual machine in the Compute Engine integrated with DeepSparse.
+At this point, you may continue the instance configuration in the GCP console. However, if you prefer launching an instance using Python from your local machine, refer to this [script](https://github.com/neuralmagic/deepsparse/tree/main/examples/gcp-marketplace/gcp.py). This module launches a virtual machine in the Compute Engine integrated with DeepSparse.
 
-In the last line of the script, you can configure your instance by passing the project id you selected in Step 1 along with your prefered zone, instance name and machine type:
+In the last line of the script, you can configure your instance by passing the project id you selected in Step 1 along with your preferred zone, instance name, and machine type:
 
 ```python
 if __name__ == "__main__":
@@ -65,7 +65,7 @@ python gcp.py
 
 ## **Step 4: SSH Into the Instance**
 
-After running the script, run the following gcloud CLI command to SSH into your running instance. Pass in the same variables from the function in Step 3 such as your instance name, zone and project id:
+After running the script, run the following gcloud CLI command to SSH into your running instance. Pass in the same variables from the function in Step 3 such as your instance name, zone, and project id:
 
 ```bash
 gcloud compute ssh <INSTANCE_NAME> --zone <ZONE> --project <PROJECT_ID>
@@ -73,7 +73,7 @@ gcloud compute ssh <INSTANCE_NAME> --zone <ZONE> --project <PROJECT_ID>
 
 ## **Step 4: Run DeepSparse**
 
-Now that you have SSH'd into the instance, you can use all of the DeepSparse features such as benchmarking, pipelines and the server. Here's an example of benchmarking a pruned-quantized version of BERT trained on SQuAD:
+Once logged into the instance, you can use all of the DeepSparse features such as benchmarking, pipelines, and the server. Here's an example of benchmarking a pruned-quantized version of BERT trained on SQuAD:
 
 ```bash
 deepsparse.benchmark
