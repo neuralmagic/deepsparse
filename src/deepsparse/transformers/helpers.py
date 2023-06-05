@@ -136,6 +136,7 @@ def overwrite_transformer_onnx_model_inputs(
     batch_size: int = 1,
     max_length: int = 128,
     output_path: Optional[str] = None,
+    inplace: bool = True,
 ) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
     """
     Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
@@ -148,12 +149,21 @@ def overwrite_transformer_onnx_model_inputs(
     :param output_path: if provided, the model will be saved to the given path,
         otherwise, the model will be saved to a named temporary file that will
         be deleted after the program exits
+    :param inplace: if True, the model will be modified in place, otherwise
+        a copy of the model will be saved to a temporary file
     :return: if no output path, a tuple of the saved path to the model, list of
         model input names, and reference to the tempfile object will be returned
         otherwise, only the model input names will be returned
     """
+
+    if inplace and output_path is None:
+        raise ValueError(
+            "Cannot specify both inplace=True and output_path. If inplace=True, "
+            "the model will be modified in place (the returned path will be identical"
+            "to the input path specified in argument `path`)"
+        )
     # overwrite input shapes
-    model = onnx.load(path)
+    model = onnx.load(path, load_external_data=not inplace)
     initializer_input_names = set([node.name for node in model.graph.initializer])
     external_inputs = [
         inp for inp in model.graph.input if inp.name not in initializer_input_names
