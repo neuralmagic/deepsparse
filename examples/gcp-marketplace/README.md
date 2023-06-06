@@ -23,7 +23,7 @@ A Compute Engine VM integrated with DeepSparse can be launched via the GCP conso
 You will need to install the [Google Cloud Compute](https://github.com/googleapis/python-compute), [Google API Core](https://github.com/googleapis/python-api-core), [click](https://github.com/pallets/click) packages, and have [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed:
 
 ```bash
-pip install google-cloud-compute google-api-core
+pip install google-cloud-compute google-api-core click
 ```
 
 ## **Step 1: Subscribe to DeepSparse**
