@@ -19,6 +19,8 @@ import sys
 import warnings
 from typing import Any
 
+import click
+
 from google.api_core.extended_operation import ExtendedOperation
 from google.cloud import compute_v1
 
@@ -278,21 +280,35 @@ def create_instance(
     return instance
 
 
-def create_from_public_image(
-    project_id: str, zone: str, instance_name: str, machine_type: str, source_image: str
+@click.group()
+def cli():
+    pass
+
+
+@click.command()
+@click.option("--project-id", required=True, help="Google Cloud project ID")
+@click.option("--zone", required=True, help="Zone for the instance")
+@click.option("--instance-name", required=True, help="Name of the new instance")
+@click.option("--machine-type", required=True, help="Machine type for the instance")
+def launch_instance(
+    project_id: str, zone: str, instance_name: str, machine_type: str
 ) -> compute_v1.Instance:
     """
-    Create a new VM instance with Debian 10 operating system.
+    Create a new VM instance with Ubuntu 10 operating system.
 
     Args:
         project_id: project ID or project number of the Cloud project you want to use.
         zone: name of the zone to create the instance in. For example: "us-west3-b"
         instance_name: name of the new virtual machine (VM) instance.
+        machine_type: machine type of the VM being created. This value uses the
+            following format: "n2d-highcpu-8".
 
     Returns:
         Instance object.
     """
-
+    source_image = (
+        "projects/neuralmagic-public/global/images/deepsparse-cloud-142-ubuntu-2204"
+    )
     disk_type = f"projects/{project_id}/zones/{zone}/diskTypes/pd-balanced"
     disks = [disk_from_image(disk_type, 10, True, source_image=source_image)]
     instance = create_instance(project_id, zone, instance_name, disks, machine_type)
@@ -302,20 +318,32 @@ def create_from_public_image(
     return instance
 
 
+@click.command()
+@click.option("--project-id", required=True, help="Google Cloud project ID")
+@click.option("--zone", required=True, help="Zone for the instance")
+@click.option("--instance-name", required=True, help="Name of the instance to delete")
+def delete_instance(project_id: str, zone: str, instance_name: str) -> None:
+    """
+    Deletes a VM instance from Google Cloud Compute Engine.
+
+    Args:
+        project_id: project ID or project number of the Cloud project
+        that owns the instance.
+        zone: name of the zone where the instance resides.
+        instance_name: name of the instance to be deleted.
+    """
+    instance_client = compute_v1.InstancesClient()
+
+    instance_client.delete(
+        project=project_id, zone=zone, instance=instance_name
+    ).result()
+
+    print(f"Instance '{instance_name}' deleted successfully.")
+
+
+cli.add_command(launch_instance)
+cli.add_command(delete_instance)
+
+
 if __name__ == "__main__":
-
-    project_id = "<project-id>"
-    zone = "us-central1-c"
-    instance_name = "deepsparse"
-    machine_type = "n2d-highcpu-8"
-    source_image = (
-        "projects/neuralmagic-public/global/images/deepsparse-cloud-142-ubuntu-2204"
-    )
-
-    create_from_public_image(
-        project_id=project_id,
-        zone=zone,
-        instance_name=instance_name,
-        machine_type=machine_type,
-        source_image=source_image,
-    )
+    cli()

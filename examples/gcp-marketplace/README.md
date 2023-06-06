@@ -20,7 +20,7 @@ Neural Magic's DeepSparse is an inference runtime that can now be deployed direc
 
 A Compute Engine VM integrated with DeepSparse can be launched via the GCP console or programmatically via Python. For the console workflow, follow the guide in our [blog](https://neuralmagic.com/blog/neural-magics-deepsparse-inference-runtime-now-available-in-the-google-cloud-marketplace/). If you are interested in configuring and launching an instance with DeepSparse in Python, follow the step-by-step guide below. 
 
-You will need to install the [Google Cloud Compute](https://github.com/googleapis/python-compute) and [Google API Core](https://github.com/boto/boto3) packages, and have [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed:
+You will need to install the [Google Cloud Compute](https://github.com/googleapis/python-compute) and [Google API Core](https://github.com/googleapis/python-api-core) packages, and have [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed:
 
 ```bash
 pip install google-cloud-compute google-api-core
@@ -41,27 +41,13 @@ After you click *Launch*, you will land on a page where you can enable any requi
 
 At this point, you may continue the instance configuration in the GCP console. However, if you prefer launching an instance using Python from your local machine, refer to this [script](https://github.com/neuralmagic/deepsparse/tree/main/examples/gcp-marketplace/gcp.py). This module launches a virtual machine in the Compute Engine integrated with DeepSparse.
 
-In the last line of the script, you can configure your instance by passing the project id you selected in Step 1 along with your preferred zone, instance name, and machine type:
-
-```python
-if __name__ == "__main__":
-
-    project_id = "<project-id>"
-    zone = "us-central1-c"
-    instance_name = "deepsparse"
-    machine_type = "n2d-highcpu-8"
-    source_image = (
-        "projects/neuralmagic-public/global/images/deepsparse-cloud-142-ubuntu-2204"
-    )
-    ...
-
-```
-
-Afterwards, run the script in your local machine:
+You can launch the instance by running the following commmand in your terminal:
 
 ```bash
-python gcp.py
+python gcp.py launch-instance --project-id <PROJECT-ID> --zone <ZONE> --instance-name <INSTANCE-NAME> --machine-type <MACHINE-TYPE>
 ```
+
+If you wish to conduct further customization prior to the launch of your instance, refer to the arguments available in the `create_instance` function in the [script](https://github.com/neuralmagic/deepsparse/tree/main/examples/gcp-marketplace/gcp.py).
 
 ## **Step 4: SSH Into the Instance**
 
@@ -78,4 +64,10 @@ Once logged into the instance, you can use all of the DeepSparse features such a
 ```bash
 deepsparse.benchmark
 zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none -i [64,128] -b 64 -nstreams 1 -s sync
+```
+
+## **Step 5: Delete Instance**
+
+```bash
+python gcp.py delete-instance --project-id <PROJECT-ID> --zone <ZONE> --instance-name <INSTANCE-NAME>
 ```
