@@ -76,7 +76,7 @@ An example `sentiment-inputs.csv` file in the `sample` directory is available to
 
 #### Fargate Compute Configuration
 
-To edit the hardware configuration of the Fargate container, you can edit the default values in the [template.yaml](https://github.com/neuralmagic/deepsparse/examples/aws-serverless/batch/template.yaml) file in the `batch` directory.
+To edit the hardware configuration of the Fargate container, you can edit the default values in the [template.yaml](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-serverless/batch/template.yaml) file in the `batch` directory.
 
 Fargate is currently configured to deploy with 4 vCPUs and 8GB of RAM.
 
