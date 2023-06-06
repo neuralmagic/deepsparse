@@ -20,7 +20,7 @@ Neural Magic's DeepSparse is an inference runtime that can now be deployed direc
 
 A Compute Engine VM integrated with DeepSparse can be launched via the GCP console or programmatically via Python. For the console workflow, follow the guide in our [blog](https://neuralmagic.com/blog/neural-magics-deepsparse-inference-runtime-now-available-in-the-google-cloud-marketplace/). If you are interested in configuring and launching an instance with DeepSparse in Python, follow the step-by-step guide below. 
 
-You will need to install the [Google Cloud Compute](https://github.com/googleapis/python-compute) and [Google API Core](https://github.com/googleapis/python-api-core) packages, and have [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed:
+You will need to install the [Google Cloud Compute](https://github.com/googleapis/python-compute), [Google API Core](https://github.com/googleapis/python-api-core), [click](https://github.com/pallets/click) packages, and have [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed:
 
 ```bash
 pip install google-cloud-compute google-api-core
