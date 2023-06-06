@@ -294,7 +294,7 @@ def launch_instance(
     project_id: str, zone: str, instance_name: str, machine_type: str
 ) -> compute_v1.Instance:
     """
-    Create a new VM instance with Ubuntu 10 operating system.
+    Creates a VM instance from Google Cloud Compute Engine.
 
     Args:
         project_id: project ID or project number of the Cloud project you want to use.
