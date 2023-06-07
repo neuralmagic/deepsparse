@@ -26,6 +26,7 @@ from .function_logger import *
 from .multi_logger import *
 from .prometheus_logger import *
 from .python_logger import *
+from .timing_logger import *
 
 # functions for creating complex loggers
 from .build_logger import *
