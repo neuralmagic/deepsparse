@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import shutil
+
 import requests
 
 import pytest
@@ -119,6 +121,7 @@ def test_prometheus_logger(
     count_request_text = float(text_log_lines[98].split(" ")[1])
 
     assert count_request_request == count_request_text == no_iterations
+    shutil.rmtree(tmp_path)
 
 
 @pytest.mark.parametrize(

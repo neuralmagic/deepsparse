@@ -156,12 +156,14 @@ def overwrite_transformer_onnx_model_inputs(
         otherwise, only the model input names will be returned
     """
 
-    if inplace and output_path is None:
+    if inplace and output_path is not None:
         raise ValueError(
             "Cannot specify both inplace=True and output_path. If inplace=True, "
             "the model will be modified in place (the returned path will be identical"
             "to the input path specified in argument `path`)"
         )
+    if inplace:
+        output_path = path
     # overwrite input shapes
     model = onnx.load(path, load_external_data=not inplace)
     initializer_input_names = set([node.name for node in model.graph.initializer])
@@ -175,14 +177,14 @@ def overwrite_transformer_onnx_model_inputs(
         input_names.append(external_input.name)
 
     # Save modified model
-    if output_path is None:
+    if not inplace:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
         save_onnx(model, tmp_file.name)
         return tmp_file.name, input_names, tmp_file
     else:
         save_onnx(model, output_path)
 
-        return input_names
+        return output_path, input_names, None
 
 
 def _get_file_parent(file_path: str) -> str:
