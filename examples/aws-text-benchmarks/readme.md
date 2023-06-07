@@ -26,6 +26,7 @@ Note: DeepSparse uses static input shapes. Since the distribution of inputs for 
 we can use bucketing where we compile DeepSparse with multiple input shapes and dynamically route inputs.
 In the case of `ag_news` (the example dataset in this case), the distribution of token lengths looks like the following:
 ![Histogram](image.png)
+
 As such, we used buckets of length 64, 128, and 256. DeepSparse runs best with sequence lengths that are multiples of 16.
 
 ## Dense Model GPU
