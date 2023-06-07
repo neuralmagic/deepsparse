@@ -60,6 +60,7 @@ def save_onnx_to_temp_files(model: onnx.ModelProto, with_external_data=False) ->
     :param model: The onnx model to save to temporary directory
     :param with_external_data: Whether to save external data to a separate file
     """
+
     if not onnx_includes_external_data(model) and with_external_data:
         raise ValueError(
             "Model does not include external data, it only includes the model graph."
@@ -67,6 +68,7 @@ def save_onnx_to_temp_files(model: onnx.ModelProto, with_external_data=False) ->
             "Set argument `with_external_data`=False"
         )
     shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
+    _LOGGER.warning(f"Saving model to temporary directory: {tempfile.tempdir}")
 
     if with_external_data:
         external_data = os.path.join(
@@ -385,6 +387,7 @@ def truncate_onnx_model(
             output.type.tensor_type.shape.Clear()
 
     # save and check model
+    _LOGGER.info("Saving truncated model to %s", output_filepath)
     save_onnx(extracted_model, output_filepath, "external_data")
     validate_onnx(output_filepath)
 
