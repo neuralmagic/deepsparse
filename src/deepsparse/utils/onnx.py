@@ -24,7 +24,7 @@ import onnx
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
 from deepsparse.utils.extractor import Extractor
-from sparsezoo.utils import onnx_includes_external_data, save_onnx, validate_onnx
+from sparsezoo.utils import save_onnx, validate_onnx
 
 
 try:
@@ -60,21 +60,15 @@ def save_onnx_to_temp_files(model: onnx.ModelProto, with_external_data=False) ->
     :param model: The onnx model to save to temporary directory
     :param with_external_data: Whether to save external data to a separate file
     """
-
-    if not onnx_includes_external_data(model) and with_external_data:
-        raise ValueError(
-            "Model does not include external data, it only includes the model graph."
-            "Cannot save its external data to separate a file."
-            "Set argument `with_external_data`=False"
-        )
     shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    _LOGGER.warning(f"Saving model to temporary directory: {tempfile.tempdir}")
+    _LOGGER.info(f"Saving model to temporary directory: {tempfile.tempdir}")
 
     if with_external_data:
         external_data = os.path.join(
             tempfile.tempdir, next(tempfile._get_candidate_names())
         )
         has_external_data = save_onnx(model, shaped_model.name, external_data)
+        _LOGGER.info(f"Saving external data to temporary directory: {external_data}")
     else:
         has_external_data = save_onnx(model, shaped_model.name)
     try:
@@ -218,7 +212,7 @@ def override_onnx_batch_size(
         external data are saved along the model graph.
     :param batch_size: Override for the batch size dimension
     :param inplace: If True, overwrite the original model file.
-        Else save the modified model to a temporary file.
+        Else, save the modified model to a temporary file.
     :return: File path to modified ONNX model.
         If inplace is True,
         the modified model will be saved to the same path as the original
@@ -234,12 +228,13 @@ def override_onnx_batch_size(
     for external_input in external_inputs:
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
-    # Save modified model, this will be cleaned up when context is exited
     if inplace:
+        _LOGGER.info(
+            f"Overwriting in-place the batch size of the model at {onnx_filepath}"
+        )
         save_onnx(model, onnx_filepath)
         return onnx_filepath
     else:
-        # Save modified model, this will be cleaned up when context is exited
         return save_onnx_to_temp_files(model, with_external_data=not inplace)
 
 
@@ -302,12 +297,17 @@ def override_onnx_input_shapes(
         for dim_idx, dim in enumerate(external_input.type.tensor_type.shape.dim):
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
-    # Save modified model, this will be cleaned up when context is exited
     if inplace:
+        _LOGGER.info(
+            "Overwriting in-place the input shapes of the model " f"at {onnx_filepath}"
+        )
         onnx.save(model, onnx_filepath)
         return onnx_filepath
     else:
-        # Save modified model, this will be cleaned up when context is exited
+        _LOGGER.info(
+            f"Saving the input shapes of the model at {onnx_filepath} "
+            f"to a temporary file"
+        )
         return save_onnx_to_temp_files(model, with_external_data=not inplace)
 
 
@@ -387,7 +387,7 @@ def truncate_onnx_model(
             output.type.tensor_type.shape.Clear()
 
     # save and check model
-    _LOGGER.info("Saving truncated model to %s", output_filepath)
+    _LOGGER.debug(f"Saving truncated model to {output_filepath}")
     save_onnx(extracted_model, output_filepath, "external_data")
     validate_onnx(output_filepath)
 

@@ -405,9 +405,16 @@ def modify_yolo_onnx_input_shape(
         set_tensor_dim_shape(model.graph.output[0], 1, num_predictions)
 
     if inplace:
+        _LOGGER.info(
+            "Overwriting in-place the ONNX model "
+            f"at {model_path} with the new input shape"
+        )
         save_onnx(model, model_path)
         return model_path
     else:
+        _LOGGER.info(
+            "Saving the ONNX model with the " "new input shape to a temporary file"
+        )
         return save_onnx_to_temp_files(model, with_external_data=not inplace)
 
 
