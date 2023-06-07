@@ -10,7 +10,7 @@ os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
 INPUT_COL = "text"
 dataset = load_dataset("ag_news", split="train[:3000]")
 batch_size = 64
-buckets = [32, 64]
+buckets = [64, 128, 256]
 model_path = "./sparse-model/deployment/"
 
 ### TOKENIZE DATASET - (used to comptue buckets)
@@ -36,7 +36,6 @@ for b_index_start in range(0, len(inputs), batch_size):
 
 ## RUN THROUPUT TESTING
 print("\nCompiling models:")
-buckets = [32, 64]
 
 tc_pipeline = Pipeline.create(
     task="zero_shot_text_classification",
