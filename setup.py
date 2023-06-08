@@ -147,7 +147,7 @@ _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
 _transformers_integration_deps = [
     f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
     f"~={version_base}",
-    "datasets<=1.18.4",
+    "datasets<=2.11",
     "scikit-learn",
     "seqeval",
 ]
