@@ -36,7 +36,7 @@ from deepsparse.loggers.constants import (
     validate_identifier,
 )
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
-from deepsparse.timing import InferencePhases, Timer
+from deepsparse.utils import InferenceStages, InferenceTimer, StagedTimer
 
 
 __all__ = [
@@ -155,8 +155,11 @@ class Pipeline(ABC):
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
         logger: Optional[Union[BaseLogger, str]] = None,
+        benchmark: bool = False,
         _delay_engine_initialize: bool = False,  # internal use only
     ):
+        self._benchmark = benchmark
+        self._inference_timer = InferenceTimer(enabled=True, multi=benchmark)
         self._model_path_orig = model_path
         self._model_path = model_path
         self._engine_type = engine_type
@@ -218,15 +221,14 @@ class Pipeline(ABC):
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
-        timer = Timer()
 
-        timer.start(InferencePhases.TOTAL_INFERENCE)
+        self.inference_timer.reset()
+        self.inference_timer.start_inference_stage(InferenceStages.TOTAL_INFERENCE)
 
         # ------ PREPROCESSING ------
-        timer.start(InferencePhases.PRE_PROCESS)
+        self.inference_timer.start_inference_stage(InferenceStages.PRE_PROCESS)
         # parse inputs into input_schema
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
-
         self.log(
             identifier="pipeline_inputs",
             value=pipeline_inputs,
@@ -244,22 +246,17 @@ class Pipeline(ABC):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
-        timer.stop(InferencePhases.PRE_PROCESS)
 
+        self.inference_timer.stop_inference_stage(InferenceStages.PRE_PROCESS)
         self.log(
             identifier="engine_inputs",
             value=engine_inputs,
             category=MetricCategories.DATA,
         )
-        self.log(
-            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.PRE_PROCESS}_seconds",  # noqa E501
-            value=timer.time_delta(InferencePhases.PRE_PROCESS),
-            category=MetricCategories.SYSTEM,
-        )
 
         # ------ INFERENCE ------
         # split inputs into batches of size `self._batch_size`
-        timer.start(InferencePhases.ENGINE_FORWARD)
+        self.inference_timer.start_inference_stage(InferenceStages.ENGINE_FORWARD)
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit split batches to engine threadpool
@@ -267,7 +264,7 @@ class Pipeline(ABC):
 
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
-        timer.stop(InferencePhases.ENGINE_FORWARD)
+        self.inference_timer.stop_inference_stage(InferenceStages.ENGINE_FORWARD)
 
         self.log(
             identifier=f"{SystemGroups.INFERENCE_DETAILS}/input_batch_size_total",
@@ -278,20 +275,14 @@ class Pipeline(ABC):
             value=len(batch_outputs) * self._batch_size,
             category=MetricCategories.SYSTEM,
         )
-
         self.log(
             identifier="engine_outputs",
             value=engine_outputs,
             category=MetricCategories.DATA,
         )
-        self.log(
-            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.ENGINE_FORWARD}_seconds",  # noqa E501
-            value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
-            category=MetricCategories.SYSTEM,
-        )
 
         # ------ POSTPROCESSING ------
-        timer.start(InferencePhases.POST_PROCESS)
+        self.inference_timer.start_inference_stage(InferenceStages.POST_PROCESS)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -300,24 +291,22 @@ class Pipeline(ABC):
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
-        timer.stop(InferencePhases.POST_PROCESS)
-        timer.stop(InferencePhases.TOTAL_INFERENCE)
-
+        self.inference_timer.stop_inference_stage(InferenceStages.POST_PROCESS)
         self.log(
             identifier="pipeline_outputs",
             value=pipeline_outputs,
             category=MetricCategories.DATA,
         )
-        self.log(
-            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.POST_PROCESS}_seconds",  # noqa E501
-            value=timer.time_delta(InferencePhases.POST_PROCESS),
-            category=MetricCategories.SYSTEM,
-        )
-        self.log(
-            identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.TOTAL_INFERENCE}_seconds",  # noqa E501
-            value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
-            category=MetricCategories.SYSTEM,
-        )
+
+        # ------ INFERENCE FINALIZATION ------
+        self.inference_timer.stop_inference_stage(InferenceStages.TOTAL_INFERENCE)
+        logging_times = self.extract_loggable_times()
+        for time_key, time_value in logging_times.items():
+            self.log(
+                identifier=time_key,
+                value=time_value,
+                category=MetricCategories.SYSTEM,
+            )
 
         return pipeline_outputs
 
@@ -704,6 +693,19 @@ class Pipeline(ABC):
         """
         return self._engine_type
 
+    @property
+    def benchmark(self) -> bool:
+        return self._benchmark
+
+    @benchmark.setter
+    def benchmark(self, value: bool):
+        self._benchmark = value
+        self._timer.multi = value
+
+    @property
+    def inference_timer(self) -> InferenceTimer:
+        return self._inference_timer
+
     def to_config(self) -> "PipelineConfig":
         """
         :return: PipelineConfig that can be used to reload this object
@@ -739,7 +741,7 @@ class Pipeline(ABC):
         self,
         identifier: str,
         value: Any,
-        category: str,
+        category: Union[str, MetricCategories],
     ):
         """
         Pass the logged data to the DeepSparse logger object (if present).
@@ -790,6 +792,18 @@ class Pipeline(ABC):
         :return: result of forward pass to Pipeline engine
         """
         return self.engine(engine_inputs)
+
+    def extract_loggable_times(self) -> Dict[str, float]:
+        """
+        :return: dictionary of times with their keys to log for the current inference
+        """
+        current_timer = self.inference_timer.current_inference
+        times = {
+            f"{SystemGroups.PREDICTION_LATENCY}/{key}_seconds": val
+            for key, val in current_timer.times.items()
+        }
+
+        return times
 
     def _initialize_engine(self) -> Union[Engine, ORTEngine]:
         engine_type = self.engine_type.lower()
