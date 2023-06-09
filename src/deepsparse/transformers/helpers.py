@@ -30,6 +30,7 @@ from onnx import ModelProto
 from deepsparse.log import get_main_logger
 from deepsparse.utils.onnx import truncate_onnx_model
 from sparsezoo import Model
+from sparsezoo.utils import save_onnx
 
 
 __all__ = [
@@ -166,11 +167,11 @@ def overwrite_transformer_onnx_model_inputs(
     # Save modified model
     if output_path is None:
         tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-        onnx.save(model, tmp_file.name)
-
+        save_onnx(model, tmp_file.name)
         return tmp_file.name, input_names, tmp_file
     else:
-        onnx.save(model, output_path)
+        save_onnx(model, output_path)
+
         return input_names
 
 

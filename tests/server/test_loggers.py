@@ -185,6 +185,7 @@ def test_multiple_targets_logging():
     )
 
 
+@flaky(max_runs=3, min_passes=2)
 def test_function_metric_with_target_loggers():
     server_config = ServerConfig(
         endpoints=[

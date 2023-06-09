@@ -19,7 +19,7 @@ import requests
 
 class LambdaClient:
     """
-    Client object for making requests to the Lambda HTTP endpoint
+    Client object for making realtime requests to the Lambda HTTP endpoint
     :param url: API endpoint URL
     """
 
