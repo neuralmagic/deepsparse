@@ -281,10 +281,9 @@ class Engine(BaseEngine):
         BaseEngine.construct(
             self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
         )
-
         num_streams = _validate_num_streams(num_streams, self._num_cores)
-        # if self._input_shapes is not None:
-        #     override_onnx_input_shapes(self._model_path, self._input_shapes, inplace=True)
+        if self._input_shapes is not None:
+            override_onnx_input_shapes(self._model_path, self._input_shapes, inplace=True)
         self._eng_net = LIB.deepsparse_engine(
             self._model_path,
             self._batch_size,
@@ -834,107 +833,6 @@ class MultiModelEngine(Engine):
                 self._num_streams,
                 self._scheduler.value,
                 context.value,
-            )
-
-
-class KVCacheEngine(Engine):
-    """
-    Engine that can do kv caching.
-    """
-
-    def __init__(
-        self,
-        model: Union[str, "Model", "File"],
-        batch_size: int = 1,
-        num_cores: int = None,
-        num_streams: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-    ):
-        _analytics.send_event("python__engine__init")
-        self._model_path = model_to_path(model)
-        self._batch_size = _validate_batch_size(batch_size)
-        self._num_cores = _validate_num_cores(num_cores)
-        self._scheduler = _validate_scheduler(scheduler)
-        self._input_shapes = input_shapes
-        self._cpu_avx_type = AVX_TYPE
-        self._cpu_vnni = VNNI
-
-        num_streams = _validate_num_streams(num_streams, self._num_cores)
-        if self._input_shapes:
-            raise NotImplementedError("")
-            # with override_onnx_input_shapes(
-            #         self._model_path, self._input_shapes
-            # ) as model_path:
-            #     self._eng_net = LIB.deepsparse_engine(
-            #         model_path,
-            #         self._batch_size,
-            #         self._num_cores,
-            #         num_streams,
-            #         self._scheduler.value,
-            #         None,
-            #     )
-        else:
-            # create a boolean list of every output of the
-            # model (logits, key0, value0, key1, value1, ..., key19, value, 19)
-            kv_cache_bools = [True for i in range(41)]
-            kv_cache_bools[0] = False  # logits ought not to be cached
-
-            self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
-                self._batch_size,
-                self._num_cores,
-                num_streams,
-                self._scheduler.value,
-                None,
-                kv_cache_bools,  # pass in the boolean list
-                0,  # since we start with no initial cache, pass in 0 for the initial cached position
-            )
-
-
-class KVCacheEngine(Engine):
-    """
-    Engine that can do kv caching.
-    """
-
-    def __init__(
-        self,
-        model: Union[str, "Model", "File"],
-        batch_size: int = 1,
-        num_cores: int = None,
-        num_streams: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        kv_cache_bools: List[bool] = None,
-        prev_cache_length: int = 0,
-    ):
-        BaseEngine.construct(
-            self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
-        )
-
-        if kv_cache_bools is None:
-            # If no list was provided, then we assume all outputs except for the first are KV caches
-            # Note: In the future we can look at the names of outputs to be more sure
-            #
-            # Create a boolean list of every output of the model
-            output_names = get_output_names(self._model_path)
-            kv_cache_bools = [True for i in range(len(output_names))]
-            # Assume first input is logits and logits ought not to be cached
-            kv_cache_bools[0] = False
-
-        num_streams = _validate_num_streams(num_streams, self._num_cores)
-        if self._input_shapes:
-            raise NotImplementedError("Don't do this yet :)")
-        else:
-            self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
-                self._batch_size,
-                self._num_cores,
-                num_streams,
-                self._scheduler.value,
-                None,
-                kv_cache_bools,
-                prev_cache_length,
             )
 
 

@@ -156,7 +156,7 @@ class SupportedTasks:
             import deepsparse.pipelines.custom_pipeline  # noqa: F401
 
         elif cls.is_text_generation(task):
-            import deepsparse.pipelines.text_generation
+            import deepsparse.transformers.pipelines.text_generation  # noqa: F401
 
         elif cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register

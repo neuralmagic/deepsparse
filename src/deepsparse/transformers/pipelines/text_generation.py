@@ -114,6 +114,7 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
         if prompt_batch_threshold is not None and prompt_batch_threshold < 1:
+            raise ValueError("multitoken engine is currently not supported")
             (
                 self.onnx_multitoken_path,
                 self._temp_model_directory,

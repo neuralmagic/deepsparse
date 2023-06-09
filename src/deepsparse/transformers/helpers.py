@@ -43,7 +43,7 @@ __all__ = [
 
 _LOGGER = get_main_logger()
 
-_MODEL_DIR_ONNX_NAME = "model_kvcache.onnx"
+_MODEL_DIR_ONNX_NAME = "model.onnx"
 _MODEL_DIR_CONFIG_NAME = "config.json"
 _MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
 _MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
