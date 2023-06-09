@@ -17,6 +17,7 @@
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
 from .ort_engine import *
+from .torch_engine import * 
 from .results import *
 
 
