@@ -38,7 +38,7 @@ pip install -r requirements.txt
 
 The [azure-vm.py](https://github.com/neuralmagic/deepsparse/tree/main/examples/azure-vm/azure-vm.py) script creates an Azure resource group, launches an Ubuntu instance and returns the Public IP address so you can SSH into the instance after it finishes staging. Additionally, it also contains a bash script which automatically downloads Docker and pulls Neural Magic's public DeepSparse image into your instance.
 
-To execute the script, run the following command and pass in your `subscription id` from step 1, your VMs `location`, `vm-type`, a resources `group name`, your `virtual machine's name` and the `password` to login to your instance:
+To execute the script, run the following command and pass in your `subscription id` from step 1, your VMs `location`, `vm-type`, a resources `group name`, your `virtual machine's name` and the `password` for logging in to your instance:
 
 ```bash
 python azure-vm.py create-vm --subscription-id <SUBSCRIPTION-ID> --location <LOCATION> --vm-type <VM-TYPE> --group-name <GROUP-NAME> --vm-name <VM-NAME> --pw <PASSWORD>
