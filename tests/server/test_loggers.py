@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import shutil
 from collections import Counter
 from unittest import mock
 
@@ -237,7 +238,7 @@ def test_function_metric_with_target_loggers():
 
 
 @mock_engine(rng_seed=0)
-def test_instantiate_prometheus(tmp_path):
+def test_instantiate_prometheus(mock_engine, tmp_path):
     client = TestClient(
         _build_app(
             ServerConfig(
@@ -245,7 +246,7 @@ def test_instantiate_prometheus(tmp_path):
                 loggers=dict(
                     prometheus={
                         "port": find_free_port(),
-                        "text_log_save_dir": str(tmp_path),
+                        "text_log_save_dir": tmp_path.name,
                         "text_log_save_frequency": 30,
                     }
                 ),
@@ -254,10 +255,11 @@ def test_instantiate_prometheus(tmp_path):
     )
     r = client.post("/predict", json=dict(sequences="asdf"))
     assert r.status_code == 200
+    shutil.rmtree(tmp_path.name, ignore_errors=True)
 
 
 @mock_engine(rng_seed=0)
-def test_endpoint_system_logging(tmp_path):
+def test_endpoint_system_logging(mock_engine):
     server_config = ServerConfig(
         system_logging=ServerSystemLoggingConfig(
             request_details=SystemLoggingGroup(enable=True),
@@ -288,7 +290,7 @@ def test_endpoint_system_logging(tmp_path):
     server_logger = server_logger_from_config(server_config)
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
-    ), mock_engine(rng_seed=0):
+    ), mock_engine:
         app = _build_app(server_config)
     client = TestClient(app)
     client.post("/predict_text_classification", json=dict(sequences="asdf"))

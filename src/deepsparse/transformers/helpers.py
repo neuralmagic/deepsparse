@@ -69,21 +69,10 @@ def get_onnx_path_and_configs(
     if os.path.isfile(model_path) and not require_configs:
         return model_path, None, None
 
-    if os.path.isfile(model_path):
-        if require_configs:
-            raise RuntimeError(
-                f"Unable to find config files for model_path {model_path}. "
-                f"model_path must be a directory containing model.onnx, config.json,"
-                f" and tokenizer.json files."
-            )
-
-        return model_path, None, None
+    config_path = None
+    tokenizer_path = None
 
     if os.path.isdir(model_path):
-        # default to model_path
-        config_path = model_path
-        tokenizer_path = model_path
-
         model_files = os.listdir(model_path)
 
         if _MODEL_DIR_ONNX_NAME not in model_files:
@@ -95,13 +84,12 @@ def get_onnx_path_and_configs(
         onnx_path = os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
 
         # attempt to read config and tokenizer from sparsezoo-like framework directory
-        for framework_dir in [
-            os.path.join(model_path, "framework"),
-            os.path.join(model_path, "pytorch"),
-        ]:
-            if not os.path.exists(framework_dir) or not os.path.isdir(framework_dir):
-                continue
-
+        framework_dir = None
+        if "framework" in model_files:
+            framework_dir = os.path.join(model_path, "framework")
+        if "pytorch" in model_files:
+            framework_dir = os.path.join(model_path, "pytorch")
+        if framework_dir and os.path.isdir(framework_dir):
             framework_files = os.listdir(framework_dir)
             if _MODEL_DIR_CONFIG_NAME in framework_files:
                 config_path = framework_dir
@@ -114,9 +102,7 @@ def get_onnx_path_and_configs(
         if _MODEL_DIR_TOKENIZER_NAME in model_files:
             tokenizer_path = model_path
 
-        return onnx_path, config_path, tokenizer_path
-
-    if model_path.startswith("zoo:"):
+    elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
         onnx_path = zoo_model.onnx_model.path
         config_path = _get_file_parent(
@@ -129,21 +115,27 @@ def get_onnx_path_and_configs(
             _MODEL_DIR_TOKENIZER_CONFIG_NAME
         )
         if tokenizer_config_path is not None:
-            _ = tokenizer_config_path.path  # trigger download of tokenizer_config
+            tokenizer_config_path.path  # trigger download of tokenizer_config
+    elif require_configs and (config_path is None or tokenizer_path is None):
+        raise RuntimeError(
+            f"Unable to find model and tokenizer config for model_path {model_path}. "
+            f"model_path must be a directory containing model.onnx, config.json, and "
+            f"tokenizer.json files. Found config and tokenizer paths: {config_path}, "
+            f"{tokenizer_path}"
+        )
+    else:
+        raise ValueError(
+            f"model_path {model_path} is not a valid file, directory, or zoo stub"
+        )
 
-        return onnx_path, config_path, tokenizer_path
-
-    raise ValueError(
-        f"model_path {model_path} is not a valid file, directory, or zoo stub"
-    )
+    return onnx_path, config_path, tokenizer_path
 
 
 def overwrite_transformer_onnx_model_inputs(
     path: str,
     batch_size: int = 1,
     max_length: int = 128,
-    output_path: Optional[str] = None,
-    load_external_data: bool = True,
+    inplace: bool = True,
     custom_input_overwrite_func: Optional[Callable] = None,
     custom_input_overwrite_func_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
@@ -155,22 +147,21 @@ def overwrite_transformer_onnx_model_inputs(
     :param path: path to the ONNX model to override
     :param batch_size: batch size to set
     :param max_length: max sequence length to set
-    :param output_path: if provided, the model will be saved to the given path,
-        otherwise, the model will be saved to a named temporary file that will
-        be deleted after the program exits
-    :param load_external_data: if True, external data will be loaded into the model
-        graph. If False, external data will not be loaded and the model will be
-        saved without external data
+    :param inplace: if True, the model will be modified in place (its inputs will
+        be overwritten). Else, a copy of that model, with overwritten inputs,
+        will be saved to a temporary file
     :param custom_input_overwrite_func: if provided, this function will be called
         instead of the default input overwrite function. This function should take
          in a list of external inputs and return a list of the overwritten input names
     :param custom_input_overwrite_func_kwargs: kwargs for the custom overwrite function
-    :return: if no output path, a tuple of the saved path to the model, list of
-        model input names, and reference to the tempfile object will be returned
-        otherwise, only the model input names will be returned
+    :return: tuple of (path to the overwritten model, list of input names that were
+        overwritten, and a temporary file containing the overwritten model if
+        `inplace=False`, else None)
     """
     # overwrite input shapes
-    model = onnx.load_model(path, load_external_data=load_external_data)
+    # if > 2Gb model is to be modified in-place, operate
+    # exclusively on the model graph
+    model = onnx.load(path, load_external_data=not inplace)
     initializer_input_names = set([node.name for node in model.graph.initializer])
     external_inputs = [
         inp for inp in model.graph.input if inp.name not in initializer_input_names
@@ -191,13 +182,20 @@ def overwrite_transformer_onnx_model_inputs(
             input_names.append(external_input.name)
 
     # Save modified model
-    if output_path is None:
+    if inplace:
+        _LOGGER.info(
+            f"Overwriting in-place the input shapes of the transformer model at {path}"
+        )
         save_onnx(model, path)
-        return path, input_names, path
+        return path, input_names, None
     else:
-        save_onnx(model, output_path)
-
-        return input_names
+        tmp_file = NamedTemporaryFile()
+        _LOGGER.info(
+            f"Saving a copy of the transformer model: {path} "
+            f"with overwritten input shapes to {tmp_file.name}"
+        )
+        save_onnx(model, tmp_file.name)
+        return tmp_file.name, input_names, tmp_file
 
 
 def _get_file_parent(file_path: str) -> str:
