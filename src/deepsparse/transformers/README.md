@@ -33,7 +33,7 @@ This grants the engine the flexibility to serve any model in a framework-agnosti
 
 In general, the DeepSparse pipelines require the following files within a folder on the local server to properly load a Transformers model:
 - `model.onnx`: The exported Transformers model in the [ONNX format](https://github.com/onnx/onnx).
-- `model_kvcache.onnx` (optional): the ONNX model with the KV Cache support (akin to the Transformers model with `use_cache = True`. Particular for `text-generation` integration.
+- `model_kvcache.onnx` (optional): the ONNX model with the KV Cache support (akin to the Transformers model with `use_cache = True`. Specific for the `text-generation` integration.
 - `config.json`: The [HuggingFace compatible configuration file](https://huggingface.co/docs/transformers/main_classes/configuration) used with the model.
 - `tokenizer_config.json`: The [HuggingFace compatible tokenizer configuration](https://huggingface.co/docs/transformers/fast_tokenizers) used with the model.
 - `tokenizer.json`, `special_tokens_map.json`, `vocab.json`, `merges.txt` (optional): Other files that may be required by a tokenizer
@@ -142,7 +142,7 @@ response.text
 ```
 ### Text Generation
 The text generation task generates a sequence of words given the prompt. Popular text generation LLMs (Large Language Models) are used
-for the chats (the instruction models), code generation, text summarization or filling out the missing text.
+for the chats (the instruction models), code generation, text summarization, or filling out the missing text.
 are used for chats or following instructions are also covered in this task. The following example uses a sparsified text classification
 OPT model to complete the prompt
 
@@ -164,7 +164,7 @@ inference = opt_pipeline("Who is the president of the United States?")
 Spinning up:
 ```bash
 deepsparse.server \
-    task sentiment-analysis \
+    task text-generation \
     --model_path # TODO: Pending until text generation models get uploaded to SparseZoo
 ```
 
