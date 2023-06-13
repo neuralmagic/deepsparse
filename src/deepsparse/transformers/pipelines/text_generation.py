@@ -55,7 +55,7 @@ class TextGenerationOutput(BaseModel):
 
 @Pipeline.register(
     task="text_generation",
-    task_aliases=["codegen", "opt"],
+    task_aliases=["codegen", "opt", "bloom"],
 )
 class TextGenerationPipeline(TransformersPipeline):
     """
@@ -92,6 +92,12 @@ class TextGenerationPipeline(TransformersPipeline):
         force_max_tokens: bool = False,
         **kwargs,
     ):
+        if kwargs["engine_type"] == "deepsparse":
+            raise NotImplementedError(
+                "The text generation pipeline is not "
+                "supported for the deepsparse engine"
+            )
+
         super().__init__(**kwargs, _delay_engine_initialize=True)
 
         if self._batch_size != 1:
@@ -270,7 +276,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
         else:
             # larger prompt size, run through multi-token engine in single pass
-            logits, *cache_values = self.multitoken_engine(engine_inputs, val_inp=False)
+            logits, *cache_values = self.multitoken_engine(engine_inputs)
             kv_cache = self.assemble_kv_cache(cache_values, tokens)
             new_token = self.generate_token(logits[0, -1])
 
@@ -323,7 +329,7 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs.update(kv_cache)
         engine_inputs = [engine_inputs[name] for name in self.engine.input_names]
 
-        new_logits, *cache_values = self.engine(engine_inputs, val_inp=False)
+        new_logits, *cache_values = self.engine(engine_inputs)
         kv_cache = self.assemble_kv_cache(cache_values, tokens)
 
         # Obtain the next token from the logits
