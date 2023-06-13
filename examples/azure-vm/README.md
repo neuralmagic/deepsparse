@@ -66,9 +66,7 @@ After running the script, your instance's public IP address will be printed out 
 ssh testuser@<PUBLIC-IP>
 ```
 
-Get root access:
-
-After entering your password, get root:
+After entering your password, get root access:
 
 ```bash
 sudo su
