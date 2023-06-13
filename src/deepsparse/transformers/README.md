@@ -180,6 +180,7 @@ response = requests.post(url, json=obj)
 response.text
 
 >> 'The president of the United States is the head of the executive branch of government...'
+```
 
 ### Sentiment Analysis
 The sentiment analysis task takes in a sentence and classifies its sentiment. The following example
