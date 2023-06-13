@@ -62,8 +62,8 @@ def _validate_ort_import():
         )
 
 
-def _validate_batch_size(batch_size: int) -> Optional[int]:
-    if batch_size is not None and batch_size < 1:
+def _validate_batch_size(batch_size: int) -> int:
+    if batch_size < 1:
         raise ValueError("batch_size must be greater than 0")
 
     return batch_size
@@ -116,15 +116,29 @@ class ORTEngine(object):
                     f" num_cores={num_cores}, please specify CPUExecutionProvider"
                 )
 
+        # TODO (michael): Unfortunately we are stacking overrides here, this can be
+        # cleaned up once we pass the loaded ONNX around and not paths
         if self._input_shapes:
-            override_onnx_input_shapes(self._model_path, self._input_shapes, inplace=True)
-        if self._batch_size is not None:
-            override_onnx_batch_size(self._model_path, self._batch_size, inplace=True)
-        self._eng_net = onnxruntime.InferenceSession(
-            self._model_path,
-            sess_options,
-            providers=providers,
-        )
+            with override_onnx_input_shapes(
+                self._model_path, self._input_shapes, inplace=True
+            ) as input_override_model_path:
+                with override_onnx_batch_size(
+                    input_override_model_path, batch_size, inplace=True
+                ) as batch_override_model_path:
+                    self._eng_net = onnxruntime.InferenceSession(
+                        batch_override_model_path,
+                        sess_options,
+                        providers=providers,
+                    )
+        else:
+            with override_onnx_batch_size(
+                self._model_path, batch_size, inplace=True
+            ) as batch_override_model_path:
+                self._eng_net = onnxruntime.InferenceSession(
+                    batch_override_model_path,
+                    sess_options,
+                    providers=providers,
+                )
 
     def __call__(
         self,

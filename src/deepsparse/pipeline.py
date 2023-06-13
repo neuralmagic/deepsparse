@@ -37,7 +37,6 @@ from deepsparse.loggers.constants import (
 )
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
 from deepsparse.timing import InferencePhases, Timer
-from deepsparse.timing.pipeline_timer import PipelineTimer
 
 
 __all__ = [
@@ -142,7 +141,6 @@ class Pipeline(ABC):
         a path to the logging config, or yaml string representation the logging
         config. If logger provided (in any form), the pipeline will log inference
         metrics to the logger. Default is None
-    :param benchmark: An optional boolean flag that can be used to enable/disable
     """
 
     def __init__(
@@ -157,12 +155,8 @@ class Pipeline(ABC):
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
         logger: Optional[Union[BaseLogger, str]] = None,
-        benchmark: bool = False,
         _delay_engine_initialize: bool = False,  # internal use only
     ):
-        self._benchmark = benchmark
-        self._timer = PipelineTimer(enabled=benchmark, multi_inference=True)
-        self._timer.reset()
         self._model_path_orig = model_path
         self._model_path = model_path
         self._engine_type = engine_type
@@ -224,15 +218,12 @@ class Pipeline(ABC):
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
-        self._timer.reset()
         timer = Timer()
 
         timer.start(InferencePhases.TOTAL_INFERENCE)
-        self._timer.start_inference_stage(InferencePhases.TOTAL_INFERENCE)
 
         # ------ PREPROCESSING ------
         timer.start(InferencePhases.PRE_PROCESS)
-        self._timer.start_inference_stage(InferencePhases.PRE_PROCESS)
         # parse inputs into input_schema
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
 
@@ -254,7 +245,6 @@ class Pipeline(ABC):
         else:
             postprocess_kwargs = {}
         timer.stop(InferencePhases.PRE_PROCESS)
-        self._timer.stop_inference_stage(InferencePhases.PRE_PROCESS)
 
         self.log(
             identifier="engine_inputs",
@@ -270,18 +260,14 @@ class Pipeline(ABC):
         # ------ INFERENCE ------
         # split inputs into batches of size `self._batch_size`
         timer.start(InferencePhases.ENGINE_FORWARD)
-        self._timer.start_inference_stage(InferencePhases.ENGINE_FORWARD)
-        # Hack to enable inference with `cache_length` argument
-        # batches = self.split_engine_inputs(engine_inputs, self._batch_size)
-        batches = [engine_inputs]
+        batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit split batches to engine threadpool
-        batch_outputs = [self.engine_forward(x) for x in batches]
+        batch_outputs = list(self.executor.map(self.engine_forward, batches))
 
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
         timer.stop(InferencePhases.ENGINE_FORWARD)
-        self._timer.stop_inference_stage(InferencePhases.ENGINE_FORWARD)
 
         self.log(
             identifier=f"{SystemGroups.INFERENCE_DETAILS}/input_batch_size_total",
@@ -306,7 +292,6 @@ class Pipeline(ABC):
 
         # ------ POSTPROCESSING ------
         timer.start(InferencePhases.POST_PROCESS)
-        self._timer.start_inference_stage(InferencePhases.POST_PROCESS)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -316,9 +301,7 @@ class Pipeline(ABC):
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
         timer.stop(InferencePhases.POST_PROCESS)
-        self._timer.stop_inference_stage(InferencePhases.POST_PROCESS)
         timer.stop(InferencePhases.TOTAL_INFERENCE)
-        self._timer.stop_inference_stage(InferencePhases.TOTAL_INFERENCE)
 
         self.log(
             identifier="pipeline_outputs",
@@ -748,18 +731,6 @@ class Pipeline(ABC):
         :return: type of inference engine used for model forward pass
         """
         return self._engine_type
-
-    @property
-    def timer(self) -> PipelineTimer:
-        return self._timer
-
-    @property
-    def benchmark(self) -> bool:
-        return self._benchmark
-
-    @benchmark.setter
-    def benchmark(self, value: bool):
-        self._benchmark = value
 
     def to_config(self) -> "PipelineConfig":
         """
