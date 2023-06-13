@@ -198,6 +198,7 @@ def generate_random_inputs(
     return input_data_list
 
 
+@contextlib.contextmanager
 def override_onnx_batch_size(
     onnx_filepath: str,
     batch_size: int,
@@ -233,7 +234,7 @@ def override_onnx_batch_size(
             f"Overwriting in-place the batch size of the model at {onnx_filepath}"
         )
         save_onnx(model, onnx_filepath)
-        return onnx_filepath
+        yield onnx_filepath
     else:
         return save_onnx_to_temp_files(model, with_external_data=not inplace)
 
