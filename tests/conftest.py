@@ -69,7 +69,12 @@ def check_for_created_files():
     end_files_root = _get_files(directory=r".")
     end_files_temp = _get_files(directory=tempfile.gettempdir())
 
-    assert len(start_files_root) >= len(end_files_root), (
+    max_allowed_number_created_files = 4
+    # GHA needs to create following files:
+    # pyproject.toml, CONTRIBUTING.md, LICENSE, setup.cfg
+    assert len(start_files_root) + max_allowed_number_created_files >= len(
+        end_files_root
+    ), (
         f"{len(end_files_root) - len(start_files_root)} "
         f"files created in current working "
         f"directory during pytest run. "
