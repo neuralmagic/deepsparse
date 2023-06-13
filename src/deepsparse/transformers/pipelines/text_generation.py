@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from typing import Dict, List, Optional, Tuple, Type
 
 import numpy
@@ -26,8 +25,9 @@ from deepsparse.transformers.helpers import (
     overwrite_transformer_onnx_model_inputs,
 )
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.utils import get_output_names
 
+
+_MODEL_DIR_ONNX_KV_CACHE_NAME = "model_kvcache.onnx"
 
 __all__ = ["TextGenerationPipeline"]
 
@@ -111,7 +111,6 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
         if prompt_batch_threshold is not None and prompt_batch_threshold < 1:
-            raise ValueError("multitoken engine is currently not supported")
             (
                 self.onnx_multitoken_path,
                 self._temp_model_directory,
@@ -359,6 +358,7 @@ class TextGenerationPipeline(TransformersPipeline):
         onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
             self.model_path,
             require_configs=True,
+            model_dir_onnx_name=_MODEL_DIR_ONNX_KV_CACHE_NAME,
         )
 
         self.config = AutoConfig.from_pretrained(config_path)
@@ -375,7 +375,6 @@ class TextGenerationPipeline(TransformersPipeline):
         ) = overwrite_transformer_onnx_model_inputs(
             onnx_path,
             max_length=self.sequence_length,
-            load_external_data=False,
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
             custom_input_overwrite_func_kwargs=dict(
                 multitoken=False,
@@ -387,13 +386,16 @@ class TextGenerationPipeline(TransformersPipeline):
     def _initialize_kv_cache(self, length: int) -> Dict[str, numpy.ndarray]:
         # initialize empty kv cache of size
         # (batch_size, num_attention_heads, length, hidden_dims)
-        raise NotImplementedError()
+
+        cache_engine_input_index = next(
+            i for i, name in enumerate(self.engine.input_names) if "past_key" in name
+        )
+        batch_size, num_attention_heads, _, hidden_dims = self.engine.input_shapes[
+            cache_engine_input_index
+        ]
+
         empty_kv_cache_tensor = numpy.zeros(
-            (
-                self.config.num_attention_heads,
-                length,
-                OPT_CACHE_HIDDEN_DIM,
-            ),
+            (batch_size, num_attention_heads, length, hidden_dims),
             dtype=numpy.float32,
         )
 
@@ -437,7 +439,7 @@ class TextGenerationPipeline(TransformersPipeline):
             else:
                 idx_to_remove = 0
 
-            cache_values[idx] = numpy.delete(cache_value, idx_to_remove, 1)
+            cache_values[idx] = numpy.delete(cache_value, idx_to_remove, 2)
 
         cache_keys = [
             name.replace("present", "past_key_values")
@@ -485,6 +487,7 @@ class TextGenerationPipeline(TransformersPipeline):
             elif external_input.name.startswith("past_key_values"):
                 # empty cache for multi-token runs,
                 # otherwise max cache len is max len - 1
+
                 external_input.type.tensor_type.shape.dim[2].dim_value = (
                     0 if multitoken else sequence_length - 1
                 )
@@ -503,7 +506,6 @@ class TextGenerationPipeline(TransformersPipeline):
         ) = overwrite_transformer_onnx_model_inputs(
             self.onnx_file_path,
             max_length=self.sequence_length,
-            load_external_data=False,
             custom_input_overwrite_func=self.overwrite_onnx_model_inputs,
             custom_input_overwrite_func_kwargs=dict(
                 multitoken=True,
