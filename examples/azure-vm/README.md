@@ -23,7 +23,7 @@ If you are interested in configuring and launching an instance with DeepSparse i
 We recommend installing the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) for easy access to Azure's functionalities although it is not required.
 
 ## Step 1: Create a Subscription
-[Create an Azure subscription](https://learn.microsoft.com/en-us/azure/cost-management-billing/manage/create-subscription) to gain access to a `subscription id`.
+Create an [Azure subscription](https://learn.microsoft.com/en-us/azure/cost-management-billing/manage/create-subscription) to gain access to a `subscription id`.
 
 
 ## Step 2: Install Dependencies
@@ -36,15 +36,15 @@ pip install -r requirements.txt
 
 ## Step 3: Run Script
 
-This [azure-vm.py](https://github.com/neuralmagic/deepsparse/tree/main/examples/azure-vm/azure-vm.py) script creates an Azure resource group, launches an Ubuntu instance and returns the Public IP address so you can SSH into the instance after it finishes staging. Additionally, it also contains a bash script that automatically downloads Docker and pulls Neural Magic's public DeepSparse image into your instance.
+The [azure-vm.py](https://github.com/neuralmagic/deepsparse/tree/main/examples/azure-vm/azure-vm.py) script creates an Azure resource group, launches an Ubuntu instance and returns the Public IP address so you can SSH into the instance after it finishes staging. Additionally, it also contains a bash script which automatically downloads Docker and pulls Neural Magic's public DeepSparse image into your instance.
 
-To execute the script, run the following command and pass in your `subscription id` from step 1, your VMs `location`, `vm-type`, a resources `group name`, your `virtual machine's name` and the `password` to login into your instance:
+To execute the script, run the following command and pass in your `subscription id` from step 1, your VMs `location`, `vm-type`, a resources `group name`, your `virtual machine's name` and the `password` to login to your instance:
 
 ```bash
 python azure-vm.py create-vm --subscription-id <SUBSCRIPTION-ID> --location <LOCATION> --vm-type <VM-TYPE> --group-name <GROUP-NAME> --vm-name <VM-NAME> --pw <PASSWORD>
 ```
 
-To leverage CPU optimized instances, we recommend using the [`Fsv2-series`](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes-compute) instances which contain AVX-512 instructions. Here's an example commmand for launching a VM in the US East location using a F4s-v2 instance containing 4 vCPUs and 8GB of RAM: 
+To leverage CPU optimized instances, we recommend using the [`Fsv2-series`](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes-compute) instances which contain AVX-512 instructions. Here's an example commmand for launching a VM in the US East location using a F4s-v2 instance (4 vCPUs and 8GB of RAM): 
 
 ```bash
 python azure-vm.py create-vm --subscription-id <sub-id> --location eastus --vm-type Standard_F4s_v2 --group-name deepsparse-group --vm-name deepsparse-vm --pw Password123!
@@ -79,9 +79,9 @@ We recommend giving your instance 2-3 mins. to finish executing the bash script.
 ```bash
 docker images
 ```
-You should be able to see DeepSparse image installed, if it shows an empty table, the bash script hasn't completed execution.
+You should be able to see a downloaded DeepSparse image, if it shows an empty table, the bash script hasn't completed execution.
 
-After you see the image in your instance, you can now execute DeepSparse from the running container. Here's an example of running the DeepSparse server a pruned-quantized version of BERT trained on SQuAD:
+Upon image download, you can now use DeepSparse. Here's an example of benchmarking a pruned-quantized version of BERT trained on SQuAD from Docker:
 
 ```bash
 docker run -it deepsparse_docker deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none -i [64,128] -b 64 -nstreams 1 -s sync
