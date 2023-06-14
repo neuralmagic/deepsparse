@@ -81,9 +81,6 @@ RUN \
       $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]==$VERSION"; \
     fi;
 
-RUN deepsparse.transformers.run_inference --help \
-    && deepsparse.image_classification.annotate --help
-
 
 FROM base AS container_branch_dev
 ARG VENV
