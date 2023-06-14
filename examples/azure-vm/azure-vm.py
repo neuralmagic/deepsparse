@@ -115,7 +115,7 @@ def create_virtual_machine(
     interface_name: str,
     subscription_id: str,
     PASSWORD: str,
-    encoded_custom_data: str,
+    startup_script: str,
 ):
     return compute_client.virtual_machines.begin_create_or_update(
         group_name,
@@ -145,7 +145,7 @@ def create_virtual_machine(
                 "admin_username": "testuser",
                 "computer_name": "myVM",
                 "admin_password": PASSWORD,
-                "custom_data": encoded_custom_data,
+                "custom_data": startup_script,
             },
             "network_profile": {
                 "network_interfaces": [
@@ -223,7 +223,7 @@ def create_vm(
     """
 
     # Encode startup_script as Base64
-    encoded_custom_data = base64.b64encode(startup_script.encode()).decode()
+    startup_script = base64.b64encode(startup_script.encode()).decode()
 
     # Create client
     resource_client = ResourceManagementClient(
@@ -261,7 +261,7 @@ def create_vm(
         INTERFACE_NAME,
         SUBSCRIPTION_ID,
         PASSWORD,
-        encoded_custom_data,
+        startup_script,
     )
 
     print("Your external public IP address:", public_ip_address.ip_address)
