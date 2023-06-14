@@ -239,6 +239,7 @@ def override_onnx_batch_size(
         return save_onnx_to_temp_files(model, with_external_data=not inplace)
 
 
+@contextlib.contextmanager
 def override_onnx_input_shapes(
     onnx_filepath: str,
     input_shapes: Union[List[int], List[List[int]]],
@@ -303,7 +304,7 @@ def override_onnx_input_shapes(
             "Overwriting in-place the input shapes of the model " f"at {onnx_filepath}"
         )
         onnx.save(model, onnx_filepath)
-        return onnx_filepath
+        yield onnx_filepath
     else:
         _LOGGER.info(
             f"Saving the input shapes of the model at {onnx_filepath} "
