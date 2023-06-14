@@ -22,13 +22,35 @@ from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 
 
-def create_resource_group(resource_client: str, group_name: str, location: str):
+def create_resource_group(
+    resource_client: ResourceManagementClient, group_name: str, location: str
+):
+    """
+    Create a resource group in Azure.
+
+    Args:
+        resource_client (ResourceManagementClient): Azure Resource client.
+        group_name (str): Name of the resource group to create.
+        location (str): Location of the resource group.
+    """
     resource_client.resource_groups.create_or_update(group_name, {"location": location})
 
 
 def create_virtual_network(
-    network_client: str, group_name: str, network_name: str, location: str
+    network_client: NetworkManagementClient,
+    group_name: str,
+    network_name: str,
+    location: str,
 ):
+    """
+    Create a virtual network in Azure.
+
+    Args:
+        network_client (NetworkManagementClient): Azure NetworkManagementClient object.
+        group_name (str): Name of the resource group.
+        network_name (str): Name of the virtual network to create.
+        location (str): Location of the virtual network.
+    """
     network_client.virtual_networks.begin_create_or_update(
         group_name,
         network_name,
@@ -37,16 +59,46 @@ def create_virtual_network(
 
 
 def create_subnet(
-    network_client: str, group_name: str, network_name: str, subnet_name: str
+    network_client: NetworkManagementClient,
+    group_name: str,
+    network_name: str,
+    subnet_name: str,
 ):
+    """
+    Create a subnet in Azure.
+
+    Args:
+        network_client (NetworkManagementClient): Azure NetworkManagementClient object.
+        group_name (str): Name of the resource group.
+        network_name (str): Name of the virtual network.
+        subnet_name (str): Name of the subnet to create.
+
+    Returns:
+        The created subnet.
+    """
     return network_client.subnets.begin_create_or_update(
         group_name, network_name, subnet_name, {"address_prefix": "10.0.0.0/24"}
     ).result()
 
 
 def create_network_security_group(
-    network_client: str, group_name: str, nsg_name: str, location: str
+    network_client: NetworkManagementClient,
+    group_name: str,
+    nsg_name: str,
+    location: str,
 ):
+    """
+    Create a network security group in Azure.
+
+    Args:
+        network_client (NetworkManagementClient): Azure NetworkManagementClient object.
+        group_name (str): Name of the resource group.
+        nsg_name (str): Name of the network security group to create.
+        location (str): Location of the network security group.
+
+    Returns:
+        The created network security group.
+    """
     nsg_params = {
         "location": location,
         "security_rules": [
@@ -69,8 +121,23 @@ def create_network_security_group(
 
 
 def create_public_ip_address(
-    network_client: str, group_name: str, ip_address_name: str, location: str
+    network_client: NetworkManagementClient,
+    group_name: str,
+    ip_address_name: str,
+    location: str,
 ):
+    """
+    Create a public IP address in Azure.
+
+    Args:
+        network_client (NetworkManagementClient): Azure NetworkManagementClient object.
+        group_name (str): Name of the resource group.
+        ip_address_name (str): Name of the public IP address to create.
+        location (str): Location of the public IP address.
+
+    Returns:
+        The created public IP address.
+    """
     public_ip_address_params = {
         "location": location,
         "public_ip_allocation_method": "static",
@@ -82,7 +149,7 @@ def create_public_ip_address(
 
 
 def create_network_interface(
-    network_client: str,
+    network_client: NetworkManagementClient,
     group_name: str,
     interface_name: str,
     location: str,
@@ -90,6 +157,21 @@ def create_network_interface(
     public_ip_address: str,
     nsg: str,
 ):
+    """
+    Create a network interface in Azure.
+
+    Args:
+        network_client (NetworkManagementClient): Azure NetworkManagementClient object.
+        group_name (str): Name of the resource group.
+        interface_name (str): Name of the network interface to create.
+        location (str): Location of the network interface.
+        subnet: The subnet object to associate with the network interface.
+        public_ip_address: The public IP address object to associate with the network.
+        nsg: The network security group object to associate with the network interface.
+
+    Returns:
+        The created network interface.
+    """
     network_interface_params = {
         "location": location,
         "ip_configurations": [
@@ -107,7 +189,7 @@ def create_network_interface(
 
 
 def create_virtual_machine(
-    compute_client: str,
+    compute_client: ComputeManagementClient,
     group_name: str,
     vm_name: str,
     location: str,
@@ -117,6 +199,23 @@ def create_virtual_machine(
     PASSWORD: str,
     startup_script: str,
 ):
+    """
+    Create a virtual machine in Azure.
+
+    Args:
+        compute_client (ComputeManagementClient): Azure ComputeManagementClient object.
+        group_name (str): Name of the resource group.
+        vm_name (str): Name of the virtual machine to create.
+        location (str): Location of the virtual machine.
+        vm_type (str): Type of virtual machine (size).
+        interface_name (str): Name of the network interface.
+        subscription_id (str): Azure subscription ID.
+        PASSWORD (str): Admin password for the virtual machine.
+        startup_script (str): Custom startup script for the virtual machine.
+
+    Returns:
+        The created virtual machine.
+    """
     return compute_client.virtual_machines.begin_create_or_update(
         group_name,
         vm_name,
@@ -272,6 +371,14 @@ def create_vm(
 @click.option("--group-name", required=True, help="Resource group name")
 @click.option("--vm-name", required=True, help="Virtual machine name")
 def delete_vm_rg(subscription_id: str, group_name: str, vm_name: str):
+    """
+    Delete a virtual machine and its associated resource group in Azure.
+
+    Args:
+        subscription_id (str): Azure subscription ID.
+        group_name (str): Name of the resource group to delete.
+        vm_name (str): Name of the virtual machine to delete.
+    """
     compute_client = ComputeManagementClient(
         credential=DefaultAzureCredential(), subscription_id=subscription_id
     )
