@@ -26,7 +26,9 @@ def create_resource_group(resource_client: str, group_name: str, location: str):
     resource_client.resource_groups.create_or_update(group_name, {"location": location})
 
 
-def create_virtual_network(network_client: str, group_name: str, network_name: str, location: str):
+def create_virtual_network(
+    network_client: str, group_name: str, network_name: str, location: str
+):
     network_client.virtual_networks.begin_create_or_update(
         group_name,
         network_name,
@@ -34,13 +36,17 @@ def create_virtual_network(network_client: str, group_name: str, network_name: s
     ).result()
 
 
-def create_subnet(network_client: str, group_name: str, network_name: str, subnet_name: str):
+def create_subnet(
+    network_client: str, group_name: str, network_name: str, subnet_name: str
+):
     return network_client.subnets.begin_create_or_update(
         group_name, network_name, subnet_name, {"address_prefix": "10.0.0.0/24"}
     ).result()
 
 
-def create_network_security_group(network_client: str, group_name: str, nsg_name: str, location: str):
+def create_network_security_group(
+    network_client: str, group_name: str, nsg_name: str, location: str
+):
     nsg_params = {
         "location": location,
         "security_rules": [
@@ -62,7 +68,9 @@ def create_network_security_group(network_client: str, group_name: str, nsg_name
     ).result()
 
 
-def create_public_ip_address(network_client: str, group_name: str, ip_address_name: str, location: str):
+def create_public_ip_address(
+    network_client: str, group_name: str, ip_address_name: str, location: str
+):
     public_ip_address_params = {
         "location": location,
         "public_ip_allocation_method": "static",
@@ -74,7 +82,13 @@ def create_public_ip_address(network_client: str, group_name: str, ip_address_na
 
 
 def create_network_interface(
-    network_client: str, group_name: str, interface_name: str, location: str, subnet: str, public_ip_address: str, nsg: str
+    network_client: str,
+    group_name: str,
+    interface_name: str,
+    location: str,
+    subnet: str,
+    public_ip_address: str,
+    nsg: str,
 ):
     network_interface_params = {
         "location": location,
@@ -150,6 +164,7 @@ def create_virtual_machine(
         },
     ).result()
 
+
 @click.group()
 def cli():
     pass
@@ -162,7 +177,14 @@ def cli():
 @click.option("--group-name", required=True, help="Resource group name")
 @click.option("--vm-name", required=True, help="Virtual machine name")
 @click.option("--pw", required=True, help="Virtual machine password")
-def create_vm(subscription_id: str, location: str, vm_type: str, group_name: str, vm_name: str, pw: str):
+def create_vm(
+    subscription_id: str,
+    location: str,
+    vm_type: str,
+    group_name: str,
+    vm_name: str,
+    pw: str,
+):
     """
     Create a new virtual machine in Azure.
 
@@ -243,6 +265,7 @@ def create_vm(subscription_id: str, location: str, vm_type: str, group_name: str
     )
 
     print("Your external public IP address:", public_ip_address.ip_address)
+
 
 @cli.command()
 @click.option("--subscription-id", required=True, help="Azure subscription ID")
