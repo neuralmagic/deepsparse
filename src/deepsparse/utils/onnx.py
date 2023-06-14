@@ -305,7 +305,7 @@ def override_onnx_input_shapes(
 
     if inplace:
         _LOGGER.info(
-            "Overwriting in-place the input shapes of the model " f"at {onnx_filepath}"
+            f"Overwriting in-place the input shapes of the model at {onnx_filepath}"
         )
         onnx.save(model, onnx_filepath)
         yield onnx_filepath
