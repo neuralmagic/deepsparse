@@ -44,7 +44,7 @@ To execute the script, run the following command and pass in your `subscription 
 python azure-vm.py create-vm --subscription-id <SUBSCRIPTION-ID> --location <LOCATION> --vm-type <VM-TYPE> --group-name <GROUP-NAME> --vm-name <VM-NAME> --pw <PASSWORD>
 ```
 
-To leverage CPU optimized instances, we recommend using the [`Fsv2-series`](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes-compute) instances which contain AVX-512 instructions. Here's an example commmand for launching a VM in the US East location using a F4s-v2 instance (4 vCPUs and 8GB of RAM): 
+To leverage CPU optimized instances, we recommend using the [`Fsv2-series`](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes-compute) instances which contain AVX-512 instructions. Here's an example command for launching a VM in the US East location using a F4s-v2 instance (4 vCPUs and 8GB of RAM): 
 
 ```bash
 python azure-vm.py create-vm --subscription-id <sub-id> --location eastus --vm-type Standard_F4s_v2 --group-name deepsparse-group --vm-name deepsparse-vm --pw Password123!

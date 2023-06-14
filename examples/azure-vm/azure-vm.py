@@ -22,98 +22,11 @@ from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 
 
-@click.group()
-def cli():
-    pass
-
-
-@cli.command()
-@click.option("--subscription-id", required=True, help="Azure subscription ID")
-@click.option("--location", required=True, help="Location")
-@click.option("--vm-type", required=True, help="Virtual machine type")
-@click.option("--group-name", required=True, help="Resource group name")
-@click.option("--vm-name", required=True, help="Virtual machine name")
-@click.option("--pw", required=True, help="Virtual machine password")
-def create_vm(subscription_id, location, vm_type, group_name, vm_name, pw):
-
-    SUBSCRIPTION_ID = subscription_id
-    LOCATION = location
-    VM_TYPE = vm_type
-    GROUP_NAME = group_name
-    VIRTUAL_MACHINE_NAME = vm_name
-    PASSWORD = pw
-    SUBNET_NAME = "subnetx"
-    INTERFACE_NAME = "interfacex"
-    NETWORK_NAME = "networknamex"
-    IP_ADDRESS_NAME = "ipaddressx"
-    NSG_NAME = "nsgx"
-
-    custom_data = """#!/bin/bash
-    apt-get update
-    apt-get install -y apt-transport-https ca-certificates curl \\
-        software-properties-common
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \\
-        sudo apt-key add -
-    add-apt-repository "deb [arch=amd64] \\
-        https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    apt-get update
-    apt-get install -y docker-ce
-    docker pull ghcr.io/neuralmagic/deepsparse:1.4.2
-    docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse_docker
-    """
-
-    # Encode custom_data as Base64
-    encoded_custom_data = base64.b64encode(custom_data.encode()).decode()
-
-    # Create client
-    resource_client = ResourceManagementClient(
-        credential=DefaultAzureCredential(), subscription_id=SUBSCRIPTION_ID
-    )
-    network_client = NetworkManagementClient(
-        credential=DefaultAzureCredential(), subscription_id=SUBSCRIPTION_ID
-    )
-    compute_client = ComputeManagementClient(
-        credential=DefaultAzureCredential(), subscription_id=SUBSCRIPTION_ID
-    )
-
-    create_resource_group(resource_client, GROUP_NAME, LOCATION)
-    create_virtual_network(network_client, GROUP_NAME, NETWORK_NAME, LOCATION)
-    subnet = create_subnet(network_client, GROUP_NAME, NETWORK_NAME, SUBNET_NAME)
-    nsg = create_network_security_group(network_client, GROUP_NAME, NSG_NAME, LOCATION)
-    public_ip_address = create_public_ip_address(
-        network_client, GROUP_NAME, IP_ADDRESS_NAME, LOCATION
-    )
-    create_network_interface(
-        network_client,
-        GROUP_NAME,
-        INTERFACE_NAME,
-        LOCATION,
-        subnet,
-        public_ip_address,
-        nsg,
-    )
-    create_virtual_machine(
-        compute_client,
-        GROUP_NAME,
-        VIRTUAL_MACHINE_NAME,
-        LOCATION,
-        VM_TYPE,
-        subnet,
-        INTERFACE_NAME,
-        SUBSCRIPTION_ID,
-        custom_data,
-        PASSWORD,
-        encoded_custom_data,
-    )
-
-    print("Your external public IP address:", public_ip_address.ip_address)
-
-
-def create_resource_group(resource_client, group_name, location):
+def create_resource_group(resource_client: str, group_name: str, location: str):
     resource_client.resource_groups.create_or_update(group_name, {"location": location})
 
 
-def create_virtual_network(network_client, group_name, network_name, location):
+def create_virtual_network(network_client: str, group_name: str, network_name: str, location: str):
     network_client.virtual_networks.begin_create_or_update(
         group_name,
         network_name,
@@ -121,13 +34,13 @@ def create_virtual_network(network_client, group_name, network_name, location):
     ).result()
 
 
-def create_subnet(network_client, group_name, network_name, subnet_name):
+def create_subnet(network_client: str, group_name: str, network_name: str, subnet_name: str):
     return network_client.subnets.begin_create_or_update(
         group_name, network_name, subnet_name, {"address_prefix": "10.0.0.0/24"}
     ).result()
 
 
-def create_network_security_group(network_client, group_name, nsg_name, location):
+def create_network_security_group(network_client: str, group_name: str, nsg_name: str, location: str):
     nsg_params = {
         "location": location,
         "security_rules": [
@@ -149,7 +62,7 @@ def create_network_security_group(network_client, group_name, nsg_name, location
     ).result()
 
 
-def create_public_ip_address(network_client, group_name, ip_address_name, location):
+def create_public_ip_address(network_client: str, group_name: str, ip_address_name: str, location: str):
     public_ip_address_params = {
         "location": location,
         "public_ip_allocation_method": "static",
@@ -161,7 +74,7 @@ def create_public_ip_address(network_client, group_name, ip_address_name, locati
 
 
 def create_network_interface(
-    network_client, group_name, interface_name, location, subnet, public_ip_address, nsg
+    network_client: str, group_name: str, interface_name: str, location: str, subnet: str, public_ip_address: str, nsg: str
 ):
     network_interface_params = {
         "location": location,
@@ -180,17 +93,15 @@ def create_network_interface(
 
 
 def create_virtual_machine(
-    compute_client,
-    group_name,
-    vm_name,
-    location,
-    vm_type,
-    subnet,
-    interface_name,
-    subscription_id,
-    custom_data,
-    PASSWORD,
-    encoded_custom_data,
+    compute_client: str,
+    group_name: str,
+    vm_name: str,
+    location: str,
+    vm_type: str,
+    interface_name: str,
+    subscription_id: str,
+    PASSWORD: str,
+    encoded_custom_data: str,
 ):
     return compute_client.virtual_machines.begin_create_or_update(
         group_name,
@@ -239,12 +150,105 @@ def create_virtual_machine(
         },
     ).result()
 
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.option("--subscription-id", required=True, help="Azure subscription ID")
+@click.option("--location", required=True, help="Location")
+@click.option("--vm-type", required=True, help="Virtual machine type")
+@click.option("--group-name", required=True, help="Resource group name")
+@click.option("--vm-name", required=True, help="Virtual machine name")
+@click.option("--pw", required=True, help="Virtual machine password")
+def create_vm(subscription_id: str, location: str, vm_type: str, group_name: str, vm_name: str, pw: str):
+    """
+    Create a new virtual machine in Azure.
+
+    Args:
+        subscription_id (str): Azure subscription ID.
+        location (str): Location where the VM will be created.
+        vm_type (str): Type of virtual machine (size).
+        group_name (str): Name of the resource group to create.
+        vm_name (str): Name of the virtual machine to create.
+        pw (str): Password for the virtual machine.
+    """
+    SUBSCRIPTION_ID = subscription_id
+    LOCATION = location
+    VM_TYPE = vm_type
+    GROUP_NAME = group_name
+    VIRTUAL_MACHINE_NAME = vm_name
+    PASSWORD = pw
+    SUBNET_NAME = "subnetx"
+    INTERFACE_NAME = "interfacex"
+    NETWORK_NAME = "networknamex"
+    IP_ADDRESS_NAME = "ipaddressx"
+    NSG_NAME = "nsgx"
+
+    startup_script = """#!/bin/bash
+    apt-get update
+    apt-get install -y apt-transport-https ca-certificates curl \\
+        software-properties-common
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \\
+        sudo apt-key add -
+    add-apt-repository "deb [arch=amd64] \\
+        https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+    apt-get update
+    apt-get install -y docker-ce
+    docker pull ghcr.io/neuralmagic/deepsparse:1.4.2
+    docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse_docker
+    """
+
+    # Encode startup_script as Base64
+    encoded_custom_data = base64.b64encode(startup_script.encode()).decode()
+
+    # Create client
+    resource_client = ResourceManagementClient(
+        credential=DefaultAzureCredential(), subscription_id=SUBSCRIPTION_ID
+    )
+    network_client = NetworkManagementClient(
+        credential=DefaultAzureCredential(), subscription_id=SUBSCRIPTION_ID
+    )
+    compute_client = ComputeManagementClient(
+        credential=DefaultAzureCredential(), subscription_id=SUBSCRIPTION_ID
+    )
+
+    create_resource_group(resource_client, GROUP_NAME, LOCATION)
+    create_virtual_network(network_client, GROUP_NAME, NETWORK_NAME, LOCATION)
+    subnet = create_subnet(network_client, GROUP_NAME, NETWORK_NAME, SUBNET_NAME)
+    nsg = create_network_security_group(network_client, GROUP_NAME, NSG_NAME, LOCATION)
+    public_ip_address = create_public_ip_address(
+        network_client, GROUP_NAME, IP_ADDRESS_NAME, LOCATION
+    )
+    create_network_interface(
+        network_client,
+        GROUP_NAME,
+        INTERFACE_NAME,
+        LOCATION,
+        subnet,
+        public_ip_address,
+        nsg,
+    )
+    create_virtual_machine(
+        compute_client,
+        GROUP_NAME,
+        VIRTUAL_MACHINE_NAME,
+        LOCATION,
+        VM_TYPE,
+        INTERFACE_NAME,
+        SUBSCRIPTION_ID,
+        PASSWORD,
+        encoded_custom_data,
+    )
+
+    print("Your external public IP address:", public_ip_address.ip_address)
 
 @cli.command()
 @click.option("--subscription-id", required=True, help="Azure subscription ID")
 @click.option("--group-name", required=True, help="Resource group name")
 @click.option("--vm-name", required=True, help="Virtual machine name")
-def delete_vm_rg(subscription_id, group_name, vm_name):
+def delete_vm_rg(subscription_id: str, group_name: str, vm_name: str):
     compute_client = ComputeManagementClient(
         credential=DefaultAzureCredential(), subscription_id=subscription_id
     )
@@ -252,19 +256,12 @@ def delete_vm_rg(subscription_id, group_name, vm_name):
         credential=DefaultAzureCredential(), subscription_id=subscription_id
     )
 
-    delete_virtual_machine(compute_client, group_name, vm_name)
-    delete_resource_group(resource_client, group_name)
-
-
-def delete_virtual_machine(compute_client, group_name, vm_name):
     compute_client.virtual_machines.begin_power_off(group_name, vm_name).result()
-
     compute_client.virtual_machines.begin_delete(group_name, vm_name).result()
-    print("Delete virtual machine.\n")
+    print("Deleted virtual machine.")
 
-
-def delete_resource_group(resource_client, group_name):
     resource_client.resource_groups.begin_delete(group_name).result()
+    print("Deleted resource group.")
 
 
 if __name__ == "__main__":
