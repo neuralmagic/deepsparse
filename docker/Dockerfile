@@ -94,7 +94,7 @@ RUN \
       $VENV/bin/pip install -e  "./deepsparse[dev]"; \
     else \
       echo Installing from main  with editable mode && \
-      git clone https://github.com/neuralmagic/sparseml.git --depth 1 -b main && \
+      git clone https://github.com/neuralmagic/deepsparse.git --depth 1 -b main && \
       $VENV/bin/pip install -e "./deepsparse[dev]"; \
     fi;
 
