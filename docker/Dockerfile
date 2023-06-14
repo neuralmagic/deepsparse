@@ -1,6 +1,5 @@
-# Can be have the following values: all, server, transformers,
-#  ultralytics, base
 ARG VERSION
+# Can have the following values: all, base, dev
 ARG DEPS="all"
 ARG VENV="/venv"
 ARG BRANCH
