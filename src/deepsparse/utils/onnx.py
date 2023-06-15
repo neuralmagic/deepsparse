@@ -21,6 +21,7 @@ from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
+from onnx import ModelProto
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
 from deepsparse.utils.extractor import Extractor
@@ -127,13 +128,13 @@ def model_to_path(model: Union[str, Model, File]) -> str:
     return model
 
 
-def get_external_inputs(onnx_filepath: str) -> List:
+def get_external_inputs(onnx_model: Union[str, ModelProto]) -> List:
     """
     Gather external inputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :return: List of input objects
     """
-    model = onnx.load(onnx_filepath)
+    model = onnx_model if isinstance(onnx_model, ModelProto) else onnx.load(onnx_model)
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
     external_inputs = [
@@ -171,7 +172,7 @@ def get_output_names(onnx_filepath: str) -> List[str]:
 
 
 def generate_random_inputs(
-    onnx_filepath: str, batch_size: int = None
+    onnx_filepath: Union[str, ModelProto], batch_size: int = None
 ) -> List[numpy.array]:
     """
     Generate random data that matches the type and shape of ONNX model,
