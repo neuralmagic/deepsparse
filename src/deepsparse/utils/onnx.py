@@ -131,7 +131,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 def get_external_inputs(onnx_model: Union[str, ModelProto]) -> List:
     """
     Gather external inputs of ONNX model
-    :param onnx_filepath: File path to ONNX model or ONNX model object
+    :param onnx_model: File path to ONNX model or ONNX model object
     :return: List of input objects
     """
     model = onnx_model if isinstance(onnx_model, ModelProto) else onnx.load(onnx_model)
@@ -143,20 +143,20 @@ def get_external_inputs(onnx_model: Union[str, ModelProto]) -> List:
     return external_inputs
 
 
-def get_external_outputs(onnx_filepath: str) -> List:
+def get_external_outputs(onnx_model: Union[str, ModelProto]) -> List:
     """
     Gather external outputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_model: File path to ONNX model or ONNX model object
     :return: List of output objects
     """
-    model = onnx.load(onnx_filepath)
+    model = onnx_model if isinstance(onnx_model, ModelProto) else onnx.load(onnx_model)
     return [output for output in model.graph.output]
 
 
-def get_input_names(onnx_filepath: str) -> List[str]:
+def get_input_names(onnx_filepath: Union[str, ModelProto]) -> List[str]:
     """
     Gather names of all external inputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :return: List of string names
     """
     return [input_.name for input_ in get_external_inputs(onnx_filepath)]
@@ -165,7 +165,7 @@ def get_input_names(onnx_filepath: str) -> List[str]:
 def get_output_names(onnx_filepath: str) -> List[str]:
     """
     Gather names of all external outputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :return: List of string names
     """
     return [output.name for output in get_external_outputs(onnx_filepath)]
@@ -177,7 +177,7 @@ def generate_random_inputs(
     """
     Generate random data that matches the type and shape of ONNX model,
     with a batch size override
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :param batch_size: If provided, override for the batch size dimension
     :return: List of random tensors
     """
