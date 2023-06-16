@@ -17,14 +17,15 @@ Utilities for evaluation metric computation
 """
 
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import numpy
-from onnxruntime import InferenceSession
 from tqdm import tqdm
-from transformers import PreTrainedTokenizer
+from transformers import AutoTokenizer
 
 import torch
+from deepsparse import Pipeline
+from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from sklearn.metrics import precision_recall_fscore_support
 
 
@@ -37,27 +38,25 @@ __all__ = [
 class Perplexity:
     def __init__(
         self,
-        session: InferenceSession,
-        tokenizer: PreTrainedTokenizer,
-        vocab_size: int,
-        static_length: Optional[int] = None,
+        pipeline: Pipeline,
     ):
         """
-        Given the onnxruntime session, compute the perplexity of the model
+        Given the pipeline, compute the perplexity of the model
         on the given text input.
-        Session will be in future swapped for the text generation pipeline.
 
-        :param session: The onnxruntime session to use for inference
-        :param tokenizer: The tokenizer to use for tokenizing the input text
-        :param vocab_size: The size of the vocabulary for the model
-        :param static_length: The static length of the input text to use
-            for computing logits
+        Code adapted from:
+        https://huggingface.co/spaces/evaluate-metric/perplexity/blob/main/perplexity.py # noqa: E501
+
+        :param pipeline: The pipeline to use for text generation
         """
-
-        self._session = session
-        self._tokenizer = tokenizer
-        self._vocab_size = vocab_size
-        self._static_length = static_length
+        if not isinstance(pipeline, TextGenerationPipeline):
+            raise ValueError(
+                "Perplexity can only be computed for text generation pipelines"
+            )
+        self._pipeline = pipeline
+        self._tokenizer = AutoTokenizer.from_pretrained(pipeline.model_path)
+        self._vocab_size = pipeline.config.vocab_size
+        self._static_length = pipeline.sequence_length
         self._loss_fct = torch.nn.CrossEntropyLoss(reduction="none")
 
         self.encoded_batches = None  # (batch_size, self._static_length)
@@ -68,9 +67,12 @@ class Perplexity:
     ):
         """
         Converts input_text into data that can be eventually used to compute perplexity.
+        Note: BOS token means "Begging of Sentence" token, which as
+              the same as SOS token "Start of Sentence" token.
 
         :param input_text: The text to convert into data for computing perplexity
-        :param batch_size: The batch size to use for tokenization
+        :param batch_size: The batch size to split the input text into
+         non-overlapping batches
         :param add_start_token: Whether to add the start token to the input text
         """
 
@@ -97,6 +99,7 @@ class Perplexity:
         encoded_texts = encodings["input_ids"]
         attention_mask = encodings["attention_mask"]
 
+        # split input_text into non-overlapping batches of `batch_size`
         for start_index in tqdm(range(0, len(encoded_texts), batch_size)):
             end_index = min(start_index + batch_size, len(encoded_texts))
             encoded_batch = encoded_texts[start_index:end_index]
@@ -111,6 +114,7 @@ class Perplexity:
                     [numpy.ones(bos_tokens.shape, dtype=numpy.int64), attention_mask],
                     axis=1,
                 )
+        # save batches in the class object's state
         self.encoded_batches = (
             encoded_batch
             if self.encoded_batches is None
@@ -122,29 +126,49 @@ class Perplexity:
             else numpy.concatenate([self.attention_masks, attention_mask], axis=0)
         )
 
-    def compute(self) -> Dict[str, float]:
+    def compute(self) -> Dict[str, Any]:
         """
         Given the data collected by add_batch() method,
         compute the perplexity of the model
         """
         perplexities = []
-        logits_batch = self._session.run(
-            ["logits"],
-            dict(input_ids=self.encoded_batches, attention_mask=self.attention_masks),
-        )[0]
 
-        for idx, (logits, labels, attention_mask) in enumerate(
-            zip(logits_batch, self.encoded_batches, self.attention_masks)
+        """
+        Because we are not able to run batched inference
+        on the pipeline, we need to run inference on each
+        sequence in the batch individually.
+        In the future, once the batch support is ready,
+        we could simply run in the pipeline
+        ```
+        out = self._pipeline(sequence=func(self.encoded_batches))
+        ```
+        """
+        for idx, (encoded_batch, attention_mask) in enumerate(
+            zip(self.encoded_batches, self.attention_masks)
         ):
-            # remove padding tokens
-            logits = logits[: attention_mask.sum(), :]
-            labels = labels[: attention_mask.sum()]
-            attn_mask = attention_mask[: attention_mask.sum()]
+            batch_logits = []
+            tokens = encoded_batch.tolist()[: attention_mask.sum()]
+            batch_sequences = [
+                self._tokenizer.decode(tokens[:i], skip_special_tokens=True)
+                for i in range(1, len(tokens) + 1)
+            ]
+            for sequence in batch_sequences:
+                # cannot do it in batch, we need to run
+                # p(x_i | x_1, ..., x_{i-1}) for each i
+                out = self._pipeline(sequence=sequence, return_logits=True)
+                batch_logits.append(out.logits)
+
+            logits = numpy.concatenate(batch_logits, axis=1)[0]
+
+            # extract only the meaningful info from the
+            # data that assumes static length
+            labels = encoded_batch[: attention_mask.sum()]
+            attention_mask = attention_mask[: attention_mask.sum()]
 
             # shift logits and labels create the input and target for the loss function
-            shift_logits = logits[:-1, :]
+            shift_logits = logits[:-1]
             shift_labels = labels[1:]
-            shift_attention_mask_batch = attn_mask[1:]
+            shift_attention_mask_batch = attention_mask[1:]
 
             # compute perplexity for this batch
             perplexity_batch = torch.exp(
