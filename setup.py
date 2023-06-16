@@ -150,6 +150,7 @@ _transformers_integration_deps = [
     "datasets<=1.18.4",
     "scikit-learn",
     "seqeval",
+    "pandas>=0.25.0,<2.0",
 ]
 
 # haystack dependencies are installed from a requirements file to avoid
