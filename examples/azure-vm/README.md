@@ -16,6 +16,8 @@ limitations under the License.
 
 # **Getting Started With DeepSparse in an Azure VM**
 
+![diagram](./azure-vm-pic.png)
+
 Neural Magic’s DeepSparse is an inference runtime that can be deployed directly from a public Docker image. DeepSparse supports various CPU instance types and sizes, allowing you to quickly deploy the infrastructure that works best for your use case, based on cost and performance.
 
 If you are interested in configuring and launching an instance with DeepSparse in Python, follow the step-by-step guide below. 

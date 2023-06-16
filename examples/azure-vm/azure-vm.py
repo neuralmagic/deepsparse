@@ -153,9 +153,9 @@ def create_network_interface(
     group_name: str,
     interface_name: str,
     location: str,
-    subnet: str,
-    public_ip_address: str,
-    nsg: str,
+    subnet: create_subnet,
+    public_ip_address: create_public_ip_address,
+    nsg: create_network_security_group,
 ):
     """
     Create a network interface in Azure.
@@ -165,7 +165,7 @@ def create_network_interface(
         group_name (str): Name of the resource group.
         interface_name (str): Name of the network interface to create.
         location (str): Location of the network interface.
-        subnet: The subnet object to associate with the network interface.
+        subnet : The subnet object to associate with the network interface.
         public_ip_address: The public IP address object to associate with the network.
         nsg: The network security group object to associate with the network interface.
 
