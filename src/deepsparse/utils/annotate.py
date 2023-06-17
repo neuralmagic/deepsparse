@@ -20,12 +20,14 @@ import logging
 import os
 import shutil
 import time
+from collections import deque
 from copy import copy
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy
 
+from deepsparse.timing import InferencePhases
 from sparsezoo.utils import create_dirs
 
 
@@ -41,6 +43,19 @@ _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["get_image_loader_and_saver", "get_annotations_save_dir", "annotate"]
 
+class AverageFPS:
+    def __init__(self, num_samples=20):
+        self.frame_times = deque(maxlen=num_samples)
+
+    def measure(self, duration):
+        self.frame_times.append(duration)
+
+    def calculate(self):
+        if len(self.frame_times) > 1:
+            return numpy.average(self.frame_times)
+        else:
+            return 0.0
+afps = AverageFPS()
 
 def get_image_loader_and_saver(
     path: str,
@@ -364,13 +379,11 @@ def annotate(
     if isinstance(original_image, str):
         original_image = cv2.imread(image)
 
-    if target_fps is None and calc_fps:
-        start = time.perf_counter()
-
     pipeline_output = pipeline(images=[image])
 
     if target_fps is None and calc_fps:
-        target_fps = 1 / (time.perf_counter() - start)
+        afps.measure(1 / pipeline._timer.time_delta(InferencePhases.ENGINE_FORWARD))
+        target_fps = afps.calculate()
 
     result = annotation_func(
         image=original_image,

@@ -205,6 +205,7 @@ class Pipeline(ABC):
             self.engine = self._initialize_engine()
 
         self._batch_size = self._batch_size or 1
+        self._timer = Timer()
 
         self.log(
             identifier=f"{SystemGroups.INFERENCE_DETAILS}/num_cores_total",
@@ -218,12 +219,12 @@ class Pipeline(ABC):
                 "invalid kwarg engine_inputs. engine inputs determined "
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
-        timer = Timer()
+        self._timer = Timer()
 
-        timer.start(InferencePhases.TOTAL_INFERENCE)
+        self._timer.start(InferencePhases.TOTAL_INFERENCE)
 
         # ------ PREPROCESSING ------
-        timer.start(InferencePhases.PRE_PROCESS)
+        self._timer.start(InferencePhases.PRE_PROCESS)
         # parse inputs into input_schema
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
 
@@ -244,7 +245,7 @@ class Pipeline(ABC):
             engine_inputs, postprocess_kwargs = engine_inputs
         else:
             postprocess_kwargs = {}
-        timer.stop(InferencePhases.PRE_PROCESS)
+        self._timer.stop(InferencePhases.PRE_PROCESS)
 
         self.log(
             identifier="engine_inputs",
@@ -253,13 +254,13 @@ class Pipeline(ABC):
         )
         self.log(
             identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.PRE_PROCESS}_seconds",  # noqa E501
-            value=timer.time_delta(InferencePhases.PRE_PROCESS),
+            value=self._timer.time_delta(InferencePhases.PRE_PROCESS),
             category=MetricCategories.SYSTEM,
         )
 
         # ------ INFERENCE ------
         # split inputs into batches of size `self._batch_size`
-        timer.start(InferencePhases.ENGINE_FORWARD)
+        self._timer.start(InferencePhases.ENGINE_FORWARD)
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit split batches to engine threadpool
@@ -267,7 +268,7 @@ class Pipeline(ABC):
 
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
-        timer.stop(InferencePhases.ENGINE_FORWARD)
+        self._timer.stop(InferencePhases.ENGINE_FORWARD)
 
         self.log(
             identifier=f"{SystemGroups.INFERENCE_DETAILS}/input_batch_size_total",
@@ -286,12 +287,12 @@ class Pipeline(ABC):
         )
         self.log(
             identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.ENGINE_FORWARD}_seconds",  # noqa E501
-            value=timer.time_delta(InferencePhases.ENGINE_FORWARD),
+            value=self._timer.time_delta(InferencePhases.ENGINE_FORWARD),
             category=MetricCategories.SYSTEM,
         )
 
         # ------ POSTPROCESSING ------
-        timer.start(InferencePhases.POST_PROCESS)
+        self._timer.start(InferencePhases.POST_PROCESS)
         pipeline_outputs = self.process_engine_outputs(
             engine_outputs, **postprocess_kwargs
         )
@@ -300,8 +301,8 @@ class Pipeline(ABC):
                 f"Outputs of {self.__class__} must be instances of "
                 f"{self.output_schema} found output of type {type(pipeline_outputs)}"
             )
-        timer.stop(InferencePhases.POST_PROCESS)
-        timer.stop(InferencePhases.TOTAL_INFERENCE)
+        self._timer.stop(InferencePhases.POST_PROCESS)
+        self._timer.stop(InferencePhases.TOTAL_INFERENCE)
 
         self.log(
             identifier="pipeline_outputs",
@@ -310,12 +311,12 @@ class Pipeline(ABC):
         )
         self.log(
             identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.POST_PROCESS}_seconds",  # noqa E501
-            value=timer.time_delta(InferencePhases.POST_PROCESS),
+            value=self._timer.time_delta(InferencePhases.POST_PROCESS),
             category=MetricCategories.SYSTEM,
         )
         self.log(
             identifier=f"{SystemGroups.PREDICTION_LATENCY}/{InferencePhases.TOTAL_INFERENCE}_seconds",  # noqa E501
-            value=timer.time_delta(InferencePhases.TOTAL_INFERENCE),
+            value=self._timer.time_delta(InferencePhases.TOTAL_INFERENCE),
             category=MetricCategories.SYSTEM,
         )
 
