@@ -76,6 +76,19 @@ def get_image_loader_and_saver(
         image_batch, video, or web-cam based on path given, and a boolean value
         that is True is the returned objects load videos
     """
+    # webcam
+    if path.isnumeric():
+        loader = WebcamLoader(int(path), image_shape)
+        saver = (
+            VideoSaver(save_dir, 30, loader.original_frame_size, None)
+            if not no_save
+            else None
+        )
+        return loader, saver, True
+
+    if no_save:
+        print("no_save ignored since not using webcam")
+
     # video
     if path.endswith(".mp4"):
         loader = VideoLoader(path, image_shape)
@@ -86,15 +99,7 @@ def get_image_loader_and_saver(
             target_fps,
         )
         return loader, saver, True
-    # webcam
-    if path.isnumeric():
-        loader = WebcamLoader(int(path), image_shape)
-        saver = (
-            VideoSaver(save_dir, 30, loader.original_frame_size, None)
-            if not no_save
-            else None
-        )
-        return loader, saver, True
+
     # image file(s)
     return ImageLoader(path, image_shape), ImageSaver(save_dir), False
 
