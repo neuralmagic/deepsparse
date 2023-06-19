@@ -45,6 +45,7 @@ __all__ = [
     "ORT_ENGINE",
     "TORCHSCRIPT_ENGINE",
     "SUPPORTED_PIPELINE_ENGINES",
+    "BasePipeline",
     "Pipeline",
     "BasePipeline",
     "SupportedTasks",
