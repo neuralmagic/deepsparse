@@ -43,6 +43,7 @@ _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["get_image_loader_and_saver", "get_annotations_save_dir", "annotate"]
 
+
 class AverageFPS:
     def __init__(self, num_samples=20):
         self.frame_times = deque(maxlen=num_samples)
@@ -55,7 +56,10 @@ class AverageFPS:
             return numpy.average(self.frame_times)
         else:
             return 0.0
+
+
 afps = AverageFPS()
+
 
 def get_image_loader_and_saver(
     path: str,
