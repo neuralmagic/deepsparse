@@ -133,6 +133,13 @@ class TextGenerationPipeline(TransformersPipeline):
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
+        # read from the tokenizer whether is
+        # uses a prefix to determine the sos token
+        self.sos_token_offset = 0
+        if hasattr(self.tokenizer, "prefix"):
+            self.sos_token_offset = len(self.tokenizer.prefix)
+            if len(self.tokenizer.prefix) > 1:
+                raise NotImplementedError("Prefix length > 1 not supported yet")
 
     @staticmethod
     def route_input_to_bucket(
@@ -416,7 +423,6 @@ class TextGenerationPipeline(TransformersPipeline):
         self,
         cache_values: List[numpy.ndarray],
         tokens: List[int],
-        consider_sos_token: bool = False,
     ) -> Dict[str, numpy.ndarray]:
         """
         Restructure the kv cache values from the engine output, so
@@ -427,7 +433,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         There are two modes:
         1. Some values in the cache represent dummy (pad) tokens, padding is
-            to the left, so the left-most cache value is deleted
+           to the left, so the left-most cache value is deleted
         2. The cache is saturated with non-dummy (meaningful) tokens:
             -   if there is a mandatory start-of-sequence (SOS) token,
                 we delete the left-most cache value that is not a cache
@@ -436,12 +442,12 @@ class TextGenerationPipeline(TransformersPipeline):
 
         :param cache_values: the cache values from the engine output
         :param tokens: the tokens from the previous inference run
-        :param consider_sos_token: whether to consider the SOS token in the cache
+
         :return kv_cache: the restructured cache values
         """
         for idx, cache_value in enumerate(cache_values):
             if len(tokens) > self.sequence_length - 1:
-                idx_to_remove = int(not consider_sos_token)
+                idx_to_remove = int(self.sos_token_offset)
             else:
                 idx_to_remove = 0
 
