@@ -102,11 +102,15 @@ class BasePipeline(ABC):
             )
         )
 
+    @abstractmethod
+    def __call__(self, *args, **kwargs) -> BaseModel:
+        raise NotImplementedError()
+
     @staticmethod
     def _get_task_constructor(task: str) -> Type["BasePipeline"]:
         """
-        This function retrieves the class previously registered via `Pipeline.register`
-        for `task`.
+        This function retrieves the class previously registered via
+        `BasePipeline.register` for `task`.
 
         If `task` starts with "import:", it is treated as a module to be imported,
         and retrieves the task via the `TASK` attribute of the imported module.
@@ -150,24 +154,6 @@ class BasePipeline(ABC):
         """
         :param task: name of task to create a pipeline for. Use "custom" for
             custom tasks (see `CustomTaskPipeline`).
-        :param model_path: path on local system or SparseZoo stub to load the model
-            from. Some tasks may have a default model path
-        :param engine_type: inference engine to use. Currently supported values
-            include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-        :param batch_size: static batch size to use for inference. Default is 1
-        :param num_cores: number of CPU cores to allocate for inference engine. None
-            specifies all available cores. Default is None
-        :param scheduler: (deepsparse only) kind of scheduler to execute with.
-            Pass None for the default
-        :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-            to use model as-is. Default is None
-        :param alias: optional name to give this pipeline instance, useful when
-            inferencing with multiple models. Default is None
-        :param context: Optional Context object to use for creating instances of
-            MultiModelEngine. The Context contains a shared scheduler along with
-            other runtime information that will be used across instances of the
-            MultiModelEngine to provide optimal performance when running
-            multiple models concurrently
         :param kwargs: extra task specific kwargs to be passed to task Pipeline
             implementation
         :return: pipeline object initialized for the given task
@@ -269,6 +255,35 @@ class BasePipeline(ABC):
 
         return _register_pipeline_tasks_decorator
 
+    @classmethod
+    def from_config(
+        cls,
+        config: Union["PipelineConfig", str, Path],
+        logger: Optional[BaseLogger] = None,
+    ) -> "Pipeline":
+        """
+        :param config: PipelineConfig object, filepath to a json serialized
+            PipelineConfig, or raw string of a json serialized PipelineConfig
+        :param logger: An optional DeepSparse Logger object for inference
+            logging. Default is None
+        :return: loaded Pipeline object from the config
+        """
+        if isinstance(config, Path) or (
+            isinstance(config, str) and os.path.exists(config)
+        ):
+            if isinstance(config, str):
+                config = Path(config)
+            config = PipelineConfig.parse_file(config)
+        if isinstance(config, str):
+            config = PipelineConfig.parse_raw(config)
+
+        return cls.create(
+            task=config.task,
+            alias=config.alias,
+            logger=logger,
+            **config.kwargs,
+        )
+
     @property
     @abstractmethod
     def input_schema(self) -> Type[BaseModel]:
@@ -292,6 +307,31 @@ class BasePipeline(ABC):
             inferencing with multiple models
         """
         return self._alias
+
+    def to_config(self) -> "PipelineConfig":
+        """
+        :return: PipelineConfig that can be used to reload this object
+        """
+
+        if not hasattr(self, "task"):
+            raise RuntimeError(
+                f"{self.__class__} instance has no attribute task. Pipeline objects "
+                "must have a task to be serialized to a config. Pipeline objects "
+                "must be declared with the Pipeline.register object to be assigned a "
+                "task"
+            )
+
+        # parse any additional properties as kwargs
+        kwargs = {}
+        for attr_name, attr in self.__class__.__dict__.items():
+            if isinstance(attr, property) and attr_name not in dir(PipelineConfig):
+                kwargs[attr_name] = getattr(self, attr_name)
+
+        return PipelineConfig(
+            task=self.task,
+            alias=self.alias,
+            kwargs=kwargs,
+        )
 
     def log(
         self,
