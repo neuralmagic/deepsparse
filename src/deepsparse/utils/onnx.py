@@ -134,7 +134,11 @@ def get_external_inputs(onnx_model: Union[str, ModelProto]) -> List:
     :param onnx_model: File path to ONNX model or ONNX model object
     :return: List of input objects
     """
-    model = onnx_model if isinstance(onnx_model, ModelProto) else onnx.load(onnx_model)
+    model = (
+        onnx_model
+        if isinstance(onnx_model, ModelProto)
+        else onnx.load(onnx_model, load_external_data=False)
+    )
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
     external_inputs = [
@@ -149,7 +153,11 @@ def get_external_outputs(onnx_model: Union[str, ModelProto]) -> List:
     :param onnx_model: File path to ONNX model or ONNX model object
     :return: List of output objects
     """
-    model = onnx_model if isinstance(onnx_model, ModelProto) else onnx.load(onnx_model)
+    model = (
+        onnx_model
+        if isinstance(onnx_model, ModelProto)
+        else onnx.load(onnx_model, load_external_data=False)
+    )
     return [output for output in model.graph.output]
 
 
