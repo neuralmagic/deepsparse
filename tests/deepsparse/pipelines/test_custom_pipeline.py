@@ -113,7 +113,7 @@ def test_custom_pipeline_as_image_classifier(engine, model_path):
 
     pipeline = Pipeline.create(
         "custom",
-        model_path,
+        model_path=model_path,
         input_schema=ImageClassificationInput,
         output_schema=ImageClassificationOutput,
         process_inputs_fn=preprocess,
