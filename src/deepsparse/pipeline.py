@@ -249,6 +249,8 @@ class BasePipeline(ABC):
             # leave default_model_path for now as is optional?
             pipeline_class.task = task
             pipeline_class.task_aliases = task_aliases
+            # Mandatory? Seems to be only be used in create? Won't be used at all
+            # BasePipeline
             pipeline_class.default_model_path = default_model_path
 
             return pipeline_class
