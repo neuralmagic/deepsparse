@@ -61,15 +61,16 @@ def save_onnx_to_temp_files(model: onnx.ModelProto, with_external_data=False) ->
     :param model: The onnx model to save to temporary directory
     :param with_external_data: Whether to save external data to a separate file
     """
-    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    _LOGGER.info(f"Saving model to temporary directory: {tempfile.tempdir}")
+
+    shaped_model = tempfile.NamedTemporaryFile(suffix=".onnx", delete=False, mode="w")
+    _LOGGER.info(f"Saving model to temporary file: {shaped_model.name}")
 
     if with_external_data:
-        external_data = os.path.join(
-            tempfile.tempdir, next(tempfile._get_candidate_names())
+        external_data = tempfile.NamedTemporaryFile(
+            suffix=".data", delete=False, mode="w"
         )
-        has_external_data = save_onnx(model, shaped_model.name, external_data)
-        _LOGGER.info(f"Saving external data to temporary directory: {external_data}")
+        _LOGGER.info(f"Saving external data to temporary file: {external_data.name}")
+        has_external_data = save_onnx(model, shaped_model.name, external_data.name)
     else:
         has_external_data = save_onnx(model, shaped_model.name)
     try:
@@ -245,9 +246,13 @@ def override_onnx_batch_size(
         save_onnx(model, onnx_filepath)
         yield onnx_filepath
     else:
-        return save_onnx_to_temp_files(model, with_external_data=not inplace)
+        with save_onnx_to_temp_files(
+            model, with_external_data=not inplace
+        ) as temp_file:
+            yield temp_file
 
 
+@contextlib.contextmanager
 def override_onnx_input_shapes(
     onnx_filepath: str,
     input_shapes: Union[List[int], List[List[int]]],
@@ -309,16 +314,19 @@ def override_onnx_input_shapes(
 
     if inplace:
         _LOGGER.info(
-            "Overwriting in-place the input shapes of the model " f"at {onnx_filepath}"
+            f"Overwriting in-place the input shapes of the model at {onnx_filepath}"
         )
         onnx.save(model, onnx_filepath)
-        return onnx_filepath
+        yield onnx_filepath
     else:
         _LOGGER.info(
             f"Saving the input shapes of the model at {onnx_filepath} "
             f"to a temporary file"
         )
-        return save_onnx_to_temp_files(model, with_external_data=not inplace)
+        with save_onnx_to_temp_files(
+            model, with_external_data=not inplace
+        ) as temp_file:
+            yield temp_file
 
 
 def truncate_onnx_model(
