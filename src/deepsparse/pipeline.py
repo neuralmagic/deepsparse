@@ -36,7 +36,7 @@ from deepsparse.loggers.constants import (
     validate_identifier,
 )
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
-from deepsparse.utils import InferenceStages, InferenceTimer, StagedTimer
+from deepsparse.utils import InferenceStages, InferenceTimer
 
 
 __all__ = [
