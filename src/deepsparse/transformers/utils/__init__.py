@@ -12,5 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .decoder_kv_cache import *
+
 # flake8: noqa
 from .kv_cache_ort import *
