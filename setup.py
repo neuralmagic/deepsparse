@@ -180,7 +180,7 @@ def _check_supported_system():
         )
 
     if sys.platform.startswith("darwin"):
-        if os.getenv("NM_ALLOW_DARWIN", "0"):
+        if os.getenv("NM_ALLOW_DARWIN", "0") != "0":
             # experimental support for mac, allow install to go through
             return
         else:
