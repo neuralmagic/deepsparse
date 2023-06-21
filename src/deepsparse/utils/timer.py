@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 
-__all__ = ["InferenceStages", "StagedTimer", "InferenceTimer"]
+__all__ = ["InferenceStages", "StagedTimer", "InferenceTimerManager"]
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,9 @@ class InferenceStages:
 
 
 class StagedTimer:
-    def __init__(self):
+
+    def __init__(self, enabled: bool):
+        self.enabled = enabled
         self._staged_start_times = {}
         self._staged_stop_times = {}
 
@@ -56,6 +58,8 @@ class StagedTimer:
         return stage in self.stages
 
     def start(self, stage: str):
+        if not self.enabled:
+            return
         if stage not in self._staged_start_times:
             self._staged_start_times[stage] = []
             self._staged_stop_times[stage] = []
@@ -70,6 +74,8 @@ class StagedTimer:
         self._staged_start_times[stage].append(time.perf_counter())
 
     def stop(self, stage: str):
+        if not self.enabled:
+            return
         if stage not in self._staged_start_times:
             raise ValueError(
                 "Attempting to stop a stage that has not been started: " f"{stage}"
@@ -111,7 +117,7 @@ class StagedTimer:
         return sum(times) / len(times)
 
 
-class InferenceTimer:
+class InferenceTimerManager:
     def __init__(self, enabled: bool = True, multi: bool = False):
         self._multi = multi
         self._enabled = enabled
@@ -135,10 +141,6 @@ class InferenceTimer:
     @multi.setter
     def multi(self, value):
         self._multi = value
-
-    @property
-    def current_inference(self) -> StagedTimer:
-        return self._timers[-1] if self._timers else None
 
     @property
     def inferences(self) -> List[StagedTimer]:
@@ -172,31 +174,12 @@ class InferenceTimer:
 
         return all_times
 
-    def reset(self):
-        if not self._enabled:
-            return
-
-        self._check_start_inference()
+    def new_inference_timer(self) -> StagedTimer:
+        timer = StagedTimer()
 
         if self.multi:
-            self._timers.append(InferenceTimer())
+            self._timers.append(timer)
         else:
-            self._timers[-1].clear()
+            self._timers[-1] = timer
 
-    def start_inference_stage(self, stage: str):
-        if not self._enabled:
-            return
-
-        self._check_start_inference()
-        self._timers[-1].start(stage)
-
-    def stop_inference_stage(self, stage: str):
-        if not self._enabled:
-            return
-
-        self._check_start_inference()
-        self._timers[-1].stop(stage)
-
-    def _check_start_inference(self):
-        if not self.current_inference:
-            self._timers.append(InferenceTimer())
+        return timer
