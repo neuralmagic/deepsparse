@@ -78,6 +78,13 @@ def _validate_batch_size(batch_size: int) -> int:
     return batch_size
 
 
+def _select_device(device: str):
+    device = str(device).lower()
+    if device == "cuda" and torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
+
+
 class TorchEngine(object):
     """
     # Create a new ONNXRuntime Engine that compiles the given onnx file,
@@ -98,18 +105,17 @@ class TorchEngine(object):
         self,
         model: Union[str, "Model", "File"],  # pt file or Module pytorch
         batch_size: int = 1,
+        device: str = "cpu" # or cuda
+
         # num_cores: Optional[int] = None,
         # input_shapes: Optional[List[List[int]]] = None,
         # providers: Optional[List[str]] = None,
     ):
         _validate_torch_import()
 
-        if "state_dict" in model:
-            self._model_path = None
-        else:
-            self._model_path = model_to_path(model)  # None if pass an actual Module
-
         self._batch_size = _validate_batch_size(batch_size)
+        self._device = _select_device(device)
+
         # self._num_cores = num_cores
         # self._input_shapes = input_shapes
 
@@ -118,16 +124,17 @@ class TorchEngine(object):
         # self._providers = providers
 
         # torch.jit.save()
+
         
-
-        self._model = (
-            torch.jit.load(model) if isinstance(model, torch.nn.Module) else model
-        )
-
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-            self._model.to(device)
-            # add it to the data tensors
+        # make a function for the loader
+        if isinstance(model, torch.nn.Module):
+            self._model  = torch.jit.script(model)
+        elif isinstance(model, str):
+            self._model = torch.jit.load(model)
+        else:
+            self._model = model
+        self._model.to(self.device)
+        
 
 
     def __call__(
@@ -185,7 +192,11 @@ class TorchEngine(object):
         """
         return self._batch_size
 
+
     @property
+    def device(self) -> str:
+        return self._device
+    # @property
     # def num_cores(self) -> int:
     #     """
     #     :return: The number of physical cores the current instance is running on
@@ -270,27 +281,14 @@ class TorchEngine(object):
             are setup correctly for inference.
         :return: The list of outputs from the model after executing over the inputs
         """
-        print(0)
-        torch_inputs = [torch.from_numpy(input) for input in inp]
-        print(1)
-        print()
-        print()
-        print(torch_inputs)
-        print()
-        print()
-        print(self._model)
-        print()
-        print()
-        print()
-        # outputs = self._model(*torch_inputs)
-        # self._model(tokens=inputs[0], attention_mask=inputs[1])
 
-        # if val_inp:
-        #     self._validate_inputs(inp)
-        # inputs_dict = {name: value for name, value in zip(self.input_names, inp)}
+        torch_inputs = [torch.from_numpy(input).to(self.device) for input in inp]
 
-        # return self._eng_net.run(self.output_names, inputs_dict)
-        return self._model(*torch_inputs)
+        tensors: tuple(torch.Tensor) = self._model(*torch_inputs)
+
+        if self.device == "cuda":
+            tensors =  [torch.Tensor.cpu(tensor) for tensor in tensors]
+        return [tensor.detach().numpy() for tensor in tensors]
 
     def timed_run(
         self, inp: List[numpy.ndarray], val_inp: bool = False
