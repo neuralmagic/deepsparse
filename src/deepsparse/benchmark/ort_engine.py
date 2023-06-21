@@ -120,10 +120,10 @@ class ORTEngine(object):
         # cleaned up once we pass the loaded ONNX around and not paths
         if self._input_shapes:
             with override_onnx_input_shapes(
-                self._model_path, self._input_shapes
+                self._model_path, self._input_shapes, inplace=True
             ) as input_override_model_path:
                 with override_onnx_batch_size(
-                    input_override_model_path, batch_size
+                    input_override_model_path, batch_size, inplace=True
                 ) as batch_override_model_path:
                     self._eng_net = onnxruntime.InferenceSession(
                         batch_override_model_path,
@@ -132,7 +132,7 @@ class ORTEngine(object):
                     )
         else:
             with override_onnx_batch_size(
-                self._model_path, batch_size
+                self._model_path, batch_size, inplace=True
             ) as batch_override_model_path:
                 self._eng_net = onnxruntime.InferenceSession(
                     batch_override_model_path,
