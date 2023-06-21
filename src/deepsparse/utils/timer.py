@@ -170,28 +170,12 @@ class TimerManager:
     """
 
     def __init__(self, enabled: bool = True, multi: bool = False):
-        self._multi = multi
-        self._enabled = enabled
+        self.multi = multi
+        self.enabled = enabled
         self._timers = []
 
     def __repr__(self):
-        return f"PipelineTimer({self.times})"
-
-    @property
-    def enabled(self):
-        return self._enabled
-
-    @enabled.setter
-    def enabled(self, value):
-        self._enabled = value
-
-    @property
-    def multi(self):
-        return self._multi
-
-    @multi.setter
-    def multi(self, value):
-        self._multi = value
+        return f"TimerManager({self.times})"
 
     @property
     def timers(self) -> List[StagedTimer]:
@@ -226,7 +210,7 @@ class TimerManager:
         return all_times
 
     def new_timer(self) -> StagedTimer:
-        timer = StagedTimer()
+        timer = StagedTimer(enabled=self.enabled)
 
         if self.multi:
             self._timers.append(timer)
