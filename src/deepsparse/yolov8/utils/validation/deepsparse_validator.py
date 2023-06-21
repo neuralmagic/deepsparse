@@ -2,6 +2,7 @@
 # flake8: noqa
 
 import json
+from pathlib import Path
 from typing import Dict
 
 from tqdm import tqdm
@@ -43,6 +44,9 @@ class DeepSparseValidator:
         self.device = select_device(self.args.device, self.args.batch)
         self.args.half &= self.device.type != "cpu"
         self.data = check_det_dataset(self.args.data)
+        if isinstance(self.data["path"], str):
+            self.data["path"] = Path(self.data["path"])
+
         if self.device.type == "cpu":
             self.args.workers = (
                 0  # faster CPU val as time dominated by inference, not dataloading

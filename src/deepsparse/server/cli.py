@@ -228,6 +228,7 @@ def main(
             loggers={},
         )
 
+        # saving yaml config to temporary directory
         with TemporaryDirectory() as tmp_dir:
             config_path = os.path.join(tmp_dir, "server-config.yaml")
             with open(config_path, "w") as fp:

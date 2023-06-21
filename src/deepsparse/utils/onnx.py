@@ -21,9 +21,11 @@ from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
+from onnx import ModelProto
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
 from deepsparse.utils.extractor import Extractor
+from sparsezoo.utils import save_onnx, validate_onnx
 
 
 try:
@@ -51,45 +53,33 @@ __all__ = [
 _LOGGER = logging.getLogger(__name__)
 
 
-def save_onnx(model: Model, model_path: str, external_data_file: str) -> bool:
-    """
-    Save model to the given path.  If the model has external data, store the
-    external data in 'external_data_file'.
-    Returns False if the model had no external data, True otherwise.
-    """
-    if model.ByteSize() < onnx.checker.MAXIMUM_PROTOBUF:
-        onnx.save(model, model_path)
-        return False
-    else:
-        onnx.save_model(
-            model,
-            model_path,
-            save_as_external_data=True,
-            all_tensors_to_one_file=True,
-            location=external_data_file,
-        )
-        return True
-
-
 @contextlib.contextmanager
-def save_onnx_to_temp_files(model: Model) -> str:
+def save_onnx_to_temp_files(model: onnx.ModelProto, with_external_data=False) -> str:
     """
-    Save model to a temporary file.  Works for models with external data.
-    """
-    shaped_model = tempfile.NamedTemporaryFile(mode="w", delete=False)
-    external_data = next(tempfile._get_candidate_names())
-    has_external_data = save_onnx(model, shaped_model.name, external_data)
+    Save model to a temporary file. Works for models with external data.
 
+    :param model: The onnx model to save to temporary directory
+    :param with_external_data: Whether to save external data to a separate file
+    """
+
+    shaped_model = tempfile.NamedTemporaryFile(suffix=".onnx", delete=False, mode="w")
+    _LOGGER.info(f"Saving model to temporary file: {shaped_model.name}")
+
+    if with_external_data:
+        external_data = tempfile.NamedTemporaryFile(
+            suffix=".data", delete=False, mode="w"
+        )
+        _LOGGER.info(f"Saving external data to temporary file: {external_data.name}")
+        has_external_data = save_onnx(model, shaped_model.name, external_data.name)
+    else:
+        has_external_data = save_onnx(model, shaped_model.name)
     try:
         yield shaped_model.name
     finally:
         os.unlink(shaped_model.name)
         shaped_model.close()
         if has_external_data:
-            external_data_path = os.path.join(
-                os.path.dirname(shaped_model.name), external_data
-            )
-            os.unlink(external_data_path)
+            os.unlink(external_data)
 
 
 def translate_onnx_type_to_numpy(tensor_type: int):
@@ -139,13 +129,17 @@ def model_to_path(model: Union[str, Model, File]) -> str:
     return model
 
 
-def get_external_inputs(onnx_filepath: str) -> List:
+def get_external_inputs(onnx_model: Union[str, ModelProto]) -> List:
     """
     Gather external inputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_model: File path to ONNX model or ONNX model object
     :return: List of input objects
     """
-    model = onnx.load(onnx_filepath)
+    model = (
+        onnx_model
+        if isinstance(onnx_model, ModelProto)
+        else onnx.load(onnx_model, load_external_data=False)
+    )
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
     external_inputs = [
@@ -154,20 +148,24 @@ def get_external_inputs(onnx_filepath: str) -> List:
     return external_inputs
 
 
-def get_external_outputs(onnx_filepath: str) -> List:
+def get_external_outputs(onnx_model: Union[str, ModelProto]) -> List:
     """
     Gather external outputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_model: File path to ONNX model or ONNX model object
     :return: List of output objects
     """
-    model = onnx.load(onnx_filepath)
+    model = (
+        onnx_model
+        if isinstance(onnx_model, ModelProto)
+        else onnx.load(onnx_model, load_external_data=False)
+    )
     return [output for output in model.graph.output]
 
 
-def get_input_names(onnx_filepath: str) -> List[str]:
+def get_input_names(onnx_filepath: Union[str, ModelProto]) -> List[str]:
     """
     Gather names of all external inputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :return: List of string names
     """
     return [input_.name for input_ in get_external_inputs(onnx_filepath)]
@@ -176,19 +174,19 @@ def get_input_names(onnx_filepath: str) -> List[str]:
 def get_output_names(onnx_filepath: str) -> List[str]:
     """
     Gather names of all external outputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :return: List of string names
     """
     return [output.name for output in get_external_outputs(onnx_filepath)]
 
 
 def generate_random_inputs(
-    onnx_filepath: str, batch_size: int = None
+    onnx_filepath: Union[str, ModelProto], batch_size: int = None
 ) -> List[numpy.array]:
     """
     Generate random data that matches the type and shape of ONNX model,
     with a batch size override
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :param batch_size: If provided, override for the batch size dimension
     :return: List of random tensors
     """
@@ -196,7 +194,7 @@ def generate_random_inputs(
     for i, external_input in enumerate(get_external_inputs(onnx_filepath)):
         input_tensor_type = external_input.type.tensor_type
         elem_type = translate_onnx_type_to_numpy(input_tensor_type.elem_type)
-        in_shape = [int(d.dim_value) for d in input_tensor_type.shape.dim]
+        in_shape = [max(int(d.dim_value), 1) for d in input_tensor_type.shape.dim]
 
         if batch_size is not None:
             in_shape[0] = batch_size
@@ -210,14 +208,29 @@ def generate_random_inputs(
     return input_data_list
 
 
-def override_onnx_batch_size(onnx_filepath: str, batch_size: int) -> str:
+@contextlib.contextmanager
+def override_onnx_batch_size(
+    onnx_filepath: str,
+    batch_size: int,
+    inplace: bool = True,
+) -> str:
     """
     Rewrite batch sizes of ONNX model, saving the modified model and returning its path
-    :param onnx_filepath: File path to ONNX model
+
+    :param onnx_filepath: File path to ONNX model. If the graph is to be
+        modified in-place, only the model graph will be loaded and modified.
+        Otherwise, the entire model will be loaded and modified, so that
+        external data are saved along the model graph.
     :param batch_size: Override for the batch size dimension
-    :return: File path to modified ONNX model
+    :param inplace: If True, overwrite the original model file.
+        Else, save the modified model to a temporary file.
+    :return: File path to modified ONNX model.
+        If inplace is True,
+        the modified model will be saved to the same path as the original
+        model. Else the modified model will be saved to a
+        temporary file.
     """
-    model = onnx.load(onnx_filepath)
+    model = onnx.load(onnx_filepath, load_external_data=not inplace)
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
     external_inputs = [
@@ -226,24 +239,45 @@ def override_onnx_batch_size(onnx_filepath: str, batch_size: int) -> str:
     for external_input in external_inputs:
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
-    # Save modified model, this will be cleaned up when context is exited
-    return save_onnx_to_temp_files(model)
+    if inplace:
+        _LOGGER.info(
+            f"Overwriting in-place the batch size of the model at {onnx_filepath}"
+        )
+        save_onnx(model, onnx_filepath)
+        yield onnx_filepath
+    else:
+        with save_onnx_to_temp_files(
+            model, with_external_data=not inplace
+        ) as temp_file:
+            yield temp_file
 
 
+@contextlib.contextmanager
 def override_onnx_input_shapes(
-    onnx_filepath: str, input_shapes: Union[List[int], List[List[int]]]
+    onnx_filepath: str,
+    input_shapes: Union[List[int], List[List[int]]],
+    inplace: bool = True,
 ) -> str:
     """
     Rewrite input shapes of ONNX model, saving the modified model and returning its path
-    :param onnx_filepath: File path to ONNX model
+
+    :param onnx_filepath: File path to ONNX model. If the graph is to be
+        modified in-place, only the model graph will be loaded and modified.
+        Otherwise, the entire model will be loaded and modified, so that
+        external data are saved along the model graph.
     :param input_shapes: Override for model's input shapes
-    :return: File path to modified ONNX model
+    :param inplace: If True, overwrite the original model file
+    :return: File path to modified ONNX model.
+        If inplace is True,
+        the modified model will be saved to the same path as the original
+        model. Else the modified model will be saved to a
+        temporary file.
     """
 
     if input_shapes is None:
         return onnx_filepath
 
-    model = onnx.load(onnx_filepath)
+    model = onnx.load(onnx_filepath, load_external_data=not inplace)
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
     external_inputs = [
@@ -278,8 +312,21 @@ def override_onnx_input_shapes(
         for dim_idx, dim in enumerate(external_input.type.tensor_type.shape.dim):
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
-    # Save modified model, this will be cleaned up when context is exited
-    return save_onnx_to_temp_files(model)
+    if inplace:
+        _LOGGER.info(
+            f"Overwriting in-place the input shapes of the model at {onnx_filepath}"
+        )
+        onnx.save(model, onnx_filepath)
+        yield onnx_filepath
+    else:
+        _LOGGER.info(
+            f"Saving the input shapes of the model at {onnx_filepath} "
+            f"to a temporary file"
+        )
+        with save_onnx_to_temp_files(
+            model, with_external_data=not inplace
+        ) as temp_file:
+            yield temp_file
 
 
 def truncate_onnx_model(
@@ -358,8 +405,9 @@ def truncate_onnx_model(
             output.type.tensor_type.shape.Clear()
 
     # save and check model
+    _LOGGER.debug(f"Saving truncated model to {output_filepath}")
     save_onnx(extracted_model, output_filepath, "external_data")
-    onnx.checker.check_model(output_filepath)
+    validate_onnx(output_filepath)
 
 
 def truncate_onnx_embedding_model(

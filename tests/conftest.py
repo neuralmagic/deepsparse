@@ -13,11 +13,20 @@
 # limitations under the License.
 
 import os
+import tempfile
 from subprocess import Popen
 from typing import List
 
 import pytest
 from tests.helpers import delete_file
+
+
+def _get_files(directory: str) -> List[str]:
+    list_filepaths = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            list_filepaths.append(os.path.join(os.path.abspath(root), file))
+    return list_filepaths
 
 
 @pytest.fixture
@@ -50,3 +59,34 @@ def cleanup():
         )
         for proc in processes:
             proc.terminate()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def check_for_created_files():
+    start_files_root = _get_files(directory=r".")
+    start_files_temp = _get_files(directory=tempfile.gettempdir())
+    yield
+    end_files_root = _get_files(directory=r".")
+    end_files_temp = _get_files(directory=tempfile.gettempdir())
+
+    max_allowed_number_created_files = 4
+    # GHA needs to create following files:
+    # pyproject.toml, CONTRIBUTING.md, LICENSE, setup.cfg
+    assert len(start_files_root) + max_allowed_number_created_files >= len(
+        end_files_root
+    ), (
+        f"{len(end_files_root) - len(start_files_root)} "
+        f"files created in current working "
+        f"directory during pytest run. "
+        f"Created files: {set(end_files_root) - set(start_files_root)}"
+    )
+    max_allowed_sized_temp_files_megabytes = 150
+    size_of_temp_files_bytes = sum(
+        os.path.getsize(path) for path in set(end_files_temp) - set(start_files_temp)
+    )
+    size_of_temp_files_megabytes = size_of_temp_files_bytes / 1024 / 1024
+    assert max_allowed_sized_temp_files_megabytes >= size_of_temp_files_megabytes, (
+        f"{size_of_temp_files_megabytes} "
+        f"megabytes of temp files created in temp directory during pytest run. "
+        f"Created files: {set(end_files_temp) - set(start_files_temp)}"
+    )

@@ -14,7 +14,7 @@ A clear and concise description of what you expected to happen.
 **Environment**
 Include all relevant environment information:
 1. OS [e.g. Ubuntu 18.04]:
-2. Python version [e.g. 3.7]:
+2. Python version [e.g. 3.8]:
 3. DeepSparse version or commit hash [e.g. 0.1.0, `f7245c8`]:
 4. ML framework version(s) [e.g. torch 1.7.1]:
 5. Other Python package versions [e.g. SparseML, Sparsify, numpy, ONNX]:
