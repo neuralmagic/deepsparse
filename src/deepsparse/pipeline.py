@@ -73,6 +73,31 @@ _REGISTERED_PIPELINES = {}
 
 class BasePipeline(ABC):
     """
+    Generic BasePipeline abstract class meant to wrap inference objects to include
+    model-specific Pipelines objects. Any pipeline inherited from Pipeline objects
+    should handle all model-specific input/output pre/post processing while BasePipeline
+    is meant to serve as a generic wrapper. Inputs and outputs of BasePipelines should
+    be serialized as pydantic Models.
+
+    BasePipelines should not be instantiated by their constructors, but rather the
+    `BasePipeline.create()` method. The task name given to `create` will be used to
+    load the appropriate pipeline. The pipeline should inherit from `BasePipeline` and
+    implement the `__call__`, `input_schema`, and `output_schema` abstract methods.
+
+    Finally, the class definition should be decorated by the `BasePipeline.register`
+    function. This defines the task name and task aliases for the pipeline and
+    ensures that it will be accessible by `BasePipeline.create`. The implemented
+    `BasePipeline` subclass must be imported at runtime to be accessible.
+
+    Example:
+    @BasePipeline.register(task="base_example")
+    class BasePipelineExample(BasePipeline):
+        def __init__(self, base_specific, **kwargs):
+            self._base_specific = base_specific
+            self.model_pipeline = Pipeline.create(task="..")
+            super().__init__(**kwargs)
+        # implementation of abstract methods
+
     :param alias: optional name to give this pipeline instance, useful when
     inferencing with multiple models. Default is None
     :param logger: An optional item that can be either a DeepSparse Logger object,
@@ -104,13 +129,19 @@ class BasePipeline(ABC):
 
     @abstractmethod
     def __call__(self, *args, **kwargs) -> BaseModel:
+        """
+        Runner function needed to stitch together any parsing, preprocessing, engine,
+        and post-processing steps.
+
+        :returns: pydantic model class that outputs of this pipeline must comply to
+        """
         raise NotImplementedError()
 
     @staticmethod
     def _get_task_constructor(task: str) -> Type["BasePipeline"]:
         """
         This function retrieves the class previously registered via
-        `BasePipeline.register` for `task`.
+        `BasePipeline.register` or `Pipeline.register` for `task`.
 
         If `task` starts with "import:", it is treated as a module to be imported,
         and retrieves the task via the `TASK` attribute of the imported module.
@@ -206,7 +237,7 @@ class BasePipeline(ABC):
         """
         Pipeline implementer class decorator that registers the pipeline
         task name and its aliases as valid tasks that can be used to load
-        the pipeline through `BasePipeline.create()`.
+        the pipeline through `BasePipeline.create()` or `Pipeline.create()`
 
         Multiple pipelines may not have the same task name. An error will
         be raised if two different pipelines attempt to register the same task name
@@ -394,7 +425,8 @@ class Pipeline(BasePipeline):
     """
     Generic Pipeline abstract class meant to wrap inference engine objects to include
     data pre/post-processing. Inputs and outputs of pipelines should be serialized
-    as pydantic Models.
+    as pydantic Models. See the BasePipeline above for additional parameters provided
+    during inference.
 
     Pipelines should not be instantiated by their constructors, but rather the
     `Pipeline.create()` method. The task name given to `create` will be used to
