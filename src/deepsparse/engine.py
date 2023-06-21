@@ -736,7 +736,7 @@ class DebugAnalysisEngine(Engine):
 
         if self._input_shapes:
             with override_onnx_input_shapes(
-                self._model_path, self._input_shapes
+                self._model_path, self._input_shapes, inplace=True
             ) as model_path:
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
@@ -824,7 +824,9 @@ class MultiModelEngine(Engine):
 
         if self._input_shapes:
             with override_onnx_input_shapes(
-                self._model_path, self._input_shapes
+                self._model_path,
+                self._input_shapes,
+                inplace=True,
             ) as model_path:
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
