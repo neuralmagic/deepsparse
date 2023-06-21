@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 
-__all__ = ["InferenceStages", "StagedTimer", "InferenceTimerManager"]
+__all__ = ["InferenceStages", "StagedTimer", "TimerManager"]
 
 
 @dataclass(frozen=True)
@@ -29,14 +29,37 @@ class InferenceStages:
 
 
 class StagedTimer:
+    """
+    Timer object that enables simultaneous starting and stopping of various stages.
 
-    def __init__(self, enabled: bool):
+    example usage of measuring two operation times with the overall time:
+
+    ```python
+    timer = StagedTimer()
+
+    timer.start("overall_time")
+
+    timer.start("operation_1")
+    # DO OPERATION 1
+    timer.stop("operation_1")
+
+    timer.start("operation_2")
+    # DO OPERATION 2
+    timer.stop("operation_2")
+
+    timer.stop("overall_time")
+    ```
+
+    :param enabled: if False, start/stop become no-ops. default True
+    """
+
+    def __init__(self, enabled: bool = True):
         self.enabled = enabled
         self._staged_start_times = {}
         self._staged_stop_times = {}
 
     def __repr__(self):
-        return f"InferenceTimer({self.times})"
+        return f"StagedTimer({self.times})"
 
     @property
     def stages(self) -> List[str]:
@@ -117,7 +140,35 @@ class StagedTimer:
         return sum(times) / len(times)
 
 
-class InferenceTimerManager:
+class TimerManager:
+    """
+    Object to manage creation and aggregation of StagedTimers for benchmarking
+    performance timings.
+
+    Intended workflow:
+
+    ```python
+    timer_manager = TimerManager(multi=True)
+
+    # process 1
+    timer_1 = timer_manager.new_timer()
+    timer_2.start(...)
+    ...
+
+    # process 2
+    timer_2 = timer_manager.new_timer()
+    timer_2.start(...)
+    ...
+
+    # aggregate times for benchmarking
+    do_some_postprocessing(timer_manager.all_times)
+    ```
+
+    :param enabled: if False, no timings are measured by new staged timers. Default True
+    :param multi: if True, keep track of all newly created staged timers. if False, only
+        stores the latest created staged timer. Default False
+    """
+
     def __init__(self, enabled: bool = True, multi: bool = False):
         self._multi = multi
         self._enabled = enabled
@@ -143,7 +194,7 @@ class InferenceTimerManager:
         self._multi = value
 
     @property
-    def inferences(self) -> List[StagedTimer]:
+    def timers(self) -> List[StagedTimer]:
         return self._timers
 
     @property
@@ -174,12 +225,12 @@ class InferenceTimerManager:
 
         return all_times
 
-    def new_inference_timer(self) -> StagedTimer:
+    def new_timer(self) -> StagedTimer:
         timer = StagedTimer()
 
         if self.multi:
             self._timers.append(timer)
         else:
-            self._timers[-1] = timer
+            self._timers = [timer]
 
         return timer

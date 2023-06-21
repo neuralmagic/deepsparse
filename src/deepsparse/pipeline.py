@@ -36,7 +36,7 @@ from deepsparse.loggers.constants import (
     validate_identifier,
 )
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
-from deepsparse.utils import InferenceStages, InferenceTimerManager, StagedTimer
+from deepsparse.utils import InferenceStages, StagedTimer, TimerManager
 
 
 __all__ = [
@@ -164,7 +164,7 @@ class Pipeline(ABC):
         self._engine_type = engine_type
         self._batch_size = batch_size
         self._alias = alias
-        self.timer_manager = InferenceTimerManager(enabled=True, multi=benchmark)
+        self.timer_manager = TimerManager(enabled=True, multi=benchmark)
         self.context = context
         self.logger = (
             logger
@@ -224,7 +224,7 @@ class Pipeline(ABC):
                 f"by {self.__class__.__qualname__}.parse_inputs"
             )
 
-        timer = timer or self.timer_manager.new_inference_timer()
+        timer = timer or self.timer_manager.new_timer()
         timer.start(InferenceStages.TOTAL_INFERENCE)
 
         # ------ PREPROCESSING ------
