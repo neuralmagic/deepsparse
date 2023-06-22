@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from transformers import AutoConfig, AutoTokenizer
 
 from deepsparse import Pipeline
+from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.helpers import get_onnx_path_and_configs
 from deepsparse.transformers.pipelines import TransformersPipeline
 
@@ -110,12 +111,28 @@ class TextGenerationPipeline(TransformersPipeline):
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
-
-        self.engine = None  # TODO: add engine
+        self.engine = NLDecoderEngine(
+            onnx_file_path=self.onnx_file_path,
+            multitoken=False,
+            engine_type=self.engine_type,
+            engine_args=self.engine_args,
+            engine_context=self.context,
+            sampling_temperature=self.sampling_temperature,
+            deterministic=self.deterministic,
+            sequence_length=self.sequence_length,
+        )
         self.multitoken_engine = None
-
         if prompt_batch_threshold is not None:
-            self.multitoken_engine = None  # TODO: add multitoken engine
+            self.multitoken_engine = NLDecoderEngine(
+                onnx_file_path=self.onnx_file_path,
+                multitoken=True,
+                engine_type=self.engine_type,
+                engine_args=self.engine_args,
+                context=self.context,
+                sampling_temperature=self.sampling_temperature,
+                deterministic=self.deterministic,
+                sequence_length=self.sequence_length,
+            )
 
     @staticmethod
     def route_input_to_bucket(
@@ -176,7 +193,8 @@ class TextGenerationPipeline(TransformersPipeline):
         positions_input = dict(positions=positions)
 
         input_tokens = {**input_tokens, **positions_input}
-        engine_input = self.tokens_to_engine_input(input_tokens)
+        onnx_input_names = self.engine.onnx_input_names_no_cache
+        engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
         return engine_input
 
@@ -298,17 +316,13 @@ class TextGenerationPipeline(TransformersPipeline):
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
         num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_processed:] = 1
-        # the position of the token is the number of tokens - 1 (zero indexed)
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
         if num_prompt_tokens == 0:
             # no prompt tokens, we are currently processing the prompt
             positions -= 1
 
-        engine_inputs = {
-            "input_ids": numpy.array([[new_token]]),
-            "attention_mask": attention_mask,
-            "positions": positions,
-        }
+        input_ids = numpy.array([[new_token]])
+        engine_inputs = [input_ids, attention_mask]
 
         generated_token, generated_logits = self.engine(engine_inputs)
 

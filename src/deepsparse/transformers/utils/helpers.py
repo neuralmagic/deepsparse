@@ -12,8 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .decoder_kv_cache import *
+import numpy
 
-# flake8: noqa
-from .helpers import *
-from .kv_cache_ort import *
+
+__all__ = ["softmax", "generate_session_id"]
+
+
+def softmax(x: numpy.ndarray) -> numpy.ndarray:
+    """
+    Compute softmax values for x
+    :param x: input array
+    :return: softmax values
+    """
+    return numpy.exp(x) / numpy.sum(numpy.exp(x), axis=0)
+
+
+def generate_session_id() -> str:
+    return "session_0"
