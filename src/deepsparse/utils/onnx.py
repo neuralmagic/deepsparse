@@ -21,6 +21,7 @@ from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
+from onnx import ModelProto
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
 from deepsparse.utils.extractor import Extractor
@@ -128,13 +129,17 @@ def model_to_path(model: Union[str, Model, File]) -> str:
     return model
 
 
-def get_external_inputs(onnx_filepath: str) -> List:
+def get_external_inputs(onnx_model: Union[str, ModelProto]) -> List:
     """
     Gather external inputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_model: File path to ONNX model or ONNX model object
     :return: List of input objects
     """
-    model = onnx.load(onnx_filepath)
+    model = (
+        onnx_model
+        if isinstance(onnx_model, ModelProto)
+        else onnx.load(onnx_model, load_external_data=False)
+    )
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
     external_inputs = [
@@ -143,20 +148,24 @@ def get_external_inputs(onnx_filepath: str) -> List:
     return external_inputs
 
 
-def get_external_outputs(onnx_filepath: str) -> List:
+def get_external_outputs(onnx_model: Union[str, ModelProto]) -> List:
     """
     Gather external outputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_model: File path to ONNX model or ONNX model object
     :return: List of output objects
     """
-    model = onnx.load(onnx_filepath)
+    model = (
+        onnx_model
+        if isinstance(onnx_model, ModelProto)
+        else onnx.load(onnx_model, load_external_data=False)
+    )
     return [output for output in model.graph.output]
 
 
-def get_input_names(onnx_filepath: str) -> List[str]:
+def get_input_names(onnx_filepath: Union[str, ModelProto]) -> List[str]:
     """
     Gather names of all external inputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :return: List of string names
     """
     return [input_.name for input_ in get_external_inputs(onnx_filepath)]
@@ -165,19 +174,19 @@ def get_input_names(onnx_filepath: str) -> List[str]:
 def get_output_names(onnx_filepath: str) -> List[str]:
     """
     Gather names of all external outputs of ONNX model
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :return: List of string names
     """
     return [output.name for output in get_external_outputs(onnx_filepath)]
 
 
 def generate_random_inputs(
-    onnx_filepath: str, batch_size: int = None
+    onnx_filepath: Union[str, ModelProto], batch_size: int = None
 ) -> List[numpy.array]:
     """
     Generate random data that matches the type and shape of ONNX model,
     with a batch size override
-    :param onnx_filepath: File path to ONNX model
+    :param onnx_filepath: File path to ONNX model or ONNX model object
     :param batch_size: If provided, override for the batch size dimension
     :return: List of random tensors
     """
@@ -185,7 +194,7 @@ def generate_random_inputs(
     for i, external_input in enumerate(get_external_inputs(onnx_filepath)):
         input_tensor_type = external_input.type.tensor_type
         elem_type = translate_onnx_type_to_numpy(input_tensor_type.elem_type)
-        in_shape = [int(d.dim_value) for d in input_tensor_type.shape.dim]
+        in_shape = [max(int(d.dim_value), 1) for d in input_tensor_type.shape.dim]
 
         if batch_size is not None:
             in_shape[0] = batch_size
