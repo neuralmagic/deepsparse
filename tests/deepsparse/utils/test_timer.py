@@ -15,7 +15,6 @@
 import concurrent.futures
 import time
 
-import pytest
 from deepsparse.utils import InferenceStages, StagedTimer, TimerManager
 
 

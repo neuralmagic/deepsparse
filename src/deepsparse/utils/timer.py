@@ -265,7 +265,8 @@ class TimerManager:
         """
         try:
             return timer_context.get()
-        except:
+        except LookupError:
+            # no timer in context, return None
             return None
 
     @property
@@ -310,7 +311,7 @@ class TimerManager:
         """
         Get the list of times for each stage across all StagedTimer objects.
 
-        :return: a dictionary with stage names as keys and their list of times as values.
+        :return: a dictionary with stages as keys and their list of times as values.
         """
         all_times = {stage: [] for stage in self.stages}
 

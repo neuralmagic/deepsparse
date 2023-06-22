@@ -236,7 +236,8 @@ class Pipeline(ABC):
             if not isinstance(pipeline_inputs, self.input_schema):
                 raise RuntimeError(
                     f"Unable to parse {self.__class__} inputs into a "
-                    f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
+                    f"{self.input_schema} object. "
+                    f"Inputs parsed to {type(pipeline_inputs)}"
                 )
             # batch size of the inputs may be `> self._batch_size` at this point
             engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
@@ -287,7 +288,8 @@ class Pipeline(ABC):
             if not isinstance(pipeline_outputs, self.output_schema):
                 raise ValueError(
                     f"Outputs of {self.__class__} must be instances of "
-                    f"{self.output_schema} found output of type {type(pipeline_outputs)}"
+                    f"{self.output_schema} found output of type "
+                    f"{type(pipeline_outputs)}"
                 )
             timer.stop(InferenceStages.POST_PROCESS)
             self.log(
