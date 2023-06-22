@@ -315,6 +315,11 @@ class TextGenerationPipeline(TransformersPipeline):
         # right up to the number of total tokens (prompt + generated)
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
         num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
+        attention_mask[:, -num_tokens_processed:] = 1
+        positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
+        if num_prompt_tokens == 0:
+            # no prompt tokens, we are currently processing the prompt
+            positions -= 1
 
         input_ids = numpy.array([[new_token]])
         engine_inputs = [input_ids, attention_mask]

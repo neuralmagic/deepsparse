@@ -15,7 +15,7 @@
 import numpy
 
 
-__all__ = ["softmax"]
+__all__ = ["softmax", "generate_session_id"]
 
 
 def softmax(x: numpy.ndarray) -> numpy.ndarray:
@@ -25,3 +25,7 @@ def softmax(x: numpy.ndarray) -> numpy.ndarray:
     :return: softmax values
     """
     return numpy.exp(x) / numpy.sum(numpy.exp(x), axis=0)
+
+
+def generate_session_id() -> str:
+    return "session_0"
