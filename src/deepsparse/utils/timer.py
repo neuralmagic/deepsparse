@@ -14,10 +14,15 @@
 
 import time
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
+import contextvars
+from contextlib import contextmanager
 
 
-__all__ = ["InferenceStages", "StagedTimer", "TimerManager"]
+__all__ = ["timer_context", "InferenceStages", "StagedTimer", "TimerManager"]
+
+
+timer_context = contextvars.ContextVar("timer_context")
 
 
 @dataclass(frozen=True)
@@ -178,6 +183,17 @@ class TimerManager:
         return f"TimerManager({self.times})"
 
     @property
+    def latest(self) -> Optional[StagedTimer]:
+        return self._timers[-1] if self._timers else None
+
+    @property
+    def current(self) -> Optional[StagedTimer]:
+        try:
+            return timer_context.get()
+        except:
+            return None
+
+    @property
     def timers(self) -> List[StagedTimer]:
         return self._timers
 
@@ -209,12 +225,19 @@ class TimerManager:
 
         return all_times
 
-    def new_timer(self) -> StagedTimer:
+    @contextmanager
+    def new_timer_context(self) -> StagedTimer:
         timer = StagedTimer(enabled=self.enabled)
+        timer.start(InferenceStages.TOTAL_INFERENCE)
 
         if self.multi:
             self._timers.append(timer)
         else:
             self._timers = [timer]
 
-        return timer
+        timer_context.set(timer)
+
+        try:
+            yield timer
+        finally:
+            timer.stop(InferenceStages.TOTAL_INFERENCE)
