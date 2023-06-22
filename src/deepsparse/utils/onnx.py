@@ -194,7 +194,7 @@ def generate_random_inputs(
     for i, external_input in enumerate(get_external_inputs(onnx_filepath)):
         input_tensor_type = external_input.type.tensor_type
         elem_type = translate_onnx_type_to_numpy(input_tensor_type.elem_type)
-        in_shape = [int(d.dim_value) for d in input_tensor_type.shape.dim]
+        in_shape = [max(int(d.dim_value), 1) for d in input_tensor_type.shape.dim]
 
         if batch_size is not None:
             in_shape[0] = batch_size
