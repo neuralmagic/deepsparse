@@ -13,4 +13,5 @@
 # limitations under the License.
 
 # flake8: noqa
+from .decoder_kv_cache import *
 from .kv_cache_ort import *
