@@ -1,6 +1,5 @@
-# Can be have the following values: all, server, transformers,
-#  ultralytics, base
 ARG VERSION
+# Can have the following values: all, base, dev
 ARG DEPS="all"
 ARG VENV="/venv"
 ARG BRANCH
@@ -82,9 +81,6 @@ RUN \
       $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]==$VERSION"; \
     fi;
 
-RUN deepsparse.transformers.run_inference --help \
-    && deepsparse.image_classification.annotate --help
-
 
 FROM base AS container_branch_dev
 ARG VENV
@@ -98,7 +94,7 @@ RUN \
       $VENV/bin/pip install -e  "./deepsparse[dev]"; \
     else \
       echo Installing from main  with editable mode && \
-      git clone https://github.com/neuralmagic/sparseml.git --depth 1 -b main && \
+      git clone https://github.com/neuralmagic/deepsparse.git --depth 1 -b main && \
       $VENV/bin/pip install -e "./deepsparse[dev]"; \
     fi;
 

@@ -14,6 +14,7 @@
 
 
 import os
+import shutil
 
 import yaml
 
@@ -155,6 +156,8 @@ def test_data_logging_config_from_predefined(
         with open(os.path.join(tmp_path, "data_logging_config.yaml"), "r") as stream:
             string_result_saved = yaml.safe_load(stream)
         assert string_result_saved == yaml.safe_load(expected_result)
+        return
+    shutil.rmtree(tmp_path, ignore_errors=True)
 
 
 result_1 = """loggers:
