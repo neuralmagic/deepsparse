@@ -215,9 +215,7 @@ class Pipeline(ABC):
             category=MetricCategories.SYSTEM,
         )
 
-    def __call__(
-        self, *args, **kwargs
-    ) -> BaseModel:
+    def __call__(self, *args, **kwargs) -> BaseModel:
         with self.timer_manager.new_timer_context() as timer:
             if "engine_inputs" in kwargs:
                 raise ValueError(
