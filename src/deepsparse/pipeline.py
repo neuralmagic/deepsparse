@@ -164,7 +164,7 @@ class Pipeline(ABC):
         self._engine_type = engine_type
         self._batch_size = batch_size
         self._alias = alias
-        self.timer_manager = TimerManager(enabled=True, multi=benchmark)
+        self._timer_manager = TimerManager(enabled=True, multi=benchmark)
         self.context = context
         self.logger = (
             logger
@@ -684,6 +684,10 @@ class Pipeline(ABC):
         :return: type of inference engine used for model forward pass
         """
         return self._engine_type
+
+    @property
+    def timer_manager(self) -> TimerManager:
+        return self._timer_manager
 
     @property
     def current_timer(self) -> Optional[StagedTimer]:
