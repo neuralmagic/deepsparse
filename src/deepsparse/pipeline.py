@@ -42,7 +42,7 @@ from deepsparse.timing import InferencePhases, Timer
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",
-    "TORCHSCIPT",
+    "TORCHSCRIPT",
     "SUPPORTED_PIPELINE_ENGINES",
     "Pipeline",
     "PipelineConfig",
@@ -58,7 +58,7 @@ __all__ = [
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-TORCHSCRIPT = "torchscipt"
+TORCHSCRIPT = "torchscript"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
@@ -808,7 +808,7 @@ class Pipeline(ABC):
             return Engine(self.onnx_file_path, **self._engine_args)
         elif engine_type == ORT_ENGINE:
             return ORTEngine(self.onnx_file_path, **self._engine_args)
-        elif engine_type == TORCHSCIPT:
+        elif engine_type == TORCHSCRIPT:
             return TorchScript(self.onnx_file_oath, **self._engine_args)
         else:
             raise ValueError(
