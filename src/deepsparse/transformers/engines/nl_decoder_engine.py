@@ -17,9 +17,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy
 import onnx
+from transformers import AutoTokenizer
 
 from deepsparse import Pipeline
-from deepsparse.engine import Context, Engine
+from deepsparse.engine import Context
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import generate_session_id, softmax
 from sparsezoo.utils.onnx import save_onnx
@@ -32,7 +33,10 @@ __all__ = ["NLDecoderEngine"]
 _CACHE_INPUT_NAME = "past_key_values"
 
 
-class NLDecoderEngine(Engine):
+# TODO: We may need appropriate engine properties
+# so that this `Engine` has all the attributes required
+# by the pipeline
+class NLDecoderEngine:
     """
     The NLDecoderEngine (NaturalLanguageDecoderEngine) handles the
     logic around the inference for Natural Language pipeline,
@@ -40,28 +44,31 @@ class NLDecoderEngine(Engine):
 
     :param onnx_file_path: The path to the onnx model file
     :param engine_type: The type of engine to use for the inference
-    :param multitoken: Whether to run the engine in multitoken mode
     :param engine_args: The arguments to pass to the engine
     :param sequence_length: The maximum sequence length to run the engine for
+    :param multitoken: Whether to run the engine in multitoken mode
     :param engine_context: The context to run the engine in
     :param sampling_temperature: The temperature to use for sampling
     :param deterministic: Whether to use deterministic sampling
+    :param tokenizer: The tokenizer to used for engine inputs
+    :param engine_context: The context to run the engine in
     """
 
     def __init__(
         self,
         onnx_file_path: str,
         engine_type: str,
-        multitoken: bool,
         engine_args: Dict[str, Any],
         # TODO: having a sequence_length as an argument
         # to the engine is not ideal. The engine should
         # not need to know about it, but it is required
         # for determining whether kv cache is present or not
         sequence_length: int,
-        engine_context: Optional[Context] = None,
+        multitoken: bool,
+        tokenizer: AutoTokenizer,
         sampling_temperature: float = 1.0,
         deterministic: bool = True,
+        engine_context: Optional[Context] = None,
     ):
 
         onnx_file_path, kv_cache_enabled = self.overwrite_onnx_model_inputs(
@@ -70,17 +77,23 @@ class NLDecoderEngine(Engine):
             sequence_length=sequence_length,
             multitoken=multitoken,
         )
+        # TODO: inelegant to have circular 'Pipeline'
+        # usage here. We should refactor this to that
+        # from ... import create_engine
         self.engine = Pipeline.create_engine(
             onnx_file_path=onnx_file_path,
             engine_type=engine_type,
             engine_args=engine_args,
             context=engine_context,
         )
+        self.sequence_length = sequence_length
         self.multitoken = multitoken
         self.sampling_temperature = sampling_temperature
         self.deterministic = deterministic
         self.kv_cache_enabled = kv_cache_enabled
         self.kv_cache = DecoderKVCache(engine_type) if kv_cache_enabled else None
+        self._num_tokens = 0  # the number of tokens processed so far
+        self._freeze_first_position = self._should_freeze_first_position(tokenizer)
 
     @property
     def onnx_input_names_no_cache(self) -> List[str]:
@@ -95,7 +108,10 @@ class NLDecoderEngine(Engine):
         ]
 
     def __call__(
-        self, inp: List[numpy.ndarray], val_inp: bool = True
+        self,
+        inp: List[numpy.ndarray],
+        processing_prompt: bool = False,
+        val_inp: bool = True,
     ) -> Tuple[int, numpy.ndarray]:
         """
         The main entry point for running the engine.
@@ -103,9 +119,14 @@ class NLDecoderEngine(Engine):
         :param inp: The input to run the engine with. We expect a
             list of numpy arrays that contain the input ids,
             attention mask, and position ids (optionally)
+        :param processing_prompt: Whether we are just processing
+            a prompt or actually generating tokens
         :param val_inp: Whether the input is for validation or not
         :return: The generated token and corresponding logits
         """
+        if self.multitoken:
+            processing_prompt = True
+
         if self.kv_cache:
             # if kv cache is enabled, we need to add the kv cache state
             # to the input
@@ -113,10 +134,18 @@ class NLDecoderEngine(Engine):
 
         out = self.engine.run(inp, val_inp)
 
+        # increment the number of tokens processed
+        increment = inp[1].sum(1) if self.multitoken else 1
+        self._num_tokens += increment
+
         if self.kv_cache:
-            # if kv cache is enabled, we need to extract the kv cache state
-            # from the output
-            logits = self.extract_logits_from_output(out)
+            logits, *kv_cache_state = out
+            self._update_kv_cache(
+                kv_cache_state=kv_cache_state,
+                num_tokens=self._num_tokens,
+                input_ids_len=inp[0].shape[1],
+                ignore_generated=processing_prompt,
+            )
         else:
             logits = out[0]
 
@@ -160,14 +189,18 @@ class NLDecoderEngine(Engine):
                     sequence_length if multitoken else 1
                 )
             elif external_input.name == "attention_mask":
-                # regardless of multitoken or not scenario, always provide full attention mask
+                # regardless of multitoken or not scenario,
+                # always provide full attention mask
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
 
             elif external_input.name.startswith(_CACHE_INPUT_NAME):
                 # empty cache for multi-token runs,
                 # otherwise max cache len is max len - 1
                 external_input.type.tensor_type.shape.dim[2].dim_value = (
-                    0 if multitoken else sequence_length - 1
+                    0
+                    if multitoken
+                    else sequence_length
+                    - 1  # TODO: To potentially use 64 for multitoken
                 )
             else:
                 raise ValueError(
@@ -176,7 +209,8 @@ class NLDecoderEngine(Engine):
             input_names.append(external_input.name)
 
         _LOGGER.info(
-            f"Overwriting in-place the input shapes of the transformer model at {onnx_file_path}"
+            "Overwriting in-place the input shapes "
+            f"of the transformer model at {onnx_file_path}"
         )
         save_onnx(model, onnx_file_path)
 
@@ -227,24 +261,53 @@ class NLDecoderEngine(Engine):
 
     def _add_kv_cache_to_input(self, inp: List[numpy.ndarray]) -> List[numpy.ndarray]:
         # extend the engine input with the kv cache state
+
         kv_cache_state = self.kv_cache.cached_inputs
         if kv_cache_state is None:
             # if kv cache state is None, we need to initialize the
             # kv cache state and the session
+            # TODO: Should we already use the 64 heuristic for
+            # multitoken runs?
             kv_cache_state = self._initialize_kv_cache_state(
-                length=self.sequence_length if self.multitoken else 1
+                length=0 if self.multitoken else self.sequence_length - 1
             )
             self.kv_cache.setup_session(
-                session_id=generate_session_id(), state=kv_cache_state
+                session_id=generate_session_id(),
+                state=kv_cache_state,
+                num_tokens=self._num_tokens,
+                freeze_first_position=self._freeze_first_position,
             )
-        # TODO: here we need to turn the kv cache state into a list of numpy arrays
-        return inp.extend(kv_cache_state)
+        kv_cache_list = [
+            kv_cache_state[name]
+            for name in self.engine.input_names
+            if name.startswith(_CACHE_INPUT_NAME)
+        ]
+        inp.extend(kv_cache_list)
+        return inp
 
-    def _extract_logits_from_output(self, out: List[numpy.ndarray]) -> numpy.ndarray:
-        # extract the logits from the engine output
-        # and update the kv cache state
-        logits, *kv_cache_state = out
+    def _update_kv_cache(
+        self,
+        kv_cache_state: Dict[str, Any],
+        num_tokens: int,
+        input_ids_len: int,
+        ignore_generated: bool = False,
+    ):
+
         self.kv_cache.update_session(
-            state=kv_cache_state, ignore_generated=self.multitoken
+            state=kv_cache_state,
+            num_tokens=num_tokens,
+            input_ids_len=input_ids_len,
+            ignore_generated=ignore_generated,
         )
-        return logits
+
+    @staticmethod
+    def _should_freeze_first_position(tokenizer) -> bool:
+        # use tokenizer to find out whether we should freeze the first position
+        # (True if tokenizer has a prefix for a BOS token)
+        if tokenizer is None:
+            return False
+        if hasattr(tokenizer, "prefix"):
+            prefix_len = len(tokenizer.prefix)
+            if len(prefix_len) > 1:
+                raise NotImplementedError("Prefix length > 1 not supported yet")
+            return True

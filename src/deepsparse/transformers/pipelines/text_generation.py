@@ -120,6 +120,7 @@ class TextGenerationPipeline(TransformersPipeline):
             sampling_temperature=self.sampling_temperature,
             deterministic=self.deterministic,
             sequence_length=self.sequence_length,
+            tokenizer=self.tokenizer,
         )
         self.multitoken_engine = None
         if prompt_batch_threshold is not None:
@@ -132,6 +133,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 sampling_temperature=self.sampling_temperature,
                 deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
+                tokenizer=self.tokenizer,
             )
 
     @staticmethod
@@ -310,6 +312,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
+        processing_prompt = False
         new_token = tokens[-1]
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
@@ -319,17 +322,21 @@ class TextGenerationPipeline(TransformersPipeline):
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
         if num_prompt_tokens == 0:
             # no prompt tokens, we are currently processing the prompt
+            processing_prompt = True
             positions -= 1
 
         input_ids = numpy.array([[new_token]])
-        engine_inputs = [input_ids, attention_mask]
+        engine_inputs = [input_ids, attention_mask, positions]
 
-        generated_token, generated_logits = self.engine(engine_inputs)
+        generated_token, generated_logits = self.engine(
+            engine_inputs, processing_prompt=processing_prompt
+        )
 
         return generated_token, generated_logits
 
-    # TODO: Let's discuss whether we need this, maybe we can
-    # simplify more
+    # TODO: To be removed. This is a hack due to the new structure of the
+    # tokenizer files. Will make the `get_onnx_path_and_configs` more robust,
+    # so that this method is called from the transformer pipeline level
     def setup_onnx_file_path(self) -> str:
         """
         Parses ONNX, tokenizer, and config file paths from the given `model_path`.
