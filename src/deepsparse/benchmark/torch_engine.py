@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Find out how ORTEngine is run in tests
-
-Doc string
-
-
-"""
-
 import logging
 import time
 from typing import Dict, List, Optional, Tuple, Union
@@ -52,7 +44,7 @@ except ImportError:
         "Please contact support@neuralmagic.com"
     )
 
-# __all__ = ["TorchEngine"]
+__all__ = ["TorchEngine"]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,8 +97,7 @@ class TorchEngine(object):
         self,
         model: Union[str, "Model", "File"],  # pt file or Module pytorch
         batch_size: int = 1,
-        device: str = "cpu" # or cuda
-
+        device: str = "cpu"  # or cuda
         # num_cores: Optional[int] = None,
         # input_shapes: Optional[List[List[int]]] = None,
         # providers: Optional[List[str]] = None,
@@ -116,26 +107,14 @@ class TorchEngine(object):
         self._batch_size = _validate_batch_size(batch_size)
         self._device = _select_device(device)
 
-        # self._num_cores = num_cores
-        # self._input_shapes = input_shapes
-
-        # if providers is None:
-        #     providers = onnxruntime.get_available_providers()
-        # self._providers = providers
-
-        # torch.jit.save()
-
-        
         # make a function for the loader
         if isinstance(model, torch.nn.Module):
-            self._model  = torch.jit.script(model)
+            self._model = torch.jit.script(model)
         elif isinstance(model, str):
             self._model = torch.jit.load(model)
         else:
             self._model = model
         self._model.to(self.device)
-        
-
 
     def __call__(
         self,
@@ -192,16 +171,9 @@ class TorchEngine(object):
         """
         return self._batch_size
 
-
     @property
     def device(self) -> str:
         return self._device
-    # @property
-    # def num_cores(self) -> int:
-    #     """
-    #     :return: The number of physical cores the current instance is running on
-    #     """
-    #     return self._num_cores if self._num_cores else NUM_CORES
 
     @property
     def scheduler(self) -> None:
@@ -237,13 +209,6 @@ class TorchEngine(object):
         :return: The ordered shapes of the outputs.
         """
         return [tuple(node_arg.shape) for node_arg in self._eng_net.get_outputs()]
-
-    # @property
-    # def providers(self) -> List[str]:
-    #     """
-    #     :return: The list of execution providers executing with
-    #     """
-    #     return self._providers
 
     def run(
         self,
@@ -287,7 +252,7 @@ class TorchEngine(object):
         tensors: tuple(torch.Tensor) = self._model(*torch_inputs)
 
         if self.device == "cuda":
-            tensors =  [torch.Tensor.cpu(tensor) for tensor in tensors]
+            tensors = [torch.Tensor.cpu(tensor) for tensor in tensors]
         return [tensor.detach().numpy() for tensor in tensors]
 
     def timed_run(
@@ -340,15 +305,6 @@ class TorchEngine(object):
             raise ValueError("inp must be a list, given {}".format(type(inp)))
 
         for arr in inp:
-
-            # if arr.shape[0] != self._batch_size:
-            #     raise ValueError(
-            #         (
-            #             "array batch size of {} must match the batch size "
-            #             "the model was instantiated with {}"
-            #         ).format(arr.shape[0], self._batch_size)
-            #     )
-
             if not arr.flags["C_CONTIGUOUS"]:
                 raise ValueError(
                     "array must be passed in as C contiguous, "
@@ -359,6 +315,4 @@ class TorchEngine(object):
         return {
             "onnx_file_path": self.model_path,
             "batch_size": self.batch_size,
-            # "num_cores": self.num_cores,
-            # "providers": self.providers,
         }
