@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, Union
 
-from pydantic import BaseModel
+import numpy as np
+from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
@@ -33,18 +35,28 @@ class CLIPVisualInput(ComputerVisionSchema):
     Input for CLIP Visual Branch
     """
 
+    images: Union[str, List[str]] = Field(
+        description="Single or list of image file path(s)."
+    )
+
 
 class CLIPVisualOutput(BaseModel):
     """
     Output for CLIP Visual Branch
     """
 
+    image_embeddings: Union[np.array, List[np.array]] = Field(
+        description="Image embeddings for the single image or list of embeddings for "
+        "multiple images"
+    )
+
 
 class CLIPTextInput(BaseModel):
     """
     Input for the CLIP Text Branch
-    - Should include inputs (passed through tokenizer)
     """
+
+    text: Union[str, List[str]] = Field(description="List of text to process")
 
 
 class CLIPTextOutput(BaseModel):
@@ -52,17 +64,25 @@ class CLIPTextOutput(BaseModel):
     Output for the CLIP Text Branch
     """
 
+    text_embeddings: Union[np.array, List[np.array]] = Field(
+        description="Text embeddings for the single text or list of embeddings for "
+        "multiple."
+    )
+
 
 class CLIPZeroShotInput(BaseModel):
     """
-    - images
-    - text
     Input for the CLIP Zero Shot Model
     """
+
+    image: str = Field(description="Path to image to run zero-shot prediction on.")
+    text: Union[str, List[str]] = Field(description="List of text to process")
 
 
 class CLIPZeroShotOutput(BaseModel):
     """
     Output for the CLIP Zero Shot Model
-    - text_scores
     """
+
+    # Maybe change this to a dictionary? where keys are text inputs
+    text_scores: List[float] = Field(description="Probability of each text class")
