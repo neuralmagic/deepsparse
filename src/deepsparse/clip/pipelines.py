@@ -84,7 +84,6 @@ class CLIPVisualPipeline(Pipeline):
 
         return model_to_path(self.model_path)
 
-    # Should be the same for the captioning path? confirm
     def process_inputs(self, inputs: CLIPVisualInput) -> List[np.array]:
         """
         Preprocess inputs for CLIP's Visual Branch to comply with the DeepSparse Engine
@@ -92,6 +91,10 @@ class CLIPVisualPipeline(Pipeline):
         :param inputs: CLIPVisualInput
         :return: list of preprocessed numpy arrays
         """
+        if isinstance(inputs.images, str):
+            inputs.images = [inputs.images]
+
+        processed_images = list(self.executor.map(self._process_image, inputs.images))
 
         def _process_image(image) -> np.array:
             # TODO: handle the different input cases s
@@ -111,18 +114,17 @@ class CLIPVisualPipeline(Pipeline):
 
             return image_array
 
-        # TODO: handle the different input cases (can be list, str or list of strings)
-        image_batch = list(self.executor.map(self._process_image, inputs.images))
-        return image_batch
+        return processed_images
 
     def process_engine_outputs(
         self, engine_outputs: List[np.array]
     ) -> CLIPVisualOutput:
-        # TOD0: may or may not have tokens depending on if CoCa
+        # TODO: may or may not have tokens depending on if CoCa [additional output]
         # For Visual Models (non-CoCa): output is batch * emebdding_dim
         # emgine_outputs = [batches] --> just return batch * embedding_dims? embeddings
         # if CoCa model: will have batch * dim * embedding_dim
-        return self.output_schema()
+        embeddings = list(engine_outputs)
+        return self.output_schema(image_embeddings=embeddings)
 
     def _infer_image_size(self) -> int:
         """
@@ -177,18 +179,21 @@ class CLIPTextPipeline(Pipeline):
         :param inputs: CLITextInput
         :return: list of preprocessed numpy arrays
         """
-        # TODO: Handle the different input cases (for what inputs.inputs can be)
-        # Other transformer pipelines handle an additional case: get the tokens and then
-        # tokens_to_engine_input(tokens) is the final output?
-        tokens = self.tokenizer(inputs.inputs)
-        return [tokens]
+        # TODO: Other transformer pipelines handle an additional case: get the tokens
+        # and then tokens_to_engine_input(tokens) is the final output?
+        if isinstance(inputs.text, str):  # TODO: Confirm if this is needed?
+            inputs.text = [inputs.text]
+
+        tokens = self.tokenizer(inputs.text)
+        return tokens
 
     def process_engine_outputs(self, engine_outputs: List[np.array]) -> CLIPTextOutput:
-        # TOD0: may or may not have tokens depending on if CoCa
+        # TODO: may or may not have tokens depending on if CoCa
         # For Text Models (non-CoCa): output is batch * emebdding_dim
         # emgine_outputs = [batches] --> just return batch * embedding_dims? embeddings
         # if CoCa model: will have batch * dim * embedding_dim
-        return self.output_schema()
+        embeddings = list(engine_outputs)
+        return self.output_schema(text_embeddings=embeddings)
 
 
 @BasePipeline.register(task="clip_zeroshot", default_model_path=None)
@@ -202,8 +207,6 @@ class CLIPZeroShotPipeline(BasePipeline):
     def __call__(self, *args, **kwargs):
         # May have to override if inputs are different?
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
-
-        # Output processing for batches?
 
         if not isinstance(pipeline_inputs, self.input_schema):
             raise RuntimeError(
@@ -219,7 +222,7 @@ class CLIPZeroShotPipeline(BasePipeline):
 
         output_product = 100.0 * visual_output @ text_output.T
         text_probs = softmax(output_product, axis=-1)
-        return text_probs
+        return self.output_schema(text_scores=text_probs)
 
     def input_schema(self) -> Type[CLIPZeroShotInput]:
         """
