@@ -29,6 +29,7 @@ import torchvision
 import yaml
 
 import torch
+from deepsparse.utils.onnx import save_onnx_to_temp_files
 from deepsparse.yolo.schemas import YOLOOutput
 from sparsezoo.utils import save_onnx
 
@@ -341,7 +342,7 @@ def get_onnx_expected_image_shape(onnx_model: onnx.ModelProto) -> Tuple[int, ...
 
 
 def modify_yolo_onnx_input_shape(
-    model_path: str, image_shape: Tuple[int, int]
+    model_path: str, image_shape: Tuple[int, int], inplace: bool = True
 ) -> Tuple[str, Optional[NamedTemporaryFile]]:
     """
     Creates a new YOLO ONNX model from the given path that accepts the given input
@@ -350,13 +351,17 @@ def modify_yolo_onnx_input_shape(
 
     :param model_path: file path to YOLO ONNX model
     :param image_shape: 2-tuple of the image shape to resize this yolo model to
-    :return: filepath to an onnx model reshaped to the given input shape will be the
-        original path if the shape is the same.  Additionally returns the
-        NamedTemporaryFile for managing the scope of the object for file deletion
+    :param inplace: if True, modifies the given model_path in-place, otherwise
+        saves the modified model to a temporary file
+    :return: filepath to an onnx model reshaped to the given input shape.
+        If inplace is True,
+        the modified model will be saved to the same path as the original
+        model. Else the modified model will be saved to a
+        temporary file.
     """
     has_postprocessing = yolo_onnx_has_postprocessing(model_path)
 
-    model = onnx.load(model_path)
+    model = onnx.load(model_path, load_external_data=not inplace)
     model_input = model.graph.input[0]
 
     initial_x, initial_y = get_onnx_expected_image_shape(model)
@@ -399,10 +404,18 @@ def modify_yolo_onnx_input_shape(
         )
         set_tensor_dim_shape(model.graph.output[0], 1, num_predictions)
 
-    tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
-    save_onnx(model, tmp_file.name)
-
-    return tmp_file.name, tmp_file
+    if inplace:
+        _LOGGER.info(
+            "Overwriting in-place the ONNX model "
+            f"at {model_path} with the new input shape"
+        )
+        save_onnx(model, model_path)
+        return model_path
+    else:
+        _LOGGER.info(
+            "Saving the ONNX model with the " "new input shape to a temporary file"
+        )
+        return save_onnx_to_temp_files(model, with_external_data=not inplace)
 
 
 def get_tensor_dim_shape(tensor: onnx.TensorProto, dim: int) -> int:

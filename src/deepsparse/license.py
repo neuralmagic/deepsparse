@@ -53,7 +53,7 @@ _LOGGER = logging.getLogger(__name__)
 def add_deepsparse_license(token_or_path):
     candidate_license_file_path = token_or_path
     if not os.path.exists(token_or_path):
-        # write raw token to temp file for validadation
+        # write raw token to temp file for validation
         candidate_license_tempfile = NamedTemporaryFile()
         candidate_license_file_path = candidate_license_tempfile.name
         with open(candidate_license_file_path, "w") as token_file:

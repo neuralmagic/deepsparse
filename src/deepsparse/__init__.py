@@ -32,7 +32,6 @@ from .cpu import (
 )
 from .engine import *
 from .tasks import *
-from .timing import *
 from .pipeline import *
 from .loggers import *
 from .version import __version__, is_release
