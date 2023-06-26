@@ -809,7 +809,7 @@ class Pipeline(ABC):
         elif engine_type == ORT_ENGINE:
             return ORTEngine(self.onnx_file_path, **self._engine_args)
         elif engine_type == TORCHSCRIPT:
-            return TorchScript(self.onnx_file_oath, **self._engine_args)
+            return TorchEngine(self.onnx_file_oath, **self._engine_args)
         else:
             raise ValueError(
                 f"Unknown engine_type {self.engine_type}. Supported values include: "

@@ -97,10 +97,7 @@ class TorchEngine(object):
         self,
         model: Union[str, "Model", "File"],  # pt file or Module pytorch
         batch_size: int = 1,
-        device: str = "cpu"  # or cuda
-        # num_cores: Optional[int] = None,
-        # input_shapes: Optional[List[List[int]]] = None,
-        # providers: Optional[List[str]] = None,
+        device: str = "cpu",  # or cuda
     ):
         _validate_torch_import()
 
