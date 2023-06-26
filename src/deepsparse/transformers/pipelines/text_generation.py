@@ -84,7 +84,7 @@ class TextGenerationPipeline(TransformersPipeline):
         sequence is reached.
     :param prompt_processing_sequence_length: For large prompts, the prompt is
         processed in chunks of this length. This is to maximize the inference
-        speed. By default, this is set to 64.
+        speed. By default, this is set to 128.
     :param force_max_tokens: if True, the pipeline will generate the maximum number
         of tokens supplied even if the stop token is reached.
     :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
@@ -97,7 +97,8 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 4096,
-        prompt_processing_sequence_length: int = 64,
+        # TODO: Set this to 64 once we modify the OPT injection logic
+        prompt_processing_sequence_length: int = 128,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = False,
         **kwargs,
@@ -295,18 +296,29 @@ class TextGenerationPipeline(TransformersPipeline):
         # get tokens by attention mask
         tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
         new_token = None
+        num_tokens_processed = 0
 
-        if len(tokens) < self.prompt_processing_sequence_length:
-            # prompt size is small, run autoregressive inference to populate kv cache
-            run_tokens = []
-            for i, token in enumerate(tokens):
-                run_tokens.append(token)
-                new_token, new_logits = self.autoregressive_inference(
-                    run_tokens, processing_prompt=True
-                )
-        else:
+        if len(tokens) > self.prompt_processing_sequence_length:
+            # TODO: Multiple passes through the multitoken
+            # engine once the OPT injection is fixed
+            engine_inputs = [
+                input[:, : self.prompt_processing_sequence_length]
+                for input in engine_inputs
+            ]
             # larger prompt size, run through multi-token_engine
-            new_token, new_logits = self.multitoken_engine(engine_inputs)
+            # TODO: should be setting ignore_generated here to True?
+            new_token, new_logits = self.multitoken_engine(
+                engine_inputs, ignore_generated=False
+            )
+            num_tokens_processed = self.prompt_processing_sequence_length
+
+        # prompt size is small, run autoregressive inference to populate kv cache
+        run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
+        for token in tokens[num_tokens_processed:]:
+            run_tokens.append(token)
+            new_token, new_logits = self.autoregressive_inference(
+                run_tokens, processing_prompt=True
+            )
 
         tokens.append(new_token)
 

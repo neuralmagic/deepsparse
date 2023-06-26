@@ -194,8 +194,10 @@ class NLDecoderEngine:
             elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name.startswith(_CACHE_INPUT_NAME):
+                # TODO: The calculation (sequence_length - input_ids_length)
+                #  should hold for any scenario Will be fixed after OPT injection change
                 external_input.type.tensor_type.shape.dim[2].dim_value = (
-                    sequence_length - input_ids_length
+                    (sequence_length - input_ids_length) if input_ids_length == 1 else 0
                 )
             else:
                 raise ValueError(
