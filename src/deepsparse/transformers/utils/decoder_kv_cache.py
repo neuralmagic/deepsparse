@@ -16,8 +16,6 @@ from typing import Any, Dict
 
 import numpy
 
-from deepsparse.pipeline import DEEPSPARSE_ENGINE
-
 
 __all__ = ["DecoderKVCache"]
 
@@ -29,31 +27,29 @@ class KVCache:
 
 
 class DecoderKVCache:
-    def __init__(self, engine_type: str):
+    def __init__(self, use_deepsparse_cache: bool = False):
         """
         The goal this object is to handle the manipulation
         of the key value cache.
 
-        :param engine_type: The engine type to use for the decoder.
-            If the engine type is DEEPSPARSE_ENGINE, then the
-            KVCache object from the deepsparselib will be loaded as
-            an attribute. This object is used to handle the manipulation
-            of the key value buffers on the DeepSparse engine side.
+        :param use_deepsparse_cache: If set to True, the KVCache object
+            from the deepsparselib will be loaded as an attribute.
+            This object is used to handle the manipulation of the key
+            value buffers on the DeepSparse engine side.
         """
-
         # assuming that kv cache arrays are of shape
         # [batch_size, num_heads, sequence_length, hidden_size]
         self._sequence_axis = 2
         self._session_id = None
         self._freeze_first_position = None
         self._state = None
-        self._kv_cache = KVCache() if engine_type == DEEPSPARSE_ENGINE else None
+        self._total_cache_capacity = None
+        self._kv_cache = KVCache() if use_deepsparse_cache else None
 
     def setup_session(
         self,
         session_id: str,
         state: Dict[str, Any],
-        num_tokens: int,
         freeze_first_position: bool = False,
     ):
         """
@@ -66,12 +62,6 @@ class DecoderKVCache:
             that maps the name of the cache array to the cache array.
             The cache tensor is a numpy array of shape
             [batch_size, num_heads, sequence_length, hidden_size]
-        :param num_tokens: The number of tokens processed so far,
-            corresponding to the number of "non-blank" entries in the
-            kv cache array. Even though all numpy arrays in the state
-            of the cache have constant sequence length, this length
-            corresponds to the total "capacity" of the
-            cache. A portion of this memory can be "blank".
         :param freeze_first_position: If set to True, once the kv cache
             gets filled, the position along the sequence length axis
             that corresponds to the first token will be frozen.
@@ -83,13 +73,15 @@ class DecoderKVCache:
         """
         self.session_id = session_id
         self._state = state
-        # TODO: I am aware that I am altering the specs with this
-        # variable, but it makes more sense to set this as a boolean
-        # rather than a list of integers.
         self._freeze_first_position = freeze_first_position
+        self._total_cache_capacity = state[list(state.keys())[0]].shape[
+            self._sequence_axis
+        ]
+
         if self._kv_cache is not None:
             self._kv_cache.reset(
-                num_tokens=num_tokens, freeze_first_position=self._freeze_first_position
+                num_tokens=self._total_cache_capacity,
+                freeze_first_position=[int(self._freeze_first_position)],
             )
 
     def update_session(
@@ -124,10 +116,10 @@ class DecoderKVCache:
             the kv cache - populate the kv cache, without the immediate
             goal of generating any new token.
         """
-        total_cache_capacity = state[list(state.keys())[0]].shape[self._sequence_axis]
+
         # total_capacity = num_tokens (num of non-blank tokens) +
         # + num_padded_entries (num of blank tokens)
-        num_padded_entries = max(0, total_cache_capacity - num_tokens)
+        num_padded_entries = max(0, self._total_cache_capacity - num_tokens)
         # we want to remove input_ids_len entries from the cache
         # because len_input_ids + inp_cache_len = out_cache_len
         num_entries_to_delete = input_ids_len
