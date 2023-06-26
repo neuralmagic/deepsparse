@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pathlib import Path
 from typing import Dict, List, Type
 
 import numpy as np
-import numpy.lingalg as la
 import onnx
+from numpy import linalg as la
+from PIL import Image
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
@@ -32,13 +32,14 @@ from deepsparse.clip.schemas import (
 )
 from deepsparse.pipeline import BasePipeline, Pipeline
 from deepsparse.utils import model_to_path
+from open_clip.tokenizer import tokenize
 from scipy.special import softmax
 
 
 __all__ = ["CLIPVisualPipeline", "CLIPTextPipeline", "CLIPZeroShotPipeline"]
 
 
-@Pipeline.register(task="clip_visual", default_model_path="")
+@Pipeline.register(task="clip_visual", default_model_path=None)
 class CLIPVisualPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -54,7 +55,6 @@ class CLIPVisualPipeline(Pipeline):
                 transforms.CenterCrop(size=self._image_size),
             ]
         )
-        # TODO: some argument to check if for CoCa? would have one additional output
 
     @property
     def input_schema(self) -> Type[CLIPVisualInput]:
@@ -78,10 +78,6 @@ class CLIPVisualPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-
-        if Path(self.model_path).is_dir():
-            return model_to_path(str(Path(self.model_path) / "model.onnx"))
-
         return model_to_path(self.model_path)
 
     def process_inputs(self, inputs: CLIPVisualInput) -> List[np.array]:
@@ -94,37 +90,39 @@ class CLIPVisualPipeline(Pipeline):
         if isinstance(inputs.images, str):
             inputs.images = [inputs.images]
 
-        processed_images = list(self.executor.map(self._process_image, inputs.images))
-
         def _process_image(image) -> np.array:
-            # TODO: handle the different input cases s
+            image = Image.open(image)
             image = self._preprocess_transforms(image)
+
             # convert to np.array to get channel dim (should we just use tensors?)
             # should make the image 8 bit
             image_array = np.array(image.convert("RGB"))
+
             # make channel dim the first dim
-            image_array = image_array.transpose(2, 1, 0).astype("float")
+            image_array = image_array.transpose(2, 1, 0).astype("float32")
 
             image_array /= 255.0
             image_array = (
                 image_array - np.array(CLIP_RGB_MEANS).reshape((3, 1, 1))
-            ) / np.array(CLIP_RGB_STDS.reshape((3, 1, 1)))
+            ) / np.array(CLIP_RGB_STDS).reshape((3, 1, 1))
 
             image.close()
+            return np.ascontiguousarray(image_array, dtype=np.float32)
 
-            return image_array
-
-        return processed_images
+        batch = list(self.executor.map(_process_image, inputs.images))
+        batch = np.stack(batch, axis=0)
+        return [batch]
 
     def process_engine_outputs(
         self, engine_outputs: List[np.array]
     ) -> CLIPVisualOutput:
-        # TODO: may or may not have tokens depending on if CoCa [additional output]
-        # For Visual Models (non-CoCa): output is batch * emebdding_dim
-        # emgine_outputs = [batches] --> just return batch * embedding_dims? embeddings
-        # if CoCa model: will have batch * dim * embedding_dim
-        embeddings = list(engine_outputs)
-        return self.output_schema(image_embeddings=embeddings)
+        """
+        :param engine_outputs: list of numpy arrays that are the output of the engine
+            forward pass
+        :return: outputs of engine post-processed into an object in the `output_schema`
+            format of this pipeline
+        """
+        return self.output_schema(image_embeddings=engine_outputs)
 
     def _infer_image_size(self) -> int:
         """
@@ -137,12 +135,13 @@ class CLIPVisualPipeline(Pipeline):
         return input_tensor.type.tensor_type.shape.dim[2].dim_value
 
 
-@Pipeline.register(task="clip_text", default_model_path="")
+@Pipeline.register(task="clip_text", default_model_path=None)
 class CLIPTextPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.tokenizer = None  # Everything else would be stored in onnx class?
+        # All the models seem to be using the `SimpleTokenizer` defined in open_clip?
+        self.tokenizer = tokenize
 
     @property
     def input_schema(self) -> Type[CLIPTextInput]:
@@ -166,10 +165,6 @@ class CLIPTextPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        # Can get_onnx_path_and_configs be used to fetch the tokenizer?
-        if Path(self.model_path).is_dir():
-            return model_to_path(str(Path(self.model_path) / "model.onnx"))
-
         return model_to_path(self.model_path)
 
     def process_inputs(self, inputs: CLIPTextInput) -> List[np.array]:
@@ -179,21 +174,20 @@ class CLIPTextPipeline(Pipeline):
         :param inputs: CLITextInput
         :return: list of preprocessed numpy arrays
         """
-        # TODO: Other transformer pipelines handle an additional case: get the tokens
-        # and then tokens_to_engine_input(tokens) is the final output?
-        if isinstance(inputs.text, str):  # TODO: Confirm if this is needed?
+        if isinstance(inputs.text, str):
             inputs.text = [inputs.text]
 
         tokens = self.tokenizer(inputs.text)
-        return tokens
+        return [tokens]
 
     def process_engine_outputs(self, engine_outputs: List[np.array]) -> CLIPTextOutput:
-        # TODO: may or may not have tokens depending on if CoCa
-        # For Text Models (non-CoCa): output is batch * emebdding_dim
-        # emgine_outputs = [batches] --> just return batch * embedding_dims? embeddings
-        # if CoCa model: will have batch * dim * embedding_dim
-        embeddings = list(engine_outputs)
-        return self.output_schema(text_embeddings=embeddings)
+        """
+        :param engine_outputs: list of numpy arrays that are the output of the engine
+            forward pass
+        :return: outputs of engine post-processed into an object in the `output_schema`
+            format of this pipeline
+        """
+        return self.output_schema(text_embeddings=engine_outputs)
 
 
 @BasePipeline.register(task="clip_zeroshot", default_model_path=None)
@@ -214,8 +208,8 @@ class CLIPZeroShotPipeline(BasePipeline):
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
 
-        visual_output = self.visual(pipeline_inputs.images)
-        text_output = self.text(pipeline_inputs.text)
+        visual_output = self.visual(pipeline_inputs.images)[0]
+        text_output = self.text(pipeline_inputs.text)[0]
 
         visual_output /= la.norm(visual_output, axis=-1, keepdims=True)
         text_output /= la.norm(text_output, axis=-1, keepdims=True)
