@@ -11,16 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-from typing import Dict, List, Optional, Tuple, Type
+
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
-from transformers import AutoConfig, AutoTokenizer
 
 from deepsparse import Pipeline
+from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
-from deepsparse.transformers.helpers import get_onnx_path_and_configs
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -28,25 +27,35 @@ __all__ = ["TextGenerationPipeline"]
 
 
 class TextGenerationInput(BaseModel):
-    sequence: str = Field(
-        description="The input sequence to generate the text from.",
+    sequences: Union[str, List[str]] = Field(
+        description="The input sequences to generate the text from.",
     )
     return_logits: bool = Field(
         default=False,
         description="A flag that indicates whether to return "
         "the logits for the generated text sequence. ",
     )
+    session_id: Optional[str] = Field(
+        default=None,
+        description="A user may set a string identifier "
+        "for the kv cache session. If None, "
+        "and the model is using kv cache, it "
+        "will be set to a random uuid.",
+    )
 
 
 class TextGenerationOutput(BaseModel):
-    sequence: str = Field(
-        description="The generated text sequence.",
+    sequences: Union[str, List[str]] = Field(
+        description="The generated text sequences.",
     )
     logits: Optional[numpy.ndarray] = Field(
         default=None,
         description="The logits for the generated text sequence."
         "The logits have dimensions "
         "[batch_size, sequence_length, vocab_size]",
+    )
+    session_id: Optional[str] = Field(
+        default=None, description="A string identifier for the kv cache session."
     )
 
     class Config:
@@ -73,13 +82,13 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens until the end of the sequence is reached.
         Otherwise, it will generate up to the maximum number of tokens or end of
         sequence is reached.
-    :param prompt_batch_threshold: the threshold for the ratio of running the prompt
-        as a single inference vs running the prompt auto-regressively.
-        If the number of input sequences divided by the max sequence length is
-        greater than the threshold, the prompt will be run as a single inference.
-        Default is None, which will always run auto-regressively.
+    :param prompt_processing_sequence_length: For large prompts, the prompt is
+        processed in chunks of this length. This is to maximize the inference
+        speed. By default, this is set to 64.
     :param force_max_tokens: if True, the pipeline will generate the maximum number
         of tokens supplied even if the stop token is reached.
+    :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
+        for caching the model outputs.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
@@ -88,53 +97,60 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 4096,
-        prompt_batch_threshold: Optional[float] = None,
+        prompt_processing_sequence_length: int = 64,
         force_max_tokens: bool = False,
+        use_deepsparse_cache: bool = False,
         **kwargs,
     ):
-        if kwargs["engine_type"] == "deepsparse":
+        if use_deepsparse_cache:
+            if kwargs["engine_type"] != DEEPSPARSE_ENGINE:
+                raise ValueError(
+                    "`use_deepsparse_cache` is set to True "
+                    "but the chosen `engine_type` "
+                    f"is {kwargs['engine_type']}. "
+                    f"Make sure to set `engine_type` to {DEEPSPARSE_ENGINE}"
+                )
             raise NotImplementedError(
-                "The text generation pipeline is not "
-                "supported for the deepsparse engine"
+                "The deepsparse kv cache is not yet "
+                "supported for text generation pipelines"
             )
 
         super().__init__(**kwargs, _delay_engine_initialize=True)
 
-        if self._batch_size != 1:
-            raise ValueError("Only batch size 1 is supported for generation pipelines")
-
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
         self.max_generated_tokens = max_generated_tokens
-        self.prompt_batch_threshold = prompt_batch_threshold
+        self.prompt_processing_sequence_length = prompt_processing_sequence_length
         self.force_max_tokens = force_max_tokens
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
+
         self.engine = NLDecoderEngine(
             onnx_file_path=self.onnx_file_path,
-            multitoken=False,
             engine_type=self.engine_type,
             engine_args=self.engine_args,
             engine_context=self.context,
             sampling_temperature=self.sampling_temperature,
             deterministic=self.deterministic,
             sequence_length=self.sequence_length,
+            input_ids_length=1,
             tokenizer=self.tokenizer,
+            use_deepsparse_cache=use_deepsparse_cache,
         )
-        self.multitoken_engine = None
-        if prompt_batch_threshold is not None:
-            self.multitoken_engine = NLDecoderEngine(
-                onnx_file_path=self.onnx_file_path,
-                multitoken=True,
-                engine_type=self.engine_type,
-                engine_args=self.engine_args,
-                context=self.context,
-                sampling_temperature=self.sampling_temperature,
-                deterministic=self.deterministic,
-                sequence_length=self.sequence_length,
-                tokenizer=self.tokenizer,
-            )
+
+        self.multitoken_engine = NLDecoderEngine(
+            onnx_file_path=self.onnx_file_path,
+            engine_type=self.engine_type,
+            engine_args=self.engine_args,
+            engine_context=self.context,
+            sampling_temperature=self.sampling_temperature,
+            deterministic=self.deterministic,
+            sequence_length=self.sequence_length,
+            input_ids_length=prompt_processing_sequence_length,
+            tokenizer=self.tokenizer,
+            use_deepsparse_cache=use_deepsparse_cache,
+        )
 
     @staticmethod
     def route_input_to_bucket(
@@ -180,7 +196,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
         input_tokens = self.tokenizer(
-            inputs.sequence,
+            inputs.sequences,
             return_tensors="np",
             max_length=self.sequence_length,
             padding="max_length",
@@ -198,6 +214,10 @@ class TextGenerationPipeline(TransformersPipeline):
         onnx_input_names = self.engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
+        if inputs.session_id is not None:
+            self.engine.session_id = inputs.session_id
+            self.multitoken_engine.session_id = inputs.session_id
+
         return engine_input
 
     def process_engine_outputs(
@@ -210,13 +230,12 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
         generated_tokens, generated_logits = engine_outputs
-        # TODO: Make sure it works with batch size > 1
-        sequence = self.tokenizer.decode(
-            generated_tokens[0][0], skip_special_tokens=True
+        sequences = self.tokenizer.batch_decode(
+            *generated_tokens, skip_special_tokens=True
         )
         logits = generated_logits if kwargs.get("return_logits") else None
 
-        return TextGenerationOutput(sequence=sequence, logits=logits)
+        return TextGenerationOutput(sequences=sequences, logits=logits)
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], **kwargs
@@ -232,7 +251,6 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         # run the prompt through
         tokens, logits = self.prompt_inference(engine_inputs)
-        num_prompt_tokens = len(tokens) - 1
 
         # create the generated output
         max_tokens = (
@@ -248,7 +266,7 @@ class TextGenerationPipeline(TransformersPipeline):
             (
                 token,
                 logits,
-            ) = self.autoregressive_inference(tokens, num_prompt_tokens)
+            ) = self.autoregressive_inference(tokens)
             tokens.append(token)
             generated_tokens.append(token)
             generated_logits.append(logits)
@@ -278,20 +296,16 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
         new_token = None
 
-        if (
-            self.prompt_batch_threshold is None
-            or self.prompt_batch_threshold >= 1
-            or len(tokens) / float(self.sequence_length) < self.prompt_batch_threshold
-        ):
+        if len(tokens) < self.prompt_processing_sequence_length:
             # prompt size is small, run autoregressive inference to populate kv cache
             run_tokens = []
-            for token in tokens:
+            for i, token in enumerate(tokens):
                 run_tokens.append(token)
                 new_token, new_logits = self.autoregressive_inference(
-                    run_tokens, num_prompt_tokens=0
+                    run_tokens, processing_prompt=True
                 )
         else:
-            # larger prompt size, run through multi-token engine in single pass
+            # larger prompt size, run through multi-token_engine
             new_token, new_logits = self.multitoken_engine(engine_inputs)
 
         tokens.append(new_token)
@@ -301,18 +315,18 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
-        num_prompt_tokens: int,
+        processing_prompt: bool = False,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
         a new token and new logits.
 
         :param tokens: The current context (prompt + generated tokens so far)
-        :param num_prompt_tokens: the number of tokens in the initial prompt
+        :param processing_prompt: Whether the prompt is being processed (True)
+            or the generated tokens are being processed (False)
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
-        processing_prompt = False
         new_token = tokens[-1]
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
@@ -320,40 +334,11 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_processed:] = 1
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
-        if num_prompt_tokens == 0:
-            # no prompt tokens, we are currently processing the prompt
-            processing_prompt = True
+        if processing_prompt:
             positions -= 1
-
         input_ids = numpy.array([[new_token]])
         engine_inputs = [input_ids, attention_mask, positions]
 
-        generated_token, generated_logits = self.engine(
-            engine_inputs, processing_prompt=processing_prompt
-        )
+        generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
-
-    # TODO: To be removed. This is a hack due to the new structure of the
-    # tokenizer files. Will make the `get_onnx_path_and_configs` more robust,
-    # so that this method is called from the transformer pipeline level
-    def setup_onnx_file_path(self) -> str:
-        """
-        Parses ONNX, tokenizer, and config file paths from the given `model_path`.
-        Supports sparsezoo stubs
-
-        :return: file path to the processed ONNX file for the engine to compile
-        """
-        onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
-            self.model_path, require_configs=True
-        )
-
-        self.config = AutoConfig.from_pretrained(
-            config_path, finetuning_task=self.task if hasattr(self, "task") else None
-        )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_path, model_max_length=self.sequence_length
-        )
-        self.config_path = os.path.join(config_path, "config.json")
-
-        return onnx_path

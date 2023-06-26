@@ -119,7 +119,7 @@ class DecoderKVCache:
 
         # total_capacity = num_tokens (num of non-blank tokens) +
         # + num_padded_entries (num of blank tokens)
-        num_padded_entries = max(0, self._total_cache_capacity - num_tokens)
+        num_padded_entries = max(0, self._total_cache_capacity - num_tokens + 1)
         # we want to remove input_ids_len entries from the cache
         # because len_input_ids + inp_cache_len = out_cache_len
         num_entries_to_delete = input_ids_len

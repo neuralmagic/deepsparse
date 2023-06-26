@@ -53,6 +53,7 @@ __all__ = [
     "yolo_pipeline",
     "Bucketable",
     "BucketingPipeline",
+    "create_engine",
 ]
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -263,7 +264,7 @@ class Pipeline(ABC):
         batches = self.split_engine_inputs(engine_inputs, self._batch_size)
 
         # submit split batches to engine threadpool
-        batch_outputs = [self.engine_forward(x) for x in batches]
+        batch_outputs = list(self.executor.map(self.engine_forward, batches))
 
         # join together the batches of size `self._batch_size`
         engine_outputs = self.join_engine_outputs(batch_outputs)
@@ -567,34 +568,6 @@ class Pipeline(ABC):
 
         return _register_pipeline_tasks_decorator
 
-    @staticmethod
-    def create_engine(
-        onnx_file_path: str,
-        engine_type: str,
-        engine_args: Dict,
-        context: Optional[Context] = None,
-    ) -> Union[Engine, MultiModelEngine, ORTEngine]:
-        engine_type = engine_type.lower()
-
-        if engine_type == DEEPSPARSE_ENGINE:
-            if context is not None and isinstance(context, Context):
-                engine_args.pop("num_cores", None)
-                engine_args.pop("scheduler", None)
-                engine_args["context"] = context
-                return MultiModelEngine(
-                    model=onnx_file_path,
-                    **engine_args,
-                )
-            return Engine(onnx_file_path, **engine_args)
-
-        if engine_type == ORT_ENGINE:
-            return ORTEngine(onnx_file_path, **engine_args)
-
-        raise ValueError(
-            f"Unknown engine_type {engine_type}. Supported values include: "
-            f"{SUPPORTED_PIPELINE_ENGINES}"
-        )
-
     @classmethod
     def from_config(
         cls,
@@ -820,7 +793,7 @@ class Pipeline(ABC):
         return self.engine(engine_inputs)
 
     def _initialize_engine(self) -> Union[Engine, MultiModelEngine, ORTEngine]:
-        return Pipeline.create_engine(
+        return create_engine(
             self.onnx_file_path, self.engine_type, self._engine_args, self.context
         )
 
@@ -998,6 +971,34 @@ class Bucketable(ABC):
         :return: The correct Pipeline object (or Bucket) to route input to
         """
         pass
+
+
+def create_engine(
+    onnx_file_path: str,
+    engine_type: str,
+    engine_args: Dict,
+    context: Optional[Context] = None,
+) -> Union[Engine, MultiModelEngine, ORTEngine]:
+    engine_type = engine_type.lower()
+
+    if engine_type == DEEPSPARSE_ENGINE:
+        if context is not None and isinstance(context, Context):
+            engine_args.pop("num_cores", None)
+            engine_args.pop("scheduler", None)
+            engine_args["context"] = context
+            return MultiModelEngine(
+                model=onnx_file_path,
+                **engine_args,
+            )
+        return Engine(onnx_file_path, **engine_args)
+
+    if engine_type == ORT_ENGINE:
+        return ORTEngine(onnx_file_path, **engine_args)
+
+    raise ValueError(
+        f"Unknown engine_type {engine_type}. Supported values include: "
+        f"{SUPPORTED_PIPELINE_ENGINES}"
+    )
 
 
 def _initialize_executor_and_workers(

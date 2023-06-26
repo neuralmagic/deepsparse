@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import uuid
+
 import numpy
 
 
@@ -20,12 +22,24 @@ __all__ = ["softmax", "generate_session_id"]
 
 def softmax(x: numpy.ndarray) -> numpy.ndarray:
     """
-    Compute softmax values for x
+    Compute softmax values for x. This function is
+    against overflow/underflow by using the
+    trick of shifting the input vector by subtracting
+    the maximum element in it from all elements
+
     :param x: input array
     :return: softmax values
     """
-    return numpy.exp(x) / numpy.sum(numpy.exp(x), axis=0)
+    z = x - max(x)
+    numerator = numpy.exp(z)
+    denominator = numpy.sum(numerator)
+    return numerator / denominator
 
 
 def generate_session_id() -> str:
-    return "session_0"
+    """
+    Generate uuid for session id. This is used to
+    identify the kv cache session for the user
+    """
+    session_id = str(uuid.uuid4())
+    return session_id
