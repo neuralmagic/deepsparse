@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Union
+from typing import Any, List, Union
 
-import numpy as np
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -33,19 +32,17 @@ __all__ = [
 class CLIPVisualInput(ComputerVisionSchema):
     """
     Input for CLIP Visual Branch
-    """
 
-    images: Union[str, List[str]] = Field(
-        description="Single or list of image file path(s)."
-    )
+    """
 
 
 class CLIPVisualOutput(BaseModel):
     """
     Output for CLIP Visual Branch
+
     """
 
-    image_embeddings: Union[np.array, List[np.array]] = Field(
+    image_embeddings: List[Any] = Field(
         description="Image embeddings for the single image or list of embeddings for "
         "multiple images"
     )
@@ -64,7 +61,7 @@ class CLIPTextOutput(BaseModel):
     Output for the CLIP Text Branch
     """
 
-    text_embeddings: Union[np.array, List[np.array]] = Field(
+    text_embeddings: List[Any] = Field(
         description="Text embeddings for the single text or list of embeddings for "
         "multiple."
     )
