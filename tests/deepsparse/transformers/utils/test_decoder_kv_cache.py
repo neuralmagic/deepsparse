@@ -16,7 +16,6 @@ import copy
 import numpy as np
 
 import pytest
-from deepsparse.pipeline import ORT_ENGINE
 from deepsparse.transformers.utils import DecoderKVCache
 
 
@@ -70,13 +69,12 @@ class TestDecoderKVCache:
         state_updated,
         state_updated_prefill,
     ):
-        decoder = DecoderKVCache(engine_type=ORT_ENGINE)
+        decoder = DecoderKVCache()
         state_flattened = state["dummy_cache_name"].flatten()
         num_tokens = state_flattened[state_flattened != 0].shape[0]
         decoder.setup_session(
             session_id="None",
             state=state,
-            num_tokens=num_tokens,
             freeze_first_position=freeze_first_position,
         )
         yield decoder, state, num_tokens, input_ids_len, state_updated, state_updated_prefill  # noqa: E501
