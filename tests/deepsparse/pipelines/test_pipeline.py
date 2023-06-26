@@ -78,8 +78,10 @@ def base_pipeline_example():
         def base_specific(self):
             return self._base_specific
 
-    kwargs = {"alias": "base_alias", "base_specific": "base_specific"}
-    base_pipeline = BasePipeline.create(task="base_example", **kwargs)
+    kwargs = {"base_specific": "base_specific"}
+    base_pipeline = BasePipeline.create(
+        task="base_example", alias="base_alias", **kwargs
+    )
     return base_pipeline, BasePipelineExample, kwargs
 
 
@@ -88,7 +90,6 @@ def test_base_pipeline(base_pipeline_example):
     pipeline = base_pipeline_example[1]
     kwargs = base_pipeline_example[-1]
 
-    assert base_pipeline.alias == kwargs["alias"]
     assert base_pipeline.base_specific == kwargs["base_specific"]
 
     cls = BasePipeline._get_task_constructor("base_example")
