@@ -116,7 +116,9 @@ class TextGenerationPipeline(TransformersPipeline):
                 "supported for text generation pipelines"
             )
 
-        super().__init__(**kwargs, _delay_engine_initialize=True)
+        super().__init__(
+            **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
+        )
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature

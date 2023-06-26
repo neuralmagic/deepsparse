@@ -94,10 +94,13 @@ class TransformersPipeline(Pipeline, Bucketable):
         """
         return self._sequence_length
 
-    def setup_onnx_file_path(self) -> str:
+    def setup_onnx_file_path(self, delay_overwriting_inputs: bool = False) -> str:
         """
         Parses ONNX, tokenizer, and config file paths from the given `model_path`.
         Supports sparsezoo stubs
+
+        :param delay_overwriting_inputs: if True, do not overwrite the ONNX model
+            inputs to the given sequence length. Default is False
 
         :return: file path to the processed ONNX file for the engine to compile
         """
@@ -114,14 +117,15 @@ class TransformersPipeline(Pipeline, Bucketable):
         self.config_path = os.path.join(config_path, "config.json")
         self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
 
-        # overwrite onnx graph to given required input shape
-        (
-            onnx_path,
-            self.onnx_input_names,
-            self._temp_model_directory,
-        ) = overwrite_transformer_onnx_model_inputs(
-            onnx_path, max_length=self.sequence_length
-        )
+        if not delay_overwriting_inputs:
+            # overwrite onnx graph to given required input shape
+            (
+                onnx_path,
+                self.onnx_input_names,
+                self._temp_model_directory,
+            ) = overwrite_transformer_onnx_model_inputs(
+                onnx_path, max_length=self.sequence_length
+            )
 
         return onnx_path
 

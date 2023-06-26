@@ -158,6 +158,7 @@ class Pipeline(ABC):
         logger: Optional[Union[BaseLogger, str]] = None,
         benchmark: bool = False,
         _delay_engine_initialize: bool = False,  # internal use only
+        _delay_overwriting_inputs: bool = False,  # internal use only
     ):
         self._benchmark = benchmark
         self._model_path_orig = model_path
@@ -201,7 +202,7 @@ class Pipeline(ABC):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
 
-        self.onnx_file_path = self.setup_onnx_file_path()
+        self.onnx_file_path = self.setup_onnx_file_path(_delay_overwriting_inputs)
 
         if _delay_engine_initialize:
             self.engine = None
