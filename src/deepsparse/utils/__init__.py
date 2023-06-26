@@ -17,3 +17,4 @@
 from .cli_helpers import *
 from .data import *
 from .onnx import *
+from .timer import *
