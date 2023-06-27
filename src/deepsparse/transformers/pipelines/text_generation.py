@@ -96,7 +96,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self,
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
-        max_generated_tokens: Optional[int] = 4096,
+        max_generated_tokens: Optional[int] = 1024,
         # TODO: Set this to 64 once we modify the OPT injection logic
         prompt_processing_sequence_length: int = 128,
         force_max_tokens: bool = False,
@@ -129,19 +129,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
 
-        self.engine = NLDecoderEngine(
-            onnx_file_path=self.onnx_file_path,
-            engine_type=self.engine_type,
-            engine_args=self.engine_args,
-            engine_context=self.context,
-            sampling_temperature=self.sampling_temperature,
-            deterministic=self.deterministic,
-            sequence_length=self.sequence_length,
-            input_ids_length=1,
-            tokenizer=self.tokenizer,
-            use_deepsparse_cache=use_deepsparse_cache,
-        )
-
+        self.engine = None
         self.multitoken_engine = NLDecoderEngine(
             onnx_file_path=self.onnx_file_path,
             engine_type=self.engine_type,
@@ -154,6 +142,22 @@ class TextGenerationPipeline(TransformersPipeline):
             tokenizer=self.tokenizer,
             use_deepsparse_cache=use_deepsparse_cache,
         )
+
+        if self.multitoken_engine.kv_cache_enabled:
+            # unless kv cache is enabled, we don't
+            # need to initialize the single token engine
+            self.engine = NLDecoderEngine(
+                onnx_file_path=self.onnx_file_path,
+                engine_type=self.engine_type,
+                engine_args=self.engine_args,
+                engine_context=self.context,
+                sampling_temperature=self.sampling_temperature,
+                deterministic=self.deterministic,
+                sequence_length=self.sequence_length,
+                input_ids_length=1,
+                tokenizer=self.tokenizer,
+                use_deepsparse_cache=use_deepsparse_cache,
+            )
 
     @staticmethod
     def route_input_to_bucket(
@@ -214,7 +218,7 @@ class TextGenerationPipeline(TransformersPipeline):
         positions_input = dict(positions=positions)
 
         input_tokens = {**input_tokens, **positions_input}
-        onnx_input_names = self.engine.onnx_input_names_no_cache
+        onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
         if inputs.session_id is not None:
@@ -254,7 +258,7 @@ class TextGenerationPipeline(TransformersPipeline):
             sequence of generated tokens and a sequence
             of logits for each generated token
         """
-        if not self.engine.kv_cache_enabled:
+        if not self.multitoken_engine.kv_cache_enabled:
             if self.max_generated_tokens != 1:
                 raise ValueError(
                     "The model used for inference does not support kv cache. It is "
@@ -264,7 +268,6 @@ class TextGenerationPipeline(TransformersPipeline):
             tokens, logits = self.multitoken_engine(engine_inputs)
 
             tokens = [tokens]
-            logits = logits[None, ...]
         else:
             # run the prompt through
             tokens, logits = self.prompt_inference(engine_inputs)

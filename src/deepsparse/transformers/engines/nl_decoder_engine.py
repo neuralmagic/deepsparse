@@ -152,7 +152,8 @@ class NLDecoderEngine:
             )
         else:
             logits = out[0]
-            logits = logits[:, -1, :]  # only take the last token
+            B, S, V = logits.shape  # batch, sequence, vocab
+            logits = logits[:, -1, :].reshape(B, 1, V)  # only take the last token
 
         token = self.generate_token(logits=logits)
 
@@ -228,7 +229,7 @@ class NLDecoderEngine:
         save_onnx(model, onnx_file_path)
 
         is_cache_enabled = any(
-            _CACHE_INPUT_NAME in node.name for node in model.graph.initializer
+            _CACHE_INPUT_NAME in node.name for node in model.graph.input
         )
         return onnx_file_path, is_cache_enabled
 
