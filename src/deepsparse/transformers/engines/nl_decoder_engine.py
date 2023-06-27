@@ -169,6 +169,7 @@ class NLDecoderEngine:
         self.kv_cache.setup_session(
             session_id=self._session_id,
             state=state,
+            sequence_length=self.sequence_length,
             freeze_first_position=self._freeze_first_position,
         )
         # maybe set as a property for more control?
@@ -278,6 +279,7 @@ class NLDecoderEngine:
             self.kv_cache.setup_session(
                 session_id=self._session_id,
                 state=kv_cache_state,
+                sequence_length=self.sequence_length,
                 freeze_first_position=self._freeze_first_position,
             )
 
