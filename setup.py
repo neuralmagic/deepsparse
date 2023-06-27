@@ -85,7 +85,7 @@ def _parse_requirements_file(file_path):
 
 
 _deps = [
-    "numpy>=1.16.3,<=1.21.6",
+    "numpy>=1.16.3",
     "onnx>=1.5.0,<1.15.0",
     "pydantic>=1.8.2",
     "requests>=2.0.0",
@@ -180,13 +180,17 @@ def _check_supported_system():
         )
 
     if sys.platform.startswith("darwin"):
-        # mac is not supported, raise error on install
-        raise OSError(
-            "Native Mac is currently unsupported for DeepSparse. "
-            "Please run on a Linux system or within a Linux container on Mac. "
-            "More info can be found in our docs here: "
-            "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-        )
+        if os.getenv("NM_ALLOW_DARWIN", "0") != "0":
+            # experimental support for mac, allow install to go through
+            return
+        else:
+            # mac is not supported, raise error on install
+            raise OSError(
+                "Native Mac is currently unsupported for DeepSparse. "
+                "Please run on a Linux system or within a Linux container on Mac. "
+                "More info can be found in our docs here: "
+                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+            )
 
     # unknown system, raise error on install
     raise OSError(
