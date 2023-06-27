@@ -266,7 +266,6 @@ class TextGenerationPipeline(TransformersPipeline):
                     "Set `max_generated_tokens` to 1 to support that scenario."
                 )
             tokens, logits = self.multitoken_engine(engine_inputs)
-
             tokens = [tokens]
         else:
             # run the prompt through

@@ -121,7 +121,6 @@ class NLDecoderEngine:
     def __call__(
         self,
         inp: List[numpy.ndarray],
-        ignore_generated: bool = False,
         val_inp: bool = True,
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
@@ -148,7 +147,6 @@ class NLDecoderEngine:
             logits, *kv_cache_state = out
             self._update_kv_cache(
                 kv_cache_state=kv_cache_state,
-                ignore_generated=ignore_generated,
             )
         else:
             logits = out[0]
@@ -296,7 +294,6 @@ class NLDecoderEngine:
     def _update_kv_cache(
         self,
         kv_cache_state: List[numpy.ndarray],
-        ignore_generated: bool = False,
     ):
         cache_onnx_names = [
             name
@@ -310,8 +307,9 @@ class NLDecoderEngine:
         self.kv_cache.update_session(
             state=kv_cache_state,
             num_tokens=self._num_tokens,
-            input_ids_len=self.input_ids_length,
-            ignore_generated=ignore_generated,
+            # TODO: Make it more general once
+            # multitoken regression is supported
+            input_ids_len=1,
         )
 
     @staticmethod
