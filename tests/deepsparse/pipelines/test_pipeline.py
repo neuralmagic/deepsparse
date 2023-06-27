@@ -20,7 +20,11 @@ import numpy
 
 import pytest
 from deepsparse.base_pipeline import BasePipeline
-from deepsparse.pipeline import Pipeline, _initialize_executor_and_workers
+from deepsparse.pipeline import (
+    Pipeline,
+    PipelineConfig,
+    _initialize_executor_and_workers,
+)
 from tests.utils import mock_engine
 
 
