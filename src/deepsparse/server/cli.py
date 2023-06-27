@@ -27,9 +27,9 @@ from typing import Optional
 import click
 import yaml
 
-from deepsparse.base_pipline import SupportedTasks
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import start_server
+from deepsparse.tasks import SupportedTasks
 
 
 HOST_OPTION = click.option(
