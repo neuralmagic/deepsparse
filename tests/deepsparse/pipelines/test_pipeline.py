@@ -19,13 +19,8 @@ from unittest import mock
 import numpy
 
 import pytest
-<<<<<<< HEAD
 from deepsparse.base_pipeline import BasePipeline
 from deepsparse.pipeline import (
-=======
-from deepsparse.pipeline import (
-    BasePipeline,
->>>>>>> add tests for BasePipeline
     Pipeline,
     PipelineConfig,
     _initialize_executor_and_workers,
