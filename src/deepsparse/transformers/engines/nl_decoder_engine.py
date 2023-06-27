@@ -158,6 +158,25 @@ class NLDecoderEngine:
 
         return token, logits
 
+    def transfer_cache_state(self, engine: "NLDecoderEngine"):
+        """
+        Transfers the kv cache state and the number of tokens processed
+        information from another NLDecoderEngine. Call this method when
+        you want to transfer the kv cache state from one engine to another.
+
+        :param engine: The `NLDecoderEngine` to transfer the kv cache state
+            from
+        """
+        state = engine.kv_cache.cached_inputs
+
+        self.kv_cache.setup_session(
+            session_id=self._session_id,
+            state=state,
+            freeze_first_position=self._freeze_first_position,
+        )
+        # maybe set as a property for more control?
+        self._num_tokens = engine._num_tokens
+
     @staticmethod
     def overwrite_onnx_model_inputs(
         onnx_file_path: str,

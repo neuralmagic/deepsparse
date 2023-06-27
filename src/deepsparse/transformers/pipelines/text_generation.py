@@ -218,6 +218,7 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
         if inputs.session_id is not None:
+            # if session_id is provided, we need to set it in engines
             self.engine.session_id = inputs.session_id
             self.multitoken_engine.session_id = inputs.session_id
 
@@ -300,26 +301,27 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
+        # TODO: Multiple passes through the multitoken
+        # engine once the OPT injection is fixed
         if len(tokens) > self.prompt_processing_sequence_length:
-            # TODO: Multiple passes through the multitoken
-            # engine once the OPT injection is fixed
+            # trim the input to the prompt size
             engine_inputs = [
                 input[:, : self.prompt_processing_sequence_length]
                 for input in engine_inputs
             ]
-            # larger prompt size, run through multi-token_engine
-            # TODO: should be setting ignore_generated here to True?
-            new_token, new_logits = self.multitoken_engine(
-                engine_inputs, ignore_generated=False
-            )
+            new_token, new_logits = self.multitoken_engine(engine_inputs)
             num_tokens_processed = self.prompt_processing_sequence_length
+
+        if num_tokens_processed:
+            # transfer the cache state from the multi-token engine to the main engine
+            self.engine.transfer_cache_state(self.multitoken_engine)
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             new_token, new_logits = self.autoregressive_inference(
-                run_tokens, processing_prompt=True
+                run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
             )
 
         tokens.append(new_token)
@@ -329,15 +331,16 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
-        processing_prompt: bool = False,
+        shift_positions_by_one: bool = False,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
         a new token and new logits.
 
         :param tokens: The current context (prompt + generated tokens so far)
-        :param processing_prompt: Whether the prompt is being processed (True)
-            or the generated tokens are being processed (False)
+        :param shift_positions_by_one: Whether to shift the positions
+            by one. Used if we are processing the prompt from the scratch
+            (i.e. not using the multitoken engine)
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
@@ -348,7 +351,7 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_processed:] = 1
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
-        if processing_prompt:
+        if shift_positions_by_one:
             positions -= 1
         input_ids = numpy.array([[new_token]])
         engine_inputs = [input_ids, attention_mask, positions]
