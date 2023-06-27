@@ -64,7 +64,7 @@ if is_enterprise:
     os.remove(license_nm_path)
 
 # File regexes for binaries to include in package_data
-binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
+binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin", "*/*.dylib"]
 
 # regexes for things to include as license files in the .dist-info
 # see https://github.com/pypa/setuptools/blob/v65.6.0/docs/references/keywords.rst
