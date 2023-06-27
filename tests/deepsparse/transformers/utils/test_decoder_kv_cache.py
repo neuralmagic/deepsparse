@@ -20,42 +20,37 @@ from deepsparse.transformers.utils import DecoderKVCache
 
 
 @pytest.mark.parametrize(
-    "state, input_ids_len, freeze_first_position, state_updated, state_updated_prefill",
+    "state, input_ids_len, freeze_first_position, state_updated",
     [
         (
             {"dummy_cache_name": np.array([[[[0], [0], [1], [2], [3]]]])},
             1,
             False,
             {"dummy_cache_name": np.array([[[[0], [1], [2], [3]]]])},
-            {"dummy_cache_name": np.array([[[[0], [0], [1], [2]]]])},
         ),
         (
             {"dummy_cache_name": np.array([[[[0], [0], [0], [1], [2], [3]]]])},
             2,
             False,
             {"dummy_cache_name": np.array([[[[0], [1], [2], [3]]]])},
-            {"dummy_cache_name": np.array([[[[0], [0], [1], [2]]]])},
         ),
         (
             {"dummy_cache_name": np.array([[[[1], [2], [3], [4]]]])},
             1,
             False,
             {"dummy_cache_name": np.array([[[[2], [3], [4]]]])},
-            {"dummy_cache_name": np.array([[[[1], [2], [3]]]])},
         ),
         (
             {"dummy_cache_name": np.array([[[[1], [2], [3], [4]]]])},
             1,
             True,
             {"dummy_cache_name": np.array([[[[1], [3], [4]]]])},
-            {"dummy_cache_name": np.array([[[[1], [2], [3]]]])},
         ),
         (
             {"dummy_cache_name": np.array([[[[1], [2], [3], [4], [5]]]])},
             2,
             True,
             {"dummy_cache_name": np.array([[[[1], [4], [5]]]])},
-            {"dummy_cache_name": np.array([[[[1], [3], [4]]]])},
         ),
     ],
 )
@@ -67,7 +62,6 @@ class TestDecoderKVCache:
         input_ids_len,
         freeze_first_position,
         state_updated,
-        state_updated_prefill,
     ):
         decoder = DecoderKVCache()
         state_flattened = state["dummy_cache_name"].flatten()
@@ -77,22 +71,11 @@ class TestDecoderKVCache:
             state=state,
             freeze_first_position=freeze_first_position,
         )
-        yield decoder, state, num_tokens, input_ids_len, state_updated, state_updated_prefill  # noqa: E501
+        yield decoder, state, num_tokens, input_ids_len, state_updated
 
     def test_with_prefill(self, setup):
-        decoder, state, num_tokens, input_ids_len, _, exp_state_updated = setup
-        decoder.update_session(
-            copy.deepcopy(state), num_tokens, input_ids_len, ignore_generated=True
-        )
-        state_updated = decoder.cached_inputs
-        for key in state_updated.keys():
-            assert np.array_equal(state_updated[key], exp_state_updated[key])
-
-    def test_no_prefill(self, setup):
-        decoder, state, num_tokens, input_ids_len, exp_state_updated, _ = setup
-        decoder.update_session(
-            copy.deepcopy(state), num_tokens, input_ids_len, ignore_generated=False
-        )
+        decoder, state, num_tokens, input_ids_len, exp_state_updated = setup
+        decoder.update_session(copy.deepcopy(state), num_tokens, input_ids_len)
         state_updated = decoder.cached_inputs
         for key in state_updated.keys():
             assert np.array_equal(state_updated[key], exp_state_updated[key])

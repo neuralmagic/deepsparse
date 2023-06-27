@@ -89,7 +89,6 @@ class DecoderKVCache:
         state: Dict[str, Any],
         num_tokens: int,
         input_ids_len: int,
-        ignore_generated: bool = False,
     ):
         """
         Updating the session is identical with taking the kv cache
@@ -109,12 +108,6 @@ class DecoderKVCache:
         :param input_ids_len: The number of input ids in the current
             input batch: (batch_size, length).
             Corresponds to `input_ids.shape[1]`
-        :param ignore_generated: If set to True, the last entry in the
-            kv cache will be ignored. This is because this entry is
-            encoding the information about the newly generated logits,
-            which is not needed in the scenario, where we just prefill
-            the kv cache - populate the kv cache, without the immediate
-            goal of generating any new token.
         """
 
         # total_capacity = num_tokens (num of non-blank tokens) +
@@ -123,10 +116,6 @@ class DecoderKVCache:
         # we want to remove input_ids_len entries from the cache
         # because len_input_ids + inp_cache_len = out_cache_len
         num_entries_to_delete = input_ids_len
-        # prefill scenario
-        if ignore_generated:
-            state = self._shift_last(state)
-            num_entries_to_delete -= 1
 
         while num_entries_to_delete > 0:
             if num_padded_entries > 0:
@@ -167,28 +156,6 @@ class DecoderKVCache:
             num_entries_to_delete -= 1
 
         self._state = state
-
-    def _shift_last(
-        self, state: Dict[str, Any], newest_entry_index=-1
-    ) -> Dict[str, Any]:
-        """
-        When the goal is just to prefill the kv cache with the prompt
-        information, we want to remove the last entry from the cache
-        (that corresponds to the newly generated token)
-
-        Example:
-        ```
-        state["state_name"]: (1, 1, 5, 1) = array([[[[0], [0], [1], [2], [3]]]])
-        self._delete_entry(state, -1)
-        state["state_name"]: (1, 1, 4, 1) = array([[[[0], [0], [1], [2]]]])
-        ```
-        """
-        state = self._delete_entry(state, index=newest_entry_index)
-        if self._kv_cache:
-            # propagate the "shift_last" action
-            # to the DeepSparse KVCache object
-            self._kv_cache.shift_last()
-        return state
 
     def _delete_entry(self, state: Dict[str, Any], index: int) -> Dict[str, Any]:
         for key, value in state.items():
