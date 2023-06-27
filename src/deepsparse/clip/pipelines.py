@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Type
+from typing import Any, Dict, List, Tuple, Type
 
 import numpy as np
 import onnx
@@ -142,6 +142,7 @@ class CLIPTextPipeline(Pipeline):
 
         # All the models seem to be using the `SimpleTokenizer` defined in open_clip?
         self.tokenizer = tokenize
+        self.text_projection = np.random.rand(512, 512)
 
     @property
     def input_schema(self) -> Type[CLIPTextInput]:
@@ -167,7 +168,9 @@ class CLIPTextPipeline(Pipeline):
         """
         return model_to_path(self.model_path)
 
-    def process_inputs(self, inputs: CLIPTextInput) -> List[np.array]:
+    def process_inputs(
+        self, inputs: CLIPTextInput
+    ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
         """
         Preprocess inputs for CLIP's Trext Branch to comply with the DeepSparse Engine
 
@@ -178,25 +181,37 @@ class CLIPTextPipeline(Pipeline):
             inputs.text = [inputs.text]
 
         tokens = self.tokenizer(inputs.text)
-        return [tokens]
+        max_dim = np.array(tokens.argmax(dim=-1))
+        tokens = [np.array(t) for t in tokens]
+        tokens = np.stack(tokens, axis=0)
+        return [tokens], dict(max_dim=max_dim)
 
-    def process_engine_outputs(self, engine_outputs: List[np.array]) -> CLIPTextOutput:
+    def process_engine_outputs(
+        self, engine_outputs: List[np.array], **kwargs
+    ) -> CLIPTextOutput:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        return self.output_schema(text_embeddings=engine_outputs)
+        max_dim = kwargs["max_dim"]
+        engine_outputs = engine_outputs[0]
+        embeddings = (
+            engine_outputs[np.arange(engine_outputs.shape[0]), max_dim]
+            @ self.text_projection
+        )
+        return self.output_schema(text_embeddings=[embeddings])
 
 
 @BasePipeline.register(task="clip_zeroshot", default_model_path=None)
 class CLIPZeroShotPipeline(BasePipeline):
     def __init__(self, visual_args: Dict, text_args: Dict, **kwargs):
-        super().__init__(**kwargs)
         # Pass the same logger
         self.visual = Pipeline.create(task="clip_visual", **visual_args)
         self.text = Pipeline.create(task="clip_text", **text_args)
+
+        super().__init__(**kwargs)
 
     def __call__(self, *args, **kwargs):
         # May have to override if inputs are different?
@@ -208,22 +223,24 @@ class CLIPZeroShotPipeline(BasePipeline):
                 f"{self.input_schema} object. Inputs parsed to {type(pipeline_inputs)}"
             )
 
-        visual_output = self.visual(pipeline_inputs.images)[0]
-        text_output = self.text(pipeline_inputs.text)[0]
+        visual_output = self.visual(pipeline_inputs.image).image_embeddings[0]
+        text_output = self.text(pipeline_inputs.text).text_embeddings[0]
 
         visual_output /= la.norm(visual_output, axis=-1, keepdims=True)
         text_output /= la.norm(text_output, axis=-1, keepdims=True)
 
         output_product = 100.0 * visual_output @ text_output.T
         text_probs = softmax(output_product, axis=-1)
-        return self.output_schema(text_scores=text_probs)
+        return self.output_schema(text_scores=[text_probs])
 
+    @property
     def input_schema(self) -> Type[CLIPZeroShotInput]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
         return CLIPZeroShotInput
 
+    @property
     def output_schema(self) -> Type[CLIPZeroShotOutput]:
         """
         :return: pydantic model class that outputs to this pipeline must comply to

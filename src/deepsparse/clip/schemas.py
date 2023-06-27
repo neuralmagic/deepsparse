@@ -72,8 +72,10 @@ class CLIPZeroShotInput(BaseModel):
     Input for the CLIP Zero Shot Model
     """
 
-    image: str = Field(description="Path to image to run zero-shot prediction on.")
-    text: Union[str, List[str]] = Field(description="List of text to process")
+    image: CLIPVisualInput = Field(
+        description="Path to image to run zero-shot prediction on."
+    )
+    text: CLIPTextInput = Field(description="List of text to process")
 
 
 class CLIPZeroShotOutput(BaseModel):
@@ -82,4 +84,4 @@ class CLIPZeroShotOutput(BaseModel):
     """
 
     # Maybe change this to a dictionary? where keys are text inputs
-    text_scores: List[float] = Field(description="Probability of each text class")
+    text_scores: List[Any] = Field(description="Probability of each text class")
