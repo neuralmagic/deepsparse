@@ -69,6 +69,7 @@ class TestDecoderKVCache:
         decoder.setup_session(
             session_id="None",
             state=state,
+            sequence_length=state["dummy_cache_name"].shape[-1],
             freeze_first_position=freeze_first_position,
         )
         yield decoder, state, num_tokens, input_ids_len, state_updated
