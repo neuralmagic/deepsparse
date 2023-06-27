@@ -15,7 +15,8 @@
 import os
 
 import pytest
-from deepsparse.pipeline import _REGISTERED_PIPELINES, Pipeline
+from deepsparse.base_pipeline import _REGISTERED_PIPELINES
+from deepsparse.pipeline import Pipeline
 from deepsparse.tasks import _split_dir_and_name, dynamic_import_task
 
 
