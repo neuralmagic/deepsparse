@@ -222,7 +222,8 @@ class TextGenerationPipeline(TransformersPipeline):
             self.engine.session_id = inputs.session_id
             self.multitoken_engine.session_id = inputs.session_id
 
-        return engine_input
+        postprocessing_kwargs = dict(return_logits=inputs.return_logits)
+        return engine_input, postprocessing_kwargs
 
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
@@ -253,8 +254,20 @@ class TextGenerationPipeline(TransformersPipeline):
             sequence of generated tokens and a sequence
             of logits for each generated token
         """
-        # run the prompt through
-        tokens, logits = self.prompt_inference(engine_inputs)
+        if not self.engine.kv_cache_enabled:
+            if self.max_generated_tokens != 1:
+                raise ValueError(
+                    "The model used for inference does not support kv cache. It is "
+                    "assumed that it maps from the token sequence to predicted logits."
+                    "Set `max_generated_tokens` to 1 to support that scenario."
+                )
+            tokens, logits = self.multitoken_engine(engine_inputs)
+
+            tokens = [tokens]
+            logits = logits[None, ...]
+        else:
+            # run the prompt through
+            tokens, logits = self.prompt_inference(engine_inputs)
 
         # create the generated output
         max_tokens = (
