@@ -50,6 +50,7 @@ class DecoderKVCache:
         self,
         session_id: str,
         state: Dict[str, Any],
+        sequence_length: int,
         freeze_first_position: bool = False,
     ):
         """
@@ -61,7 +62,11 @@ class DecoderKVCache:
         :param state: The state of the cache. This is a dictionary
             that maps the name of the cache array to the cache array.
             The cache tensor is a numpy array of shape
-            [batch_size, num_heads, sequence_length, hidden_size]
+            [batch_size, num_heads, sequence_length - num_input_ids, hidden_size]
+        :param sequence_length: The total capacity of the kv cache.
+            This is the maximum number of tokens that can be stored
+            in the kv cache until we start to overwrite the oldest
+            entries in the cache.
         :param freeze_first_position: If set to True, once the kv cache
             gets filled, the position along the sequence length axis
             that corresponds to the first token will be frozen.
@@ -74,9 +79,7 @@ class DecoderKVCache:
         self.session_id = session_id
         self._state = state
         self._freeze_first_position = freeze_first_position
-        self._total_cache_capacity = state[list(state.keys())[0]].shape[
-            self._sequence_axis
-        ]
+        self._total_cache_capacity = sequence_length
 
         if self._kv_cache is not None:
             self._kv_cache.reset(
