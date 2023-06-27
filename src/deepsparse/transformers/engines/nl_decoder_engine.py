@@ -129,8 +129,6 @@ class NLDecoderEngine:
         :param inp: The input to run the engine with. We expect a
             list of numpy arrays that contain the input ids,
             attention mask, and position ids (optionally)
-        :param ignore_generated: Whether to ignore the generated tokens
-            when updating the kv cache
         :param val_inp: Whether the input is for validation or not
         :return: The generated token and corresponding logits
         """
