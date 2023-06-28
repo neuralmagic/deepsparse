@@ -290,7 +290,6 @@ class NLDecoderEngine:
                 sequence_length=self.sequence_length,
                 freeze_first_position=self._freeze_first_position,
             )
-
         kv_cache_state["input_ids"] = inp[0]
         kv_cache_state["attention_mask"] = inp[1]
         if len(inp) == 3:

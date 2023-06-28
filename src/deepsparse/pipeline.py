@@ -1013,6 +1013,7 @@ def create_engine(
         return Engine(onnx_file_path, **engine_args)
 
     if engine_type == ORT_ENGINE:
+        engine_args.pop("cache_input_bools", None)
         return ORTEngine(onnx_file_path, **engine_args)
 
     raise ValueError(
