@@ -35,6 +35,12 @@ from deepsparse.transformers.utils import DecoderKVCache
             {"dummy_cache_name": np.array([[[[0], [1], [2], [3]]]])},
         ),
         (
+            {"dummy_cache_name": np.array([[[[0], [0], [0], [1], [2], [3]]]])},
+            4,
+            True,
+            {"dummy_cache_name": np.array([[[[1], [3]]]])},
+        ),
+        (
             {"dummy_cache_name": np.array([[[[1], [2], [3], [4]]]])},
             1,
             False,
@@ -69,7 +75,7 @@ class TestDecoderKVCache:
         decoder.setup_session(
             session_id="None",
             state=state,
-            sequence_length=state["dummy_cache_name"].shape[-1],
+            sequence_length=state["dummy_cache_name"].shape[-2],
             freeze_first_position=freeze_first_position,
         )
         yield decoder, state, num_tokens, input_ids_len, state_updated

@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import numpy
 
 
-__all__ = ["DecoderKVCache"]
+__all__ = ["DecoderKVCache", "SEQUENCE_LENGTH_AXIS"]
+
+
+SEQUENCE_LENGTH_AXIS = 2
 
 
 # TODO: Dummy class just to enable testing, will be removed
@@ -39,7 +42,7 @@ class DecoderKVCache:
         """
         # assuming that kv cache arrays are of shape
         # [batch_size, num_heads, sequence_length, hidden_size]
-        self._sequence_axis = 2
+        self._sequence_len_axis = SEQUENCE_LENGTH_AXIS
         self._session_id = None
         self._freeze_first_position = None
         self._state = None
@@ -76,7 +79,7 @@ class DecoderKVCache:
             that corresponds to the BOS token in the sequence.
             By default, is set to False.
         """
-        self.session_id = session_id
+        self._session_id = session_id
         self._state = state
         self._freeze_first_position = freeze_first_position
         self._total_cache_capacity = sequence_length
@@ -120,49 +123,74 @@ class DecoderKVCache:
         # because len_input_ids + inp_cache_len = out_cache_len
         num_entries_to_delete = input_ids_len
 
-        while num_entries_to_delete > 0:
-            if num_padded_entries > 0:
-                """
-                Transforms input KV cache that contains blank entries
-                Example:
-                (entries in the cache denote the order in which they were
-                added to the cache, zero is to denote a blank entry)
-                ```
-                state["state_name"]: (1, 1, 5, 1) = array([[[[0], [0], [1], [2], [3]]]])
-                -> num_padded_entries = 2
-                -> num_tokens = 3
-                -> num_tokens = 3(self._sequence_length = 5)
-                -> index to delete -> 1
-                self._delete_entry(state, index_to_delete)
-                state["state_name"]: (1, 1, 4, 1) = array([[[[0], [1], [2], [3], [0]]]])
-                ```
-                """
-                state = self._delete_entry(state, num_padded_entries - 1)
-                num_padded_entries -= 1
-            else:
-                """
-                Transforms the input KV cache that has been totally
-                filled with non-blank entries.
-                Example:
-                ```
-                state["state_name"]: (1, 1, 5, 1) = array([[[[1], [2], [3], [4], [5]]]])
-                if self.freeze_first_position == False:
-                    self._delete_entry(state, 0)
-                    state["state_name"]: (1, 1, 4, 1) = array([[[[2], [3], [4], [5]]]])
-                else:
-                    self._delete_entry(state, 1)
-                    state["state_name"]: (1, 1, 4, 1) = array([[[[1], [3], [4], [5]]]])
-                ```
-                """
-                state = self._delete_entry(state, int(self._freeze_first_position))
+        if num_padded_entries:
+            """
+            Transforms input KV cache that contains blank entries.
+            It removes the rightmost blank entries from the cache.
+            Example 1:
+            (entries in the cache denote the order in which they were
+            added to the cache, zero is to denote a blank entry)
+            ```
+            state["state_name"]: (1, 1, 5, 1) = array([[[[0], [0], [1], [2], [3]]]])
+            -> num_padded_entries = 2
+            -> num_entries_to_delete = 1
+            -> num_padded_entries > num_entries_to_delete
+            # there are more blank entries than entries to delete
+            results in:
+            state["state_name"]: (1, 1, 4, 1) = array([[[[0], [1], [2], [3]]]])
+            ```
+            Example 2:
+            ```
+            state["state_name"]: (1, 1, 6, 1) = array([[[[0], [0], [0], [1], [2], [3]]]]) # noqa: E501
+            -> num_padded_entries = 3
+            -> num_entries_to_delete = 5
+            -> num_padded_entries < num_entries_to_delete
+            # there are less blank entries than entries to delete
+            results in:
+            state["state_name"]: (1, 1, 3, 1) = array([[[[1], [2], [3]]]])
+            ```
+            """
+            num_padded_entries_to_delete = min(
+                num_padded_entries, num_entries_to_delete
+            )
+            idxs_to_remove = [
+                num_padded_entries - i - 1 for i in range(num_padded_entries_to_delete)
+            ]
+            # if we had fewer blank entries than entries to delete,
+            # we updated the number of entries to delete to a non-zero value
+            num_entries_to_delete = max(0, num_entries_to_delete - num_padded_entries)
+            # update the state of the cache
+            state = self._delete_entries(state, idxs_to_remove)
 
-            num_entries_to_delete -= 1
+        if num_entries_to_delete:
+            """
+            Transforms the input KV cache that has been totally
+            filled with non-blank entries.
+            Example:
+            ```
+            state["state_name"]: (1, 1, 5, 1) = array([[[[1], [2], [3], [4], [5]]]])
+            num_entries_to_delete = 2
+            if self.freeze_first_position == False:
+                state["state_name"]: (1, 1, 3, 1) = array([[[[3], [4], [5]]]])
+            else:
+
+                state["state_name"]: (1, 1, 3, 1) = array([[[[1], [4], [5]]]])
+            ```
+            """
+            idxs_to_remove = [
+                i + int(self._freeze_first_position)
+                for i in range(num_entries_to_delete)
+            ]
+
+            state = self._delete_entries(state, idxs_to_remove)
 
         self._state = state
 
-    def _delete_entry(self, state: Dict[str, Any], index: int) -> Dict[str, Any]:
+    def _delete_entries(
+        self, state: Dict[str, Any], indices: List[int]
+    ) -> Dict[str, Any]:
         for key, value in state.items():
-            state[key] = numpy.delete(value, index, axis=self._sequence_axis)
+            state[key] = numpy.delete(value, indices, axis=self._sequence_len_axis)
         return state
 
     @property
