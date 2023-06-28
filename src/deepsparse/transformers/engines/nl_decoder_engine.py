@@ -67,12 +67,17 @@ class NLDecoderEngine:
         use_deepsparse_cache=False,
     ):
 
-        onnx_file_path, kv_cache_enabled = self.overwrite_onnx_model_inputs(
+        onnx_file_path, input_indices_to_be_cached = self.overwrite_onnx_model_inputs(
             onnx_file_path=onnx_file_path,
             batch_size=engine_args.get("batch_size", 1),
             sequence_length=sequence_length,
             input_ids_length=input_ids_length,
         )
+        kv_cache_enabled = False
+        if input_indices_to_be_cached:
+            # inform the engine, that are using the kv cache
+            engine_args["cache_input_bools"] = input_indices_to_be_cached
+            kv_cache_enabled = True
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
@@ -148,8 +153,9 @@ class NLDecoderEngine:
             )
         else:
             logits = out[0]
-            B, S, V = logits.shape  # batch, sequence, vocab
-            logits = logits[:, -1, :].reshape(B, 1, V)  # only take the last token
+
+        B, S, V = logits.shape  # batch, sequence, vocab
+        logits = logits[:, -1, :].reshape(B, 1, V)  # only take the last token
 
         token = self.generate_token(logits=logits)
 
@@ -181,7 +187,7 @@ class NLDecoderEngine:
         sequence_length: int,
         input_ids_length: int,
         batch_size: int = 1,
-    ) -> Tuple[str, bool]:
+    ) -> Tuple[str, List[int]]:
         """
         Enforces the appropriate input shapes for the onnx model, as well as
         checks whether kv cache is enabled or not.
@@ -192,8 +198,8 @@ class NLDecoderEngine:
         :param sequence_length: The sequence length to use for the input
         :param input_ids_length: The length of input_ids
         :return: The path to the onnx model file that has been overwritten
-            with the new input shapes, as well as whether kv cache is enabled
-            or not
+            with the new input shapes, as well as the indices of the inputs
+            that should be cached
         """
         model = onnx.load(onnx_file_path, load_external_data=False)
         initializer_input_names = set([node.name for node in model.graph.initializer])
@@ -225,10 +231,12 @@ class NLDecoderEngine:
         )
         save_onnx(model, onnx_file_path)
 
-        is_cache_enabled = any(
-            _CACHE_INPUT_NAME in node.name for node in model.graph.input
-        )
-        return onnx_file_path, is_cache_enabled
+        input_indices_to_be_cached = [
+            i
+            for i, inp in enumerate(model.graph.input)
+            if inp.name.startswith(_CACHE_INPUT_NAME)
+        ]
+        return onnx_file_path, input_indices_to_be_cached
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """

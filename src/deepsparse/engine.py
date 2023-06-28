@@ -28,7 +28,6 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (
     generate_random_inputs,
-    get_output_names,
     model_to_path,
     override_onnx_input_shapes,
 )
@@ -213,6 +212,7 @@ class BaseEngine(object):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        cache_input_bools: Optional[List[bool]] = None,
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -223,6 +223,7 @@ class BaseEngine(object):
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
+        self._cache_input_bools = cache_input_bools
 
     def construct_with_context(
         self,
@@ -275,9 +276,17 @@ class Engine(BaseEngine):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        cache_input_bools: Optional[List[bool]] = None,
     ):
         BaseEngine.construct(
-            self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
+            self,
+            model,
+            batch_size,
+            num_cores,
+            num_streams,
+            scheduler,
+            input_shapes,
+            cache_input_bools,
         )
 
         if self._input_shapes:
@@ -291,7 +300,7 @@ class Engine(BaseEngine):
                     self._num_streams,
                     self._scheduler.value,
                     None,
-                    self._kv_cache_input_idxs,
+                    self._cache_input_bools,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -301,7 +310,7 @@ class Engine(BaseEngine):
                 self._num_streams,
                 self._scheduler.value,
                 None,
-                self._kv_cache_input_idxs,
+                self._cache_input_bools,
             )
 
     def __call__(
