@@ -35,6 +35,12 @@ from deepsparse.image_classification.schemas import (
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 
+# try:
+#     import torch
+#     torch_import_error = None
+# except err as torch_import_err:
+#     torch_import_error = torch_import_err
+#     torch = None
 
 __all__ = [
     "ImageClassificationPipeline",
@@ -74,6 +80,7 @@ class ImageClassificationPipeline(Pipeline):
         self,
         *,
         class_names: Union[None, str, Dict[str, str]] = None,
+        image_size: Optional[Tuple[int]] = None,
         top_k: int = 1,
         **kwargs,
     ):
@@ -86,7 +93,7 @@ class ImageClassificationPipeline(Pipeline):
         else:
             self._class_names = None
 
-        self._image_size = self._infer_image_size()
+        self._image_size = image_size or self._infer_image_size()
         self.top_k = top_k
 
         # torchvision transforms for raw inputs
@@ -252,6 +259,13 @@ class ImageClassificationPipeline(Pipeline):
 
         :return: The expected shape of the input tensor from onnx graph
         """
+        # if torch and (self.onnx_file_path.endswith("pt") or self.onnx_file_path.endswith("pth")):
+        #     torch_model = torch.jit.load(self.onnx_file_path)
+        #     first_parameter = next(torch_model.parameters())
+        #     input_shape = first_parameter.size()
+        #     return (
+        #         input_shape[2], input_shape[3]
+        #     )
         onnx_model = onnx.load(self.onnx_file_path)
         input_tensor = onnx_model.graph.input[0]
         return (

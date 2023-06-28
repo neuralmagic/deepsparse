@@ -159,6 +159,7 @@ class Pipeline(ABC):
         logger: Optional[Union[BaseLogger, str]] = None,
         benchmark: bool = False,
         _delay_engine_initialize: bool = False,  # internal use only
+        **kwargs,
     ):
         self._benchmark = benchmark
         self._model_path_orig = model_path
@@ -208,7 +209,6 @@ class Pipeline(ABC):
             self.engine = None
         else:
             self.engine = self._initialize_engine()
-
         self._batch_size = self._batch_size or 1
 
         self.log(

@@ -25,6 +25,10 @@ import shutil
 from tests.utils.torch import find_pth_file_with_name
 from deepsparse import Pipeline
 
+from deepsparse.image_classification.schemas import (
+    ImageClassificationOutput, 
+)
+
 TORCH_HUB = "~/.cache/torch"
 
 @pytest.fixture(autouse=True, scope="module")
@@ -46,16 +50,17 @@ def test_cpu_torchscript_pipeline(torchvision_model_fixture):
     model = torchvision_model_fixture(pretrained=True)
     torch_model_path = os.path.join(TORCH_HUB, "hub", "checkpoints")
     model_path = find_pth_file_with_name(folder_path=torch_model_path, model_name="resnet50")
+    model_path = "/home/ubuntu/george/nm/deepsparse/resnet50.pt"
     torchscript_pipeline = Pipeline.create(
         task="image_classification",
         model_path=model_path,
         engine_type="torchscript",
-        # task="example_task",
+        image_size = (224, 224),
     )
-    inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
+    inp = [numpy.random.rand(3, 224, 224).astype(numpy.float32)]
 
-    pipeline_outputs = torchscript_pipeline(inp)
-    # breakpoint()
+    pipeline_outputs = torchscript_pipeline(images=inp)
+    assert isintance(pipeline_outputs, ImageClassificationOutput)
 
 
 
