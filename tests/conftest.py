@@ -16,9 +16,14 @@ import os
 import tempfile
 from subprocess import Popen
 from typing import List
+import logging
+import shutil
 
 import pytest
 from tests.helpers import delete_file
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def _get_files(directory: str) -> List[str]:
@@ -90,3 +95,40 @@ def check_for_created_files():
         f"megabytes of temp files created in temp directory during pytest run. "
         f"Created files: {set(end_files_temp) - set(start_files_temp)}"
     )
+
+
+@pytest.fixture
+def torchvision_fixture():
+    try:
+        import torchvision
+        return torchvision
+    except ImportError:
+        logger.error("Failed to import torchvision")
+        raise
+        
+
+@pytest.fixture
+def torchvision_model_fixture(torchvision_fixture):
+    def get(**kwargs):
+        # [TODO]: Make a model factory if needed
+        torchvision_instance = torchvision_fixture
+        if torchvision_instance:
+            model = torchvision_instance.models.resnet50(kwargs)
+            return model
+    return get
+
+# @pytest.fixture(scope='session')
+# def delete_torch_models_after_torchscrript_tests(request):
+#     cache_dir = os.path.expanduser("~/.cache/torch")
+#     shutil.rmtree(cache_dir)
+
+# @pytest.fixture(autouse=True, scope="module")
+# def delete_cached_torch_models():
+#     cache_dir = os.path.expanduser("~/.cache/torch")
+#     shutil.rmtree(cache_dir)
+    
+    
+
+        
+
+

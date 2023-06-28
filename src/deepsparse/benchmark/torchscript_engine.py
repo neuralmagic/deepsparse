@@ -18,13 +18,20 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
-import torch
+
+
 from deepsparse.utils import (
     model_to_path,
     override_onnx_batch_size,
     override_onnx_input_shapes,
 )
 
+try:
+    import torch
+    torch_import_error = None
+except err as torch_import_err:
+    torch_import_error = torch_import_err
+    torch = None
 
 try:
     import onnxruntime
@@ -33,7 +40,6 @@ try:
 except Exception as ort_import_err:
     onnxruntime = None
     ort_import_error = ort_import_err
-
 
 try:
     # flake8: noqa
@@ -44,7 +50,7 @@ except ImportError:
         "Please contact support@neuralmagic.com"
     )
 
-__all__ = ["TorchEngine"]
+__all__ = ["TorchScriptEngine"]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,12 +83,11 @@ def _select_device(device: str):
     return "cpu"
 
 
-class TorchEngine(object):
+class TorchScriptEngine(object):
     """
-    # Create a new ONNXRuntime Engine that compiles the given onnx file,
+    # Create a new Engine that compiles the given pytorch file,
 
-    # Note 1: ORTEngines are compiled for a specific batch size and
-    # for a specific number of CPU cores.
+    # Note 1: Engines are compiled for a specific batch size 
 
     # :param model: Either a path to the model's onnx file, a SparseZoo model stub
     #     prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
@@ -98,7 +103,11 @@ class TorchEngine(object):
         model: Union[str, "Model", "File"],  # pt file or Module pytorch
         batch_size: int = 1,
         device: str = "cpu",  # or cuda
+        **kwargs, 
     ):
+        if torch is None:
+            raise ImportError(f"Unable to import torch, error: {torch_import_error}")
+
         _validate_torch_import()
 
         self._batch_size = _validate_batch_size(batch_size)

@@ -26,7 +26,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
-from deepsparse.benchmark import ORTEngine
+from deepsparse.benchmark import ORTEngine, TorchScriptEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.loggers.build_logger import logger_from_config
@@ -42,7 +42,7 @@ from deepsparse.utils import InferenceStages, StagedTimer, TimerManager
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",
-    "TORCHSCRIPT",
+    "TORCHSCRIPT_ENGINE",
     "SUPPORTED_PIPELINE_ENGINES",
     "Pipeline",
     "PipelineConfig",
@@ -58,7 +58,7 @@ __all__ = [
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-TORCHSCRIPT = "torchscript"
+TORCHSCRIPT_ENGINE = "torchscript"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
@@ -827,8 +827,8 @@ class Pipeline(ABC):
             return Engine(self.onnx_file_path, **self._engine_args)
         elif engine_type == ORT_ENGINE:
             return ORTEngine(self.onnx_file_path, **self._engine_args)
-        elif engine_type == TORCHSCRIPT:
-            return TorchEngine(self.onnx_file_oath, **self._engine_args)
+        elif engine_type == TORCHSCRIPT_ENGINE:
+            return TorchScriptEngine(self.onnx_file_path, **self._engine_args)
         else:
             raise ValueError(
                 f"Unknown engine_type {self.engine_type}. Supported values include: "
