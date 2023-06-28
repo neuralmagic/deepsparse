@@ -191,6 +191,7 @@ class DecoderKVCache:
     ) -> Dict[str, Any]:
         for key, value in state.items():
             state[key] = numpy.delete(value, indices, axis=self._sequence_len_axis)
+            state[key] = numpy.ascontiguousarray(state[key])
         return state
 
     @property
