@@ -51,7 +51,7 @@ class TestDecoderKVCache:
         freeze_first_position,
         state_updated,
     ):
-        decoder = DecoderKVCache(True)
+        decoder = DecoderKVCache()
         state_flattened = state["dummy_cache_name"].flatten()
         num_processed_tokens = state_flattened[state_flattened != 0].shape[0]
         decoder.setup_session(

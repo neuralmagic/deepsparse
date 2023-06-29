@@ -212,7 +212,7 @@ class BaseEngine(object):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
-        cache_input_bools: Optional[List[bool]] = None,
+        cache_output_bools: Optional[List[bool]] = None,
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -223,7 +223,7 @@ class BaseEngine(object):
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
-        self._cache_input_bools = cache_input_bools
+        self._cache_output_bools = cache_output_bools
 
     def construct_with_context(
         self,
@@ -266,6 +266,7 @@ class Engine(BaseEngine):
         concurrently.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cache_output_bools: The list of booleans that denote the outputs to cache. Pass None to use model as-is.
     """
 
     def __init__(
@@ -276,7 +277,7 @@ class Engine(BaseEngine):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
-        cache_input_bools: Optional[List[bool]] = None,
+        cache_output_bools: Optional[List[bool]] = None,
     ):
         BaseEngine.construct(
             self,
@@ -286,7 +287,7 @@ class Engine(BaseEngine):
             num_streams,
             scheduler,
             input_shapes,
-            cache_input_bools,
+            cache_output_bools,
         )
 
         if self._input_shapes:
@@ -300,7 +301,7 @@ class Engine(BaseEngine):
                     self._num_streams,
                     self._scheduler.value,
                     None,
-                    self._cache_input_bools,
+                    self._cache_output_bools,
                     0,
                 )
         else:
@@ -311,7 +312,7 @@ class Engine(BaseEngine):
                 self._num_streams,
                 self._scheduler.value,
                 None,
-                self._cache_input_bools,
+                self._cache_output_bools,
                 0,
             )
 

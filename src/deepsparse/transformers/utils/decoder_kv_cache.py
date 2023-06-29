@@ -79,9 +79,7 @@ class DecoderKVCache:
         self._total_num_processed_tokens = num_processed_tokens
 
         if self._use_deepsparse_cache is not None:
-            prev_num_tokens = (
-                self._total_num_processed_tokens
-            )  # number of tokens that will be processesed at every forward pass
+            prev_num_tokens = self._total_num_processed_tokens
             num_frozen_tokens = int(self._freeze_first_position)
             self._kv_cache = LIB.kv_cache(prev_num_tokens, num_frozen_tokens)
 

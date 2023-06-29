@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
+
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -77,7 +77,7 @@ class NLDecoderEngine:
         if output_indices_to_be_cached:
             # inform the engine, that are using the kv cache
             engine_args[
-                "cache_input_bools"
+                "cache_output_bools"
             ] = output_indices_to_be_cached  # change to output bools
             kv_cache_enabled = True
 
@@ -210,8 +210,9 @@ class NLDecoderEngine:
             elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name.startswith(_CACHE_INPUT_NAME):
-                a = copy.copy(sequence_length - input_ids_length)
-                external_input.type.tensor_type.shape.dim[2].dim_value = a
+                external_input.type.tensor_type.shape.dim[2].dim_value = (
+                    sequence_length - input_ids_length
+                )
             else:
                 raise ValueError(
                     f"Unexpected external input name: {external_input.name}"
