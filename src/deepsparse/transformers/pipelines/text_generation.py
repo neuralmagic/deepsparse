@@ -27,15 +27,8 @@ __all__ = ["TextGenerationPipeline"]
 
 
 class TextGenerationInput(BaseModel):
-    sequences: Optional[Union[str, List[str]]] = Field(
-        default=None,
+    sequences: Union[str, List[str]] = Field(
         description="The input sequences to generate the text from.",
-    )
-    input_ids_and_masks: Optional[Tuple[numpy.ndarray, numpy.ndarray]] = Field(
-        default=None,
-        description="The input ids and masks for the input sequences. "
-        "If None, the input ids and masks will be "
-        "generated from the input sequences.",
     )
     return_logits: bool = Field(
         default=False,
@@ -49,9 +42,6 @@ class TextGenerationInput(BaseModel):
         "and the model is using kv cache, it "
         "will be set to a random uuid.",
     )
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class TextGenerationOutput(BaseModel):
@@ -99,6 +89,8 @@ class TextGenerationPipeline(TransformersPipeline):
         of tokens supplied even if the stop token is reached.
     :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
+    :param tokenizer_padding_side: the side to pad the input sequence to.
+        Either "left" or "right". Defaults to "left".
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
@@ -111,6 +103,7 @@ class TextGenerationPipeline(TransformersPipeline):
         prompt_processing_sequence_length: int = 128,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = False,
+        tokenizer_padding_side: str = "left",
         **kwargs,
     ):
         if use_deepsparse_cache:
@@ -136,8 +129,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.prompt_processing_sequence_length = prompt_processing_sequence_length
         self.force_max_tokens = force_max_tokens
 
-        # override tokenizer to pad to left
-        self.tokenizer.padding_side = "right"
+        self.tokenizer.padding_side = tokenizer_padding_side
 
         self.engine = None
         self.multitoken_engine = NLDecoderEngine(
@@ -209,23 +201,17 @@ class TextGenerationPipeline(TransformersPipeline):
         :param inputs: the input schema for the pipeline
         :return: the inputs for the engine
         """
+
         self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        if inputs.input_ids_and_masks:
-            input_tokens = dict(
-                input_ids=inputs.input_ids_and_masks[0],
-                attention_mask=inputs.input_ids_and_masks[1],
-            )
-
-        else:
-            input_tokens = self.tokenizer(
-                inputs.sequences,
-                return_tensors="np",
-                max_length=self.sequence_length,
-                padding="max_length",
-                truncation=True,
-            )
-        # undo what this tokenizer does
+        input_tokens = self.tokenizer(
+            inputs.sequences,
+            return_tensors="np",
+            max_length=self.sequence_length,
+            padding="max_length",
+            # TODO: Truncating by default may be a problem
+            truncation=True,
+        )
 
         attention_mask = input_tokens["attention_mask"]
 
@@ -258,7 +244,9 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         generated_tokens, generated_logits = engine_outputs
         sequences = self.tokenizer.batch_decode(
-            generated_tokens[0], skip_special_tokens=True
+            # TODO: hack for now, make it general
+            *generated_tokens[0],
+            skip_special_tokens=True,
         )
         logits = generated_logits if kwargs.get("return_logits") else None
 

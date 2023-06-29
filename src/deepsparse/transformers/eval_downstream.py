@@ -79,25 +79,30 @@ ORT_ENGINE = "onnxruntime"
 
 
 def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
-    dataset = load_dataset(dataset_name)["validation"]
-    perplexity_metrics = Perplexity.get_metrics()
+    dataset = load_dataset(dataset_name)["test"]
 
     text_generation = Pipeline.create(
         task="text-generation",
         model_path=args.model_path,
-        engine_type=args.engine,
+        # TODO: make sure this also works for deepsparse engine
+        engine_type="onnxruntime",
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
         prompt_processing_sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
+        tokenizer_padding_side="right",
     )
+    perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
+    # TODO: text_generation.engine is None
     print(f"Engine info: {text_generation.engine}")
     predictions = []
     for idx, sample in _enumerate_progress(dataset, args.max_samples):
-        text_batch.append(sample["prompt"] + sample["canonical_solution"])
-        if len(text_batch) == batch_size:
-            perplexity_metrics.add_batch(predictions, batch_size=batch_size)
-            text_batch = []
+        predictions.append(sample["prompt"] + sample["canonical_solution"])
+        if len(predictions) == batch_size:
+            perplexity_metrics.add_batch(predictions)
+            predictions = []
+        if idx == 32:
+            break
     return perplexity_metrics
 
 
@@ -466,16 +471,20 @@ SUPPORTED_DATASETS = {
     "imdb": imdb_eval,
     "conll2003": conll2003_eval,
     "go_emotions": go_emotions_eval,
+    "openai_humaneval": perplexity_eval,
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
+        # TODO: Not BERT anymore
         description="Evaluate a BERT ONNX model on a downstream dataset"
     )
     parser.add_argument(
-        "model_path",
+        "-m",
+        "--model_path",
         type=str,
+        default="/home/ubuntu/damian/sparseml/deployment",
         help=(
             "The path to a directory containing model.onnx, config.json, and "
             "tokenizer.json files or SparseZoo stub to the model"
@@ -485,8 +494,7 @@ def parse_args():
         "-d",
         "--dataset",
         type=str,
-        choices=list(SUPPORTED_DATASETS.keys()),
-        required=True,
+        default="openai_humaneval",
     )
     parser.add_argument(
         "-v",
@@ -539,7 +547,7 @@ def parse_args():
         "--max-samples",
         help="the max number of samples to evaluate. Default is None or all samples",
         type=int,
-        default=None,
+        default=32,
     )
 
     parser.add_argument(

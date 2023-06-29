@@ -21,7 +21,7 @@ import os
 import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -52,7 +52,6 @@ _MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
 def get_onnx_path_and_configs(
     model_path: str,
     require_configs: bool = False,
-    model_dir_onnx_name: str = _MODEL_DIR_ONNX_NAME,
 ) -> Tuple[str, Optional[str], Optional[str]]:
     """
     :param model_path: path to onnx file, transformers sparsezoo stub,
@@ -62,7 +61,6 @@ def get_onnx_path_and_configs(
     :param require_configs: if True, model_path must be a directory containing
         `model.onnx`, `config.json`, and `tokenizer.json` files. Will raise
         an exception otherwise
-    :param model_dir_onnx_name: name of onnx file in model directory
     :return: tuple of ONNX file path, parent directory of config file
         if it exists, and parent directory of tokenizer config file if it
         exists. (Parent directories returned instead of absolute path
@@ -81,9 +79,9 @@ def get_onnx_path_and_configs(
             raise ValueError(
                 f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, model_dir_onnx_name)}"
+                f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
             )
-        onnx_path = os.path.join(model_path, model_dir_onnx_name)
+        onnx_path = os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
 
         # attempt to read config and tokenizer from sparsezoo-like framework directory
         framework_dir = None
@@ -141,8 +139,6 @@ def overwrite_transformer_onnx_model_inputs(
     batch_size: int = 1,
     max_length: int = 128,
     inplace: bool = True,
-    custom_input_overwrite_func: Optional[Callable] = None,
-    custom_input_overwrite_func_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
     """
     Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
@@ -155,10 +151,6 @@ def overwrite_transformer_onnx_model_inputs(
     :param inplace: if True, the model will be modified in place (its inputs will
         be overwritten). Else, a copy of that model, with overwritten inputs,
         will be saved to a temporary file
-    :param custom_input_overwrite_func: if provided, this function will be called
-        instead of the default input overwrite function. This function should take
-         in a list of external inputs and return a list of the overwritten input names
-    :param custom_input_overwrite_func_kwargs: kwargs for the custom overwrite function
     :return: tuple of (path to the overwritten model, list of input names that were
         overwritten, and a temporary file containing the overwritten model if
         `inplace=False`, else None)
@@ -171,20 +163,11 @@ def overwrite_transformer_onnx_model_inputs(
     external_inputs = [
         inp for inp in model.graph.input if inp.name not in initializer_input_names
     ]
-    if custom_input_overwrite_func is not None:
-        custom_input_overwrite_func_kwargs = custom_input_overwrite_func_kwargs or {}
-        input_names = custom_input_overwrite_func(
-            external_inputs,
-            batch_size,
-            max_length,
-            **custom_input_overwrite_func_kwargs,
-        )
-    else:
-        input_names = []
-        for external_input in external_inputs:
-            external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-            external_input.type.tensor_type.shape.dim[1].dim_value = max_length
-            input_names.append(external_input.name)
+    input_names = []
+    for external_input in external_inputs:
+        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+        external_input.type.tensor_type.shape.dim[1].dim_value = max_length
+        input_names.append(external_input.name)
 
     # Save modified model
     if inplace:
