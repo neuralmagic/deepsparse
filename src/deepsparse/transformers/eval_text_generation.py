@@ -23,8 +23,10 @@ python src/deepsparse/transformers/eval_text_generation.py
 import argparse
 from typing import Any, Dict
 
+from datasets import load_dataset
 from deepsparse import Pipeline
 from deepsparse.transformers.metrics import Perplexity
+from evaluate import load
 
 
 def perplexity_eval(args: argparse.Namespace) -> Dict[str, Any]:
@@ -33,14 +35,23 @@ def perplexity_eval(args: argparse.Namespace) -> Dict[str, Any]:
         task=args.task,
         model_path=args.model_path,
         sequence_length=args.sequence_length,
+        prompt_processing_sequence_length=args.sequence_length,
         engine_type=args.engine_type,
         max_generated_tokens=1,
     )
-
     perplexity = Perplexity(pipeline=pipeline)
-    perplexity.add_batch(args.sentence)
-
-    return perplexity.compute()
+    dataset = load_dataset(args.dataset_name, split="test")
+    _perplexity = load("perplexity", module_type="metric")
+    texts = []
+    for idx, sample in enumerate(dataset):
+        text = sample["prompt"] + sample["canonical_solution"]
+        texts.append(text)
+        if idx == 2:
+            break
+    _result = _perplexity.compute(predictions=texts, model_id="facebook/opt-350m")
+    perplexity.add_batch(texts, batch_size=16)
+    result = perplexity.compute()
+    return result
 
 
 if __name__ == "__main__":
@@ -51,6 +62,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_path",
         type=str,
+        default="/home/ubuntu/damian/sparseml/deployment",
         help="Path to the model directory",
     )
     parser.add_argument(
@@ -61,11 +73,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sequence_length",
         type=int,
+        default=1024,
         help="Sequence length of the pipeline to use for evaluation",
     )
     parser.add_argument(
         "--task",
         type=str,
+        default="codegen",
         help="Task to use for evaluation",
     )
     parser.add_argument(
@@ -73,6 +87,12 @@ if __name__ == "__main__":
         type=str,
         default="onnxruntime",
         help="Engine type to use for evaluation",
+    )
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        default="openai_humaneval",
+        help="Dataset name to use for evaluation",
     )
 
     args = parser.parse_args()

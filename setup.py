@@ -64,7 +64,7 @@ if is_enterprise:
     os.remove(license_nm_path)
 
 # File regexes for binaries to include in package_data
-binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
+binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin", "*/*.dylib"]
 
 # regexes for things to include as license files in the .dist-info
 # see https://github.com/pypa/setuptools/blob/v65.6.0/docs/references/keywords.rst
@@ -85,8 +85,8 @@ def _parse_requirements_file(file_path):
 
 
 _deps = [
-    "numpy>=1.16.3,<=1.21.6",
-    "onnx>=1.5.0,<=1.12.0",
+    "numpy>=1.16.3",
+    "onnx>=1.5.0,<1.15.0",
     "pydantic>=1.8.2",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
@@ -180,13 +180,17 @@ def _check_supported_system():
         )
 
     if sys.platform.startswith("darwin"):
-        # mac is not supported, raise error on install
-        raise OSError(
-            "Native Mac is currently unsupported for DeepSparse. "
-            "Please run on a Linux system or within a Linux container on Mac. "
-            "More info can be found in our docs here: "
-            "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-        )
+        if os.getenv("NM_ALLOW_DARWIN", "0") != "0":
+            # experimental support for mac, allow install to go through
+            return
+        else:
+            # mac is not supported, raise error on install
+            raise OSError(
+                "Native Mac is currently unsupported for DeepSparse. "
+                "Please run on a Linux system or within a Linux container on Mac. "
+                "More info can be found in our docs here: "
+                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
+            )
 
     # unknown system, raise error on install
     raise OSError(

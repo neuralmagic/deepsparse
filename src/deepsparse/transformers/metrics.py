@@ -17,7 +17,7 @@ Utilities for evaluation metric computation
 """
 
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy
 from tqdm import tqdm
@@ -63,68 +63,51 @@ class Perplexity:
         self.attention_masks = None  # (batch_size, self._static_length)
 
     def add_batch(
-        self, input_text: str, batch_size: int = 16, add_start_token: bool = True
+        self, predictions: List[str], batch_size: int = 16, add_start_token: bool = True
     ):
         """
         Converts input_text into data that can be eventually used to compute perplexity.
-        Note: BOS token means "Begging of Sentence" token, which as
+        Note: BOS token means "Beginning of Sentence" token, which as
               the same as SOS token "Start of Sentence" token.
 
-        :param input_text: The text to convert into data for computing perplexity
+        :param predictions: The predictions to compute perplexity on
         :param batch_size: The batch size to split the input text into
          non-overlapping batches
         :param add_start_token: Whether to add the start token to the input text
         """
 
-        if add_start_token and self._static_length:
-            # leave room for <BOS> token to be added:
-            assert self._tokenizer.bos_token is not None, (
-                "Input model must already have a BOS token "
-                "if using add_start_token=True. Please use a "
-                "different model, or set add_start_token=False"
-            )
-            max_tokenized_len = self._static_length - 1
-        else:
-            max_tokenized_len = self._static_length
+        self._tokenizer.pad_token = self._tokenizer.eos_token
+        # tokenize list of strings
 
         encodings = self._tokenizer(
-            input_text,
-            add_special_tokens=False,
-            padding="max_length",
-            max_length=max_tokenized_len,
-            return_tensors="np",
+            predictions,
             return_attention_mask=True,
+            max_length=self._static_length,
+            truncation=True,
+            padding="max_length",
         )
+        # undo what this tokenizer does
 
         encoded_texts = encodings["input_ids"]
-        attention_mask = encodings["attention_mask"]
+        attention_masks = encodings["attention_mask"]
 
         # split input_text into non-overlapping batches of `batch_size`
         for start_index in tqdm(range(0, len(encoded_texts), batch_size)):
             end_index = min(start_index + batch_size, len(encoded_texts))
             encoded_batch = encoded_texts[start_index:end_index]
-            attention_mask = attention_mask[start_index:end_index]
+            attention_mask = attention_masks[start_index:end_index]
 
-            if add_start_token:
-                batch_size = encoded_batch.shape[0]
-                # make tensor same shape as encoded_batch, but with <BOS> token
-                bos_tokens = numpy.array([[self._tokenizer.bos_token_id]] * batch_size)
-                encoded_batch = numpy.concatenate([bos_tokens, encoded_batch], axis=1)
-                attention_mask = numpy.concatenate(
-                    [numpy.ones(bos_tokens.shape, dtype=numpy.int64), attention_mask],
-                    axis=1,
-                )
-        # save batches in the class object's state
-        self.encoded_batches = (
-            encoded_batch
-            if self.encoded_batches is None
-            else numpy.concatenate([self.encoded_batches, encoded_batch], axis=0)
-        )
-        self.attention_masks = (
-            attention_mask
-            if self.attention_masks is None
-            else numpy.concatenate([self.attention_masks, attention_mask], axis=0)
-        )
+            # save batches in the class object's state
+            self.encoded_batches = (
+                encoded_batch
+                if self.encoded_batches is None
+                else numpy.concatenate([self.encoded_batches, encoded_batch], axis=0)
+            )
+            self.attention_masks = (
+                attention_mask
+                if self.attention_masks is None
+                else numpy.concatenate([self.attention_masks, attention_mask], axis=0)
+            )
 
     def compute(self) -> Dict[str, Any]:
         """
@@ -143,48 +126,41 @@ class Perplexity:
         out = self._pipeline(sequence=func(self.encoded_batches))
         ```
         """
-        for idx, (encoded_batch, attention_mask) in enumerate(
-            zip(self.encoded_batches, self.attention_masks)
-        ):
-            batch_logits = []
-            tokens = encoded_batch.tolist()[: attention_mask.sum()]
-            batch_sequences = [
-                self._tokenizer.decode(tokens[:i], skip_special_tokens=True)
-                for i in range(1, len(tokens) + 1)
-            ]
-            for sequence in batch_sequences:
-                # cannot do it in batch, we need to run
-                # p(x_i | x_1, ..., x_{i-1}) for each i
-                out = self._pipeline(sequence=sequence, return_logits=True)
-                batch_logits.append(out.logits)
+        out = self._pipeline(
+            input_ids_and_masks=(
+                numpy.stack(self.encoded_batches),
+                numpy.stack(self.attention_masks),
+            ),
+            return_logits=True,
+        )
+        logits = out.logits
 
-            logits = numpy.concatenate(batch_logits, axis=1)[0]
+        labels = self.encoded_batches
 
-            # extract only the meaningful info from the
-            # data that assumes static length
-            labels = encoded_batch[: attention_mask.sum()]
-            attention_mask = attention_mask[: attention_mask.sum()]
+        # shift logits and labels create the input and target for the loss function
+        shift_logits = logits[:, :-1, :]
+        shift_labels = numpy.stack(labels)[
+            :, 1:
+        ]  # (batch_size - 1, self._static_length)
+        shift_attention_mask_batch = numpy.stack(self.attention_masks)[
+            :, 1:
+        ]  # (batch_size - 1, self._static_length)
 
-            # shift logits and labels create the input and target for the loss function
-            shift_logits = logits[:-1]
-            shift_labels = labels[1:]
-            shift_attention_mask_batch = attention_mask[1:]
+        # compute perplexity for this batch
+        perplexity_batch = torch.exp(
+            (
+                self._loss_fct(
+                    torch.tensor(shift_logits.transpose(0, 2, 1)),
+                    torch.tensor(shift_labels),
+                )
+                * torch.tensor(shift_attention_mask_batch)
+            ).sum(1)
+            / torch.tensor(shift_attention_mask_batch).sum(1)
+        )
 
-            # compute perplexity for this batch
-            perplexity_batch = torch.exp(
-                (
-                    self._loss_fct(
-                        torch.tensor(shift_logits), torch.tensor(shift_labels)
-                    )
-                    * torch.tensor(shift_attention_mask_batch)
-                ).sum()
-                / torch.tensor(shift_attention_mask_batch).sum()
-            )
-
-            perplexities.append(perplexity_batch.item())
         return {
-            "perplexities": perplexities,
-            "mean_perplexity": numpy.mean(perplexities),
+            "perplexities": perplexity_batch.numpy().tolist(),
+            "mean_perplexity": perplexity_batch.mean().item(),
         }
 
 

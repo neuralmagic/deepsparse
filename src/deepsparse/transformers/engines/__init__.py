@@ -11,16 +11,5 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from dataclasses import dataclass
-
-
-__all__ = ["InferencePhases"]
-
-
-@dataclass(frozen=True)
-class InferencePhases:
-    PRE_PROCESS: str = "pre_process"
-    ENGINE_FORWARD: str = "engine_forward"
-    POST_PROCESS: str = "post_process"
-    TOTAL_INFERENCE: str = "total_inference"
+# flake8: noqa
+from .nl_decoder_engine import *

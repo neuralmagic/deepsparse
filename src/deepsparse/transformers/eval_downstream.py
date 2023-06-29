@@ -69,13 +69,36 @@ import numpy
 from tqdm.auto import tqdm
 
 from deepsparse import Pipeline
-from deepsparse.transformers.metrics import PrecisionRecallF1
+from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 
 
 from datasets import load_dataset, load_metric  # isort: skip
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
+
+
+def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
+    dataset = load_dataset(dataset_name)["validation"]
+    perplexity_metrics = Perplexity.get_metrics()
+
+    text_generation = Pipeline.create(
+        task="text-generation",
+        model_path=args.model_path,
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+        prompt_processing_sequence_length=args.max_sequence_length,
+        max_generated_tokens=1,
+    )
+    print(f"Engine info: {text_generation.engine}")
+    predictions = []
+    for idx, sample in _enumerate_progress(dataset, args.max_samples):
+        text_batch.append(sample["prompt"] + sample["canonical_solution"])
+        if len(text_batch) == batch_size:
+            perplexity_metrics.add_batch(predictions, batch_size=batch_size)
+            text_batch = []
+    return perplexity_metrics
 
 
 def qa_eval(args, dataset_name="squad"):
