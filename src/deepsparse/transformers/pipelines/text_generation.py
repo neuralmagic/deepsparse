@@ -100,7 +100,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # TODO: Set this to 64 once we modify the OPT injection logic
         prompt_processing_sequence_length: int = 128,
         force_max_tokens: bool = False,
-        use_deepsparse_cache: bool = False,
+        use_deepsparse_cache: bool = True,
         **kwargs,
     ):
         if use_deepsparse_cache:
@@ -111,10 +111,6 @@ class TextGenerationPipeline(TransformersPipeline):
                     f"is {kwargs['engine_type']}. "
                     f"Make sure to set `engine_type` to {DEEPSPARSE_ENGINE}"
                 )
-            raise NotImplementedError(
-                "The deepsparse kv cache is not yet "
-                "supported for text generation pipelines"
-            )
 
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
@@ -329,7 +325,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
-            self.engine.transfer_cache_state(self.multitoken_engine)
+            self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -93,7 +93,6 @@ class NLDecoderEngine:
         self.kv_cache = (
             DecoderKVCache(use_deepsparse_cache) if kv_cache_enabled else None
         )
-        self._num_tokens = 0  # the number of tokens processed so far
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
 
@@ -144,12 +143,10 @@ class NLDecoderEngine:
 
         out = self.engine.run(inp, val_inp)
 
-        self._num_tokens += self.input_ids_length
-
         if self.kv_cache:
             logits, *kv_cache_state = out
             self._update_kv_cache(
-                kv_cache_state=kv_cache_state,
+                kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
             )
         else:
             logits = out[0]
@@ -161,25 +158,16 @@ class NLDecoderEngine:
 
         return token, logits
 
-    def transfer_cache_state(self, engine: "NLDecoderEngine"):
+    def transfer_cache_state(self, cache: DecoderKVCache):
         """
         Transfers the kv cache state and the number of tokens processed
         information from another NLDecoderEngine. Call this method when
         you want to transfer the kv cache state from one engine to another.
 
-        :param engine: The `NLDecoderEngine` to transfer the kv cache state
+        :param cache: The `NLDecoderEngine` to transfer the kv cache state
             from
         """
-        state = engine.kv_cache.cached_inputs
-
-        self.kv_cache.setup_session(
-            session_id=self._session_id,
-            state=state,
-            sequence_length=self.sequence_length,
-            freeze_first_position=self._freeze_first_position,
-        )
-        # maybe set as a property for more control?
-        self._num_tokens = engine._num_tokens
+        self.kv_cache = cache
 
     @staticmethod
     def overwrite_onnx_model_inputs(
@@ -217,9 +205,8 @@ class NLDecoderEngine:
             elif external_input.name == "attention_mask":
                 external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
             elif external_input.name.startswith(_CACHE_INPUT_NAME):
-                external_input.type.tensor_type.shape.dim[2].dim_value = (
-                    sequence_length - input_ids_length
-                )
+                a = copy.copy(sequence_length - input_ids_length)
+                external_input.type.tensor_type.shape.dim[2].dim_value = a
             else:
                 raise ValueError(
                     f"Unexpected external input name: {external_input.name}"
@@ -287,7 +274,7 @@ class NLDecoderEngine:
             self.kv_cache.setup_session(
                 session_id=self._session_id,
                 state=kv_cache_state,
-                sequence_length=self.sequence_length,
+                num_processed_tokens=0,
                 freeze_first_position=self._freeze_first_position,
             )
         kv_cache_state["input_ids"] = inp[0]
@@ -301,6 +288,7 @@ class NLDecoderEngine:
     def _update_kv_cache(
         self,
         kv_cache_state: List[numpy.ndarray],
+        input_ids_len: int,
     ):
         cache_onnx_names = [
             name
@@ -313,10 +301,7 @@ class NLDecoderEngine:
 
         self.kv_cache.update_session(
             state=kv_cache_state,
-            num_tokens=self._num_tokens,
-            # TODO: Make it more general once
-            # multitoken regression is supported
-            input_ids_len=1,
+            input_ids_len=input_ids_len,
         )
 
     @staticmethod

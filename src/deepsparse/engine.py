@@ -301,6 +301,7 @@ class Engine(BaseEngine):
                     self._scheduler.value,
                     None,
                     self._cache_input_bools,
+                    0,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -311,6 +312,7 @@ class Engine(BaseEngine):
                 self._scheduler.value,
                 None,
                 self._cache_input_bools,
+                0,
             )
 
     def __call__(
