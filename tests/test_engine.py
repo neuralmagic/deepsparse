@@ -79,13 +79,14 @@ class TestEngineParametrized:
         verify_outputs(pred_outputs, outputs)
 
         print("engine batched_run")
+        # make some fake padded data
         stacked_inputs = [
             np.stack([np.repeat(array, 3, axis=0)], axis=0) for array in inputs
         ]
         stacked_outputs = [
             np.stack([np.repeat(array, 3, axis=0)], axis=0) for array in outputs
         ]
-        pred_outputs, elapsed = engine.batched_run(stacked_inputs)
+        pred_outputs = engine.batched_run(stacked_inputs)
         verify_outputs(pred_outputs, stacked_outputs)
 
         print("engine input_shapes")
