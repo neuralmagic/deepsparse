@@ -132,6 +132,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.tokenizer.padding_side = tokenizer_padding_side
 
         self.engine = None
+
         self.multitoken_engine = NLDecoderEngine(
             onnx_file_path=self.onnx_file_path,
             engine_type=self.engine_type,
@@ -159,6 +160,15 @@ class TextGenerationPipeline(TransformersPipeline):
                 input_ids_length=1,
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=use_deepsparse_cache,
+            )
+        if (
+            not self.multitoken_engine.kv_cache_enabled
+            and self.max_generated_tokens > 1
+        ):
+            raise ValueError(
+                "The model used for inference does not support kv cache. It is "
+                "assumed that it maps from the token sequence to predicted logits."
+                "Set `max_generated_tokens` to 1 to support that scenario."
             )
 
     @staticmethod
@@ -265,12 +275,6 @@ class TextGenerationPipeline(TransformersPipeline):
             of logits for each generated token
         """
         if not self.multitoken_engine.kv_cache_enabled:
-            if self.max_generated_tokens != 1:
-                raise ValueError(
-                    "The model used for inference does not support kv cache. It is "
-                    "assumed that it maps from the token sequence to predicted logits."
-                    "Set `max_generated_tokens` to 1 to support that scenario."
-                )
             tokens, logits = self.multitoken_engine(engine_inputs)
             tokens = [tokens]
         else:
