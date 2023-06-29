@@ -67,16 +67,18 @@ class NLDecoderEngine:
         use_deepsparse_cache=False,
     ):
 
-        onnx_file_path, input_indices_to_be_cached = self.overwrite_onnx_model_inputs(
+        onnx_file_path, output_indices_to_be_cached = self.overwrite_onnx_model_inputs(
             onnx_file_path=onnx_file_path,
             batch_size=engine_args.get("batch_size", 1),
             sequence_length=sequence_length,
             input_ids_length=input_ids_length,
         )
         kv_cache_enabled = False
-        if input_indices_to_be_cached:
+        if output_indices_to_be_cached:
             # inform the engine, that are using the kv cache
-            engine_args["cache_input_bools"] = input_indices_to_be_cached
+            engine_args[
+                "cache_input_bools"
+            ] = output_indices_to_be_cached  # change to output bools
             kv_cache_enabled = True
 
         self.engine = create_engine(
@@ -141,7 +143,10 @@ class NLDecoderEngine:
             # to the input
             inp = self._add_kv_cache_to_input(inp)
 
-        out = self.engine.run(inp, val_inp)
+        if self.kv_cache._kv_cache:
+            out = self.engine._eng_net.execute_list_out(inp, self.kv_cache._kv_cache)
+        else:
+            out = self.engine.run(inp, val_inp)
 
         if self.kv_cache:
             logits, *kv_cache_state = out
@@ -218,12 +223,11 @@ class NLDecoderEngine:
         )
         save_onnx(model, onnx_file_path)
 
-        input_indices_to_be_cached = [
-            i
-            for i, inp in enumerate(model.graph.input)
-            if inp.name.startswith(_CACHE_INPUT_NAME)
+        output_indices_to_be_cached = [
+            1 if inp.name.startswith("present") else 0 for inp in model.graph.output
         ]
-        return onnx_file_path, input_indices_to_be_cached
+
+        return onnx_file_path, output_indices_to_be_cached
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
