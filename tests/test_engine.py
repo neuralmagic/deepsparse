@@ -89,7 +89,6 @@ class TestEngineParametrized:
         # mobilenet_v1, mobilenet_v2, resnet_v1-18, efficientnet-b0
         print("engine input_names")
         assert "input" in engine.input_names[0]
-
         print("engine output_names")
         assert "output_0" in engine.output_names[0]
         assert "output_1" in engine.output_names[1]
