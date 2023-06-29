@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pytest
+import numpy as np
 from deepsparse import Engine, model_debug_analysis
 from deepsparse.utils import verify_outputs
 from sparsezoo import Model
@@ -76,6 +77,16 @@ class TestEngineParametrized:
         print("engine timed_run")
         pred_outputs, elapsed = engine.timed_run(inputs)
         verify_outputs(pred_outputs, outputs)
+
+        print("engine batched_run")
+        stacked_inputs = [
+            np.stack([np.repeat(array, 3, axis=0)], axis=0) for array in inputs
+        ]
+        stacked_outputs = [
+            np.stack([np.repeat(array, 3, axis=0)], axis=0) for array in outputs
+        ]
+        pred_outputs, elapsed = engine.batched_run(stacked_inputs)
+        verify_outputs(pred_outputs, stacked_outputs)
 
         print("engine input_shapes")
         pred_input_shapes = engine.input_shapes
