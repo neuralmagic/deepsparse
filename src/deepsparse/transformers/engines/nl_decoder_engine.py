@@ -78,7 +78,7 @@ class NLDecoderEngine:
             # inform the engine, that are using the kv cache
             engine_args[
                 "cache_output_bools"
-            ] = output_indices_to_be_cached  # change to output bools
+            ] = output_indices_to_be_cached
             kv_cache_enabled = True
 
         self.engine = create_engine(
