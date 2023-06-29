@@ -101,8 +101,6 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
         if len(predictions) == batch_size:
             perplexity_metrics.add_batch(predictions)
             predictions = []
-        if idx == 32:
-            break
     return perplexity_metrics
 
 
@@ -477,14 +475,13 @@ SUPPORTED_DATASETS = {
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        # TODO: Not BERT anymore
+        # TODO: It is not BERT anymore, should we
+        # have another script or modify the existing one?
         description="Evaluate a BERT ONNX model on a downstream dataset"
     )
     parser.add_argument(
-        "-m",
-        "--model_path",
+        "model_path",
         type=str,
-        default="/home/ubuntu/damian/sparseml/deployment",
         help=(
             "The path to a directory containing model.onnx, config.json, and "
             "tokenizer.json files or SparseZoo stub to the model"
@@ -493,8 +490,9 @@ def parse_args():
     parser.add_argument(
         "-d",
         "--dataset",
+        choices=list(SUPPORTED_DATASETS.keys()),
+        required=True,
         type=str,
-        default="openai_humaneval",
     )
     parser.add_argument(
         "-v",
@@ -547,7 +545,7 @@ def parse_args():
         "--max-samples",
         help="the max number of samples to evaluate. Default is None or all samples",
         type=int,
-        default=32,
+        default=None,
     )
 
     parser.add_argument(

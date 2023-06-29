@@ -77,7 +77,6 @@ class Perplexity:
         encoded_texts = encodings["input_ids"]
         attention_masks = encodings["attention_mask"]
 
-        # split input_text into non-overlapping batches of `batch_size`
         for start_index in tqdm(range(0, len(encoded_texts), self._batch_size)):
             end_index = min(start_index + self._batch_size, len(encoded_texts))
             encoded_batch = encoded_texts[start_index:end_index]
@@ -107,6 +106,10 @@ class Perplexity:
             self.perplexities.extend(perplexity_batch.numpy().tolist())
 
     def compute(self) -> Dict[str, Any]:
+        """
+        :return: A dictionary containing the mean perplexity
+            and the list of perplexities
+        """
         return {
             "mean_perplexity": numpy.mean(self.perplexities),
             "perplexities": self.perplexities,
