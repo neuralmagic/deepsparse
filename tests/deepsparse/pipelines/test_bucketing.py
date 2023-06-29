@@ -28,7 +28,7 @@ def test_question_answering_choose_bucket(engine_mock):
     bucket, _ = pipeline._choose_bucket(question="a " * 5, context="b " * 5)
     assert bucket is pipeline20
 
-    # should should have token length 44, and should be routed to pipeline50
+    # should have token length 44, and should be routed to pipeline50
     bucket, _ = pipeline._choose_bucket(question="a " * 20, context="b " * 20)
     assert bucket is pipeline50
 
