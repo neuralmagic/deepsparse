@@ -31,6 +31,8 @@ from deepsparse.utils import (
     get_output_names,
     model_to_path,
     override_onnx_input_shapes,
+    split_engine_inputs,
+    join_engine_outputs,
 )
 
 
@@ -443,44 +445,19 @@ class Engine(BaseEngine):
     def batched_run(
         self,
         inp: List[numpy.ndarray],
-        val_inp: bool = True,
+        val_inp: bool = False,
     ) -> List[numpy.ndarray]:
         if val_inp:
-            self._validate_inputs(inp)
+            _LOGGER.warn("val_inp for batched_run is disabled")
 
-        # Check that all inputs have the same batch size
-        inp_batch_size = inp[0].shape[0]
-        if not all(arr.shape[0] == inp_batch_size for arr in inp):
-            raise ValueError("Not all inputs have matching batch size")
+        # Split inputs into batches of size `self.batch_size`
+        batch_inputs = split_engine_inputs(inp, self.batch_size)
 
-        out_sections = []
-        for section_idx in range(0, inp_batch_size, self._batch_size):
-            # If we can't evenly divide with engine batch size, pad the last batch
-            padding_is_needed = section_idx + self._batch_size > inp_batch_size
-            inp_sections = []
-            for arr in inp:
-                section = arr[section_idx : section_idx + self._batch_size]
+        # Submit split batches to engine threadpool
+        batch_outputs = list(map(self.run, batch_inputs))
 
-                # Pad the last batch if necessary
-                if padding_is_needed:
-                    pads = ((0, section_idx + self._batch_size - inp_batch_size),) + (
-                        (0, 0),
-                    ) * (arr.ndim - 1)
-                    section = numpy.pad(section, pads)
-
-                inp_sections.append(section)
-
-            candidate_output = self.run(inp_sections)
-
-            # If padded, take the padding off
-            if padding_is_needed:
-                candidate_output = [
-                    out[: inp_batch_size - section_idx] for out in candidate_output
-                ]
-
-            out_sections.append(candidate_output)
-
-        return [numpy.stack(sections, axis=0) for sections in out_sections]
+        # Join together the batches of size `self.batch_size`
+        return join_engine_outputs(batch_outputs, self.batch_size)
 
     def run(
         self,

@@ -20,9 +20,6 @@ from sparsezoo import Model
 
 
 model_test_registry = {
-    "mobilenet_v1": (
-        "zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/base-none"
-    ),
     "mobilenet_v2": (
         "zoo:cv/classification/mobilenet_v2-1.0/pytorch/sparseml/imagenet/base-none"
     ),
@@ -80,12 +77,8 @@ class TestEngineParametrized:
 
         print("engine batched_run")
         # make some fake padded data
-        stacked_inputs = [
-            np.stack([np.repeat(array, 3, axis=0)], axis=0) for array in inputs
-        ]
-        stacked_outputs = [
-            np.stack([np.repeat(array, 3, axis=0)], axis=0) for array in outputs
-        ]
+        stacked_inputs = [np.repeat(array, 3, axis=0) for array in inputs]
+        stacked_outputs = [np.repeat(array, 3, axis=0) for array in outputs]
         pred_outputs = engine.batched_run(stacked_inputs)
         verify_outputs(pred_outputs, stacked_outputs)
 

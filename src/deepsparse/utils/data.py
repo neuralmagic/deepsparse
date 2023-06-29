@@ -14,7 +14,7 @@
 
 import logging
 import re
-from typing import List
+from typing import List, Tuple
 
 import numpy
 
@@ -25,6 +25,8 @@ __all__ = [
     "verify_outputs",
     "parse_input_shapes",
     "numpy_softmax",
+    "split_engine_inputs",
+    "join_engine_outputs",
 ]
 
 
@@ -162,3 +164,95 @@ def numpy_softmax(x: numpy.ndarray, axis: int = 0):
     e_x_sum = numpy.sum(e_x, axis=axis, keepdims=True)
     softmax_x = e_x / e_x_sum
     return softmax_x
+
+
+def split_engine_inputs(
+    items: List[numpy.ndarray], batch_size: int
+) -> Tuple[List[List[numpy.ndarray]], int]:
+    """
+    Splits each item into numpy arrays with the first dimension == `batch_size`.
+
+    For example, if `items` has three numpy arrays with the following
+    shapes: `[(4, 32, 32), (4, 64, 64), (4, 128, 128)]`
+
+    Then with `batch_size==4` the output would be:
+    ```
+    [[(4, 32, 32), (4, 64, 64), (4, 128, 128)]]
+    ```
+
+    Then with `batch_size==2` the output would be:
+    ```
+    [
+        [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
+        [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
+    ]
+    ```
+
+    Then with `batch_size==1` the output would be:
+    ```
+    [
+        [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+        [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+        [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+        [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+    ]
+    ```
+
+    In the case where the total input batch size isn't divisble by `batch_size`, it
+    will pad the last mini batch. Look at `padding_is_needed`
+    """
+    # The engine expects to recieve data in numpy format, so at this point it should be
+    assert all(isinstance(item, numpy.ndarray) for item in items)
+
+    # Check that all inputs have the same batch size
+    total_batch_size = items[0].shape[0]
+    if not all(arr.shape[0] == total_batch_size for arr in items):
+        raise ValueError("Not all inputs have matching batch size")
+
+    batches = []
+    for section_idx in range(0, total_batch_size, batch_size):
+        padding_is_needed = section_idx + batch_size > total_batch_size
+        if padding_is_needed:
+            # If we can't evenly divide with batch size, pad the last batch
+            input_sections = []
+            for arr in items:
+                pads = ((0, section_idx + batch_size - total_batch_size),) + (
+                    (0, 0),
+                ) * (arr.ndim - 1)
+                section = numpy.pad(
+                    arr[section_idx : section_idx + batch_size], pads, mode="edge"
+                )
+                input_sections.append(section)
+            batches.append(input_sections)
+        else:
+            # Otherwise we just take our slice as the batch
+            batches.append(
+                [arr[section_idx : section_idx + batch_size] for arr in items]
+            )
+
+    # import pdb
+
+    # pdb.set_trace()
+
+    return batches, total_batch_size
+
+
+def join_engine_outputs(
+    batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
+) -> List[numpy.ndarray]:
+    """
+    Joins list of engine outputs together into one list using `numpy.stack`.
+    If the batch size doesn't evenly divide into the available batches, it will cut off
+    the remainder as padding.
+
+    This is the opposite of `split_engine_inputs` and is meant to be used in tandem.
+    """
+    assert all(isinstance(item, List) for item in batch_outputs)
+
+    candidate_output = list(map(numpy.concatenate, zip(*batch_outputs)))
+
+    # If we can't evenly divide with batch size, remove the remainder as padding
+    if candidate_output[0].shape[0] > orig_batch_size:
+        candidate_output = [out[:orig_batch_size] for out in candidate_output]
+
+    return candidate_output
