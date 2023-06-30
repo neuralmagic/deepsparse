@@ -39,6 +39,8 @@ class ImageClassificationOutput(BaseModel):
     Output model for image classification
     """
     ndarray: numpy.ndarray = None
+    class Config:
+        arbitrary_types_allowed = True
 
     labels: List[Union[int, str, List[int], List[str]]] = Field(
         description="List of labels, one for each prediction"
