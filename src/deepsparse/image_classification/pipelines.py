@@ -75,7 +75,7 @@ class ImageClassificationPipeline(Pipeline):
         *,
         class_names: Union[None, str, Dict[str, str]] = None,
         top_k: int = 1,
-        return_logits: Optional[bool] = False,
+        return_logits: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
