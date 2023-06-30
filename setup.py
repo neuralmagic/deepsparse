@@ -167,6 +167,7 @@ _clip_deps = ["open_clip_torch==2.20.0", "scipy==1.10.1"]
 _torch_deps = ["torch>=1.7.0,<=2.0"]
 
 
+
 def _check_supported_system():
     if sys.platform.startswith("linux"):
         # linux is supported, allow install to go through

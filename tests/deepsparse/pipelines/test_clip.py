@@ -70,10 +70,16 @@ def test_text_clip(engine, text_input):
 def test_zero_shot(engine, visual_input, text_input):
     model_path_text = text_input[-1]
     model_path_visual = visual_input[-1]
+<<<<<<< HEAD
     kwargs = {
         "visual_model_path": model_path_visual,
         "text_model_path": model_path_text,
     }
+=======
+    visual_args = {"model_path": model_path_visual}
+    text_args = {"model_path": model_path_text}
+    kwargs = {"visual_args": visual_args, "text_args": text_args}
+>>>>>>> move paths to fixtures
     pipeline = BasePipeline.create(task="clip_zeroshot", **kwargs)
     assert isinstance(pipeline, CLIPZeroShotPipeline)
     pipeline_input = CLIPZeroShotInput(
