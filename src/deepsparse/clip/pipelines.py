@@ -94,8 +94,7 @@ class CLIPVisualPipeline(Pipeline):
             image = Image.open(image)
             image = self._preprocess_transforms(image)
 
-            # convert to np.array to get channel dim (should we just use tensors?)
-            # should make the image 8 bit
+            # image.convert("RGB") should make the image 8 bit
             image_array = np.array(image.convert("RGB"))
 
             # make channel dim the first dim
@@ -140,8 +139,10 @@ class CLIPTextPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # All the models seem to be using the `SimpleTokenizer` defined in open_clip?
         self.tokenizer = tokenize
+        # TODO: This is a placeholder. The onnx model should apply the
+        # text_projection in the forward pass but due to a current argmax export error,
+        # including the text_projection in the post-processing and using dummy values.
         self.text_projection = np.random.rand(512, 512)
 
     @property
@@ -197,6 +198,8 @@ class CLIPTextPipeline(Pipeline):
         """
         max_dim = kwargs["max_dim"]
         engine_outputs = engine_outputs[0]
+        # NOTE: This operation should be part of the foward pass. Moved here due to
+        # onnx export error
         embeddings = (
             engine_outputs[np.arange(engine_outputs.shape[0]), max_dim]
             @ self.text_projection
@@ -207,14 +210,12 @@ class CLIPTextPipeline(Pipeline):
 @BasePipeline.register(task="clip_zeroshot", default_model_path=None)
 class CLIPZeroShotPipeline(BasePipeline):
     def __init__(self, visual_args: Dict, text_args: Dict, **kwargs):
-        # Pass the same logger
         self.visual = Pipeline.create(task="clip_visual", **visual_args)
         self.text = Pipeline.create(task="clip_text", **text_args)
 
         super().__init__(**kwargs)
 
     def __call__(self, *args, **kwargs):
-        # May have to override if inputs are different?
         pipeline_inputs = self.parse_inputs(*args, **kwargs)
 
         if not isinstance(pipeline_inputs, self.input_schema):

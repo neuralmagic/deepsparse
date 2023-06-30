@@ -83,5 +83,5 @@ class CLIPZeroShotOutput(BaseModel):
     Output for the CLIP Zero Shot Model
     """
 
-    # Maybe change this to a dictionary? where keys are text inputs
+    # TODO: Maybe change this to a dictionary where keys are text inputs
     text_scores: List[Any] = Field(description="Probability of each text class")
