@@ -38,6 +38,7 @@ class ImageClassificationOutput(BaseModel):
     """
     Output model for image classification
     """
+    ndarray: numpy.ndarray = None
 
     labels: List[Union[int, str, List[int], List[str]]] = Field(
         description="List of labels, one for each prediction"
@@ -45,4 +46,4 @@ class ImageClassificationOutput(BaseModel):
     scores: List[Union[float, List[float]]] = Field(
         description="List of scores, one for each prediction"
     )
-    logits: Optional[List[numpy.ndarray]] = Field(description="Raw model outputs")
+    logits: Optional[List[ndarray]] = Field(description="Raw model outputs")
