@@ -89,7 +89,7 @@ class ImageClassificationPipeline(Pipeline):
 
         self._image_size = self._infer_image_size()
         self.top_k = top_k
-        self.return_logits = True
+        self.return_logits = return_logits
 
         # torchvision transforms for raw inputs
         non_rand_resize_scale = 256.0 / 224.0  # standard used
@@ -114,13 +114,6 @@ class ImageClassificationPipeline(Pipeline):
             mapping class ids to class labels
         """
         return self._class_names
-    
-    @property
-    def return_logits(self) -> Optional[bool]:
-        """
-        :return: Optional bool to return raw model predictions
-        """
-        return self.return_logits
     
     @property
     def input_schema(self) -> Type[ImageClassificationInput]:
