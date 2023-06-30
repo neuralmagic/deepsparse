@@ -162,7 +162,7 @@ _haystack_requirements_file_path = os.path.join(
     "haystack_reqs.txt",
 )
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
-
+_clip_deps = ["open_clip_torch==2.20.0"]
 
 _torch_deps = ["torch>=1.7.0,<=2.0"]
 
@@ -280,6 +280,7 @@ def _setup_extras() -> Dict:
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
         "torch": _torch_deps,
+        "clip": _clip_deps
     }
 
 
