@@ -244,7 +244,7 @@ class ImageClassificationPipeline(Pipeline):
             scores = scores[0]
 
         if self.return_logits:
-            return self.output_schema(logits=engine_outputs)
+            return self.output_schema(logits=engine_outputs[0])
         else:
             return self.output_schema(
             scores=scores,
