@@ -44,4 +44,4 @@ class ImageClassificationOutput(BaseModel):
     scores: List[Union[float, List[float]]] = Field(
         description="List of scores, one for each prediction"
     )
-    logits: List[numpy.ndarray] = Field(description="Raw model outputs")
+    logits: List[Union[int, str, List[int], List[str]]] = Field(description="Raw model outputs")
