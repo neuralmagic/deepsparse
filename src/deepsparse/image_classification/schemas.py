@@ -15,7 +15,7 @@
 """
 Input/Output Schemas for Image Classification.
 """
-from typing import List, Union, Optional 
+from typing import List, Union 
 import numpy
 from pydantic import BaseModel, Field
 
@@ -38,14 +38,10 @@ class ImageClassificationOutput(BaseModel):
     """
     Output model for image classification
     """
-    ndarray: numpy.ndarray = None
-    class Config:
-        arbitrary_types_allowed = True
-
     labels: List[Union[int, str, List[int], List[str]]] = Field(
         description="List of labels, one for each prediction"
     )
     scores: List[Union[float, List[float]]] = Field(
         description="List of scores, one for each prediction"
     )
-    logits: Optional[List[ndarray]] = Field(description="Raw model outputs")
+    logits: List[numpy.ndarray] = Field(description="Raw model outputs")
