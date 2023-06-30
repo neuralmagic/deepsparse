@@ -44,4 +44,4 @@ class ImageClassificationOutput(BaseModel):
     scores: Optional[List[Union[float, List[float]]]] = Field(
         description="List of scores, one for each prediction"
     )
-    logits: Optional[List[Union[int, List[int], List[float]]]] = Field(description="Raw model outputs")
+    logits: Optional[List[float]] = Field(description="Raw model outputs")
