@@ -75,6 +75,7 @@ class ImageClassificationPipeline(Pipeline):
         *,
         class_names: Union[None, str, Dict[str, str]] = None,
         top_k: int = 1,
+        return_logits: Optional[bool] = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -112,7 +113,14 @@ class ImageClassificationPipeline(Pipeline):
             mapping class ids to class labels
         """
         return self._class_names
-
+    
+    @property
+    def return_logits(self) -> Optional[bool]:
+        """
+        :return: Optional bool to return raw model predictions
+        """
+        return self.return_logits
+    
     @property
     def input_schema(self) -> Type[ImageClassificationInput]:
         """
@@ -241,7 +249,10 @@ class ImageClassificationPipeline(Pipeline):
             labels = labels[0]
             scores = scores[0]
 
-        return self.output_schema(
+        if self.return_logits:
+            return self.output_schema(engine_outputs)
+        else:
+            return self.output_schema(
             scores=scores,
             labels=labels,
         )
