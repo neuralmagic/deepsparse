@@ -38,7 +38,7 @@ class ImageClassificationOutput(BaseModel):
     """
     Output model for image classification
     """
-    ndarray: numpy.ndarray = None
+    ndarray: numpy.ndarray = numpy.ndarray
 
     class Config:
         arbitrary_types_allowed = True
