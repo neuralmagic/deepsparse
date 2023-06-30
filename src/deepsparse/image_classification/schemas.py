@@ -43,10 +43,10 @@ class ImageClassificationOutput(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    labels: Optional[List[Union[int, str, List[int], List[str]]]] = Field(
+    labels: List[Union[int, str, List[int], List[str]]] = Field(
         description="List of labels, one for each prediction"
     )
-    scores: Optional[List[Union[float, List[float]]]] = Field(
+    scores: List[Union[float, List[float]]] = Field(
         description="List of scores, one for each prediction"
     )
     logits: Optional[ndarray] = Field(description="Raw model outputs")
