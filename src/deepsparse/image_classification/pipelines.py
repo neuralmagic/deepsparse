@@ -75,6 +75,7 @@ class ImageClassificationPipeline(Pipeline):
         *,
         class_names: Union[None, str, Dict[str, str]] = None,
         top_k: int = 1,
+        return_logits: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -88,6 +89,7 @@ class ImageClassificationPipeline(Pipeline):
 
         self._image_size = self._infer_image_size()
         self.top_k = top_k
+        self.return_logits = return_logits
 
         # torchvision transforms for raw inputs
         non_rand_resize_scale = 256.0 / 224.0  # standard used
@@ -112,7 +114,7 @@ class ImageClassificationPipeline(Pipeline):
             mapping class ids to class labels
         """
         return self._class_names
-
+    
     @property
     def input_schema(self) -> Type[ImageClassificationInput]:
         """
@@ -241,7 +243,13 @@ class ImageClassificationPipeline(Pipeline):
             labels = labels[0]
             scores = scores[0]
 
-        return self.output_schema(
+        if self.return_logits:
+            return self.output_schema(
+            scores=scores,
+            labels=labels,
+            logits=engine_outputs[0])
+        else:
+            return self.output_schema(
             scores=scores,
             labels=labels,
         )

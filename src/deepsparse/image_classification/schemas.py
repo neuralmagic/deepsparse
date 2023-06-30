@@ -15,8 +15,8 @@
 """
 Input/Output Schemas for Image Classification.
 """
-from typing import List, Union
-
+from typing import List, Union, Optional 
+import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
@@ -38,6 +38,10 @@ class ImageClassificationOutput(BaseModel):
     """
     Output model for image classification
     """
+    ndarray: numpy.ndarray = numpy.ndarray
+
+    class Config:
+        arbitrary_types_allowed = True
 
     labels: List[Union[int, str, List[int], List[str]]] = Field(
         description="List of labels, one for each prediction"
@@ -45,3 +49,4 @@ class ImageClassificationOutput(BaseModel):
     scores: List[Union[float, List[float]]] = Field(
         description="List of scores, one for each prediction"
     )
+    logits: Optional[ndarray] = Field(description="Raw model outputs")
