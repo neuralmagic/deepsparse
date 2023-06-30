@@ -40,8 +40,8 @@ from deepsparse.utils import (
     InferenceStages,
     StagedTimer,
     TimerManager,
-    split_engine_inputs,
     join_engine_outputs,
+    split_engine_inputs,
 )
 
 

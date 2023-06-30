@@ -230,9 +230,7 @@ def split_engine_inputs(
                 [arr[section_idx : section_idx + batch_size] for arr in items]
             )
 
-    # import pdb
-
-    # pdb.set_trace()
+    print(f"sliced up {total_batch_size} into {len(batches)} pieces")
 
     return batches, total_batch_size
 

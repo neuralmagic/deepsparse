@@ -16,10 +16,7 @@
 import onnx
 
 import pytest
-from deepsparse.tests.deepsparse.utils.test_onnx import (
-    override_onnx_batch_size,
-    override_onnx_input_shapes,
-)
+from deepsparse.utils import override_onnx_batch_size, override_onnx_input_shapes
 from sparsezoo import Model
 
 

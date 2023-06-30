@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import numpy as np
+
+import pytest
 from deepsparse import Engine, model_debug_analysis
 from deepsparse.utils import verify_outputs
 from sparsezoo import Model

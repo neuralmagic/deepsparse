@@ -445,19 +445,22 @@ class Engine(BaseEngine):
     def batched_run(
         self,
         inp: List[numpy.ndarray],
-        val_inp: bool = False,
     ) -> List[numpy.ndarray]:
-        if val_inp:
-            _LOGGER.warn("val_inp for batched_run is disabled")
+
+        if self.batch_size == 1:
+            _LOGGER.warn(
+                "Using batched_run with an Engine of batch_size=1 isn't recommended "
+                "for optimal performance."
+            )
 
         # Split inputs into batches of size `self.batch_size`
-        batch_inputs = split_engine_inputs(inp, self.batch_size)
+        batch_inputs, orig_batch_size = split_engine_inputs(inp, self.batch_size)
 
         # Submit split batches to engine threadpool
         batch_outputs = list(map(self.run, batch_inputs))
 
         # Join together the batches of size `self.batch_size`
-        return join_engine_outputs(batch_outputs, self.batch_size)
+        return join_engine_outputs(batch_outputs, orig_batch_size)
 
     def run(
         self,
