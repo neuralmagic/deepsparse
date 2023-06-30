@@ -89,7 +89,7 @@ class ImageClassificationPipeline(Pipeline):
 
         self._image_size = self._infer_image_size()
         self.top_k = top_k
-        self.return_logits = return_logits
+        self.return_logits = True
 
         # torchvision transforms for raw inputs
         non_rand_resize_scale = 256.0 / 224.0  # standard used
