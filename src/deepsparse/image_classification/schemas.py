@@ -38,10 +38,10 @@ class ImageClassificationOutput(BaseModel):
     """
     Output model for image classification
     """
-    labels: List[Union[int, str, List[int], List[str]]] = Field(
+    labels: Optional[List[Union[int, str, List[int], List[str]]]] = Field(
         description="List of labels, one for each prediction"
     )
-    scores: List[Union[float, List[float]]] = Field(
+    scores: Optional[List[Union[float, List[float]]]] = Field(
         description="List of scores, one for each prediction"
     )
     logits: Optional[List[Union[int, List[int], List[float]]]] = Field(description="Raw model outputs")
