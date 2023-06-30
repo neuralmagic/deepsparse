@@ -15,7 +15,7 @@
 """
 Input/Output Schemas for Image Classification.
 """
-from typing import List, Union 
+from typing import List, Union, Optional 
 import numpy
 from pydantic import BaseModel, Field
 
@@ -44,4 +44,4 @@ class ImageClassificationOutput(BaseModel):
     scores: List[Union[float, List[float]]] = Field(
         description="List of scores, one for each prediction"
     )
-    logits: List[Union[int, List[int], List[float]]] = Field(description="Raw model outputs")
+    logits: Optional[List[Union[int, List[int], List[float]]]] = Field(description="Raw model outputs")
