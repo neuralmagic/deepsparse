@@ -33,7 +33,8 @@ class TextGenerationInput(BaseModel):
     return_logits: bool = Field(
         default=False,
         description="A flag that indicates whether to return "
-        "the logits for the generated text sequence. ",
+        "the logits for the input text sequence and the "
+        "generated text sequence. ",
     )
     session_id: Optional[str] = Field(
         default=None,

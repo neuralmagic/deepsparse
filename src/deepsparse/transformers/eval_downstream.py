@@ -84,7 +84,7 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
     text_generation = Pipeline.create(
         task="text-generation",
         model_path=args.model_path,
-        engine_type=args.engine_type,
+        engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
         prompt_processing_sequence_length=args.max_sequence_length,
@@ -93,7 +93,13 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
         remove_special_tokens_from_prompt=False,
     )
     perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
-    print(f"Engine info: {text_generation.engine}")
+    active_engines = [
+        engine
+        for engine in [text_generation.engine, text_generation.multitoken_engine]
+        if engine
+    ]
+    print("Engine info: ")
+    [print(f"{engine}\n") for engine in active_engines]
     predictions = []
     for idx, sample in _enumerate_progress(dataset, args.max_samples):
         predictions.append(sample["prompt"] + sample["canonical_solution"])

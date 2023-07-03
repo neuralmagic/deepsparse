@@ -250,6 +250,9 @@ class NLDecoderEngine:
 
         return numpy.random.choice(len(probs), p=probs)
 
+    def __str__(self):
+        return f"NLDecoderEngine: {self.engine}"
+
     def _initialize_kv_cache_state(self, length: int) -> Dict[str, numpy.ndarray]:
         # initialize empty kv cache of size
         # (batch_size, num_attention_heads, length, hidden_dims)
