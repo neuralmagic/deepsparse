@@ -130,6 +130,8 @@ class TextGenerationPipeline(TransformersPipeline):
         self.force_max_tokens = force_max_tokens
 
         self.tokenizer.padding_side = tokenizer_padding_side
+        if not self.tokenizer.pad_token:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.engine = None
 
@@ -211,8 +213,6 @@ class TextGenerationPipeline(TransformersPipeline):
         :param inputs: the input schema for the pipeline
         :return: the inputs for the engine
         """
-
-        self.tokenizer.pad_token = self.tokenizer.eos_token
 
         input_tokens = self.tokenizer(
             inputs.sequences,
