@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import Dict, List, Optional, Tuple, Type, Union
+import warnings
+from typing import List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -41,6 +41,13 @@ class TextGenerationInput(BaseModel):
         "for the kv cache session. If None, "
         "and the model is using kv cache, it "
         "will be set to a random uuid.",
+    )
+    truncate: bool = Field(
+        default=False,
+        description="A flag that indicates whether to truncate "
+        "the input text sequence. Useful, when a batch of "
+        "predictions needs to have consistent length so one"
+        "can compute metric in a batched fashion. ",
     )
 
 
@@ -91,6 +98,8 @@ class TextGenerationPipeline(TransformersPipeline):
         for caching the model outputs.
     :param tokenizer_padding_side: the side to pad the input sequence to.
         Either "left" or "right". Defaults to "left".
+    :param remove_special_tokens_from_prompt: if True, the pipeline will remove
+        the special tokens from the prompt, before processing it. Defaults to True.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
@@ -104,6 +113,7 @@ class TextGenerationPipeline(TransformersPipeline):
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = False,
         tokenizer_padding_side: str = "left",
+        remove_special_tokens_from_prompt: bool = True,
         **kwargs,
     ):
         if use_deepsparse_cache:
@@ -119,6 +129,12 @@ class TextGenerationPipeline(TransformersPipeline):
                 "supported for text generation pipelines"
             )
 
+        if tokenizer_padding_side != "left":
+            warnings.warn(
+                "By default the tokenizer padding side is set to left. "
+                f"Setting it to {tokenizer_padding_side} may result in "
+                "unexpected behavior."
+            )
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
@@ -128,6 +144,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.max_generated_tokens = max_generated_tokens
         self.prompt_processing_sequence_length = prompt_processing_sequence_length
         self.force_max_tokens = force_max_tokens
+        self.remove_special_tokens_from_prompt = remove_special_tokens_from_prompt
 
         self.tokenizer.padding_side = tokenizer_padding_side
         if not self.tokenizer.pad_token:
@@ -219,8 +236,7 @@ class TextGenerationPipeline(TransformersPipeline):
             return_tensors="np",
             max_length=self.sequence_length,
             padding="max_length",
-            # TODO: Truncating by default may be a problem
-            truncation=True,
+            truncation=inputs.truncate,
         )
 
         attention_mask = input_tokens["attention_mask"]
@@ -254,9 +270,7 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         generated_tokens, generated_logits = engine_outputs
         sequences = self.tokenizer.batch_decode(
-            # TODO: hack for now, make it general
-            *generated_tokens[0],
-            skip_special_tokens=True,
+            generated_tokens, skip_special_tokens=True
         )
         logits = generated_logits if kwargs.get("return_logits") else None
 
@@ -275,11 +289,12 @@ class TextGenerationPipeline(TransformersPipeline):
             of logits for each generated token
         """
         if not self.multitoken_engine.kv_cache_enabled:
-            tokens, logits = self.multitoken_engine(engine_inputs)
-            tokens = [tokens]
+            tokens, prompt_logits = self.multitoken_engine(engine_inputs)
+            return numpy.array([tokens]), prompt_logits
+
         else:
             # run the prompt through
-            tokens, logits = self.prompt_inference(engine_inputs)
+            tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
         # create the generated output
         max_tokens = (
@@ -289,7 +304,7 @@ class TextGenerationPipeline(TransformersPipeline):
         )  # set safety for absolute max generation
 
         generated_tokens = [tokens[-1]]
-        generated_logits = [logits]
+        generated_logits = prompt_logits
 
         while len(generated_tokens) < max_tokens:
             (
@@ -303,13 +318,13 @@ class TextGenerationPipeline(TransformersPipeline):
             if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
                 break
 
-        return numpy.array([[generated_tokens]]), numpy.concatenate(
+        return numpy.array(generated_tokens), numpy.concatenate(
             generated_logits, axis=1
         )
 
     def prompt_inference(
         self, engine_inputs: List[numpy.ndarray]
-    ) -> Tuple[List[int], Dict[str, numpy.ndarray]]:
+    ) -> Tuple[List[int], List[numpy.ndarray]]:
         """
         An inference run that processes the prompt through the
         model to generate the new token and logits
@@ -321,8 +336,14 @@ class TextGenerationPipeline(TransformersPipeline):
             - The logits generated from the prompt (with dimensions
             ['batch_size', 'num_tokens', 'vocab_size'])
         """
-        # get tokens by attention mask
-        tokens = engine_inputs[0][0].tolist()
+        tokens = engine_inputs[0]
+        if self.remove_special_tokens_from_prompt:
+            # get tokens by attention mask
+            tokens = tokens[engine_inputs[1].nonzero()].tolist()
+        else:
+            tokens = tokens[0].tolist()
+
+        prompt_logits = []
         new_token = None
         num_tokens_processed = 0
 
@@ -343,17 +364,17 @@ class TextGenerationPipeline(TransformersPipeline):
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
-        logits = []
+
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             new_token, new_logits = self.autoregressive_inference(
                 run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
             )
-            logits.append(new_logits)
+            prompt_logits.append(new_logits)
 
         tokens.append(new_token)
 
-        return tokens, numpy.concatenate(logits, axis=1)
+        return tokens, prompt_logits
 
     def autoregressive_inference(
         self,

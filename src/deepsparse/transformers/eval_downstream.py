@@ -78,22 +78,21 @@ DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 
-def perplexity_eval(args, batch_size=1, dataset_name="openai_humaneval"):
+def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
     dataset = load_dataset(dataset_name)["test"]
 
     text_generation = Pipeline.create(
         task="text-generation",
         model_path=args.model_path,
-        # TODO: make sure this also works for deepsparse engine
-        engine_type="onnxruntime",
+        engine_type=args.engine_type,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
         prompt_processing_sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
         tokenizer_padding_side="right",
+        remove_special_tokens_from_prompt=False,
     )
     perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
-    # TODO: text_generation.engine is None
     print(f"Engine info: {text_generation.engine}")
     predictions = []
     for idx, sample in _enumerate_progress(dataset, args.max_samples):

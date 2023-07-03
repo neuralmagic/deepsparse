@@ -82,7 +82,9 @@ class Perplexity:
             encoded_batch = encoded_texts[start_index:end_index]
             attention_mask = attention_masks[start_index:end_index]
 
-            out = self._pipeline(sequences=predictions, return_logits=True)
+            out = self._pipeline(
+                sequences=predictions, return_logits=True, truncate=True
+            )
             logits = out.logits
 
             labels = encoded_batch
