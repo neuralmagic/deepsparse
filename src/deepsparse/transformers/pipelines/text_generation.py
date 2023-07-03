@@ -97,8 +97,6 @@ class TextGenerationPipeline(TransformersPipeline):
         of tokens supplied even if the stop token is reached.
     :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
-    :param tokenizer_padding_side: the side to pad the input sequence to.
-        Either "left" or "right". Defaults to "left".
     :param remove_special_tokens_from_prompt: if True, the pipeline will remove
         the special tokens from the prompt, before processing it. Defaults to True.
     :param kwargs: kwargs to pass to the TransformersPipeline
@@ -140,6 +138,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.force_max_tokens = force_max_tokens
         self.remove_special_tokens_from_prompt = remove_special_tokens_from_prompt
 
+        # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
         if not self.tokenizer.pad_token:
             self.tokenizer.pad_token = self.tokenizer.eos_token
