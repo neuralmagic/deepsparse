@@ -88,11 +88,23 @@ class Perplexity:
             logits = out.logits
 
             labels = encoded_batch
+            labels = numpy.stack(labels)
+            attention_mask = numpy.stack(attention_mask)
+
+            # because the tokenizer is left padded, we need to move the meaningful
+            # part of the logits and labels to the right
+            num_padded_entries = attention_mask.sum(axis=1)
+
+            # shift the values at num_paddings to the top of the array using roll
+            for i, num_padded in enumerate(num_padded_entries):
+                logits[i] = numpy.roll(logits[i], num_padded, axis=0)
+                labels[i] = numpy.roll(labels[i], num_padded, axis=0)
+                attention_mask[i] = numpy.roll(attention_mask[i], num_padded, axis=0)
 
             # shift logits and labels create the input and target for the loss function
             shift_logits = logits[:, :-1, :]
-            shift_labels = numpy.stack(labels)[:, 1:]
-            shift_attention_mask_batch = numpy.stack(attention_mask)[:, 1:]
+            shift_labels = labels[:, 1:]
+            shift_attention_mask_batch = attention_mask[:, 1:]
 
             # compute perplexity for this batch
             perplexity_batch = torch.exp(

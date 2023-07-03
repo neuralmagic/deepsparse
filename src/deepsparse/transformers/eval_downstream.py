@@ -68,14 +68,11 @@ from pstats import Stats
 import numpy
 from tqdm.auto import tqdm
 
-from deepsparse import Pipeline
+from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 
 
 from datasets import load_dataset, load_metric  # isort: skip
-
-DEEPSPARSE_ENGINE = "deepsparse"
-ORT_ENGINE = "onnxruntime"
 
 
 def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
@@ -89,7 +86,6 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
         sequence_length=args.max_sequence_length,
         prompt_processing_sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
-        tokenizer_padding_side="right",
         remove_special_tokens_from_prompt=False,
     )
     perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
@@ -106,6 +102,8 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
         if len(predictions) == batch_size:
             perplexity_metrics.add_batch(predictions)
             predictions = []
+        if args.max_samples and idx >= args.max_samples:
+            break
     return perplexity_metrics
 
 

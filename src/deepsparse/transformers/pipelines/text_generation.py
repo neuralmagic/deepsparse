@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import warnings
+
 from typing import List, Optional, Tuple, Type, Union
 
 import numpy
@@ -113,7 +113,6 @@ class TextGenerationPipeline(TransformersPipeline):
         prompt_processing_sequence_length: int = 128,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = False,
-        tokenizer_padding_side: str = "left",
         remove_special_tokens_from_prompt: bool = True,
         **kwargs,
     ):
@@ -130,12 +129,6 @@ class TextGenerationPipeline(TransformersPipeline):
                 "supported for text generation pipelines"
             )
 
-        if tokenizer_padding_side != "left":
-            warnings.warn(
-                "By default the tokenizer padding side is set to left. "
-                f"Setting it to {tokenizer_padding_side} may result in "
-                "unexpected behavior."
-            )
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
@@ -147,7 +140,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.force_max_tokens = force_max_tokens
         self.remove_special_tokens_from_prompt = remove_special_tokens_from_prompt
 
-        self.tokenizer.padding_side = tokenizer_padding_side
+        self.tokenizer.padding_side = "left"
         if not self.tokenizer.pad_token:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
