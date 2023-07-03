@@ -322,7 +322,7 @@ class TextGenerationPipeline(TransformersPipeline):
             ['batch_size', 'num_tokens', 'vocab_size'])
         """
         # get tokens by attention mask
-        tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
+        tokens = engine_inputs[0][0].tolist()
         new_token = None
         num_tokens_processed = 0
 
@@ -343,15 +343,17 @@ class TextGenerationPipeline(TransformersPipeline):
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
+        logits = []
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             new_token, new_logits = self.autoregressive_inference(
                 run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
             )
+            logits.append(new_logits)
 
         tokens.append(new_token)
 
-        return tokens, new_logits
+        return tokens, numpy.concatenate(logits, axis=1)
 
     def autoregressive_inference(
         self,

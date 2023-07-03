@@ -78,7 +78,7 @@ DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
 
-def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
+def perplexity_eval(args, batch_size=1, dataset_name="openai_humaneval"):
     dataset = load_dataset(dataset_name)["test"]
 
     text_generation = Pipeline.create(
