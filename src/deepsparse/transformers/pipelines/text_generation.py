@@ -15,11 +15,11 @@
 from typing import List, Optional, Tuple, Type, Union
 
 import numpy
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from deepsparse import Pipeline
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
-from deepsparse.transformers.engines import NLDecoderEngine
+from deepsparse.transformers.engines import NLDecoderEngine, synchronise_engines_cache
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -36,11 +36,11 @@ class TextGenerationInput(BaseModel):
         "the logits for the input text sequence and the "
         "generated text sequence. ",
     )
-    session_id: Optional[str] = Field(
+    session_ids: Union[None, List[str], str] = Field(
         default=None,
-        description="A user may set a string identifier "
-        "for the kv cache session. If None, "
-        "and the model is using kv cache, it "
+        description="A user may set a string identifier(s) "
+        "for the kv cache session(s). If None, "
+        "and the model is using kv cache, session_id "
         "will be set to a random uuid.",
     )
     truncate: bool = Field(
@@ -50,6 +50,29 @@ class TextGenerationInput(BaseModel):
         "predictions needs to have consistent length so one"
         "can compute metric in a batched fashion. ",
     )
+
+    @validator("session_ids")
+    def check_session_id(cls, value) -> Union[None, List[str], str]:
+        if isinstance(value, list):
+            if len(value) != len(set(value)):
+                raise ValueError(
+                    "The session_id list has duplicates. "
+                    "Please make sure that the session_id list "
+                    "has unique elements."
+                )
+        return value
+
+    @validator("session_ids")
+    def check_session_id_len(cls, value, values) -> Union[None, List[str], str]:
+        if isinstance(value, list):
+            if len(value) != len(values["sequences"]):
+                raise ValueError(
+                    "The session_id list has different length "
+                    "than the input sequences. "
+                    "Please make sure that the session_id list "
+                    "has the same length as the input sequences."
+                )
+        return value
 
 
 class TextGenerationOutput(BaseModel):
@@ -62,8 +85,8 @@ class TextGenerationOutput(BaseModel):
         "The logits have dimensions "
         "[batch_size, sequence_length, vocab_size]",
     )
-    session_id: Optional[str] = Field(
-        default=None, description="A string identifier for the kv cache session."
+    session_ids: Union[None, str, List[str]] = Field(
+        default=None, description="A string identifier(s) for the kv cache session."
     )
 
     class Config:
@@ -182,6 +205,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 "assumed that it maps from the token sequence to predicted logits."
                 "Set `max_generated_tokens` to 1 to support that scenario."
             )
+        self._session_ids_in_engine_input = False
 
     @staticmethod
     def route_input_to_bucket(
@@ -244,12 +268,19 @@ class TextGenerationPipeline(TransformersPipeline):
         onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
-        if inputs.session_id is not None:
-            # if session_id is provided, we need to set it in engines
-            self.engine.session_id = inputs.session_id
-            self.multitoken_engine.session_id = inputs.session_id
-
         postprocessing_kwargs = dict(return_logits=inputs.return_logits)
+
+        if inputs.session_ids is not None:
+            session_ids = (
+                [inputs.session_ids]
+                if isinstance(inputs.session_ids, str)
+                else inputs.session_ids
+            )
+            # TODO: This is ugly, we should find a better way to pass
+            # session_id to the engine, maybe use the refactored pipeline
+            engine_input.append(numpy.array(session_ids))
+            self._session_ids_in_engine_input = True
+
         return engine_input, postprocessing_kwargs
 
     def process_engine_outputs(
@@ -261,16 +292,17 @@ class TextGenerationPipeline(TransformersPipeline):
         :param engine_outputs: the outputs from the engine
         :return: the output schema for the pipeline
         """
-        generated_tokens, generated_logits = engine_outputs
-        if generated_tokens.ndim == 1:
-            # if we have a single dimension, add a batch dimension
-            generated_tokens = generated_tokens[None, :]
+        generated_tokens, generated_logits, *session_ids = engine_outputs
+
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
         logits = generated_logits if kwargs.get("return_logits") else None
+        session_ids = session_ids[0].tolist() if session_ids else None
 
-        return TextGenerationOutput(sequences=sequences, logits=logits)
+        return TextGenerationOutput(
+            sequences=sequences, logits=logits, session_ids=session_ids
+        )
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], **kwargs
@@ -284,13 +316,17 @@ class TextGenerationPipeline(TransformersPipeline):
             sequence of generated tokens and a sequence
             of logits for each generated token
         """
+        if self._session_ids_in_engine_input:
+            *engine_inputs, session_id = engine_inputs
+            session_id = session_id[0]
+
         if not self.multitoken_engine.kv_cache_enabled:
             tokens, prompt_logits = self.multitoken_engine(engine_inputs)
             return numpy.array([tokens]), prompt_logits
 
         else:
             # run the prompt through
-            tokens, prompt_logits = self.prompt_inference(engine_inputs)
+            tokens, prompt_logits = self.prompt_inference(engine_inputs, session_id)
 
         # create the generated output
         max_tokens = (
@@ -306,7 +342,7 @@ class TextGenerationPipeline(TransformersPipeline):
             (
                 token,
                 logits,
-            ) = self.autoregressive_inference(tokens)
+            ) = self.autoregressive_inference(tokens, session_id)
             tokens.append(token)
             generated_tokens.append(token)
             generated_logits.append(logits)
@@ -314,12 +350,19 @@ class TextGenerationPipeline(TransformersPipeline):
             if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
                 break
 
-        return numpy.array(generated_tokens), numpy.concatenate(
+        if session_id:
+            return (
+                numpy.array([generated_tokens]),
+                numpy.concatenate(generated_logits, axis=1),
+                numpy.array([session_id]),
+            )
+
+        return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
         )
 
     def prompt_inference(
-        self, engine_inputs: List[numpy.ndarray]
+        self, engine_inputs: List[numpy.ndarray], session_id: str
     ) -> Tuple[List[int], List[numpy.ndarray]]:
         """
         An inference run that processes the prompt through the
@@ -346,18 +389,21 @@ class TextGenerationPipeline(TransformersPipeline):
         # TODO: Multiple passes through the multitoken
         # engine once the OPT injection is fixed
         if len(tokens) > self.prompt_processing_sequence_length:
+            # synchronise engines' kv cache before multi-token inference
+            synchronise_engines_cache(engines={self.engine, self.multitoken_engine})
             # trim the input to the prompt size
             engine_inputs = [
                 input[:, : self.prompt_processing_sequence_length]
                 for input in engine_inputs
             ]
-            new_token, new_logits = self.multitoken_engine(engine_inputs)
+            new_token, new_logits = self.multitoken_engine(
+                engine_inputs, session_id=session_id
+            )
             num_tokens_processed = self.prompt_processing_sequence_length
             prompt_logits.append(new_logits)
 
-        if num_tokens_processed:
-            # transfer the cache state from the multi-token engine to the main engine
-            self.engine.transfer_cache_state(self.multitoken_engine)
+        # synchronise engines' kv cache before autoregressive inference
+        synchronise_engines_cache(engines={self.engine, self.multitoken_engine})
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
@@ -365,7 +411,9 @@ class TextGenerationPipeline(TransformersPipeline):
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             new_token, new_logits = self.autoregressive_inference(
-                run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
+                run_tokens,
+                session_id=session_id,
+                shift_positions_by_one=not bool(num_tokens_processed),
             )
             prompt_logits.append(new_logits)
 
@@ -376,6 +424,7 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
+        session_id: Optional[str] = None,
         shift_positions_by_one: bool = False,
     ) -> Tuple[int, numpy.ndarray]:
         """
@@ -401,6 +450,8 @@ class TextGenerationPipeline(TransformersPipeline):
         input_ids = numpy.array([[new_token]])
         engine_inputs = [input_ids, attention_mask, positions]
 
-        generated_token, generated_logits = self.engine(engine_inputs)
+        generated_token, generated_logits = self.engine(
+            engine_inputs, session_id=session_id
+        )
 
         return generated_token, generated_logits
