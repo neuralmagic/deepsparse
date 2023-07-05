@@ -17,16 +17,117 @@ Utilities for evaluation metric computation
 """
 
 
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy
+from tqdm import tqdm
 
+import torch
+from deepsparse import Pipeline
+from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from sklearn.metrics import precision_recall_fscore_support
 
 
 __all__ = [
     "PrecisionRecallF1",
+    "Perplexity",
 ]
+
+
+class Perplexity:
+    def __init__(self, pipeline: Pipeline, batch_size: int = 16):
+        """
+        Given the pipeline, compute the perplexity of the model
+        on the given text input.
+
+        Code adapted from:
+        https://huggingface.co/spaces/evaluate-metric/perplexity/blob/main/perplexity.py # noqa: E501
+
+        :param pipeline: The pipeline to use for text generation
+        :param batch_size: The batch size to split the input text into
+         non-overlapping batches
+        """
+        if not isinstance(pipeline, TextGenerationPipeline):
+            raise ValueError(
+                "Perplexity can only be computed for text generation pipelines"
+            )
+        self._pipeline = pipeline
+        self._batch_size = batch_size
+        self._sequence_length = pipeline.sequence_length
+        self._loss_fct = torch.nn.CrossEntropyLoss(reduction="none")
+
+        self.perplexities = []
+
+    def add_batch(self, predictions: List[str]):
+        """
+        Run the model on the given input sequences and compute the perplexity.
+        The resulting perplexity is appended to the list of perplexities.
+
+        :param predictions: The predictions to compute perplexity on
+        """
+        # tokenize the input text
+        encodings = self._pipeline.tokenizer(
+            predictions,
+            return_attention_mask=True,
+            max_length=self._sequence_length,
+            truncation=True,
+            padding="max_length",
+        )
+
+        encoded_texts = encodings["input_ids"]
+        attention_masks = encodings["attention_mask"]
+
+        for start_index in tqdm(range(0, len(encoded_texts), self._batch_size)):
+            end_index = min(start_index + self._batch_size, len(encoded_texts))
+            encoded_batch = encoded_texts[start_index:end_index]
+            attention_mask = attention_masks[start_index:end_index]
+
+            out = self._pipeline(
+                sequences=predictions, return_logits=True, truncate=True
+            )
+            logits = out.logits
+
+            labels = encoded_batch
+            labels = numpy.stack(labels)
+            attention_mask = numpy.stack(attention_mask)
+
+            # because the tokenizer is left padded, we need to move the meaningful
+            # part of the logits and labels to the right
+            num_padded_entries = attention_mask.sum(axis=1)
+
+            # shift the values at num_paddings to the top of the array using roll
+            for i, num_padded in enumerate(num_padded_entries):
+                logits[i] = numpy.roll(logits[i], num_padded, axis=0)
+                labels[i] = numpy.roll(labels[i], num_padded, axis=0)
+                attention_mask[i] = numpy.roll(attention_mask[i], num_padded, axis=0)
+
+            # shift logits and labels create the input and target for the loss function
+            shift_logits = logits[:, :-1, :]
+            shift_labels = labels[:, 1:]
+            shift_attention_mask_batch = attention_mask[:, 1:]
+
+            # compute perplexity for this batch
+            perplexity_batch = torch.exp(
+                (
+                    self._loss_fct(
+                        torch.tensor(shift_logits.transpose(0, 2, 1)),
+                        torch.tensor(shift_labels),
+                    )
+                    * torch.tensor(shift_attention_mask_batch)
+                ).sum(1)
+                / torch.tensor(shift_attention_mask_batch).sum(1)
+            )
+            self.perplexities.extend(perplexity_batch.numpy().tolist())
+
+    def compute(self) -> Dict[str, Any]:
+        """
+        :return: A dictionary containing the mean perplexity
+            and the list of perplexities
+        """
+        return {
+            "mean_perplexity": numpy.mean(self.perplexities),
+            "perplexities": self.perplexities,
+        }
 
 
 class PrecisionRecallF1:

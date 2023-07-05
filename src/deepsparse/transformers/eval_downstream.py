@@ -68,14 +68,43 @@ from pstats import Stats
 import numpy
 from tqdm.auto import tqdm
 
-from deepsparse import Pipeline
-from deepsparse.transformers.metrics import PrecisionRecallF1
+from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
+from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 
 
 from datasets import load_dataset, load_metric  # isort: skip
 
-DEEPSPARSE_ENGINE = "deepsparse"
-ORT_ENGINE = "onnxruntime"
+
+def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
+    dataset = load_dataset(dataset_name)["test"]
+
+    text_generation = Pipeline.create(
+        task="text-generation",
+        model_path=args.model_path,
+        engine_type=args.engine,
+        num_cores=args.num_cores,
+        sequence_length=args.max_sequence_length,
+        prompt_processing_sequence_length=args.max_sequence_length,
+        max_generated_tokens=1,
+        remove_special_tokens_from_prompt=False,
+    )
+    perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
+    active_engines = [
+        engine
+        for engine in [text_generation.engine, text_generation.multitoken_engine]
+        if engine
+    ]
+    print("Engine info: ")
+    [print(f"{engine}\n") for engine in active_engines]
+    predictions = []
+    for idx, sample in _enumerate_progress(dataset, args.max_samples):
+        predictions.append(sample["prompt"] + sample["canonical_solution"])
+        if len(predictions) == batch_size:
+            perplexity_metrics.add_batch(predictions)
+            predictions = []
+        if args.max_samples and idx >= args.max_samples:
+            break
+    return perplexity_metrics
 
 
 def qa_eval(args, dataset_name="squad"):
@@ -443,11 +472,14 @@ SUPPORTED_DATASETS = {
     "imdb": imdb_eval,
     "conll2003": conll2003_eval,
     "go_emotions": go_emotions_eval,
+    "openai_humaneval": perplexity_eval,
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
+        # TODO: It is not BERT anymore, should we
+        # have another script or modify the existing one?
         description="Evaluate a BERT ONNX model on a downstream dataset"
     )
     parser.add_argument(
@@ -461,9 +493,9 @@ def parse_args():
     parser.add_argument(
         "-d",
         "--dataset",
-        type=str,
         choices=list(SUPPORTED_DATASETS.keys()),
         required=True,
+        type=str,
     )
     parser.add_argument(
         "-v",

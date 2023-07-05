@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -33,7 +33,8 @@ class TextGenerationInput(BaseModel):
     return_logits: bool = Field(
         default=False,
         description="A flag that indicates whether to return "
-        "the logits for the generated text sequence. ",
+        "the logits for the input text sequence and the "
+        "generated text sequence. ",
     )
     session_id: Optional[str] = Field(
         default=None,
@@ -41,6 +42,13 @@ class TextGenerationInput(BaseModel):
         "for the kv cache session. If None, "
         "and the model is using kv cache, it "
         "will be set to a random uuid.",
+    )
+    truncate: bool = Field(
+        default=False,
+        description="A flag that indicates whether to truncate "
+        "the input text sequence. Useful, when a batch of "
+        "predictions needs to have consistent length so one"
+        "can compute metric in a batched fashion. ",
     )
 
 
@@ -89,6 +97,8 @@ class TextGenerationPipeline(TransformersPipeline):
         of tokens supplied even if the stop token is reached.
     :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
+    :param remove_special_tokens_from_prompt: if True, the pipeline will remove
+        the special tokens from the prompt, before processing it. Defaults to True.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
@@ -101,6 +111,7 @@ class TextGenerationPipeline(TransformersPipeline):
         prompt_processing_sequence_length: int = 128,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = False,
+        remove_special_tokens_from_prompt: bool = True,
         **kwargs,
     ):
         if use_deepsparse_cache:
@@ -125,11 +136,15 @@ class TextGenerationPipeline(TransformersPipeline):
         self.max_generated_tokens = max_generated_tokens
         self.prompt_processing_sequence_length = prompt_processing_sequence_length
         self.force_max_tokens = force_max_tokens
+        self.remove_special_tokens_from_prompt = remove_special_tokens_from_prompt
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
+        if not self.tokenizer.pad_token:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.engine = None
+
         self.multitoken_engine = NLDecoderEngine(
             onnx_file_path=self.onnx_file_path,
             engine_type=self.engine_type,
@@ -157,6 +172,15 @@ class TextGenerationPipeline(TransformersPipeline):
                 input_ids_length=1,
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=use_deepsparse_cache,
+            )
+        if (
+            not self.multitoken_engine.kv_cache_enabled
+            and self.max_generated_tokens > 1
+        ):
+            raise ValueError(
+                "The model used for inference does not support kv cache. It is "
+                "assumed that it maps from the token sequence to predicted logits."
+                "Set `max_generated_tokens` to 1 to support that scenario."
             )
 
     @staticmethod
@@ -200,13 +224,12 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the inputs for the engine
         """
 
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-
         input_tokens = self.tokenizer(
             inputs.sequences,
             return_tensors="np",
             max_length=self.sequence_length,
             padding="max_length",
+            truncation=inputs.truncate,
         )
 
         attention_mask = input_tokens["attention_mask"]
@@ -239,8 +262,11 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
         generated_tokens, generated_logits = engine_outputs
+        if generated_tokens.ndim == 1:
+            # if we have a single dimension, add a batch dimension
+            generated_tokens = generated_tokens[None, :]
         sequences = self.tokenizer.batch_decode(
-            *generated_tokens, skip_special_tokens=True
+            generated_tokens, skip_special_tokens=True
         )
         logits = generated_logits if kwargs.get("return_logits") else None
 
@@ -259,17 +285,12 @@ class TextGenerationPipeline(TransformersPipeline):
             of logits for each generated token
         """
         if not self.multitoken_engine.kv_cache_enabled:
-            if self.max_generated_tokens != 1:
-                raise ValueError(
-                    "The model used for inference does not support kv cache. It is "
-                    "assumed that it maps from the token sequence to predicted logits."
-                    "Set `max_generated_tokens` to 1 to support that scenario."
-                )
-            tokens, logits = self.multitoken_engine(engine_inputs)
-            tokens = [tokens]
+            tokens, prompt_logits = self.multitoken_engine(engine_inputs)
+            return numpy.array([tokens]), prompt_logits
+
         else:
             # run the prompt through
-            tokens, logits = self.prompt_inference(engine_inputs)
+            tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
         # create the generated output
         max_tokens = (
@@ -279,7 +300,7 @@ class TextGenerationPipeline(TransformersPipeline):
         )  # set safety for absolute max generation
 
         generated_tokens = [tokens[-1]]
-        generated_logits = [logits]
+        generated_logits = prompt_logits
 
         while len(generated_tokens) < max_tokens:
             (
@@ -293,13 +314,13 @@ class TextGenerationPipeline(TransformersPipeline):
             if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
                 break
 
-        return numpy.array([[generated_tokens]]), numpy.concatenate(
+        return numpy.array(generated_tokens), numpy.concatenate(
             generated_logits, axis=1
         )
 
     def prompt_inference(
         self, engine_inputs: List[numpy.ndarray]
-    ) -> Tuple[List[int], Dict[str, numpy.ndarray]]:
+    ) -> Tuple[List[int], List[numpy.ndarray]]:
         """
         An inference run that processes the prompt through the
         model to generate the new token and logits
@@ -311,8 +332,14 @@ class TextGenerationPipeline(TransformersPipeline):
             - The logits generated from the prompt (with dimensions
             ['batch_size', 'num_tokens', 'vocab_size'])
         """
-        # get tokens by attention mask
-        tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
+        tokens = engine_inputs[0]
+        if self.remove_special_tokens_from_prompt:
+            # get tokens by attention mask
+            tokens = tokens[engine_inputs[1].nonzero()].tolist()
+        else:
+            tokens = tokens[0].tolist()
+
+        prompt_logits = []
         new_token = None
         num_tokens_processed = 0
 
@@ -326,6 +353,7 @@ class TextGenerationPipeline(TransformersPipeline):
             ]
             new_token, new_logits = self.multitoken_engine(engine_inputs)
             num_tokens_processed = self.prompt_processing_sequence_length
+            prompt_logits.append(new_logits)
 
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
@@ -333,15 +361,17 @@ class TextGenerationPipeline(TransformersPipeline):
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
+
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             new_token, new_logits = self.autoregressive_inference(
                 run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
             )
+            prompt_logits.append(new_logits)
 
         tokens.append(new_token)
 
-        return tokens, new_logits
+        return tokens, prompt_logits
 
     def autoregressive_inference(
         self,

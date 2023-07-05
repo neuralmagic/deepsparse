@@ -154,10 +154,7 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
-        B, S, V = logits.shape  # batch, sequence, vocab
-        logits = logits[:, -1, :].reshape(B, 1, V)  # only take the last token
-
-        token = self.generate_token(logits=logits)
+        token = self.generate_token(logits=logits[:, -1, :])
 
         return token, logits
 
@@ -252,6 +249,9 @@ class NLDecoderEngine:
         probs = softmax(logits)
 
         return numpy.random.choice(len(probs), p=probs)
+
+    def __str__(self):
+        return f"{self.__class__.__name__}: {self.engine}"
 
     def _initialize_kv_cache_state(self, length: int) -> Dict[str, numpy.ndarray]:
         # initialize empty kv cache of size
