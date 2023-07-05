@@ -262,6 +262,9 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
         generated_tokens, generated_logits = engine_outputs
+        if generated_tokens.ndim == 1:
+            # if we have a single dimension, add a batch dimension
+            generated_tokens = generated_tokens[None, :]
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
@@ -350,6 +353,7 @@ class TextGenerationPipeline(TransformersPipeline):
             ]
             new_token, new_logits = self.multitoken_engine(engine_inputs)
             num_tokens_processed = self.prompt_processing_sequence_length
+            prompt_logits.append(new_logits)
 
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
