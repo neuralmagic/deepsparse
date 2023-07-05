@@ -15,22 +15,17 @@
 from typing import List
 
 import numpy
-import os
-import pytest
-from deepsparse.benchmark.torchscript_engine import TorchScriptEngine
 
-import shutil
-from tests.utils.torch import find_file_with_pattern, save_pth_to_pt
 from deepsparse import Pipeline
+from deepsparse.benchmark.torchscript_engine import TorchScriptEngine
+from deepsparse.image_classification.schemas import ImageClassificationOutput
 
-from deepsparse.image_classification.schemas import (
-    ImageClassificationOutput, 
-)
 
 try:
     import torch
+
     torch_import_error = None
-except err as torch_import_err:
+except Exception as torch_import_err:
     torch_import_error = torch_import_err
     torch = None
 
@@ -38,10 +33,12 @@ except err as torch_import_err:
 def test_cpu_torchscript(torchscript_test_setup):
     models = torchscript_test_setup
     for model in models.values():
-        engine = TorchScriptEngine(model, device="cpu") 
+        engine = TorchScriptEngine(model, device="cpu")
         inp = [numpy.random.rand(1, 3, 224, 224).astype(numpy.float32)]
         out = engine(inp)
-        assert isinstance(out, List) and all(isinstance(arr, numpy.ndarray) for arr in out)
+        assert isinstance(out, List) and all(
+            isinstance(arr, numpy.ndarray) for arr in out
+        )
 
 
 def test_cpu_torchscript_pipeline(torchscript_test_setup):
@@ -51,10 +48,9 @@ def test_cpu_torchscript_pipeline(torchscript_test_setup):
         task="image_classification",
         model_path=models["jit_model_path"],
         engine_type="torchscript",
-        image_size = (224, 224),
+        image_size=(224, 224),
     )
 
     inp = [numpy.random.rand(3, 224, 224).astype(numpy.float32)]
     pipeline_outputs = torchscript_pipeline(images=inp)
     assert isinstance(pipeline_outputs, ImageClassificationOutput)
-

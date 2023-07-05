@@ -166,6 +166,8 @@ _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_fil
 
 
 _torch_deps = ["torch=2.0"]
+
+
 def _check_supported_system():
     if sys.platform.startswith("linux"):
         # linux is supported, allow install to go through

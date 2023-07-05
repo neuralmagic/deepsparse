@@ -35,6 +35,7 @@ from deepsparse.image_classification.schemas import (
 from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 
+
 # try:
 #     import torch
 #     torch_import_error = None
@@ -259,13 +260,6 @@ class ImageClassificationPipeline(Pipeline):
 
         :return: The expected shape of the input tensor from onnx graph
         """
-        # if torch and (self.onnx_file_path.endswith("pt") or self.onnx_file_path.endswith("pth")):
-        #     torch_model = torch.jit.load(self.onnx_file_path)
-        #     first_parameter = next(torch_model.parameters())
-        #     input_shape = first_parameter.size()
-        #     return (
-        #         input_shape[2], input_shape[3]
-        #     )
         onnx_model = onnx.load(self.onnx_file_path)
         input_tensor = onnx_model.graph.input[0]
         return (

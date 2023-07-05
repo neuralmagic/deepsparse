@@ -18,16 +18,16 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 
-
-
 from deepsparse.utils import (
     model_to_path,
     override_onnx_batch_size,
     override_onnx_input_shapes,
 )
 
+
 try:
     import torch
+
     torch_import_error = None
 except err as torch_import_err:
     torch_import_error = torch_import_err
@@ -82,6 +82,7 @@ def _select_device(device: str):
         return "cuda"
     return "cpu"
 
+
 def _validate_jit_model(model):
     if isinstance(model, torch.jit.ScriptModule):
         return
@@ -90,10 +91,10 @@ def _validate_jit_model(model):
 
 class TorchScriptEngine(object):
     """
-    Given a loaded Torchscript(.pt) model or its saved file path, create an 
+    Given a loaded Torchscript(.pt) model or its saved file path, create an
      that compiles the given pytorch file,
 
-    # Note 1: Engines are compiled for a specific batch size 
+    # Note 1: Engines are compiled for a specific batch size
 
     # :param model: Either a path to the model's onnx file, a SparseZoo model stub
     #     prefixed by 'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File
@@ -109,17 +110,15 @@ class TorchScriptEngine(object):
         model: Union[str, "Model", "File"],  # pt file or Module pytorch
         batch_size: int = 1,
         device: str = "cpu",  # or cuda
-        **kwargs, 
+        **kwargs,
     ):
         if torch is None:
             raise ImportError(f"Unable to import torch, error: {torch_import_error}")
-
 
         _validate_torch_import()
 
         self._batch_size = _validate_batch_size(batch_size)
         self._device = _select_device(device)
-
 
         if isinstance(model, torch.nn.Module):
             self._model = torch.jit.script(model).eval()
