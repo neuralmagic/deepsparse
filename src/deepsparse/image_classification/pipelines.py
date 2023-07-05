@@ -233,6 +233,7 @@ class ImageClassificationPipeline(Pipeline):
         labels, scores = [], []
         for prediction_batch in engine_outputs[0]:
             label = (-prediction_batch).argsort()[: self.top_k]
+            breakpoint()
             score = prediction_batch[label]
             labels.append(label)
             scores.append(score.tolist())

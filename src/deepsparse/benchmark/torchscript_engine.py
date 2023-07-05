@@ -82,10 +82,16 @@ def _select_device(device: str):
         return "cuda"
     return "cpu"
 
+def _validate_jit_model(model):
+    if isinstance(model, torch.jit.ScriptModule):
+        return
+    raise ValueError(f"{model} is not a torch.jit model")
+
 
 class TorchScriptEngine(object):
     """
-    # Create a new Engine that compiles the given pytorch file,
+    Given a loaded Torchscript(.pt) model or its saved file path, create an 
+     that compiles the given pytorch file,
 
     # Note 1: Engines are compiled for a specific batch size 
 
@@ -108,18 +114,22 @@ class TorchScriptEngine(object):
         if torch is None:
             raise ImportError(f"Unable to import torch, error: {torch_import_error}")
 
+
         _validate_torch_import()
 
         self._batch_size = _validate_batch_size(batch_size)
         self._device = _select_device(device)
 
-        # make a function for the loader
+
         if isinstance(model, torch.nn.Module):
-            self._model = torch.jit.script(model)
+            self._model = torch.jit.script(model).eval()
         elif isinstance(model, str):
-            self._model = torch.jit.load(model)
+            self._model = torch.jit.load(model).eval()
         else:
             self._model = model
+
+        _validate_jit_model(self._model)
+
         self._model.to(self.device)
 
     def __call__(

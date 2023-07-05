@@ -25,6 +25,13 @@ from tests.helpers import delete_file
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+try:
+    import torch
+    torch_import_error = None
+except err as torch_import_err:
+    torch_import_error = torch_import_err
+    torch = None
+
 
 def _get_files(directory: str) -> List[str]:
     list_filepaths = []
@@ -107,15 +114,24 @@ def torchvision_fixture():
         raise
         
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def torchvision_model_fixture(torchvision_fixture):
-    def get(**kwargs):
+    def get(return_jit: bool=False, **kwargs):
         # [TODO]: Make a model factory if needed
         torchvision_instance = torchvision_fixture
         if torchvision_instance:
             model = torchvision_instance.models.resnet50(kwargs)
+            # if return_jit: 
+            #     # return torch.jit.script(model)
+            #     return torch.jit.trace(model, torch.rand(1, 3, 224, 224))
+            if return_jit:
+                # model.eval()
+                return torch.jit.script(model)
+
             return model
     return get
+
+
 
 # @pytest.fixture(scope='session')
 # def delete_torch_models_after_torchscrript_tests(request):
