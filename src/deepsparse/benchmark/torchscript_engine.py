@@ -29,7 +29,7 @@ try:
     import torch
 
     torch_import_error = None
-except err as torch_import_err:
+except Exception as torch_import_err:
     torch_import_error = torch_import_err
     torch = None
 

@@ -36,13 +36,6 @@ from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 
 
-# try:
-#     import torch
-#     torch_import_error = None
-# except err as torch_import_err:
-#     torch_import_error = torch_import_err
-#     torch = None
-
 __all__ = [
     "ImageClassificationPipeline",
 ]
