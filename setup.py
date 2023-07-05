@@ -165,7 +165,7 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 
 
-_torch_deps = ["torch=2.0"]
+_torch_deps = ["torch==2.0"]
 
 
 def _check_supported_system():
