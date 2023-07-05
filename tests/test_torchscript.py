@@ -27,45 +27,12 @@ from deepsparse.image_classification.schemas import (
     ImageClassificationOutput, 
 )
 
-import torch
-
-
-# parameterize input as nn.Module or as jit
-"""
-four tests, 
-1. nModule
-2. jit
-3. path to .pth
-4. path to .pt
-"""
-
-
-TORCH_HUB = "~/.cache/torch"
-
-# @pytest.fixture(scope="module")
-@pytest.fixture(scope="function")
-def torchscript_test_setup(torchvision_model_fixture):
-    path = os.path.expanduser(os.path.join(TORCH_HUB, "hub", "checkpoints"))
-
-    resnet50_nn_module = torchvision_model_fixture(pretrained=True, return_jit=False)
-    expr = r"^resnet50-[0-9a-z]+\.pt[h]?$"
-    resnet50_nn_module_path = find_file_with_pattern(path, expr)
-
-    resnet50_jit = torchvision_model_fixture(pretrained=True, return_jit=True)
-    resnet50_jit_path = resnet50_nn_module_path.replace(".pth", ".pt")
-    torch.jit.save(resnet50_jit, resnet50_jit_path)
-    # resnet50_jit.save(resnet50_jit_path)
-    # torch.jit.save(m, '/home/ubuntu/george/nm/deepsparse/scriptmodule.pt')
-
-
-    yield {
-        "jit_model": resnet50_jit,
-        "jit_model_path": resnet50_jit_path,
-    }
-
-    # cache_dir = os.path.expanduser("~/.cache/torch")
-    # shutil.rmtree(cache_dir)
-    # assert os.path.exists(cache_dir) is False
+try:
+    import torch
+    torch_import_error = None
+except err as torch_import_err:
+    torch_import_error = torch_import_err
+    torch = None
 
 
 def test_cpu_torchscript(torchscript_test_setup):
@@ -82,39 +49,12 @@ def test_cpu_torchscript_pipeline(torchscript_test_setup):
 
     torchscript_pipeline = Pipeline.create(
         task="image_classification",
-        # model_path=models["jit_model_path"],
-        # model_path='/home/ubuntu/george/nm/deepsparse/scriptmodule.pt',
-        model_path='/home/ubuntu/george/nm/deepsparse/traced_resnet_model.pt',
-        # model_path='/home/ubuntu/george/nm/deepsparse/resnet50.pt',
-
-
+        model_path=models["jit_model_path"],
         engine_type="torchscript",
         image_size = (224, 224),
     )
 
     inp = [numpy.random.rand(3, 224, 224).astype(numpy.float32)]
-    # breakpoint()
     pipeline_outputs = torchscript_pipeline(images=inp)
     assert isinstance(pipeline_outputs, ImageClassificationOutput)
-
-
-# def test_cpu_torchscript_pipeline(torchvision_model_fixture):
-#     model = torchvision_model_fixture(pretrained=True)
-#     torch_model_path = os.path.join(TORCH_HUB, "hub", "checkpoints")
-#     model_path_pth = find_pth_file_with_name(folder_path=torch_model_path, model_name="resnet50")
-#     model_path_pt = save_pth_to_pt(model_path_pth)
-#     # breakpoint()
-#     model_path_pt = '/home/ubuntu/george/nm/deepsparse/resnet50.pt'
-
-#     torchscript_pipeline = Pipeline.create(
-#         task="image_classification",
-#         model_path=model_path_pt,
-#         engine_type="torchscript",
-#         image_size = (224, 224),
-#     )
-
-#     inp = [numpy.random.rand(3, 224, 224).astype(numpy.float32)]
-#     breakpoint()
-#     pipeline_outputs = torchscript_pipeline(images=inp)
-#     assert isintance(pipeline_outputs, ImageClassificationOutput)
 

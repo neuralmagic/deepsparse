@@ -165,6 +165,7 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 
 
+_torch_deps = ["torch=2.0"]
 def _check_supported_system():
     if sys.platform.startswith("linux"):
         # linux is supported, allow install to go through
@@ -276,6 +277,7 @@ def _setup_extras() -> Dict:
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
+        "torch": _torch_deps,
     }
 
 

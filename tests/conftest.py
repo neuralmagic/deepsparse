@@ -146,5 +146,25 @@ def torchvision_model_fixture(torchvision_fixture):
     
 
         
+@pytest.fixture(scope="function")
+def torchscript_test_setup(torchvision_model_fixture):
+    path = os.path.expanduser(os.path.join(TORCH_HUB, "hub", "checkpoints"))
+
+    resnet50_nn_module = torchvision_model_fixture(pretrained=True, return_jit=False)
+    expr = r"^resnet50-[0-9a-z]+\.pt[h]?$"
+    resnet50_nn_module_path = find_file_with_pattern(path, expr)
+
+    resnet50_jit = torchvision_model_fixture(pretrained=True, return_jit=True)
+    resnet50_jit_path = resnet50_nn_module_path.replace(".pth", ".pt")
+    torch.jit.save(resnet50_jit, resnet50_jit_path)
+
+    yield {
+        "jit_model": resnet50_jit,
+        "jit_model_path": resnet50_jit_path,
+    }
+
+    cache_dir = os.path.expanduser("~/.cache/torch")
+    shutil.rmtree(cache_dir)
+    assert os.path.exists(cache_dir) is False
 
 

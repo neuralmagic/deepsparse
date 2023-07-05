@@ -265,8 +265,10 @@ class TorchScriptEngine(object):
 
         torch_inputs = [torch.from_numpy(input).to(self.device) for input in inp]
 
-        tensors: tuple(torch.Tensor) = self._model(*torch_inputs)
+        tensors = self._model(*torch_inputs)
 
+        if isinstance(tensors, torch.Tensor):
+            tensors = [tensors]
         if self.device == "cuda":
             tensors = [torch.Tensor.cpu(tensor) for tensor in tensors]
         return [tensor.detach().numpy() for tensor in tensors]
