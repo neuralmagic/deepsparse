@@ -22,29 +22,29 @@ A Droplet integrated with DeepSparse can be launched via the DigitalOcean consol
 
 ## **Option 1: Create your Droplet in the Console**
 
-**Step 1** Navigate to the [DeepSparse Marketplace](https://placeholder.com) page and click on the ***Create DeepSparse Droplet*** button.
+**Step 1** Navigate to the [DeepSparse Marketplace](hhttps://marketplace.digitalocean.com/apps/deepsparse-inference-runtime) page and click on the ***Create DeepSparse Inference Runtime Droplet*** button.
 
-**Step 2** Configure your Droplet in the configuration page
+**Step 2** Configure your Droplet in the configuration page. The DeepSparse image is already attached:
 
-[picture placeholder]
+![alt text](./img/console.png)
 
-**Step 3** Click the green *Create* button top of page to launch Droplet.
+**Step 3** Click the green *Create Droplet* button at the bottom of the web page.
 
 ## **Option 2: Create your Droplet in CLI**
 
-You can use either cURL or [doctl](https://docs.digitalocean.com/reference/doctl/how-to/install/) for creating a Droplet via CLI. In addition, you will need to generate a personal [access token](https://docs.digitalocean.com/reference/api/create-personal-access-token/). 
+You can use either cURL or [doctl](https://docs.digitalocean.com/reference/doctl/how-to/install/) for creating a Droplet via CLI. You will need to generate a personal [access token](https://docs.digitalocean.com/reference/api/create-personal-access-token/) for this flow. 
 
 **Using cURL:**
 
-**Step 1** Pass the DeepSparse `image name` and  `access token` to launch your Droplet. Here's an example of launching DeepSparse using compute optimized instances in the `nyc3` region:
+**Step 1** Add your personal `access token` to the cURL command. Here's an example of launching DeepSparse using compute optimized Droplets (i.e. 4 vCPUs and 8GB RAM) in the `nyc3` region:
 
 ```bash
 curl -X POST -H 'Content-Type: application/json' \
     -H 'Authorization: Bearer '<ACCESS-TOKEN>'' \
-    -d '{"name":"DeepSparse",
+    -d '{"name":"deepsparseinferenceruntime152onubuntu2210-c-4-intel-sfo3-01",
         "size":"c-4-intel",
-        "region":"sfo3",
-        "image":"<IMAGE-NAME>"}' \
+        "region":"nyc3",
+        "image":"neuralmagic-deepsparseinfere"}' \
     "https://api.digitalocean.com/v2/droplets"
 ```
 
@@ -56,10 +56,20 @@ curl -X POST -H 'Content-Type: application/json' \
 doctl auth init --access-token <ACCESS-TOKEN>
 ```
 
-**Step 2** Launch your Droplet and pass the DeepSparse `image name` and `ssh fingerprint`. Here's an example of launching DeepSparse using compute optimized instances in the `nyc3` region:
+**Step 2** Add a SSH `fingerprint` to he doctl command. Here's an example of launching DeepSparse using compute optimized instances in the `nyc3` region:
 
 ```bash
-doctl compute droplet create deepsparse-droplet --image <IMAGE-NAME> --region nyc3 --size c-4-intel --ssh-keys <FINGERPRINT>
+doctl compute droplet create deepsparse-droplet \
+    --image neuralmagic-deepsparseinfere \
+    --size c-4-intel \
+    --region nyc3 \
+    --ssh-keys <FINGERPRINT>
+```
+
+**TIP**: Run this command to find a list of SSH fingerprints associated with your DigitalOcean account:
+
+```bash
+doctl compute ssh-key list
 ```
 
 ## **Option 3: Create your Droplet in Python**
@@ -70,22 +80,21 @@ Install the DigitalOcean [Python library](https://github.com/koalalorenzo/python
 pip install -U python-digitalocean
 ```
 
-**Step 1** Pass the DeepSparse `image name` and  `access token` to launch your Droplet by running the following snippet:
+**Step 1** Add your `access token` to the following code snippet to launch your Droplet:
 
 ```python
 from digitalocean import Droplet, Manager
 
-token = "<ACCESS-TOKEN>"
 manager = Manager(token=token)
 keys = manager.get_all_sshkeys()
 
 droplet = Droplet(
-    token=token,
-    name=ubuntu-c-4-intel-nyc1-01",
+    token="<ACCESS-TOKEN>",
+    name="deepsparse-droplet",
     region="nyc3",
-    image="<IMAGE-NAME>",
+    image="neuralmagic-deepsparseinfere",
     size_slug="c-4-intel",
-    ssh_keys=keys
+    ssh_keys=keys,
     backups=False
 )
 
@@ -100,7 +109,7 @@ After your Droplet boots up, SSH into the Droplet by passing in its public IP ad
 ssh root@<IP-ADDRESS>
 ```
 
-**TIP**: To find your Droplet's IP address, run the following commmand:
+**TIP**: Run this command to find your Droplet's IP address:
 
 ```bash
 doctl compute droplet list
@@ -111,5 +120,5 @@ doctl compute droplet list
 Once logged in, you can use all of the DeepSparse features such as benchmarking, pipelines, and the server for either NLP or CV models. Here's an example of benchmarking a pruned-quantized version of BERT trained on SQuAD:
 
 ```bash
-deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none -i [64,128] -b 64 -nstreams 1 -s sync
+deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned95_obs_quant-none --batch_size 1
 ```
