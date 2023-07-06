@@ -125,27 +125,13 @@ def torchvision_model_fixture(torchvision_fixture):
         torchvision_instance = torchvision_fixture
         if torchvision_instance:
             model = torchvision_instance.models.resnet50(kwargs)
-            # if return_jit:
-            #     # return torch.jit.script(model)
-            #     return torch.jit.trace(model, torch.rand(1, 3, 224, 224))
+
             if return_jit:
-                # model.eval()
                 return torch.jit.script(model)
 
             return model
 
     return get
-
-
-# @pytest.fixture(scope='session')
-# def delete_torch_models_after_torchscrript_tests(request):
-#     cache_dir = os.path.expanduser("~/.cache/torch")
-#     shutil.rmtree(cache_dir)
-
-# @pytest.fixture(autouse=True, scope="module")
-# def delete_cached_torch_models():
-#     cache_dir = os.path.expanduser("~/.cache/torch")
-#     shutil.rmtree(cache_dir)
 
 
 @pytest.fixture(scope="function")
