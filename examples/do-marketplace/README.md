@@ -74,13 +74,13 @@ doctl compute ssh-key list
 
 ## **Option 3: Create your Droplet in Python**
 
-Install the DigitalOcean [Python library](https://github.com/koalalorenzo/python-digitalocean):
+**Step 1** Install the DigitalOcean [Python library](https://github.com/koalalorenzo/python-digitalocean):
 
 ```bash
 pip install -U python-digitalocean
 ```
 
-**Step 1** Add your `access token` to the following code snippet to launch a compute optimized Droplet:
+**Step 2** Add your `access token` to the following code snippet to launch a compute optimized Droplet:
 
 ```python
 from digitalocean import Droplet, Manager
