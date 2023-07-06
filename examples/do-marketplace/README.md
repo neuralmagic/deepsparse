@@ -80,7 +80,7 @@ Install the DigitalOcean [Python library](https://github.com/koalalorenzo/python
 pip install -U python-digitalocean
 ```
 
-**Step 1** Add your `access token` to the following code snippet to launch your Droplet:
+**Step 1** Add your `access token` to the following code snippet to launch a compute optimized Droplet:
 
 ```python
 from digitalocean import Droplet, Manager
