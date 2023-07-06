@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-from datetime import datetime
 from typing import Set, Union
 
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
@@ -29,13 +28,10 @@ class KVCacheSessionStorage:
     A storage that stores the kv cache sessions.
     Each session is a DecoderKVCache object that stores the state of the kv cache.
     The storage is a set of all the active sessions.
-    Additionally, the storage keeps track of the latest update timestamp,
-    to be able to identify the which storage is the most recent one.
     """
 
     def __init__(self):
         self._memory: Set[DecoderKVCache] = set()
-        self.latest_update_timestamp: float = datetime.timestamp(datetime.now())
 
     def __len__(self):
         return len(self._memory)
@@ -44,15 +40,23 @@ class KVCacheSessionStorage:
         return (
             f"{KVCacheSessionStorage.__name__}:\n "
             f"\tsessions: {[session.identifier for session in self._memory]}\n"
-            f"\tlatest_update_timestamp: {self.latest_update_timestamp}\n"
         )
+
+    def has_session(self, session_id: str) -> bool:
+        """
+        Check if the storage has a session with the given session id.
+
+        :param session_id: The identifier of the cache session.
+        :return: True if the storage has a session with the given session id.
+        """
+        return any(session.identifier == session_id for session in self._memory)
 
     def put(self, session: DecoderKVCache):
         """
         Put the cache session in the storage.
+
         :param session: The session to store.
         """
-        self.latest_update_timestamp = datetime.timestamp(datetime.now())
         self._memory.add(session)
 
     def get(self, session_id: str) -> Union[DecoderKVCache, None]:

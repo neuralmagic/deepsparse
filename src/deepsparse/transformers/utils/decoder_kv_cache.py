@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 from typing import Any, Dict, List
 
 import numpy
@@ -49,6 +50,7 @@ class DecoderKVCache:
         self._state = None
         self._total_num_processed_tokens = None
         self._kv_cache = None
+        self._latest_update_timestamp: float = self._update_timestamp()
 
     def __str__(self):
         return (
@@ -59,6 +61,41 @@ class DecoderKVCache:
             f"\tuse_deepsparse_cache: {self._use_deepsparse_cache}\n"
         )
 
+    @property
+    def timestamp(self):
+        return self._latest_update_timestamp
+
+    @timestamp.setter
+    def timestamp(self, timestamp: float):
+        self._latest_update_timestamp = timestamp
+
+    @property
+    def identifier(self):
+        if self.cached_inputs is None:
+            raise ValueError("Attempted to access session_id before setting up session")
+        return self._identifier
+
+    @identifier.setter
+    def identifier(self, session_id: str):
+        self._identifier = session_id
+
+    @property
+    def cached_inputs(self):
+        return self._state
+
+    def update_timestamp(func):
+        """
+        Decorator that updates the timestamp of the object
+        before calling the decorated function.
+        """
+
+        def wrapper(self, *args, **kwargs):
+            self.timestamp = self._update_timestamp()
+            func(self, *args, **kwargs)
+
+        return wrapper
+
+    @update_timestamp
     def setup(
         self,
         identifier: str,
@@ -96,6 +133,7 @@ class DecoderKVCache:
             num_frozen_tokens = int(self._freeze_first_position)
             pass  # TODO: Comes with the engine integration
 
+    @update_timestamp
     def update(
         self,
         state: Dict[str, Any],
@@ -200,16 +238,6 @@ class DecoderKVCache:
             state[key] = numpy.ascontiguousarray(state[key])
         return state
 
-    @property
-    def identifier(self):
-        if self.cached_inputs is None:
-            raise ValueError("Attempted to access session_id before setting up session")
-        return self._identifier
-
-    @identifier.setter
-    def identifier(self, session_id: str):
-        self._identifier = session_id
-
-    @property
-    def cached_inputs(self):
-        return self._state
+    @staticmethod
+    def _update_timestamp():
+        return datetime.timestamp(datetime.now())

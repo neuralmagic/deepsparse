@@ -22,45 +22,53 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import generate_session_id, softmax
+from deepsparse.transformers.utils.helpers import softmax
 from deepsparse.transformers.utils.storage_kv_cache import KVCacheSessionStorage
 from sparsezoo.utils.onnx import save_onnx
 
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["NLDecoderEngine", "synchronise_engines_cache"]
+__all__ = ["NLDecoderEngine", "synchronise_engines_session"]
 
 _CACHE_INPUT_NAME = "past_key_values"
 
 
-def synchronise_engines_cache(engines: Set["NLDecoderEngine"]):  # noqa F821
+def synchronise_engines_session(
+    session_id: str, engines: Set["NLDecoderEngine"]
+):  # noqa F821
     """
-    Takes a set of engines and synchronises the kv cache storage
-    across all of them. This means that the latest kv cache storage
-    from all engines will be transferred to the remaining engines.
+    Takes a set of engines and synchronises the most
+    recent session state across all of them. This means
+    that the latest state of the session corresponding to
+    the session_id will be transferred to the remaining engines.
 
-    :param engines: A set of engines to synchronise the kv cache storage for
+    :param session_id: The identifier of the session
+        for synchronisation
+    :param engines: A set of engines that are synchronising
+        the kv cache session
     """
-    newest_timestamp = None
-    recently_updated_engine = None
+    most_recent_timestamp = None
+    most_recent_session = None
 
     for engine in engines:
-        if engine.kv_cache_storage is not None:
-            timestamp = engine.kv_cache_storage.latest_update_timestamp
-            newest_timestamp = (
-                timestamp if newest_timestamp is None else newest_timestamp
-            )
-            if timestamp >= newest_timestamp:
-                newest_timestamp = timestamp
-                recently_updated_engine = engine
+        kv_cache_storage = engine.kv_cache_storage
+        session = kv_cache_storage.get(session_id=session_id)
+        if session is None:
+            continue
+        timestamp = session.timestamp
+        most_recent_timestamp = (
+            timestamp if most_recent_timestamp is None else most_recent_timestamp
+        )
+        if timestamp >= most_recent_timestamp:
+            most_recent_timestamp = timestamp
+            most_recent_session = session
 
-    engines.remove(recently_updated_engine)
+    if most_recent_session is None:
+        # no session to synchronise
+        return
 
-    [
-        engine.transfer_cache_storage(cache_storage=engine.kv_cache_storage)
-        for engine in engines
-    ]
+    [engine.transfer_cache_session(session=most_recent_session) for engine in engines]
 
 
 class NLDecoderEngine:
@@ -143,7 +151,7 @@ class NLDecoderEngine:
     def __call__(
         self,
         inp: List[numpy.ndarray],
-        session_id: Optional[str] = None,
+        session_id: str,
         val_inp: bool = True,
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
@@ -159,9 +167,6 @@ class NLDecoderEngine:
         :return: The generated token and corresponding logits
         """
         if self.kv_cache_enabled:
-            session_id = session_id or generate_session_id()
-            # if kv cache is enabled, we need to add the kv cache state
-            # to the input
             inp = self.add_kv_cache_to_input(inp=inp, session_id=session_id)
 
         out = self.engine.run(inp, val_inp)
@@ -180,18 +185,18 @@ class NLDecoderEngine:
 
         return token, logits
 
-    def transfer_cache_storage(self, cache_storage: KVCacheSessionStorage):
+    def transfer_cache_session(self, session: DecoderKVCache):
         """
-        Transfers the kv cache storage to the engine. Call this method when
-        you want to transfer the kv cache storage from e.g. one engine to another.
+        Transfers the kv cache session state to the engine. Call this method when
+        you want to transfer the kv cache session from e.g. one engine to another.
 
-        :param cache_storage: The cache storage to transfer the state from
+        :param session: The cache session to transfer to the engine
         """
         _LOGGER.debug(
-            f"Transferring cache storage {cache_storage} to the engine {self.engine}"
+            f"Transferring cache session {session} to the engine {self.engine}"
         )
 
-        self.kv_cache_storage = cache_storage
+        self.kv_cache_storage.put(session)
 
     @staticmethod
     def overwrite_onnx_model_inputs(
@@ -249,6 +254,16 @@ class NLDecoderEngine:
             if inp.name.startswith(_CACHE_INPUT_NAME)
         ]
         return onnx_file_path, input_indices_to_be_cached
+
+    def has_session(self, session_id: str) -> bool:
+        """
+        Check if the kv cache storage has a session with the given session id.
+
+        :param session_id: The session id to check for
+        :return: True if the kv cache storage has a session with the given session id,
+            False otherwise
+        """
+        return self.kv_cache_storage.has_session(session_id)
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
