@@ -41,7 +41,7 @@ You can use either cURL or [doctl](https://docs.digitalocean.com/reference/doctl
 ```bash
 curl -X POST -H 'Content-Type: application/json' \
     -H 'Authorization: Bearer '<ACCESS-TOKEN>'' \
-    -d '{"name":"deepsparseinferenceruntime152onubuntu2210-c-4-intel-sfo3-01",
+    -d '{"name":"deepsparse-droplet",
         "size":"c-4-intel",
         "region":"nyc3",
         "image":"neuralmagic-deepsparseinfere"}' \
