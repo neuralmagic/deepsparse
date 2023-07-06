@@ -22,7 +22,7 @@ A Droplet integrated with DeepSparse can be launched via the DigitalOcean consol
 
 ## **Option 1: Create your Droplet in the Console**
 
-**Step 1** Navigate to the [DeepSparse Marketplace](hhttps://marketplace.digitalocean.com/apps/deepsparse-inference-runtime) page and click on the ***Create DeepSparse Inference Runtime Droplet*** button.
+**Step 1** Navigate to the [DeepSparse Marketplace](https://marketplace.digitalocean.com/apps/deepsparse-inference-runtime) page and click on the ***Create DeepSparse Inference Runtime Droplet*** button.
 
 **Step 2** Configure your Droplet in the configuration page. The DeepSparse image is already attached:
 
