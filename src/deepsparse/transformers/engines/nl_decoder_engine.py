@@ -20,7 +20,7 @@ import onnx
 from transformers import AutoTokenizer
 
 from deepsparse.engine import Context
-from deepsparse.pipeline import create_engine
+from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import generate_session_id, softmax
 from sparsezoo.utils.onnx import save_onnx
@@ -75,9 +75,10 @@ class NLDecoderEngine:
         )
         kv_cache_enabled = False
         if input_indices_to_be_cached:
-            # inform the engine, that are using the kv cache
-            engine_args["cache_input_bools"] = input_indices_to_be_cached
             kv_cache_enabled = True
+            if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
+                # inform the engine, that are using the kv cache
+                engine_args["cache_input_bools"] = input_indices_to_be_cached
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
