@@ -40,11 +40,11 @@ You can use either cURL or [doctl](https://docs.digitalocean.com/reference/doctl
 
 ```bash
 curl -X POST -H 'Content-Type: application/json' \
-    -H 'Authorization: Bearer '<ACCESS_TOKEN>'' \
-    -d '{"name":"docker2306onubuntu2204-c-4-intel-sfo3-01",
+    -H 'Authorization: Bearer '<ACCESS-TOKEN>'' \
+    -d '{"name":"DeepSparse",
         "size":"c-4-intel",
         "region":"sfo3",
-        "image":"docker-20-04"}' \
+        "image":"<IMAGE-NAME>"}' \
     "https://api.digitalocean.com/v2/droplets"
 ```
 
@@ -53,13 +53,13 @@ curl -X POST -H 'Content-Type: application/json' \
 **Step 1** Connect with DigitalOcean by passing in your personal `access token`:
 
 ```bash
-doctl auth init --access-token <ACCESS_TOKEN>
+doctl auth init --access-token <ACCESS-TOKEN>
 ```
 
 **Step 2** Launch your Droplet and pass the DeepSparse `image name` and `ssh fingerprint`. Here's an example of launching DeepSparse using compute optimized instances in the `nyc3` region:
 
 ```bash
-doctl compute droplet create deepsparse-droplet --image <IMAGE_NAME> --region nyc3 --size c-4-intel --ssh-keys <FINGERPRINT>
+doctl compute droplet create deepsparse-droplet --image <IMAGE-NAME> --region nyc3 --size c-4-intel --ssh-keys <FINGERPRINT>
 ```
 
 ## **Option 3: Create your Droplet in Python**
@@ -75,7 +75,7 @@ pip install -U python-digitalocean
 ```python
 from digitalocean import Droplet, Manager
 
-token = "<TOKEN>"
+token = "<ACCESS-TOKEN>"
 manager = Manager(token=token)
 keys = manager.get_all_sshkeys()
 
@@ -83,7 +83,7 @@ droplet = Droplet(
     token=token,
     name=ubuntu-c-4-intel-nyc1-01",
     region="nyc3",
-    image="<DEEPSPARSE_IMAGE>",
+    image="<IMAGE-NAME>",
     size_slug="c-4-intel",
     ssh_keys=keys
     backups=False
