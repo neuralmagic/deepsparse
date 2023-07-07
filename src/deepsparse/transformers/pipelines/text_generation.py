@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import List, Optional, Tuple, Type, Union
 
 import numpy
@@ -22,6 +23,8 @@ from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
 
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["TextGenerationPipeline"]
 
@@ -131,6 +134,14 @@ class TextGenerationPipeline(TransformersPipeline):
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
 
+        if self.engine_type == DEEPSPARSE_ENGINE:
+            _LOGGER.warning(
+                "The support for deepsparse engine is limited "
+                f"for {self.__class__.__name__}. "
+                "The multi-token engine will not be "
+                "used for prompt processing."
+            )
+
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
         self.max_generated_tokens = max_generated_tokens
@@ -224,11 +235,16 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the inputs for the engine
         """
 
+        if self._are_sequences_of_different_lengths(inputs.sequences):
+            padding = "longest"
+        else:
+            padding = "max_length"
+
         input_tokens = self.tokenizer(
             inputs.sequences,
             return_tensors="np",
             max_length=self.sequence_length,
-            padding="max_length",
+            padding=padding,
             truncation=inputs.truncate,
         )
 
@@ -262,9 +278,6 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
         generated_tokens, generated_logits = engine_outputs
-        if generated_tokens.ndim == 1:
-            # if we have a single dimension, add a batch dimension
-            generated_tokens = generated_tokens[None, :]
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
@@ -314,7 +327,7 @@ class TextGenerationPipeline(TransformersPipeline):
             if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
                 break
 
-        return numpy.array(generated_tokens), numpy.concatenate(
+        return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
         )
 
@@ -343,9 +356,17 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
+        # clean the state of engines' cache
+        # in the future, this will be paired with the session ids
+        # to refrain from resetting if session id is being passed
+        self._reset_engines_cache()
+
         # TODO: Multiple passes through the multitoken
         # engine once the OPT injection is fixed
-        if len(tokens) > self.prompt_processing_sequence_length:
+        if (
+            len(tokens) > self.prompt_processing_sequence_length
+            and self.engine_type != DEEPSPARSE_ENGINE
+        ):
             # trim the input to the prompt size
             engine_inputs = [
                 input[:, : self.prompt_processing_sequence_length]
@@ -357,7 +378,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
-            self.engine.transfer_cache_state(self.multitoken_engine)
+            self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
@@ -404,3 +425,13 @@ class TextGenerationPipeline(TransformersPipeline):
         generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
+
+    def _reset_engines_cache(self):
+        self.engine.reset_kv_cache()
+        self.multitoken_engine.reset_kv_cache()
+
+    @staticmethod
+    def _are_sequences_of_different_lengths(sequences: Union[str, List[str]]) -> bool:
+        if isinstance(sequences, str):
+            return False
+        return len(set([len(sequence) for sequence in sequences])) > 1

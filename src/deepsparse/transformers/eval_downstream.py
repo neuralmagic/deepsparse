@@ -76,6 +76,9 @@ from datasets import load_dataset, load_metric  # isort: skip
 
 
 def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
+    if args.max_samples:
+        batch_size = min(batch_size, args.max_samples)
+
     dataset = load_dataset(dataset_name)["test"]
 
     text_generation = Pipeline.create(

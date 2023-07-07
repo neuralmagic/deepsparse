@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -67,18 +67,18 @@ class NLDecoderEngine:
         use_deepsparse_cache=False,
     ):
 
-        onnx_file_path, input_indices_to_be_cached = self.overwrite_onnx_model_inputs(
+        onnx_file_path, output_indices_to_be_cached = self.overwrite_onnx_model_inputs(
             onnx_file_path=onnx_file_path,
             batch_size=engine_args.get("batch_size", 1),
             sequence_length=sequence_length,
             input_ids_length=input_ids_length,
         )
         kv_cache_enabled = False
-        if input_indices_to_be_cached:
+        if sum(output_indices_to_be_cached):
             kv_cache_enabled = True
             if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
-                engine_args["cache_input_bools"] = input_indices_to_be_cached
+                engine_args["cache_output_bools"] = output_indices_to_be_cached
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
@@ -94,7 +94,6 @@ class NLDecoderEngine:
         self.kv_cache = (
             DecoderKVCache(use_deepsparse_cache) if kv_cache_enabled else None
         )
-        self._num_tokens = 0  # the number of tokens processed so far
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
 
@@ -141,16 +140,14 @@ class NLDecoderEngine:
         if self.kv_cache:
             # if kv cache is enabled, we need to add the kv cache state
             # to the input
-            inp = self._add_kv_cache_to_input(inp)
+            inp = self.add_kv_cache_to_input(inp)
 
         out = self.engine.run(inp, val_inp)
 
-        self._num_tokens += self.input_ids_length
-
         if self.kv_cache:
             logits, *kv_cache_state = out
-            self._update_kv_cache(
-                kv_cache_state=kv_cache_state,
+            self.update_kv_cache(
+                kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
             )
         else:
             logits = out[0]
@@ -159,25 +156,19 @@ class NLDecoderEngine:
 
         return token, logits
 
-    def transfer_cache_state(self, engine: "NLDecoderEngine"):
+    def __str__(self):
+        return f"{self.__class__.__name__}: {self.engine}"
+
+    def transfer_cache_state(self, cache: DecoderKVCache):
         """
         Transfers the kv cache state and the number of tokens processed
         information from another NLDecoderEngine. Call this method when
         you want to transfer the kv cache state from one engine to another.
 
-        :param engine: The `NLDecoderEngine` to transfer the kv cache state
+        :param cache: The `NLDecoderEngine` to transfer the kv cache state
             from
         """
-        state = engine.kv_cache.cached_inputs
-
-        self.kv_cache.setup_session(
-            session_id=self._session_id,
-            state=state,
-            sequence_length=self.sequence_length,
-            freeze_first_position=self._freeze_first_position,
-        )
-        # maybe set as a property for more control?
-        self._num_tokens = engine._num_tokens
+        self.kv_cache = copy.deepcopy(cache)
 
     @staticmethod
     def overwrite_onnx_model_inputs(
@@ -229,12 +220,11 @@ class NLDecoderEngine:
         )
         save_onnx(model, onnx_file_path)
 
-        input_indices_to_be_cached = [
-            i
-            for i, inp in enumerate(model.graph.input)
-            if inp.name.startswith(_CACHE_INPUT_NAME)
+        output_indices_to_be_cached = [
+            1 if inp.name.startswith("present") else 0 for inp in model.graph.output
         ]
-        return onnx_file_path, input_indices_to_be_cached
+
+        return onnx_file_path, output_indices_to_be_cached
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
@@ -251,8 +241,64 @@ class NLDecoderEngine:
 
         return numpy.random.choice(len(probs), p=probs)
 
-    def __str__(self):
-        return f"{self.__class__.__name__}: {self.engine}"
+    def reset_kv_cache(self):
+        """
+        Resets the kv cache state.
+        """
+        kv_cache_state = self._initialize_kv_cache_state(
+            self.sequence_length - self.input_ids_length
+        )
+        self.kv_cache.setup_session(
+            session_id=self._session_id,
+            state=kv_cache_state,
+            num_processed_tokens=0,
+            freeze_first_position=self._freeze_first_position,
+        )
+
+    def add_kv_cache_to_input(self, inp: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        """
+        Takes the input and adds the past kv cache state to it.
+
+        :param inp: The input to the model
+        :return The input with the kv cache state added to it
+        """
+        kv_cache_state = self.kv_cache.cached_inputs
+        if kv_cache_state is None:
+            self.reset_kv_cache()
+            kv_cache_state = self.kv_cache.cached_inputs
+
+        kv_cache_state["input_ids"] = inp[0]
+        kv_cache_state["attention_mask"] = inp[1]
+        if len(inp) == 3:
+            kv_cache_state["positions"] = inp[2]
+
+        new_inp = [kv_cache_state[name] for name in self.engine.input_names]
+        return new_inp
+
+    def update_kv_cache(
+        self,
+        kv_cache_state: List[numpy.ndarray],
+        input_ids_len: int,
+    ):
+        """
+        Updates the state of the kv cache
+
+        :param kv_cache_state: The state of the kv cache storage
+        :param input_ids_len: The length of input_ids
+        """
+        cache_onnx_names = [
+            name
+            for name in self.engine.input_names
+            if name.startswith(_CACHE_INPUT_NAME)
+        ]
+        kv_cache_state = {
+            name: array for name, array in zip(cache_onnx_names, kv_cache_state)
+        }
+
+        self.kv_cache.update_session(
+            state=kv_cache_state,
+            input_ids_len=input_ids_len,
+        )
 
     def _initialize_kv_cache_state(self, length: int) -> Dict[str, numpy.ndarray]:
         # initialize empty kv cache of size
@@ -278,47 +324,6 @@ class NLDecoderEngine:
             if output_name.startswith("present")
         ]
         return {key: empty_kv_cache_tensor for key in cache_keys}
-
-    def _add_kv_cache_to_input(self, inp: List[numpy.ndarray]) -> List[numpy.ndarray]:
-        kv_cache_state = self.kv_cache.cached_inputs
-        if kv_cache_state is None:
-            kv_cache_state = self._initialize_kv_cache_state(
-                self.sequence_length - self.input_ids_length
-            )
-            self.kv_cache.setup_session(
-                session_id=self._session_id,
-                state=kv_cache_state,
-                sequence_length=self.sequence_length,
-                freeze_first_position=self._freeze_first_position,
-            )
-        kv_cache_state["input_ids"] = inp[0]
-        kv_cache_state["attention_mask"] = inp[1]
-        if len(inp) == 3:
-            kv_cache_state["positions"] = inp[2]
-
-        new_inp = [kv_cache_state[name] for name in self.engine.input_names]
-        return new_inp
-
-    def _update_kv_cache(
-        self,
-        kv_cache_state: List[numpy.ndarray],
-    ):
-        cache_onnx_names = [
-            name
-            for name in self.engine.input_names
-            if name.startswith(_CACHE_INPUT_NAME)
-        ]
-        kv_cache_state = {
-            name: array for name, array in zip(cache_onnx_names, kv_cache_state)
-        }
-
-        self.kv_cache.update_session(
-            state=kv_cache_state,
-            num_tokens=self._num_tokens,
-            # TODO: Make it more general once
-            # multitoken regression is supported
-            input_ids_len=1,
-        )
 
     @staticmethod
     def _should_freeze_first_position(tokenizer) -> bool:
