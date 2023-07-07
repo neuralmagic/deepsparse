@@ -83,7 +83,7 @@ class Perplexity:
             attention_mask = attention_masks[start_index:end_index]
 
             out = self._pipeline(
-                sequences=predictions, return_logits=True, truncate=True
+                sequences=predictions, return_logits=True, fixed_sequences_length=True
             )
             logits = out.logits
 
