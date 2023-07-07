@@ -165,7 +165,7 @@ class NLDecoderEngine:
         information from another NLDecoderEngine. Call this method when
         you want to transfer the kv cache state from one engine to another.
 
-        :param cache: The `NLDecoderEngine` to transfer the kv cache state
+        :param cache: The `DecoderKVCache` object to transfer to the engine
             from
         """
         self.kv_cache = copy.deepcopy(cache)
