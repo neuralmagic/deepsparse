@@ -41,7 +41,7 @@ class DeepSparseRuntime(MLModel):
 
 ### Create `model-settings.json`
 
-Second, we create a `model-settings` file. In this file, we will specify the location of the implementation of the custom runtime as well as the 
+Second, we create a config at `models/text-classification-model/model-settings.json`. In this file, we will specify the location of the implementation of the custom runtime as well as the 
 paramters of the deepsparse inference session.
 
 ```json
