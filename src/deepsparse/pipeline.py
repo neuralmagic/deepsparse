@@ -158,7 +158,6 @@ class Pipeline(ABC):
         logger: Optional[Union[BaseLogger, str]] = None,
         benchmark: bool = False,
         _delay_engine_initialize: bool = False,  # internal use only
-        _delay_overwriting_inputs: bool = False,  # internal use only
     ):
         self._benchmark = benchmark
         self._model_path_orig = model_path
@@ -202,8 +201,7 @@ class Pipeline(ABC):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
 
-        onnx_setup_kwargs = dict(delay_overwriting_inputs=_delay_overwriting_inputs)
-        self.onnx_file_path = self.setup_onnx_file_path(**onnx_setup_kwargs)
+        self.onnx_file_path = self.setup_onnx_file_path()
 
         if _delay_engine_initialize:
             self.engine = None
@@ -594,7 +592,7 @@ class Pipeline(ABC):
         )
 
     @abstractmethod
-    def setup_onnx_file_path(self, *args, **kwargs) -> str:
+    def setup_onnx_file_path(self) -> str:
         """
         Performs any setup to unwrap and process the given `model_path` and other
         class properties into an inference ready onnx file to be compiled by the
