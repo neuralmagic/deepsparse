@@ -35,7 +35,7 @@ __all__ = [
 
 
 class Perplexity:
-    def __init__(self, pipeline: Pipeline, batch_size: int = 16):
+    def __init__(self, pipeline: Pipeline, batch_size: int = 4):
         """
         Given the pipeline, compute the perplexity of the model
         on the given text input.
@@ -82,24 +82,34 @@ class Perplexity:
             encoded_batch = encoded_texts[start_index:end_index]
             attention_mask = attention_masks[start_index:end_index]
 
+            # keep only encoded batch values that correspond to non-zero entries in attention mask
+            encoded_batch = numpy.array(encoded_batch) * numpy.array(attention_mask)
+            # remove all zero entries in encoded batch
+            encoded_batch = [list(filter(lambda num: num != 0, i)) for i in encoded_batch]
+
+            max_len = max([len(i) for i in encoded_batch])
+
+            encoded_batch = [i + [0] * (max_len - len(i)) for i in encoded_batch]
+            encoded_batch = numpy.array(encoded_batch)
+
+            attention_mask = numpy.array(attention_mask)
+            attention_mask = [list(filter(lambda num: num != 0, i)) for i in attention_mask]
+            attention_mask = [i + [0] * (max_len - len(i)) for i in attention_mask]
+            attention_mask = numpy.array(attention_mask)
+
+            labels = encoded_batch
+
             out = self._pipeline(
                 sequences=predictions, return_logits=True, truncate=True
             )
+
             logits = out.logits
 
-            labels = encoded_batch
-            labels = numpy.stack(labels)
-            attention_mask = numpy.stack(attention_mask)
-
-            # because the tokenizer is left padded, we need to move the meaningful
-            # part of the logits and labels to the right
-            num_padded_entries = attention_mask.sum(axis=1)
-
-            # shift the values at num_paddings to the top of the array using roll
-            for i, num_padded in enumerate(num_padded_entries):
-                logits[i] = numpy.roll(logits[i], num_padded, axis=0)
-                labels[i] = numpy.roll(labels[i], num_padded, axis=0)
-                attention_mask[i] = numpy.roll(attention_mask[i], num_padded, axis=0)
+            if not self._pipeline.multitoken_engine.kv_cache_enabled:
+                logits = [logit[-attn_mask.sum():, :] for (logit, attn_mask) in zip(logits, attention_mask)]
+                # pad logits to max length
+                logits = [numpy.pad(logit, ((0, max_len - logit.shape[0]), (0, 0))) for logit in logits]
+                logits = numpy.array(logits)
 
             # shift logits and labels create the input and target for the loss function
             shift_logits = logits[:, :-1, :]

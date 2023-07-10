@@ -97,8 +97,6 @@ class TextGenerationPipeline(TransformersPipeline):
         of tokens supplied even if the stop token is reached.
     :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
-    :param remove_special_tokens_from_prompt: if True, the pipeline will remove
-        the special tokens from the prompt, before processing it. Defaults to True.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
@@ -111,7 +109,6 @@ class TextGenerationPipeline(TransformersPipeline):
         prompt_processing_sequence_length: int = 128,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = False,
-        remove_special_tokens_from_prompt: bool = True,
         **kwargs,
     ):
         if use_deepsparse_cache:
@@ -136,7 +133,6 @@ class TextGenerationPipeline(TransformersPipeline):
         self.max_generated_tokens = max_generated_tokens
         self.prompt_processing_sequence_length = prompt_processing_sequence_length
         self.force_max_tokens = force_max_tokens
-        self.remove_special_tokens_from_prompt = remove_special_tokens_from_prompt
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
@@ -333,11 +329,7 @@ class TextGenerationPipeline(TransformersPipeline):
             ['batch_size', 'num_tokens', 'vocab_size'])
         """
         tokens = engine_inputs[0]
-        if self.remove_special_tokens_from_prompt:
-            # get tokens by attention mask
-            tokens = tokens[engine_inputs[1].nonzero()].tolist()
-        else:
-            tokens = tokens[0].tolist()
+        tokens = tokens[engine_inputs[1].nonzero()].tolist()
 
         prompt_logits = []
         new_token = None
@@ -404,3 +396,22 @@ class TextGenerationPipeline(TransformersPipeline):
         generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
+
+    @staticmethod
+    def join_engine_outputs(batch_outputs: List[List[numpy.ndarray]]) -> List[numpy.ndarray]:
+        tokens, logits = zip(*batch_outputs)
+        tokens = numpy.concatenate(tokens, axis=0)
+        # find the longest sequence in the batch of logits
+        max_len = max([logits.shape[1] for logits in logits])
+        # pad all logits to the same length
+        logits = [
+            numpy.pad(
+                logits,
+                ((0, 0), (0, max_len - logits.shape[1]), (0, 0)),
+                mode="constant",
+                constant_values=0,
+            )
+            for logits in logits
+        ]
+        logits = numpy.concatenate(logits, axis=0)
+        return [tokens, logits]

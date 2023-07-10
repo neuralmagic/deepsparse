@@ -75,7 +75,7 @@ from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 from datasets import load_dataset, load_metric  # isort: skip
 
 
-def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
+def perplexity_eval(args, batch_size=4, dataset_name="openai_humaneval"):
     dataset = load_dataset(dataset_name)["test"]
 
     text_generation = Pipeline.create(
@@ -86,7 +86,6 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
         sequence_length=args.max_sequence_length,
         prompt_processing_sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
-        remove_special_tokens_from_prompt=False,
     )
     perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
     active_engines = [
