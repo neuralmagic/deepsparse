@@ -25,6 +25,7 @@ from tqdm import tqdm
 import torch
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
+from deepsparse.transformers.utils.helpers import pad_to_fixed_length
 from sklearn.metrics import precision_recall_fscore_support
 
 
@@ -82,24 +83,59 @@ class Perplexity:
             encoded_batch = encoded_texts[start_index:end_index]
             attention_mask = attention_masks[start_index:end_index]
 
+            # Computing the ground truth labels
+
+            # `encoded_batch` contains sequences of tokens padded
+            # with <PAD> tokens from the left side. We need to remove
+            # them and zero-pad from the right side up to the length
+            # of the longest sequence in the batch
+            encoded_batch = numpy.array(encoded_batch) * numpy.array(attention_mask)
+            encoded_batch = [
+                list(filter(lambda num: num != 0, sequence))
+                for sequence in encoded_batch
+            ]
+            max_sequence_len = max([len(sequence) for sequence in encoded_batch])
+
+            encoded_batch = [
+                pad_to_fixed_length(numpy.array(sequence), max_sequence_len)
+                for sequence in encoded_batch
+            ]
+            encoded_batch = numpy.stack(encoded_batch)
+
+            # We need to apply the analogous transformation to the attention mask
+            attention_mask = numpy.array(attention_mask)
+            attention_mask = [
+                list(filter(lambda num: num != 0, mask)) for mask in attention_mask
+            ]
+            attention_mask = [
+                pad_to_fixed_length(numpy.array(mask), max_sequence_len)
+                for mask in attention_mask
+            ]
+            attention_mask = numpy.stack(attention_mask)
+
+            labels = encoded_batch
+
             out = self._pipeline(
                 sequences=predictions, return_logits=True, fixed_sequences_length=True
             )
+
             logits = out.logits
 
-            labels = encoded_batch
-            labels = numpy.stack(labels)
-            attention_mask = numpy.stack(attention_mask)
+            if not self._pipeline.has_cache:
+                # when running inference without cache, we need to apply
+                # analogous transformations to the logits as we did to the labels
+                # and attention mask
 
-            # because the tokenizer is left padded, we need to move the meaningful
-            # part of the logits and labels to the right
-            num_padded_entries = attention_mask.sum(axis=1)
-
-            # shift the values at num_paddings to the top of the array using roll
-            for i, num_padded in enumerate(num_padded_entries):
-                logits[i] = numpy.roll(logits[i], num_padded, axis=0)
-                labels[i] = numpy.roll(labels[i], num_padded, axis=0)
-                attention_mask[i] = numpy.roll(attention_mask[i], num_padded, axis=0)
+                # remove "nonsensical" logits for <PAD> tokens
+                logits = [
+                    logit[-attn_mask.sum() :, :]
+                    for (logit, attn_mask) in zip(logits, attention_mask)
+                ]
+                # pad logits to max length
+                logits = [
+                    pad_to_fixed_length(logit, max_sequence_len) for logit in logits
+                ]
+                logits = numpy.stack(logits)
 
             # shift logits and labels create the input and target for the loss function
             shift_logits = logits[:, :-1, :]

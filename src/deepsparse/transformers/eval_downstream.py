@@ -89,7 +89,6 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
         sequence_length=args.max_sequence_length,
         prompt_processing_sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
-        remove_special_tokens_from_prompt=False,
     )
     perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
     active_engines = [
@@ -481,9 +480,8 @@ SUPPORTED_DATASETS = {
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        # TODO: It is not BERT anymore, should we
-        # have another script or modify the existing one?
-        description="Evaluate a BERT ONNX model on a downstream dataset"
+        description="Evaluate a Hugging Face Transformers "
+        "ONNX model on a downstream dataset"
     )
     parser.add_argument(
         "model_path",

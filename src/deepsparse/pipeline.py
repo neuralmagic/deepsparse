@@ -202,7 +202,7 @@ class Pipeline(ABC):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
 
-        self.onnx_file_path = self.setup_onnx_file_path()
+        self.onnx_file_path = self.setup_onnx_file_path(_delay_overwriting_inputs)
 
         if _delay_engine_initialize:
             self.engine = None

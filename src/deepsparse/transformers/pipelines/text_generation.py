@@ -22,6 +22,7 @@ from deepsparse import Pipeline
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
+from deepsparse.transformers.utils.helpers import pad_to_fixed_length
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -102,8 +103,6 @@ class TextGenerationPipeline(TransformersPipeline):
         of tokens supplied even if the stop token is reached.
     :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
-    :param remove_special_tokens_from_prompt: if True, the pipeline will remove
-        the special tokens from the prompt, before processing it. Defaults to True.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
@@ -116,7 +115,6 @@ class TextGenerationPipeline(TransformersPipeline):
         prompt_processing_sequence_length: int = 128,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = False,
-        remove_special_tokens_from_prompt: bool = True,
         **kwargs,
     ):
         if use_deepsparse_cache:
@@ -149,7 +147,6 @@ class TextGenerationPipeline(TransformersPipeline):
         self.max_generated_tokens = max_generated_tokens
         self.prompt_processing_sequence_length = prompt_processing_sequence_length
         self.force_max_tokens = force_max_tokens
-        self.remove_special_tokens_from_prompt = remove_special_tokens_from_prompt
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
@@ -241,15 +238,13 @@ class TextGenerationPipeline(TransformersPipeline):
             # to enforce a fixed sequence length, we need to
             # truncate the input to the maximum sequence length
             # or/and pad it to the maximum sequence length
-            truncate = True
-            padding = "max_length"
+            truncate, padding = True, "max_length"
         else:
             # otherwise, we do not need to truncate the input
             # and we shall can pad it to the longest sequence
             # in the batch (so that the engine can process multiple inputs
             # at once)
-            truncate = False
-            padding = "longest"
+            truncate, padding = False, "longest"
 
         input_tokens = self.tokenizer(
             inputs.sequences,
@@ -356,12 +351,8 @@ class TextGenerationPipeline(TransformersPipeline):
             - The logits generated from the prompt (with dimensions
             ['batch_size', 'num_tokens', 'vocab_size'])
         """
-        tokens = engine_inputs[0]
-        if self.remove_special_tokens_from_prompt:
-            # get tokens by attention mask
-            tokens = tokens[engine_inputs[1].nonzero()].tolist()
-        else:
-            tokens = tokens[0].tolist()
+        # get tokens by attention mask
+        tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
 
         prompt_logits = []
         new_token = None
@@ -436,6 +427,40 @@ class TextGenerationPipeline(TransformersPipeline):
         generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
+
+    @property
+    def has_cache(self) -> bool:
+        """
+        Returns whether the ran model has kv cache or not
+
+        :return: True if the model has kv cache, False otherwise
+        """
+        return self.multitoken_engine.kv_cache_enabled
+
+    @staticmethod
+    def join_engine_outputs(
+        batch_outputs: List[List[numpy.ndarray]],
+    ) -> List[numpy.ndarray]:
+        """
+        Takes a list of outputs (batches) from the engine
+        and joins them into a single output. Asserts that
+        the dimensions of the outputs are the same, so that
+        they can be concatenated.
+
+        :param batch_outputs: A list of outputs from the engine
+        :return: A list of joined outputs
+        """
+        tokens, logits = zip(*batch_outputs)
+        tokens = numpy.concatenate(tokens, axis=0)
+        # find the longest sequence in the batch of logits
+        max_len = max([logits.shape[1] for logits in logits])
+        # pad all logits to the same length
+        logits = [
+            pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
+            for single_logits in logits
+        ]
+        logits = numpy.concatenate(logits, axis=0)
+        return [tokens, logits]
 
     def _reset_engines_cache(self):
         self.engine.reset_kv_cache()

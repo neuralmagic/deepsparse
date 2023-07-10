@@ -17,7 +17,7 @@ import uuid
 import numpy
 
 
-__all__ = ["softmax", "generate_session_id"]
+__all__ = ["softmax", "generate_session_id", "pad_to_fixed_length"]
 
 
 def softmax(x: numpy.ndarray) -> numpy.ndarray:
@@ -43,3 +43,24 @@ def generate_session_id() -> str:
     """
     session_id = str(uuid.uuid4())
     return session_id
+
+
+def pad_to_fixed_length(
+    array: numpy.ndarray, max_len: int, axis: int = 0, value: int = 0
+) -> numpy.ndarray:
+    """
+    Pads the array to a fixed length along the given axis.
+    The padding is done on the right side of the array.
+
+    :param array: array to pad
+    :param max_len: maximum length to pad to
+    :param axis: axis to pad along
+    :param value: value to pad with
+    :return: padded array
+    """
+    # per dimension padding is (before, after)
+    padding = [(0, 0)] * len(array.shape)
+    # for the specified axis, pad to the max length
+    # (from the right side of the array)
+    padding[axis] = (0, max_len - array.shape[axis])
+    return numpy.pad(array, padding, mode="constant", constant_values=value)
