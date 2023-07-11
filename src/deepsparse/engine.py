@@ -212,6 +212,7 @@ class BaseEngine(object):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        cache_output_bools: Optional[List[bool]] = None
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -222,6 +223,7 @@ class BaseEngine(object):
         self._input_shapes = input_shapes
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
+        self._cache_output_bools = cache_output_bools
 
     def construct_with_context(
         self,
@@ -274,9 +276,10 @@ class Engine(BaseEngine):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        cache_output_bools: Optional[List[bool]] = None
     ):
         BaseEngine.construct(
-            self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
+            self, model, batch_size, num_cores, num_streams, scheduler, input_shapes, cache_output_bools
         )
 
         if self._input_shapes:
@@ -290,6 +293,8 @@ class Engine(BaseEngine):
                     self._num_streams,
                     self._scheduler.value,
                     None,
+                    self._cache_output_bools,
+                    0
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -299,6 +304,8 @@ class Engine(BaseEngine):
                 self._num_streams,
                 self._scheduler.value,
                 None,
+                self._cache_output_bools,
+                0
             )
 
     def __call__(

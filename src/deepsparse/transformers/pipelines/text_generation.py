@@ -125,10 +125,6 @@ class TextGenerationPipeline(TransformersPipeline):
                     f"is {kwargs['engine_type']}. "
                     f"Make sure to set `engine_type` to {DEEPSPARSE_ENGINE}"
                 )
-            raise NotImplementedError(
-                "The deepsparse kv cache is not yet "
-                "supported for text generation pipelines"
-            )
 
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
@@ -171,6 +167,7 @@ class TextGenerationPipeline(TransformersPipeline):
         if self.multitoken_engine.kv_cache_enabled:
             # unless kv cache is enabled, we don't
             # need to initialize the single token engine
+            print('initializing single token engine')
             self.engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
