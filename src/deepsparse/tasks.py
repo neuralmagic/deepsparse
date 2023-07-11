@@ -210,10 +210,8 @@ class SupportedTasks:
         :return: True if it is a text generation task, False otherwise
         """
         return any(
-            [
-                text_generation_task.matches(task)
-                for text_generation_task in cls.text_generation
-            ]
+            text_generation_task.matches(task)
+            for text_generation_task in cls.text_generation
         )
 
     @classmethod

@@ -159,6 +159,9 @@ class NLDecoderEngine:
     def __str__(self):
         return f"{self.__class__.__name__}: {self.engine}"
 
+    def __repr__(self):
+        return str(self)
+
     def transfer_cache_state(self, cache: DecoderKVCache):
         """
         Transfers the kv cache state and the number of tokens processed
@@ -229,6 +232,7 @@ class NLDecoderEngine:
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
         Samples a token from the logits using the sampling temperature.
+
         :param logits: the logits from the model with shape (vocab_size,)
         :return: the sampled token
         """

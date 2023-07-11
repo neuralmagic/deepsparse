@@ -998,6 +998,15 @@ def create_engine(
     engine_args: Dict,
     context: Optional[Context] = None,
 ) -> Union[Engine, MultiModelEngine, ORTEngine]:
+    """
+    Create an inference engine for a given ONNX model
+
+    :param onnx_file_path: path to ONNX model file
+    :param engine_type: type of engine to create.
+    :param engine_args: arguments to pass to engine constructor
+    :param context: context to use for engine
+    :return: inference engine
+    """
     engine_type = engine_type.lower()
 
     if engine_type == DEEPSPARSE_ENGINE:

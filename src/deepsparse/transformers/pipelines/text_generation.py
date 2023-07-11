@@ -90,7 +90,8 @@ class TextGenerationPipeline(TransformersPipeline):
         an argmax function to the logits.
     :param sampling_temperature: the temperature to use when sampling
         from the probability distribution computed from the logits.
-        Higher values will result in more random samples.
+        Higher values will result in more random samples. Should
+        be greater than 0.0.
     :param max_generated_tokens: the maximum number of tokens to generate
         given the input sequence. If None, the model will generate
         tokens until the end of the sequence is reached.
