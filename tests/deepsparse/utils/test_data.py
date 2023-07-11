@@ -14,7 +14,6 @@
 
 import numpy
 
-import pytest
 from deepsparse.utils import join_engine_outputs, split_engine_inputs
 
 
