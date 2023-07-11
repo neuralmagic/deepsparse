@@ -252,5 +252,4 @@ def join_engine_outputs(
         for i in range(len(candidate_output)):
             candidate_output[i] = candidate_output[i][:orig_batch_size]
 
-
     return candidate_output
