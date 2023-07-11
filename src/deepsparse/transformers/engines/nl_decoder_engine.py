@@ -191,7 +191,7 @@ class NLDecoderEngine:
             that should be cached
         """
         model = onnx.load(onnx_file_path, load_external_data=False)
-        initializer_input_names = set([node.name for node in model.graph.initializer])
+        initializer_input_names = set(node.name for node in model.graph.initializer)
         external_inputs = [
             inp for inp in model.graph.input if inp.name not in initializer_input_names
         ]
