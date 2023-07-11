@@ -30,10 +30,10 @@ jobs:
         os: [ubuntu-20.04]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
       - uses: actions/checkout@v2
       - uses: actions/checkout@v2
         with:
@@ -56,10 +56,10 @@ jobs:
         os: [ubuntu-20.04]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
       - uses: actions/checkout@v2
       - uses: actions/checkout@v2
         with:
@@ -82,10 +82,10 @@ jobs:
         os: [ubuntu-20.04]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
       - uses: actions/checkout@v2
       - uses: actions/checkout@v2
         with:
