@@ -21,6 +21,9 @@ from sparsezoo import Model
 
 
 model_test_registry = {
+    "mobilenet_v1": (
+        "zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/base-none"
+    ),
     "mobilenet_v2": (
         "zoo:cv/classification/mobilenet_v2-1.0/pytorch/sparseml/imagenet/base-none"
     ),
@@ -113,10 +116,9 @@ class TestEngineParametrized:
             verify_outputs(output, outputs)
 
 
-@pytest.mark.parametrize("batch_size", [1, 4, 16], scope="class")
+@pytest.mark.parametrize("batch_size", [1, 16], scope="class")
 @pytest.mark.parametrize("zoo_stub", model_test_registry.values(), scope="class")
 @pytest.mark.smoke
-@pytest.mark.skip(reason="This won't work until the engine is updated, see D5309.")
 class TestDebugAnalysisEngineParametrized:
     @pytest.fixture(scope="class")
     def model(self, zoo_stub: str):
