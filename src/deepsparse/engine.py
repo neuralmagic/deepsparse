@@ -29,10 +29,10 @@ from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (
     generate_random_inputs,
     get_output_names,
+    join_engine_outputs,
     model_to_path,
     override_onnx_input_shapes,
     split_engine_inputs,
-    join_engine_outputs,
 )
 
 
