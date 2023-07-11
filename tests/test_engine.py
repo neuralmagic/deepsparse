@@ -33,7 +33,7 @@ model_test_registry = {
     ),
 }
 
-
+# wow nice change
 @pytest.mark.parametrize("batch_size", [1, 4, 16], scope="class")
 @pytest.mark.parametrize("zoo_stub", model_test_registry.values(), scope="class")
 @pytest.mark.smoke
