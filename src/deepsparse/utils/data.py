@@ -249,6 +249,8 @@ def join_engine_outputs(
 
     # If we can't evenly divide with batch size, remove the remainder as padding
     if candidate_output[0].shape[0] > orig_batch_size:
-        candidate_output = [out[:orig_batch_size] for out in candidate_output]
+        for i in range(len(candidate_output)):
+            candidate_output[i] = candidate_output[i][:orig_batch_size]
+
 
     return candidate_output
