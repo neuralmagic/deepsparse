@@ -66,19 +66,18 @@ def check_for_created_files():
     start_files_root = _get_files(directory=r".")
     start_files_temp = _get_files(directory=tempfile.gettempdir())
     yield
-    end_files_root = _get_files(directory=r".")
+    # allow creation of __pycache__ directories
+    end_files_root = [f_path for f_path in _get_files(directory=r".") if "__pycache__" not in f_path]
     end_files_temp = _get_files(directory=tempfile.gettempdir())
 
-    max_allowed_number_created_files = 4
     # GHA needs to create following files:
-    # pyproject.toml, CONTRIBUTING.md, LICENSE, setup.cfg
-    assert len(start_files_root) + max_allowed_number_created_files >= len(
-        end_files_root
-    ), (
-        f"{len(end_files_root) - len(start_files_root)} "
+    allowed_created_files = ["pyproject.toml", "CONTRIBUTING.md", "LICENSE", "setup.cfg", "prometheus_logs.prom"]
+    filtered_end_files_root = [f_path for f_path in end_files_root if os.path.basename(f_path) not in allowed_created_files]
+    assert len(start_files_root) >= len(filtered_end_files_root), (
+        f"{len(filtered_end_files_root) - len(start_files_root)} "
         f"files created in current working "
         f"directory during pytest run. "
-        f"Created files: {set(end_files_root) - set(start_files_root)}"
+        f"Created files: {set(filtered_end_files_root) - set(start_files_root)}"
     )
     max_allowed_sized_temp_files_megabytes = 150
     size_of_temp_files_bytes = sum(
