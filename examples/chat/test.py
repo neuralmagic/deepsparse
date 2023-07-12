@@ -3,14 +3,14 @@ from examples.codegen.text_generation import TextGenerationPipeline
 
 
 ort_codegen = TextGenerationPipeline(
-    model_path="/home/mgoin/slow/nyann/deepsparse/codegen-350M-multi",
+    model_path="codegen-350M-multi",
     engine_type="onnxruntime",
     sequence_length=1024,
     num_tokens_to_generate=128,
     streamer=True)
 
 ds_codegen = TextGenerationPipeline(
-    model_path="/home/mgoin/slow/nyann/deepsparse/codegen-350M-multi",
+    model_path="codegen-350M-multi",
     engine_type="deepsparse",
     sequence_length=1024,
     num_tokens_to_generate=128,
