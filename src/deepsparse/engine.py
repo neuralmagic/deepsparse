@@ -28,8 +28,10 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (
     generate_random_inputs,
+    join_engine_outputs,
     model_to_path,
     override_onnx_input_shapes,
+    split_engine_inputs,
 )
 
 
@@ -437,6 +439,26 @@ class Engine(BaseEngine):
         :return: List of random tensors
         """
         return generate_random_inputs(self.model_path, self.batch_size)
+
+    def batched_run(
+        self,
+        inp: List[numpy.ndarray],
+    ) -> List[numpy.ndarray]:
+
+        if self.batch_size == 1:
+            _LOGGER.warn(
+                "Using batched_run with an Engine of batch_size=1 isn't recommended "
+                "for optimal performance."
+            )
+
+        # Split inputs into batches of size `self.batch_size`
+        batch_inputs, orig_batch_size = split_engine_inputs(inp, self.batch_size)
+
+        # Submit split batches to engine threadpool
+        batch_outputs = list(map(self.run, batch_inputs))
+
+        # Join together the batches of size `self.batch_size`
+        return join_engine_outputs(batch_outputs, orig_batch_size)
 
     def run(
         self,

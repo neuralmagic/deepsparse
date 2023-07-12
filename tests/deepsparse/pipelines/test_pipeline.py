@@ -18,46 +18,8 @@ from unittest import mock
 
 import numpy
 
-import pytest
 from deepsparse.pipeline import Pipeline, _initialize_executor_and_workers
 from tests.utils import mock_engine
-
-
-def test_split_engine_inputs():
-    inp = [numpy.zeros((4, 28)) for _ in range(3)]
-
-    out = Pipeline.split_engine_inputs(inp, batch_size=4)
-    assert numpy.array(out).shape == (1, 3, 4, 28)
-
-    out = Pipeline.split_engine_inputs(inp, batch_size=2)
-    assert numpy.array(out).shape == (2, 3, 2, 28)
-
-    out = Pipeline.split_engine_inputs(inp, batch_size=1)
-    assert numpy.array(out).shape == (4, 3, 1, 28)
-
-
-def test_join_opposite_of_split():
-    inp = [numpy.random.rand(4, 28) for _ in range(3)]
-
-    out = Pipeline.split_engine_inputs(inp, batch_size=2)
-    assert numpy.array(out).shape == (2, 3, 2, 28)
-
-    joined = Pipeline.join_engine_outputs(out)
-    assert numpy.array(joined).shape == (3, 4, 28)
-
-    for i, j in zip(inp, joined):
-        assert (i == j).all()
-
-
-def test_split_engine_inputs_uneven_raises_error():
-    with pytest.raises(
-        RuntimeError,
-        match=(
-            "batch size of 3 passed into pipeline "
-            "is not divisible by model batch size of 2"
-        ),
-    ):
-        Pipeline.split_engine_inputs([numpy.zeros((3, 28))], batch_size=2)
 
 
 @mock_engine(rng_seed=0)
@@ -82,14 +44,15 @@ def test_split_interaction_with_forward_batch_size_2(engine_forward):
     with mock.patch.object(
         Pipeline, "engine_forward", wraps=pipeline.engine_forward
     ) as engine_forward:
-        with pytest.raises(RuntimeError, match="is not divisible"):
-            pipeline("word")
-
-        pipeline("two words".split())
+        # this is okay because we can pad batches
+        pipeline("word")
         assert engine_forward.call_count == 1
 
+        pipeline("two words".split())
+        assert engine_forward.call_count == 2
+
         pipeline("two words for me".split())
-        assert engine_forward.call_count == 3
+        assert engine_forward.call_count == 4
 
 
 def test_pipeline_executor_num_workers():
