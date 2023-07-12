@@ -82,21 +82,21 @@ def check_for_created_files():
         "setup.cfg",
         "prometheus_logs.prom",
     ]
-    filtered_end_files_root = [
+    end_files_root = [
         f_path
         for f_path in end_files_root
         if os.path.basename(f_path) not in allowed_created_files
     ]
-    filtered_start_files_root = [
+    start_files_root = [
         f_path
         for f_path in start_files_root
         if os.path.basename(f_path) not in allowed_created_files
     ]
-    assert len(filtered_start_files_root) >= len(filtered_end_files_root), (
-        f"{len(filtered_end_files_root) - len(filtered_start_files_root)} "
+    assert len(start_files_root) >= len(end_files_root), (
+        f"{len(end_files_root) - len(start_files_root)} "
         f"files created in current working "
         f"directory during pytest run. "
-        f"Created files: {set(filtered_end_files_root) - set(filtered_start_files_root)}"
+        f"Created files: {set(end_files_root) - set(start_files_root)}"
     )
     max_allowed_sized_temp_files_megabytes = 150
     size_of_temp_files_bytes = sum(
