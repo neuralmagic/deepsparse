@@ -28,7 +28,6 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (
     generate_random_inputs,
-    get_output_names,
     join_engine_outputs,
     model_to_path,
     override_onnx_input_shapes,
@@ -56,7 +55,6 @@ __all__ = [
     "Scheduler",
     "Context",
     "MultiModelEngine",
-    "KVCacheEngine",
     "BaseEngine",
 ]
 
@@ -864,52 +862,6 @@ class MultiModelEngine(Engine):
                 self._num_streams,
                 self._scheduler.value,
                 context.value,
-            )
-
-
-class KVCacheEngine(Engine):
-    """
-    Engine that can do kv caching.
-    """
-
-    def __init__(
-        self,
-        model: Union[str, "Model", "File"],
-        batch_size: int = 1,
-        num_cores: int = None,
-        num_streams: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        kv_cache_bools: List[bool] = None,
-        prev_cache_length: int = 0,
-    ):
-        BaseEngine.construct(
-            self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
-        )
-
-        if kv_cache_bools is None:
-            # If no list was provided, then we assume all outputs except for the first are KV caches
-            # Note: In the future we can look at the names of outputs to be more sure
-            #
-            # Create a boolean list of every output of the model
-            output_names = get_output_names(self._model_path)
-            kv_cache_bools = [True for i in range(len(output_names))]
-            # Assume first input is logits and logits ought not to be cached
-            kv_cache_bools[0] = False
-
-        num_streams = _validate_num_streams(num_streams, self._num_cores)
-        if self._input_shapes:
-            raise NotImplementedError("Don't do this yet :)")
-        else:
-            self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
-                self._batch_size,
-                self._num_cores,
-                num_streams,
-                self._scheduler.value,
-                None,
-                kv_cache_bools,
-                prev_cache_length,
             )
 
 

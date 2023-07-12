@@ -59,6 +59,7 @@ __all__ = [
     "yolo_pipeline",
     "Bucketable",
     "BucketingPipeline",
+    "create_engine",
 ]
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -753,26 +754,10 @@ class Pipeline(ABC):
                 category=MetricCategories.SYSTEM,
             )
 
-    def _initialize_engine(self) -> Union[Engine, ORTEngine]:
-        engine_type = self.engine_type.lower()
-
-        if engine_type == DEEPSPARSE_ENGINE:
-            if self.context is not None and isinstance(self.context, Context):
-                self._engine_args.pop("num_cores", None)
-                self._engine_args.pop("scheduler", None)
-                self._engine_args["context"] = self.context
-                return MultiModelEngine(
-                    model=self.onnx_file_path,
-                    **self._engine_args,
-                )
-            return Engine(self.onnx_file_path, **self._engine_args)
-        elif engine_type == ORT_ENGINE:
-            return ORTEngine(self.onnx_file_path, **self._engine_args)
-        else:
-            raise ValueError(
-                f"Unknown engine_type {self.engine_type}. Supported values include: "
-                f"{SUPPORTED_PIPELINE_ENGINES}"
-            )
+    def _initialize_engine(self) -> Union[Engine, MultiModelEngine, ORTEngine]:
+        return create_engine(
+            self.onnx_file_path, self.engine_type, self._engine_args, self.context
+        )
 
     def _identifier(self):
         # get pipeline identifier; used in the context of logging
@@ -948,6 +933,43 @@ class Bucketable(ABC):
         :return: The correct Pipeline object (or Bucket) to route input to
         """
         pass
+
+
+def create_engine(
+    onnx_file_path: str,
+    engine_type: str,
+    engine_args: Dict,
+    context: Optional[Context] = None,
+) -> Union[Engine, MultiModelEngine, ORTEngine]:
+    """
+    Create an inference engine for a given ONNX model
+
+    :param onnx_file_path: path to ONNX model file
+    :param engine_type: type of engine to create.
+    :param engine_args: arguments to pass to engine constructor
+    :param context: context to use for engine
+    :return: inference engine
+    """
+    engine_type = engine_type.lower()
+
+    if engine_type == DEEPSPARSE_ENGINE:
+        if context is not None and isinstance(context, Context):
+            engine_args.pop("num_cores", None)
+            engine_args.pop("scheduler", None)
+            engine_args["context"] = context
+            return MultiModelEngine(
+                model=onnx_file_path,
+                **engine_args,
+            )
+        return Engine(onnx_file_path, **engine_args)
+
+    if engine_type == ORT_ENGINE:
+        return ORTEngine(onnx_file_path, **engine_args)
+
+    raise ValueError(
+        f"Unknown engine_type {engine_type}. Supported values include: "
+        f"{SUPPORTED_PIPELINE_ENGINES}"
+    )
 
 
 def _initialize_executor_and_workers(
