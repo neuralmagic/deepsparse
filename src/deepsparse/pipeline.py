@@ -36,7 +36,13 @@ from deepsparse.loggers.constants import (
     validate_identifier,
 )
 from deepsparse.tasks import SupportedTasks, dynamic_import_task
-from deepsparse.utils import InferenceStages, StagedTimer, TimerManager
+from deepsparse.utils import (
+    InferenceStages,
+    StagedTimer,
+    TimerManager,
+    join_engine_outputs,
+    split_engine_inputs,
+)
 
 
 __all__ = [
@@ -53,6 +59,7 @@ __all__ = [
     "yolo_pipeline",
     "Bucketable",
     "BucketingPipeline",
+    "create_engine",
 ]
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -256,13 +263,15 @@ class Pipeline(ABC):
             # ------ INFERENCE ------
             # split inputs into batches of size `self._batch_size`
             timer.start(InferenceStages.ENGINE_FORWARD)
-            batches = self.split_engine_inputs(engine_inputs, self._batch_size)
+            batches, orig_batch_size = split_engine_inputs(
+                engine_inputs, self._batch_size
+            )
 
             # submit split batches to engine threadpool
             batch_outputs = list(self.executor.map(self.engine_forward, batches))
 
             # join together the batches of size `self._batch_size`
-            engine_outputs = self.join_engine_outputs(batch_outputs)
+            engine_outputs = join_engine_outputs(batch_outputs, orig_batch_size)
             timer.stop(InferenceStages.ENGINE_FORWARD)
 
             self.log(
@@ -301,71 +310,6 @@ class Pipeline(ABC):
         self.log_inference_times(timer)
 
         return pipeline_outputs
-
-    @staticmethod
-    def split_engine_inputs(
-        items: List[numpy.ndarray], batch_size: int
-    ) -> List[List[numpy.ndarray]]:
-        """
-        Splits each item into numpy arrays with the first dimension == `batch_size`.
-
-        For example, if `items` has three numpy arrays with the following
-        shapes: `[(4, 32, 32), (4, 64, 64), (4, 128, 128)]`
-
-        Then with `batch_size==4` the output would be:
-        ```
-        [[(4, 32, 32), (4, 64, 64), (4, 128, 128)]]
-        ```
-
-        Then with `batch_size==2` the output would be:
-        ```
-        [
-            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
-            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
-        ]
-        ```
-
-        Then with `batch_size==1` the output would be:
-        ```
-        [
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-        ]
-        ```
-        """
-        # if not all items here are numpy arrays, there's an internal
-        # but in the processing code
-        assert all(isinstance(item, numpy.ndarray) for item in items)
-
-        # if not all items have the same batch size, there's an
-        # internal bug in the processing code
-        total_batch_size = items[0].shape[0]
-        assert all(item.shape[0] == total_batch_size for item in items)
-
-        if total_batch_size % batch_size != 0:
-            raise RuntimeError(
-                f"batch size of {total_batch_size} passed into pipeline "
-                f"is not divisible by model batch size of {batch_size}"
-            )
-
-        batches = []
-        for i_batch in range(total_batch_size // batch_size):
-            start = i_batch * batch_size
-            batches.append([item[start : start + batch_size] for item in items])
-        return batches
-
-    @staticmethod
-    def join_engine_outputs(
-        batch_outputs: List[List[numpy.ndarray]],
-    ) -> List[numpy.ndarray]:
-        """
-        Joins list of engine outputs together into one list using `numpy.concatenate`.
-
-        This is the opposite of `Pipeline.split_engine_inputs`.
-        """
-        return list(map(numpy.concatenate, zip(*batch_outputs)))
 
     @staticmethod
     def _get_task_constructor(task: str) -> Type["Pipeline"]:
@@ -810,26 +754,10 @@ class Pipeline(ABC):
                 category=MetricCategories.SYSTEM,
             )
 
-    def _initialize_engine(self) -> Union[Engine, ORTEngine]:
-        engine_type = self.engine_type.lower()
-
-        if engine_type == DEEPSPARSE_ENGINE:
-            if self.context is not None and isinstance(self.context, Context):
-                self._engine_args.pop("num_cores", None)
-                self._engine_args.pop("scheduler", None)
-                self._engine_args["context"] = self.context
-                return MultiModelEngine(
-                    model=self.onnx_file_path,
-                    **self._engine_args,
-                )
-            return Engine(self.onnx_file_path, **self._engine_args)
-        elif engine_type == ORT_ENGINE:
-            return ORTEngine(self.onnx_file_path, **self._engine_args)
-        else:
-            raise ValueError(
-                f"Unknown engine_type {self.engine_type}. Supported values include: "
-                f"{SUPPORTED_PIPELINE_ENGINES}"
-            )
+    def _initialize_engine(self) -> Union[Engine, MultiModelEngine, ORTEngine]:
+        return create_engine(
+            self.onnx_file_path, self.engine_type, self._engine_args, self.context
+        )
 
     def _identifier(self):
         # get pipeline identifier; used in the context of logging
@@ -1005,6 +933,43 @@ class Bucketable(ABC):
         :return: The correct Pipeline object (or Bucket) to route input to
         """
         pass
+
+
+def create_engine(
+    onnx_file_path: str,
+    engine_type: str,
+    engine_args: Dict,
+    context: Optional[Context] = None,
+) -> Union[Engine, MultiModelEngine, ORTEngine]:
+    """
+    Create an inference engine for a given ONNX model
+
+    :param onnx_file_path: path to ONNX model file
+    :param engine_type: type of engine to create.
+    :param engine_args: arguments to pass to engine constructor
+    :param context: context to use for engine
+    :return: inference engine
+    """
+    engine_type = engine_type.lower()
+
+    if engine_type == DEEPSPARSE_ENGINE:
+        if context is not None and isinstance(context, Context):
+            engine_args.pop("num_cores", None)
+            engine_args.pop("scheduler", None)
+            engine_args["context"] = context
+            return MultiModelEngine(
+                model=onnx_file_path,
+                **engine_args,
+            )
+        return Engine(onnx_file_path, **engine_args)
+
+    if engine_type == ORT_ENGINE:
+        return ORTEngine(onnx_file_path, **engine_args)
+
+    raise ValueError(
+        f"Unknown engine_type {engine_type}. Supported values include: "
+        f"{SUPPORTED_PIPELINE_ENGINES}"
+    )
 
 
 def _initialize_executor_and_workers(

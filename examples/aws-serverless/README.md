@@ -90,7 +90,7 @@ python endpoint.py create-realtime
 
 #### Call Realtime Endpoint
 
-After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
+After the endpoint has been staged (~3 minutes), AWS SAM will provide your API Gateway endpoint URL in terminal. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
 
 ```python
 from client import LambdaClient
