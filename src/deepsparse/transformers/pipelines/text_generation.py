@@ -32,6 +32,12 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["TextGenerationPipeline"]
 
 
+PROMPT_PREFILL = "engine_prompt_prefill"
+PROMPT_PREFILL_SINGLE = "engine_prompt_prefill_single"
+TOKEN_GENERATION = "engine_token_generation"
+TOKEN_GENERATION_SINGLE = "engine_token_generation_single"
+
+
 class TextGenerationInput(BaseModel):
     sequences: Union[str, List[str]] = Field(
         description="The input sequences to generate the text from.",
@@ -311,35 +317,41 @@ class TextGenerationPipeline(TransformersPipeline):
             sequence of generated tokens and a sequence
             of logits for each generated token
         """
-        if not self.multitoken_engine.kv_cache_enabled:
-            tokens, prompt_logits = self.multitoken_engine(engine_inputs)
-            return numpy.array([tokens]), prompt_logits
+        # engine_forward is always called in a threadpool due to batch splitting
+        # as such, a new context needs to be created since we are no longer in the
+        # main thread. That is why `engine_` is prepended to each of the timer phase
+        # names in this context
+        with self.timer_manager.new_timer_context(total_inference=False) as timer:
+            if not self.multitoken_engine.kv_cache_enabled:
+                tokens, prompt_logits = self.multitoken_engine(engine_inputs)
+                return numpy.array([tokens]), prompt_logits
 
-        else:
-            # run the prompt through
-            tokens, prompt_logits = self.prompt_inference(engine_inputs)
+            else:
+                # run the prompt through
+                with timer.time(PROMPT_PREFILL):
+                    tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
-        # create the generated output
-        max_tokens = (
-            self.max_generated_tokens
-            if self.max_generated_tokens and self.max_generated_tokens > 0
-            else 100 * self.sequence_length
-        )  # set safety for absolute max generation
+            # create the generated output
+            max_tokens = (
+                self.max_generated_tokens
+                if self.max_generated_tokens and self.max_generated_tokens > 0
+                else 100 * self.sequence_length
+            )  # set safety for absolute max generation
 
-        generated_tokens = [tokens[-1]]
-        generated_logits = prompt_logits
+            generated_tokens = [tokens[-1]]
+            generated_logits = prompt_logits
 
-        while len(generated_tokens) < max_tokens:
-            (
-                token,
-                logits,
-            ) = self.autoregressive_inference(tokens)
-            tokens.append(token)
-            generated_tokens.append(token)
-            generated_logits.append(logits)
+            timer.start(TOKEN_GENERATION)
+            while len(generated_tokens) < max_tokens:
+                with timer.time(TOKEN_GENERATION_SINGLE):
+                    token, logits = self.autoregressive_inference(tokens)
+                tokens.append(token)
+                generated_tokens.append(token)
+                generated_logits.append(logits)
 
-            if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
-                break
+                if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
+                    break
+            timer.stop(TOKEN_GENERATION)
 
         return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
@@ -395,9 +407,10 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
-            new_token, new_logits = self.autoregressive_inference(
-                run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
-            )
+            with self.timer_manager.current.time(PROMPT_PREFILL_SINGLE):
+                new_token, new_logits = self.autoregressive_inference(
+                    run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
+                )
             prompt_logits.append(new_logits)
 
         tokens.append(new_token)
