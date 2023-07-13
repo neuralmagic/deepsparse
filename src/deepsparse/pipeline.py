@@ -31,7 +31,13 @@ from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.loggers.constants import MetricCategories, SystemGroups
-from deepsparse.utils import InferenceStages, StagedTimer, TimerManager
+from deepsparse.utils import (
+    InferenceStages,
+    StagedTimer,
+    TimerManager,
+    join_engine_outputs,
+    split_engine_inputs,
+)
 
 
 __all__ = [
@@ -279,71 +285,6 @@ class Pipeline(BasePipeline):
         self.log_inference_times(timer)
 
         return pipeline_outputs
-
-    @staticmethod
-    def split_engine_inputs(
-        items: List[numpy.ndarray], batch_size: int
-    ) -> List[List[numpy.ndarray]]:
-        """
-        Splits each item into numpy arrays with the first dimension == `batch_size`.
-
-        For example, if `items` has three numpy arrays with the following
-        shapes: `[(4, 32, 32), (4, 64, 64), (4, 128, 128)]`
-
-        Then with `batch_size==4` the output would be:
-        ```
-        [[(4, 32, 32), (4, 64, 64), (4, 128, 128)]]
-        ```
-
-        Then with `batch_size==2` the output would be:
-        ```
-        [
-            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
-            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
-        ]
-        ```
-
-        Then with `batch_size==1` the output would be:
-        ```
-        [
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-        ]
-        ```
-        """
-        # if not all items here are numpy arrays, there's an internal
-        # but in the processing code
-        assert all(isinstance(item, numpy.ndarray) for item in items)
-
-        # if not all items have the same batch size, there's an
-        # internal bug in the processing code
-        total_batch_size = items[0].shape[0]
-        assert all(item.shape[0] == total_batch_size for item in items)
-
-        if total_batch_size % batch_size != 0:
-            raise RuntimeError(
-                f"batch size of {total_batch_size} passed into pipeline "
-                f"is not divisible by model batch size of {batch_size}"
-            )
-
-        batches = []
-        for i_batch in range(total_batch_size // batch_size):
-            start = i_batch * batch_size
-            batches.append([item[start : start + batch_size] for item in items])
-        return batches
-
-    @staticmethod
-    def join_engine_outputs(
-        batch_outputs: List[List[numpy.ndarray]],
-    ) -> List[numpy.ndarray]:
-        """
-        Joins list of engine outputs together into one list using `numpy.concatenate`.
-
-        This is the opposite of `Pipeline.split_engine_inputs`.
-        """
-        return list(map(numpy.concatenate, zip(*batch_outputs)))
 
     @classmethod
     def from_config(
