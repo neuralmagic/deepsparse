@@ -26,7 +26,7 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
-from deepsparse.base_pipeline import BasePipeline
+from deepsparse.base_pipeline import _REGISTERED_PIPELINES, BasePipeline, SupportedTasks
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
@@ -45,6 +45,9 @@ __all__ = [
     "ORT_ENGINE",
     "SUPPORTED_PIPELINE_ENGINES",
     "Pipeline",
+    "BasePipeline",
+    "SupportedTasks",
+    "_REGISTERED_PIPELINES",
     "PipelineConfig",
     "question_answering_pipeline",
     "text_classification_pipeline",
