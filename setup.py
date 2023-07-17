@@ -90,7 +90,7 @@ _deps = [
     "pydantic>=1.8.2,<2.0.0",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
-    "protobuf>=3.12.2,<=3.20.1",
+    "protobuf>=3.12.2",
     "click>=7.1.2,!=8.0.0",  # latest version < 8.0 + blocked version with reported bug
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
@@ -146,7 +146,7 @@ _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
 _transformers_integration_deps = [
     f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
     f"~={version_base}",
-    "datasets<=1.18.4",
+    "datasets<=2.11",
     "scikit-learn",
     "seqeval",
 ]
