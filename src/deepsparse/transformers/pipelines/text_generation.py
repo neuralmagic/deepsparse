@@ -120,7 +120,6 @@ class TextGenerationPipeline(TransformersPipeline):
         use_deepsparse_cache: bool = True,
         **kwargs,
     ):
-        print(cpu_avx512_compatible())
         if not cpu_avx512_compatible() and kwargs["engine_type"] == DEEPSPARSE_ENGINE:
             warnings.warn(
                 "Detected CPU is not AVX512 compatible. "
