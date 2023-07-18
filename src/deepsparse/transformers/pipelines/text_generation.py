@@ -14,6 +14,7 @@
 
 import logging
 import warnings
+from dataclasses import dataclass
 from typing import List, Optional, Tuple, Type, Union
 
 import numpy
@@ -32,10 +33,12 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["TextGenerationPipeline"]
 
 
-PROMPT_PREFILL = "engine_prompt_prefill"
-PROMPT_PREFILL_SINGLE = "engine_prompt_prefill_single"
-TOKEN_GENERATION = "engine_token_generation"
-TOKEN_GENERATION_SINGLE = "engine_token_generation_single"
+@dataclass(frozen=True)
+class _TextGenerationTimings:
+    PROMPT_PREFILL = "engine_prompt_prefill"
+    PROMPT_PREFILL_SINGLE = "engine_prompt_prefill_single"
+    TOKEN_GENERATION = "engine_token_generation"
+    TOKEN_GENERATION_SINGLE = "engine_token_generation_single"
 
 
 class TextGenerationInput(BaseModel):
@@ -328,7 +331,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
             else:
                 # run the prompt through
-                with timer.time(PROMPT_PREFILL):
+                with timer.time(_TextGenerationTimings.PROMPT_PREFILL):
                     tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
             # create the generated output
@@ -341,9 +344,9 @@ class TextGenerationPipeline(TransformersPipeline):
             generated_tokens = [tokens[-1]]
             generated_logits = prompt_logits
 
-            timer.start(TOKEN_GENERATION)
+            timer.start(_TextGenerationTimings.TOKEN_GENERATION)
             while len(generated_tokens) < max_tokens:
-                with timer.time(TOKEN_GENERATION_SINGLE):
+                with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                     token, logits = self.autoregressive_inference(tokens)
                 tokens.append(token)
                 generated_tokens.append(token)
@@ -351,7 +354,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
                 if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
                     break
-            timer.stop(TOKEN_GENERATION)
+            timer.stop(_TextGenerationTimings.TOKEN_GENERATION)
 
         return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
@@ -407,7 +410,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
-            with self.timer_manager.current.time(PROMPT_PREFILL_SINGLE):
+            with self.timer_manager.current.time(
+                _TextGenerationTimings.PROMPT_PREFILL_SINGLE
+            ):
                 new_token, new_logits = self.autoregressive_inference(
                     run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
                 )
