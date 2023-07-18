@@ -27,7 +27,7 @@ from typing import Optional
 import click
 import yaml
 
-from deepsparse.base_pipeline import SupportedTasks
+from deepsparse.pipeline import SupportedTasks
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import start_server
 
