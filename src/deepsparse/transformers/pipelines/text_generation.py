@@ -122,10 +122,9 @@ class TextGenerationPipeline(TransformersPipeline):
     ):
         if not cpu_avx512_compatible() and kwargs["engine_type"] == DEEPSPARSE_ENGINE:
             warnings.warn(
-                "Detected CPU is not AVX512 compatible. "
-                "The kv cache management will not be supported "
-                "by the optimized engine. The user may experience "
-                "non optimal performance."
+                "AVX512 support not detected, disabling internal management "
+                "of KV cache which may affect performance. To enable full "
+                "performance, deploy on an AVX512-compatible system."
             )
             use_deepsparse_cache = False
 
