@@ -242,6 +242,10 @@ def join_engine_outputs(
     the remainder as padding.
 
     This is the opposite of `split_engine_inputs` and is meant to be used in tandem.
+
+    :param batch_outputs: List of engine outputs
+    :param orig_batch_size: The original batch size of the inputs
+    :return: List of engine outputs joined together
     """
     assert all(isinstance(item, (List, Tuple)) for item in batch_outputs)
 
