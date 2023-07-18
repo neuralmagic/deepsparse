@@ -23,6 +23,7 @@ from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import generate_session_id, softmax
+from deepsparse.utils.onnx import translate_onnx_type_to_numpy
 from sparsezoo.utils.onnx import save_onnx
 
 
@@ -66,6 +67,8 @@ class NLDecoderEngine:
         engine_context: Optional[Context] = None,
         use_deepsparse_cache=False,
     ):
+        # flag to indicate if the model is quantized or not
+        self.kv_cache_data_type = None
 
         onnx_file_path, output_indices_to_be_cached = self.overwrite_onnx_model_inputs(
             onnx_file_path=onnx_file_path,
@@ -173,8 +176,8 @@ class NLDecoderEngine:
         """
         self.kv_cache = copy.deepcopy(cache)
 
-    @staticmethod
     def overwrite_onnx_model_inputs(
+        self,
         onnx_file_path: str,
         sequence_length: int,
         input_ids_length: int,
@@ -226,6 +229,11 @@ class NLDecoderEngine:
         output_indices_to_be_cached = [
             1 if inp.name.startswith("present") else 0 for inp in model.graph.output
         ]
+
+        kv_cache_elem_type = next(
+            inp for inp in model.graph.input if inp.name.startswith(_CACHE_INPUT_NAME)
+        ).type.tensor_type.elem_type
+        self.kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
 
         return onnx_file_path, output_indices_to_be_cached
 
@@ -319,7 +327,7 @@ class NLDecoderEngine:
 
         empty_kv_cache_tensor = numpy.zeros(
             (batch_size, num_attention_heads, length, hidden_dims),
-            dtype=numpy.float32,
+            dtype=self.kv_cache_data_type,
         )
 
         cache_keys = [
