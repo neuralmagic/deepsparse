@@ -269,12 +269,13 @@ class TextGenerationPipeline(TransformersPipeline):
         ):
             # if the input is shorter than the sequence length,
             # we need to pad it to the sequence length
+            padding = "max_length"
             input_tokens = self.tokenizer(
                 inputs.sequences,
                 return_tensors="np",
                 max_length=self.sequence_length,
-                padding="max_length",
-                truncation=True,
+                padding=padding,
+                truncation=truncate,
             )
 
         attention_mask = input_tokens["attention_mask"]
