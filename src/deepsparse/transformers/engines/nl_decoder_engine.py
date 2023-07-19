@@ -155,7 +155,7 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
-        token = self.generate_token(logits=logits[:, -1, :])
+        token = self.generate_token(logits=logits[:, -1, :][0])
 
         return token, logits
 
