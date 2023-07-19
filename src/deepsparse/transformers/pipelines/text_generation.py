@@ -24,7 +24,10 @@ from deepsparse.cpu import cpu_avx512_compatible
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.utils.helpers import pad_to_fixed_length
+from deepsparse.transformers.utils.helpers import (
+    create_causal_mask,
+    pad_to_fixed_length,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -114,8 +117,7 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
-        # TODO: Set this to 64 once we modify the OPT injection logic
-        prompt_processing_sequence_length: int = 128,
+        prompt_processing_sequence_length: int = 64,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = True,
         **kwargs,
@@ -261,15 +263,32 @@ class TextGenerationPipeline(TransformersPipeline):
             truncation=truncate,
         )
 
+        if (
+            len(input_tokens[0]) < self.sequence_length
+            and not inputs.fixed_sequences_length
+        ):
+            # if the input is shorter than the sequence length,
+            # we need to pad it to the sequence length
+            input_tokens = self.tokenizer(
+                inputs.sequences,
+                return_tensors="np",
+                max_length=self.sequence_length,
+                padding="max_length",
+                truncation=True,
+            )
+
         attention_mask = input_tokens["attention_mask"]
 
-        # TODO: Positions input is not required by BLOOM
-        # let's make it optional in the future
         positions = attention_mask.cumsum(1) * attention_mask
         positions -= 1  # assert that positions start at 0
         positions_input = dict(positions=positions)
 
-        input_tokens = {**input_tokens, **positions_input}
+        causal_mask = create_causal_mask(
+            input_tokens["input_ids"], input_tokens["attention_mask"]
+        )
+        causal_mask_input = dict(causal_mask=causal_mask)
+
+        input_tokens = {**input_tokens, **positions_input, **causal_mask_input}
         onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
@@ -377,10 +396,7 @@ class TextGenerationPipeline(TransformersPipeline):
             and self.engine_type != DEEPSPARSE_ENGINE
         ):
             # trim the input to the prompt size
-            engine_inputs = [
-                input[:, : self.prompt_processing_sequence_length]
-                for input in engine_inputs
-            ]
+            engine_inputs = self.trim_for_multitoken_inference(engine_inputs)
             new_token, new_logits = self.multitoken_engine(engine_inputs)
             num_tokens_processed = self.prompt_processing_sequence_length
             prompt_logits.append(new_logits)
@@ -402,6 +418,33 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens.append(new_token)
 
         return tokens, prompt_logits
+
+    def trim_for_multitoken_inference(
+        self, engine_inputs: List[numpy.ndarray]
+    ) -> List[numpy.ndarray]:
+        """
+        Trim the engine_inputs to the dimensions expected by the multitoken engine.
+
+        :param engine_inputs: the inputs to the engine
+        :return: the trimmed inputs
+
+        """
+
+        for idx, (input_array, input_name) in enumerate(
+            zip(engine_inputs, self.multitoken_engine.onnx_input_names_no_cache)
+        ):
+            if input_name == "input_ids" or input_name == "positions":
+                input_array = input_array[:, : self.prompt_processing_sequence_length]
+            elif input_name == "causal_mask":
+                input_array = input_array[
+                    :, :, : self.prompt_processing_sequence_length, :
+                ]
+            else:
+                pass
+
+            engine_inputs[idx] = input_array
+
+        return engine_inputs
 
     def autoregressive_inference(
         self,
@@ -429,7 +472,8 @@ class TextGenerationPipeline(TransformersPipeline):
         if shift_positions_by_one:
             positions -= 1
         input_ids = numpy.array([[new_token]])
-        engine_inputs = [input_ids, attention_mask, positions]
+        causal_mask = create_causal_mask(input_ids, attention_mask)
+        engine_inputs = [input_ids, attention_mask, positions, causal_mask]
 
         generated_token, generated_logits = self.engine(engine_inputs)
 
