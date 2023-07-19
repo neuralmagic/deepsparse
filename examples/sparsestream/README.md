@@ -32,7 +32,7 @@ The purpose of this app is for you to familiarize yourself with the high perform
 
 ## `INSTALL`
 
-Supports Python >= 3.7
+Supports Python >= 3.8
 
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git

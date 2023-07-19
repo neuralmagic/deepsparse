@@ -98,7 +98,7 @@ pip install deepsparse
 
 [Supported Hardware for DeepSparse](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/hardware-support.md)
 
-DeepSparse is tested on Python versions 3.7-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
+DeepSparse is tested on Python versions 3.8-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
 
 ## Deployment APIs
 

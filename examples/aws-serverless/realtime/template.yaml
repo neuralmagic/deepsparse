@@ -7,7 +7,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
-      ImageUri: deepsparseendpoint:python3.8-v1
+      ImageUri: deepsparseendpoint:python3.10-v1
       MemorySize: 2000
       Timeout: 300
       Role: !GetAtt LambdaExecutionRole.Arn
@@ -21,7 +21,7 @@ Resources:
     Metadata:
       Dockerfile: Dockerfile
       DockerContext: ./app
-      DockerTag: python3.8-v1
+      DockerTag: python3.10-v1
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role

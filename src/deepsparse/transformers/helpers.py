@@ -93,13 +93,16 @@ def get_onnx_path_and_configs(
             framework_files = os.listdir(framework_dir)
             if _MODEL_DIR_CONFIG_NAME in framework_files:
                 config_path = framework_dir
-            if _MODEL_DIR_TOKENIZER_NAME in framework_files:
+            if (
+                _MODEL_DIR_TOKENIZER_NAME
+                or _MODEL_DIR_TOKENIZER_CONFIG_NAME in framework_files
+            ):
                 tokenizer_path = framework_dir
 
         # prefer config and tokenizer files in same directory as model.onnx
         if _MODEL_DIR_CONFIG_NAME in model_files:
             config_path = model_path
-        if _MODEL_DIR_TOKENIZER_NAME in model_files:
+        if _MODEL_DIR_TOKENIZER_NAME or _MODEL_DIR_TOKENIZER_CONFIG_NAME in model_files:
             tokenizer_path = model_path
 
     elif model_path.startswith("zoo:"):
@@ -135,7 +138,7 @@ def overwrite_transformer_onnx_model_inputs(
     path: str,
     batch_size: int = 1,
     max_length: int = 128,
-    output_path: Optional[str] = None,
+    inplace: bool = True,
 ) -> Tuple[Optional[str], List[str], Optional[NamedTemporaryFile]]:
     """
     Overrides an ONNX model's inputs to have the given batch size and sequence lengths.
@@ -145,15 +148,17 @@ def overwrite_transformer_onnx_model_inputs(
     :param path: path to the ONNX model to override
     :param batch_size: batch size to set
     :param max_length: max sequence length to set
-    :param output_path: if provided, the model will be saved to the given path,
-        otherwise, the model will be saved to a named temporary file that will
-        be deleted after the program exits
-    :return: if no output path, a tuple of the saved path to the model, list of
-        model input names, and reference to the tempfile object will be returned
-        otherwise, only the model input names will be returned
+    :param inplace: if True, the model will be modified in place (its inputs will
+        be overwritten). Else, a copy of that model, with overwritten inputs,
+        will be saved to a temporary file
+    :return: tuple of (path to the overwritten model, list of input names that were
+        overwritten, and a temporary file containing the overwritten model if
+        `inplace=False`, else None)
     """
     # overwrite input shapes
-    model = onnx.load(path)
+    # if > 2Gb model is to be modified in-place, operate
+    # exclusively on the model graph
+    model = onnx.load(path, load_external_data=not inplace)
     initializer_input_names = set([node.name for node in model.graph.initializer])
     external_inputs = [
         inp for inp in model.graph.input if inp.name not in initializer_input_names
@@ -165,14 +170,20 @@ def overwrite_transformer_onnx_model_inputs(
         input_names.append(external_input.name)
 
     # Save modified model
-    if output_path is None:
-        tmp_file = NamedTemporaryFile()  # file will be deleted after program exit
+    if inplace:
+        _LOGGER.info(
+            f"Overwriting in-place the input shapes of the transformer model at {path}"
+        )
+        save_onnx(model, path)
+        return path, input_names, None
+    else:
+        tmp_file = NamedTemporaryFile()
+        _LOGGER.info(
+            f"Saving a copy of the transformer model: {path} "
+            f"with overwritten input shapes to {tmp_file.name}"
+        )
         save_onnx(model, tmp_file.name)
         return tmp_file.name, input_names, tmp_file
-    else:
-        save_onnx(model, output_path)
-
-        return input_names
 
 
 def _get_file_parent(file_path: str) -> str:

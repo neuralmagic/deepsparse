@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import pytest
 from deepsparse import Engine, model_debug_analysis
 from deepsparse.utils import verify_outputs
@@ -77,6 +79,13 @@ class TestEngineParametrized:
         pred_outputs, elapsed = engine.timed_run(inputs)
         verify_outputs(pred_outputs, outputs)
 
+        print("engine batched_run")
+        # make some fake padded data
+        stacked_inputs = [np.repeat(array, 3, axis=0) for array in inputs]
+        stacked_outputs = [np.repeat(array, 3, axis=0) for array in outputs]
+        pred_outputs = engine.batched_run(stacked_inputs)
+        verify_outputs(pred_outputs, stacked_outputs)
+
         print("engine input_shapes")
         pred_input_shapes = engine.input_shapes
         assert pred_input_shapes[0] == inputs[0].shape
@@ -89,7 +98,6 @@ class TestEngineParametrized:
         # mobilenet_v1, mobilenet_v2, resnet_v1-18, efficientnet-b0
         print("engine input_names")
         assert "input" in engine.input_names[0]
-
         print("engine output_names")
         assert "output_0" in engine.output_names[0]
         assert "output_1" in engine.output_names[1]
@@ -108,10 +116,9 @@ class TestEngineParametrized:
             verify_outputs(output, outputs)
 
 
-@pytest.mark.parametrize("batch_size", [1, 4, 16], scope="class")
+@pytest.mark.parametrize("batch_size", [1, 16], scope="class")
 @pytest.mark.parametrize("zoo_stub", model_test_registry.values(), scope="class")
 @pytest.mark.smoke
-@pytest.mark.skip(reason="This won't work until the engine is updated, see D5309.")
 class TestDebugAnalysisEngineParametrized:
     @pytest.fixture(scope="class")
     def model(self, zoo_stub: str):
