@@ -18,7 +18,13 @@ from unittest import mock
 
 import numpy
 
-from deepsparse.pipeline import Pipeline, _initialize_executor_and_workers
+import pytest
+from deepsparse.base_pipeline import BasePipeline
+from deepsparse.pipeline import (
+    Pipeline,
+    PipelineConfig,
+    _initialize_executor_and_workers,
+)
 from tests.utils import mock_engine
 
 
@@ -53,6 +59,49 @@ def test_split_interaction_with_forward_batch_size_2(engine_forward):
 
         pipeline("two words for me".split())
         assert engine_forward.call_count == 4
+
+
+@pytest.fixture
+def base_pipeline_example():
+    @BasePipeline.register(task="base_example")
+    class BasePipelineExample(BasePipeline):
+        def __init__(self, base_specific, **kwargs):
+            self._base_specific = base_specific
+            super().__init__(**kwargs)
+
+        def __call__(self, *args, **kwargs):
+            pass
+
+        def input_schema(self):
+            pass
+
+        def output_schema(self):
+            pass
+
+        @property
+        def base_specific(self):
+            return self._base_specific
+
+    kwargs = {"base_specific": "base_specific"}
+    base_pipeline = BasePipeline.create(
+        task="base_example", alias="base_alias", **kwargs
+    )
+    return base_pipeline, BasePipelineExample, kwargs
+
+
+def test_base_pipeline(base_pipeline_example):
+    base_pipeline = base_pipeline_example[0]
+    pipeline = base_pipeline_example[1]
+    kwargs = base_pipeline_example[-1]
+
+    assert base_pipeline.base_specific == kwargs["base_specific"]
+
+    cls = BasePipeline._get_task_constructor("base_example")
+    assert cls == pipeline
+
+    config = base_pipeline.to_config()
+    assert isinstance(config, PipelineConfig)
+    assert config.kwargs["base_specific"] == base_pipeline.base_specific
 
 
 def test_pipeline_executor_num_workers():

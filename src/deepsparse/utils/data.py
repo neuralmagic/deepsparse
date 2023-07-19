@@ -243,7 +243,7 @@ def join_engine_outputs(
 
     This is the opposite of `split_engine_inputs` and is meant to be used in tandem.
     """
-    assert all(isinstance(item, List) for item in batch_outputs)
+    assert all(isinstance(item, (List, Tuple)) for item in batch_outputs)
 
     candidate_output = list(map(numpy.concatenate, zip(*batch_outputs)))
 
