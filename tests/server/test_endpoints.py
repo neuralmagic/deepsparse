@@ -193,14 +193,8 @@ class TestActualModelEndpoints:
         yield TestClient(app)
 
     def test_static_batch_errors_on_wrong_batch_size(self, client):
-        with pytest.raises(
-            RuntimeError,
-            match=(
-                "batch size of 1 passed into pipeline is "
-                "not divisible by model batch size of 2"
-            ),
-        ):
-            client.post("/predict/static-batch", json={"sequences": "today is great"})
+        # this is okay because we can pad batches now
+        client.post("/predict/static-batch", json={"sequences": "today is great"})
 
     def test_static_batch_good_request(self, client):
         response = client.post(

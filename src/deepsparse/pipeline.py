@@ -26,17 +26,18 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
+from deepsparse.base_pipeline import _REGISTERED_PIPELINES, BasePipeline, SupportedTasks
 from deepsparse.benchmark import ORTEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
-from deepsparse.loggers.build_logger import logger_from_config
-from deepsparse.loggers.constants import (
-    MetricCategories,
-    SystemGroups,
-    validate_identifier,
+from deepsparse.loggers.constants import MetricCategories, SystemGroups
+from deepsparse.utils import (
+    InferenceStages,
+    StagedTimer,
+    TimerManager,
+    join_engine_outputs,
+    split_engine_inputs,
 )
-from deepsparse.tasks import SupportedTasks, dynamic_import_task
-from deepsparse.utils import InferenceStages, StagedTimer, TimerManager
 
 
 __all__ = [
@@ -44,6 +45,9 @@ __all__ = [
     "ORT_ENGINE",
     "SUPPORTED_PIPELINE_ENGINES",
     "Pipeline",
+    "BasePipeline",
+    "SupportedTasks",
+    "_REGISTERED_PIPELINES",
     "PipelineConfig",
     "question_answering_pipeline",
     "text_classification_pipeline",
@@ -53,6 +57,7 @@ __all__ = [
     "yolo_pipeline",
     "Bucketable",
     "BucketingPipeline",
+    "create_engine",
 ]
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -60,14 +65,13 @@ ORT_ENGINE = "onnxruntime"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
-_REGISTERED_PIPELINES = {}
 
-
-class Pipeline(ABC):
+class Pipeline(BasePipeline):
     """
     Generic Pipeline abstract class meant to wrap inference engine objects to include
     data pre/post-processing. Inputs and outputs of pipelines should be serialized
-    as pydantic Models.
+    as pydantic Models. See the BasePipeline above for additional parameters provided
+    during inference.
 
     Pipelines should not be instantiated by their constructors, but rather the
     `Pipeline.create()` method. The task name given to `create` will be used to
@@ -121,8 +125,6 @@ class Pipeline(ABC):
         Pass None for the default
     :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
         to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
     :param context: Optional Context object to use for creating instances of
         MultiModelEngine. The Context contains a shared scheduler along with
         other runtime information that will be used across instances of the
@@ -136,11 +138,6 @@ class Pipeline(ABC):
         synchronous execution - if running in dynamic batch mode a default
         ThreadPoolExecutor with default workers equal to the number of available
         cores / 2
-    :param logger: An optional item that can be either a DeepSparse Logger object,
-        or an object that can be transformed into one. Those object can be either
-        a path to the logging config, or yaml string representation the logging
-        config. If logger provided (in any form), the pipeline will log inference
-        metrics to the logger. Default is None
     """
 
     def __init__(
@@ -151,32 +148,20 @@ class Pipeline(ABC):
         num_cores: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
-        alias: Optional[str] = None,
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
-        logger: Optional[Union[BaseLogger, str]] = None,
         benchmark: bool = False,
-        _delay_engine_initialize: bool = False,  # internal use only
+        _delay_engine_initialize: bool = False,
+        **kwargs,
     ):
         self._benchmark = benchmark
         self._model_path_orig = model_path
         self._model_path = model_path
         self._engine_type = engine_type
         self._batch_size = batch_size
-        self._alias = alias
         self._timer_manager = TimerManager(enabled=True, multi=benchmark)
         self.context = context
-        self.logger = (
-            logger
-            if isinstance(logger, BaseLogger)
-            else (
-                logger_from_config(
-                    config=logger, pipeline_identifier=self._identifier()
-                )
-                if isinstance(logger, str)
-                else None
-            )
-        )
+        super().__init__(**kwargs)
 
         self.executor, self._num_async_workers = _initialize_executor_and_workers(
             batch_size=batch_size,
@@ -256,13 +241,15 @@ class Pipeline(ABC):
             # ------ INFERENCE ------
             # split inputs into batches of size `self._batch_size`
             timer.start(InferenceStages.ENGINE_FORWARD)
-            batches = self.split_engine_inputs(engine_inputs, self._batch_size)
+            batches, orig_batch_size = split_engine_inputs(
+                engine_inputs, self._batch_size
+            )
 
             # submit split batches to engine threadpool
             batch_outputs = list(self.executor.map(self.engine_forward, batches))
 
             # join together the batches of size `self._batch_size`
-            engine_outputs = self.join_engine_outputs(batch_outputs)
+            engine_outputs = join_engine_outputs(batch_outputs, orig_batch_size)
             timer.stop(InferenceStages.ENGINE_FORWARD)
 
             self.log(
@@ -301,252 +288,6 @@ class Pipeline(ABC):
         self.log_inference_times(timer)
 
         return pipeline_outputs
-
-    @staticmethod
-    def split_engine_inputs(
-        items: List[numpy.ndarray], batch_size: int
-    ) -> List[List[numpy.ndarray]]:
-        """
-        Splits each item into numpy arrays with the first dimension == `batch_size`.
-
-        For example, if `items` has three numpy arrays with the following
-        shapes: `[(4, 32, 32), (4, 64, 64), (4, 128, 128)]`
-
-        Then with `batch_size==4` the output would be:
-        ```
-        [[(4, 32, 32), (4, 64, 64), (4, 128, 128)]]
-        ```
-
-        Then with `batch_size==2` the output would be:
-        ```
-        [
-            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
-            [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
-        ]
-        ```
-
-        Then with `batch_size==1` the output would be:
-        ```
-        [
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-            [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
-        ]
-        ```
-        """
-        # if not all items here are numpy arrays, there's an internal
-        # but in the processing code
-        assert all(isinstance(item, numpy.ndarray) for item in items)
-
-        # if not all items have the same batch size, there's an
-        # internal bug in the processing code
-        total_batch_size = items[0].shape[0]
-        assert all(item.shape[0] == total_batch_size for item in items)
-
-        if total_batch_size % batch_size != 0:
-            raise RuntimeError(
-                f"batch size of {total_batch_size} passed into pipeline "
-                f"is not divisible by model batch size of {batch_size}"
-            )
-
-        batches = []
-        for i_batch in range(total_batch_size // batch_size):
-            start = i_batch * batch_size
-            batches.append([item[start : start + batch_size] for item in items])
-        return batches
-
-    @staticmethod
-    def join_engine_outputs(
-        batch_outputs: List[List[numpy.ndarray]],
-    ) -> List[numpy.ndarray]:
-        """
-        Joins list of engine outputs together into one list using `numpy.concatenate`.
-
-        This is the opposite of `Pipeline.split_engine_inputs`.
-        """
-        return list(map(numpy.concatenate, zip(*batch_outputs)))
-
-    @staticmethod
-    def _get_task_constructor(task: str) -> Type["Pipeline"]:
-        """
-        This function retrieves the class previously registered via `Pipeline.register`
-        for `task`.
-
-        If `task` starts with "import:", it is treated as a module to be imported,
-        and retrieves the task via the `TASK` attribute of the imported module.
-
-        If `task` starts with "custom", then it is mapped to the "custom" task.
-
-        :param task: The task name to get the constructor for
-        :return: The class registered to `task`
-        :raises ValueError: if `task` was not registered via `Pipeline.register`.
-        """
-        if task.startswith("import:"):
-            # dynamically import the task from a file
-            task = dynamic_import_task(module_or_path=task.replace("import:", ""))
-        elif task.startswith("custom"):
-            # support any task that has "custom" at the beginning via the "custom" task
-            task = "custom"
-        else:
-            task = task.lower().replace("-", "_")
-
-        # extra step to register pipelines for a given task domain
-        # for cases where imports should only happen once a user specifies
-        # that domain is to be used. (ie deepsparse.transformers will auto
-        # install extra packages so should only import and register once a
-        # transformers task is specified)
-        SupportedTasks.check_register_task(task, _REGISTERED_PIPELINES.keys())
-
-        if task not in _REGISTERED_PIPELINES:
-            raise ValueError(
-                f"Unknown Pipeline task {task}. Pipeline tasks should be "
-                "must be declared with the Pipeline.register decorator. Currently "
-                f"registered pipelines: {list(_REGISTERED_PIPELINES.keys())}"
-            )
-
-        return _REGISTERED_PIPELINES[task]
-
-    @staticmethod
-    def create(
-        task: str,
-        model_path: str = None,
-        engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: int = 1,
-        num_cores: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        alias: Optional[str] = None,
-        context: Optional[Context] = None,
-        **kwargs,
-    ) -> "Pipeline":
-        """
-        :param task: name of task to create a pipeline for. Use "custom" for
-            custom tasks (see `CustomTaskPipeline`).
-        :param model_path: path on local system or SparseZoo stub to load the model
-            from. Some tasks may have a default model path
-        :param engine_type: inference engine to use. Currently supported values
-            include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-        :param batch_size: static batch size to use for inference. Default is 1
-        :param num_cores: number of CPU cores to allocate for inference engine. None
-            specifies all available cores. Default is None
-        :param scheduler: (deepsparse only) kind of scheduler to execute with.
-            Pass None for the default
-        :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-            to use model as-is. Default is None
-        :param alias: optional name to give this pipeline instance, useful when
-            inferencing with multiple models. Default is None
-        :param context: Optional Context object to use for creating instances of
-            MultiModelEngine. The Context contains a shared scheduler along with
-            other runtime information that will be used across instances of the
-            MultiModelEngine to provide optimal performance when running
-            multiple models concurrently
-        :param kwargs: extra task specific kwargs to be passed to task Pipeline
-            implementation
-        :return: pipeline object initialized for the given task
-        """
-        pipeline_constructor = Pipeline._get_task_constructor(task)
-
-        if (
-            (model_path is None or model_path == "default")
-            and hasattr(pipeline_constructor, "default_model_path")
-            and pipeline_constructor.default_model_path
-        ):
-            model_path = pipeline_constructor.default_model_path
-
-        if model_path is None:
-            raise ValueError(
-                f"No model_path provided for pipeline {pipeline_constructor}. Must "
-                "provide a model path for pipelines that do not have a default defined"
-            )
-
-        if issubclass(
-            pipeline_constructor, Bucketable
-        ) and pipeline_constructor.should_bucket(**kwargs):
-            if input_shapes:
-                raise ValueError(
-                    "Overriding input shapes not supported with Bucketing enabled"
-                )
-            if not context:
-                context = Context(num_cores=num_cores)
-            buckets = pipeline_constructor.create_pipeline_buckets(
-                task=task,
-                model_path=model_path,
-                engine_type=engine_type,
-                batch_size=batch_size,
-                alias=alias,
-                context=context,
-                **kwargs,
-            )
-            return BucketingPipeline(pipelines=buckets)
-
-        return pipeline_constructor(
-            model_path=model_path,
-            engine_type=engine_type,
-            batch_size=batch_size,
-            num_cores=num_cores,
-            scheduler=scheduler,
-            input_shapes=input_shapes,
-            alias=alias,
-            context=context,
-            **kwargs,
-        )
-
-    @classmethod
-    def register(
-        cls,
-        task: str,
-        task_aliases: Optional[List[str]] = None,
-        default_model_path: Optional[str] = None,
-    ):
-        """
-        Pipeline implementer class decorator that registers the pipeline
-        task name and its aliases as valid tasks that can be used to load
-        the pipeline through `Pipeline.create()`.
-
-        Multiple pipelines may not have the same task name. An error will
-        be raised if two different pipelines attempt to register the same task name
-
-        :param task: main task name of this pipeline
-        :param task_aliases: list of extra task names that may be used to reference
-            this pipeline. Default is None
-        :param default_model_path: path (ie zoo stub) to use as default for this
-            task if None is provided
-        """
-        task_names = [task]
-        if task_aliases:
-            task_names.extend(task_aliases)
-
-        task_names = [task_name.lower().replace("-", "_") for task_name in task_names]
-
-        def _register_task(task_name, pipeline_class):
-            if task_name in _REGISTERED_PIPELINES and (
-                pipeline_class is not _REGISTERED_PIPELINES[task_name]
-            ):
-                raise RuntimeError(
-                    f"task {task_name} already registered by Pipeline.register. "
-                    f"attempting to register pipeline: {pipeline_class}, but"
-                    f"pipeline: {_REGISTERED_PIPELINES[task_name]}, already registered"
-                )
-            _REGISTERED_PIPELINES[task_name] = pipeline_class
-
-        def _register_pipeline_tasks_decorator(pipeline_class: Pipeline):
-            if not issubclass(pipeline_class, cls):
-                raise RuntimeError(
-                    f"Attempting to register pipeline {pipeline_class}. "
-                    f"Registered pipelines must inherit from {cls}"
-                )
-            for task_name in task_names:
-                _register_task(task_name, pipeline_class)
-
-            # set task and task_aliases as class level property
-            pipeline_class.task = task
-            pipeline_class.task_aliases = task_aliases
-            pipeline_class.default_model_path = default_model_path
-
-            return pipeline_class
-
-        return _register_pipeline_tasks_decorator
 
     @classmethod
     def from_config(
@@ -630,30 +371,6 @@ class Pipeline(ABC):
             format of this pipeline
         """
         raise NotImplementedError()
-
-    @property
-    @abstractmethod
-    def input_schema(self) -> Type[BaseModel]:
-        """
-        :return: pydantic model class that inputs to this pipeline must comply to
-        """
-        raise NotImplementedError()
-
-    @property
-    @abstractmethod
-    def output_schema(self) -> Type[BaseModel]:
-        """
-        :return: pydantic model class that outputs of this pipeline must comply to
-        """
-        raise NotImplementedError()
-
-    @property
-    def alias(self) -> str:
-        """
-        :return: optional name to give this pipeline instance, useful when
-            inferencing with multiple models
-        """
-        return self._alias
 
     @property
     def model_path_orig(self) -> str:
@@ -741,54 +458,6 @@ class Pipeline(ABC):
             kwargs=kwargs,
         )
 
-    def log(
-        self,
-        identifier: str,
-        value: Any,
-        category: Union[str, MetricCategories],
-    ):
-        """
-        Pass the logged data to the DeepSparse logger object (if present).
-
-        :param identifier: The string name assigned to the logged value
-        :param value: The logged data structure
-        :param category: The metric category that the log belongs to
-        """
-        if not self.logger:
-            return
-
-        identifier = f"{self._identifier()}/{identifier}"
-        validate_identifier(identifier)
-        self.logger.log(
-            identifier=identifier,
-            value=value,
-            category=category,
-            pipeline_name=self._identifier(),
-        )
-        return
-
-    def parse_inputs(self, *args, **kwargs) -> BaseModel:
-        """
-        :param args: ordered arguments to pipeline, only an input_schema object
-            is supported as an arg for this function
-        :param kwargs: keyword arguments to pipeline
-        :return: pipeline arguments parsed into the given `input_schema`
-            schema if necessary. If an instance of the `input_schema` is provided
-            it will be returned
-        """
-        # passed input_schema schema directly
-        if len(args) == 1 and isinstance(args[0], self.input_schema) and not kwargs:
-            return args[0]
-
-        if args:
-            raise ValueError(
-                f"pipeline {self.__class__} only supports either only a "
-                f"{self.input_schema} object. or keyword arguments to be construct "
-                f"one. Found {len(args)} args and {len(kwargs)} kwargs"
-            )
-
-        return self.input_schema(**kwargs)
-
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
         :param engine_inputs: list of numpy inputs to Pipeline engine forward
@@ -810,32 +479,10 @@ class Pipeline(ABC):
                 category=MetricCategories.SYSTEM,
             )
 
-    def _initialize_engine(self) -> Union[Engine, ORTEngine]:
-        engine_type = self.engine_type.lower()
-
-        if engine_type == DEEPSPARSE_ENGINE:
-            if self.context is not None and isinstance(self.context, Context):
-                self._engine_args.pop("num_cores", None)
-                self._engine_args.pop("scheduler", None)
-                self._engine_args["context"] = self.context
-                return MultiModelEngine(
-                    model=self.onnx_file_path,
-                    **self._engine_args,
-                )
-            return Engine(self.onnx_file_path, **self._engine_args)
-        elif engine_type == ORT_ENGINE:
-            return ORTEngine(self.onnx_file_path, **self._engine_args)
-        else:
-            raise ValueError(
-                f"Unknown engine_type {self.engine_type}. Supported values include: "
-                f"{SUPPORTED_PIPELINE_ENGINES}"
-            )
-
-    def _identifier(self):
-        # get pipeline identifier; used in the context of logging
-        if not hasattr(self, "task"):
-            self.task = None
-        return f"{self.alias or self.task or 'unknown_pipeline'}"
+    def _initialize_engine(self) -> Union[Engine, MultiModelEngine, ORTEngine]:
+        return create_engine(
+            self.onnx_file_path, self.engine_type, self._engine_args, self.context
+        )
 
 
 class PipelineConfig(BaseModel):
@@ -851,6 +498,7 @@ class PipelineConfig(BaseModel):
         description="name of task to create a pipeline for",
     )
     model_path: str = Field(
+        default=None,
         description="path on local system or SparseZoo stub to load the model from",
     )
     engine_type: str = Field(
@@ -1005,6 +653,43 @@ class Bucketable(ABC):
         :return: The correct Pipeline object (or Bucket) to route input to
         """
         pass
+
+
+def create_engine(
+    onnx_file_path: str,
+    engine_type: str,
+    engine_args: Dict,
+    context: Optional[Context] = None,
+) -> Union[Engine, MultiModelEngine, ORTEngine]:
+    """
+    Create an inference engine for a given ONNX model
+
+    :param onnx_file_path: path to ONNX model file
+    :param engine_type: type of engine to create.
+    :param engine_args: arguments to pass to engine constructor
+    :param context: context to use for engine
+    :return: inference engine
+    """
+    engine_type = engine_type.lower()
+
+    if engine_type == DEEPSPARSE_ENGINE:
+        if context is not None and isinstance(context, Context):
+            engine_args.pop("num_cores", None)
+            engine_args.pop("scheduler", None)
+            engine_args["context"] = context
+            return MultiModelEngine(
+                model=onnx_file_path,
+                **engine_args,
+            )
+        return Engine(onnx_file_path, **engine_args)
+
+    if engine_type == ORT_ENGINE:
+        return ORTEngine(onnx_file_path, **engine_args)
+
+    raise ValueError(
+        f"Unknown engine_type {engine_type}. Supported values include: "
+        f"{SUPPORTED_PIPELINE_ENGINES}"
+    )
 
 
 def _initialize_executor_and_workers(
