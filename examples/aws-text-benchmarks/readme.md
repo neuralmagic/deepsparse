@@ -7,7 +7,7 @@ In this example, we run on the `ag_news` dataset with models downloaded from Spa
 Install DeepSparse:
 
 ```bash
-pip install deepsparse
+pip install deepsparse[transformers]
 ```
 
 Download Sparse Model:
