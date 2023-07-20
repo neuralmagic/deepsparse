@@ -16,6 +16,7 @@ from typing import Any, Dict, List
 
 import numpy
 
+from deepsparse.engine import LIB
 
 __all__ = ["DecoderKVCache", "SEQUENCE_LENGTH_AXIS"]
 
@@ -77,7 +78,9 @@ class DecoderKVCache:
         self._total_num_processed_tokens = num_processed_tokens
 
         if self._use_deepsparse_cache:
-            raise NotImplementedError("DeepSparse cache is not supported yet.")
+            prev_num_tokens = self._total_num_processed_tokens
+            num_frozen_tokens = int(self._freeze_first_position)
+            self._kv_cache = LIB.kv_cache(prev_num_tokens, num_frozen_tokens)
 
     def update_session(
         self,

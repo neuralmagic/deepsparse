@@ -81,7 +81,7 @@ class NLDecoderEngine:
             kv_cache_enabled = True
             if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
-                engine_args["cache_output_bools"] = output_indices_to_be_cached
+                engine_args["cached_outputs"] = output_indices_to_be_cached
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
@@ -99,6 +99,8 @@ class NLDecoderEngine:
         )
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
+        self._engine_type = engine_type
+        print("SETTING ENGINE TYPE: " + str(engine_type))
 
     @property
     def session_id(self) -> str:
@@ -145,7 +147,12 @@ class NLDecoderEngine:
             # to the input
             inp = self.add_kv_cache_to_input(inp)
 
-        out = self.engine.run(inp, val_inp)
+        if self._engine_type == DEEPSPARSE_ENGINE:
+            out = self.engine._eng_net.execute_list_out(inp, self.kv_cache._kv_cache)
+        else:
+            out = self.engine.run(inp, val_inp)
+
+
 
         if self.kv_cache:
             logits, *kv_cache_state = out
