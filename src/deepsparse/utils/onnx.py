@@ -16,6 +16,7 @@ import contextlib
 import logging
 import os
 import tempfile
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
 
@@ -96,9 +97,10 @@ def translate_onnx_type_to_numpy(tensor_type: int):
 def model_to_path(model: Union[str, Model, File]) -> str:
     """
     Deals with the various forms a model can take. Either an ONNX file,
-    a SparseZoo model stub prefixed by 'zoo:', a SparseZoo Model object,
-    or a SparseZoo ONNX File object that defines the neural network. Noting
-    the model will be downloaded automatically if a SparseZoo stub is passed
+    a directory containing model.onnx, a SparseZoo model stub prefixed by
+    'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File object that
+    defines the neural network. Noting the model will be downloaded automatically
+    if a SparseZoo stub is passed
 
     :param model: Either a local str path or SparseZoo stub to the model. Can
         also be a sparsezoo.Model or sparsezoo.File object
@@ -125,6 +127,10 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     if not os.path.exists(model):
         raise ValueError("model path must exist: given {}".format(model))
+
+    model_path = Path(model)
+    if model_path.is_dir():
+        return str(model_path / "model.onnx")
 
     return model
 
