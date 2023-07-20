@@ -14,7 +14,7 @@
 
 import logging
 import warnings
-from typing import List, Optional, Tuple, Type, Union
+from typing import Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -142,14 +142,6 @@ class TextGenerationPipeline(TransformersPipeline):
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
-
-        if self.engine_type == DEEPSPARSE_ENGINE:
-            _LOGGER.warning(
-                "The support for deepsparse engine is limited "
-                f"for {self.__class__.__name__}. "
-                "The multi-token engine will not be "
-                "used for prompt processing."
-            )
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
@@ -390,17 +382,11 @@ class TextGenerationPipeline(TransformersPipeline):
         # to refrain from resetting if session id is being passed
         self._reset_engines_cache()
 
-        # TODO: Multiple passes through the multitoken
-        # engine once the OPT injection is fixed
-        if (
-            len(tokens) > self.prompt_processing_sequence_length
-            and self.engine_type != DEEPSPARSE_ENGINE
-        ):
-            # trim the input to the prompt size
-            engine_inputs = self.trim_for_multitoken_inference(engine_inputs)
-            new_token, new_logits = self.multitoken_engine(engine_inputs)
-            num_tokens_processed = self.prompt_processing_sequence_length
-            prompt_logits.append(new_logits)
+        if len(tokens) > self.prompt_processing_sequence_length:
+            for engine_inputs in self.engine_inputs_for_prefill(tokens):
+                new_token, new_logits = self.multitoken_engine(engine_inputs)
+                num_tokens_processed = self.prompt_processing_sequence_length
+                prompt_logits.append(new_logits)
 
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
@@ -419,33 +405,6 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens.append(new_token)
 
         return tokens, prompt_logits
-
-    def trim_for_multitoken_inference(
-        self, engine_inputs: List[numpy.ndarray]
-    ) -> List[numpy.ndarray]:
-        """
-        Trim the engine_inputs to the dimensions expected by the multitoken engine.
-
-        :param engine_inputs: the inputs to the engine
-        :return: the trimmed inputs
-
-        """
-
-        for idx, (input_array, input_name) in enumerate(
-            zip(engine_inputs, self.multitoken_engine.onnx_input_names_no_cache)
-        ):
-            if input_name == "input_ids" or input_name == "positions":
-                input_array = input_array[:, : self.prompt_processing_sequence_length]
-            elif input_name == "causal_mask":
-                input_array = input_array[
-                    :, :, : self.prompt_processing_sequence_length, :
-                ]
-            else:
-                pass
-
-            engine_inputs[idx] = input_array
-
-        return engine_inputs
 
     def autoregressive_inference(
         self,
@@ -479,6 +438,50 @@ class TextGenerationPipeline(TransformersPipeline):
         generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
+
+    def engine_inputs_for_prefill(
+        self, tokens: List[int]
+    ) -> Generator[List[numpy.ndarray], None, None]:
+        """
+        Takes a list of tokens and turns the first
+        `self.prompt_processing_sequence_length` tokens into
+        appropriate engine inputs for the multitoken engine.
+
+        :param tokens: the list of tokens to process
+        :return: a generator of engine inputs
+        """
+        # TODO: Make it yield multiple engine_inputs
+        # Once this is done, we can update the docstrings and be
+        # more verbose about what this function does
+        engine_inputs = []
+        token_batches = [tokens[: self.prompt_processing_sequence_length]]
+        for token_batch in token_batches:
+            for name in self.multitoken_engine.onnx_input_names_no_cache:
+                if name == "input_ids":
+                    engine_input = numpy.array([token_batch])
+                elif name == "attention_mask":
+                    engine_input = numpy.zeros(
+                        (1, self.sequence_length), dtype=numpy.int64
+                    )
+                    engine_input[:, -self.prompt_processing_sequence_length :] = 1
+                elif name == "causal_mask":
+                    continue
+                elif name == "positions":
+                    engine_input = (
+                        numpy.arange(self.prompt_processing_sequence_length)
+                        .reshape(1, -1)
+                        .astype(numpy.int64)
+                    )
+
+                engine_inputs.append(engine_input)
+
+            if "causal_mask" in self.multitoken_engine.onnx_input_names_no_cache:
+                causal_mask = create_causal_mask(
+                    input_ids=engine_inputs[0], attention_mask=engine_inputs[1]
+                )
+                engine_inputs.append(causal_mask)
+
+            yield engine_inputs
 
     @property
     def has_cache(self) -> bool:

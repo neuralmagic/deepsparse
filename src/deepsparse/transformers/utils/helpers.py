@@ -93,17 +93,27 @@ def create_causal_mask(
     in case of a multi-token input, the causal mask is an array
     of shape [batch_size, 1, input_ids_length, sequence_length]
     it is a concatenation of a:
-     - past (cache) causal mask (filled with 1's)
+     - past (cache) causal mask
      - and a causal mask (a lower triangular matrix of 1's and 0's)
     e.g
     ```
-    input_ids = [1,2,3,4]
-    attention_mask = [1,1,1,1,1,1]
+    input_ids = [[1,2,3,4]]
+    attention_mask = [[1,1,1,1,1,1]]
 
     causal_mask = [[[[ 1 1 | 1 0 0 0 ],
                      [ 1 1 | 1 1 0 0 ],
                      [ 1 1 | 1 1 1 0 ],
                      [ 1 1 | 1 1 1 1 ]]]]
+    ```
+    or
+    ```
+    input_ids = [[1,2,3,4]]
+    attention_mask = [[0,0,1,1,1,1,1]]
+
+    causal_mask = [[[[ 0 0 1 1 | 1 0 0 0 ],
+                     [ 0 0 1 1 | 1 1 0 0 ],
+                     [ 0 0 1 1 | 1 1 1 0 ],
+                     [ 0 0 1 1 | 1 1 1 1 ]]]]
     ```
 
     :param input_ids: input ids of the model input
@@ -121,6 +131,7 @@ def create_causal_mask(
         sequence_length = attention_mask.shape[1]
     else:
         sequence_length = len(attention_mask)
+        attention_mask = numpy.array(attention_mask)[None, ...]
 
     if input_ids_length == 1:
         causal_mask = numpy.reshape(attention_mask, (batch_size, 1, 1, sequence_length))
@@ -134,4 +145,11 @@ def create_causal_mask(
         dtype=dtype,
     )
     causal_mask = numpy.concatenate((past_causal_mask, causal_mask), axis=-1)
+
+    num_zeros = numpy.count_nonzero(attention_mask == 0)
+
+    # zero out the dimensions that correspond to tokens that we do not
+    # want to attend to
+    causal_mask[:, :, :, :num_zeros] = 0
+
     return causal_mask
