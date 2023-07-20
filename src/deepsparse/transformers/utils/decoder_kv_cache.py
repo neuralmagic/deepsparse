@@ -107,11 +107,7 @@ class DecoderKVCache:
         num_padded_entries = max(
             0, total_cache_capacity - self.total_num_processed_tokens
         )
-        # we want to remove input_ids_len entries from the cache
-        # because len_input_ids + inp_cache_len = out_cache_len
-        # TODO: Make it more general once
-        # multitoken regression is supported
-        num_entries_to_delete = 1  # input_ids_len
+        num_entries_to_delete = input_ids_len
 
         if num_padded_entries:
             """
@@ -176,6 +172,42 @@ class DecoderKVCache:
 
         self._state = state
 
+    def set_capacity(self, capacity: int):
+        """
+        Enforce a new total capacity for the state
+        of cached inputs.
+
+        This means popping the old entries if the new
+        total capacity should lesser than the current one
+
+        or
+
+        Padding the state blank entries if the new
+        total capacity should be greater than the current one
+
+        :param capacity: The new length of the
+            self._state in the
+            `self._sequence_length_axis` dimension
+        """
+        capacity_difference = self.capacity - capacity
+        state = self.cached_inputs
+
+        if capacity_difference > 0:
+            raise NotImplementedError(
+                "The scenario when capacity"
+                "needs to be expanded is not yet"
+                "supported."
+            )
+
+        elif capacity_difference < 0:
+            indices = [0] * abs(capacity_difference)
+            state = self._add_entries(state, indices=indices)
+
+        else:
+            pass
+
+        self._state = state
+
     def _delete_entries(
         self, state: Dict[str, Any], indices: List[int]
     ) -> Dict[str, Any]:
@@ -184,11 +216,41 @@ class DecoderKVCache:
             state[key] = numpy.ascontiguousarray(state[key])
         return state
 
+    def _add_entries(
+        self, state: Dict[str, Any], indices: List[int], values: int = 0
+    ) -> Dict[str, Any]:
+        for key, value in state.items():
+            state[key] = numpy.insert(
+                value, indices, values, axis=self._sequence_len_axis
+            )
+        return state
+
     @property
     def session_id(self):
         if self._session_id is None:
             raise ValueError("Attempted to access session_id before setting up session")
         return self._session_id
+
+    @property
+    def num_non_blank_entries(self):
+        """
+        :return: the number of non-blank entries in the kv cache
+        """
+        return min(self.capacity, self.total_num_processed_tokens)
+
+    @property
+    def capacity(self) -> int:
+        """
+        Return the maximum number of kv cache entries
+        that the decoder can hold, until the old entries
+        start to get erased to make place for new entries
+
+        :return: the maximum number of kv cache entries
+            that the decoder can hold
+        """
+        return self.cached_inputs[list(self.cached_inputs.keys())[0]].shape[
+            self._sequence_len_axis
+        ]
 
     @session_id.setter
     def session_id(self, session_id: str):

@@ -383,11 +383,8 @@ class TextGenerationPipeline(TransformersPipeline):
         self._reset_engines_cache()
 
         if len(tokens) > self.prompt_processing_sequence_length:
-            for engine_inputs, last_element in self.engine_inputs_for_prefill(tokens):
-                trim_cache = not last_element
-                new_token, new_logits = self.multitoken_engine(
-                    engine_inputs, trim_cache
-                )
+            for engine_inputs in self.engine_inputs_for_prefill(tokens):
+                new_token, new_logits = self.multitoken_engine(engine_inputs)
                 num_tokens_processed = self.prompt_processing_sequence_length
                 prompt_logits.append(new_logits)
 
@@ -446,29 +443,45 @@ class TextGenerationPipeline(TransformersPipeline):
         self, tokens: List[int]
     ) -> Generator[List[numpy.ndarray], None, None]:
         """
-        Takes a list of tokens and turns the first
-        `self.prompt_processing_sequence_length` tokens into
-        appropriate engine inputs for the multitoken engine.
+        Takes a list of tokens and creates a generator
+        of engine_inputs for the multitoken engine.
+
+        The tokens first get batched into chunks that
+        fit the expected input_ids length of the multitoken
+        engine.
+
+        Then, from every batch of tokens an appriopriate
+        engine_inputs data structure is created.
 
         :param tokens: the list of tokens to process
         :return: a generator of engine inputs
         """
 
         num_batches = len(tokens) // self.prompt_processing_sequence_length
+
         token_batches = [
             tokens[i : i + self.prompt_processing_sequence_length]
             for i in range(num_batches)
         ]
 
         for idx, token_batch in enumerate(token_batches):
+
             engine_inputs = []
+
+            # fetch the number of non-blank cache entries
             num_non_blank_cache_entries = (
                 self.multitoken_engine.num_non_blank_cache_entries
             )
+            # if there are more non-blank entries than the
+            # full size of the attention mask, trim to attention
+            # mask length (self.sequence_length, but we will also
+            # be adding contribution from
+            # self.prompt_processing_sequence_length
             num_non_blank_cache_entries = min(
                 num_non_blank_cache_entries,
                 self.sequence_length - self.prompt_processing_sequence_length,
             )
+
             for name in self.multitoken_engine.onnx_input_names_no_cache:
                 if name == "input_ids":
                     engine_input = numpy.array([token_batch])
@@ -476,6 +489,9 @@ class TextGenerationPipeline(TransformersPipeline):
                     engine_input = numpy.zeros(
                         (1, self.sequence_length), dtype=numpy.int64
                     )
+                    # create the attention mask that properly attends to
+                    # input_ids, as well as respects the existing non-blank
+                    # cache entries
                     engine_input[
                         :,
                         -(
@@ -484,6 +500,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         ) :,
                     ] = 1
                 elif name == "causal_mask":
+                    # delay creation of the causal mask
                     continue
                 elif name == "positions":
                     engine_input = (
@@ -500,7 +517,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
                 engine_inputs.append(causal_mask)
 
-            yield engine_inputs, idx == num_batches - 1
+            yield engine_inputs
 
     @property
     def has_cache(self) -> bool:
