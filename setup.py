@@ -271,6 +271,7 @@ def _setup_extras() -> Dict:
         "onnxruntime": _onnxruntime_deps,
         "image_classification": _image_classification_deps,
         "yolo": _yolo_integration_deps,
+        "yolov5": _yolo_integration_deps,
         "haystack": _haystack_integration_deps,
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
