@@ -126,9 +126,14 @@ class NLDecoderEngine:
             if not name.startswith(_CACHE_INPUT_NAME)
         ]
 
+    @property
+    def num_non_blank_cache_entries(self):
+        return min(self.kv_cache.total_num_processed_tokens, self.sequence_length)
+
     def __call__(
         self,
         inp: List[numpy.ndarray],
+        trim_cache: bool = False,
         val_inp: bool = True,
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
@@ -150,7 +155,9 @@ class NLDecoderEngine:
         if self.kv_cache:
             logits, *kv_cache_state = out
             self.update_kv_cache(
-                kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
+                kv_cache_state=kv_cache_state,
+                trim_cache=trim_cache,
+                input_ids_len=self.input_ids_length,
             )
         else:
             logits = out[0]
@@ -293,6 +300,7 @@ class NLDecoderEngine:
     def update_kv_cache(
         self,
         kv_cache_state: List[numpy.ndarray],
+        trim_cache: bool,
         input_ids_len: int,
     ):
         """
@@ -309,6 +317,14 @@ class NLDecoderEngine:
         kv_cache_state = {
             name: array for name, array in zip(cache_onnx_names, kv_cache_state)
         }
+
+        if trim_cache:
+            kv_cache_state = {
+                name: array[
+                    :, :, -(self.sequence_length - self.input_ids_length + 1) :, :
+                ]
+                for (name, array) in kv_cache_state.items()
+            }
 
         self.kv_cache.update_session(
             state=kv_cache_state,

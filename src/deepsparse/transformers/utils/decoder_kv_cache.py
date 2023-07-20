@@ -34,6 +34,8 @@ class DecoderKVCache:
             This object is used to handle the manipulation of the
             key/value buffers on the DeepSparse engine side.
         """
+        self.total_num_processed_tokens = None
+
         # assuming that kv cache arrays are of shape
         # [batch_size, num_heads, sequence_length, hidden_size]
         self._sequence_len_axis = SEQUENCE_LENGTH_AXIS
@@ -41,7 +43,6 @@ class DecoderKVCache:
         self._session_id = None
         self._freeze_first_position = None
         self._state = None
-        self._total_num_processed_tokens = None
         self._kv_cache = None
 
     def setup_session(
@@ -74,7 +75,7 @@ class DecoderKVCache:
         self._session_id = session_id
         self._state = state
         self._freeze_first_position = freeze_first_position
-        self._total_num_processed_tokens = num_processed_tokens
+        self.total_num_processed_tokens = num_processed_tokens
 
         if self._use_deepsparse_cache:
             raise NotImplementedError("DeepSparse cache is not supported yet.")
@@ -97,14 +98,14 @@ class DecoderKVCache:
             input batch: (batch_size, length).
             Corresponds to `input_ids.shape[1]`
         """
-        self._total_num_processed_tokens += input_ids_len
+        self.total_num_processed_tokens += input_ids_len
         total_cache_capacity = state[list(state.keys())[0]].shape[
             self._sequence_len_axis
         ]
         # total_capacity = num_tokens (num of non-blank tokens) +
         # + num_padded_entries (num of blank tokens)
         num_padded_entries = max(
-            0, total_cache_capacity - self._total_num_processed_tokens
+            0, total_cache_capacity - self.total_num_processed_tokens
         )
         # we want to remove input_ids_len entries from the cache
         # because len_input_ids + inp_cache_len = out_cache_len
