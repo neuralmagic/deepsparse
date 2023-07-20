@@ -862,7 +862,6 @@ class DebugAnalysisEngine(Engine):
         """
 
         if self._kv_cache_params:
-            print("self._kv_cache = {}".format(self._kv_cache))
             [_, bench_info] = self._eng_net.benchmark_execute(inp, self._kv_cache)
         else:
             if val_inp:
