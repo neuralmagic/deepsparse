@@ -229,11 +229,13 @@ class NLDecoderEngine:
         output_indices_to_be_cached = [
             1 if inp.name.startswith("present") else 0 for inp in model.graph.output
         ]
-
-        kv_cache_elem_type = next(
-            inp for inp in model.graph.input if inp.name.startswith(_CACHE_INPUT_NAME)
-        ).type.tensor_type.elem_type
-        self.kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
+        if sum(output_indices_to_be_cached):
+            kv_cache_elem_type = next(
+                inp
+                for inp in model.graph.input
+                if inp.name.startswith(_CACHE_INPUT_NAME)
+            ).type.tensor_type.elem_type
+            self.kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
 
         return onnx_file_path, output_indices_to_be_cached
 
