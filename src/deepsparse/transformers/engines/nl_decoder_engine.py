@@ -158,8 +158,7 @@ class NLDecoderEngine:
         if self.kv_cache:
             logits, *kv_cache_state = out
             self.update_kv_cache(
-                kv_cache_state=kv_cache_state,
-                input_ids_len=self.input_ids_length,
+                kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
             )
         else:
             logits = out[0]
@@ -179,6 +178,9 @@ class NLDecoderEngine:
         Transfers the kv cache state and the number of tokens processed
         information from another NLDecoderEngine. Call this method when
         you want to transfer the kv cache state from one engine to another.
+
+        This method will also automatically set the kv cache capacity to
+        the appropriate value for the new engine.
 
         :param cache: The `DecoderKVCache` object to transfer to the engine
             from

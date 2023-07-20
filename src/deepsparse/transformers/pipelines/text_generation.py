@@ -476,7 +476,7 @@ class TextGenerationPipeline(TransformersPipeline):
             # full size of the attention mask, trim to attention
             # mask length (self.sequence_length, but we will also
             # be adding contribution from
-            # self.prompt_processing_sequence_length
+            # self.prompt_processing_sequence_length)
             num_non_blank_cache_entries = min(
                 num_non_blank_cache_entries,
                 self.sequence_length - self.prompt_processing_sequence_length,

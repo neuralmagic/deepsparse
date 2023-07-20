@@ -217,11 +217,18 @@ class DecoderKVCache:
         return state
 
     def _add_entries(
-        self, state: Dict[str, Any], indices: List[int], values: int = 0
+        self, state: Dict[str, Any], indices: List[int], padding_value: int = 0
     ) -> Dict[str, Any]:
         for key, value in state.items():
+            # required to make sure that both
+            # quantized and non quantized caches
+            # are supported
+            state_dtype = value.dtype
+            # change padding_value dtype to match the state dtype
+            padding_value = numpy.array(padding_value, dtype=state_dtype)
+
             state[key] = numpy.insert(
-                value, indices, values, axis=self._sequence_len_axis
+                value, indices, padding_value, axis=self._sequence_len_axis
             )
         return state
 
