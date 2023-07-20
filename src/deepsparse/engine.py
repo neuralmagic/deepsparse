@@ -22,6 +22,7 @@ from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
+import onnx
 from tqdm.auto import tqdm
 
 from deepsparse.analytics import deepsparse_analytics as _analytics
@@ -56,6 +57,8 @@ __all__ = [
     "Context",
     "MultiModelEngine",
     "BaseEngine",
+    "KVCacheParams",
+    "default_cached_outputs",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -169,11 +172,7 @@ class Context(object):
         concurrently.
     """
 
-    def __init__(
-        self,
-        num_cores: int = None,
-        num_streams: int = None,
-    ):
+    def __init__(self, num_cores: int = None, num_streams: int = None):
         self._num_cores = _validate_num_cores(num_cores)
         self._scheduler = Scheduler.from_str("elastic")
         self._deepsparse_context = LIB.deepsparse_context(
@@ -205,6 +204,43 @@ class Context(object):
         return f"Context(num_cores={self.num_cores}, num_streams={self.num_streams}, scheduler={self.scheduler})"
 
 
+def default_cached_outputs(model_path):
+    """
+    :param model_path: Path to a model
+    :return A list of bools that indicates caching of all outputs except the first one.
+    """
+
+    outputs = list(onnx.load(model_path).graph.output)
+    assert len(outputs) > 0
+
+    # Create a boolean list of every output of the
+    # model [logits, key0, value0, key1, value1, ..., keyN, valueN]
+    cached_outputs = [True for i in range(len(outputs))]
+
+    # Assume first input is logits and logits ought not to be cached
+    cached_outputs[0] = False
+
+    return cached_outputs
+
+
+class KVCacheParams:
+    """
+    :param cached_outputs: A list of bools that indicates for each output
+        whether it is cached or not
+    :param prev_num_tokens: The amount of previous tokens that will be read
+        from the external KV cache on the first inference
+    :param num_frozen_tokens: The amount of first tokens that we want to keep
+        permanently in the KV cache.
+    """
+
+    def __init__(
+        self, cached_outputs: List[bool], prev_num_tokens: int, num_frozen_tokens: int
+    ):
+        self.cached_outputs = cached_outputs
+        self.prev_num_tokens = prev_num_tokens
+        self.num_frozen_tokens = num_frozen_tokens
+
+
 class BaseEngine(object):
     def construct(
         self,
@@ -214,6 +250,7 @@ class BaseEngine(object):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        kv_cache_params: Optional[KVCacheParams] = None,
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -222,6 +259,7 @@ class BaseEngine(object):
         self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = _validate_scheduler(scheduler)
         self._input_shapes = input_shapes
+        self._kv_cache_params = kv_cache_params
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
@@ -231,6 +269,7 @@ class BaseEngine(object):
         batch_size: int,
         context: Context,
         input_shapes: List[List[int]] = None,
+        kv_cache_params: Optional[KVCacheParams] = None,
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -239,6 +278,7 @@ class BaseEngine(object):
         self._num_streams = context.num_streams
         self._scheduler = _validate_scheduler(context.scheduler)
         self._input_shapes = input_shapes
+        self._kv_cache_params = kv_cache_params
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
@@ -304,9 +344,7 @@ class Engine(BaseEngine):
             )
 
     def __call__(
-        self,
-        inp: List[numpy.ndarray],
-        val_inp: bool = True,
+        self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> List[numpy.ndarray]:
         """
         Convenience function for Engine.run(), see @run for more details
@@ -461,9 +499,7 @@ class Engine(BaseEngine):
         return join_engine_outputs(batch_outputs, orig_batch_size)
 
     def run(
-        self,
-        inp: List[numpy.ndarray],
-        val_inp: bool = True,
+        self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> List[numpy.ndarray]:
         """
         Run given inputs through the model for inference.
@@ -530,9 +566,7 @@ class Engine(BaseEngine):
         return out, end - start
 
     def mapped_run(
-        self,
-        inp: List[numpy.ndarray],
-        val_inp: bool = True,
+        self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> Dict[str, numpy.ndarray]:
         """
         Run given inputs through the model for inference.
@@ -719,8 +753,6 @@ class DebugAnalysisEngine(Engine):
     :param num_cores: The number of physical cores to run the model on. If more
         cores are requested than are available on a single socket, the engine
         will try to distribute them evenly across as few sockets as possible.
-    :param num_streams: The max number of requests the model can handle
-        concurrently.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     :param num_iterations: The number of iterations to run benchmarking for.
@@ -729,12 +761,17 @@ class DebugAnalysisEngine(Engine):
         benchmarking. These executions will not be counted in the benchmark
         results that are returned. Useful and recommended to bring
         the system to a steady state. Default is 5
-    :param include_inputs: If True, inputs from forward passes during benchmarking
-        will be added to the results. Default is False
-    :param include_outputs: If True, outputs from forward passes during benchmarking
-        will be added to the results. Default is False
-    :param show_progress: If True, will display a progress bar. Default is False
-    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    :param optimization_level: The amount of graph optimizations to perform.
+        The current choices are either 0 (minimal) or 1 (all), default is 1
+    :param imposed_as: Imposed activation sparsity, defaults to None.
+        Will force the activation sparsity from all ReLu layers in the graph
+        to match this desired sparsity level (percentage of 0's in the tensor).
+        Beneficial for seeing how AS affects the performance of the model.
+    :param imposed_ks: Imposed kernel sparsity, defaults to None.
+        Will force all prunable layers in the graph to have weights with
+        this desired sparsity level (percentage of 0's in the tensor).
+        Beneficial for seeing how pruning affects the performance of the model.
+    :param kv_cache_params: KV cache execution params, defaults to None.
     """
 
     def __init__(
@@ -749,15 +786,43 @@ class DebugAnalysisEngine(Engine):
         optimization_level: int = 1,
         imposed_as: Optional[float] = None,
         imposed_ks: Optional[float] = None,
+        kv_cache_params: Optional[KVCacheParams] = None,
     ):
         BaseEngine.construct(
-            self, model, batch_size, num_cores, None, scheduler, input_shapes
+            self,
+            model,
+            batch_size,
+            num_cores,
+            None,
+            scheduler,
+            input_shapes,
+            kv_cache_params,
         )
 
-        if self._input_shapes:
-            with override_onnx_input_shapes(
-                self._model_path, self._input_shapes
-            ) as model_path:
+        # Helper
+        def make_engine(self, model_path):
+            if self._kv_cache_params:
+                self._kv_cache = LIB.kv_cache(
+                    self._kv_cache_params.prev_num_tokens,
+                    self._kv_cache_params.num_frozen_tokens,
+                )
+
+                self._eng_net = LIB.deepsparse_engine(
+                    model_path,
+                    self._batch_size,
+                    self._num_cores,
+                    self._num_streams,
+                    self._scheduler.value,
+                    None,
+                    self._kv_cache_params.cached_outputs,
+                    "external",
+                    num_iterations,
+                    num_warmup_iterations,
+                    optimization_level,
+                    imposed_as,
+                    imposed_ks,
+                )
+            else:
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
                     self._batch_size,
@@ -772,26 +837,17 @@ class DebugAnalysisEngine(Engine):
                     imposed_as,
                     imposed_ks,
                 )
+
+        if self._input_shapes:
+            with override_onnx_input_shapes(
+                self._model_path, self._input_shapes
+            ) as model_path:
+                make_engine(self, model_path)
         else:
-            self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
-                self._batch_size,
-                self._num_cores,
-                self._num_streams,
-                self._scheduler.value,
-                None,
-                "external",
-                num_iterations,
-                num_warmup_iterations,
-                optimization_level,
-                imposed_as,
-                imposed_ks,
-            )
+            make_engine(self, self._model_path)
 
     def analyze(
-        self,
-        inp: List[numpy.ndarray],
-        val_inp: bool = True,
+        self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> List[numpy.ndarray]:
         """
         Function to analyze a model's performance in the DeepSparse Engine.
@@ -804,10 +860,15 @@ class DebugAnalysisEngine(Engine):
             are setup correctly for the DeepSparse Engine
         :return: the analysis structure containing the performance details of each layer
         """
-        if val_inp:
-            self._validate_inputs(inp)
 
-        [out, bench_info] = self._eng_net.benchmark_execute(inp)
+        if self._kv_cache_params:
+            print("self._kv_cache = {}".format(self._kv_cache))
+            [_, bench_info] = self._eng_net.benchmark_execute(inp, self._kv_cache)
+        else:
+            if val_inp:
+                self._validate_inputs(inp)
+
+            [_, bench_info] = self._eng_net.benchmark_execute(inp)
 
         return bench_info
 
@@ -982,6 +1043,7 @@ def model_debug_analysis(
     imposed_ks: Optional[float] = None,
     scheduler: Scheduler = None,
     input_shapes: List[List[int]] = None,
+    kv_cache_params: Optional[KVCacheParams] = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
@@ -1015,7 +1077,9 @@ def model_debug_analysis(
         this desired sparsity level (percentage of 0's in the tensor).
         Beneficial for seeing how pruning affects the performance of the model.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
-    :return: the analysis structure containing the performance details of each layer
+    :param input_shapes: Overrides input shapes, default to None (no override).
+    :param kv_cache_params: KV cache execution params, defaults to None.
+    :return: The analysis structure containing the performance details of each layer
     """
     model = DebugAnalysisEngine(
         model=model,
@@ -1028,6 +1092,7 @@ def model_debug_analysis(
         optimization_level=optimization_level,
         imposed_as=imposed_as,
         imposed_ks=imposed_ks,
+        kv_cache_params=kv_cache_params,
     )
 
     return model.analyze(inp)
