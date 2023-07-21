@@ -475,7 +475,7 @@ def truncate_onnx_embedding_model(
     return output_filepath, tmp_file
 
 
-def default_cached_outputs(model_path):
+def default_cached_outputs(model_path: str) -> List[bool]:
     """
     :param model_path: Path to a model
     :return A list of bools that indicates caching of all outputs except the first one.
