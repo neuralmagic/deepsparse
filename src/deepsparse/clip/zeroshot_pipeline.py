@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Type
+from typing import Any, List, Type
 
 from numpy import linalg as la
 from pydantic import BaseModel, Field
@@ -47,9 +47,12 @@ class CLIPZeroShotOutput(BaseModel):
 
 @BasePipeline.register(task="clip_zeroshot", default_model_path=None)
 class CLIPZeroShotPipeline(BasePipeline):
-    def __init__(self, visual_args: Dict, text_args: Dict, **kwargs):
-        self.visual = Pipeline.create(task="clip_visual", **visual_args)
-        self.text = Pipeline.create(task="clip_text", **text_args)
+    def __init__(self, visual_model_path: str, text_model_path: str, **kwargs):
+
+        self.visual = Pipeline.create(
+            task="clip_visual", **{"model_path": visual_model_path}
+        )
+        self.text = Pipeline.create(task="clip_text", **{"model_path": text_model_path})
 
         super().__init__(**kwargs)
 

@@ -12,7 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .constants import *
-from .text_pipeline import *
-from .visual_pipeline import *
-from .zeroshot_pipeline import *
+# flake8: noqa
+
+from deepsparse.clip.text_pipeline import (
+    CLIPTextInput,
+    CLIPTextOutput,
+    CLIPTextPipeline,
+)
+from deepsparse.clip.visual_pipeline import (
+    CLIPVisualInput,
+    CLIPVisualOutput,
+    CLIPVisualPipeline,
+)
+from deepsparse.clip.zeroshot_pipeline import (
+    CLIPZeroShotInput,
+    CLIPZeroShotOutput,
+    CLIPZeroShotPipeline,
+)
