@@ -43,6 +43,7 @@ def text_input():
     return CLIPTextInput(text=text), model_path
 
 
+@pytest.mark.skip(reason="No CLIP models currently available to run the test on")
 @mock_engine(rng_seed=0)
 def test_visual_clip(engine, visual_input):
     model_path = visual_input[-1]
@@ -53,6 +54,7 @@ def test_visual_clip(engine, visual_input):
     assert len(output.image_embeddings) == 1
 
 
+@pytest.mark.skip(reason="No CLIP models curently available to run the test on")
 @mock_engine(rng_seed=0)
 def test_text_clip(engine, text_input):
     model_path = text_input[-1]
@@ -63,6 +65,7 @@ def test_text_clip(engine, text_input):
     assert len(output.text_embeddings) == 1
 
 
+@pytest.mark.skip(reason="No CLIP models currently available to run the test on")
 @mock_engine(rng_seed=0)
 def test_zero_shot(engine, visual_input, text_input):
     model_path_text = text_input[-1]

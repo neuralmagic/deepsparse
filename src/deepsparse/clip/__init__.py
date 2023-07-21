@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .constants import *
-from .pipelines import *
-from .schemas import *
+from .text_pipeline import *
+from .visual_pipeline import *
+from .zeroshot_pipeline import *
