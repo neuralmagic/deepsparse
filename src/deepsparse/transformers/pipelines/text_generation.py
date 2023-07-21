@@ -35,10 +35,10 @@ __all__ = ["TextGenerationPipeline"]
 
 @dataclass(frozen=True)
 class _TextGenerationTimings:
-    PROMPT_PREFILL = "engine_prompt_prefill"
-    PROMPT_PREFILL_SINGLE = "engine_prompt_prefill_single"
-    TOKEN_GENERATION = "engine_token_generation"
-    TOKEN_GENERATION_SINGLE = "engine_token_generation_single"
+    PROMPT_PREFILL: str = "engine_prompt_prefill"
+    PROMPT_PREFILL_SINGLE: str = "engine_prompt_prefill_single"
+    TOKEN_GENERATION: str = "engine_token_generation"
+    TOKEN_GENERATION_SINGLE: str = "engine_token_generation_single"
 
 
 class TextGenerationInput(BaseModel):
@@ -344,17 +344,19 @@ class TextGenerationPipeline(TransformersPipeline):
             generated_tokens = [tokens[-1]]
             generated_logits = prompt_logits
 
-            timer.start(_TextGenerationTimings.TOKEN_GENERATION)
-            while len(generated_tokens) < max_tokens:
-                with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
-                    token, logits = self.autoregressive_inference(tokens)
-                tokens.append(token)
-                generated_tokens.append(token)
-                generated_logits.append(logits)
+            with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
+                while len(generated_tokens) < max_tokens:
+                    with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
+                        token, logits = self.autoregressive_inference(tokens)
+                    tokens.append(token)
+                    generated_tokens.append(token)
+                    generated_logits.append(logits)
 
-                if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
-                    break
-            timer.stop(_TextGenerationTimings.TOKEN_GENERATION)
+                    if (
+                        token == self.tokenizer.eos_token_id
+                        and not self.force_max_tokens
+                    ):
+                        break
 
         return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1

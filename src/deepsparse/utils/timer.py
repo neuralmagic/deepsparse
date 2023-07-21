@@ -128,11 +128,8 @@ class StagedTimer:
         :param stage: the name of the stage to time
         """
         self.start(stage)
-
-        try:
-            yield
-        finally:
-            self.stop(stage)
+        yield
+        self.stop(stage)
 
     def start(self, stage: str):
         """
@@ -363,9 +360,6 @@ class TimerManager:
             self._timers = [timer]
 
         timer_context.set(timer)
-
-        try:
-            yield timer
-        finally:
-            if total_inference:
-                timer.stop(InferenceStages.TOTAL_INFERENCE)
+        yield timer
+        if total_inference:
+            timer.stop(InferenceStages.TOTAL_INFERENCE)
