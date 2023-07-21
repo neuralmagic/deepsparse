@@ -327,16 +327,18 @@ def main():
 
     kv_cache_params = None
     if args.use_kvcache:
-        if args.kv_cache_prev_num_tokens is None:
-            raise ValueError("kv-cache-prev-num-tokens was not provided")
+        kv_cache_prev_num_tokens = 0
+        if args.kv_cache_prev_num_tokens is not None:
+            kv_cache_prev_num_tokens = args.kv_cache_prev_num_tokens
 
-        if args.kv_cache_num_frozen_tokens is None:
-            raise ValueError("kv-cache-num-frozen-tokens was not provided")
+        kv_cache_num_frozen_tokens = 0
+        if args.kv_cache_num_frozen_tokens is not None:
+            kv_cache_num_frozen_tokens = args.kv_cache_num_frozen_tokens
 
         kv_cache_params = KVCacheParams(
             default_cached_outputs(model_path),
-            args.kv_cache_prev_num_tokens,
-            args.kv_cache_num_frozen_tokens,
+            kv_cache_prev_num_tokens,
+            kv_cache_num_frozen_tokens,
         )
 
         print(
