@@ -17,14 +17,14 @@ import warnings
 from typing import Callable, List, Type, Union
 
 import numpy
-import torch
-from ultralytics.yolo.utils.ops import non_max_suppression as non_max_supression_torch
-from ultralytics.yolo.utils.ops import process_mask_upsample
 
+import torch
 from deepsparse import Pipeline
 from deepsparse.yolo import YOLOOutput as YOLODetOutput
 from deepsparse.yolo import YOLOPipeline
 from deepsparse.yolov8.schemas import YOLOSegOutput
+from ultralytics.yolo.utils.ops import non_max_suppression as non_max_supression_torch
+from ultralytics.yolo.utils.ops import process_mask_upsample
 
 
 LOGGER = logging.getLogger(__name__)
@@ -86,9 +86,7 @@ class YOLOv8Pipeline(YOLOPipeline):
                 warnings.warn(
                     "YOLOv8 Segmentation pipeline expects 2 outputs from engine, "
                     "got {}. Assuming first output is detection output, and last "
-                    "is segmentation output".format(
-                        len(engine_outputs)
-                    )
+                    "is segmentation output".format(len(engine_outputs))
                 )
                 engine_outputs = [engine_outputs[0], engine_outputs[5]]
             return self.process_engine_outputs_seg(
