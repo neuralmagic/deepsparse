@@ -142,7 +142,7 @@ _openpifpaf_integration_deps = [
     "pycocotools >=2.0.6",
     "scipy==1.10.1",
 ]
-_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
+_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
     f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
     f"~={version_base}",
