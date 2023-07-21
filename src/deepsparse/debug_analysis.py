@@ -62,8 +62,9 @@ import argparse
 import json
 import os
 
-from deepsparse import KVCacheParams, default_cached_outputs, model_debug_analysis
+from deepsparse import KVCacheParams, model_debug_analysis
 from deepsparse.utils import (
+    default_cached_outputs,
     generate_random_inputs,
     model_to_path,
     override_onnx_input_shapes,
@@ -318,6 +319,7 @@ def main():
     if args.disable_batch_override:
         batch_size = None
         os.environ["NM_DISABLE_BATCH_OVERRIDE"] = "1"
+        print("Disable batch override: ON")
 
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as tmp_path:
@@ -355,6 +357,7 @@ def main():
         num_iterations=args.num_iterations,
         num_warmup_iterations=args.num_warmup_iterations,
         optimization_level=int(args.optimization),
+        disable_batch_override=args.disable_batch_override,
         imposed_ks=imposed_kernel_sparsity,
         input_shapes=input_shapes,
         kv_cache_params=kv_cache_params,

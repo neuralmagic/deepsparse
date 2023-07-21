@@ -58,7 +58,6 @@ __all__ = [
     "MultiModelEngine",
     "BaseEngine",
     "KVCacheParams",
-    "default_cached_outputs",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -204,25 +203,6 @@ class Context(object):
         return f"Context(num_cores={self.num_cores}, num_streams={self.num_streams}, scheduler={self.scheduler})"
 
 
-def default_cached_outputs(model_path):
-    """
-    :param model_path: Path to a model
-    :return A list of bools that indicates caching of all outputs except the first one.
-    """
-
-    outputs = list(onnx.load(model_path).graph.output)
-    assert len(outputs) > 0
-
-    # Create a boolean list of every output of the
-    # model [logits, key0, value0, key1, value1, ..., keyN, valueN]
-    cached_outputs = [True for i in range(len(outputs))]
-
-    # Assume first input is logits and logits ought not to be cached
-    cached_outputs[0] = False
-
-    return cached_outputs
-
-
 class KVCacheParams:
     """
     :param cached_outputs: A list of bools that indicates for each output
@@ -250,6 +230,7 @@ class BaseEngine(object):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
+        disable_batch_override: bool = False,
         kv_cache_params: Optional[KVCacheParams] = None,
     ):
         _analytics.send_event("python__engine__init")
@@ -259,6 +240,7 @@ class BaseEngine(object):
         self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = _validate_scheduler(scheduler)
         self._input_shapes = input_shapes
+        self._disable_batch_override = disable_batch_override
         self._kv_cache_params = kv_cache_params
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
@@ -269,6 +251,7 @@ class BaseEngine(object):
         batch_size: int,
         context: Context,
         input_shapes: List[List[int]] = None,
+        disable_batch_override: bool = False,
         kv_cache_params: Optional[KVCacheParams] = None,
     ):
         _analytics.send_event("python__engine__init")
@@ -278,6 +261,7 @@ class BaseEngine(object):
         self._num_streams = context.num_streams
         self._scheduler = _validate_scheduler(context.scheduler)
         self._input_shapes = input_shapes
+        self._disable_batch_override = disable_batch_override
         self._kv_cache_params = kv_cache_params
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
@@ -715,13 +699,14 @@ class Engine(BaseEngine):
             raise ValueError("inp must be a list, given {}".format(type(inp)))
 
         for arr in inp:
-            if arr.shape[0] != self._batch_size:
-                raise ValueError(
-                    (
-                        "array batch size of {} must match the batch size "
-                        "the model was instantiated with {}"
-                    ).format(arr.shape[0], self._batch_size)
-                )
+            if not self._disable_batch_override:
+                if arr.shape[0] != self._batch_size:
+                    raise ValueError(
+                        (
+                            "array batch size of {} must match the batch size "
+                            "the model was instantiated with {}"
+                        ).format(arr.shape[0], self._batch_size)
+                    )
 
             if not arr.flags["C_CONTIGUOUS"]:
                 raise ValueError(
@@ -784,6 +769,7 @@ class DebugAnalysisEngine(Engine):
         num_iterations: int = 20,
         num_warmup_iterations: int = 5,
         optimization_level: int = 1,
+        disable_batch_override: bool = False,
         imposed_as: Optional[float] = None,
         imposed_ks: Optional[float] = None,
         kv_cache_params: Optional[KVCacheParams] = None,
@@ -796,6 +782,7 @@ class DebugAnalysisEngine(Engine):
             None,
             scheduler,
             input_shapes,
+            disable_batch_override,
             kv_cache_params,
         )
 
@@ -823,6 +810,8 @@ class DebugAnalysisEngine(Engine):
                     imposed_ks,
                 )
             else:
+                self._kv_cache = None
+
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
                     self._batch_size,
@@ -861,13 +850,10 @@ class DebugAnalysisEngine(Engine):
         :return: the analysis structure containing the performance details of each layer
         """
 
-        if self._kv_cache_params:
-            [_, bench_info] = self._eng_net.benchmark_execute(inp, self._kv_cache)
-        else:
-            if val_inp:
-                self._validate_inputs(inp)
+        if val_inp:
+            self._validate_inputs(inp)
 
-            [_, bench_info] = self._eng_net.benchmark_execute(inp)
+        [_, bench_info] = self._eng_net.benchmark_execute(inp, self._kv_cache)
 
         return bench_info
 
@@ -1038,6 +1024,7 @@ def model_debug_analysis(
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     optimization_level: int = 1,
+    disable_batch_override: bool = False,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
     scheduler: Scheduler = None,
@@ -1067,6 +1054,7 @@ def model_debug_analysis(
         before analyzing, default is 5
     :param optimization_level: The amount of graph optimizations to perform.
         The current choices are either 0 (minimal) or 1 (all), default is 1
+    :param disable_batch_override: Indicates whether disable_batch_override was used or not
     :param imposed_as: Imposed activation sparsity, defaults to None.
         Will force the activation sparsity from all ReLu layers in the graph
         to match this desired sparsity level (percentage of 0's in the tensor).
@@ -1089,6 +1077,7 @@ def model_debug_analysis(
         num_iterations=num_iterations,
         num_warmup_iterations=num_warmup_iterations,
         optimization_level=optimization_level,
+        disable_batch_override=disable_batch_override,
         imposed_as=imposed_as,
         imposed_ks=imposed_ks,
         kv_cache_params=kv_cache_params,

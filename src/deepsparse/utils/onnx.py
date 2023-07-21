@@ -49,6 +49,7 @@ __all__ = [
     "override_onnx_input_shapes",
     "truncate_onnx_model",
     "truncate_onnx_embedding_model",
+    "default_cached_outputs",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -472,3 +473,22 @@ def truncate_onnx_embedding_model(
     )
 
     return output_filepath, tmp_file
+
+
+def default_cached_outputs(model_path):
+    """
+    :param model_path: Path to a model
+    :return A list of bools that indicates caching of all outputs except the first one.
+    """
+
+    outputs = list(onnx.load(model_path).graph.output)
+    assert len(outputs) > 0
+
+    # Create a boolean list of every output of the
+    # model [logits, key0, value0, key1, value1, ..., keyN, valueN]
+    cached_outputs = [True for i in range(len(outputs))]
+
+    # Assume first input is logits and logits ought not to be cached
+    cached_outputs[0] = False
+
+    return cached_outputs
