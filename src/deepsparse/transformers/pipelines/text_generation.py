@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 import warnings
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Type, Union
@@ -158,6 +159,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 "The multi-token engine will not be "
                 "used for prompt processing."
             )
+            if "WAND_OPT_FLAGS" not in os.environ:
+                os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
