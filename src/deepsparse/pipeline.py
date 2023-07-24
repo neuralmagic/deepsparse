@@ -681,6 +681,7 @@ def create_engine(
                 model=onnx_file_path,
                 **engine_args,
             )
+        engine_args.pop("cache_output_bools", None)
         return Engine(onnx_file_path, **engine_args)
 
     if engine_type == ORT_ENGINE:
