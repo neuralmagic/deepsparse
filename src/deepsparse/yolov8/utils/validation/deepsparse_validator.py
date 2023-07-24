@@ -7,6 +7,7 @@ from typing import Dict
 
 from tqdm import tqdm
 
+import torch
 from deepsparse.yolov8.utils.validation.helpers import schema_to_tensor
 from ultralytics.yolo.data.utils import check_det_dataset
 from ultralytics.yolo.utils import LOGGER, TQDM_BAR_FORMAT, callbacks
@@ -34,6 +35,8 @@ class DeepSparseValidator:
         # for validation when self.training is True
         callbacks.add_integration_callbacks(self)
         self.run_callbacks("on_val_start")
+        if not torch.cuda.is_available():
+            self.args.device = "cpu"
         self.device = select_device(self.args.device, self.args.batch)
         self.data = check_det_dataset(self.args.data)
         if isinstance(self.data["path"], str):
