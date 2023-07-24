@@ -18,6 +18,7 @@ import numpy
 
 from deepsparse.engine import LIB
 
+
 __all__ = ["DecoderKVCache", "SEQUENCE_LENGTH_AXIS"]
 
 

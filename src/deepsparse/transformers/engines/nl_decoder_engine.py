@@ -100,7 +100,6 @@ class NLDecoderEngine:
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
         self._engine_type = engine_type
-        print("SETTING ENGINE TYPE: " + str(engine_type))
 
     @property
     def session_id(self) -> str:
@@ -128,6 +127,30 @@ class NLDecoderEngine:
             if not name.startswith(_CACHE_INPUT_NAME)
         ]
 
+    def run(self, inputs: List[numpy.ndarray], val_inp: bool) -> List[numpy.ndarray]:
+        """
+        Run the engine with the given inputs.
+
+        If the internal deepsparse kv cache management is enable,
+        the LIB.kv_cache class object will be passed to the engine
+        call as well.
+
+        :param inputs: The inputs to run the engine with
+        :param val_inp: Whether the input is for validation or not
+
+        :return: The output of the engine
+        """
+
+        if self.kv_cache is not None:
+            if self.kv_cache._kv_cache is not None:
+                # model has kv cache support, as well as deepsparse
+                # internal management of the kv cache
+                return self.engine._eng_net.execute_list_out(
+                    inputs, self.kv_cache._kv_cache
+                )
+
+        return self.engine.run(inputs, val_inp)
+
     def __call__(
         self,
         inp: List[numpy.ndarray],
@@ -151,8 +174,6 @@ class NLDecoderEngine:
             out = self.engine._eng_net.execute_list_out(inp, self.kv_cache._kv_cache)
         else:
             out = self.engine.run(inp, val_inp)
-
-
 
         if self.kv_cache:
             logits, *kv_cache_state = out
