@@ -16,16 +16,12 @@ import pytest
 from deepsparse import Pipeline
 
 
-@pytest.fixture(scope="session")
-def model_stub():
-    return (
+@pytest.mark.smoke
+def test_codegen():
+    model_stub = (
         "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
         "huggingface/bigpython_bigquery_thepile/base-none"
     )
-
-
-@pytest.mark.smoke
-def test_codegen():
     pipeline = Pipeline.create(
         task="text_generation",
         model_path=model_stub,
