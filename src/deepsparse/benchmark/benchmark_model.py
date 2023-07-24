@@ -104,7 +104,9 @@ from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
 from deepsparse.utils import (
+    assert_model_sequence_length_one,
     generate_random_inputs,
+    has_model_kv_cache,
     model_to_path,
     override_onnx_input_shapes,
     parse_input_shapes,
@@ -357,6 +359,14 @@ def benchmark_model(
 
     orig_model_path = model_path
     model_path = model_to_path(model_path)
+
+    if has_model_kv_cache(model_path):
+        _LOGGER.info(
+            "Found model that contains KV cache inputs and outputs.\n"
+            "Enforcing `len(input_ids)=1` (simulating autoregressive inference)."
+        )
+        model_path = assert_model_sequence_length_one(model_path)
+
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     # Compile the ONNX into a runnable model

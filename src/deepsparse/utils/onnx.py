@@ -50,9 +50,16 @@ __all__ = [
     "truncate_onnx_model",
     "truncate_onnx_embedding_model",
     "default_cached_outputs",
+    "has_model_kv_cache",
+    "CACHE_INPUT_NAME",
+    "CACHE_OUTPUT_NAME",
+    "assert_model_sequence_length_one",
 ]
 
 _LOGGER = logging.getLogger(__name__)
+
+CACHE_INPUT_NAME = "past_key_values"
+CACHE_OUTPUT_NAME = "present"
 
 
 @contextlib.contextmanager
@@ -475,20 +482,45 @@ def truncate_onnx_embedding_model(
     return output_filepath, tmp_file
 
 
-def default_cached_outputs(model_path: str) -> List[bool]:
+def default_cached_outputs(model: Union[str, ModelProto]) -> List[bool]:
     """
-    :param model_path: Path to a model
-    :return A list of bools that indicates caching of all outputs except the first one.
-    """
+    Get a list of bools that indicate which outputs should be cached.
+    The elements that are set to True correspond to cached outputs,
+    the rest are set to False.
 
-    outputs = list(onnx.load(model_path).graph.output)
+    :param model_path: Path to a model
+    :return A list of bools that indicate which outputs should be cached.
+    """
+    model = (
+        onnx.load(model, load_external_data=False) if isinstance(model, str) else model
+    )
+    outputs = model.graph.output
     assert len(outputs) > 0
 
-    # Create a boolean list of every output of the
-    # model [logits, key0, value0, key1, value1, ..., keyN, valueN]
-    cached_outputs = [True for i in range(len(outputs))]
+    return [output.name.startswith(CACHE_OUTPUT_NAME) for output in outputs]
 
-    # Assume first input is logits and logits ought not to be cached
-    cached_outputs[0] = False
 
-    return cached_outputs
+def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
+    """
+    Check whether a model has a KV cache support.
+
+    :param model_path: Path to a model or a model proto.
+    :return True if the model has a KV cache support, False otherwise.
+    """
+    return bool(sum(default_cached_outputs(model)))
+
+
+def assert_model_sequence_length_one(model_path: str) -> str:
+    """
+    Takes a path to an onnx model and enforces that it has
+    static input dimensions.
+
+    :param model_path: Path to a model.
+    :return: Path to the model with static input dimensions.
+    """
+    from deepsparse.transformers.utils.helpers import (
+        overwrite_onnx_model_inputs_for_kv_cache_models,
+    )
+
+    onnx_file_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(model_path)
+    return onnx_file_path
