@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
 import pytest
 from deepsparse import Pipeline
-from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
 @pytest.mark.slow
