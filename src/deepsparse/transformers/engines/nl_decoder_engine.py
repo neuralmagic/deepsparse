@@ -229,7 +229,7 @@ class NLDecoderEngine:
         output_indices_to_be_cached = [
             1 if inp.name.startswith("present") else 0 for inp in model.graph.output
         ]
-        if sum(output_indices_to_be_cached):
+        if any(output_indices_to_be_cached):
             kv_cache_elem_type = next(
                 inp
                 for inp in model.graph.input
