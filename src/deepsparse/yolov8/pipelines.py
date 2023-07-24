@@ -108,20 +108,12 @@ class YOLOv8Pipeline(YOLOPipeline):
             )
 
     def process_engine_outputs_seg(
-        self, engine_outputs: List[numpy.ndarray], nm: int = 32, **kwargs
+        self, engine_outputs: List[numpy.ndarray], **kwargs
     ) -> YOLOSegOutput:
         """
         The pathway for processing the outputs of the engine for YOLOv8 segmentation.
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        :param nm: number of mask protos. It is information needed to perform NMS on the
-            segmentation output. It can be calculated in the following way:
-                dims = bboxes + classes + nm
-                where:
-                - bboxes = 4
-                - classes = 80 (explicit assumption -> we are using COCO dataset)
-                - dims = 116 (comes from the fact that
-                    detection.shape == [B, dims, 8400])
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
@@ -133,7 +125,6 @@ class YOLOv8Pipeline(YOLOPipeline):
             outputs=detections,
             iou_thres=kwargs.get("iou_thres", 0.25),
             conf_thres=kwargs.get("conf_thres", 0.45),
-            nm=nm,
             multi_label=kwargs.get("multi_label", False),
         )
 
