@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import logging
+import os
 import warnings
+from dataclasses import dataclass
 from typing import List, Optional, Tuple, Type, Union
 
 import numpy
@@ -30,6 +32,14 @@ from deepsparse.transformers.utils.helpers import pad_to_fixed_length
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["TextGenerationPipeline"]
+
+
+@dataclass(frozen=True)
+class _TextGenerationTimings:
+    PROMPT_PREFILL: str = "engine_prompt_prefill"
+    PROMPT_PREFILL_SINGLE: str = "engine_prompt_prefill_single"
+    TOKEN_GENERATION: str = "engine_token_generation"
+    TOKEN_GENERATION_SINGLE: str = "engine_token_generation_single"
 
 
 class TextGenerationInput(BaseModel):
@@ -120,7 +130,8 @@ class TextGenerationPipeline(TransformersPipeline):
         use_deepsparse_cache: bool = True,
         **kwargs,
     ):
-        if not cpu_avx512_compatible() and kwargs["engine_type"] == DEEPSPARSE_ENGINE:
+        kwargs_engine_type = kwargs.get("engine_type", DEEPSPARSE_ENGINE)
+        if not cpu_avx512_compatible() and kwargs_engine_type == DEEPSPARSE_ENGINE:
             warnings.warn(
                 "AVX512 support not detected, disabling internal management "
                 "of KV cache which may affect performance. To enable full "
@@ -129,11 +140,11 @@ class TextGenerationPipeline(TransformersPipeline):
             use_deepsparse_cache = False
 
         if use_deepsparse_cache:
-            if kwargs["engine_type"] != DEEPSPARSE_ENGINE:
+            if kwargs_engine_type != DEEPSPARSE_ENGINE:
                 raise ValueError(
                     "`use_deepsparse_cache` is set to True "
                     "but the chosen `engine_type` "
-                    f"is {kwargs['engine_type']}. "
+                    f"is {kwargs_engine_type}. "
                     f"Make sure to set `engine_type` to {DEEPSPARSE_ENGINE}"
                 )
 
@@ -148,6 +159,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 "The multi-token engine will not be "
                 "used for prompt processing."
             )
+            if "WAND_OPT_FLAGS" not in os.environ:
+                os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
@@ -310,35 +323,43 @@ class TextGenerationPipeline(TransformersPipeline):
             sequence of generated tokens and a sequence
             of logits for each generated token
         """
-        if not self.multitoken_engine.kv_cache_enabled:
-            tokens, prompt_logits = self.multitoken_engine(engine_inputs)
-            return numpy.array([tokens]), prompt_logits
+        # engine_forward is always called in a threadpool due to batch splitting
+        # as such, a new context needs to be created since we are no longer in the
+        # main thread. That is why `engine_` is prepended to each of the timer phase
+        # names in this context
+        with self.timer_manager.new_timer_context(total_inference=False) as timer:
+            if not self.multitoken_engine.kv_cache_enabled:
+                tokens, prompt_logits = self.multitoken_engine(engine_inputs)
+                return numpy.array([tokens]), prompt_logits
 
-        else:
-            # run the prompt through
-            tokens, prompt_logits = self.prompt_inference(engine_inputs)
+            else:
+                # run the prompt through
+                with timer.time(_TextGenerationTimings.PROMPT_PREFILL):
+                    tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
-        # create the generated output
-        max_tokens = (
-            self.max_generated_tokens
-            if self.max_generated_tokens and self.max_generated_tokens > 0
-            else 100 * self.sequence_length
-        )  # set safety for absolute max generation
+            # create the generated output
+            max_tokens = (
+                self.max_generated_tokens
+                if self.max_generated_tokens and self.max_generated_tokens > 0
+                else 100 * self.sequence_length
+            )  # set safety for absolute max generation
 
-        generated_tokens = [tokens[-1]]
-        generated_logits = prompt_logits
+            generated_tokens = [tokens[-1]]
+            generated_logits = prompt_logits
 
-        while len(generated_tokens) < max_tokens:
-            (
-                token,
-                logits,
-            ) = self.autoregressive_inference(tokens)
-            tokens.append(token)
-            generated_tokens.append(token)
-            generated_logits.append(logits)
+            with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
+                while len(generated_tokens) < max_tokens:
+                    with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
+                        token, logits = self.autoregressive_inference(tokens)
+                    tokens.append(token)
+                    generated_tokens.append(token)
+                    generated_logits.append(logits)
 
-            if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
-                break
+                    if (
+                        token == self.tokenizer.eos_token_id
+                        and not self.force_max_tokens
+                    ):
+                        break
 
         return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
@@ -394,9 +415,12 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
-            new_token, new_logits = self.autoregressive_inference(
-                run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
-            )
+            with self.timer_manager.current.time(
+                _TextGenerationTimings.PROMPT_PREFILL_SINGLE
+            ):
+                new_token, new_logits = self.autoregressive_inference(
+                    run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
+                )
             prompt_logits.append(new_logits)
 
         tokens.append(new_token)
