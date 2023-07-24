@@ -156,6 +156,7 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
+        # select batch idx 0, batch is always 1
         token = self.generate_token(logits=logits[0, -1, :])
 
         return token, logits
