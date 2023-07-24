@@ -133,7 +133,7 @@ _image_classification_deps = [
     "opencv-python<=4.6.0.66",
 ]
 _yolo_integration_deps = [
-    "torchvision>=0.3.0,<0.14",
+    "torchvision>=0.3.0,<=0.15.1",
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [

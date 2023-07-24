@@ -10,9 +10,7 @@ from tqdm import tqdm
 from deepsparse.yolov8.utils.validation.helpers import schema_to_tensor
 from ultralytics.yolo.data.utils import check_det_dataset
 from ultralytics.yolo.utils import (
-    DEFAULT_CFG,
     LOGGER,
-    SETTINGS,
     TQDM_BAR_FORMAT,
     callbacks,
 )
@@ -38,10 +36,9 @@ class DeepSparseValidator:
         """
         # deepsparse edit: removed the if-statement responsible
         # for validation when self.training is True
-        callbacks.add_integration_callbacks(self)  # TODO: Missing inputs?
+        callbacks.add_integration_callbacks(self)
         self.run_callbacks("on_val_start")
-        self.device = select_device(self.args.device, self.args.batch)  # TODO: Fix
-        # self.args.half &= self.device.type != "cpu" # TODO: not commented out here?
+        self.device = select_device(self.args.device, self.args.batch)
         self.data = check_det_dataset(self.args.data)
         if isinstance(self.data["path"], str):
             self.data["path"] = Path(self.data["path"])
