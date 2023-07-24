@@ -84,8 +84,7 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
     text_generation = Pipeline.create(
         task="text-generation",
         model_path=args.model_path,
-        engine_type="onnxruntime",
-        use_deepsparse_cache=False,
+        engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
         prompt_processing_sequence_length=args.max_sequence_length,

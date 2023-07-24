@@ -249,7 +249,7 @@ class Pipeline(BasePipeline):
             batch_outputs = list(self.executor.map(self.engine_forward, batches))
 
             # join together the batches of size `self._batch_size`
-            engine_outputs = self.join_engine_outputs(batch_outputs, orig_batch_size)
+            engine_outputs = join_engine_outputs(batch_outputs, orig_batch_size)
             timer.stop(InferenceStages.ENGINE_FORWARD)
 
             self.log(
@@ -457,19 +457,6 @@ class Pipeline(BasePipeline):
             alias=self.alias,
             kwargs=kwargs,
         )
-
-    def join_engine_outputs(
-        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
-    ) -> List[numpy.ndarray]:
-        """
-        Joins list of engine outputs together into one list.
-        This is the opposite of `split_engine_inputs` and is meant to be used in tandem.
-
-        :param batch_outputs: list of engine outputs
-        :param orig_batch_size: original batch size of the inputs
-        :return: list of engine outputs joined together
-        """
-        return join_engine_outputs(batch_outputs, orig_batch_size)
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
@@ -694,6 +681,7 @@ def create_engine(
                 model=onnx_file_path,
                 **engine_args,
             )
+        engine_args.pop("cache_output_bools", None)
         return Engine(onnx_file_path, **engine_args)
 
     if engine_type == ORT_ENGINE:
