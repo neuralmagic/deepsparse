@@ -28,7 +28,7 @@ def model_stub():
 def test_codegen():
     pipeline = Pipeline.create(
         task="text_generation",
-        model_path=model_stub,
+        model_path=model_stub(),
         max_generated_tokens=16,
         prompt_processing_sequence_length=1,
         use_deepsparse_cache=False,
