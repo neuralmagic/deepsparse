@@ -241,7 +241,7 @@ class Pipeline(BasePipeline):
             # ------ INFERENCE ------
             # split inputs into batches of size `self._batch_size`
             timer.start(InferenceStages.ENGINE_FORWARD)
-            batches, orig_batch_size = split_engine_inputs(
+            batches, orig_batch_size = self.split_engine_inputs(
                 engine_inputs, self._batch_size
             )
 
@@ -470,6 +470,20 @@ class Pipeline(BasePipeline):
         :return: list of engine outputs joined together
         """
         return join_engine_outputs(batch_outputs, orig_batch_size)
+
+    def split_engine_inputs(
+        self, items: List[numpy.ndarray], batch_size: int
+    ) -> List[List[numpy.ndarray]]:
+        """
+        Splits each item into numpy arrays with the first dimension == `batch_size`.
+        This is the opposite of `join_engine_outputs` and is meant to be used in tandem.
+
+        :param items: size of each batch to split into
+        :param batch_size: size of each batch to enforce
+
+        :return: list of batches, where each batch is a list of numpy arrays
+        """
+        return split_engine_inputs(items, batch_size)
 
     def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
         """
