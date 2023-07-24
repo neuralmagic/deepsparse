@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 import warnings
 from typing import List, Optional, Tuple, Type, Union
 
@@ -120,7 +121,8 @@ class TextGenerationPipeline(TransformersPipeline):
         use_deepsparse_cache: bool = True,
         **kwargs,
     ):
-        if not cpu_avx512_compatible() and kwargs["engine_type"] == DEEPSPARSE_ENGINE:
+        kwargs_engine_type = kwargs.get("engine_type", DEEPSPARSE_ENGINE)
+        if not cpu_avx512_compatible() and kwargs_engine_type == DEEPSPARSE_ENGINE:
             warnings.warn(
                 "AVX512 support not detected, disabling internal management "
                 "of KV cache which may affect performance. To enable full "
@@ -129,11 +131,11 @@ class TextGenerationPipeline(TransformersPipeline):
             use_deepsparse_cache = False
 
         if use_deepsparse_cache:
-            if kwargs["engine_type"] != DEEPSPARSE_ENGINE:
+            if kwargs_engine_type != DEEPSPARSE_ENGINE:
                 raise ValueError(
                     "`use_deepsparse_cache` is set to True "
                     "but the chosen `engine_type` "
-                    f"is {kwargs['engine_type']}. "
+                    f"is {kwargs_engine_type}. "
                     f"Make sure to set `engine_type` to {DEEPSPARSE_ENGINE}"
                 )
 
@@ -148,6 +150,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 "The multi-token engine will not be "
                 "used for prompt processing."
             )
+            if "WAND_OPT_FLAGS" not in os.environ:
+                os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
