@@ -143,6 +143,8 @@ class NLDecoderEngine:
 
         if self.kv_cache is not None:
             if self.kv_cache._kv_cache is not None:
+                if val_inp:
+                    self.engine._validate_inputs(inputs)
                 # model has kv cache support, as well as deepsparse
                 # internal management of the kv cache
                 return self.engine._eng_net.execute_list_out(
@@ -170,10 +172,7 @@ class NLDecoderEngine:
             # to the input
             inp = self.add_kv_cache_to_input(inp)
 
-        if self._engine_type == DEEPSPARSE_ENGINE:
-            out = self.engine._eng_net.execute_list_out(inp, self.kv_cache._kv_cache)
-        else:
-            out = self.engine.run(inp, val_inp)
+        out = self.run(inp, val_inp)
 
         if self.kv_cache:
             logits, *kv_cache_state = out
