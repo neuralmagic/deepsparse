@@ -22,7 +22,8 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import generate_session_id, softmax
+from deepsparse.transformers.utils.helpers import generate_session_id
+from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import translate_onnx_type_to_numpy
 from sparsezoo.utils.onnx import save_onnx
 
@@ -155,7 +156,8 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
-        token = self.generate_token(logits=logits[:, -1, :])
+        # select batch idx 0, batch is always 1
+        token = self.generate_token(logits=logits[0, -1, :])
 
         return token, logits
 
@@ -249,7 +251,7 @@ class NLDecoderEngine:
 
         logits /= self.sampling_temperature
 
-        probs = softmax(logits)
+        probs = numpy_softmax(logits)
 
         return numpy.random.choice(len(probs), p=probs)
 
