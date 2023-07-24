@@ -17,7 +17,23 @@ import uuid
 import numpy
 
 
-__all__ = ["generate_session_id", "pad_to_fixed_length"]
+__all__ = ["softmax", "generate_session_id", "pad_to_fixed_length"]
+
+
+def softmax(x: numpy.ndarray) -> numpy.ndarray:
+    """
+    Compute softmax values for x. This function is
+    against overflow/underflow by using the
+    trick of shifting the input vector by subtracting
+    the maximum element in it from all elements
+
+    :param x: input array
+    :return: softmax values
+    """
+    z = x - max(x)
+    numerator = numpy.exp(z)
+    denominator = numpy.sum(numerator)
+    return numerator / denominator
 
 
 def generate_session_id() -> str:
