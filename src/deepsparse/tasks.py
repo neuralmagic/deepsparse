@@ -95,7 +95,10 @@ class SupportedTasks:
         ),
     )
 
-    text_generation = namedtuple("text_generation", ["opt", "codegen", "bloom"])(
+    text_generation = namedtuple(
+        "text_generation", ["text_generation", "opt", "codegen", "bloom"]
+    )(
+        text_generation=AliasedTask("text_generation", []),
         codegen=AliasedTask("codegen", []),
         opt=AliasedTask("opt", []),
         bloom=AliasedTask("bloom", []),

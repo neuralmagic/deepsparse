@@ -83,11 +83,12 @@ class YOLOv8Pipeline(YOLOPipeline):
         """
         if self.subtask == "segmentation":
             if len(engine_outputs) != 2:
-                raise ValueError(
-                    "Error: Segmentation pipeline "
-                    "expects 2 outputs from engine"
-                    "(detections and masks), got {}".format(len(engine_outputs))
+                warnings.warn(
+                    "YOLOv8 Segmentation pipeline expects 2 outputs from engine, "
+                    "got {}. Assuming first output is detection output, and last "
+                    "is segmentation output".format(len(engine_outputs))
                 )
+                engine_outputs = [engine_outputs[0], engine_outputs[5]]
             return self.process_engine_outputs_seg(
                 engine_outputs=engine_outputs, **kwargs
             )
@@ -143,7 +144,6 @@ class YOLOv8Pipeline(YOLOPipeline):
         for idx, (detection_output, protos) in enumerate(
             zip(detections_output, mask_protos)
         ):
-
             original_image_shape = (
                 original_image_shapes[idx] if idx < len(original_image_shapes) else None
             )
