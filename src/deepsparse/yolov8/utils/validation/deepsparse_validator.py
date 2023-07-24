@@ -9,11 +9,7 @@ from tqdm import tqdm
 
 from deepsparse.yolov8.utils.validation.helpers import schema_to_tensor
 from ultralytics.yolo.data.utils import check_det_dataset
-from ultralytics.yolo.utils import (
-    LOGGER,
-    TQDM_BAR_FORMAT,
-    callbacks,
-)
+from ultralytics.yolo.utils import LOGGER, TQDM_BAR_FORMAT, callbacks
 from ultralytics.yolo.utils.ops import Profile
 from ultralytics.yolo.utils.torch_utils import select_device, smart_inference_mode
 
