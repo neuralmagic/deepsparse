@@ -255,33 +255,18 @@ class TextGenerationPipeline(TransformersPipeline):
             truncation=truncate,
         )
 
-        if (
-            len(input_tokens[0]) < self.sequence_length
-            and not inputs.fixed_sequences_length
-        ):
-            # if the input is shorter than the sequence length,
-            # we need to pad it to the sequence length
-            padding = "max_length"
-            input_tokens = self.tokenizer(
-                inputs.sequences,
-                return_tensors="np",
-                max_length=self.sequence_length,
-                padding=padding,
-                truncation=truncate,
-            )
-
         attention_mask = input_tokens["attention_mask"]
 
         positions = attention_mask.cumsum(1) * attention_mask
         positions -= 1  # assert that positions start at 0
-        positions_input = dict(positions=positions)
 
         causal_mask = create_causal_mask(
             input_tokens["input_ids"], input_tokens["attention_mask"]
         )
-        causal_mask_input = dict(causal_mask=causal_mask)
 
-        input_tokens = {**input_tokens, **positions_input, **causal_mask_input}
+        input_tokens = dict(
+            **input_tokens, positions=positions, causal_mask=causal_mask
+        )
         onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
