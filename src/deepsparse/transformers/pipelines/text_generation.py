@@ -470,7 +470,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
     @staticmethod
     def join_engine_outputs(
-        batch_outputs: List[List[numpy.ndarray]],
+        batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
     ) -> List[numpy.ndarray]:
         """
         Takes a list of outputs (batches) from the engine
@@ -479,6 +479,7 @@ class TextGenerationPipeline(TransformersPipeline):
         they can be concatenated.
 
         :param batch_outputs: A list of outputs from the engine
+        :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
         tokens, logits = zip(*batch_outputs)

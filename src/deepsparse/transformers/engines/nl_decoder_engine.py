@@ -160,7 +160,8 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
-        token = self.generate_token(logits=logits[:, -1, :])
+        # select batch idx 0, batch is always 1
+        token = self.generate_token(logits=logits[0, -1, :])
 
         return token, logits
 
@@ -193,7 +194,7 @@ class NLDecoderEngine:
 
         logits /= self.sampling_temperature
 
-        probs = softmax(logits)
+        probs = numpy_softmax(logits)
 
         return numpy.random.choice(len(probs), p=probs)
 

@@ -30,7 +30,6 @@ __all__ = [
     "overwrite_onnx_model_inputs_for_kv_cache_models",
     "generate_session_id",
     "pad_to_fixed_length",
-    "softmax",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -105,22 +104,6 @@ def generate_session_id() -> str:
     """
     session_id = str(uuid.uuid4())
     return session_id
-
-
-def softmax(x: numpy.ndarray) -> numpy.ndarray:
-    """
-    Compute softmax values for x. This function is
-    against overflow/underflow by using the
-    trick of shifting the input vector by subtracting
-    the maximum element in it from all elements
-
-    :param x: input array
-    :return: softmax values
-    """
-    z = x - max(x)
-    numerator = numpy.exp(z)
-    denominator = numpy.sum(numerator)
-    return numerator / denominator
 
 
 def pad_to_fixed_length(
