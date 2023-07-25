@@ -14,6 +14,16 @@
 
 # flake8: noqa
 
+from deepsparse.clip.captioning_pipeline import (
+    CLIPCaptionInput,
+    CLIPCaptionOutput,
+    CLIPCaptionPipeline,
+)
+from deepsparse.clip.decoder_pipeline import (
+    CLIPDecoderInput,
+    CLIPDecoderOutput,
+    CLIPDecoderPipeline,
+)
 from deepsparse.clip.text_pipeline import (
     CLIPTextInput,
     CLIPTextOutput,

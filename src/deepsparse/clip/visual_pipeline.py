@@ -97,25 +97,28 @@ class CLIPVisualPipeline(Pipeline):
         :param inputs: CLIPVisualInput
         :return: list of preprocessed numpy arrays
         """
-        if isinstance(inputs.images, str):
+        if isinstance(inputs.images, str) or isinstance(inputs.images, np.array):
             inputs.images = [inputs.images]
 
         def _process_image(image) -> np.array:
-            image = Image.open(image)
-            image = self._preprocess_transforms(image)
+            if isinstance(image, str):
+                image = Image.open(image)
+                image = self._preprocess_transforms(image)
 
-            # image.convert("RGB") should make the image 8 bit
-            image_array = np.array(image.convert("RGB"))
+                # image.convert("RGB") should make the image 8 bit
+                image_array = np.array(image.convert("RGB"))
 
-            # make channel dim the first dim
-            image_array = image_array.transpose(2, 1, 0).astype("float32")
+                # make channel dim the first dim
+                image_array = image_array.transpose(2, 1, 0).astype("float32")
 
-            image_array /= 255.0
-            image_array = (
-                image_array - np.array(CLIP_RGB_MEANS).reshape((3, 1, 1))
-            ) / np.array(CLIP_RGB_STDS).reshape((3, 1, 1))
+                image_array /= 255.0
+                image_array = (
+                    image_array - np.array(CLIP_RGB_MEANS).reshape((3, 1, 1))
+                ) / np.array(CLIP_RGB_STDS).reshape((3, 1, 1))
 
-            image.close()
+                image.close()
+            else:
+                image_array = image
             return np.ascontiguousarray(image_array, dtype=np.float32)
 
         batch = list(self.executor.map(_process_image, inputs.images))
