@@ -22,7 +22,8 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import generate_session_id, softmax
+from deepsparse.transformers.utils.helpers import generate_session_id
+from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import translate_onnx_type_to_numpy
 from sparsezoo.utils.onnx import save_onnx
 
@@ -163,7 +164,8 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
-        token = self.generate_token(logits=logits[:, -1, :])
+        # select batch idx 0, batch is always 1
+        token = self.generate_token(logits=logits[0, -1, :])
 
         return token, logits
 
@@ -248,11 +250,13 @@ class NLDecoderEngine:
         output_indices_to_be_cached = [
             1 if inp.name.startswith("present") else 0 for inp in model.graph.output
         ]
-
-        kv_cache_elem_type = next(
-            inp for inp in model.graph.input if inp.name.startswith(_CACHE_INPUT_NAME)
-        ).type.tensor_type.elem_type
-        self.kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
+        if any(output_indices_to_be_cached):
+            kv_cache_elem_type = next(
+                inp
+                for inp in model.graph.input
+                if inp.name.startswith(_CACHE_INPUT_NAME)
+            ).type.tensor_type.elem_type
+            self.kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
 
         return onnx_file_path, output_indices_to_be_cached
 
@@ -268,7 +272,7 @@ class NLDecoderEngine:
 
         logits /= self.sampling_temperature
 
-        probs = softmax(logits)
+        probs = numpy_softmax(logits)
 
         return numpy.random.choice(len(probs), p=probs)
 

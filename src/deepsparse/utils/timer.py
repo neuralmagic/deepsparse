@@ -114,6 +114,23 @@ class StagedTimer:
         """
         return stage in self.stages
 
+    @contextmanager
+    def time(self, stage: str):
+        """
+        Context Manager to record the time for a stage in the given context
+
+        example:
+        ```
+        with timer.time(STAGE_NAME):
+            # do something...
+        ```
+
+        :param stage: the name of the stage to time
+        """
+        self.start(stage)
+        yield
+        self.stop(stage)
+
     def start(self, stage: str):
         """
         Start the timer for a specific stage. If the stage doesn't exist,
@@ -322,23 +339,27 @@ class TimerManager:
         return all_times
 
     @contextmanager
-    def new_timer_context(self) -> StagedTimer:
+    def new_timer_context(self, total_inference: bool = True) -> StagedTimer:
         """
         Create a new StagedTimer object and set it as the current context.
 
+        :param total_inference: if True, measures the entire context as total inference
+            automatically and assumes this is the main inference thread. if False,
+            assumes this is not the main inference thread and will not overwrite
+            any other timers in non-multi/benchmark mode. Default True
         :return: the new StagedTimer object.
         """
         timer = StagedTimer(enabled=self.enabled)
-        timer.start(InferenceStages.TOTAL_INFERENCE)
 
-        if self.multi:
+        if total_inference:
+            timer.start(InferenceStages.TOTAL_INFERENCE)
+
+        if self.multi or not total_inference:
             self._timers.append(timer)
         else:
             self._timers = [timer]
 
         timer_context.set(timer)
-
-        try:
-            yield timer
-        finally:
+        yield timer
+        if total_inference:
             timer.stop(InferenceStages.TOTAL_INFERENCE)

@@ -13,8 +13,12 @@
 # limitations under the License.
 
 import logging
+import os
 import warnings
 from typing import Generator, List, Optional, Tuple, Type, Union
+from typing import Generator, List, Optional, Tuple, Type, Union
+from dataclasses import dataclass
+from typing import List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -33,6 +37,14 @@ from deepsparse.transformers.utils.helpers import (
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["TextGenerationPipeline"]
+
+
+@dataclass(frozen=True)
+class _TextGenerationTimings:
+    PROMPT_PREFILL: str = "engine_prompt_prefill"
+    PROMPT_PREFILL_SINGLE: str = "engine_prompt_prefill_single"
+    TOKEN_GENERATION: str = "engine_token_generation"
+    TOKEN_GENERATION_SINGLE: str = "engine_token_generation_single"
 
 
 class TextGenerationInput(BaseModel):
@@ -122,7 +134,8 @@ class TextGenerationPipeline(TransformersPipeline):
         use_deepsparse_cache: bool = True,
         **kwargs,
     ):
-        if not cpu_avx512_compatible() and kwargs["engine_type"] == DEEPSPARSE_ENGINE:
+        kwargs_engine_type = kwargs.get("engine_type", DEEPSPARSE_ENGINE)
+        if not cpu_avx512_compatible() and kwargs_engine_type == DEEPSPARSE_ENGINE:
             warnings.warn(
                 "AVX512 support not detected, disabling internal management "
                 "of KV cache which may affect performance. To enable full "
@@ -131,17 +144,21 @@ class TextGenerationPipeline(TransformersPipeline):
             use_deepsparse_cache = False
 
         if use_deepsparse_cache:
-            if kwargs["engine_type"] != DEEPSPARSE_ENGINE:
+            if kwargs_engine_type != DEEPSPARSE_ENGINE:
                 raise ValueError(
                     "`use_deepsparse_cache` is set to True "
                     "but the chosen `engine_type` "
-                    f"is {kwargs['engine_type']}. "
+                    f"is {kwargs_engine_type}. "
                     f"Make sure to set `engine_type` to {DEEPSPARSE_ENGINE}"
                 )
 
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
+
+        if self.engine_type == DEEPSPARSE_ENGINE:
+            if "WAND_OPT_FLAGS" not in os.environ:
+                os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
@@ -255,33 +272,18 @@ class TextGenerationPipeline(TransformersPipeline):
             truncation=truncate,
         )
 
-        if (
-            len(input_tokens[0]) < self.sequence_length
-            and not inputs.fixed_sequences_length
-        ):
-            # if the input is shorter than the sequence length,
-            # we need to pad it to the sequence length
-            padding = "max_length"
-            input_tokens = self.tokenizer(
-                inputs.sequences,
-                return_tensors="np",
-                max_length=self.sequence_length,
-                padding=padding,
-                truncation=truncate,
-            )
-
         attention_mask = input_tokens["attention_mask"]
 
         positions = attention_mask.cumsum(1) * attention_mask
         positions -= 1  # assert that positions start at 0
-        positions_input = dict(positions=positions)
 
         causal_mask = create_causal_mask(
             input_tokens["input_ids"], input_tokens["attention_mask"]
         )
-        causal_mask_input = dict(causal_mask=causal_mask)
 
-        input_tokens = {**input_tokens, **positions_input, **causal_mask_input}
+        input_tokens = dict(
+            **input_tokens, positions=positions, causal_mask=causal_mask
+        )
         onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
@@ -322,35 +324,43 @@ class TextGenerationPipeline(TransformersPipeline):
             sequence of generated tokens and a sequence
             of logits for each generated token
         """
-        if not self.multitoken_engine.kv_cache_enabled:
-            tokens, prompt_logits = self.multitoken_engine(engine_inputs)
-            return numpy.array([tokens]), prompt_logits
+        # engine_forward is always called in a threadpool due to batch splitting
+        # as such, a new context needs to be created since we are no longer in the
+        # main thread. That is why `engine_` is prepended to each of the timer phase
+        # names in this context
+        with self.timer_manager.new_timer_context(total_inference=False) as timer:
+            if not self.multitoken_engine.kv_cache_enabled:
+                tokens, prompt_logits = self.multitoken_engine(engine_inputs)
+                return numpy.array([tokens]), prompt_logits
 
-        else:
-            # run the prompt through
-            tokens, prompt_logits = self.prompt_inference(engine_inputs)
+            else:
+                # run the prompt through
+                with timer.time(_TextGenerationTimings.PROMPT_PREFILL):
+                    tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
-        # create the generated output
-        max_tokens = (
-            self.max_generated_tokens
-            if self.max_generated_tokens and self.max_generated_tokens > 0
-            else 100 * self.sequence_length
-        )  # set safety for absolute max generation
+            # create the generated output
+            max_tokens = (
+                self.max_generated_tokens
+                if self.max_generated_tokens and self.max_generated_tokens > 0
+                else 100 * self.sequence_length
+            )  # set safety for absolute max generation
 
-        generated_tokens = [tokens[-1]]
-        generated_logits = prompt_logits
+            generated_tokens = [tokens[-1]]
+            generated_logits = prompt_logits
 
-        while len(generated_tokens) < max_tokens:
-            (
-                token,
-                logits,
-            ) = self.autoregressive_inference(tokens)
-            tokens.append(token)
-            generated_tokens.append(token)
-            generated_logits.append(logits)
+            with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
+                while len(generated_tokens) < max_tokens:
+                    with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
+                        token, logits = self.autoregressive_inference(tokens)
+                    tokens.append(token)
+                    generated_tokens.append(token)
+                    generated_logits.append(logits)
 
-            if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
-                break
+                    if (
+                        token == self.tokenizer.eos_token_id
+                        and not self.force_max_tokens
+                    ):
+                        break
 
         return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
@@ -397,9 +407,12 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
-            new_token, new_logits = self.autoregressive_inference(
-                run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
-            )
+            with self.timer_manager.current.time(
+                _TextGenerationTimings.PROMPT_PREFILL_SINGLE
+            ):
+                new_token, new_logits = self.autoregressive_inference(
+                    run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
+                )
             prompt_logits.append(new_logits)
 
         tokens.append(new_token)
@@ -530,7 +543,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
     @staticmethod
     def join_engine_outputs(
-        batch_outputs: List[List[numpy.ndarray]],
+        batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
     ) -> List[numpy.ndarray]:
         """
         Takes a list of outputs (batches) from the engine
@@ -539,6 +552,7 @@ class TextGenerationPipeline(TransformersPipeline):
         they can be concatenated.
 
         :param batch_outputs: A list of outputs from the engine
+        :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
         tokens, logits = zip(*batch_outputs)
