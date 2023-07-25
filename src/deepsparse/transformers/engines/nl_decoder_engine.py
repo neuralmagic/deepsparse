@@ -25,7 +25,7 @@ from deepsparse.transformers.utils.helpers import generate_session_id
 from deepsparse.transformers.utils.helpers import (
     overwrite_onnx_model_inputs_for_kv_cache_models as overwrite_onnx_model_inputs,
 )
-from deepsparse.transformers.utils.helpers import softmax
+from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import CACHE_INPUT_NAME, CACHE_OUTPUT_NAME
 
 

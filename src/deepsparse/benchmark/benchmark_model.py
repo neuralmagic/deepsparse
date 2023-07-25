@@ -361,7 +361,10 @@ def benchmark_model(
     model_path = model_to_path(model_path)
 
     if has_model_kv_cache(model_path):
-        _LOGGER.info("Found model that contains KV cache support.")
+        _LOGGER.info(
+            "Found model that contains KV cache support. "
+            "Benchmarking the autoregressive model."
+        )
         model_path = assert_model_sequence_length_one(model_path)
 
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
