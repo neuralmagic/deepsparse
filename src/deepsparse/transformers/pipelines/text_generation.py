@@ -14,7 +14,7 @@
 
 import logging
 import warnings
-from typing import List, Optional, Tuple, Type, Union
+from typing import Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -24,7 +24,10 @@ from deepsparse.cpu import cpu_avx512_compatible
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.utils.helpers import pad_to_fixed_length
+from deepsparse.transformers.utils.helpers import (
+    create_causal_mask,
+    pad_to_fixed_length,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -114,8 +117,7 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
-        # TODO: Set this to 64 once we modify the OPT injection logic
-        prompt_processing_sequence_length: int = 128,
+        prompt_processing_sequence_length: int = 64,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = True,
         **kwargs,
@@ -140,14 +142,6 @@ class TextGenerationPipeline(TransformersPipeline):
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
-
-        if self.engine_type == DEEPSPARSE_ENGINE:
-            _LOGGER.warning(
-                "The support for deepsparse engine is limited "
-                f"for {self.__class__.__name__}. "
-                "The multi-token engine will not be "
-                "used for prompt processing."
-            )
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
@@ -263,13 +257,16 @@ class TextGenerationPipeline(TransformersPipeline):
 
         attention_mask = input_tokens["attention_mask"]
 
-        # TODO: Positions input is not required by BLOOM
-        # let's make it optional in the future
         positions = attention_mask.cumsum(1) * attention_mask
         positions -= 1  # assert that positions start at 0
-        positions_input = dict(positions=positions)
 
-        input_tokens = {**input_tokens, **positions_input}
+        causal_mask = create_causal_mask(
+            input_tokens["input_ids"], input_tokens["attention_mask"]
+        )
+
+        input_tokens = dict(
+            **input_tokens, positions=positions, causal_mask=causal_mask
+        )
         onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
@@ -370,20 +367,11 @@ class TextGenerationPipeline(TransformersPipeline):
         # to refrain from resetting if session id is being passed
         self._reset_engines_cache()
 
-        # TODO: Multiple passes through the multitoken
-        # engine once the OPT injection is fixed
-        if (
-            len(tokens) > self.prompt_processing_sequence_length
-            and self.engine_type != DEEPSPARSE_ENGINE
-        ):
-            # trim the input to the prompt size
-            engine_inputs = [
-                input[:, : self.prompt_processing_sequence_length]
-                for input in engine_inputs
-            ]
-            new_token, new_logits = self.multitoken_engine(engine_inputs)
-            num_tokens_processed = self.prompt_processing_sequence_length
-            prompt_logits.append(new_logits)
+        if len(tokens) > self.prompt_processing_sequence_length:
+            for engine_inputs in self.engine_inputs_for_prefill(tokens):
+                new_token, new_logits = self.multitoken_engine(engine_inputs)
+                num_tokens_processed = self.prompt_processing_sequence_length
+                prompt_logits.append(new_logits)
 
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
@@ -429,11 +417,56 @@ class TextGenerationPipeline(TransformersPipeline):
         if shift_positions_by_one:
             positions -= 1
         input_ids = numpy.array([[new_token]])
-        engine_inputs = [input_ids, attention_mask, positions]
+        causal_mask = create_causal_mask(input_ids, attention_mask)
+        engine_inputs = [input_ids, attention_mask, positions, causal_mask]
 
         generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
+
+    def engine_inputs_for_prefill(
+        self, tokens: List[int]
+    ) -> Generator[List[numpy.ndarray], None, None]:
+        """
+        Takes a list of tokens and turns the first
+        `self.prompt_processing_sequence_length` tokens into
+        appropriate engine inputs for the multitoken engine.
+
+        :param tokens: the list of tokens to process
+        :return: a generator of engine inputs
+        """
+        # TODO: Make it yield multiple engine_inputs
+        # Once this is done, we can update the docstrings and be
+        # more verbose about what this function does
+        engine_inputs = []
+        token_batches = [tokens[: self.prompt_processing_sequence_length]]
+        for token_batch in token_batches:
+            for name in self.multitoken_engine.onnx_input_names_no_cache:
+                if name == "input_ids":
+                    engine_input = numpy.array([token_batch])
+                elif name == "attention_mask":
+                    engine_input = numpy.zeros(
+                        (1, self.sequence_length), dtype=numpy.int64
+                    )
+                    engine_input[:, -self.prompt_processing_sequence_length :] = 1
+                elif name == "causal_mask":
+                    continue
+                elif name == "positions":
+                    engine_input = (
+                        numpy.arange(self.prompt_processing_sequence_length)
+                        .reshape(1, -1)
+                        .astype(numpy.int64)
+                    )
+
+                engine_inputs.append(engine_input)
+
+            if "causal_mask" in self.multitoken_engine.onnx_input_names_no_cache:
+                causal_mask = create_causal_mask(
+                    input_ids=engine_inputs[0], attention_mask=engine_inputs[1]
+                )
+                engine_inputs.append(causal_mask)
+
+            yield engine_inputs
 
     @property
     def has_cache(self) -> bool:

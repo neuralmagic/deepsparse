@@ -215,6 +215,11 @@ class NLDecoderEngine:
                 external_input.type.tensor_type.shape.dim[2].dim_value = (
                     sequence_length - input_ids_length
                 )
+            elif external_input.name.startswith("causal_mask"):
+                external_input.type.tensor_type.shape.dim[
+                    2
+                ].dim_value = input_ids_length
+                external_input.type.tensor_type.shape.dim[3].dim_value = sequence_length
             else:
                 raise ValueError(
                     f"Unexpected external input name: {external_input.name}"
@@ -279,10 +284,8 @@ class NLDecoderEngine:
             self.reset_kv_cache()
             kv_cache_state = self.kv_cache.cached_inputs
 
-        kv_cache_state["input_ids"] = inp[0]
-        kv_cache_state["attention_mask"] = inp[1]
-        if len(inp) == 3:
-            kv_cache_state["positions"] = inp[2]
+        for idx, input_name in enumerate(self.onnx_input_names_no_cache):
+            kv_cache_state[input_name] = inp[idx]
 
         new_inp = [kv_cache_state[name] for name in self.engine.input_names]
         return new_inp
