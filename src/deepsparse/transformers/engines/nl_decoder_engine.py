@@ -127,6 +127,14 @@ class NLDecoderEngine:
             if not name.startswith(_CACHE_INPUT_NAME)
         ]
 
+    @property
+    def num_non_blank_cache_entries(self) -> int:
+        """
+        :return a number of non-blank entries in the
+        kv cache
+        """
+        return self.kv_cache.num_non_blank_entries
+
     def __call__(
         self,
         inp: List[numpy.ndarray],
@@ -173,10 +181,16 @@ class NLDecoderEngine:
         information from another NLDecoderEngine. Call this method when
         you want to transfer the kv cache state from one engine to another.
 
+        This method will also automatically set the kv cache capacity to
+        the appropriate value for the new engine.
+
         :param cache: The `DecoderKVCache` object to transfer to the engine
             from
         """
-        self.kv_cache = copy.deepcopy(cache)
+        cache_to_copy = copy.deepcopy(cache)
+        target_cache_capacity = self.sequence_length - self.input_ids_length
+        cache_to_copy.set_capacity(target_cache_capacity)
+        self.kv_cache = cache_to_copy
 
     def overwrite_onnx_model_inputs(
         self,

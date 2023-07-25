@@ -24,6 +24,7 @@ __all__ = [
     "create_causal_mask",
 ]
 
+
 def generate_session_id() -> str:
     """
     Generate uuid for session id. This is used to
