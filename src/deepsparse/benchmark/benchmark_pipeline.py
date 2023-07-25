@@ -22,6 +22,7 @@ import time
 import numpy
 import threading
 import queue
+import glob
 
 from deepsparse import __version__
 from deepsparse import Pipeline
@@ -193,7 +194,6 @@ def multistream_benchmark(
     max_time = time.perf_counter() + seconds_to_run
     threads = []
 
-    # Sara TODO: should these all be sharing the same pipeline?
     for thread in range(num_streams):
         threads.append(PipelineExecutorThread(pipeline, inputs, time_queue, max_time))
 
@@ -211,6 +211,84 @@ def parse_input_config(input_config_file: str) -> Dict[str, any]:
     config = json.load(config_file)
     config_file.close()
     return config
+
+def get_input_schema_type(pipeline: Pipeline) -> str:
+    input_schema_requirements = list(pipeline.input_schema.__annotations__.keys())
+    image_requirements = ["images"]
+    text_requirements = ["sequences", "text"]
+
+    if len(input_schema_requirements) == 1:
+        requirement = input_schema_requirements[0]
+        if requirement in image_requirements:
+            return "image"
+        elif requirement in text_requirements:
+            return "text"
+        
+    raise Exception("Unknown schema requirement {}".format(input_schema_requirements))
+
+def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
+    input_data = []
+    if "input_image_shape" in config and len(config["input_image_shape"]) == 3:
+        image_shape = config["input_image_shape"]
+    else:
+        image_shape = (240, 240, 3)
+        _LOGGER.warning("Using default image shape {}".format(image_shape))
+
+    for _ in range(batch_size):
+        rand_array = numpy.random.randint(0,high=255, size=image_shape).astype(numpy.uint8)
+        input_data.append(rand_array)
+
+    return input_data
+
+def load_image_data(config: Dict, batch_size: int) -> List[str]:
+    path_to_data = config["data_folder"]
+    recursive_search = config["recursive_search"]
+    files = []
+    for f in glob.glob(path_to_data + "/**", recursive=recursive_search):
+        if f.lower().endswith(".jpeg"):
+            files.append(f)
+    if len(files) < batch_size:
+        raise Exception("Not enough images found in {}".format(path_to_data))
+    input_data = random.sample(files, batch_size)
+
+    return input_data
+
+def generate_text_data(config: Dict, batch_size: int) -> List[str]:
+    input_data = []
+    if 'sequence_length' in config:
+        string_length = config['sequence_length']
+    else:
+        string_length = 100
+        _LOGGER.warning("Using default string length {}".format(string_length))
+    for _ in range(batch_size):
+        rand_string = ''.join(random.choices(string.printable, k=string_length))
+        input_data.append(rand_string)
+    
+    return input_data
+
+def load_text_data(config: Dict, batch_size: int) -> List[str]:
+    path_to_data = config["data_folder"]
+    recursive_search = config["recursive_search"]
+    files = []
+    for f in glob.glob(path_to_data + "/**", recursive=recursive_search):
+        if f.lower().endswith(".txt"):
+            files.append(f)
+    if len(files) < batch_size:
+        raise Exception("Not enough images found in {}".format(path_to_data))
+    input_files = random.sample(files, batch_size)
+    if "max_string_length" in config:
+        max_string_length = config["max_string_length"]
+    else:
+        max_string_length = -1
+        _LOGGER.warning("Using default max string length {}".format(max_string_length))
+    input_data = []
+    for f_path in input_files:
+        f = open(f_path)
+        text_data = f.read()
+        f.close()
+        input_data.append(text_data[:max_string_length])
+    print(input_data)
+    return input_data
 
 def benchmark_pipeline(
     model_path: str,
@@ -238,26 +316,22 @@ def benchmark_pipeline(
     config = parse_input_config(input_config)
     input_type = config["data_type"]
     pipeline = Pipeline.create(task=task, model_path=model_path)
+    input_schema_requirement = get_input_schema_type(pipeline)
 
-    input_data = []
     if input_type == "dummy":
-        if config['input_data_type'] == "string":
-            data_length = config['sequence_length']
-            for _ in range(batch_size):
-                rand_string = ''.join(random.choices(string.printable, k=data_length))
-                input_data.append(rand_string)
-            inputs = pipeline.input_schema(sequences=input_data)
-        elif config['input_data_type'] == "array":
-            image_shape = config["input_array_shape"]
-            dtype = config["input_array_dtype"]
-            for _ in range(batch_size):
-                if dtype == "uint8":
-                    rand_array = numpy.random.randint(0,high=255, size=image_shape).astype(dtype)
-                rand_array = numpy.random.rand(*image_shape).astype(dtype)
-                input_data.append(rand_array)
+        if input_schema_requirement == "image":
+            input_data = generate_image_data(config, batch_size)
             inputs = pipeline.input_schema(images=input_data)
+        elif input_schema_requirement == "text":
+            input_data = generate_text_data(config, batch_size)
+            inputs = pipeline.input_schema(sequences=input_data)
     elif input_type == "real":
-        raise Exception("Real input type not yet implemented")
+        if input_schema_requirement == "image":
+            input_data = load_image_data(config, batch_size)
+            inputs = pipeline.input_schema(images=input_data)
+        elif input_schema_requirement == "text":
+            input_data = load_text_data(config, batch_size)
+            inputs = pipeline.input_schema(sequences=input_data)
     else:
         raise Exception(f"Unknown input type '{input_type}'")
 
@@ -273,9 +347,7 @@ def benchmark_pipeline(
         raise Exception(f"Unknown scenario '{scenario}'")
 
     if len(batch_times) == 0:
-        raise Exception(
-            "Generated no batch timings, try extending benchmark time with '--time'"
-        )
+        raise Exception("Generated no batch timings, try extending benchmark time with '--time'")
     end_time = time.perf_counter()
     total_run_time = end_time - start_time
 
