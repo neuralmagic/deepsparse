@@ -216,7 +216,6 @@ def benchmark_pipeline(
     model_path: str,
     task: str,
     input_config: str,
-    input_type: str = "dummy",
     batch_size: int = 1,
     num_cores: int = None,
     scenario: str = "sync",
@@ -224,7 +223,6 @@ def benchmark_pipeline(
     num_streams: int = None,
     thread_pinning: str = "core",
     quiet: bool = False,
-    export_path: str = None,
 ) -> Tuple[List[StagedTimer],float] :
     
     if quiet:
@@ -235,28 +233,34 @@ def benchmark_pipeline(
 
     decide_thread_pinning(thread_pinning, _LOGGER)
     scenario = parse_scenario(scenario.lower(), _LOGGER)
-    scheduler = parse_scheduler(scenario)
     num_streams = parse_num_streams(num_streams, num_cores, scenario, _LOGGER)
     
     config = parse_input_config(input_config)
+    input_type = config["data_type"]
     pipeline = Pipeline.create(task=task, model_path=model_path)
 
     input_data = []
-    if config['input_data_type'] == "string":
-        data_length = config['sequence_length']
-        for _ in range(batch_size):
-            rand_string = ''.join(random.choices(string.printable, k=data_length))
-            input_data.append(rand_string)
-        inputs = pipeline.input_schema(sequences=input_data)
-    elif config['input_data_type'] == "array":
-        image_shape = config["input_array_shape"]
-        dtype = config["input_array_dtype"]
-        for _ in range(batch_size):
-            if dtype == "uint8":
-                rand_array = numpy.random.randint(0,high=255, size=image_shape).astype(dtype)
-            rand_array = numpy.random.rand(*image_shape).astype(dtype)
-            input_data.append(rand_array)
-        inputs = pipeline.input_schema(images=input_data)
+    if input_type == "dummy":
+        if config['input_data_type'] == "string":
+            data_length = config['sequence_length']
+            for _ in range(batch_size):
+                rand_string = ''.join(random.choices(string.printable, k=data_length))
+                input_data.append(rand_string)
+            inputs = pipeline.input_schema(sequences=input_data)
+        elif config['input_data_type'] == "array":
+            image_shape = config["input_array_shape"]
+            dtype = config["input_array_dtype"]
+            for _ in range(batch_size):
+                if dtype == "uint8":
+                    rand_array = numpy.random.randint(0,high=255, size=image_shape).astype(dtype)
+                rand_array = numpy.random.rand(*image_shape).astype(dtype)
+                input_data.append(rand_array)
+            inputs = pipeline.input_schema(images=input_data)
+    elif input_type == "real":
+        raise Exception("Real input type not yet implemented")
+    else:
+        raise Exception(f"Unknown input type '{input_type}'")
+
 
     start_time = time.perf_counter()
     if scenario == "singlestream":
@@ -305,7 +309,6 @@ def main():
         model_path=args.model_path,
         task=args.task_name,
         input_config = args.input_config,
-        input_type = args.input_type,
         batch_size=args.batch_size,
         num_cores=args.num_cores,
         scenario=args.scenario,
@@ -313,7 +316,6 @@ def main():
         num_streams=args.num_streams,
         thread_pinning=args.thread_pinning,
         quiet=args.quiet,
-        export_path=args.export_path,
     )
 
     pre_process_times = [st.times['pre_process'] * 1000 for st in batch_times]
@@ -352,6 +354,24 @@ def main():
         _LOGGER.info("Saving benchmark results to JSON file at {}".format(export_path))
         with open(export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
+
+    # Results summary
+    print("Original Model Path: {}".format(args.model_path))
+    print("Batch Size: {}".format(args.batch_size))
+    print("Scenario: {}".format(args.scenario))
+    print("Iterations: {}".format(int(export_dict["iterations"])))
+    print(
+        "Throughput (items/sec): {:.4f}".format(
+            export_dict["items_per_sec"]
+        )
+    )
+    print("Processing Time Breakdown: ")
+    print("     Pre-Processing: {:.2f}%".format(export_dict["percent_pre"]))
+    print("     Post-Processing: {:.2f}%".format(export_dict["percent_post"]))
+    print("     Forward Pass: {:.2f}%".format(export_dict["percent_forward"]))
+    print("Pre-Processing Latency Mean (ms/batch): {:.4f}".format(export_dict["pre_stats"]["mean"]))
+    print("Post-Processing Latency Mean (ms/batch): {:.4f}".format(export_dict["post_stats"]["mean"]))
+    print("Forward Pass Latency Mean (ms/batch): {:.4f}".format(export_dict["forward_stats"]["mean"]))
 
 if __name__ == "__main__":
     main()
