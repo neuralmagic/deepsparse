@@ -17,6 +17,7 @@ Utilities for evaluation metric computation
 """
 
 
+from itertools import compress
 from typing import Any, Dict, List, Optional
 
 import numpy
@@ -89,10 +90,10 @@ class Perplexity:
             # with <PAD> tokens from the left side. We need to remove
             # them and zero-pad from the right side up to the length
             # of the longest sequence in the batch
-            encoded_batch = numpy.array(encoded_batch) * numpy.array(attention_mask)
+
             encoded_batch = [
-                list(filter(lambda num: num != 0, sequence))
-                for sequence in encoded_batch
+                list(compress(sequence, attn_mask))
+                for (sequence, attn_mask) in zip(encoded_batch, attention_mask)
             ]
             max_sequence_len = max([len(sequence) for sequence in encoded_batch])
 
