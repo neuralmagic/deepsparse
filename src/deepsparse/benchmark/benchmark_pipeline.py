@@ -19,7 +19,9 @@ import string
 import logging
 import random
 import os
-from typing import Dict
+from typing import Dict, List
+import time
+import numpy
 
 from deepsparse import __version__, compile_model
 from deepsparse import Pipeline
@@ -27,6 +29,7 @@ from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
+from deepsparse.utils.timer import StagedTimer
 from deepsparse.utils import (
     generate_random_inputs,
     model_to_path,
@@ -184,13 +187,13 @@ def benchmark_pipeline(
     batch_size: int = 1,
     num_cores: int = None,
     scenario: str = "sync",
-    time: int = 10,
+    seconds_to_run: int = 10,
     num_streams: int = None,
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
     quiet: bool = False,
     export_path: str = None,
-) -> Dict:
+) -> List[StagedTimer]:
     
     if quiet:
         set_logging_level(logging.WARN)
@@ -223,25 +226,42 @@ def benchmark_pipeline(
     _LOGGER.info(model)
     
     config = parse_input_config(input_config)
-
-    data_length = config['length']
-    num_examples = config['num_examples']
-    examples = []
-    if config['input_data_type'] == "string":
-        for _ in range(num_examples):
-            rand_string = ''.join(random.choices(string.printable, k=data_length))
-            examples.append(rand_string)
-    print(examples)
-
     pipeline = Pipeline.create(task=task, model_path=model_path)
-    output = pipeline(examples)
-    print(output)
 
-    return {}
+    input_data = []
+    if config['input_data_type'] == "string":
+        data_length = config['sequence_length']
+        for _ in range(batch_size):
+            rand_string = ''.join(random.choices(string.printable, k=data_length))
+            input_data.append(rand_string)
+        inputs = pipeline.input_schema(sequences=input_data)
+    elif config['input_data_type'] == "array":
+        image_shape = config["input_array_shape"]
+        dtype = config["input_array_dtype"]
+        for _ in range(batch_size):
+            if dtype == "uint8":
+                rand_array = numpy.random.randint(0,high=255, size=image_shape).astype(dtype)
+            rand_array = numpy.random.rand(*image_shape).astype(dtype)
+            input_data.append(rand_array)
+        inputs = pipeline.input_schema(images=input_data)
+
+    benchmark_end_time = time.perf_counter() + seconds_to_run
+    batch_timings = []
+    while time.perf_counter() < benchmark_end_time:
+        output = pipeline(inputs)
+        batch_timings.append(pipeline.timer_manager.latest)
+
+    return batch_timings
 
 
 def main():
     args = parse_args()
+
+    print("Original Model Path: {}".format(args.model_path))
+    print("Task: {}".format(args.task_name))
+    print("Input Type: {}".format(args.input_type))
+    print("Batch Size: {}".format(args.batch_size))
+    print("Scenario: {}".format(args.scenario))
 
     result = benchmark_pipeline(
         model_path=args.model_path,
@@ -251,7 +271,7 @@ def main():
         batch_size=args.batch_size,
         num_cores=args.num_cores,
         scenario=args.scenario,
-        time=args.time,
+        seconds_to_run=args.time,
         num_streams=args.num_streams,
         thread_pinning=args.thread_pinning,
         engine=args.engine,
@@ -260,11 +280,28 @@ def main():
     )
 
     # Results summary
-    print("Original Model Path: {}".format(args.model_path))
-    print("Task: {}".format(args.task_name))
-    print("Input Type: {}".format(args.input_type))
-    print("Batch Size: {}".format(args.batch_size))
-    print("Scenario: {}".format(args.scenario))
+    batches_processed = len(result)
+    total_time = sum(st.times['total_inference'] for st in result)
+    print("Processed {} batches in {} seconds".format(batches_processed, total_time))
+    throughput = round(batches_processed / total_time, 4)
+    print("Throughput: {} batches/sec".format(throughput))
+    total_pre_process = sum(st.times['pre_process'] for st in result)
+    total_post_process = sum(st.times['post_process'] for st in result)
+    total_engine_forward = sum(st.times['engine_forward'] for st in result)
+
+    avg_pre_process = round(total_pre_process / batches_processed * 1000, 4)
+    avg_post_process = round(total_post_process / batches_processed * 1000, 4)
+    avg_engine_forward = round(total_engine_forward / batches_processed * 1000, 4)
+
+    print("Average Pre-Process: {} ms".format(avg_pre_process))
+    print("Average Post-Process: {} ms".format(avg_post_process))
+    print("Average Engine Forward: {} ms".format(avg_engine_forward))
+
+    total_time = total_pre_process + total_post_process + total_engine_forward
+    percent_pre = round(total_pre_process / total_time * 100, 2)
+    percent_post = round(total_post_process / total_time * 100, 2)
+    percent_forward = round(total_engine_forward / total_time * 100, 2)
+    print("{}% Pre-processing, {}% Post-processing, {}% Inference".format(percent_pre, percent_post, percent_forward))
 
 
 if __name__ == "__main__":
