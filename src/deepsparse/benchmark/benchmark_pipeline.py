@@ -21,6 +21,7 @@ import random
 import os
 from typing import Dict
 
+from deepsparse import __version__, compile_model
 from deepsparse import Pipeline
 from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
@@ -180,6 +181,7 @@ def benchmark_pipeline(
     task: str,
     input_config: str,
     input_type: str = "dummy",
+    batch_size: int = 1,
     num_cores: int = None,
     scenario: str = "sync",
     time: int = 10,
@@ -189,6 +191,36 @@ def benchmark_pipeline(
     quiet: bool = False,
     export_path: str = None,
 ) -> Dict:
+    
+    if quiet:
+        set_logging_level(logging.WARN)
+
+    if num_cores is None:
+        num_cores = cpu_architecture().num_available_physical_cores
+
+    decide_thread_pinning(thread_pinning, _LOGGER)
+    scenario = parse_scenario(scenario.lower(), _LOGGER)
+    scheduler = parse_scheduler(scenario)
+    num_streams = parse_num_streams(num_streams, num_cores, scenario, _LOGGER)
+
+    # Compile the ONNX into a runnable model
+    if engine == DEEPSPARSE_ENGINE:
+        model = compile_model(
+            model=model_path,
+            batch_size=batch_size,
+            num_cores=num_cores,
+            num_streams=num_streams,
+            scheduler=scheduler,
+        )
+    elif engine == ORT_ENGINE:
+        model = ORTEngine(
+            model=model_path,
+            batch_size=batch_size,
+            num_cores=num_cores,
+        )
+    else:
+        raise ValueError(f"Invalid engine choice '{engine}'")
+    _LOGGER.info(model)
     
     config = parse_input_config(input_config)
 
@@ -215,7 +247,16 @@ def main():
         model_path=args.model_path,
         task=args.task_name,
         input_config = args.input_config,
-        input_type = args.input_type
+        input_type = args.input_type,
+        batch_size=args.batch_size,
+        num_cores=args.num_cores,
+        scenario=args.scenario,
+        time=args.time,
+        num_streams=args.num_streams,
+        thread_pinning=args.thread_pinning,
+        engine=args.engine,
+        quiet=args.quiet,
+        export_path=args.export_path,
     )
 
     # Results summary
