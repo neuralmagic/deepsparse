@@ -14,7 +14,6 @@
 
 import logging
 import os
-import warnings
 from dataclasses import dataclass
 from typing import Generator, List, Optional, Tuple, Type, Union
 
@@ -22,7 +21,6 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse import Pipeline
-from deepsparse.cpu import cpu_avx512_compatible
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
@@ -133,22 +131,16 @@ class TextGenerationPipeline(TransformersPipeline):
         **kwargs,
     ):
         kwargs_engine_type = kwargs.get("engine_type", DEEPSPARSE_ENGINE)
-        if not cpu_avx512_compatible() and kwargs_engine_type == DEEPSPARSE_ENGINE:
-            warnings.warn(
-                "AVX512 support not detected, disabling internal management "
-                "of KV cache which may affect performance. To enable full "
-                "performance, deploy on an AVX512-compatible system."
-            )
-            use_deepsparse_cache = False
 
         if use_deepsparse_cache:
             if kwargs_engine_type != DEEPSPARSE_ENGINE:
-                raise ValueError(
+                _LOGGER.warning(
                     "`use_deepsparse_cache` is set to True "
                     "but the chosen `engine_type` "
                     f"is {kwargs_engine_type}. "
-                    f"Make sure to set `engine_type` to {DEEPSPARSE_ENGINE}"
+                    f"The optimized kv cache management is disabled."
                 )
+                use_deepsparse_cache = False
 
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True

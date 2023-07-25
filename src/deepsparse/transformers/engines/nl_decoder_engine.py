@@ -82,7 +82,7 @@ class NLDecoderEngine:
             kv_cache_enabled = True
             if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
-                engine_args["cache_output_bools"] = output_indices_to_be_cached
+                engine_args["cached_outputs"] = output_indices_to_be_cached
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
@@ -100,6 +100,7 @@ class NLDecoderEngine:
         )
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
+        self._engine_type = engine_type
 
     @property
     def session_id(self) -> str:
@@ -135,6 +136,32 @@ class NLDecoderEngine:
         """
         return self.kv_cache.num_non_blank_entries
 
+    def run(self, inputs: List[numpy.ndarray], val_inp: bool) -> List[numpy.ndarray]:
+        """
+        Run the engine with the given inputs.
+
+        If the internal deepsparse kv cache management is enable,
+        the LIB.kv_cache class object will be passed to the engine
+        call as well.
+
+        :param inputs: The inputs to run the engine with
+        :param val_inp: Whether the input is for validation or not
+
+        :return: The output of the engine
+        """
+
+        if self.kv_cache is not None:
+            if self.kv_cache._kv_cache is not None:
+                if val_inp:
+                    self.engine._validate_inputs(inputs)
+                # model has kv cache support, as well as deepsparse
+                # internal management of the kv cache
+                return self.engine._eng_net.execute_list_out(
+                    inputs, self.kv_cache._kv_cache
+                )
+
+        return self.engine.run(inputs, val_inp)
+
     def __call__(
         self,
         inp: List[numpy.ndarray],
@@ -154,7 +181,7 @@ class NLDecoderEngine:
             # to the input
             inp = self.add_kv_cache_to_input(inp)
 
-        out = self.engine.run(inp, val_inp)
+        out = self.run(inp, val_inp)
 
         if self.kv_cache:
             logits, *kv_cache_state = out
