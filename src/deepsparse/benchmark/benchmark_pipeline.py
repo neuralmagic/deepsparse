@@ -13,29 +13,21 @@
 # limitations under the License.
 
 import argparse
-import importlib
 import json
 import string
 import logging
 import random
-import os
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import time
 import numpy
+import threading
+import queue
 
-from deepsparse import __version__, compile_model
+from deepsparse import __version__
 from deepsparse import Pipeline
-from deepsparse.benchmark.ort_engine import ORTEngine
-from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
 from deepsparse.utils.timer import StagedTimer
-from deepsparse.utils import (
-    generate_random_inputs,
-    model_to_path,
-    override_onnx_input_shapes,
-    parse_input_shapes,
-)
 from deepsparse.benchmark.helpers import (
     decide_thread_pinning,
     parse_scheduler,
@@ -142,19 +134,6 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "-e",
-        "--engine",
-        type=str,
-        default=DEEPSPARSE_ENGINE,
-        help=(
-            "Inference engine backend to run eval on. Choices are 'deepsparse', "
-            "'onnxruntime'. Default is 'deepsparse'. Can also specify a user "
-            "defined engine class by giving the script and class name in the "
-            "following format <path to python script>:<Engine Class name>. This "
-            "engine class will be dynamically imported during runtime"
-        ),
-    )
-    parser.add_argument(
         "-q",
         "--quiet",
         help="Lower logging verbosity",
@@ -171,9 +150,63 @@ def parse_args():
 
     return parser.parse_args()
 
+class PipelineExecutorThread(threading.Thread):
+    def __init__(
+        self,
+        pipeline: Pipeline,
+        inputs: List[any],
+        time_queue: queue.Queue,
+        max_time: float
+    ):
+        super(PipelineExecutorThread, self).__init__()
+        self._pipeline = pipeline
+        self._inputs = inputs
+        self._time_queue = time_queue
+        self._max_time = max_time
+
+    def run(self):
+        while time.perf_counter() < self._max_time:
+            output = self._pipeline(self._inputs)
+            self._time_queue.put(self._pipeline.timer_manager.latest)
 
 
-def parse_input_config(input_config_file: str) -> Dict[str, object]:
+def singlestream_benchmark(
+    pipeline: Pipeline,
+    inputs: List[any],
+    seconds_to_run: float
+) -> List[StagedTimer]:
+    benchmark_end_time = time.perf_counter() + seconds_to_run
+    batch_timings = []
+    while time.perf_counter() < benchmark_end_time:
+        output = pipeline(inputs)
+        batch_timings.append(pipeline.timer_manager.latest)
+
+    return batch_timings
+
+def multistream_benchmark(
+    pipeline: Pipeline,
+    inputs: List[any],
+    seconds_to_run: float,
+    num_streams: int,
+) -> List[StagedTimer]:
+    time_queue = queue.Queue()
+    max_time = time.perf_counter() + seconds_to_run
+    threads = []
+
+    # Sara TODO: should these all be sharing the same pipeline?
+    for thread in range(num_streams):
+        threads.append(PipelineExecutorThread(pipeline, inputs, time_queue, max_time))
+
+    for thread in threads:
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    return list(time_queue.queue)
+
+
+def parse_input_config(input_config_file: str) -> Dict[str, any]:
     config_file = open(input_config_file)
     config = json.load(config_file)
     config_file.close()
@@ -190,10 +223,9 @@ def benchmark_pipeline(
     seconds_to_run: int = 10,
     num_streams: int = None,
     thread_pinning: str = "core",
-    engine: str = DEEPSPARSE_ENGINE,
     quiet: bool = False,
     export_path: str = None,
-) -> List[StagedTimer]:
+) -> Tuple[List[StagedTimer],float] :
     
     if quiet:
         set_logging_level(logging.WARN)
@@ -205,25 +237,6 @@ def benchmark_pipeline(
     scenario = parse_scenario(scenario.lower(), _LOGGER)
     scheduler = parse_scheduler(scenario)
     num_streams = parse_num_streams(num_streams, num_cores, scenario, _LOGGER)
-
-    # Compile the ONNX into a runnable model
-    if engine == DEEPSPARSE_ENGINE:
-        model = compile_model(
-            model=model_path,
-            batch_size=batch_size,
-            num_cores=num_cores,
-            num_streams=num_streams,
-            scheduler=scheduler,
-        )
-    elif engine == ORT_ENGINE:
-        model = ORTEngine(
-            model=model_path,
-            batch_size=batch_size,
-            num_cores=num_cores,
-        )
-    else:
-        raise ValueError(f"Invalid engine choice '{engine}'")
-    _LOGGER.info(model)
     
     config = parse_input_config(input_config)
     pipeline = Pipeline.create(task=task, model_path=model_path)
@@ -245,14 +258,39 @@ def benchmark_pipeline(
             input_data.append(rand_array)
         inputs = pipeline.input_schema(images=input_data)
 
-    benchmark_end_time = time.perf_counter() + seconds_to_run
-    batch_timings = []
-    while time.perf_counter() < benchmark_end_time:
-        output = pipeline(inputs)
-        batch_timings.append(pipeline.timer_manager.latest)
+    start_time = time.perf_counter()
+    if scenario == "singlestream":
+        batch_times = singlestream_benchmark(pipeline, inputs, seconds_to_run)
+    elif scenario == "multistream":
+        batch_times = multistream_benchmark(pipeline, inputs, seconds_to_run, num_streams)
+    elif scenario == "elastic":
+        batch_times = multistream_benchmark(pipeline, inputs, seconds_to_run, num_streams)
+    else:
+        raise Exception(f"Unknown scenario '{scenario}'")
 
-    return batch_timings
+    if len(batch_times) == 0:
+        raise Exception(
+            "Generated no batch timings, try extending benchmark time with '--time'"
+        )
+    end_time = time.perf_counter()
+    total_run_time = end_time - start_time
 
+    return batch_times, total_run_time
+
+def calculate_statistics(batch_times_ms: List[float]) -> Dict:
+    percentiles = [25.0, 50.0, 75.0, 90.0, 95.0, 99.0, 99.9]
+    buckets = numpy.percentile(batch_times_ms, percentiles).tolist()
+    percentiles_dict = {
+        "{:2.1f}%".format(key): value for key, value in zip(percentiles, buckets)
+    }
+
+    benchmark_dict = {
+        "median": numpy.median(batch_times_ms),
+        "mean": numpy.mean(batch_times_ms),
+        "std": numpy.std(batch_times_ms),
+        **percentiles_dict,
+    }
+    return benchmark_dict
 
 def main():
     args = parse_args()
@@ -263,7 +301,7 @@ def main():
     print("Batch Size: {}".format(args.batch_size))
     print("Scenario: {}".format(args.scenario))
 
-    result = benchmark_pipeline(
+    batch_times, total_run_time = benchmark_pipeline(
         model_path=args.model_path,
         task=args.task_name,
         input_config = args.input_config,
@@ -274,35 +312,46 @@ def main():
         seconds_to_run=args.time,
         num_streams=args.num_streams,
         thread_pinning=args.thread_pinning,
-        engine=args.engine,
         quiet=args.quiet,
         export_path=args.export_path,
     )
 
-    # Results summary
-    batches_processed = len(result)
-    total_time = sum(st.times['total_inference'] for st in result)
-    print("Processed {} batches in {} seconds".format(batches_processed, total_time))
-    throughput = round(batches_processed / total_time, 4)
-    print("Throughput: {} batches/sec".format(throughput))
-    total_pre_process = sum(st.times['pre_process'] for st in result)
-    total_post_process = sum(st.times['post_process'] for st in result)
-    total_engine_forward = sum(st.times['engine_forward'] for st in result)
+    pre_process_times = [st.times['pre_process'] * 1000 for st in batch_times]
+    pre_stats = calculate_statistics(pre_process_times)
+    post_process_times = [st.times['post_process'] * 1000 for st in batch_times]
+    post_stats = calculate_statistics(post_process_times)
+    engine_forward_times = [st.times['engine_forward'] * 1000 for st in batch_times]
+    forward_stats = calculate_statistics(engine_forward_times)
 
-    avg_pre_process = round(total_pre_process / batches_processed * 1000, 4)
-    avg_post_process = round(total_post_process / batches_processed * 1000, 4)
-    avg_engine_forward = round(total_engine_forward / batches_processed * 1000, 4)
+    items_per_sec = (len(batch_times) * args.batch_size) / total_run_time
 
-    print("Average Pre-Process: {} ms".format(avg_pre_process))
-    print("Average Post-Process: {} ms".format(avg_post_process))
-    print("Average Engine Forward: {} ms".format(avg_engine_forward))
-
+    total_pre_process = sum(pre_process_times)
+    total_post_process = sum(post_process_times)
+    total_engine_forward = sum(engine_forward_times)
     total_time = total_pre_process + total_post_process + total_engine_forward
-    percent_pre = round(total_pre_process / total_time * 100, 2)
-    percent_post = round(total_post_process / total_time * 100, 2)
-    percent_forward = round(total_engine_forward / total_time * 100, 2)
-    print("{}% Pre-processing, {}% Post-processing, {}% Inference".format(percent_pre, percent_post, percent_forward))
+    percent_pre = total_pre_process / total_time * 100
+    percent_post = total_post_process / total_time * 100
+    percent_forward = total_engine_forward / total_time * 100
 
+    export_dict = {
+        "scenario": args.scenario,
+        "items_per_sec": items_per_sec,
+        "seconds_ran": total_run_time,
+        "iterations": len(batch_times),
+        "percent_pre": percent_pre,
+        "percent_post": percent_post,
+        "percent_forward": percent_forward,
+        "pre_stats": pre_stats,
+        "post_stats": post_stats,
+        "forward_stats": forward_stats
+    }
+
+    # Export results
+    export_path = args.export_path
+    if export_path:
+        _LOGGER.info("Saving benchmark results to JSON file at {}".format(export_path))
+        with open(export_path, "w") as out:
+            json.dump(export_dict, out, indent=2)
 
 if __name__ == "__main__":
     main()
