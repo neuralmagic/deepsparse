@@ -61,7 +61,7 @@ class CLIPCaptionPipeline(BasePipeline):
         num_beams: int = 6,
         num_beam_groups: int = 3,
         min_seq_len: int = 5,
-        seq_len: int = 20,
+        seq_len: int = 30,
         fixed_output_length: bool = False,
         **kwargs,
     ):
@@ -82,8 +82,7 @@ class CLIPCaptionPipeline(BasePipeline):
         )
 
     # TODO: have to verify all input types
-    def _encode_and_decode(self, text, image_embs):
-        # TODO: double check text length on this
+    def _encode_and_decode(self, text, image_embs, min_dim):
         text_embeddings = self.text(CLIPTextInput(text=text.numpy())).text_embeddings
         _, text_embs = text_embeddings[0], text_embeddings[1]
 
@@ -91,9 +90,9 @@ class CLIPCaptionPipeline(BasePipeline):
             CLIPDecoderInput(
                 image_embeddings=image_embs.numpy(), text_embeddings=text_embs
             )
-        ).logits[0]
+        ).logits
         return {
-            "logits": torch.Tensor(logits),
+            "logits": torch.Tensor(logits[0]),
         }
 
     # Adapted from open_clip
@@ -103,6 +102,7 @@ class CLIPCaptionPipeline(BasePipeline):
         eos_token_id = 49407
         pad_token_id = 0
         repetition_penalty = 1.0
+        device = "cpu"
 
         stopping_criteria = [MaxLengthCriteria(max_length=self.seq_len)]
         stopping_criteria = StoppingCriteriaList(stopping_criteria)
@@ -121,18 +121,17 @@ class CLIPCaptionPipeline(BasePipeline):
             torch.Tensor(image_embs), self.num_beams, dim=0
         )
 
-        input_ids = torch.ones((batch_size * self.num_beams, 1), dtype=torch.long)
+        input_ids = torch.ones(
+            (batch_size * self.num_beams, 1), device=device, dtype=torch.long
+        )
         input_ids = input_ids * sot_token_id
-
-        # Set-up the beam search scorer
         beam_scorer = BeamSearchScorer(
             batch_size=batch_size,
             num_beams=self.num_beams,
-            device="cpu",
+            device=device,
             num_beam_groups=self.num_beam_groups,
         )
 
-        # Overwriting the num_beams and num_bean_groups?
         batch_size = len(beam_scorer._beam_hyps)
         num_beams = beam_scorer.num_beams
         num_beam_groups = beam_scorer.num_beam_groups
@@ -143,11 +142,12 @@ class CLIPCaptionPipeline(BasePipeline):
         if num_beams * batch_size != batch_beam_size:
             raise ValueError(
                 f"Batch dimension of `input_ids` should be {num_beams * batch_size}, "
-                f"but is {batch_beam_size}."
+                f" but is {batch_beam_size}."
             )
 
-        # Creates a tensor of the size with -1e9 values
-        beam_scores = torch.full((batch_size, num_beams), -1e9, dtype=torch.float)
+        beam_scores = torch.full(
+            (batch_size, num_beams), -1e9, dtype=torch.float, device=device
+        )
         # initialise score of first beam of each group with 0 and the rest with 1e-9.
         # This ensures that the beams in the same group don't produce same tokens
         # everytime.
@@ -155,11 +155,16 @@ class CLIPCaptionPipeline(BasePipeline):
         beam_scores = beam_scores.view((batch_size * num_beams,))
 
         while True:
+
             # predicted tokens in cur_len step
-            current_tokens = torch.zeros(batch_size * num_beams, dtype=input_ids.dtype)
+            current_tokens = torch.zeros(
+                batch_size * num_beams, dtype=input_ids.dtype, device=device
+            )
 
             # indices which will form the beams in the next time step
-            reordering_indices = torch.zeros(batch_size * num_beams, dtype=torch.long)
+            reordering_indices = torch.zeros(
+                batch_size * num_beams, dtype=torch.long, device=device
+            )
 
             current_dim_input_ids = input_ids.shape[-1]
             model_inputs_text = F.pad(
@@ -168,10 +173,8 @@ class CLIPCaptionPipeline(BasePipeline):
                 "constant",
                 pad_token_id,
             )
-
             outputs = self._encode_and_decode(
-                text=model_inputs_text,
-                image_embs=image_embs,
+                text=model_inputs_text, image_embs=image_embs
             )
 
             for beam_group_idx in range(num_beam_groups):
@@ -282,7 +285,6 @@ class CLIPCaptionPipeline(BasePipeline):
             )
 
         output = self._generate(pipeline_inputs)
-
         output = (
             open_clip.decode(output[0])
             .split("<end_of_text>")[0]

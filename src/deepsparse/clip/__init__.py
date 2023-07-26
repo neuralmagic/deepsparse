@@ -11,14 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# flake8: noqa
 
 from deepsparse.clip.captioning_pipeline import (
     CLIPCaptionInput,
     CLIPCaptionOutput,
     CLIPCaptionPipeline,
 )
-
-# flake8: noqa
 from deepsparse.clip.decoder_pipeline import (
     CLIPDecoderInput,
     CLIPDecoderOutput,
