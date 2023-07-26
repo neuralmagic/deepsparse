@@ -84,11 +84,11 @@ class CLIPTextPipeline(Pipeline):
         :param inputs: CLITextInput
         :return: list of preprocessed numpy arrays
         """
-        if isinstance(inputs.text, str) or isinstance(inputs.text, np.array):
+        if not isinstance(inputs.text, list):
             inputs.text = [inputs.text]
 
         # If passing in an array, part of the captioning pipeline. No need to tokenize
-        if isinstance(inputs.text[0], np.array):
+        if not isinstance(inputs.text[0], str):
             return inputs.text
 
         tokens = self.tokenizer(inputs.text)

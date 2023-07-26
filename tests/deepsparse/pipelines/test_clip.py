@@ -15,6 +15,8 @@
 import pytest
 from deepsparse import BasePipeline, Pipeline
 from deepsparse.clip import (
+    CLIPCaptionInput,
+    CLIPCaptionPipeline,
     CLIPTextInput,
     CLIPTextOutput,
     CLIPTextPipeline,
@@ -87,3 +89,19 @@ def test_zero_shot(engine, visual_input, text_input):
     )
     output = pipeline(pipeline_input)
     assert isinstance(output, CLIPZeroShotOutput)
+
+
+@mock_engine(rng_seed=0)
+def test_caption(engine, visual_input):
+    model_path_visual = "clip_onnx_caption/clip_visual.onnx"
+    model_path_text = "clip_onnx_caption/clip_text.onnx"
+    model_path_decoder = "clip_onnx_caption/clip_text_decoder.onnx"
+    pipeline_input = CLIPCaptionInput(image=CLIPVisualInput(images="cat.jpg"))
+    kwargs = {
+        "visual_model_path": model_path_visual,
+        "text_model_path": model_path_text,
+        "decoder_model_path": model_path_decoder,
+    }
+    pipeline = BasePipeline.create(task="clip_caption", **kwargs)
+    assert isinstance(pipeline, CLIPCaptionPipeline)
+    output = pipeline(pipeline_input)

@@ -97,7 +97,7 @@ class CLIPVisualPipeline(Pipeline):
         :param inputs: CLIPVisualInput
         :return: list of preprocessed numpy arrays
         """
-        if isinstance(inputs.images, str) or isinstance(inputs.images, np.array):
+        if not isinstance(inputs.images, list):
             inputs.images = [inputs.images]
 
         def _process_image(image) -> np.array:
@@ -122,8 +122,9 @@ class CLIPVisualPipeline(Pipeline):
             return np.ascontiguousarray(image_array, dtype=np.float32)
 
         batch = list(self.executor.map(_process_image, inputs.images))
-        batch = np.stack(batch, axis=0)
-        return [batch]
+        if batch[0].ndim == 3:
+            batch = [np.stack(batch, axis=0)]
+        return batch
 
     def process_engine_outputs(
         self, engine_outputs: List[np.array]

@@ -29,12 +29,8 @@ class CLIPDecoderInput(BaseModel):
     Input for the CLIP Decoder Branch
     """
 
-    text_embeddings: List[Any] = Field(
-        description="Text emebddings from the text branch"
-    )
-    image_embeddings: List[Any] = Field(
-        description="Image embeddings from the visual branch"
-    )
+    text_embeddings: Any = Field(description="Text emebddings from the text branch")
+    image_embeddings: Any = Field(description="Image embeddings from the visual branch")
 
 
 class CLIPDecoderOutput(BaseModel):

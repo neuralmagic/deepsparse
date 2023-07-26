@@ -19,14 +19,15 @@ from transformers import (
     LogitsProcessorList,
     MaxLengthCriteria,
     MinLengthLogitsProcessor,
+    RepetitionPenaltyLogitsProcessor,
     StoppingCriteriaList,
 )
 
+import open_clip
 import torch
 import torch.nn.functional as F
 from deepsparse.clip import CLIPDecoderInput, CLIPTextInput, CLIPVisualInput
 from deepsparse.pipeline import BasePipeline, Pipeline
-from open_clip.coca_model import prepare_inputs_for_generation
 
 
 __all__ = ["CLIPCaptionInput", "CLIPCaptionOutput", "CLIPCaptionPipeline"]
@@ -60,7 +61,7 @@ class CLIPCaptionPipeline(BasePipeline):
         num_beams: int = 6,
         num_beam_groups: int = 3,
         min_seq_len: int = 5,
-        seq_len: int = 30,
+        seq_len: int = 20,
         fixed_output_length: bool = False,
         **kwargs,
     ):
@@ -81,56 +82,54 @@ class CLIPCaptionPipeline(BasePipeline):
         )
 
     # TODO: have to verify all input types
-    def _encode_and_decode(self, image, text, image_latent, image_embs):
-        text_latent, text_embs = self.text(CLIPTextInput(text=text[:, :-1]))[0]
-        text_latent = F.normalize(text_latent, dim=-1)
-        image_latent, image_embs = self.visual(CLIPVisualInput(image=image))[0]
-        image_latent = F.normalize(image_latent, dim=-1)
+    def _encode_and_decode(self, text, image_embs):
+        # TODO: double check text length on this
+        text_embeddings = self.text(CLIPTextInput(text=text.numpy())).text_embeddings
+        _, text_embs = text_embeddings[0], text_embeddings[1]
 
-        labels = text[:, -text_embs.shape[1] :]
         logits = self.decoder(
-            CLIPDecoderInput(image_embeddings=image_embs, text_embeddings=text_embs)
+            CLIPDecoderInput(
+                image_embeddings=image_embs.numpy(), text_embeddings=text_embs
+            )
         ).logits[0]
         return {
-            "image_features": image_latent,
-            "text_features": text_latent,
-            "logits": logits,
-            "labels": labels,
+            "logits": torch.Tensor(logits),
         }
 
     # Adapted from open_clip
     def _generate(self, pipeline_inputs):
-        batch_size = 1
-        image_inputs = torch.repeat_interleave(
-            pipeline_inputs.image.images, self.num_beams, dim=0
-        )
-        image_latent, image_embs = self.visual(
-            CLIPVisualInput(image=image_inputs)
-        ).image_embeddings[0]
-        # Should return a tuple, whereas visual models for zeroshot return just the
-        # pooled outputs
-
         # Make these input values?
         sot_token_id = 49406
         eos_token_id = 49407
         pad_token_id = 0
-
-        input_ids = torch.ones((batch_size * self.num_beams, 1), dtype=torch.long)
-        input_ids = input_ids * sot_token_id
+        repetition_penalty = 1.0
 
         stopping_criteria = [MaxLengthCriteria(max_length=self.seq_len)]
         stopping_criteria = StoppingCriteriaList(stopping_criteria)
 
+        logits_processor = LogitsProcessorList(
+            [
+                MinLengthLogitsProcessor(self.min_seq_len, eos_token_id),
+                RepetitionPenaltyLogitsProcessor(repetition_penalty),
+            ]
+        )
+
+        batch_size = 1
+        visual_output = self.visual(pipeline_inputs.image).image_embeddings
+        _, image_embs = visual_output[0], visual_output[1]
+        image_embs = torch.repeat_interleave(
+            torch.Tensor(image_embs), self.num_beams, dim=0
+        )
+
+        input_ids = torch.ones((batch_size * self.num_beams, 1), dtype=torch.long)
+        input_ids = input_ids * sot_token_id
+
         # Set-up the beam search scorer
         beam_scorer = BeamSearchScorer(
-            batch_size=1,
+            batch_size=batch_size,
             num_beams=self.num_beams,
             device="cpu",
             num_beam_groups=self.num_beam_groups,
-        )
-
-        logits_processor = LogitsProcessorList(
-            [MinLengthLogitsProcessor(self.min_seq_len, eos_token_id=eos_token_id)]
         )
 
         # Overwriting the num_beams and num_bean_groups?
@@ -161,15 +160,17 @@ class CLIPCaptionPipeline(BasePipeline):
 
             # indices which will form the beams in the next time step
             reordering_indices = torch.zeros(batch_size * num_beams, dtype=torch.long)
-            model_inputs = prepare_inputs_for_generation(
-                input_ids=input_ids, image_inputs=image_inputs
+
+            current_dim_input_ids = input_ids.shape[-1]
+            model_inputs_text = F.pad(
+                input_ids,
+                (0, self.seq_len - current_dim_input_ids),
+                "constant",
+                pad_token_id,
             )
 
             outputs = self._encode_and_decode(
-                model_inputs["images"],
-                model_inputs["text"],
-                embed_cls=False,
-                image_latent=image_latent,
+                text=model_inputs_text,
                 image_embs=image_embs,
             )
 
@@ -281,6 +282,13 @@ class CLIPCaptionPipeline(BasePipeline):
             )
 
         output = self._generate(pipeline_inputs)
+
+        output = (
+            open_clip.decode(output[0])
+            .split("<end_of_text>")[0]
+            .replace("<start_of_text>", "")
+        )
+        print(output)
         return self.output_schema(caption=[output])
 
     @property
