@@ -58,7 +58,7 @@ def pad_to_fixed_length(
 def create_causal_mask(
     input_ids: Union[numpy.ndarray, List[int]],
     attention_mask: Union[numpy.ndarray, List[int]],
-    dtype: numpy.dtype = numpy.bool_,
+    dtype: numpy.dtype = numpy.int64,
 ) -> numpy.ndarray:
     """
     Compute a causal from a set of module inputs.

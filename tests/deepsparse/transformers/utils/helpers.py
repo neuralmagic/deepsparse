@@ -84,6 +84,4 @@ from deepsparse.transformers.utils.helpers import create_causal_mask
 )
 def test_create_causal_mask(input_ids, attention_mask, expected_causal_mask):
     causal_mask = create_causal_mask(input_ids, attention_mask)
-    assert numpy.array_equal(
-        causal_mask, expected_causal_mask[None, None, ...].astype(numpy.bool_)
-    )
+    assert numpy.array_equal(causal_mask, expected_causal_mask[None, None, ...])
