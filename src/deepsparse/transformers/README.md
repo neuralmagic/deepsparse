@@ -148,7 +148,7 @@ OPT model to complete the prompt.
 Please note, that to take the full advantage of the speedups provided by the DeepSparse Engine, it is essential to run inference using a model with the KV cache support. 
 If you are using one of the pre-sparsified models from SparseZoo ([list of available SparseZoo Text Generation Models](
 https://sparsezoo.neuralmagic.com/?useCase=text_generation)), you will automatically benefit from the KV cache support speedups.
-However, if you are sparsifying your custom model, you may want to add the KV cache support to your model. This will be extremely beneficial when it comes to the inference speed.
+However, if you are sparsifying your custom neural network, you may want to add the KV cache support to your model. This will be extremely beneficial when it comes to inference speed.
 
 For more details, please refer to the [SparseML documentation on KV cache injection](https://github.com/neuralmagic/sparseml/src/sparseml/exporters/README.md)
 
