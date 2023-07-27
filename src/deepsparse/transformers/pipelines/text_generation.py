@@ -393,7 +393,7 @@ class TextGenerationPipeline(TransformersPipeline):
         if len(tokens) > self.prompt_processing_sequence_length:
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
-                num_tokens_processed = self.prompt_processing_sequence_length
+                num_tokens_processed += self.prompt_processing_sequence_length
                 prompt_logits.append(new_logits)
 
         if num_tokens_processed:
@@ -523,11 +523,16 @@ class TextGenerationPipeline(TransformersPipeline):
                     # delay creation of the causal mask
                     continue
                 elif name == "positions":
-                    engine_input = (
-                        numpy.arange(self.prompt_processing_sequence_length)
-                        .reshape(1, -1)
-                        .astype(numpy.int64)
-                    )
+                    if self.prompt_processing_sequence_length == 1:
+                        # we need to treat `positions` as if we were in
+                        # the autoregressive mode
+                        engine_input = numpy.array([[idx]], dtype=numpy.int64)
+                    else:
+                        engine_input = (
+                            numpy.arange(self.prompt_processing_sequence_length)
+                            .reshape(1, -1)
+                            .astype(numpy.int64)
+                        )
 
                 engine_inputs.append(engine_input)
 

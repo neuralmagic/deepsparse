@@ -204,7 +204,7 @@ class DecoderKVCache:
             state = self._add_entries(state, indices=indices)
 
         else:
-            pass
+            return
 
         self._state = state
 
