@@ -84,7 +84,7 @@ SUPPORTED_DATASET_CONFIGS = ["coco128.yaml", "coco.yaml", "coco128-seg.yaml"]
 @click.option(
     "--subtask",
     default="detection",
-    type=click.Choice(["detection", "classification", "segmentation"]),
+    type=click.Choice(["detection", "segmentation"]),
     show_default=True,
     help="A subtask of YOLOv8 to run. Default is `detection`.",
 )
