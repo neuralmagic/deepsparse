@@ -94,6 +94,7 @@ class TextGenerationOutput(BaseModel):
 @Pipeline.register(
     task="text_generation",
     task_aliases=["codegen", "opt", "bloom"],
+    default_model_path="zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/pretrained/pruned50_quant-none",  # noqa E501
 )
 class TextGenerationPipeline(TransformersPipeline):
     """

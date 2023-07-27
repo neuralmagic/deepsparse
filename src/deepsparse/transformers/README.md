@@ -71,7 +71,7 @@ of the sparsified transformers model.
 
 If no model is specified to the `Pipeline` for a given task, the `Pipeline` will automatically
 select a pruned and quantized model for the task from the `SparseZoo` that can be used for accelerated
-inference. Note that other models in the SparseZoo will have different tradeoffs between speed, size,
+inference. Note that other models in the SparseZoo gwill have different tradeoffs between speed, size,
 and accuracy.
 
 ### HTTP Server
@@ -139,23 +139,28 @@ response.text
 >> '{"score":0.9534820914268494,"start":8,"end":14,"answer":"batman"}'
 ```
 
-### Text Generation
-The text generation task generates a sequence of tokens given the prompt. Popular text generation LLMs (Large Language Models) are used
+### Text Generation 
+The text generation task generates a sequence of tokens given the prompt. Popular text generation Large Language Models (LLMs) are used
 for the chatbots (the instruction models), code generation, text summarization, or filling out the missing text. The following example uses a sparsified text classification
-OPT model to complete the prompt
+OPT model to complete the prompt.
 
-[List of available SparseZoo Text Generation Models](
-https://sparsezoo.neuralmagic.com/?useCase=text_generation)
+#### KV Cache Injection
+Please note, that to take the full advantage of the speedups provided by the DeepSparse Engine, it is essential to run inference using a model with the KV cache support. 
+If you are using one of the pre-sparsified models from SparseZoo ([list of available SparseZoo Text Generation Models](
+https://sparsezoo.neuralmagic.com/?useCase=text_generation)), you will automatically benefit from the KV cache support speedups.
+However, if you are sparsifying your custom model, you may want to add the KV cache support to your model. This will be extremely beneficial when it comes to the inference speed.
+
+For more details, please refer to the [SparseML documentation on KV cache injection](...)
 
 #### Python Pipeline
 ```python
 from deepsparse import Pipeline
 
-opt_pipeline = Pipeline.create(task="opt")
+opt_pipeline = Pipeline.create(task="opt", max_generated_tokens=32)
 
 inference = opt_pipeline("Who is the president of the United States?")
 
->> 'The president of the United States is the head of the executive branch of government...'
+>> 'The president of the United States is the head of the executive branch of government...' #TODO: Waiting for a good stub to use
 ```
 
 #### HTTP Server
@@ -163,7 +168,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     task text-generation \
-    --model_path # TODO: Pending until text generation models get uploaded to SparseZoo
+    --model_path zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/pretrained/pruned50_quant-none #TODO: Waiting for a good stub to use
 ```
 
 Making a request:
@@ -177,7 +182,7 @@ obj = {"sequence": "Who is the president of the United States?"}
 response = requests.post(url, json=obj)
 response.text
 
->> 'The president of the United States is the head of the executive branch of government...'
+>> 'The president of the United States is the head of the executive branch of government...' #TODO: Waiting for a good stub to use
 ```
 
 ### Sentiment Analysis
