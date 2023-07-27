@@ -45,6 +45,9 @@ _LOGGER = logging.getLogger(__name__)
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
+DEFAULT_STRING_LENGTH = 50
+DEFAULT_IMAGE_SHAPE = (240, 240, 3)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -212,22 +215,40 @@ def parse_input_config(input_config_file: str) -> Dict[str, any]:
     config_file.close()
     return config
 
+def get_files_with_endings(folder:str, num_files: int, recursive: bool, file_endings: List[str]) -> List[str]:
+    files = []
+    for f in glob.glob(folder + "/**", recursivere=recursive):
+        if f.lower().endswith(file_endings):
+            files.append(f)
+    if len(files) < num_files:
+        raise Exception("Not enough images found in {}".format(folder))
+    return random.sample(files, num_files)
+
+def generate_sentence(string_length: int, avg_word_length: int = 5):
+    random_chars = ''.join(random.choices(string.ascii_letters, k=string_length))
+    space_locations = random.sample(range(string_length), int(string_length / avg_word_length))
+    random_chars = list(random_chars)
+    for loc in space_locations:
+        random_chars[loc] = ' '
+    return ''.join(random_chars)
+
 def get_input_schema_type(pipeline: Pipeline) -> str:
-    input_schema_requirements = list(pipeline.input_schema.__annotations__.keys())
-    image_requirements = ["images"]
-    basic_text_requirements = ["sequences"]
-    question_requirements = ["question", "context", "id"]
-    text_generation_requirements = ["sequences", "return_logits", "session_id", "fixed_sequences_length"]
+    input_schema_requirements = list(pipeline.input_schema.__fields__.keys())
+    input_schema_fields = pipeline.input_schema.__fields__
 
-    if input_schema_requirements == image_requirements or "YOLO" in pipeline.input_schema.__name__:
+    if "images" in input_schema_requirements:
         return "image"
-    elif input_schema_requirements == basic_text_requirements:
-        return "text"
-    elif input_schema_requirements == question_requirements:
+    if "sequences" in input_schema_requirements:
+        sequence_types = [f.outer_type_ for f in input_schema_fields['sequences'].sub_fields]
+        if List[str] in sequence_types:
+            return "text_sequence"
+    elif "inputs" in input_schema_requirements:
+        sequence_types = [f.outer_type_ for f in input_schema_fields['inputs'].sub_fields]
+        if List[str] in sequence_types:
+            return "text_inputs"
+    elif "question" in input_schema_requirements:
         return "question"
-    elif input_schema_requirements == text_generation_requirements:
-        return "text_generation"
-
+    
     raise Exception("Unknown schema requirement {}".format(input_schema_requirements))
 
 def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
@@ -235,7 +256,7 @@ def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
     if "input_image_shape" in config and len(config["input_image_shape"]) == 3:
         image_shape = config["input_image_shape"]
     else:
-        image_shape = (240, 240, 3)
+        image_shape = DEFAULT_IMAGE_SHAPE
         _LOGGER.warning("Using default image shape {}".format(image_shape))
 
     for _ in range(batch_size):
@@ -247,22 +268,14 @@ def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
 def load_image_data(config: Dict, batch_size: int) -> List[str]:
     path_to_data = config["data_folder"]
     recursive_search = config["recursive_search"]
-    files = []
-    for f in glob.glob(path_to_data + "/**", recursive=recursive_search):
-        if f.lower().endswith(".jpeg"):
-            files.append(f)
-    if len(files) < batch_size:
-        raise Exception("Not enough images found in {}".format(path_to_data))
-    input_data = random.sample(files, batch_size)
-
-    return input_data
+    return get_files_with_endings(path_to_data, batch_size, recursive_search, [".jpg", ".jpeg", ".gif"])
 
 def generate_text_data(config: Dict, batch_size: int) -> List[str]:
     input_data = []
     if 'gen_sequence_length' in config:
         string_length = config['gen_sequence_length']
     else:
-        string_length = 100
+        string_length = DEFAULT_STRING_LENGTH
         _LOGGER.warning("Using default string length {}".format(string_length))
     for _ in range(batch_size):
         rand_sentence = generate_sentence(string_length)
@@ -273,13 +286,7 @@ def generate_text_data(config: Dict, batch_size: int) -> List[str]:
 def load_text_data(config: Dict, batch_size: int) -> List[str]:
     path_to_data = config["data_folder"]
     recursive_search = config["recursive_search"]
-    files = []
-    for f in glob.glob(path_to_data + "/**", recursive=recursive_search):
-        if f.lower().endswith(".txt"):
-            files.append(f)
-    if len(files) < batch_size:
-        raise Exception("Not enough images found in {}".format(path_to_data))
-    input_files = random.sample(files, batch_size)
+    input_files = get_files_with_endings(path_to_data, batch_size, recursive_search, [".txt"])
     if "max_string_length" in config:
         max_string_length = config["max_string_length"]
     else:
@@ -293,19 +300,11 @@ def load_text_data(config: Dict, batch_size: int) -> List[str]:
         input_data.append(text_data[:max_string_length])
     return input_data
 
-def generate_sentence(string_length: int, avg_word_length: int = 5):
-    random_chars = ''.join(random.choices(string.ascii_letters, k=string_length))
-    space_locations = random.sample(range(string_length), int(string_length / avg_word_length))
-    random_chars = list(random_chars)
-    for loc in space_locations:
-        random_chars[loc] = ' '
-    return ''.join(random_chars)
-
 def generate_question_data(config: Dict) -> Tuple[str, str]:
     if 'gen_sequence_length' in config:
         string_length = config['gen_sequence_length']
     else:
-        string_length = 100
+        string_length = DEFAULT_STRING_LENGTH
         _LOGGER.warning("Using default string length {}".format(string_length))
     question = generate_sentence(string_length)
     context = generate_sentence(string_length)
@@ -348,39 +347,43 @@ def benchmark_pipeline(
     
     config = parse_input_config(input_config)
     input_type = config["data_type"]
-    pipeline = Pipeline.create(task=task, model_path=model_path)
+    kwargs = {}
+    if "pipeline_kwargs" in config:
+        kwargs = config["pipeline_kwargs"]
+    pipeline = Pipeline.create(task=task, model_path=model_path, **kwargs)
     input_schema_requirement = get_input_schema_type(pipeline)
+    kwargs = {}
+    if "input_schema_kwargs" in config:
+        kwargs = config["input_schema_kwargs"]
 
     if input_type == "dummy":
         if input_schema_requirement == "image":
             input_data = generate_image_data(config, batch_size)
-            inputs = pipeline.input_schema(images=input_data)
-        elif input_schema_requirement == "text":
+            inputs = pipeline.input_schema(images=input_data, **kwargs)
+        elif input_schema_requirement == "text_sequence":
             input_data = generate_text_data(config, batch_size)
-            inputs = pipeline.input_schema(sequences=input_data)
+            inputs = pipeline.input_schema(sequences=input_data, **kwargs)
+        elif input_schema_requirement == "text_inputs":
+            input_data = generate_text_data(config, batch_size)
+            inputs = pipeline.input_schema(inputs=input_data, **kwargs)
         elif input_schema_requirement == "question":
             _LOGGER.warn("Only batch size of 1 supported for Question Answering Pipeline")
             question, context = generate_question_data(config)
-            inputs = pipeline.input_schema(question=question, context=context)
-        elif input_schema_requirement == "text_generation":
-            seqs = generate_text_data(config, batch_size)
-            fix_len = config["fix_sequence_length"]
-            inputs = pipeline.input_schema(sequences=seqs, return_logits=False, session_id=None, fixed_sequences_length=fix_len)
+            inputs = pipeline.input_schema(question=question, context=context, **kwargs)
     elif input_type == "real":
         if input_schema_requirement == "image":
             input_data = load_image_data(config, batch_size)
-            inputs = pipeline.input_schema(images=input_data)
-        elif input_schema_requirement == "text":
+            inputs = pipeline.input_schema(images=input_data, **kwargs)
+        elif input_schema_requirement == "text_sequence":
             input_data = load_text_data(config, batch_size)
-            inputs = pipeline.input_schema(sequences=input_data)
+            inputs = pipeline.input_schema(sequences=input_data, **kwargs)
+        elif input_schema_requirement == "text_inputs":
+            input_data = load_text_data(config, batch_size)
+            inputs = pipeline.input_schema(inputs=input_data, **kwargs)
         elif input_schema_requirement == "question":
             _LOGGER.warn("Only batch size of 1 supported for Question Answering Pipeline")
             question, context = load_question_data(config)
-            inputs = pipeline.input_schema(question=question, context=context)
-        elif input_schema_requirement == "text_generation":
-            seqs = load_text_data(config, batch_size)
-            fix_len = config["fix_sequence_length"]
-            inputs = pipeline.input_schema(sequences=seqs, return_logits=False, session_id=None, fixed_sequences_length=fix_len)
+            inputs = pipeline.input_schema(question=question, context=context, **kwargs)
     else:
         raise Exception(f"Unknown input type '{input_type}'")
 
