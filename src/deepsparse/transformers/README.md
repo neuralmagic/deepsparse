@@ -150,7 +150,7 @@ If you are using one of the pre-sparsified models from SparseZoo ([list of avail
 https://sparsezoo.neuralmagic.com/?useCase=text_generation)), you will automatically benefit from the KV cache support speedups.
 However, if you are sparsifying your custom model, you may want to add the KV cache support to your model. This will be extremely beneficial when it comes to the inference speed.
 
-For more details, please refer to the [SparseML documentation on KV cache injection](...)
+For more details, please refer to the [SparseML documentation on KV cache injection](https://github.com/neuralmagic/sparseml/src/sparseml/exporters/README.md)
 
 #### Python Pipeline
 ```python
