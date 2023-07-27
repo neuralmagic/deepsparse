@@ -215,15 +215,19 @@ def parse_input_config(input_config_file: str) -> Dict[str, any]:
 def get_input_schema_type(pipeline: Pipeline) -> str:
     input_schema_requirements = list(pipeline.input_schema.__annotations__.keys())
     image_requirements = ["images"]
-    text_requirements = ["sequences", "text"]
+    basic_text_requirements = ["sequences"]
+    question_requirements = ["question", "context", "id"]
+    text_generation_requirements = ["sequences", "return_logits", "session_id", "fixed_sequences_length"]
 
-    if len(input_schema_requirements) == 1:
-        requirement = input_schema_requirements[0]
-        if requirement in image_requirements:
-            return "image"
-        elif requirement in text_requirements:
-            return "text"
-        
+    if input_schema_requirements == image_requirements or "YOLO" in pipeline.input_schema.__name__:
+        return "image"
+    elif input_schema_requirements == basic_text_requirements:
+        return "text"
+    elif input_schema_requirements == question_requirements:
+        return "question"
+    elif input_schema_requirements == text_generation_requirements:
+        return "text_generation"
+
     raise Exception("Unknown schema requirement {}".format(input_schema_requirements))
 
 def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
@@ -255,14 +259,14 @@ def load_image_data(config: Dict, batch_size: int) -> List[str]:
 
 def generate_text_data(config: Dict, batch_size: int) -> List[str]:
     input_data = []
-    if 'sequence_length' in config:
-        string_length = config['sequence_length']
+    if 'gen_sequence_length' in config:
+        string_length = config['gen_sequence_length']
     else:
         string_length = 100
         _LOGGER.warning("Using default string length {}".format(string_length))
     for _ in range(batch_size):
-        rand_string = ''.join(random.choices(string.printable, k=string_length))
-        input_data.append(rand_string)
+        rand_sentence = generate_sentence(string_length)
+        input_data.append(rand_sentence)
     
     return input_data
 
@@ -287,8 +291,37 @@ def load_text_data(config: Dict, batch_size: int) -> List[str]:
         text_data = f.read()
         f.close()
         input_data.append(text_data[:max_string_length])
-    print(input_data)
     return input_data
+
+def generate_sentence(string_length: int, avg_word_length: int = 5):
+    random_chars = ''.join(random.choices(string.ascii_letters, k=string_length))
+    space_locations = random.sample(range(string_length), int(string_length / avg_word_length))
+    random_chars = list(random_chars)
+    for loc in space_locations:
+        random_chars[loc] = ' '
+    return ''.join(random_chars)
+
+def generate_question_data(config: Dict) -> Tuple[str, str]:
+    if 'gen_sequence_length' in config:
+        string_length = config['gen_sequence_length']
+    else:
+        string_length = 100
+        _LOGGER.warning("Using default string length {}".format(string_length))
+    question = generate_sentence(string_length)
+    context = generate_sentence(string_length)
+    return (question, context)
+
+def load_question_data(config: Dict) -> Tuple[str, str]:
+    path_to_questions = config["question_file"]
+    path_to_context = config["context_file"]
+
+    f_question = open(path_to_questions)
+    f_context = open(path_to_context)
+    question = f_question.read()
+    context = f_context.read()
+    f_question.close()
+    f_context.close()
+    return question, context
 
 def benchmark_pipeline(
     model_path: str,
@@ -325,6 +358,14 @@ def benchmark_pipeline(
         elif input_schema_requirement == "text":
             input_data = generate_text_data(config, batch_size)
             inputs = pipeline.input_schema(sequences=input_data)
+        elif input_schema_requirement == "question":
+            _LOGGER.warn("Only batch size of 1 supported for Question Answering Pipeline")
+            question, context = generate_question_data(config)
+            inputs = pipeline.input_schema(question=question, context=context)
+        elif input_schema_requirement == "text_generation":
+            seqs = generate_text_data(config, batch_size)
+            fix_len = config["fix_sequence_length"]
+            inputs = pipeline.input_schema(sequences=seqs, return_logits=False, session_id=None, fixed_sequences_length=fix_len)
     elif input_type == "real":
         if input_schema_requirement == "image":
             input_data = load_image_data(config, batch_size)
@@ -332,6 +373,14 @@ def benchmark_pipeline(
         elif input_schema_requirement == "text":
             input_data = load_text_data(config, batch_size)
             inputs = pipeline.input_schema(sequences=input_data)
+        elif input_schema_requirement == "question":
+            _LOGGER.warn("Only batch size of 1 supported for Question Answering Pipeline")
+            question, context = load_question_data(config)
+            inputs = pipeline.input_schema(question=question, context=context)
+        elif input_schema_requirement == "text_generation":
+            seqs = load_text_data(config, batch_size)
+            fix_len = config["fix_sequence_length"]
+            inputs = pipeline.input_schema(sequences=seqs, return_logits=False, session_id=None, fixed_sequences_length=fix_len)
     else:
         raise Exception(f"Unknown input type '{input_type}'")
 
@@ -346,27 +395,40 @@ def benchmark_pipeline(
     else:
         raise Exception(f"Unknown scenario '{scenario}'")
 
-    if len(batch_times) == 0:
-        raise Exception("Generated no batch timings, try extending benchmark time with '--time'")
     end_time = time.perf_counter()
     total_run_time = end_time - start_time
+    if len(batch_times) == 0:
+        raise Exception("Generated no batch timings, try extending benchmark time with '--time'")
 
     return batch_times, total_run_time
 
-def calculate_statistics(batch_times_ms: List[float]) -> Dict:
+def calculate_statistics(batch_times_ms: List[float], total_run_time_ms: float) -> Dict:
     percentiles = [25.0, 50.0, 75.0, 90.0, 95.0, 99.0, 99.9]
     buckets = numpy.percentile(batch_times_ms, percentiles).tolist()
     percentiles_dict = {
         "{:2.1f}%".format(key): value for key, value in zip(percentiles, buckets)
     }
-
+    
     benchmark_dict = {
+        "total_percentage": sum(batch_times_ms) / total_run_time_ms * 100,
         "median": numpy.median(batch_times_ms),
         "mean": numpy.mean(batch_times_ms),
         "std": numpy.std(batch_times_ms),
         **percentiles_dict,
     }
     return benchmark_dict
+
+def calculate_section_stats(batch_times: List[StagedTimer], total_run_time: float) -> Dict[str, Dict]:
+    compute_sections = batch_times[0].stages
+    total_run_time_ms = total_run_time * 1000
+
+    sections = {}
+    for section in compute_sections:
+        section_times = [st.times[section] * 1000 for st in batch_times]
+        sections[section] = calculate_statistics(section_times, total_run_time_ms)
+
+    return sections
+
 
 def main():
     args = parse_args()
@@ -390,34 +452,16 @@ def main():
         quiet=args.quiet,
     )
 
-    pre_process_times = [st.times['pre_process'] * 1000 for st in batch_times]
-    pre_stats = calculate_statistics(pre_process_times)
-    post_process_times = [st.times['post_process'] * 1000 for st in batch_times]
-    post_stats = calculate_statistics(post_process_times)
-    engine_forward_times = [st.times['engine_forward'] * 1000 for st in batch_times]
-    forward_stats = calculate_statistics(engine_forward_times)
-
+    section_stats = calculate_section_stats(batch_times, total_run_time)
     items_per_sec = (len(batch_times) * args.batch_size) / total_run_time
 
-    total_pre_process = sum(pre_process_times)
-    total_post_process = sum(post_process_times)
-    total_engine_forward = sum(engine_forward_times)
-    total_time = total_pre_process + total_post_process + total_engine_forward
-    percent_pre = total_pre_process / total_time * 100
-    percent_post = total_post_process / total_time * 100
-    percent_forward = total_engine_forward / total_time * 100
 
     export_dict = {
         "scenario": args.scenario,
         "items_per_sec": items_per_sec,
         "seconds_ran": total_run_time,
         "iterations": len(batch_times),
-        "percent_pre": percent_pre,
-        "percent_post": percent_post,
-        "percent_forward": percent_forward,
-        "pre_stats": pre_stats,
-        "post_stats": post_stats,
-        "forward_stats": forward_stats
+        "compute_sections": section_stats
     }
 
     # Export results
@@ -437,13 +481,15 @@ def main():
             export_dict["items_per_sec"]
         )
     )
+
     print("Processing Time Breakdown: ")
-    print("     Pre-Processing: {:.2f}%".format(export_dict["percent_pre"]))
-    print("     Post-Processing: {:.2f}%".format(export_dict["percent_post"]))
-    print("     Forward Pass: {:.2f}%".format(export_dict["percent_forward"]))
-    print("Pre-Processing Latency Mean (ms/batch): {:.4f}".format(export_dict["pre_stats"]["mean"]))
-    print("Post-Processing Latency Mean (ms/batch): {:.4f}".format(export_dict["post_stats"]["mean"]))
-    print("Forward Pass Latency Mean (ms/batch): {:.4f}".format(export_dict["forward_stats"]["mean"]))
+    compute_sections = batch_times[0].stages
+    for section in compute_sections:
+        print("     {}: {:.2f}%".format(section, section_stats[section]["total_percentage"]))
+    
+    print("Mean Latency Breakdown (ms/batch): ")
+    for section in compute_sections:
+        print("     {}: {:.4f}".format(section, section_stats[section]["mean"]))
 
 if __name__ == "__main__":
     main()
