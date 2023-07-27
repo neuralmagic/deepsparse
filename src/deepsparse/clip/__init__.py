@@ -12,29 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # flake8: noqa
-
-from deepsparse.clip.captioning_pipeline import (
-    CLIPCaptionInput,
-    CLIPCaptionOutput,
-    CLIPCaptionPipeline,
-)
-from deepsparse.clip.decoder_pipeline import (
-    CLIPDecoderInput,
-    CLIPDecoderOutput,
-    CLIPDecoderPipeline,
-)
-from deepsparse.clip.text_pipeline import (
-    CLIPTextInput,
-    CLIPTextOutput,
-    CLIPTextPipeline,
-)
-from deepsparse.clip.visual_pipeline import (
-    CLIPVisualInput,
-    CLIPVisualOutput,
-    CLIPVisualPipeline,
-)
-from deepsparse.clip.zeroshot_pipeline import (
-    CLIPZeroShotInput,
-    CLIPZeroShotOutput,
-    CLIPZeroShotPipeline,
-)
+from deepsparse.clip.captioning_pipeline import *
+from deepsparse.clip.text_pipeline import *
+from deepsparse.clip.visual_pipeline import *
+from deepsparse.clip.zeroshot_pipeline import *

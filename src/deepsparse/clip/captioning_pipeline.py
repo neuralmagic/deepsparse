@@ -74,18 +74,22 @@ class CLIPCaptionPipeline(BasePipeline):
         super().__init__(**kwargs)
 
         self.visual = Pipeline.create(
-            task="clip_visual", **{"model_path": visual_model_path}
+            task="clip_visual",
+            **{"model_path": visual_model_path, "engine_type": "onnxruntime"},
         )
-        self.text = Pipeline.create(task="clip_text", **{"model_path": text_model_path})
+        self.text = Pipeline.create(
+            task="clip_text",
+            **{"model_path": text_model_path, "engine_type": "onnxruntime"},
+        )
         self.decoder = Pipeline.create(
-            task="clip_decoder", **{"model_path": decoder_model_path}
+            task="clip_decoder",
+            **{"model_path": decoder_model_path, "engine_type": "onnxruntime"},
         )
 
     # TODO: have to verify all input types
-    def _encode_and_decode(self, text, image_embs, min_dim):
+    def _encode_and_decode(self, text, image_embs):
         text_embeddings = self.text(CLIPTextInput(text=text.numpy())).text_embeddings
         _, text_embs = text_embeddings[0], text_embeddings[1]
-
         logits = self.decoder(
             CLIPDecoderInput(
                 image_embeddings=image_embs.numpy(), text_embeddings=text_embs
@@ -116,11 +120,12 @@ class CLIPCaptionPipeline(BasePipeline):
 
         batch_size = 1
         visual_output = self.visual(pipeline_inputs.image).image_embeddings
+
         _, image_embs = visual_output[0], visual_output[1]
+
         image_embs = torch.repeat_interleave(
             torch.Tensor(image_embs), self.num_beams, dim=0
         )
-
         input_ids = torch.ones(
             (batch_size * self.num_beams, 1), device=device, dtype=torch.long
         )
@@ -169,10 +174,11 @@ class CLIPCaptionPipeline(BasePipeline):
             current_dim_input_ids = input_ids.shape[-1]
             model_inputs_text = F.pad(
                 input_ids,
-                (0, self.seq_len - current_dim_input_ids),
+                (self.seq_len - current_dim_input_ids, 0),
                 "constant",
                 pad_token_id,
             )
+
             outputs = self._encode_and_decode(
                 text=model_inputs_text, image_embs=image_embs
             )

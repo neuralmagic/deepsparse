@@ -91,12 +91,16 @@ def test_zero_shot(engine, visual_input, text_input):
     assert isinstance(output, CLIPZeroShotOutput)
 
 
+@pytest.mark.skip(reason="No CLIP models currently available to run the test on")
 @mock_engine(rng_seed=0)
 def test_caption(engine, visual_input):
-    model_path_visual = "clip_onnx_caption/clip_visual.onnx"
-    model_path_text = "clip_onnx_caption/clip_text.onnx"
-    model_path_decoder = "clip_onnx_caption/clip_text_decoder.onnx"
-    pipeline_input = CLIPCaptionInput(image=CLIPVisualInput(images="cat.jpg"))
+    root = "caption_models"
+    model_path_visual = f"{root}/clip_visual.onnx"
+    model_path_text = f"{root}/clip_text.onnx"
+    model_path_decoder = f"{root}/clip_text_decoder.onnx"
+    pipeline_input = CLIPCaptionInput(
+        image=CLIPVisualInput(images=visual_input[0].images[-1])
+    )
     kwargs = {
         "visual_model_path": model_path_visual,
         "text_model_path": model_path_text,
@@ -105,4 +109,3 @@ def test_caption(engine, visual_input):
     pipeline = BasePipeline.create(task="clip_caption", **kwargs)
     assert isinstance(pipeline, CLIPCaptionPipeline)
     assert isinstance(pipeline_input, CLIPCaptionInput)
-    # output = pipeline(pipeline_input)
