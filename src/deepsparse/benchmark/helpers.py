@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
+from typing import Dict
 
 from deepsparse import Scheduler
 
+
+DEFAULT_STRING_LENGTH = 50
+DEFAULT_IMAGE_SHAPE = (240, 240, 3)
 
 __all__ = [
     "decide_thread_pinning",
     "parse_scheduler",
     "parse_scenario",
     "parse_num_streams",
+    "parse_input_config",
 ]
 
 
@@ -95,3 +101,10 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str, logger: o
                 )
             )
             return default_num_streams
+
+
+def parse_input_config(input_config_file: str) -> Dict[str, any]:
+    config_file = open(input_config_file)
+    config = json.load(config_file)
+    config_file.close()
+    return config

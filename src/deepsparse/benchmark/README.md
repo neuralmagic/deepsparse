@@ -255,3 +255,15 @@ Additional arguments to the pipeline or input_schema can be added to the `pipeli
     }
 } 
 ```
+
+### Example Usage
+
+Running image classification for 30 seconds with a batch size of 32:
+```
+python benchmark_pipeline.py image_classification zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none -c config.json -t 60 -b 32
+```
+
+Running text generation for 30 seconds asynchronously 
+```
+python benchmark_pipeline.py text_generation image_classification zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/pruned50-none -c config.json -t 30 -s async
+```

@@ -13,21 +13,28 @@
 # limitations under the License.
 
 import argparse
-import glob
 import json
 import logging
 import queue
-import random
-import string
 import threading
 import time
 from typing import Dict, List, Tuple
 
 import numpy
 
-from deepsparse import Pipeline
+from deepsparse import Pipeline, __version__
+from deepsparse.benchmark.data_creation import (
+    generate_image_data,
+    generate_question_data,
+    generate_text_data,
+    get_input_schema_type,
+    load_image_data,
+    load_question_data,
+    load_text_data,
+)
 from deepsparse.benchmark.helpers import (
     decide_thread_pinning,
+    parse_input_config,
     parse_num_streams,
     parse_scenario,
     parse_scheduler,
@@ -44,9 +51,6 @@ _LOGGER = logging.getLogger(__name__)
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-
-DEFAULT_STRING_LENGTH = 50
-DEFAULT_IMAGE_SHAPE = (240, 240, 3)
 
 
 def parse_args():
@@ -218,147 +222,56 @@ def multistream_benchmark(
     return list(time_queue.queue)
 
 
-def parse_input_config(input_config_file: str) -> Dict[str, any]:
-    config_file = open(input_config_file)
-    config = json.load(config_file)
-    config_file.close()
-    return config
+def create_input_schema(
+    pipeline: Pipeline, input_type: str, batch_size: int, config: Dict
+) -> any:
+    input_schema_requirement = get_input_schema_type(pipeline)
+    kwargs = {}
+    if "input_schema_kwargs" in config:
+        kwargs = config["input_schema_kwargs"]
 
-
-def get_files_with_endings(
-    folder: str, num_files: int, recursive: bool, file_endings: List[str]
-) -> List[str]:
-    files = []
-    for f in glob.glob(folder + "/**", recursivere=recursive):
-        if f.lower().endswith(file_endings):
-            files.append(f)
-    if len(files) < num_files:
-        raise Exception("Not enough images found in {}".format(folder))
-    return random.sample(files, num_files)
-
-
-def generate_sentence(string_length: int, avg_word_length: int = 5):
-    random_chars = "".join(random.choices(string.ascii_letters, k=string_length))
-    space_locations = random.sample(
-        range(string_length), int(string_length / avg_word_length)
-    )
-    random_chars = list(random_chars)
-    for loc in space_locations:
-        random_chars[loc] = " "
-    return "".join(random_chars)
-
-
-def get_input_schema_type(pipeline: Pipeline) -> str:
-    input_schema_requirements = list(pipeline.input_schema.__fields__.keys())
-    input_schema_fields = pipeline.input_schema.__fields__
-
-    if "images" in input_schema_requirements:
-        return "image"
-    if "sequences" in input_schema_requirements:
-        sequence_types = [
-            f.outer_type_ for f in input_schema_fields["sequences"].sub_fields
-        ]
-        if List[str] in sequence_types:
-            return "text_sequence"
-    elif "inputs" in input_schema_requirements:
-        sequence_types = [
-            f.outer_type_ for f in input_schema_fields["inputs"].sub_fields
-        ]
-        if List[str] in sequence_types:
-            return "text_inputs"
-    elif "question" in input_schema_requirements:
-        return "question"
-
-    raise Exception("Unknown schema requirement {}".format(input_schema_requirements))
-
-
-def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
-    input_data = []
-    if "input_image_shape" in config and len(config["input_image_shape"]) == 3:
-        image_shape = config["input_image_shape"]
+    if input_type == "dummy":
+        if input_schema_requirement == "image":
+            input_data = generate_image_data(config, batch_size, _LOGGER)
+            inputs = pipeline.input_schema(images=input_data, **kwargs)
+        elif input_schema_requirement == "text_sequence":
+            input_data = generate_text_data(config, batch_size, _LOGGER)
+            inputs = pipeline.input_schema(sequences=input_data, **kwargs)
+        elif input_schema_requirement == "text_inputs":
+            input_data = generate_text_data(config, batch_size, _LOGGER)
+            inputs = pipeline.input_schema(inputs=input_data, **kwargs)
+        elif input_schema_requirement == "question":
+            _LOGGER.warn(
+                "Only batch size of 1 supported for Question Answering Pipeline"
+            )
+            question, context = generate_question_data(config, _LOGGER)
+            inputs = pipeline.input_schema(question=question, context=context, **kwargs)
+    elif input_type == "real":
+        if input_schema_requirement == "image":
+            input_data = load_image_data(config, batch_size)
+            inputs = pipeline.input_schema(images=input_data, **kwargs)
+        elif input_schema_requirement == "text_sequence":
+            input_data = load_text_data(config, _LOGGER)
+            inputs = pipeline.input_schema(sequences=input_data, **kwargs)
+        elif input_schema_requirement == "text_inputs":
+            input_data = load_text_data(config, batch_size, _LOGGER)
+            inputs = pipeline.input_schema(inputs=input_data, **kwargs)
+        elif input_schema_requirement == "question":
+            _LOGGER.warn(
+                "Only batch size of 1 supported for Question Answering Pipeline"
+            )
+            question, context = load_question_data(config)
+            inputs = pipeline.input_schema(question=question, context=context, **kwargs)
     else:
-        image_shape = DEFAULT_IMAGE_SHAPE
-        _LOGGER.warning("Using default image shape {}".format(image_shape))
+        raise Exception(f"Unknown input type '{input_type}'")
 
-    for _ in range(batch_size):
-        rand_array = numpy.random.randint(0, high=255, size=image_shape).astype(
-            numpy.uint8
-        )
-        input_data.append(rand_array)
-
-    return input_data
-
-
-def load_image_data(config: Dict, batch_size: int) -> List[str]:
-    path_to_data = config["data_folder"]
-    recursive_search = config["recursive_search"]
-    return get_files_with_endings(
-        path_to_data, batch_size, recursive_search, [".jpg", ".jpeg", ".gif"]
-    )
-
-
-def generate_text_data(config: Dict, batch_size: int) -> List[str]:
-    input_data = []
-    if "gen_sequence_length" in config:
-        string_length = config["gen_sequence_length"]
-    else:
-        string_length = DEFAULT_STRING_LENGTH
-        _LOGGER.warning("Using default string length {}".format(string_length))
-    for _ in range(batch_size):
-        rand_sentence = generate_sentence(string_length)
-        input_data.append(rand_sentence)
-
-    return input_data
-
-
-def load_text_data(config: Dict, batch_size: int) -> List[str]:
-    path_to_data = config["data_folder"]
-    recursive_search = config["recursive_search"]
-    input_files = get_files_with_endings(
-        path_to_data, batch_size, recursive_search, [".txt"]
-    )
-    if "max_string_length" in config:
-        max_string_length = config["max_string_length"]
-    else:
-        max_string_length = -1
-        _LOGGER.warning("Using default max string length {}".format(max_string_length))
-    input_data = []
-    for f_path in input_files:
-        f = open(f_path)
-        text_data = f.read()
-        f.close()
-        input_data.append(text_data[:max_string_length])
-    return input_data
-
-
-def generate_question_data(config: Dict) -> Tuple[str, str]:
-    if "gen_sequence_length" in config:
-        string_length = config["gen_sequence_length"]
-    else:
-        string_length = DEFAULT_STRING_LENGTH
-        _LOGGER.warning("Using default string length {}".format(string_length))
-    question = generate_sentence(string_length)
-    context = generate_sentence(string_length)
-    return (question, context)
-
-
-def load_question_data(config: Dict) -> Tuple[str, str]:
-    path_to_questions = config["question_file"]
-    path_to_context = config["context_file"]
-
-    f_question = open(path_to_questions)
-    f_context = open(path_to_context)
-    question = f_question.read()
-    context = f_context.read()
-    f_question.close()
-    f_context.close()
-    return question, context
+    return inputs
 
 
 def benchmark_pipeline(
     model_path: str,
     task: str,
-    input_config: str,
+    config: Dict,
     batch_size: int = 1,
     num_cores: int = None,
     scenario: str = "sync",
@@ -381,7 +294,6 @@ def benchmark_pipeline(
     scheduler = parse_scheduler(scenario)
     num_streams = parse_num_streams(num_streams, num_cores, scenario, _LOGGER)
 
-    config = parse_input_config(input_config)
     input_type = config["data_type"]
     kwargs = {}
     if "pipeline_kwargs" in config:
@@ -394,57 +306,21 @@ def benchmark_pipeline(
         num_cores=num_cores,
         **kwargs,
     )
-    input_schema_requirement = get_input_schema_type(pipeline)
-    kwargs = {}
-    if "input_schema_kwargs" in config:
-        kwargs = config["input_schema_kwargs"]
+    inputs = create_input_schema(pipeline, input_type, batch_size, config)
 
-    if input_type == "dummy":
-        if input_schema_requirement == "image":
-            input_data = generate_image_data(config, batch_size)
-            inputs = pipeline.input_schema(images=input_data, **kwargs)
-        elif input_schema_requirement == "text_sequence":
-            input_data = generate_text_data(config, batch_size)
-            inputs = pipeline.input_schema(sequences=input_data, **kwargs)
-        elif input_schema_requirement == "text_inputs":
-            input_data = generate_text_data(config, batch_size)
-            inputs = pipeline.input_schema(inputs=input_data, **kwargs)
-        elif input_schema_requirement == "question":
-            _LOGGER.warn(
-                "Only batch size of 1 supported for Question Answering Pipeline"
-            )
-            question, context = generate_question_data(config)
-            inputs = pipeline.input_schema(question=question, context=context, **kwargs)
-    elif input_type == "real":
-        if input_schema_requirement == "image":
-            input_data = load_image_data(config, batch_size)
-            inputs = pipeline.input_schema(images=input_data, **kwargs)
-        elif input_schema_requirement == "text_sequence":
-            input_data = load_text_data(config, batch_size)
-            inputs = pipeline.input_schema(sequences=input_data, **kwargs)
-        elif input_schema_requirement == "text_inputs":
-            input_data = load_text_data(config, batch_size)
-            inputs = pipeline.input_schema(inputs=input_data, **kwargs)
-        elif input_schema_requirement == "question":
-            _LOGGER.warn(
-                "Only batch size of 1 supported for Question Answering Pipeline"
-            )
-            question, context = load_question_data(config)
-            inputs = pipeline.input_schema(question=question, context=context, **kwargs)
-    else:
-        raise Exception(f"Unknown input type '{input_type}'")
-
-    start_time = time.perf_counter()
     if scenario == "singlestream":
         singlestream_benchmark(pipeline, inputs, warmup_time)
+        start_time = time.perf_counter()
         batch_times = singlestream_benchmark(pipeline, inputs, seconds_to_run)
     elif scenario == "multistream":
         multistream_benchmark(pipeline, inputs, warmup_time, num_streams)
+        start_time = time.perf_counter()
         batch_times = multistream_benchmark(
             pipeline, inputs, seconds_to_run, num_streams
         )
     elif scenario == "elastic":
         multistream_benchmark(pipeline, inputs, warmup_time, num_streams)
+        start_time = time.perf_counter()
         batch_times = multistream_benchmark(
             pipeline, inputs, seconds_to_run, num_streams
         )
@@ -494,6 +370,7 @@ def calculate_section_stats(
 
 def main():
     args = parse_args()
+    config = parse_input_config(args.input_config)
 
     print("Original Model Path: {}".format(args.model_path))
     print("Task: {}".format(args.task_name))
@@ -503,7 +380,7 @@ def main():
     batch_times, total_run_time = benchmark_pipeline(
         model_path=args.model_path,
         task=args.task_name,
-        input_config=args.input_config,
+        config=config,
         batch_size=args.batch_size,
         num_cores=args.num_cores,
         scenario=args.scenario,
@@ -518,12 +395,24 @@ def main():
     section_stats = calculate_section_stats(batch_times, total_run_time)
     items_per_sec = (len(batch_times) * args.batch_size) / total_run_time
 
-    export_dict = {
-        "scenario": args.scenario,
+    benchmark_results = {
         "items_per_sec": items_per_sec,
         "seconds_ran": total_run_time,
         "iterations": len(batch_times),
         "compute_sections": section_stats,
+    }
+
+    export_dict = {
+        "engine": args.engine,
+        "version": __version__,
+        "model_path": args.model_path,
+        "batch_size": args.batch_size,
+        "num_cores": args.num_cores,
+        "scenario": args.scenario,
+        "seconds_to_run": time,
+        "num_streams": args.num_streams,
+        "input_config": config,
+        "benchmark_results": benchmark_results,
     }
 
     # Export results
@@ -537,8 +426,9 @@ def main():
     print("Original Model Path: {}".format(args.model_path))
     print("Batch Size: {}".format(args.batch_size))
     print("Scenario: {}".format(args.scenario))
-    print("Iterations: {}".format(int(export_dict["iterations"])))
-    print("Throughput (items/sec): {:.4f}".format(export_dict["items_per_sec"]))
+    print("Iterations: {}".format(int(benchmark_results["iterations"])))
+    print("Total Runtime: {:.4f}".format(total_run_time))
+    print("Throughput (items/sec): {:.4f}".format(benchmark_results["items_per_sec"]))
 
     print("Processing Time Breakdown: ")
     compute_sections = batch_times[0].stages
