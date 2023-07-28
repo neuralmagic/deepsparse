@@ -73,6 +73,7 @@ class CLIPZeroShotPipeline(BasePipeline):
 
         output_product = 100.0 * visual_output @ text_output.T
         text_probs = softmax(output_product, axis=-1)
+
         return self.output_schema(text_scores=[text_probs])
 
     @property

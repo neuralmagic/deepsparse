@@ -50,10 +50,6 @@ class CLIPTextPipeline(Pipeline):
         super().__init__(**kwargs)
 
         self.tokenizer = tokenize
-        # TODO: This is a placeholder. The onnx model should apply the
-        # text_projection in the forward pass but due to a current argmax export error,
-        # including the text_projection in the post-processing and using dummy values.
-        self.text_projection = np.random.rand(512, 512)
 
     @property
     def input_schema(self) -> Type[CLIPTextInput]:
@@ -92,10 +88,9 @@ class CLIPTextPipeline(Pipeline):
             inputs.text = [inputs.text]
 
         tokens = self.tokenizer(inputs.text)
-        max_dim = np.array(tokens.argmax(dim=-1))
-        tokens = [np.array(t) for t in tokens]
+        tokens = [np.array(t).astype(np.int32) for t in tokens]
         tokens = np.stack(tokens, axis=0)
-        return [tokens], dict(max_dim=max_dim)
+        return [tokens]
 
     def process_engine_outputs(
         self, engine_outputs: List[np.array], **kwargs
@@ -106,12 +101,4 @@ class CLIPTextPipeline(Pipeline):
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        max_dim = kwargs["max_dim"]
-        engine_outputs = engine_outputs[0]
-        # NOTE: This operation should be part of the foward pass. Moved here due to
-        # onnx export error
-        embeddings = (
-            engine_outputs[np.arange(engine_outputs.shape[0]), max_dim]
-            @ self.text_projection
-        )
-        return self.output_schema(text_embeddings=[embeddings])
+        return self.output_schema(text_embeddings=engine_outputs)
