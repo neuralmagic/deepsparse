@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import glob
+import logging
 import random
 import string
 from typing import Dict, List, Tuple
@@ -21,6 +22,8 @@ import numpy
 
 from deepsparse import Pipeline
 
+
+_LOGGER = logging.getLogger(__name__)
 
 DEFAULT_STRING_LENGTH = 50
 DEFAULT_IMAGE_SHAPE = (240, 240, 3)
@@ -38,26 +41,33 @@ __all__ = [
 ]
 
 
+class SchemaType:
+    IMAGE: str = "images"
+    TEXT_SEQ: str = "sequences"
+    TEXT_INPUT: str = "inputs"
+    QUESTION: str = "question"
+
+
 def get_input_schema_type(pipeline: Pipeline) -> str:
     input_schema_requirements = list(pipeline.input_schema.__fields__.keys())
     input_schema_fields = pipeline.input_schema.__fields__
 
-    if "images" in input_schema_requirements:
-        return "image"
-    if "sequences" in input_schema_requirements:
+    if SchemaType.IMAGE in input_schema_requirements:
+        return SchemaType.IMAGE
+    if SchemaType.TEXT_SEQ in input_schema_requirements:
         sequence_types = [
-            f.outer_type_ for f in input_schema_fields["sequences"].sub_fields
+            f.outer_type_ for f in input_schema_fields[SchemaType.TEXT_SEQ].sub_fields
         ]
         if List[str] in sequence_types:
-            return "text_sequence"
-    elif "inputs" in input_schema_requirements:
+            return SchemaType.TEXT_SEQ
+    elif SchemaType.TEXT_INPUT in input_schema_requirements:
         sequence_types = [
-            f.outer_type_ for f in input_schema_fields["inputs"].sub_fields
+            f.outer_type_ for f in input_schema_fields[SchemaType.TEXT_INPUT].sub_fields
         ]
         if List[str] in sequence_types:
-            return "text_inputs"
-    elif "question" in input_schema_requirements:
-        return "question"
+            return SchemaType.TEXT_INPUT
+    elif SchemaType.QUESTION in input_schema_requirements:
+        return SchemaType.QUESTION
 
     raise Exception("Unknown schema requirement {}".format(input_schema_requirements))
 
@@ -85,15 +95,13 @@ def generate_sentence(string_length: int, avg_word_length: int = 5):
     return "".join(random_chars)
 
 
-def generate_image_data(
-    config: Dict, batch_size: int, logger: object
-) -> List[numpy.ndarray]:
+def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
     input_data = []
     if "input_image_shape" in config and len(config["input_image_shape"]) == 3:
         image_shape = config["input_image_shape"]
     else:
         image_shape = DEFAULT_IMAGE_SHAPE
-        logger.warning("Using default image shape {}".format(image_shape))
+        _LOGGER.warning("Using default image shape {}".format(image_shape))
 
     for _ in range(batch_size):
         rand_array = numpy.random.randint(0, high=255, size=image_shape).astype(
@@ -112,21 +120,21 @@ def load_image_data(config: Dict, batch_size: int) -> List[str]:
     )
 
 
-def generate_text_data(config: Dict, batch_size: int, logger: object) -> List[str]:
+def generate_text_data(config: Dict, batch_size: int, avg_word_len=5) -> List[str]:
     input_data = []
     if "gen_sequence_length" in config:
         string_length = config["gen_sequence_length"]
     else:
         string_length = DEFAULT_STRING_LENGTH
-        logger.warning("Using default string length {}".format(string_length))
+        _LOGGER.warning("Using default string length {}".format(string_length))
     for _ in range(batch_size):
-        rand_sentence = generate_sentence(string_length)
+        rand_sentence = generate_sentence(string_length, avg_word_length=avg_word_len)
         input_data.append(rand_sentence)
 
     return input_data
 
 
-def load_text_data(config: Dict, batch_size: int, logger: object) -> List[str]:
+def load_text_data(config: Dict, batch_size: int) -> List[str]:
     path_to_data = config["data_folder"]
     recursive_search = config["recursive_search"]
     input_files = get_files_with_endings(
@@ -136,7 +144,7 @@ def load_text_data(config: Dict, batch_size: int, logger: object) -> List[str]:
         max_string_length = config["max_string_length"]
     else:
         max_string_length = -1
-        logger.warning("Using default max string length {}".format(max_string_length))
+        _LOGGER.warning("Using default max string length {}".format(max_string_length))
     input_data = []
     for f_path in input_files:
         f = open(f_path)
@@ -146,14 +154,14 @@ def load_text_data(config: Dict, batch_size: int, logger: object) -> List[str]:
     return input_data
 
 
-def generate_question_data(config: Dict, logger: object) -> Tuple[str, str]:
+def generate_question_data(config: Dict, avg_word_len=5) -> Tuple[str, str]:
     if "gen_sequence_length" in config:
         string_length = config["gen_sequence_length"]
     else:
         string_length = DEFAULT_STRING_LENGTH
-        logger.warning("Using default string length {}".format(string_length))
-    question = generate_sentence(string_length)
-    context = generate_sentence(string_length)
+        _LOGGER.warning("Using default string length {}".format(string_length))
+    question = generate_sentence(string_length, avg_word_length=avg_word_len)
+    context = generate_sentence(string_length, avg_word_length=avg_word_len)
     return (question, context)
 
 

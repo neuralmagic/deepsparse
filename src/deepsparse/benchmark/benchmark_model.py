@@ -282,15 +282,15 @@ def benchmark_model(
     if num_cores is None:
         num_cores = cpu_architecture().num_available_physical_cores
 
-    decide_thread_pinning(thread_pinning, _LOGGER)
+    decide_thread_pinning(thread_pinning)
 
-    scenario = parse_scenario(scenario.lower(), _LOGGER)
+    scenario = parse_scenario(scenario.lower())
     scheduler = parse_scheduler(scenario)
     input_shapes = parse_input_shapes(input_shapes)
 
     orig_model_path = model_path
     model_path = model_to_path(model_path)
-    num_streams = parse_num_streams(num_streams, num_cores, scenario, _LOGGER)
+    num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     # Compile the ONNX into a runnable model
     if engine == DEEPSPARSE_ENGINE:

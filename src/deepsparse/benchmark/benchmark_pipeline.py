@@ -12,6 +12,75 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Benchmark DeepSparse Pipelines
+
+##########
+Command help:
+usage: deepsparse.benchmark_pipeline [-h] [-c INPUT_CONFIG] [-b BATCH_SIZE]
+                                     [-ncores NUM_CORES] [-s {async,sync,elastic}]
+                                     [-t TIME] [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
+                                     [-pin {none,core,numa}] [-e ENGINE]
+                                     [-q] [-x EXPORT_PATH] task_name model_path
+
+positional arguments:
+  task_name             Type of pipeline to run
+  model_path            Path to an ONNX model file or SparseZoo model stub
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c INPUT_CONFIG, --input_config INPUT_CONFIG
+                        JSON file containing schema for input data
+  -b BATCH_SIZE, --batch_size BATCH_SIZE
+                        The batch size to run the analysis for. Must be greater than 0
+  -ncores NUM_CORES, --num_cores NUM_CORES
+                        The number of physical cores to run the analysis on,
+                        defaults to all physical cores available on the system.
+  -s {async,sync,elastic}, --scenario {async,sync,elastic}
+                        Choose between using the async, sync and elastic
+                        scenarios. Sync and async are similar to the single-
+                        stream/multi-stream scenarios. Elastic is a newer
+                        scenario that behaves similarly to the async scenario
+                        but uses a different scheduling backend. Default value
+                        is sync.
+  -t TIME, --time TIME  The number of seconds the benchmark will run. Default
+                        is 10 seconds.
+  -w WARMUP_TIME, --warmup_time WARMUP_TIME
+                        The number of seconds the benchmark will warmup before
+                        running.Default is 2 seconds.
+  -nstreams NUM_STREAMS, --num_streams NUM_STREAMS
+                        The number of streams that will submit inferences in
+                        parallel using async scenario. Default is
+                        automatically determined for given hardware and may be
+                        sub-optimal.
+  -pin {none,core,numa}, --thread_pinning {none,core,numa}
+                        Enable binding threads to cores ('core' the default),
+                        threads to cores on sockets ('numa'), or disable
+                        ('none').
+  -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
+                        Inference engine backend to run eval on. Choices are
+                        'deepsparse', 'onnxruntime'. Default is 'deepsparse'.
+  -q, --quiet           Lower logging verbosity.
+  -x EXPORT_PATH, --export_path EXPORT_PATH
+                        Store results into a JSON file.
+
+##########
+Example ResNet image classification for 30 seconds with a batch size of 32:
+```
+deepsparse.benchmark_pipeline \
+    image_classification \
+    zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none \
+    -c config.json -t 60 -b 32
+
+##########
+Example CodeGen text generation for 30 seconds asynchronously
+deepsparse.benchmark_pipeline \
+    text_generation \
+    zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/
+    bigpython_bigquery_thepile/pruned50-none \
+    -c config.json -t 30 -s async
+"""
+
 import argparse
 import json
 import logging
@@ -24,6 +93,7 @@ import numpy
 
 from deepsparse import Pipeline, __version__
 from deepsparse.benchmark.data_creation import (
+    SchemaType,
     generate_image_data,
     generate_question_data,
     generate_text_data,
@@ -51,6 +121,9 @@ _LOGGER = logging.getLogger(__name__)
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
+
+DUMMY_INPUT_TYPE = "dummy"
+REAL_INPUT_TYPE = "real"
 
 
 def parse_args():
@@ -230,33 +303,33 @@ def create_input_schema(
     if "input_schema_kwargs" in config:
         kwargs = config["input_schema_kwargs"]
 
-    if input_type == "dummy":
-        if input_schema_requirement == "image":
-            input_data = generate_image_data(config, batch_size, _LOGGER)
+    if input_type == DUMMY_INPUT_TYPE:
+        if input_schema_requirement == SchemaType.IMAGE:
+            input_data = generate_image_data(config, batch_size)
             inputs = pipeline.input_schema(images=input_data, **kwargs)
-        elif input_schema_requirement == "text_sequence":
-            input_data = generate_text_data(config, batch_size, _LOGGER)
+        elif input_schema_requirement == SchemaType.TEXT_SEQ:
+            input_data = generate_text_data(config, batch_size)
             inputs = pipeline.input_schema(sequences=input_data, **kwargs)
-        elif input_schema_requirement == "text_inputs":
-            input_data = generate_text_data(config, batch_size, _LOGGER)
+        elif input_schema_requirement == SchemaType.TEXT_INPUT:
+            input_data = generate_text_data(config, batch_size)
             inputs = pipeline.input_schema(inputs=input_data, **kwargs)
-        elif input_schema_requirement == "question":
+        elif input_schema_requirement == SchemaType.QUESTION:
             _LOGGER.warn(
                 "Only batch size of 1 supported for Question Answering Pipeline"
             )
-            question, context = generate_question_data(config, _LOGGER)
+            question, context = generate_question_data(config)
             inputs = pipeline.input_schema(question=question, context=context, **kwargs)
-    elif input_type == "real":
-        if input_schema_requirement == "image":
+    elif input_type == REAL_INPUT_TYPE:
+        if input_schema_requirement == SchemaType.IMAGE:
             input_data = load_image_data(config, batch_size)
             inputs = pipeline.input_schema(images=input_data, **kwargs)
-        elif input_schema_requirement == "text_sequence":
-            input_data = load_text_data(config, _LOGGER)
+        elif input_schema_requirement == SchemaType.TEXT_SEQ:
+            input_data = load_text_data(config)
             inputs = pipeline.input_schema(sequences=input_data, **kwargs)
-        elif input_schema_requirement == "text_inputs":
-            input_data = load_text_data(config, batch_size, _LOGGER)
+        elif input_schema_requirement == SchemaType.TEXT_INPUT:
+            input_data = load_text_data(config, batch_size)
             inputs = pipeline.input_schema(inputs=input_data, **kwargs)
-        elif input_schema_requirement == "question":
+        elif input_schema_requirement == SchemaType.QUESTION:
             _LOGGER.warn(
                 "Only batch size of 1 supported for Question Answering Pipeline"
             )
@@ -289,10 +362,10 @@ def benchmark_pipeline(
     if num_cores is None:
         num_cores = cpu_architecture().num_available_physical_cores
 
-    decide_thread_pinning(thread_pinning, _LOGGER)
-    scenario = parse_scenario(scenario.lower(), _LOGGER)
+    decide_thread_pinning(thread_pinning)
+    scenario = parse_scenario(scenario.lower())
     scheduler = parse_scheduler(scenario)
-    num_streams = parse_num_streams(num_streams, num_cores, scenario, _LOGGER)
+    num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     input_type = config["data_type"]
     kwargs = {}

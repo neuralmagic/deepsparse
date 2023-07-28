@@ -292,6 +292,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
             "deepsparse.benchmark=deepsparse.benchmark.benchmark_model:main",
+            "deepsparse.benchmark_pipeline=deepsparse.benchmark.benchmark_pipeline:main",  # noqa E501
             "deepsparse.benchmark_sweep=deepsparse.benchmark.benchmark_sweep:main",
             "deepsparse.server=deepsparse.server.cli:main",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",

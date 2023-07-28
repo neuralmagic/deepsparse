@@ -189,10 +189,10 @@ Iterations: 622
 ```
 
 ## 📜 Benchmarking Pipelines
-Expanding on the model benchmarking script, the pipeline benchmarker is a tool for benchmarking end-to-end inference, including pre and post processing. The script can generate fake input data based on the pipeline's input schema, or load it from a local folder. The pipeline then runs pre-processing, engine inference and post-processing. Benchmarking results are reported by section, useful for identifying bottlenecks. 
+Expanding on the model benchmarking script, `deepsparse.benchmark_pipeline` is a tool for benchmarking end-to-end inference, including pre and post processing. The script can generate fake input data based on the pipeline's input schema, or load it from a local folder. The pipeline then runs pre-processing, engine inference and post-processing. Benchmarking results are reported by section, useful for identifying bottlenecks. 
 
 ### Usage 
-Input arguments are the same as the Engine benchmarker, but with two addtions:
+Input arguments are the same as the Engine benchmarker, but with two additions:
 
 ```
 positional arguments:
@@ -258,12 +258,12 @@ Additional arguments to the pipeline or input_schema can be added to the `pipeli
 
 ### Example Usage
 
-Running image classification for 30 seconds with a batch size of 32:
+Running ResNet image classification for 30 seconds with a batch size of 32:
 ```
-python benchmark_pipeline.py image_classification zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none -c config.json -t 60 -b 32
+deepsparse.benchmark_pipeline image_classification zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none -c config.json -t 60 -b 32
 ```
 
-Running text generation for 30 seconds asynchronously 
+Running CodeGen text generation for 30 seconds asynchronously 
 ```
-python benchmark_pipeline.py text_generation image_classification zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/pruned50-none -c config.json -t 30 -s async
+deepsparse.benchmark_pipeline text_generation zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/pruned50-none -c config.json -t 30 -s async
 ```
