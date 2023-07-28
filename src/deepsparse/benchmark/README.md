@@ -187,3 +187,71 @@ Latency Median (ms/batch): 15.7850
 Latency Std (ms/batch): 1.0427
 Iterations: 622
 ```
+
+## 📜 Benchmarking Pipelines
+Expanding on the model benchmarking script, the pipeline benchmarker is a tool for benchmarking end-to-end inference, including pre and post processing. The script can generate fake input data based on the pipeline's input schema, or load it from a local folder. The pipeline then runs pre-processing, engine inference and post-processing. Benchmarking results are reported by section, useful for identifying bottlenecks. 
+
+### Usage 
+Input arguments are the same as the Engine benchmarker, but with two addtions:
+
+```
+positional arguments:
+  task_name             Type of pipeline to run(i.e "text_generation")
+
+optional arguments:
+  -c INPUT_CONFIG, --input_config INPUT_CONFIG
+                        JSON file containing schema for input data
+```
+
+The `input_config` argument is a path to a json file specifying details on the input schema to the pipeline, detailed below.
+
+### Configuring Pipeline Inputs
+
+Inputs to the pipeline are configured through a json config file. The `data_type` field should be set to `"dummy"` if passing randomly generated data through the pipeline, and `"real"` if passing in data from files.
+
+#### Dummy Input Configuration
+An example dummy input configuration is shown below.
+* `gen_sequence_length`: number of characters to generate for pipelines that take text input
+* `input_image_shape`: configures image size for pipelines that take image input, must be 3 dimmensional with channel as the last dimmension
+
+```json
+{
+    "data_type": "dummy",
+    "gen_sequence_length": 100,
+    "input_image_shape": [500,500,3],
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {}
+} 
+```
+
+#### Real Input Configuration
+An example real input configuration is shown below.
+* `data_folder`: path to local folder of input data, should contain text or image files
+* `recursive_search`: whether to recursively search through `data_folder` for files
+* `max_string_length`: maximum characters to read from each file containing text data, -1 for no max length
+
+```json
+{
+    "data_type": "real",
+    "data_folder": "/home/sadkins/imagenette2-320/",
+    "recursive_search": true,
+    "max_string_length": -1,
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {}
+} 
+```
+
+#### Keyword Arguments
+Additional arguments to the pipeline or input_schema can be added to the `pipeline_kwargs` and `input_schema_kwargs` fields respectively. For instance, to pass class_names to a YOLO pipeline and conf_thres to the input schema
+```json
+{
+    "data_type": "dummy",
+    "input_image_shape": [500,500,3],
+    "pipeline_kwargs": {
+        "class_names": ["classA", "classB"]
+    },
+    "input_schema_kwargs": {
+        "conf_thres": 0.7
+    }
+} 
+```

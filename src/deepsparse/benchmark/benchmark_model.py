@@ -95,10 +95,15 @@ import argparse
 import importlib
 import json
 import logging
-import os
 from typing import Dict
 
 from deepsparse import __version__, compile_model
+from deepsparse.benchmark.helpers import (
+    decide_thread_pinning,
+    parse_num_streams,
+    parse_scenario,
+    parse_scheduler,
+)
 from deepsparse.benchmark.ort_engine import ORTEngine
 from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.cpu import cpu_architecture
@@ -108,12 +113,6 @@ from deepsparse.utils import (
     model_to_path,
     override_onnx_input_shapes,
     parse_input_shapes,
-)
-from deepsparse.benchmark.helpers import (
-    decide_thread_pinning,
-    parse_scheduler,
-    parse_scenario,
-    parse_num_streams
 )
 
 
