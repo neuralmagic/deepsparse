@@ -196,7 +196,7 @@ class BasePipeline(ABC):
                     "Overriding input shapes not supported with Bucketing enabled"
                 )
             if not kwargs.get("context", None):
-                context = Context(num_cores=kwargs["num_cores"])
+                context = Context(num_cores=kwargs.get("num_cores"))
                 kwargs["context"] = context
             buckets = pipeline_constructor.create_pipeline_buckets(
                 task=task,
