@@ -58,10 +58,10 @@ class CLIPCaptionPipeline(BasePipeline):
         visual_model_path: str,
         text_model_path: str,
         decoder_model_path: str,
-        num_beams: int = 6,
-        num_beam_groups: int = 3,
+        num_beams: int = 10,
+        num_beam_groups: int = 5,
         min_seq_len: int = 5,
-        seq_len: int = 30,
+        seq_len: int = 25,
         fixed_output_length: bool = False,
         **kwargs,
     ):
@@ -88,7 +88,9 @@ class CLIPCaptionPipeline(BasePipeline):
 
     # TODO: have to verify all input types
     def _encode_and_decode(self, text, image_embs):
-        text_embeddings = self.text(CLIPTextInput(text=text.numpy())).text_embeddings
+        og_shape = text.shape[-1]
+        r = F.pad(text, (25 - (og_shape), 0))
+        text_embeddings = self.text(CLIPTextInput(text=r.numpy())).text_embeddings
         _, text_embs = text_embeddings[0], text_embeddings[1]
         logits = self.decoder(
             CLIPDecoderInput(
@@ -105,6 +107,7 @@ class CLIPCaptionPipeline(BasePipeline):
         sot_token_id = 49406
         eos_token_id = 49407
         pad_token_id = 0
+        batch_size = 1
         repetition_penalty = 1.0
         device = "cpu"
 
@@ -118,7 +121,6 @@ class CLIPCaptionPipeline(BasePipeline):
             ]
         )
 
-        batch_size = 1
         visual_output = self.visual(pipeline_inputs.image).image_embeddings
 
         _, image_embs = visual_output[0], visual_output[1]
@@ -126,6 +128,7 @@ class CLIPCaptionPipeline(BasePipeline):
         image_embs = torch.repeat_interleave(
             torch.Tensor(image_embs), self.num_beams, dim=0
         )
+
         input_ids = torch.ones(
             (batch_size * self.num_beams, 1), device=device, dtype=torch.long
         )
@@ -137,7 +140,6 @@ class CLIPCaptionPipeline(BasePipeline):
             num_beam_groups=self.num_beam_groups,
         )
 
-        batch_size = len(beam_scorer._beam_hyps)
         num_beams = beam_scorer.num_beams
         num_beam_groups = beam_scorer.num_beam_groups
         num_sub_beams = num_beams // num_beam_groups
@@ -147,7 +149,7 @@ class CLIPCaptionPipeline(BasePipeline):
         if num_beams * batch_size != batch_beam_size:
             raise ValueError(
                 f"Batch dimension of `input_ids` should be {num_beams * batch_size}, "
-                f" but is {batch_beam_size}."
+                f"but is {batch_beam_size}."
             )
 
         beam_scores = torch.full(
@@ -171,17 +173,8 @@ class CLIPCaptionPipeline(BasePipeline):
                 batch_size * num_beams, dtype=torch.long, device=device
             )
 
-            current_dim_input_ids = input_ids.shape[-1]
-            model_inputs_text = F.pad(
-                input_ids,
-                (self.seq_len - current_dim_input_ids, 0),
-                "constant",
-                pad_token_id,
-            )
-
-            outputs = self._encode_and_decode(
-                text=model_inputs_text, image_embs=image_embs
-            )
+            # do one decoder step on all beams of all sentences in batch
+            outputs = self._encode_and_decode(text=input_ids, image_embs=image_embs)
 
             for beam_group_idx in range(num_beam_groups):
                 group_start_idx = beam_group_idx * num_sub_beams
@@ -296,7 +289,6 @@ class CLIPCaptionPipeline(BasePipeline):
             .split("<end_of_text>")[0]
             .replace("<start_of_text>", "")
         )
-        print(output)
         return self.output_schema(caption=[output])
 
     @property
