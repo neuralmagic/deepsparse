@@ -14,6 +14,7 @@
 
 from typing import Any, List, Type
 
+import numpy as np
 from numpy import linalg as la
 from pydantic import BaseModel, Field
 
@@ -74,7 +75,7 @@ class CLIPZeroShotPipeline(BasePipeline):
         output_product = 100.0 * visual_output @ text_output.T
         text_probs = softmax(output_product, axis=-1)
 
-        return self.output_schema(text_scores=[text_probs])
+        return self.output_schema(text_scores=np.vsplit(text_probs, len(text_probs)))
 
     @property
     def input_schema(self) -> Type[CLIPZeroShotInput]:

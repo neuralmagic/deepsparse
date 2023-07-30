@@ -75,9 +75,7 @@ class CLIPTextPipeline(Pipeline):
         """
         return model_to_path(self.model_path)
 
-    def process_inputs(
-        self, inputs: CLIPTextInput
-    ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
+    def process_inputs(self, inputs: CLIPTextInput) -> List[np.ndarray]:
         """
         Preprocess inputs for CLIP's Trext Branch to comply with the DeepSparse Engine
 
