@@ -61,7 +61,7 @@ class CLIPCaptionPipeline(BasePipeline):
         num_beams: int = 10,
         num_beam_groups: int = 5,
         min_seq_len: int = 5,
-        seq_len: int = 25,
+        seq_len: int = 20,
         fixed_output_length: bool = False,
         **kwargs,
     ):
@@ -75,22 +75,24 @@ class CLIPCaptionPipeline(BasePipeline):
 
         self.visual = Pipeline.create(
             task="clip_visual",
-            **{"model_path": visual_model_path, "engine_type": "onnxruntime"},
+            **{"model_path": visual_model_path},
         )
         self.text = Pipeline.create(
             task="clip_text",
-            **{"model_path": text_model_path, "engine_type": "onnxruntime"},
+            **{"model_path": text_model_path},
         )
         self.decoder = Pipeline.create(
             task="clip_decoder",
-            **{"model_path": decoder_model_path, "engine_type": "onnxruntime"},
+            **{"model_path": decoder_model_path},
         )
 
     # TODO: have to verify all input types
     def _encode_and_decode(self, text, image_embs):
-        og_shape = text.shape[-1]
-        r = F.pad(text, (25 - (og_shape), 0))
-        text_embeddings = self.text(CLIPTextInput(text=r.numpy())).text_embeddings
+        original_size = text.shape[-1]
+        padded_tokens = F.pad(text, (15 - original_size, 0))
+        text_embeddings = self.text(
+            CLIPTextInput(text=padded_tokens.numpy())
+        ).text_embeddings
         _, text_embs = text_embeddings[0], text_embeddings[1]
         logits = self.decoder(
             CLIPDecoderInput(
@@ -128,6 +130,8 @@ class CLIPCaptionPipeline(BasePipeline):
         image_embs = torch.repeat_interleave(
             torch.Tensor(image_embs), self.num_beams, dim=0
         )
+
+        # image_embs = torch.load("/home/dsikka/image_embs.pt")
 
         input_ids = torch.ones(
             (batch_size * self.num_beams, 1), device=device, dtype=torch.long

@@ -34,6 +34,8 @@ class CLIPTextInput(BaseModel):
         description="Either raw text or text embeddings"
     )
 
+    dim: Optional[Any] = Field(description="Dim")
+
 
 class CLIPTextOutput(BaseModel):
     """
