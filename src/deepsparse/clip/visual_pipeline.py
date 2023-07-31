@@ -61,8 +61,9 @@ class CLIPVisualPipeline(Pipeline):
                     size=self._image_size,
                     interpolation=InterpolationMode.BICUBIC,
                     max_size=None,
+                    antialias="warn",
                 ),
-                transforms.CenterCrop(size=self._image_size),
+                transforms.CenterCrop(size=(self._image_size, self._image_size)),
             ]
         )
 
@@ -102,14 +103,13 @@ class CLIPVisualPipeline(Pipeline):
 
         def _process_image(image) -> np.array:
             if isinstance(image, str):
-                image = Image.open(image)
+                image = Image.open(image).convert("RGB")
                 image = self._preprocess_transforms(image)
 
-                # image.convert("RGB") should make the image 8 bit
-                image_array = np.array(image.convert("RGB"))
+                image_array = np.array(image)
 
                 # make channel dim the first dim
-                image_array = image_array.transpose(2, 1, 0).astype("float32")
+                image_array = image_array.transpose(2, 0, 1).astype("float32")
 
                 image_array /= 255.0
                 image_array = (
