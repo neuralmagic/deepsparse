@@ -131,8 +131,6 @@ class CLIPCaptionPipeline(BasePipeline):
             torch.Tensor(image_embs), self.num_beams, dim=0
         )
 
-        # image_embs = torch.load("/home/dsikka/image_embs.pt")
-
         input_ids = torch.ones(
             (batch_size * self.num_beams, 1), device=device, dtype=torch.long
         )
