@@ -133,7 +133,7 @@ _image_classification_deps = [
     "opencv-python<=4.6.0.66",
 ]
 _yolo_integration_deps = [
-    "torchvision>=0.3.0,<0.14",
+    "torchvision>=0.3.0,<=0.15.1",
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
@@ -142,7 +142,7 @@ _openpifpaf_integration_deps = [
     "pycocotools >=2.0.6",
     "scipy==1.10.1",
 ]
-_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
+_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
     f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
     f"~={version_base}",
@@ -203,7 +203,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [7, 8, 9, 10]
+    supported_minor = [8, 9, 10]
 
     if (
         sys.version_info[0] != supported_major

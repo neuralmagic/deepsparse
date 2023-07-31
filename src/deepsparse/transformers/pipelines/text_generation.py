@@ -15,7 +15,7 @@
 import logging
 import os
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Type, Union
+from typing import Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -24,7 +24,10 @@ from deepsparse import Pipeline
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.utils.helpers import pad_to_fixed_length
+from deepsparse.transformers.utils.helpers import (
+    create_causal_mask,
+    pad_to_fixed_length,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -122,8 +125,7 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
-        # TODO: Set this to 64 once we modify the OPT injection logic
-        prompt_processing_sequence_length: int = 128,
+        prompt_processing_sequence_length: int = 64,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = True,
         **kwargs,
@@ -145,12 +147,6 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
         if self.engine_type == DEEPSPARSE_ENGINE:
-            _LOGGER.warning(
-                "The support for deepsparse engine is limited "
-                f"for {self.__class__.__name__}. "
-                "The multi-token engine will not be "
-                "used for prompt processing."
-            )
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
@@ -268,13 +264,16 @@ class TextGenerationPipeline(TransformersPipeline):
 
         attention_mask = input_tokens["attention_mask"]
 
-        # TODO: Positions input is not required by BLOOM
-        # let's make it optional in the future
         positions = attention_mask.cumsum(1) * attention_mask
         positions -= 1  # assert that positions start at 0
-        positions_input = dict(positions=positions)
 
-        input_tokens = {**input_tokens, **positions_input}
+        causal_mask = create_causal_mask(
+            input_tokens["input_ids"], input_tokens["attention_mask"]
+        )
+
+        input_tokens = dict(
+            **input_tokens, positions=positions, causal_mask=causal_mask
+        )
         onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
@@ -383,20 +382,11 @@ class TextGenerationPipeline(TransformersPipeline):
         # to refrain from resetting if session id is being passed
         self._reset_engines_cache()
 
-        # TODO: Multiple passes through the multitoken
-        # engine once the OPT injection is fixed
-        if (
-            len(tokens) > self.prompt_processing_sequence_length
-            and self.engine_type != DEEPSPARSE_ENGINE
-        ):
-            # trim the input to the prompt size
-            engine_inputs = [
-                input[:, : self.prompt_processing_sequence_length]
-                for input in engine_inputs
-            ]
-            new_token, new_logits = self.multitoken_engine(engine_inputs)
-            num_tokens_processed = self.prompt_processing_sequence_length
-            prompt_logits.append(new_logits)
+        if len(tokens) > self.prompt_processing_sequence_length:
+            for engine_inputs in self.engine_inputs_for_prefill(tokens):
+                new_token, new_logits = self.multitoken_engine(engine_inputs)
+                num_tokens_processed += self.prompt_processing_sequence_length
+                prompt_logits.append(new_logits)
 
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
@@ -445,11 +435,107 @@ class TextGenerationPipeline(TransformersPipeline):
         if shift_positions_by_one:
             positions -= 1
         input_ids = numpy.array([[new_token]])
-        engine_inputs = [input_ids, attention_mask, positions]
+        causal_mask = create_causal_mask(input_ids, attention_mask)
+        engine_inputs = [input_ids, attention_mask, positions, causal_mask]
 
         generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
+
+    def engine_inputs_for_prefill(
+        self, tokens: List[int]
+    ) -> Generator[List[numpy.ndarray], None, None]:
+        """
+        Takes a list of tokens and creates a generator
+        of engine_inputs for the multitoken engine.
+
+        1. The input tokens first get batched into chunks of
+        size self.prompt_processing_sequence_length. This is to
+        ensure that they match the expected input size by the
+        multitoken engine. Any remaining tokens are discarded.
+
+        2. Every created engine_inputs batch is then created:
+
+            - input_ids: by taking a batch of tokens
+
+            - attention_mask: by creating an appropriate mask,
+            that will have the amount of unmasked entries equal to
+            the sum of:
+                a) the number of tokens in the batch
+                (self.prompt_processing_sequence_length)
+                b) the number of non-blank cache entries
+                (num_non_blank_cache_entries)
+            so that the attention_mask properly attends to the
+            current input tokens, as well as the previous cache
+            entries.
+
+            - positions: derived directly from the input_ids
+
+            - causal_mask: derived from the input_ids and attention_mask
+
+        :param tokens: the list of tokens to process
+        :return: a generator of engine inputs
+        """
+
+        num_batches = len(tokens) // self.prompt_processing_sequence_length
+
+        token_batches = [
+            tokens[i : i + self.prompt_processing_sequence_length]
+            for i in range(num_batches)
+        ]
+
+        for idx, token_batch in enumerate(token_batches):
+            engine_inputs = []
+
+            for name in self.multitoken_engine.onnx_input_names_no_cache:
+                if name == "input_ids":
+                    engine_input = numpy.array([token_batch])
+
+                elif name == "attention_mask":
+                    num_cached_entries = (
+                        self.multitoken_engine.num_non_blank_cache_entries
+                    )
+
+                    # create an empty attention mask
+                    engine_input = numpy.zeros(
+                        (1, self.sequence_length), dtype=numpy.int64
+                    )
+                    # fill it out with 1s (from the right), so that the number
+                    # of unmaksed entries is equal to the sum of:
+                    engine_input[
+                        :,
+                        -(
+                            # ...the number of current input tokens...
+                            self.prompt_processing_sequence_length
+                            # ...and the number of the previous cache entries
+                            + num_cached_entries
+                        ) :,
+                    ] = 1
+                elif name == "causal_mask":
+                    # delay creation of the causal mask
+                    continue
+                elif name == "positions":
+                    if self.prompt_processing_sequence_length == 1:
+                        # we need to treat `positions` as if we were in
+                        # the autoregressive mode
+                        engine_input = numpy.array([[idx]], dtype=numpy.int64)
+                    else:
+                        engine_input = (
+                            numpy.arange(self.prompt_processing_sequence_length)
+                            .reshape(1, -1)
+                            .astype(numpy.int64)
+                        )
+
+                engine_inputs.append(engine_input)
+
+            # create the causal mask once we have the input_ids and attention_mask
+            if "causal_mask" in self.multitoken_engine.onnx_input_names_no_cache:
+                causal_mask = create_causal_mask(
+                    input_ids=engine_inputs[0], attention_mask=engine_inputs[1]
+                )
+                engine_inputs.append(causal_mask)
+
+            yield engine_inputs
 
     @property
     def has_cache(self) -> bool:
@@ -460,9 +546,8 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         return self.multitoken_engine.kv_cache_enabled
 
-    @staticmethod
     def join_engine_outputs(
-        batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
+        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
     ) -> List[numpy.ndarray]:
         """
         Takes a list of outputs (batches) from the engine
@@ -475,7 +560,22 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: A list of joined outputs
         """
         tokens, logits = zip(*batch_outputs)
+
+        # find the longest sequence in the batch of tokens
+        max_len = max([token.shape[1] for token in tokens])
+
+        # pad all tokens to the same length
+        tokens = [
+            pad_to_fixed_length(
+                array=prediction,
+                max_len=max_len,
+                value=self.tokenizer.pad_token_id,
+                axis=1,
+            )
+            for prediction in tokens
+        ]
         tokens = numpy.concatenate(tokens, axis=0)
+
         # find the longest sequence in the batch of logits
         max_len = max([logits.shape[1] for logits in logits])
         # pad all logits to the same length
