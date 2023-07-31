@@ -396,7 +396,8 @@ class TextGenerationPipeline(TransformersPipeline):
             max_tokens = (
                 self.max_generated_tokens
                 if self.max_generated_tokens is not None
-                and self.max_generated_tokens >= 0
+                and self.max_generated_tokens
+                and self.max_generated_tokens > 0
                 else 100 * self.sequence_length
             )  # set safety for absolute max generation
 
@@ -454,7 +455,8 @@ class TextGenerationPipeline(TransformersPipeline):
             session_contains_bos_token = self.multitoken_engine.initialize_session(
                 session_id
             )
-            # remove the first (BOS) token if it is already included in the session kv cache
+            # remove the first (BOS) token if it is
+            # already included in the session kv cache
             if session_contains_bos_token:
                 tokens = tokens[1:]
 
@@ -506,6 +508,7 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         new_token = tokens[-1]
 
+        # TODO Thinking whether this is a good solution
         num_cached_entries = self.engine.num_non_blank_cache_entries
 
         # padding is added to left, so attention mask is 1s from the

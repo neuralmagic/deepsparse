@@ -27,8 +27,18 @@ def test_codegen():
     pipeline = Pipeline.create(
         task="text_generation",
         model_path=model_stub,
-        sequence_length=16,
-        max_generated_tokens=8,
+        max_generated_tokens=16,
         prompt_processing_sequence_length=1,
         use_deepsparse_cache=False,
     )
+    prompt = "def fib():"
+    out = pipeline(sequences=prompt)
+    nm_output = prompt + out.sequences[0]
+
+    tokenizer = AutoTokenizer.from_pretrained("Salesforce/codegen-350M-mono")
+    model = AutoModelForCausalLM.from_pretrained("Salesforce/codegen-350M-mono")
+    input_ids = tokenizer(prompt, return_tensors="pt").input_ids
+    generated_ids = model.generate(input_ids, max_new_tokens=16)
+    hf_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+
+    assert nm_output == hf_output

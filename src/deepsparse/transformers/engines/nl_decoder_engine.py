@@ -22,7 +22,6 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import generate_session_id
 from deepsparse.transformers.utils.storage_kv_cache import SessionStorageKVCache
 from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import translate_onnx_type_to_numpy
@@ -163,7 +162,16 @@ class NLDecoderEngine:
         """
         Initializes the session for the given session id.
 
+        1. If the session id is not in the kv cache storage, then
+            we initialize a new session and put it in the storage.
+        2. If the session id is in the kv cache storage, then we
+            update the capacity of the session to the current
+            sequence length.
+        3. We set the session to the current session (class' attribute).
+        4. We return whether the session contains the bos token or not.
+
         :param session_id: The session id to initialize the session for
+        :return: Whether the session contains the bos token or not
         """
         session = self.kv_cache_storage.get(session_id)
         kv_cache_capacity = self.sequence_length - self.input_ids_length
@@ -311,6 +319,7 @@ class NLDecoderEngine:
             state=kv_cache_state,
             input_ids_len=input_ids_len,
         )
+        # insert the updated kv cache state into the KV Cache Storage
         self.kv_cache_storage.put(self.session)
 
     def _initialize_kv_cache_state(self, length: int) -> Dict[str, numpy.ndarray]:
