@@ -49,7 +49,13 @@ class CLIPZeroShotOutput(BaseModel):
 @BasePipeline.register(task="clip_zeroshot", default_model_path=None)
 class CLIPZeroShotPipeline(BasePipeline):
     def __init__(self, visual_model_path: str, text_model_path: str, **kwargs):
-
+        """
+        Pipeline designed to run zero-shot classification given a list of images and
+        possible classes. The CLIPZeroShotPipeline relies on two pipelines, the
+        CLIPTextPipeline which handles CLIP's text branch adn the CLIPVisualPipeline
+        which handles CLIP's visual branch. The final score calculations are handled and
+        returned by the CLIPZeroShotPipeline. See README.md for a detailed example.
+        """
         self.visual = Pipeline.create(
             task="clip_visual", **{"model_path": visual_model_path}
         )
