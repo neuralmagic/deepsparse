@@ -34,18 +34,18 @@ from tests.utils import mock_engine
 @pytest.fixture
 def visual_input():
     images = computer_vision(batch_size=2)
-    model_path = "clip_onnx/clip_visual.onnx"
+    model_path = None
     return CLIPVisualInput(images=images.get("images")), model_path
 
 
 @pytest.fixture
 def text_input():
-    model_path = "clip_onnx/clip_text.onnx"
+    model_path = None
     text = ["a building", "a dog", "a cat"]
     return CLIPTextInput(text=text), model_path
 
 
-@pytest.mark.skip(reason="No CLIP models currently available to run the test on")
+@pytest.mark.skip(reason="No CLIP models currently available to run tests")
 @mock_engine(rng_seed=0)
 def test_visual_clip(engine, visual_input):
     model_path = visual_input[-1]
@@ -56,7 +56,7 @@ def test_visual_clip(engine, visual_input):
     assert len(output.image_embeddings) == 1
 
 
-@pytest.mark.skip(reason="No CLIP models curently available to run the test on")
+@pytest.mark.skip(reason="No CLIP models curently available to run tests")
 @mock_engine(rng_seed=0)
 def test_text_clip(engine, text_input):
     model_path = text_input[-1]
@@ -67,7 +67,7 @@ def test_text_clip(engine, text_input):
     assert len(output.text_embeddings) == 1
 
 
-@pytest.mark.skip(reason="No CLIP models currently available to run the test on")
+@pytest.mark.skip(reason="No CLIP models currently available to run tests")
 @mock_engine(rng_seed=0)
 def test_zero_shot(engine, visual_input, text_input):
     model_path_text = text_input[-1]
@@ -91,13 +91,12 @@ def test_zero_shot(engine, visual_input, text_input):
     assert isinstance(output, CLIPZeroShotOutput)
 
 
-@pytest.mark.skip(reason="No CLIP models currently available to run the test on")
+@pytest.mark.skip(reason="No CLIP models currently available to run tests")
 @mock_engine(rng_seed=0)
-def test_caption(engine, visual_input):
-    root = "caption_models"
-    model_path_visual = f"{root}/clip_visual.onnx"
-    model_path_text = f"{root}/clip_text.onnx"
-    model_path_decoder = f"{root}/clip_text_decoder.onnx"
+def test_caption(engine, visual_input, text_input):
+    model_path_visual = text_input[-1]
+    model_path_text = text_input[-1]
+    model_path_decoder = None
     pipeline_input = CLIPCaptionInput(
         image=CLIPVisualInput(images=visual_input[0].images[-1])
     )
