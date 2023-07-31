@@ -139,6 +139,6 @@ class CLIPVisualPipeline(Pipeline):
 
         :return: The expected size of the input tensor for the onnx graph
         """
-        onnx_model = onnx.load(self.onnx_file_path)
+        onnx_model = onnx.load(self.onnx_file_path, load_external_data=False)
         input_tensor = onnx_model.graph.input[0]
         return input_tensor.type.tensor_type.shape.dim[2].dim_value
