@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List, Optional, Type, Union
+from typing import Any, List, Type, Union
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -33,8 +33,6 @@ class CLIPTextInput(BaseModel):
     text: Union[str, List[str], Any, List[Any]] = Field(
         description="Either raw text or text embeddings"
     )
-
-    dim: Optional[Any] = Field(description="Dim")
 
 
 class CLIPTextOutput(BaseModel):
