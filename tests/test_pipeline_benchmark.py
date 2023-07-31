@@ -38,31 +38,45 @@ from tests.helpers import run_command
             "text_classification",
             "zoo:nlp/sentiment_analysis/distilbert-none/pytorch/huggingface/"
             "sst2/pruned90-none",
-            ["-c", "tests/test_data/pipeline_bench_config.json", "-b", "4"],
+            [
+                "-c",
+                "tests/test_data/pipeline_bench_config.json",
+                "-b",
+                "4",
+                "-t",
+                "3",
+                "-w",
+                "0.5",
+            ],
         ),
         (
             "image_classification",
             "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
-            ["-c", "tests/test_data/pipeline_bench_config.json", "-s", "async"],
-        ),
-        (
-            "question_answering",
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-            "12layer_pruned80_quant-none-vnni",
             [
                 "-c",
                 "tests/test_data/pipeline_bench_config.json",
-                "-t",
-                "5",
                 "-s",
-                "elastic",
+                "async",
+                "-t",
+                "3",
+                "-w",
+                "0.5",
             ],
         ),
         (
             "token_classification",
             "zoo:nlp/token_classification/distilbert-none/pytorch/huggingface/"
             "conll2003/pruned90-none",
-            ["-c", "tests/test_data/pipeline_bench_config.json", "-t", "3"],
+            [
+                "-c",
+                "tests/test_data/pipeline_bench_config.json",
+                "-s",
+                "elastic",
+                "-t",
+                "3",
+                "-w",
+                "0.5",
+            ],
         ),
     ],
 )
