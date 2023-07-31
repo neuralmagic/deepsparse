@@ -51,20 +51,20 @@ class TestDecoderKVCache:
         freeze_first_position,
         state_updated,
     ):
-        decoder = DecoderKVCache()
+        session = DecoderKVCache()
         state_flattened = state["dummy_cache_name"].flatten()
         num_processed_tokens = state_flattened[state_flattened != 0].shape[0]
-        decoder.setup_session(
+        session.setup(
             session_id="None",
             state=state,
             num_processed_tokens=num_processed_tokens,
             freeze_first_position=freeze_first_position,
         )
-        yield decoder, state, input_ids_len, state_updated
+        yield session, state, input_ids_len, state_updated
 
     def test_update_session(self, setup):
-        decoder, state, input_ids_len, exp_state_updated = setup
-        decoder.update_session(copy.deepcopy(state), input_ids_len)
-        state_updated = decoder.cached_inputs
+        session, state, input_ids_len, exp_state_updated = setup
+        session.update(copy.deepcopy(state), input_ids_len)
+        state_updated = session.cached_inputs
         for key in state_updated.keys():
             assert np.array_equal(state_updated[key], exp_state_updated[key])

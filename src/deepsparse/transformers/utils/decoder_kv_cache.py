@@ -45,7 +45,7 @@ class DecoderKVCache:
         self._state = None
         self._kv_cache = None
 
-    def setup_session(
+    def setup(
         self,
         session_id: str,
         state: Dict[str, Any],
@@ -80,7 +80,7 @@ class DecoderKVCache:
         if self._use_deepsparse_cache:
             raise NotImplementedError("DeepSparse cache is not supported yet.")
 
-    def update_session(
+    def update(
         self,
         state: Dict[str, Any],
         input_ids_len: int,
@@ -193,20 +193,15 @@ class DecoderKVCache:
         state = self.cached_inputs
 
         if capacity_difference > 0:
-            raise NotImplementedError(
-                "The scenario when capacity"
-                "needs to be expanded is not yet"
-                "supported."
-            )
+            self.update(state, input_ids_len=capacity_difference)
 
         elif capacity_difference < 0:
             indices = [0] * abs(capacity_difference)
             state = self._add_entries(state, indices=indices)
-
+            self._state = state
         else:
-            return
-
-        self._state = state
+            pass
+        return
 
     def _delete_entries(
         self, state: Dict[str, Any], indices: List[int]
@@ -233,7 +228,7 @@ class DecoderKVCache:
         return state
 
     @property
-    def session_id(self):
+    def id(self):
         if self._session_id is None:
             raise ValueError("Attempted to access session_id before setting up session")
         return self._session_id
@@ -243,7 +238,10 @@ class DecoderKVCache:
         """
         :return: the number of non-blank entries in the kv cache
         """
-        return min(self.capacity, self.total_num_processed_tokens)
+
+        # given a 2D array get number of rows that are not entirely zero
+        single_kv_cache_entry = self.cached_inputs[list(self.cached_inputs.keys())[0]]
+        return numpy.count_nonzero(single_kv_cache_entry.sum(0).sum(0).sum(1))
 
     @property
     def capacity(self) -> int:
@@ -259,8 +257,8 @@ class DecoderKVCache:
             self._sequence_len_axis
         ]
 
-    @session_id.setter
-    def session_id(self, session_id: str):
+    @id.setter
+    def id(self, session_id: str):
         self._session_id = session_id
 
     @property
