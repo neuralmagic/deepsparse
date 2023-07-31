@@ -15,7 +15,7 @@
 from typing import Any, List, Type
 
 import numpy as np
-from numpy import linalg as la
+from numpy import linalg as lingalg
 from pydantic import BaseModel, Field
 
 from deepsparse.clip import CLIPTextInput, CLIPVisualInput
@@ -82,8 +82,8 @@ class CLIPZeroShotPipeline(BasePipeline):
         visual_output = self.visual(pipeline_inputs.image).image_embeddings[0]
         text_output = self.text(pipeline_inputs.text).text_embeddings[0]
 
-        visual_output /= la.norm(visual_output, axis=-1, keepdims=True)
-        text_output /= la.norm(text_output, axis=-1, keepdims=True)
+        visual_output /= lingalg.norm(visual_output, axis=-1, keepdims=True)
+        text_output /= lingalg.norm(text_output, axis=-1, keepdims=True)
 
         output_product = 100.0 * visual_output @ text_output.T
         text_probs = softmax(output_product, axis=-1)
