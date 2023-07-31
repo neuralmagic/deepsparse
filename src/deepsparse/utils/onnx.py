@@ -16,6 +16,7 @@ import contextlib
 import logging
 import os
 import tempfile
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
 
@@ -48,6 +49,7 @@ __all__ = [
     "override_onnx_input_shapes",
     "truncate_onnx_model",
     "truncate_onnx_embedding_model",
+    "default_cached_outputs",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -96,9 +98,10 @@ def translate_onnx_type_to_numpy(tensor_type: int):
 def model_to_path(model: Union[str, Model, File]) -> str:
     """
     Deals with the various forms a model can take. Either an ONNX file,
-    a SparseZoo model stub prefixed by 'zoo:', a SparseZoo Model object,
-    or a SparseZoo ONNX File object that defines the neural network. Noting
-    the model will be downloaded automatically if a SparseZoo stub is passed
+    a directory containing model.onnx, a SparseZoo model stub prefixed by
+    'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File object that
+    defines the neural network. Noting the model will be downloaded automatically
+    if a SparseZoo stub is passed
 
     :param model: Either a local str path or SparseZoo stub to the model. Can
         also be a sparsezoo.Model or sparsezoo.File object
@@ -125,6 +128,10 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     if not os.path.exists(model):
         raise ValueError("model path must exist: given {}".format(model))
+
+    model_path = Path(model)
+    if model_path.is_dir():
+        return str(model_path / "model.onnx")
 
     return model
 
@@ -466,3 +473,22 @@ def truncate_onnx_embedding_model(
     )
 
     return output_filepath, tmp_file
+
+
+def default_cached_outputs(model_path: str) -> List[bool]:
+    """
+    :param model_path: Path to a model
+    :return A list of bools that indicates caching of all outputs except the first one.
+    """
+
+    outputs = list(onnx.load(model_path).graph.output)
+    assert len(outputs) > 0
+
+    # Create a boolean list of every output of the
+    # model [logits, key0, value0, key1, value1, ..., keyN, valueN]
+    cached_outputs = [True for i in range(len(outputs))]
+
+    # Assume first input is logits and logits ought not to be cached
+    cached_outputs[0] = False
+
+    return cached_outputs

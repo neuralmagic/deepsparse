@@ -93,13 +93,16 @@ def get_onnx_path_and_configs(
             framework_files = os.listdir(framework_dir)
             if _MODEL_DIR_CONFIG_NAME in framework_files:
                 config_path = framework_dir
-            if _MODEL_DIR_TOKENIZER_NAME in framework_files:
+            if (
+                _MODEL_DIR_TOKENIZER_NAME
+                or _MODEL_DIR_TOKENIZER_CONFIG_NAME in framework_files
+            ):
                 tokenizer_path = framework_dir
 
         # prefer config and tokenizer files in same directory as model.onnx
         if _MODEL_DIR_CONFIG_NAME in model_files:
             config_path = model_path
-        if _MODEL_DIR_TOKENIZER_NAME in model_files:
+        if _MODEL_DIR_TOKENIZER_NAME or _MODEL_DIR_TOKENIZER_CONFIG_NAME in model_files:
             tokenizer_path = model_path
 
     elif model_path.startswith("zoo:"):
