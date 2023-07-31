@@ -128,6 +128,7 @@ def test_generate_question_data():
         ("question_answering", SchemaType.QUESTION),
     ],
 )
+@pytest.mark.skip(reason="High memory usage, causes GitHub test run to be killed")
 def test_get_input_schema_type(task_name, input_schema):
     pipeline = Pipeline.create(task=task_name)
     assert get_input_schema_type(pipeline) == input_schema
