@@ -209,13 +209,6 @@ class TorchScriptEngine(object):
         """
         return [node_arg.name for node_arg in self._eng_net.get_outputs()]
 
-    @property
-    def output_shapes(self) -> List[Tuple]:
-        """
-        :return: The ordered shapes of the outputs.
-        """
-        return [tuple(node_arg.shape) for node_arg in self._eng_net.get_outputs()]
-
     def run(
         self,
         inp: List[numpy.ndarray],
