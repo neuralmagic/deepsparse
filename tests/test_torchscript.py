@@ -31,7 +31,7 @@ except Exception as torch_import_err:
     torch = None
 
 
-@pytest.mark.skipif(torch is None)
+@pytest.mark.skipif(torch is None, reason="CUDA is not available")
 def test_cpu_torchscript(torchscript_test_setup):
     models = torchscript_test_setup
     for model in models.values():
@@ -57,7 +57,7 @@ def test_gpu_torchscript(torchscript_test_setup):
         )
 
 
-@pytest.mark.skipif(torch is None)
+@pytest.mark.skipif(torch is None, reason="CUDA is not available")
 def test_cpu_torchscript_pipeline(torchscript_test_setup):
     models = torchscript_test_setup
 

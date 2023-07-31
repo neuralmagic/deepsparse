@@ -252,9 +252,7 @@ class TorchScriptEngine(object):
 
         if isinstance(tensors, torch.Tensor):
             tensors = [tensors]
-        if self.device == "cuda":
-            tensors = [torch.Tensor.cpu(tensor) for tensor in tensors]
-        return [tensor.detach().numpy() for tensor in tensors]
+        return [tensor.cpu().detach().numpy() for tensor in tensors]
 
     def timed_run(
         self, inp: List[numpy.ndarray], val_inp: bool = False
