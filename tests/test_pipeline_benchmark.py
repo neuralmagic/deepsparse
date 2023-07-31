@@ -46,7 +46,7 @@ from tests.helpers import run_command
                 "-t",
                 "3",
                 "-w",
-                "0.5",
+                "1",
             ],
         ),
         (
@@ -60,7 +60,7 @@ from tests.helpers import run_command
                 "-t",
                 "3",
                 "-w",
-                "0.5",
+                "1",
             ],
         ),
         (
@@ -75,7 +75,7 @@ from tests.helpers import run_command
                 "-t",
                 "3",
                 "-w",
-                "0.5",
+                "1",
             ],
         ),
     ],
@@ -160,7 +160,7 @@ def test_calculations():
         batch_times.append(timer)
 
     total_run_time = 6.0
-    section_stats = calculate_section_stats(batch_times, total_run_time)
+    section_stats = calculate_section_stats(batch_times, total_run_time, 1)
     assert math.isclose(
         section_stats["stage_1"]["total_percentage"], 33.33, rel_tol=0.05
     )

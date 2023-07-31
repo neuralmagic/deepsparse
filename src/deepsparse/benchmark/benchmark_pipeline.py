@@ -407,10 +407,12 @@ def benchmark_pipeline(
             "Generated no batch timings, try extending benchmark time with '--time'"
         )
 
-    return batch_times, total_run_time
+    return batch_times, total_run_time, num_streams
 
 
-def calculate_statistics(batch_times_ms: List[float], total_run_time_ms: float) -> Dict:
+def calculate_statistics(
+    batch_times_ms: List[float], total_run_time_ms: float, num_streams: int
+) -> Dict:
     percentiles = [25.0, 50.0, 75.0, 90.0, 95.0, 99.0, 99.9]
     buckets = numpy.percentile(batch_times_ms, percentiles).tolist()
     percentiles_dict = {
@@ -418,7 +420,7 @@ def calculate_statistics(batch_times_ms: List[float], total_run_time_ms: float) 
     }
 
     benchmark_dict = {
-        "total_percentage": sum(batch_times_ms) / total_run_time_ms * 100,
+        "total_percentage": sum(batch_times_ms) / total_run_time_ms * 100 * num_streams,
         "median": numpy.median(batch_times_ms),
         "mean": numpy.mean(batch_times_ms),
         "std": numpy.std(batch_times_ms),
@@ -428,7 +430,7 @@ def calculate_statistics(batch_times_ms: List[float], total_run_time_ms: float) 
 
 
 def calculate_section_stats(
-    batch_times: List[StagedTimer], total_run_time: float
+    batch_times: List[StagedTimer], total_run_time: float, num_streams: int
 ) -> Dict[str, Dict]:
     compute_sections = batch_times[0].stages
     total_run_time_ms = total_run_time * 1000
@@ -436,7 +438,9 @@ def calculate_section_stats(
     sections = {}
     for section in compute_sections:
         section_times = [st.times[section] * 1000 for st in batch_times]
-        sections[section] = calculate_statistics(section_times, total_run_time_ms)
+        sections[section] = calculate_statistics(
+            section_times, total_run_time_ms, num_streams
+        )
 
     return sections
 
@@ -450,7 +454,7 @@ def main():
     print("Batch Size: {}".format(args.batch_size))
     print("Scenario: {}".format(args.scenario))
 
-    batch_times, total_run_time = benchmark_pipeline(
+    batch_times, total_run_time, num_streams = benchmark_pipeline(
         model_path=args.model_path,
         task=args.task_name,
         config=config,
@@ -465,7 +469,7 @@ def main():
         quiet=args.quiet,
     )
 
-    section_stats = calculate_section_stats(batch_times, total_run_time)
+    section_stats = calculate_section_stats(batch_times, total_run_time, num_streams)
     items_per_sec = (len(batch_times) * args.batch_size) / total_run_time
 
     benchmark_results = {
