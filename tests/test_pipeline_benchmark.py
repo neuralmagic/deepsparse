@@ -66,7 +66,6 @@ from tests.helpers import run_command
         ),
     ],
 )
-@pytest.mark.skip(reason="High memory usage, causes GitHub test run to be killed")
 def test_pipeline_benchmark(
     pipeline_id: str, model_stub: str, additional_opts: List[str]
 ):
