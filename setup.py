@@ -64,7 +64,7 @@ if is_enterprise:
     os.remove(license_nm_path)
 
 # File regexes for binaries to include in package_data
-binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin"]
+binary_regexes = ["*/*.so", "*/*.so.*", "*.bin", "*/*.bin", "*/*.dylib"]
 
 # regexes for things to include as license files in the .dist-info
 # see https://github.com/pypa/setuptools/blob/v65.6.0/docs/references/keywords.rst
@@ -85,12 +85,12 @@ def _parse_requirements_file(file_path):
 
 
 _deps = [
-    "numpy>=1.16.3,<=1.21.6",
+    "numpy>=1.16.3",
     "onnx>=1.5.0,<1.15.0",
-    "pydantic>=1.8.2",
+    "pydantic>=1.8.2,<2.0.0",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
-    "protobuf>=3.12.2,<=3.20.1",
+    "protobuf>=3.12.2",
     "click>=7.1.2,!=8.0.0",  # latest version < 8.0 + blocked version with reported bug
 ]
 _nm_deps = [f"{'sparsezoo' if is_release else 'sparsezoo-nightly'}~={version_base}"]
@@ -120,7 +120,6 @@ _dev_deps = [
 _server_deps = [
     "uvicorn>=0.15.0",
     "fastapi>=0.70.0,<0.87.0",
-    "pydantic>=1.8.2",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
     "prometheus-client>=0.14.1",
@@ -134,7 +133,7 @@ _image_classification_deps = [
     "opencv-python<=4.6.0.66",
 ]
 _yolo_integration_deps = [
-    "torchvision>=0.3.0,<0.14",
+    "torchvision>=0.3.0,<=0.15.1",
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
@@ -143,11 +142,11 @@ _openpifpaf_integration_deps = [
     "pycocotools >=2.0.6",
     "scipy==1.10.1",
 ]
-_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.30"]
+_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
     f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
     f"~={version_base}",
-    "datasets<=1.18.4",
+    "datasets<=2.11",
     "scikit-learn",
     "seqeval",
 ]
@@ -165,7 +164,7 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 
 
-_torch_deps = ["torch==2.0"]
+_torch_deps = ["torch>=1.7.0,<=2.0"]
 
 
 def _check_supported_system():
@@ -207,7 +206,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [7, 8, 9, 10]
+    supported_minor = [8, 9, 10]
 
     if (
         sys.version_info[0] != supported_major
@@ -275,6 +274,7 @@ def _setup_extras() -> Dict:
         "onnxruntime": _onnxruntime_deps,
         "image_classification": _image_classification_deps,
         "yolo": _yolo_integration_deps,
+        "yolov5": _yolo_integration_deps,
         "haystack": _haystack_integration_deps,
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,

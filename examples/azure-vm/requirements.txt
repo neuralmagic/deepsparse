@@ -1,0 +1,4 @@
+azure-mgmt-compute=>30.0.0
+azure-identity=>1.13.0
+azure-mgmt-resource=>23.0.1
+click=>8.0.4

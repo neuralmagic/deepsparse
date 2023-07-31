@@ -78,18 +78,36 @@ def cleanup():
 
 @pytest.fixture(scope="session", autouse=True)
 def check_for_created_files():
-    start_files_root = _get_files(directory=r".")
+    start_files_root = [
+        f_path for f_path in _get_files(directory=r".") if "__pycache__" not in f_path
+    ]
     start_files_temp = _get_files(directory=tempfile.gettempdir())
     yield
-    end_files_root = _get_files(directory=r".")
+    # allow creation of __pycache__ directories
+    end_files_root = [
+        f_path for f_path in _get_files(directory=r".") if "__pycache__" not in f_path
+    ]
     end_files_temp = _get_files(directory=tempfile.gettempdir())
 
-    max_allowed_number_created_files = 4
     # GHA needs to create following files:
-    # pyproject.toml, CONTRIBUTING.md, LICENSE, setup.cfg
-    assert len(start_files_root) + max_allowed_number_created_files >= len(
-        end_files_root
-    ), (
+    allowed_created_files = [
+        "pyproject.toml",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "setup.cfg",
+        "prometheus_logs.prom",
+    ]
+    end_files_root = [
+        f_path
+        for f_path in end_files_root
+        if os.path.basename(f_path) not in allowed_created_files
+    ]
+    start_files_root = [
+        f_path
+        for f_path in start_files_root
+        if os.path.basename(f_path) not in allowed_created_files
+    ]
+    assert len(start_files_root) >= len(end_files_root), (
         f"{len(end_files_root) - len(start_files_root)} "
         f"files created in current working "
         f"directory during pytest run. "
@@ -141,6 +159,7 @@ def torchscript_test_setup(torchvision_model_fixture):
     torchvision_model_fixture(pretrained=True, return_jit=False)
     expr = r"^resnet50-[0-9a-z]+\.pt[h]?$"
     resnet50_nn_module_path = find_file_with_pattern(path, expr)
+    resnet50_nn_module = torchvision_model_fixture(pretrained=True)
 
     resnet50_jit = torchvision_model_fixture(pretrained=True, return_jit=True)
     resnet50_jit_path = resnet50_nn_module_path.replace(".pth", ".pt")
@@ -149,6 +168,7 @@ def torchscript_test_setup(torchvision_model_fixture):
     yield {
         "jit_model": resnet50_jit,
         "jit_model_path": resnet50_jit_path,
+        "nn_module_model": resnet50_nn_module,
     }
 
     cache_dir = os.path.expanduser("~/.cache/torch")

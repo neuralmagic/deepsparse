@@ -72,8 +72,12 @@ def _validate_batch_size(batch_size: int) -> int:
 
 def _select_device(device: str):
     device = str(device).lower()
-    if device == "cuda" and torch.cuda.is_available():
-        return "cuda"
+    if device == "cuda":
+        if torch.cuda.is_available():
+            return "cuda"
+        raise ValueError(
+            "Cuda not available is the local environment. Please select 'cpu'"
+        )
     return "cpu"
 
 
@@ -111,13 +115,10 @@ class TorchScriptEngine(object):
         self._device = _select_device(device)
 
         if isinstance(model, torch.nn.Module):
-            self._model = torch.jit.script(model).eval()
-        elif isinstance(model, str):
-            self._model = torch.jit.load(model).eval()
-        else:
             self._model = model
-
-        _validate_jit_model(self._model)
+        else:
+            self._model = torch.jit.load(model).eval()
+            _validate_jit_model(self._model)
 
         self._model.to(self.device)
 
@@ -306,17 +307,6 @@ class TorchScriptEngine(object):
         """
         out = self.run(inp, val_inp)
         return zip(self._output_names, out)
-
-    def _validate_inputs(self, inp: List[numpy.ndarray]):
-        if isinstance(inp, str) or not isinstance(inp, List):
-            raise ValueError("inp must be a list, given {}".format(type(inp)))
-
-        for arr in inp:
-            if not arr.flags["C_CONTIGUOUS"]:
-                raise ValueError(
-                    "array must be passed in as C contiguous, "
-                    "call numpy.ascontiguousarray(array)"
-                )
 
     def _properties_dict(self) -> Dict:
         return {

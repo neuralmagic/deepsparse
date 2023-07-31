@@ -16,7 +16,6 @@
 Image classification pipeline
 """
 import json
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
@@ -136,11 +135,6 @@ class ImageClassificationPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-
-        model_path_: Path = Path(self.model_path)
-        if model_path_.is_dir():
-            return model_to_path(str(model_path_ / "model.onnx"))
-
         return model_to_path(self.model_path)
 
     def process_inputs(self, inputs: ImageClassificationInput) -> List[numpy.ndarray]:

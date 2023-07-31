@@ -95,6 +95,15 @@ class SupportedTasks:
         ),
     )
 
+    text_generation = namedtuple(
+        "text_generation", ["text_generation", "opt", "codegen", "bloom"]
+    )(
+        text_generation=AliasedTask("text_generation", []),
+        codegen=AliasedTask("codegen", []),
+        opt=AliasedTask("opt", []),
+        bloom=AliasedTask("bloom", []),
+    )
+
     image_classification = namedtuple("image_classification", ["image_classification"])(
         image_classification=AliasedTask(
             "image_classification",
@@ -150,6 +159,9 @@ class SupportedTasks:
             # custom task, register the CustomPipeline
             import deepsparse.pipelines.custom_pipeline  # noqa: F401
 
+        elif cls.is_text_generation(task):
+            import deepsparse.transformers.pipelines.text_generation  # noqa: F401
+
         elif cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register
             import deepsparse.transformers.pipelines  # noqa: F401
@@ -192,6 +204,18 @@ class SupportedTasks:
                 f"Unknown Pipeline task {task}. Currently supported tasks are "
                 f"{list(all_tasks)}"
             )
+
+    @classmethod
+    def is_text_generation(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a text generation task
+            such as codegen
+        :return: True if it is a text generation task, False otherwise
+        """
+        return any(
+            text_generation_task.matches(task)
+            for text_generation_task in cls.text_generation
+        )
 
     @classmethod
     def is_nlp(cls, task: str) -> bool:
