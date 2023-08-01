@@ -69,7 +69,6 @@ class NLDecoderEngine:
     ):
         # flag to indicate if the model is quantized or not
         self.kv_cache_data_type = None
-
         (
             onnx_file_path,
             output_indices_to_be_cached,
@@ -80,6 +79,7 @@ class NLDecoderEngine:
             sequence_length=sequence_length,
             input_ids_length=input_ids_length,
         )
+
         kv_cache_enabled = False
         if sum(output_indices_to_be_cached):
             kv_cache_enabled = True

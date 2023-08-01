@@ -53,7 +53,7 @@ __all__ = [
     "has_model_kv_cache",
     "CACHE_INPUT_NAME",
     "CACHE_OUTPUT_NAME",
-    "assert_model_sequence_length_one",
+    "overwrite_sequence_length",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -507,20 +507,31 @@ def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
     :param model_path: Path to a model or a model proto.
     :return True if the model has a KV cache support, False otherwise.
     """
-    return bool(sum(default_cached_outputs(model)))
+    return bool(any(default_cached_outputs(model)))
 
 
-def assert_model_sequence_length_one(model_path: str) -> str:
+def overwrite_sequence_length(
+    model_path: str, sequence_length: Optional[int] = None
+) -> str:
     """
     Takes a path to an onnx model and enforces that it has
     static input dimensions.
 
     :param model_path: Path to a model.
+    :param sequence_length: The sequence length to overwrite the model with.
     :return: Path to the model with static input dimensions.
     """
     from deepsparse.transformers.utils.helpers import (
         overwrite_onnx_model_inputs_for_kv_cache_models,
     )
 
-    onnx_file_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(model_path)
-    return onnx_file_path
+    onnx_file_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+        onnx_file_path=model_path, sequence_length=sequence_length
+    )
+    attention_input_info = [
+        input
+        for input in onnx.load(onnx_file_path, load_external_data=False).graph.input
+        if "attention" in input.name
+    ][0]
+    sequence_length = attention_input_info.type.tensor_type.shape.dim[1].dim_value
+    return onnx_file_path, sequence_length

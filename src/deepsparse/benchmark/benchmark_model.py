@@ -82,6 +82,13 @@ deepsparse.benchmark \
    --input_shapes "[1,512],[1,512],[1,512]"
 
 ##########
+Example on a OPT (Large Language Model) from SparseZoo with sequence length 256:
+deepsparse.benchmark \
+   zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/
+   opt_pretrain/pruned50_quantW8A8-none \
+   --sequence_length 256
+
+##########
 Example on local ONNX model:
 deepsparse.benchmark /PATH/TO/model.onnx
 
@@ -96,7 +103,7 @@ import importlib
 import json
 import logging
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 from deepsparse import Scheduler, __version__, compile_model
 from deepsparse.benchmark.ort_engine import ORTEngine
@@ -104,11 +111,11 @@ from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
 from deepsparse.utils import (
-    assert_model_sequence_length_one,
     generate_random_inputs,
     has_model_kv_cache,
     model_to_path,
     override_onnx_input_shapes,
+    overwrite_sequence_length,
     parse_input_shapes,
 )
 
@@ -139,6 +146,15 @@ def parse_args():
         type=int,
         default=1,
         help="The batch size to run the analysis for. Must be greater than 0",
+    )
+
+    parser.add_argument(
+        "-seq_len",
+        "--sequence_length",
+        type=int,
+        default=None,
+        help="The sequence length to run the "
+        "Large Language Models (LLMs) benchmarks for. Must be greater than 0",
     )
     parser.add_argument(
         "-i",
@@ -334,6 +350,7 @@ def load_custom_engine(custom_engine_identifier: str):
 def benchmark_model(
     model_path: str,
     batch_size: int = 1,
+    sequence_length: Optional[int] = None,
     input_shapes: str = "",
     num_cores: int = None,
     scenario: str = "sync",
@@ -361,11 +378,20 @@ def benchmark_model(
     model_path = model_to_path(model_path)
 
     if has_model_kv_cache(model_path):
+        if batch_size != 1:
+            raise ValueError(
+                "Unable to run models with KV cache support "
+                "for batch size different than one."
+                "Please set batch size to 1 and try again"
+            )
+        model_path, sequence_length = overwrite_sequence_length(
+            model_path=model_path, sequence_length=sequence_length
+        )
         _LOGGER.info(
             "Found model that contains KV cache support. "
-            "Benchmarking the autoregressive model."
+            "Benchmarking the autoregressive model with "
+            f"sequence length: {sequence_length}."
         )
-        model_path = assert_model_sequence_length_one(model_path)
 
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
@@ -428,6 +454,7 @@ def benchmark_model(
         "orig_model_path": orig_model_path,
         "model_path": model_path,
         "batch_size": batch_size,
+        "sequence_length": sequence_length,
         "input_shapes": input_shapes,
         "num_cores": num_cores,
         "scenario": scenario,
@@ -453,6 +480,7 @@ def main():
 
     result = benchmark_model(
         model_path=args.model_path,
+        sequence_length=args.sequence_length,
         batch_size=args.batch_size,
         input_shapes=args.input_shapes,
         num_cores=args.num_cores,
@@ -469,6 +497,8 @@ def main():
     # Results summary
     print("Original Model Path: {}".format(args.model_path))
     print("Batch Size: {}".format(args.batch_size))
+    if args.sequence_length is not None:
+        print("Sequence Length: {}".format(args.sequence_length))
     print("Scenario: {}".format(args.scenario))
     print(
         "Throughput (items/sec): {:.4f}".format(

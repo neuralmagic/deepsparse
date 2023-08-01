@@ -77,6 +77,9 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
             external_input.type.tensor_type.shape.dim[2].dim_value = (
                 sequence_length - input_ids_length
             )
+        elif external_input.name.startswith("causal_mask"):
+            external_input.type.tensor_type.shape.dim[2].dim_value = input_ids_length
+            external_input.type.tensor_type.shape.dim[3].dim_value = sequence_length
         else:
             raise ValueError(f"Unexpected external input name: {external_input.name}")
 
@@ -89,7 +92,7 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
     output_indices_to_be_cached = default_cached_outputs(model)
 
     kv_cache_data_type = None
-    if sum(output_indices_to_be_cached):
+    if any(output_indices_to_be_cached):
         kv_cache_elem_type = next(
             inp for inp in model.graph.input if inp.name.startswith(CACHE_INPUT_NAME)
         ).type.tensor_type.elem_type
