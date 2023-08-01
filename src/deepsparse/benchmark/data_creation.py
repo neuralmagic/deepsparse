@@ -108,7 +108,8 @@ def generate_image_data(
     else:
         image_shape = DEFAULT_IMAGE_SHAPE
         _LOGGER.warning(
-            f"Could not parse {config.input_image_shape}, Using default image shape {image_shape}"
+            f"Could not parse {config.input_image_shape}, "
+            "Using default image shape {image_shape}"
         )
 
     for _ in range(batch_size):
