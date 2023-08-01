@@ -34,6 +34,13 @@ The listed steps can be easily completed using `Python` and `Bash`. The followin
 gcloud beta billing accounts list
 ```
 
+Before starting, check your permissions for interacting with Google Cloud and Docker from your local machine:
+
+```bash
+gcloud auth login
+gcloud auth configure-docker
+```
+
 ## Installation
 ```bash
 git clone https://github.com/neuralmagic/deepsparse.git
