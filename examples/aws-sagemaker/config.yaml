@@ -7,4 +7,4 @@ endpoints:
       model: zoo:nlp/question_answering/distilbert-none/pytorch/huggingface/squad/pruned80_quant-none-vnni
       batch_size: 1
       bucketing:
-        sequence_lengths: [128]
+        sequence_lengths: [384]
