@@ -32,9 +32,13 @@ class CLIPZeroShotInput(BaseModel):
     """
 
     image: CLIPVisualInput = Field(
-        description="Path to image to run zero-shot prediction on."
+        description="Image(s) to run zero-shot prediction. See CLIPVisualPipeline "
+        "for details."
     )
-    text: CLIPTextInput = Field(description="List of text to process")
+    text: CLIPTextInput = Field(
+        description="Text/classes to run zero-shot prediction "
+        "see CLIPTextPipeline for details."
+    )
 
 
 class CLIPZeroShotOutput(BaseModel):
@@ -42,8 +46,9 @@ class CLIPZeroShotOutput(BaseModel):
     Output for the CLIP Zero Shot Model
     """
 
-    # TODO: Maybe change this to a dictionary where keys are text inputs
-    text_scores: List[Any] = Field(description="Probability of each text class")
+    text_scores: List[Any] = Field(
+        description="np.array consisting of probabilities " " each class provided."
+    )
 
 
 @BasePipeline.register(task="clip_zeroshot", default_model_path=None)

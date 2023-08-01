@@ -53,6 +53,25 @@ class CLIPCaptionOutput(BaseModel):
 
 @BasePipeline.register(task="clip_caption", default_model_path=None)
 class CLIPCaptionPipeline(BasePipeline):
+    """
+    Pipelines designed to generate a caption for a given image. The CLIPCaptionPipeline
+    relies on 3 other pipelines: CLIPVisualPipeline, CLIPTextPipeline, and the
+    CLIPDecoder Pipeline. The pipeline takes in a single image and then uses the
+    pipelines along with Beam Search to generate a caption.
+
+    :param visual_model_path: either a local path or sparsezoo stub for the CLIP visual
+    branch onnx model
+    :param text_model_path: either a local path or sparsezoo stub for the CLIP text
+    branch onnx model
+    :param decoder_model_path: either a local path or sparsezoo stub for the CLIP
+    decoder branch onnx model
+    :param num_beams: number of beams to use in Beam Search
+    :param num_beam_groups: number of beam groups to use in Beam Search
+    :param min_seq_len: the minimum length of the caption sequence
+    :param max_seq_len: the maxmium length of the caption sequence
+
+    """
+
     def __init__(
         self,
         visual_model_path: str,
@@ -61,17 +80,13 @@ class CLIPCaptionPipeline(BasePipeline):
         num_beams: int = 10,
         num_beam_groups: int = 5,
         min_seq_len: int = 5,
-        seq_len: int = 20,
-        fixed_output_length: bool = False,
+        max_seq_len: int = 20,
         **kwargs,
     ):
         self.num_beams = num_beams
         self.num_beam_groups = num_beam_groups
-        self.seq_len = seq_len
+        self.max_seq_len = max_seq_len
         self.min_seq_len = min_seq_len
-        self.fixed_output_length = fixed_output_length
-
-        super().__init__(**kwargs)
 
         self.visual = Pipeline.create(
             task="clip_visual",
@@ -86,8 +101,9 @@ class CLIPCaptionPipeline(BasePipeline):
             **{"model_path": decoder_model_path},
         )
 
-    # TODO: have to verify all input types
-    def _encode_and_decode(self, text, image_embs):
+        super().__init__(**kwargs)
+
+    def _encode_and_decode(self, text: torch.Tensor, image_embs: torch.Tensor):
         original_size = text.shape[-1]
         padded_tokens = F.pad(text, (15 - original_size, 0))
         text_embeddings = self.text(
@@ -104,8 +120,7 @@ class CLIPCaptionPipeline(BasePipeline):
         }
 
     # Adapted from open_clip
-    def _generate(self, pipeline_inputs):
-        # Make these input values?
+    def _generate(self, pipeline_inputs: CLIPCaptionInput):
         sot_token_id = 49406
         eos_token_id = 49407
         pad_token_id = 0
@@ -113,7 +128,7 @@ class CLIPCaptionPipeline(BasePipeline):
         repetition_penalty = 1.0
         device = "cpu"
 
-        stopping_criteria = [MaxLengthCriteria(max_length=self.seq_len)]
+        stopping_criteria = [MaxLengthCriteria(max_length=self.max_seq_len)]
         stopping_criteria = StoppingCriteriaList(stopping_criteria)
 
         logits_processor = LogitsProcessorList(

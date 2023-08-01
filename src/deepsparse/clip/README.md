@@ -110,7 +110,7 @@ kwargs = {
 pipeline = BasePipeline.create(task="clip_caption", **kwargs)
 
 pipeline_input = CLIPCaptionInput(image=CLIPVisualInput(images="thailand.jpg"))
-output = pipeline(pipeline_input)
+output = pipeline(pipeline_input).caption
 print(output[0])
 ```
 Running the code above, we get the following caption:

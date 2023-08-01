@@ -31,7 +31,7 @@ class CLIPTextInput(BaseModel):
     """
 
     text: Union[str, List[str], Any, List[Any]] = Field(
-        description="Either raw text or text embeddings"
+        description="Either raw strings or an np.array with tokenized text"
     )
 
 
@@ -41,8 +41,10 @@ class CLIPTextOutput(BaseModel):
     """
 
     text_embeddings: List[Any] = Field(
-        description="Text embeddings for the single text or list of embeddings for "
-        "multiple."
+        description="np.array of text embeddings. For the caption "
+        "pipeline, a list of two embeddings is produced. For zero-shot "
+        "classifcation, one array is produced with the embeddings stacked along "
+        "batch axis."
     )
 
 

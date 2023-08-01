@@ -44,8 +44,10 @@ class CLIPVisualOutput(BaseModel):
     """
 
     image_embeddings: List[Any] = Field(
-        description="Image embeddings for the single image or list of embeddings for "
-        "multiple images"
+        description="np.arrays consisting of image embeddings. For the caption "
+        "pipeline, a list of two image embeddings is produced. For zero-shot "
+        "classifcation, one array is produced with the embeddings stacked along "
+        "batch axis."
     )
 
 
