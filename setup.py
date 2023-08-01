@@ -280,7 +280,7 @@ def _setup_extras() -> Dict:
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
         "torch": _torch_deps,
-        "clip": _clip_deps
+        "clip": _clip_deps,
     }
 
 
