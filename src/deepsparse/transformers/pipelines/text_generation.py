@@ -16,8 +16,7 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Generator, List, Optional, Tuple, Type, Union, Dict
-
+from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field

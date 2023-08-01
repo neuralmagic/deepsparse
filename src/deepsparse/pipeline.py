@@ -19,9 +19,9 @@ inference engine and include pre/postprocessing
 import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
-from functools import partial
 
 import numpy
 from pydantic import BaseModel, Field
