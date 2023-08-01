@@ -122,8 +122,10 @@ _LOGGER = logging.getLogger(__name__)
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
-DUMMY_INPUT_TYPE = "dummy"
-REAL_INPUT_TYPE = "real"
+
+class PipelineInputType:
+    DUMMY: str = "dummy"
+    REAL: str = "real"
 
 
 def parse_args():
@@ -242,6 +244,13 @@ def parse_args():
 
 
 class PipelineExecutorThread(threading.Thread):
+    """
+    Run pipeline reoeatedly on inputs for max_time seconds, pushing the timer data to
+    the timer queue to store the runtime of each section of the pipeline.
+
+    For intended usage, see multistream_benchmark
+    """
+
     def __init__(
         self,
         pipeline: Pipeline,
@@ -264,6 +273,10 @@ class PipelineExecutorThread(threading.Thread):
 def singlestream_benchmark(
     pipeline: Pipeline, inputs: List[any], seconds_to_run: float
 ) -> List[StagedTimer]:
+    """
+    Run pipeline repeatedly on inputs for max_time seconds, storing the runtime of each
+    section of the pipeline in batch_timings
+    """
     benchmark_end_time = time.perf_counter() + seconds_to_run
     batch_timings = []
     while time.perf_counter() < benchmark_end_time:
@@ -279,6 +292,10 @@ def multistream_benchmark(
     seconds_to_run: float,
     num_streams: int,
 ) -> List[StagedTimer]:
+    """
+    Create num_streams threads, each of which calls PipelineExecutorThread.run() for
+    seconds_to_run seconds. Stores all timing info in a shared queue.
+    """
     time_queue = queue.Queue()
     max_time = time.perf_counter() + seconds_to_run
     threads = []
@@ -287,7 +304,7 @@ def multistream_benchmark(
         threads.append(PipelineExecutorThread(pipeline, inputs, time_queue, max_time))
 
     for thread in threads:
-        thread.start()
+        thread.start()  # triggers PipelineExecutorThread.run()
 
     for thread in threads:
         thread.join()
@@ -296,14 +313,14 @@ def multistream_benchmark(
 
 
 def create_input_schema(
-    pipeline: Pipeline, input_type: str, batch_size: int, config: Dict
+    pipeline: Pipeline, input_type: PipelineInputType, batch_size: int, config: Dict
 ) -> any:
     input_schema_requirement = get_input_schema_type(pipeline)
     kwargs = {}
     if "input_schema_kwargs" in config:
         kwargs = config["input_schema_kwargs"]
 
-    if input_type == DUMMY_INPUT_TYPE:
+    if input_type == PipelineInputType.DUMMY:
         if input_schema_requirement == SchemaType.IMAGE:
             input_data = generate_image_data(config, batch_size)
             inputs = pipeline.input_schema(images=input_data, **kwargs)
@@ -319,7 +336,7 @@ def create_input_schema(
             )
             question, context = generate_question_data(config)
             inputs = pipeline.input_schema(question=question, context=context, **kwargs)
-    elif input_type == REAL_INPUT_TYPE:
+    elif input_type == PipelineInputType.REAL:
         if input_schema_requirement == SchemaType.IMAGE:
             input_data = load_image_data(config, batch_size)
             inputs = pipeline.input_schema(images=input_data, **kwargs)
@@ -367,6 +384,8 @@ def benchmark_pipeline(
     scheduler = parse_scheduler(scenario)
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
+    if "data_type" not in config:
+        raise Exception("Data type(dummy or real) must be specified in config")
     input_type = config["data_type"]
     kwargs = {}
     if "pipeline_kwargs" in config:
@@ -451,10 +470,10 @@ def main():
     args = parse_args()
     config = parse_input_config(args.input_config)
 
-    print("Original Model Path: {}".format(args.model_path))
-    print("Task: {}".format(args.task_name))
-    print("Batch Size: {}".format(args.batch_size))
-    print("Scenario: {}".format(args.scenario))
+    _LOGGER.info("Original Model Path: {}".format(args.model_path))
+    _LOGGER.info("Task: {}".format(args.task_name))
+    _LOGGER.info("Batch Size: {}".format(args.batch_size))
+    _LOGGER.info("Scenario: {}".format(args.scenario))
 
     batch_times, total_run_time, num_streams = benchmark_pipeline(
         model_path=args.model_path,

@@ -187,10 +187,10 @@ class Pipeline(BasePipeline):
             batch_size=self._batch_size or 1,  # bs=1 for dynamic batch
             num_cores=num_cores,
             input_shapes=input_shapes,
-            num_streams=num_streams,
         )
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
+            self._engine_args["num_streams"] = num_streams
 
         self.onnx_file_path = self.setup_onnx_file_path()
 
@@ -711,6 +711,7 @@ def create_engine(
         if context is not None and isinstance(context, Context):
             engine_args.pop("num_cores", None)
             engine_args.pop("scheduler", None)
+            engine_args.pop("num_streams", None)
             engine_args["context"] = context
             return MultiModelEngine(
                 model=onnx_file_path,

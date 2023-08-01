@@ -22,9 +22,6 @@ from deepsparse import Scheduler
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_STRING_LENGTH = 50
-DEFAULT_IMAGE_SHAPE = (240, 240, 3)
-
 __all__ = [
     "decide_thread_pinning",
     "parse_scheduler",
@@ -32,6 +29,9 @@ __all__ = [
     "parse_num_streams",
     "parse_input_config",
 ]
+
+DEFAULT_STRING_LENGTH = 50
+DEFAULT_IMAGE_SHAPE = (240, 240, 3)
 
 
 def decide_thread_pinning(pinning_mode: str) -> None:
