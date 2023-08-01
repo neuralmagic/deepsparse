@@ -49,9 +49,7 @@ def decide_thread_pinning(pinning_mode: str) -> None:
         _LOGGER.info("Thread pinning disabled, performance may be sub-optimal")
     else:
         _LOGGER.info(
-            "Recieved invalid option for thread_pinning '{}', skipping".format(
-                pinning_mode
-            )
+            "Recieved invalid option for thread_pinning '%s', skipping" % pinning_mode
         )
 
 
@@ -77,9 +75,7 @@ def parse_scenario(scenario: str) -> str:
         return "elastic"
     else:
         _LOGGER.info(
-            "Recieved invalid option for scenario'{}', defaulting to async".format(
-                scenario
-            )
+            "Recieved invalid option for scenario'%s', defaulting to async" % scenario
         )
         return "multistream"
 
@@ -98,10 +94,8 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
         else:
             default_num_streams = max(1, int(num_cores / 2))
             _LOGGER.info(
-                "num_streams default value chosen of {}. "
-                "This requires tuning and may be sub-optimal".format(
-                    default_num_streams
-                )
+                "num_streams default value chosen of %d. "
+                "This requires tuning and may be sub-optimal" % default_num_streams
             )
             return default_num_streams
 

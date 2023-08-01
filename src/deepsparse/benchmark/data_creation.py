@@ -101,7 +101,7 @@ def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
         image_shape = config["input_image_shape"]
     else:
         image_shape = DEFAULT_IMAGE_SHAPE
-        _LOGGER.warning("Using default image shape {}".format(image_shape))
+        _LOGGER.warning("Using default image shape %d" % image_shape)
 
     for _ in range(batch_size):
         rand_array = numpy.random.randint(0, high=255, size=image_shape).astype(
@@ -121,16 +121,16 @@ def load_image_data(config: Dict, batch_size: int) -> List[str]:
 
 
 def generate_text_data(config: Dict, batch_size: int, avg_word_len=5) -> List[str]:
-    input_data = []
     if "gen_sequence_length" in config:
         string_length = config["gen_sequence_length"]
     else:
         string_length = DEFAULT_STRING_LENGTH
-        _LOGGER.warning("Using default string length {}".format(string_length))
-    for _ in range(batch_size):
-        rand_sentence = generate_sentence(string_length, avg_word_length=avg_word_len)
-        input_data.append(rand_sentence)
+        _LOGGER.warning("Using default string length %d" % string_length)
 
+    input_data = [
+        generate_sentence(string_length, avg_word_length=avg_word_len)
+        for _ in range(batch_size)
+    ]
     return input_data
 
 
@@ -144,13 +144,12 @@ def load_text_data(config: Dict, batch_size: int) -> List[str]:
         max_string_length = config["max_string_length"]
     else:
         max_string_length = -1
-        _LOGGER.warning("Using default max string length {}".format(max_string_length))
+        _LOGGER.warning("Using default max string length %d" % max_string_length)
     input_data = []
     for f_path in input_files:
-        f = open(f_path)
-        text_data = f.read()
-        f.close()
-        input_data.append(text_data[:max_string_length])
+        with open(f_path) as f:
+            text_data = f.read()
+            input_data.append(text_data[:max_string_length])
     return input_data
 
 
@@ -159,7 +158,7 @@ def generate_question_data(config: Dict, avg_word_len=5) -> Tuple[str, str]:
         string_length = config["gen_sequence_length"]
     else:
         string_length = DEFAULT_STRING_LENGTH
-        _LOGGER.warning("Using default string length {}".format(string_length))
+        _LOGGER.warning("Using default string length %d" % string_length)
     question = generate_sentence(string_length, avg_word_length=avg_word_len)
     context = generate_sentence(string_length, avg_word_length=avg_word_len)
     return (question, context)
@@ -169,10 +168,10 @@ def load_question_data(config: Dict) -> Tuple[str, str]:
     path_to_questions = config["question_file"]
     path_to_context = config["context_file"]
 
-    f_question = open(path_to_questions)
-    f_context = open(path_to_context)
-    question = f_question.read()
-    context = f_context.read()
-    f_question.close()
-    f_context.close()
+    question = ""
+    context = ""
+    with open(path_to_questions) as f:
+        question = f.read()
+    with open(path_to_context) as f:
+        context = f.read()
     return question, context

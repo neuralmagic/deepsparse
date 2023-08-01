@@ -470,10 +470,11 @@ def main():
     args = parse_args()
     config = parse_input_config(args.input_config)
 
-    _LOGGER.info("Original Model Path: {}".format(args.model_path))
-    _LOGGER.info("Task: {}".format(args.task_name))
-    _LOGGER.info("Batch Size: {}".format(args.batch_size))
-    _LOGGER.info("Scenario: {}".format(args.scenario))
+    _LOGGER.info("Original Model Path: %s" % args.model_path)
+    _LOGGER.info("Task: %s" % args.task_name)
+    _LOGGER.info("Batch Size: %d" % args.batch_size)
+    _LOGGER.info("Scenario: %s" % args.scenario)
+    _LOGGER.info("Requested Run Time(sec): %d" % args.time)
 
     batch_times, total_run_time, num_streams = benchmark_pipeline(
         model_path=args.model_path,
@@ -516,30 +517,26 @@ def main():
     # Export results
     export_path = args.export_path
     if export_path:
-        _LOGGER.info("Saving benchmark results to JSON file at {}".format(export_path))
+        _LOGGER.info("Saving benchmark results to JSON file at %s" % export_path)
         with open(export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
 
     # Results summary
-    print("Original Model Path: {}".format(args.model_path))
-    print("Batch Size: {}".format(args.batch_size))
-    print("Scenario: {}".format(args.scenario))
-    print("Iterations: {}".format(int(benchmark_results["iterations"])))
-    print("Total Runtime: {:.4f}".format(total_run_time))
-    print("Throughput (items/sec): {:.4f}".format(benchmark_results["items_per_sec"]))
+    print("Original Model Path: %s" % args.model_path)
+    print("Batch Size: %d" % args.batch_size)
+    print("Scenario: %s" % args.scenario)
+    print("Iterations: %d" % int(benchmark_results["iterations"]))
+    print("Total Runtime: %.4f" % total_run_time)
+    print("Throughput (items/sec): %.4f" % benchmark_results["items_per_sec"])
 
     print("Processing Time Breakdown: ")
     compute_sections = batch_times[0].stages
     for section in compute_sections:
-        print(
-            "     {}: {:.2f}%".format(
-                section, section_stats[section]["total_percentage"]
-            )
-        )
+        print("     %s: %.2f" % (section, section_stats[section]["total_percentage"]))
 
     print("Mean Latency Breakdown (ms/batch): ")
     for section in compute_sections:
-        print("     {}: {:.4f}".format(section, section_stats[section]["mean"]))
+        print("     %s: %.4f" % (section, section_stats[section]["mean"]))
 
 
 if __name__ == "__main__":
