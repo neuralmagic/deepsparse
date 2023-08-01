@@ -509,7 +509,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         (1, self.sequence_length), dtype=numpy.int64
                     )
                     # fill it out with 1s (from the right), so that the number
-                    # of unmaksed entries is equal to the sum of:
+                    # of unmasked entries is equal to the sum of:
                     engine_input[
                         :,
                         -(
@@ -533,6 +533,7 @@ class TextGenerationPipeline(TransformersPipeline):
                             .reshape(1, -1)
                             .astype(numpy.int64)
                         )
+                        engine_input += idx * self.prompt_processing_sequence_length
 
                 engine_inputs.append(engine_input)
 
