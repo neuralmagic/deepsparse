@@ -16,11 +16,13 @@ import glob
 import logging
 import random
 import string
+from os import path
 from typing import Dict, List, Tuple
 
 import numpy
 
 from deepsparse import Pipeline
+from deepsparse.benchmark.config import PipelineBenchmarkConfig
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,6 +77,8 @@ def get_input_schema_type(pipeline: Pipeline) -> str:
 def get_files_with_endings(
     folder: str, num_files: int, recursive: bool, file_endings: Tuple[str]
 ) -> List[str]:
+    if not path.exists(folder):
+        raise Exception("Can't parse files, {} does not exist".format(folder))
     files = []
     for f in glob.glob(folder + "/**", recursive=recursive):
         if f.lower().endswith(file_endings):
@@ -95,13 +99,17 @@ def generate_sentence(string_length: int, avg_word_length: int = 5):
     return "".join(random_chars)
 
 
-def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
+def generate_image_data(
+    config: PipelineBenchmarkConfig, batch_size: int
+) -> List[numpy.ndarray]:
     input_data = []
-    if "input_image_shape" in config and len(config["input_image_shape"]) == 3:
-        image_shape = config["input_image_shape"]
+    if config.input_image_shape and len(config.input_image_shape) == 3:
+        image_shape = config.input_image_shape
     else:
         image_shape = DEFAULT_IMAGE_SHAPE
-        _LOGGER.warning("Using default image shape %d" % image_shape)
+        _LOGGER.warning(
+            f"Could not parse {config.input_image_shape}, Using default image shape {image_shape}"
+        )
 
     for _ in range(batch_size):
         rand_array = numpy.random.randint(0, high=255, size=image_shape).astype(
@@ -112,20 +120,24 @@ def generate_image_data(config: Dict, batch_size: int) -> List[numpy.ndarray]:
     return input_data
 
 
-def load_image_data(config: Dict, batch_size: int) -> List[str]:
-    path_to_data = config["data_folder"]
-    recursive_search = config["recursive_search"]
+def load_image_data(config: PipelineBenchmarkConfig, batch_size: int) -> List[str]:
+    if not config.data_folder:
+        raise Exception("Data folder must be defined for real inputs")
+    path_to_data = config.data_folder
+    recursive_search = config.recursive_search
     return get_files_with_endings(
         path_to_data, batch_size, recursive_search, (".jpg", ".jpeg", ".gif")
     )
 
 
-def generate_text_data(config: Dict, batch_size: int, avg_word_len=5) -> List[str]:
-    if "gen_sequence_length" in config:
-        string_length = config["gen_sequence_length"]
+def generate_text_data(
+    config: PipelineBenchmarkConfig, batch_size: int, avg_word_len=5
+) -> List[str]:
+    if config.gen_sequence_length:
+        string_length = config.gen_sequence_length
     else:
         string_length = DEFAULT_STRING_LENGTH
-        _LOGGER.warning("Using default string length %d" % string_length)
+        _LOGGER.warning("Ssing default string length %d" % string_length)
 
     input_data = [
         generate_sentence(string_length, avg_word_length=avg_word_len)
@@ -134,14 +146,16 @@ def generate_text_data(config: Dict, batch_size: int, avg_word_len=5) -> List[st
     return input_data
 
 
-def load_text_data(config: Dict, batch_size: int) -> List[str]:
-    path_to_data = config["data_folder"]
-    recursive_search = config["recursive_search"]
+def load_text_data(config: PipelineBenchmarkConfig, batch_size: int) -> List[str]:
+    if not config.data_folder:
+        raise Exception("Data folder must be defined for real inputs")
+    path_to_data = config.data_folder
+    recursive_search = config.recursive_search
     input_files = get_files_with_endings(
         path_to_data, batch_size, recursive_search, (".txt")
     )
-    if "max_string_length" in config:
-        max_string_length = config["max_string_length"]
+    if config.max_string_length:
+        max_string_length = config.max_string_length
     else:
         max_string_length = -1
         _LOGGER.warning("Using default max string length %d" % max_string_length)
@@ -153,9 +167,11 @@ def load_text_data(config: Dict, batch_size: int) -> List[str]:
     return input_data
 
 
-def generate_question_data(config: Dict, avg_word_len=5) -> Tuple[str, str]:
-    if "gen_sequence_length" in config:
-        string_length = config["gen_sequence_length"]
+def generate_question_data(
+    config: PipelineBenchmarkConfig, avg_word_len=5
+) -> Tuple[str, str]:
+    if config.gen_sequence_length:
+        string_length = config.gen_sequence_length
     else:
         string_length = DEFAULT_STRING_LENGTH
         _LOGGER.warning("Using default string length %d" % string_length)
@@ -165,8 +181,12 @@ def generate_question_data(config: Dict, avg_word_len=5) -> Tuple[str, str]:
 
 
 def load_question_data(config: Dict) -> Tuple[str, str]:
-    path_to_questions = config["question_file"]
-    path_to_context = config["context_file"]
+    if not config.question_file or not config.context_file:
+        raise Exception(
+            "Question and context files must be defined for question_answering pieline"
+        )
+    path_to_questions = config.question_file
+    path_to_context = config.context_file
 
     question = ""
     context = ""

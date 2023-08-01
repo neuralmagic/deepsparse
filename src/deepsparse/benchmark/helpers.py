@@ -17,7 +17,10 @@ import logging
 import os
 from typing import Dict
 
+from pydantic import ValidationError
+
 from deepsparse import Scheduler
+from deepsparse.benchmark.config import PipelineBenchmarkConfig
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -104,4 +107,7 @@ def parse_input_config(input_config_file: str) -> Dict[str, any]:
     config_file = open(input_config_file)
     config = json.load(config_file)
     config_file.close()
-    return config
+    try:
+        return PipelineBenchmarkConfig(**config)
+    except ValidationError as e:
+        _LOGGER.error(e)

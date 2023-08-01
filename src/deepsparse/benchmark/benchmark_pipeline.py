@@ -90,8 +90,10 @@ import time
 from typing import Dict, List, Tuple
 
 import numpy
+from pydantic import BaseModel
 
 from deepsparse import Pipeline, __version__
+from deepsparse.benchmark.config import PipelineBenchmarkConfig, PipelineInputType
 from deepsparse.benchmark.data_creation import (
     SchemaType,
     generate_image_data,
@@ -121,11 +123,6 @@ _LOGGER = logging.getLogger(__name__)
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-
-
-class PipelineInputType:
-    DUMMY: str = "dummy"
-    REAL: str = "real"
 
 
 def parse_args():
@@ -313,12 +310,13 @@ def multistream_benchmark(
 
 
 def create_input_schema(
-    pipeline: Pipeline, input_type: PipelineInputType, batch_size: int, config: Dict
-) -> any:
+    pipeline: Pipeline,
+    input_type: PipelineInputType,
+    batch_size: int,
+    config: PipelineBenchmarkConfig,
+) -> BaseModel:
     input_schema_requirement = get_input_schema_type(pipeline)
-    kwargs = {}
-    if "input_schema_kwargs" in config:
-        kwargs = config["input_schema_kwargs"]
+    kwargs = config.input_schema_kwargs
 
     if input_type == PipelineInputType.DUMMY:
         if input_schema_requirement == SchemaType.IMAGE:
@@ -331,9 +329,10 @@ def create_input_schema(
             input_data = generate_text_data(config, batch_size)
             inputs = pipeline.input_schema(inputs=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.QUESTION:
-            _LOGGER.warn(
-                "Only batch size of 1 supported for Question Answering Pipeline"
-            )
+            if batch_size != 1:
+                _LOGGER.warning(
+                    "Only batch size of 1 supported for Question Answering Pipeline"
+                )
             question, context = generate_question_data(config)
             inputs = pipeline.input_schema(question=question, context=context, **kwargs)
     elif input_type == PipelineInputType.REAL:
@@ -341,15 +340,16 @@ def create_input_schema(
             input_data = load_image_data(config, batch_size)
             inputs = pipeline.input_schema(images=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.TEXT_SEQ:
-            input_data = load_text_data(config)
+            input_data = load_text_data(config, batch_size)
             inputs = pipeline.input_schema(sequences=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.TEXT_INPUT:
             input_data = load_text_data(config, batch_size)
             inputs = pipeline.input_schema(inputs=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.QUESTION:
-            _LOGGER.warn(
-                "Only batch size of 1 supported for Question Answering Pipeline"
-            )
+            if batch_size != 1:
+                _LOGGER.warning(
+                    "Only batch size of 1 supported for Question Answering Pipeline"
+                )
             question, context = load_question_data(config)
             inputs = pipeline.input_schema(question=question, context=context, **kwargs)
     else:
@@ -361,7 +361,7 @@ def create_input_schema(
 def benchmark_pipeline(
     model_path: str,
     task: str,
-    config: Dict,
+    config: PipelineBenchmarkConfig,
     batch_size: int = 1,
     num_cores: int = None,
     scenario: str = "sync",
@@ -384,12 +384,8 @@ def benchmark_pipeline(
     scheduler = parse_scheduler(scenario)
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
-    if "data_type" not in config:
-        raise Exception("Data type(dummy or real) must be specified in config")
-    input_type = config["data_type"]
-    kwargs = {}
-    if "pipeline_kwargs" in config:
-        kwargs = config["pipeline_kwargs"]
+    input_type = config.data_type
+    kwargs = config.pipeline_kwargs
     pipeline = Pipeline.create(
         task=task,
         model_path=model_path,
@@ -510,7 +506,7 @@ def main():
         "scenario": args.scenario,
         "seconds_to_run": time,
         "num_streams": args.num_streams,
-        "input_config": config,
+        "input_config": dict(config),
         "benchmark_results": benchmark_results,
     }
 
@@ -532,7 +528,7 @@ def main():
     print("Processing Time Breakdown: ")
     compute_sections = batch_times[0].stages
     for section in compute_sections:
-        print("     %s: %.2f" % (section, section_stats[section]["total_percentage"]))
+        print("     %s: %.2f%%" % (section, section_stats[section]["total_percentage"]))
 
     print("Mean Latency Breakdown (ms/batch): ")
     for section in compute_sections:
