@@ -283,7 +283,7 @@ class NLDecoderEngine:
         kv_cache_state = self._initialize_kv_cache_state(
             self.sequence_length - self.input_ids_length
         )
-        self.kv_cache.setup_session(
+        self.kv_cache.setup(
             session_id=self._session_id,
             state=kv_cache_state,
             num_processed_tokens=0,
@@ -328,7 +328,7 @@ class NLDecoderEngine:
             name: array for name, array in zip(cache_onnx_names, kv_cache_state)
         }
 
-        self.kv_cache.update_session(
+        self.kv_cache.update(
             state=kv_cache_state,
             input_ids_len=input_ids_len,
         )
