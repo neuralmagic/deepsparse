@@ -73,10 +73,10 @@ def get_input_schema_type(pipeline: Pipeline) -> str:
 
 
 def get_files_with_endings(
-    folder: str, num_files: int, recursive: bool, file_endings: List[str]
+    folder: str, num_files: int, recursive: bool, file_endings: Tuple[str]
 ) -> List[str]:
     files = []
-    for f in glob.glob(folder + "/**", recursivere=recursive):
+    for f in glob.glob(folder + "/**", recursive=recursive):
         if f.lower().endswith(file_endings):
             files.append(f)
     if len(files) < num_files:
@@ -116,7 +116,7 @@ def load_image_data(config: Dict, batch_size: int) -> List[str]:
     path_to_data = config["data_folder"]
     recursive_search = config["recursive_search"]
     return get_files_with_endings(
-        path_to_data, batch_size, recursive_search, [".jpg", ".jpeg", ".gif"]
+        path_to_data, batch_size, recursive_search, (".jpg", ".jpeg", ".gif")
     )
 
 
@@ -138,7 +138,7 @@ def load_text_data(config: Dict, batch_size: int) -> List[str]:
     path_to_data = config["data_folder"]
     recursive_search = config["recursive_search"]
     input_files = get_files_with_endings(
-        path_to_data, batch_size, recursive_search, [".txt"]
+        path_to_data, batch_size, recursive_search, (".txt")
     )
     if "max_string_length" in config:
         max_string_length = config["max_string_length"]
