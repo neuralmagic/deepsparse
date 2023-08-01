@@ -377,6 +377,7 @@ def benchmark_pipeline(
         engine_type=engine,
         scheduler=scheduler,
         num_cores=num_cores,
+        num_streams=num_streams,
         **kwargs,
     )
     inputs = create_input_schema(pipeline, input_type, batch_size, config)
@@ -419,8 +420,9 @@ def calculate_statistics(
         "{:2.1f}%".format(key): value for key, value in zip(percentiles, buckets)
     }
 
+    scaled_runtime = total_run_time_ms * num_streams
     benchmark_dict = {
-        "total_percentage": sum(batch_times_ms) / total_run_time_ms * 100 * num_streams,
+        "total_percentage": sum(batch_times_ms) / scaled_runtime * 100,
         "median": numpy.median(batch_times_ms),
         "mean": numpy.mean(batch_times_ms),
         "std": numpy.std(batch_times_ms),

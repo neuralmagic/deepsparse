@@ -121,6 +121,9 @@ class Pipeline(BasePipeline):
         dynamic batch mode (Pipeline will accept any batch size). Default is 1
     :param num_cores: number of CPU cores to allocate for inference engine. None
         specifies all available cores. Default is None
+    :param num_streams: The max number of requests the model can handle
+        concurrently. None or 0 implies a scheduler-defined default value;
+        default None
     :param scheduler: (deepsparse only) kind of scheduler to execute with.
         Pass None for the default
     :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
@@ -146,6 +149,7 @@ class Pipeline(BasePipeline):
         engine_type: str = DEEPSPARSE_ENGINE,
         batch_size: Optional[int] = 1,
         num_cores: int = None,
+        num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         context: Optional[Context] = None,
@@ -181,6 +185,7 @@ class Pipeline(BasePipeline):
             batch_size=self._batch_size or 1,  # bs=1 for dynamic batch
             num_cores=num_cores,
             input_shapes=input_shapes,
+            num_streams=num_streams,
         )
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
