@@ -21,6 +21,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from functools import partial
 
 import numpy
 from pydantic import BaseModel, Field
@@ -247,7 +248,12 @@ class Pipeline(BasePipeline):
             )
 
             # submit split batches to engine threadpool
-            batch_outputs = list(self.executor.map(self.engine_forward, batches))
+            engine_forward_with_context = partial(
+                self.engine_forward, context=postprocess_kwargs
+            )
+            batch_outputs = list(
+                self.executor.map(engine_forward_with_context, batches)
+            )
 
             # join together the batches of size `self._batch_size`
             engine_outputs = self.join_engine_outputs(batch_outputs, orig_batch_size)
@@ -486,7 +492,9 @@ class Pipeline(BasePipeline):
         """
         return split_engine_inputs(items, batch_size)
 
-    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+    def engine_forward(
+        self, engine_inputs: List[numpy.ndarray], context: Dict = {}
+    ) -> List[numpy.ndarray]:
         """
         :param engine_inputs: list of numpy inputs to Pipeline engine forward
             pass
