@@ -164,11 +164,8 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 _clip_deps = ["open_clip_torch==2.20.0", "scipy==1.10.1"]
 
-<<<<<<< HEAD
 _torch_deps = ["torch>=1.7.0,<=2.0"]
 
-=======
->>>>>>> move paths to fixtures
 
 def _check_supported_system():
     if sys.platform.startswith("linux"):
