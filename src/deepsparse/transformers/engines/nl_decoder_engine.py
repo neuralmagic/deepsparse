@@ -131,6 +131,14 @@ class NLDecoderEngine:
             if not name.startswith(CACHE_INPUT_NAME)
         ]
 
+    @property
+    def num_non_blank_cache_entries(self) -> int:
+        """
+        :return a number of non-blank entries in the
+        kv cache
+        """
+        return self.kv_cache.num_non_blank_entries
+
     def __call__(
         self,
         inp: List[numpy.ndarray],
@@ -177,10 +185,16 @@ class NLDecoderEngine:
         information from another NLDecoderEngine. Call this method when
         you want to transfer the kv cache state from one engine to another.
 
+        This method will also automatically set the kv cache capacity to
+        the appropriate value for the new engine.
+
         :param cache: The `DecoderKVCache` object to transfer to the engine
             from
         """
-        self.kv_cache = copy.deepcopy(cache)
+        cache_to_copy = copy.deepcopy(cache)
+        target_cache_capacity = self.sequence_length - self.input_ids_length
+        cache_to_copy.set_capacity(target_cache_capacity)
+        self.kv_cache = cache_to_copy
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
@@ -224,10 +238,8 @@ class NLDecoderEngine:
             self.reset_kv_cache()
             kv_cache_state = self.kv_cache.cached_inputs
 
-        kv_cache_state["input_ids"] = inp[0]
-        kv_cache_state["attention_mask"] = inp[1]
-        if len(inp) == 3:
-            kv_cache_state["positions"] = inp[2]
+        for idx, input_name in enumerate(self.onnx_input_names_no_cache):
+            kv_cache_state[input_name] = inp[idx]
 
         new_inp = [kv_cache_state[name] for name in self.engine.input_names]
         return new_inp

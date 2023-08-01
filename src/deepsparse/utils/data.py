@@ -101,7 +101,7 @@ def verify_outputs(
             raise Exception(
                 f"Output shapes don't match, {output.shape} != {gt_output.shape}"
             )
-        if type(output) != type(gt_output):
+        if type(output) is not type(gt_output):
             raise Exception(
                 f"Output types don't match, {type(output)} != {type(gt_output)}"
             )
