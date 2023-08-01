@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.base_pipeline import _REGISTERED_PIPELINES, BasePipeline, SupportedTasks
-from deepsparse.benchmark import ORTEngine
+from deepsparse.benchmark import ORTEngine, TorchScriptEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.loggers.constants import MetricCategories, SystemGroups
@@ -43,6 +43,7 @@ from deepsparse.utils import (
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",
+    "TORCHSCRIPT_ENGINE",
     "SUPPORTED_PIPELINE_ENGINES",
     "Pipeline",
     "BasePipeline",
@@ -62,6 +63,7 @@ __all__ = [
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
+TORCHSCRIPT_ENGINE = "torchscript"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
@@ -155,7 +157,7 @@ class Pipeline(BasePipeline):
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
         benchmark: bool = False,
-        _delay_engine_initialize: bool = False,
+        _delay_engine_initialize: bool = False,  # internal use only
         **kwargs,
     ):
         self._benchmark = benchmark
@@ -196,7 +198,6 @@ class Pipeline(BasePipeline):
             self.engine = None
         else:
             self.engine = self._initialize_engine()
-
         self._batch_size = self._batch_size or 1
 
         self.log(
@@ -511,7 +512,9 @@ class Pipeline(BasePipeline):
                 category=MetricCategories.SYSTEM,
             )
 
-    def _initialize_engine(self) -> Union[Engine, MultiModelEngine, ORTEngine]:
+    def _initialize_engine(
+        self,
+    ) -> Union[Engine, MultiModelEngine, ORTEngine, TorchScriptEngine]:
         return create_engine(
             self.onnx_file_path, self.engine_type, self._engine_args, self.context
         )
@@ -718,6 +721,9 @@ def create_engine(
 
     if engine_type == ORT_ENGINE:
         return ORTEngine(onnx_file_path, **engine_args)
+
+    if engine_type == TORCHSCRIPT_ENGINE:
+        return TorchScriptEngine(onnx_file_path, **engine_args)
 
     raise ValueError(
         f"Unknown engine_type {engine_type}. Supported values include: "
