@@ -12,13 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
+import shutil
 import tempfile
 from subprocess import Popen
 from typing import List
 
 import pytest
 from tests.helpers import delete_file
+from tests.utils.torch import find_file_with_pattern
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+try:
+    import torch
+
+    torch_import_error = None
+except Exception as torch_import_err:
+    torch_import_error = torch_import_err
+    torch = None
 
 
 def _get_files(directory: str) -> List[str]:
@@ -108,3 +123,54 @@ def check_for_created_files():
         f"megabytes of temp files created in temp directory during pytest run. "
         f"Created files: {set(end_files_temp) - set(start_files_temp)}"
     )
+
+
+@pytest.fixture
+def torchvision_fixture():
+    try:
+        import torchvision
+
+        return torchvision
+    except ImportError:
+        logger.error("Failed to import torchvision")
+        raise
+
+
+@pytest.fixture(scope="function")
+def torchvision_model_fixture(torchvision_fixture):
+    def get(return_jit: bool = False, **kwargs):
+        # [TODO]: Make a model factory if needed
+        torchvision_instance = torchvision_fixture
+        if torchvision_instance:
+            model = torchvision_instance.models.resnet50(kwargs)
+
+            if return_jit:
+                return torch.jit.script(model)
+
+            return model
+
+    return get
+
+
+@pytest.fixture(scope="function")
+def torchscript_test_setup(torchvision_model_fixture):
+    path = os.path.expanduser(os.path.join("~/.cache/torch", "hub", "checkpoints"))
+
+    torchvision_model_fixture(pretrained=True, return_jit=False)
+    expr = r"^resnet50-[0-9a-z]+\.pt[h]?$"
+    resnet50_nn_module_path = find_file_with_pattern(path, expr)
+    resnet50_nn_module = torchvision_model_fixture(pretrained=True)
+
+    resnet50_jit = torchvision_model_fixture(pretrained=True, return_jit=True)
+    resnet50_jit_path = resnet50_nn_module_path.replace(".pth", ".pt")
+    torch.jit.save(resnet50_jit, resnet50_jit_path)
+
+    yield {
+        "jit_model": resnet50_jit,
+        "jit_model_path": resnet50_jit_path,
+        "nn_module_model": resnet50_nn_module,
+    }
+
+    cache_dir = os.path.expanduser("~/.cache/torch")
+    shutil.rmtree(cache_dir)
+    assert os.path.exists(cache_dir) is False

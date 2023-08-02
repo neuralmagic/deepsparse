@@ -73,6 +73,7 @@ class ImageClassificationPipeline(Pipeline):
         self,
         *,
         class_names: Union[None, str, Dict[str, str]] = None,
+        image_size: Optional[Tuple[int]] = None,
         top_k: int = 1,
         **kwargs,
     ):
@@ -85,7 +86,7 @@ class ImageClassificationPipeline(Pipeline):
         else:
             self._class_names = None
 
-        self._image_size = self._infer_image_size()
+        self._image_size = image_size or self._infer_image_size()
         self.top_k = top_k
 
         # torchvision transforms for raw inputs
