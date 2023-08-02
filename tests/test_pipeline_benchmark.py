@@ -20,6 +20,7 @@ import numpy
 import pytest
 from deepsparse import Pipeline
 from deepsparse.benchmark.benchmark_pipeline import calculate_section_stats
+from deepsparse.benchmark.config import PipelineBenchmarkConfig
 from deepsparse.benchmark.data_creation import (
     SchemaType,
     generate_image_data,
@@ -100,7 +101,8 @@ def test_pipeline_benchmark(
 
 def test_generate_image_data():
     batch_size = 32
-    config = {"input_image_shape": (600, 600, 1)}
+    config_args = {"input_image_shape": (600, 600, 1)}
+    config = PipelineBenchmarkConfig(**config_args)
     image_data = generate_image_data(config, batch_size)
     assert len(image_data) == batch_size
     img = image_data[0]
@@ -112,7 +114,8 @@ def test_generate_image_data():
 def test_generate_text_data():
     batch_size = 16
     avg_word_len = 8
-    config = {"gen_sequence_length": 250}
+    config_args = {"gen_sequence_length": 250}
+    config = PipelineBenchmarkConfig(**config_args)
     text_data = generate_text_data(config, batch_size, avg_word_len=avg_word_len)
     assert len(text_data) == batch_size
     text = text_data[0]
@@ -123,10 +126,11 @@ def test_generate_text_data():
 
 def test_generate_question_data():
     avg_word_len = 10
-    config = {"gen_sequence_length": 50}
+    config_args = {"gen_sequence_length": 50}
+    config = PipelineBenchmarkConfig(**config_args)
     question, context = generate_question_data(config, avg_word_len=avg_word_len)
-    assert len(question) == config["gen_sequence_length"]
-    assert len(context) == config["gen_sequence_length"]
+    assert len(question) == config.gen_sequence_length
+    assert len(context) == config.gen_sequence_length
     num_q_spaces = question.count(" ")
     num_c_spaces = context.count(" ")
     assert num_q_spaces == num_c_spaces == int(len(question) / avg_word_len)
