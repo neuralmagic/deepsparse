@@ -498,6 +498,7 @@ class Pipeline(BasePipeline):
         """
         :param engine_inputs: list of numpy inputs to Pipeline engine forward
             pass
+        :param context: optional dictionary to be used during engine execution
         :return: result of forward pass to Pipeline engine
         """
         return self.engine(engine_inputs)
