@@ -229,9 +229,9 @@ class Pipeline(BasePipeline):
             # batch size of the inputs may be `> self._batch_size` at this point
             engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
             if isinstance(engine_inputs, tuple):
-                engine_inputs, postprocess_kwargs = engine_inputs
+                engine_inputs, context = engine_inputs
             else:
-                postprocess_kwargs = {}
+                context = {}
 
             timer.stop(InferenceStages.PRE_PROCESS)
             self.log(
@@ -248,9 +248,7 @@ class Pipeline(BasePipeline):
             )
 
             # submit split batches to engine threadpool
-            engine_forward_with_context = partial(
-                self.engine_forward, context=postprocess_kwargs
-            )
+            engine_forward_with_context = partial(self.engine_forward, context=context)
             batch_outputs = list(
                 self.executor.map(engine_forward_with_context, batches)
             )
@@ -276,9 +274,7 @@ class Pipeline(BasePipeline):
 
             # ------ POSTPROCESSING ------
             timer.start(InferenceStages.POST_PROCESS)
-            pipeline_outputs = self.process_engine_outputs(
-                engine_outputs, **postprocess_kwargs
-            )
+            pipeline_outputs = self.process_engine_outputs(engine_outputs, **context)
             if not isinstance(pipeline_outputs, self.output_schema):
                 raise ValueError(
                     f"Outputs of {self.__class__} must be instances of "
