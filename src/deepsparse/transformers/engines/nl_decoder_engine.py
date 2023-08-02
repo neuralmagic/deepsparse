@@ -214,7 +214,7 @@ class NLDecoderEngine:
         :param cache: The `DecoderKVCache` object to transfer to the engine
             from
         """
-        cache_to_copy = copy.deepcopy(cache)
+        cache_to_copy = copy.copy(cache)
         target_cache_capacity = self.sequence_length - self.input_ids_length
         cache_to_copy.set_capacity(target_cache_capacity)
         self.kv_cache = cache_to_copy
