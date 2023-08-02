@@ -128,7 +128,7 @@ def test_generate_question_data():
     avg_word_len = 10
     config_args = {"gen_sequence_length": 50}
     config = PipelineBenchmarkConfig(**config_args)
-    question, context = generate_question_data(config, avg_word_len=avg_word_len)
+    question, context = generate_question_data(config, 1, avg_word_len=avg_word_len)
     assert len(question) == config.gen_sequence_length
     assert len(context) == config.gen_sequence_length
     num_q_spaces = question.count(" ")
@@ -145,7 +145,6 @@ def test_generate_question_data():
         ("question_answering", SchemaType.QUESTION),
     ],
 )
-@pytest.mark.skip(reason="High memory usage, causes GitHub test run to be killed")
 def test_get_input_schema_type(task_name, input_schema):
     pipeline = Pipeline.create(task=task_name)
     assert get_input_schema_type(pipeline) == input_schema

@@ -32,8 +32,6 @@ DEFAULT_IMAGE_SHAPE = (240, 240, 3)
 
 __all__ = [
     "get_input_schema_type",
-    "get_files_with_endings",
-    "generate_sentence",
     "generate_image_data",
     "load_image_data",
     "generate_text_data",
@@ -169,8 +167,12 @@ def load_text_data(config: PipelineBenchmarkConfig, batch_size: int) -> List[str
 
 
 def generate_question_data(
-    config: PipelineBenchmarkConfig, avg_word_len=5
+    config: PipelineBenchmarkConfig, batch_size: int, avg_word_len=5
 ) -> Tuple[str, str]:
+    if batch_size != 1:
+        _LOGGER.warning(
+            "Only batch size of 1 supported for Question Answering Pipeline"
+        )
     if config.gen_sequence_length:
         string_length = config.gen_sequence_length
     else:
@@ -181,7 +183,11 @@ def generate_question_data(
     return (question, context)
 
 
-def load_question_data(config: Dict) -> Tuple[str, str]:
+def load_question_data(config: Dict, batch_size: int) -> Tuple[str, str]:
+    if batch_size != 1:
+        _LOGGER.warning(
+            "Only batch size of 1 supported for Question Answering Pipeline"
+        )
     if not config.question_file or not config.context_file:
         raise Exception(
             "Question and context files must be defined for question_answering pieline"

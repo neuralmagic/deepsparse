@@ -81,7 +81,6 @@ deepsparse.benchmark_pipeline \
     -c config.json -t 30 -s async
 """
 
-import argparse
 import json
 import logging
 import queue
@@ -89,6 +88,7 @@ import threading
 import time
 from typing import Dict, List, Tuple
 
+import click
 import numpy
 from pydantic import BaseModel
 
@@ -123,121 +123,6 @@ _LOGGER = logging.getLogger(__name__)
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Benchmark DeepSparse Pipelines")
-    parser.add_argument("task_name", type=str, help="Type of pipeline to run")
-    parser.add_argument(
-        "model_path",
-        type=str,
-        help="Path to an ONNX model file or SparseZoo model stub",
-    )
-    parser.add_argument(
-        "-c",
-        "--input_config",
-        type=str,
-        default="config.json",
-        help="JSON file containing schema for input data",
-    )
-    parser.add_argument(
-        "-b",
-        "--batch_size",
-        type=int,
-        default=1,
-        help="The batch size to run the analysis for. Must be greater than 0",
-    )
-    parser.add_argument(
-        "-ncores",
-        "--num_cores",
-        type=int,
-        default=cpu_architecture().num_available_physical_cores,
-        help=(
-            "The number of physical cores to run the analysis on, "
-            "defaults to all physical cores available on the system"
-        ),
-    )
-    parser.add_argument(
-        "-s",
-        "--scenario",
-        type=str,
-        default="sync",
-        choices=["async", "sync", "elastic"],
-        help=(
-            "Choose between using the async, sync and elastic scenarios. Sync and "
-            "async are similar to the single-stream/multi-stream scenarios. Elastic "
-            "is a newer scenario that behaves similarly to the async scenario "
-            "but uses a different scheduling backend. Default value is sync."
-        ),
-    )
-    parser.add_argument(
-        "-t",
-        "--time",
-        type=int,
-        default=10,
-        help="The number of seconds the benchmark will run. Default is 10 seconds.",
-    )
-    parser.add_argument(
-        "-w",
-        "--warmup_time",
-        type=int,
-        default=2,
-        help=(
-            "The number of seconds the benchmark will warmup before running."
-            "Default is 2 seconds."
-        ),
-    )
-    parser.add_argument(
-        "-nstreams",
-        "--num_streams",
-        type=int,
-        default=None,
-        help=(
-            "The number of streams that will submit inferences in parallel using "
-            "async scenario. Default is automatically determined for given hardware "
-            "and may be sub-optimal."
-        ),
-    )
-    parser.add_argument(
-        "-pin",
-        "--thread_pinning",
-        type=str,
-        default="core",
-        choices=["none", "core", "numa"],
-        help=(
-            "Enable binding threads to cores ('core' the default), "
-            "threads to cores on sockets ('numa'), or disable ('none')"
-        ),
-    )
-    parser.add_argument(
-        "-e",
-        "--engine",
-        type=str,
-        default=DEEPSPARSE_ENGINE,
-        help=(
-            "Inference engine backend to run eval on. Choices are 'deepsparse', "
-            "'onnxruntime'. Default is 'deepsparse'. Can also specify a user "
-            "defined engine class by giving the script and class name in the "
-            "following format <path to python script>:<Engine Class name>. This "
-            "engine class will be dynamically imported during runtime"
-        ),
-    )
-    parser.add_argument(
-        "-q",
-        "--quiet",
-        help="Lower logging verbosity",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
-        "-x",
-        "--export_path",
-        help="Store results into a JSON file",
-        type=str,
-        default=None,
-    )
-
-    return parser.parse_args()
 
 
 class PipelineExecutorThread(threading.Thread):
@@ -329,11 +214,7 @@ def create_input_schema(
             input_data = generate_text_data(config, batch_size)
             inputs = pipeline.input_schema(inputs=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.QUESTION:
-            if batch_size != 1:
-                _LOGGER.warning(
-                    "Only batch size of 1 supported for Question Answering Pipeline"
-                )
-            question, context = generate_question_data(config)
+            question, context = generate_question_data(config, batch_size)
             inputs = pipeline.input_schema(question=question, context=context, **kwargs)
     elif input_type == PipelineInputType.REAL:
         if input_schema_requirement == SchemaType.IMAGE:
@@ -346,11 +227,7 @@ def create_input_schema(
             input_data = load_text_data(config, batch_size)
             inputs = pipeline.input_schema(inputs=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.QUESTION:
-            if batch_size != 1:
-                _LOGGER.warning(
-                    "Only batch size of 1 supported for Question Answering Pipeline"
-                )
-            question, context = load_question_data(config)
+            question, context = load_question_data(config, batch_size)
             inputs = pipeline.input_schema(question=question, context=context, **kwargs)
     else:
         raise Exception(f"Unknown input type '{input_type}'")
@@ -462,33 +339,149 @@ def calculate_section_stats(
     return sections
 
 
-def main():
-    args = parse_args()
-    config = parse_input_config(args.input_config)
+@click.command()
+@click.argument("task_name", type=str)
+@click.argument("model_path", type=str)
+@click.option(
+    "-c",
+    "--input_config",
+    type=str,
+    default="config.json",
+    help="JSON file containing schema for input data",
+)
+@click.option(
+    "-b",
+    "--batch_size",
+    type=int,
+    default=1,
+    help="The batch size to run the analysis for. Must be greater than 0",
+)
+@click.option(
+    "-ncores",
+    "--num_cores",
+    type=int,
+    default=cpu_architecture().num_available_physical_cores,
+    help=(
+        "The number of physical cores to run the analysis on, "
+        "defaults to all physical cores available on the system"
+    ),
+)
+@click.option(
+    "-s",
+    "--scenario",
+    type=str,
+    default="sync",
+    help=(
+        "Choose between using the async, sync and elastic scenarios. Sync and "
+        "async are similar to the single-stream/multi-stream scenarios. Elastic "
+        "is a newer scenario that behaves similarly to the async scenario "
+        "but uses a different scheduling backend. Default value is sync."
+    ),
+)
+@click.option(
+    "-t",
+    "--run_time",
+    type=int,
+    default=10,
+    help="The number of seconds the benchmark will run. Default is 10 seconds.",
+)
+@click.option(
+    "-w",
+    "--warmup_time",
+    type=int,
+    default=2,
+    help=(
+        "The number of seconds the benchmark will warmup before running."
+        "Default is 2 seconds."
+    ),
+)
+@click.option(
+    "-nstreams",
+    "--num_streams",
+    type=int,
+    default=None,
+    help=(
+        "The number of streams that will submit inferences in parallel using "
+        "async scenario. Default is automatically determined for given hardware "
+        "and may be sub-optimal."
+    ),
+)
+@click.option(
+    "-pin",
+    "--thread_pinning",
+    type=str,
+    default="core",
+    help=(
+        "Enable binding threads to cores ('core' the default), "
+        "threads to cores on sockets ('numa'), or disable ('none')"
+    ),
+)
+@click.option(
+    "-e",
+    "--engine",
+    type=str,
+    default=DEEPSPARSE_ENGINE,
+    help=(
+        "Inference engine backend to run eval on. Choices are 'deepsparse', "
+        "'onnxruntime'. Default is 'deepsparse'. Can also specify a user "
+        "defined engine class by giving the script and class name in the "
+        "following format <path to python script>:<Engine Class name>. This "
+        "engine class will be dynamically imported during runtime"
+    ),
+)
+@click.option(
+    "-q",
+    "--quiet",
+    help="Lower logging verbosity",
+    default=False,
+)
+@click.option(
+    "-x",
+    "--export_path",
+    help="Store results into a JSON file",
+    type=str,
+    default=None,
+)
+def main(
+    task_name: str,
+    model_path: str,
+    input_config: str,
+    batch_size: int,
+    num_cores: int,
+    scenario: str,
+    run_time: int,
+    warmup_time: int,
+    num_streams: int,
+    thread_pinning: str,
+    engine: str,
+    quiet: bool,
+    export_path: str,
+):
+    config = parse_input_config(input_config)
 
-    _LOGGER.info("Original Model Path: %s" % args.model_path)
-    _LOGGER.info("Task: %s" % args.task_name)
-    _LOGGER.info("Batch Size: %d" % args.batch_size)
-    _LOGGER.info("Scenario: %s" % args.scenario)
-    _LOGGER.info("Requested Run Time(sec): %d" % args.time)
+    _LOGGER.info("Original Model Path: %s" % model_path)
+    _LOGGER.info("Task: %s" % task_name)
+    _LOGGER.info("Batch Size: %d" % batch_size)
+    _LOGGER.info("Scenario: %s" % scenario)
+    _LOGGER.info("Requested Run Time(sec): %d" % run_time)
 
     batch_times, total_run_time, num_streams = benchmark_pipeline(
-        model_path=args.model_path,
-        task=args.task_name,
+        model_path=model_path,
+        task=task_name,
         config=config,
-        batch_size=args.batch_size,
-        num_cores=args.num_cores,
-        scenario=args.scenario,
-        seconds_to_run=args.time,
-        warmup_time=args.warmup_time,
-        num_streams=args.num_streams,
-        thread_pinning=args.thread_pinning,
-        engine=args.engine,
-        quiet=args.quiet,
+        batch_size=batch_size,
+        num_cores=num_cores,
+        scenario=scenario,
+        seconds_to_run=run_time,
+        warmup_time=warmup_time,
+        num_streams=num_streams,
+        thread_pinning=thread_pinning,
+        engine=engine,
+        quiet=quiet,
     )
 
     section_stats = calculate_section_stats(batch_times, total_run_time, num_streams)
-    items_per_sec = (len(batch_times) * args.batch_size) / total_run_time
+    items_per_sec = (len(batch_times) * batch_size) / total_run_time
 
     benchmark_results = {
         "items_per_sec": items_per_sec,
@@ -498,29 +491,29 @@ def main():
     }
 
     export_dict = {
-        "engine": args.engine,
+        "engine": engine,
         "version": __version__,
-        "model_path": args.model_path,
-        "batch_size": args.batch_size,
-        "num_cores": args.num_cores,
-        "scenario": args.scenario,
-        "seconds_to_run": time,
-        "num_streams": args.num_streams,
+        "model_path": model_path,
+        "batch_size": batch_size,
+        "num_cores": num_cores,
+        "scenario": scenario,
+        "seconds_to_run": run_time,
+        "num_streams": num_streams,
         "input_config": dict(config),
         "benchmark_results": benchmark_results,
     }
 
     # Export results
-    export_path = args.export_path
+    export_path = export_path
     if export_path:
         _LOGGER.info("Saving benchmark results to JSON file at %s" % export_path)
         with open(export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
 
     # Results summary
-    print("Original Model Path: %s" % args.model_path)
-    print("Batch Size: %d" % args.batch_size)
-    print("Scenario: %s" % args.scenario)
+    print("Original Model Path: %s" % model_path)
+    print("Batch Size: %d" % batch_size)
+    print("Scenario: %s" % scenario)
     print("Iterations: %d" % int(benchmark_results["iterations"]))
     print("Total Runtime: %.4f" % total_run_time)
     print("Throughput (items/sec): %.4f" % benchmark_results["items_per_sec"])
