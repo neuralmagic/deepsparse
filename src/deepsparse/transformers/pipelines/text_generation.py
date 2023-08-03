@@ -409,7 +409,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 _TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
                 new_token, new_logits = self.autoregressive_inference(
-                    run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
+                    run_tokens,
+                    shift_positions_by_one=not self.engine._freeze_first_position,
                 )
             prompt_logits.append(new_logits)
 
@@ -420,7 +421,7 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
-        shift_positions_by_one: bool = False,
+        shift_positions_by_one: bool = True,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
@@ -488,22 +489,22 @@ class TextGenerationPipeline(TransformersPipeline):
         num_batches = len(tokens) // self.prompt_processing_sequence_length
 
         token_batches = [
-            tokens[i : i + self.prompt_processing_sequence_length]
-            for i in range(num_batches)
+            tokens[
+                i
+                * self.prompt_processing_sequence_length : (i + 1)
+                * self.prompt_processing_sequence_length
+            ]
+            for i in range(0, num_batches)
         ]
 
         for idx, token_batch in enumerate(token_batches):
             engine_inputs = []
-
+            num_cached_entries = self.multitoken_engine.num_non_blank_cache_entries
             for name in self.multitoken_engine.onnx_input_names_no_cache:
                 if name == "input_ids":
                     engine_input = numpy.array([token_batch])
 
                 elif name == "attention_mask":
-                    num_cached_entries = (
-                        self.multitoken_engine.num_non_blank_cache_entries
-                    )
-
                     # create an empty attention mask
                     engine_input = numpy.zeros(
                         (1, self.sequence_length), dtype=numpy.int64
@@ -529,11 +530,14 @@ class TextGenerationPipeline(TransformersPipeline):
                         engine_input = numpy.array([[idx]], dtype=numpy.int64)
                     else:
                         engine_input = (
-                            numpy.arange(self.prompt_processing_sequence_length)
+                            numpy.arange(
+                                num_cached_entries,
+                                num_cached_entries
+                                + self.prompt_processing_sequence_length,
+                            )
                             .reshape(1, -1)
                             .astype(numpy.int64)
                         )
-                        engine_input += idx * self.prompt_processing_sequence_length
 
                 engine_inputs.append(engine_input)
 

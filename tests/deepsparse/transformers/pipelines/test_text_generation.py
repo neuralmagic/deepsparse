@@ -12,30 +12,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+import numpy as np
+import onnx
+import onnxruntime
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 import pytest
 from deepsparse import Pipeline
+from deepsparse.transformers.utils.helpers import (
+    create_causal_mask,
+    overwrite_onnx_model_inputs,
+)
+
+
+def _initialize_kv_cache_state(model, length=0):
+    cache_input = next(
+        input for input in model.graph.input if input.name.startswith("past_key_values")
+    )
+    batch_size = cache_input.type.tensor_type.shape.dim[0].dim_value
+    num_attention_heads = cache_input.type.tensor_type.shape.dim[1].dim_value
+    hidden_dims = cache_input.type.tensor_type.shape.dim[3].dim_value
+
+    kv_cache = {
+        input_.name: np.zeros(
+            (batch_size, num_attention_heads, length, hidden_dims), dtype=np.float32
+        )
+        for input_ in model.graph.input
+        if input_.name.startswith("past_key_values")
+    }
+
+    return kv_cache
 
 
 @pytest.mark.parametrize(
-    "model_path, model_name, engine_type",
+    "model_path, model_name, uses_bos_token",
     [
-        ("/home/ubuntu/damian/sparseml/deployment_opt",
-         "facebook/opt-350m",
-         "onnxruntime"),
+        ("/home/ubuntu/damian/sparseml/deployment_opt", "facebook/opt-350m", True),
+        (
+            "/home/ubuntu/damian/sparseml/deployment_codegen",
+            "salesforce/codegen-350m-multi",
+            False,
+        ),
     ],
     scope="class",
 )
 class TestTextGenerationPipeline:
     @pytest.fixture
-    def setup(self, model_path, model_name, engine_type):
+    def setup(self, model_path, model_name, uses_bos_token):
         pipeline = Pipeline.create(
             task="text_generation",
             model_path=model_path,
-            engine_type = engine_type,
+            sequence_length=32,
+            prompt_processing_sequence_length=4,
             max_generated_tokens=16,
-            prompt_processing_sequence_length=128,
             use_deepsparse_cache=False,
         )
         short_prompt = "this is a"
@@ -50,44 +81,138 @@ class TestTextGenerationPipeline:
             > pipeline.prompt_processing_sequence_length * 3
         )
 
-        yield pipeline, model_name, short_prompt, long_prompt
+        yield pipeline, model_name, uses_bos_token, short_prompt, long_prompt
 
-    def test_model_output(self, setup):
-        pipeline, model_name, short_prompt, long_prompt = setup
+    def test_freeze(self, setup):
+        pipeline, _, uses_bos_token, _, _ = setup
+        assert pipeline.engine._freeze_first_position == uses_bos_token
 
-        # Test against hugingface model
-        output_model_cache = pipeline(sequences=[short_prompt, long_prompt])
-        output_hugging_face = self._get_output_huggingface(sequences= [short_prompt, long_prompt], model_name=model_name)
-        assert short_prompt + output_model_cache.sequences[0] == output_hugging_face[0]
-        assert long_prompt + output_model_cache.sequences[1] == output_hugging_face[1]
+    def test_model_output_sequences(self, setup):
+        pipeline, model_name, _, short_prompt, long_prompt = setup
 
+        output_sequences = pipeline(sequences=[short_prompt, long_prompt])
 
+        # Test against huggingface model
+        output_hugging_face = self._get_output_huggingface(
+            sequences=[short_prompt, long_prompt], model_name=model_name
+        )
+        assert short_prompt + output_sequences.sequences[0] == output_hugging_face[0]
+        assert long_prompt + output_sequences.sequences[1] == output_hugging_face[1]
 
-        # self._test_against_no_kv_cache_model(
-        #     inputs=[short_prompt, long_prompt],
-        #     outputs=[output_1, output_2],
-        #     model_name=model_name,
-        # )
+    def test_model_output_cache(self, setup):
+        pipeline, model_name, _, short_prompt, long_prompt = setup
+
+        pipeline(sequences=[short_prompt])
+        cache_state_dict = pipeline.engine.kv_cache.cached_inputs
+        cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
+
+        target_cache_state = self._get_cache_state_ort_kv_cache(
+            model_onnx_path=os.path.join(pipeline._model_path, "model.onnx"),
+            sequence=short_prompt,
+            model_name=model_name,
+        )
+        num_prompt_tokens = len(pipeline.tokenizer.tokenize(short_prompt)) + int(
+            pipeline.engine._freeze_first_position
+        )
+
+        for x, y in zip(cache_state_list, target_cache_state):
+            blank_entries = [
+                i for i in range(x.shape[2]) if np.count_nonzero(x[:, :, i, :])
+            ]
+            x = x[:, :, min(blank_entries) :, :]
+
+            assert np.allclose(
+                y[:, :, -num_prompt_tokens:, :],
+                x[:, :, :num_prompt_tokens, :],
+                atol=1e-5,
+            )
+
+        pipeline(sequences=[long_prompt])
+        cache_state_dict = pipeline.engine.kv_cache.cached_inputs
+        cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
+
+        target_cache_state = self._get_cache_state_ort_kv_cache(
+            model_onnx_path=os.path.join(pipeline._model_path, "model.onnx"),
+            sequence=long_prompt,
+            model_name=model_name,
+        )
+        num_prompt_tokens = len(pipeline.tokenizer.tokenize(long_prompt)) + int(
+            pipeline.engine._freeze_first_position
+        )
+
+        for x, y in zip(cache_state_list, target_cache_state):
+            blank_entries = [
+                i for i in range(x.shape[2]) if np.count_nonzero(x[:, :, i, :])
+            ]
+            x = x[:, :, min(blank_entries) :, :]
+
+            assert np.allclose(
+                y[:, :, -num_prompt_tokens:, :],
+                x[:, :, :num_prompt_tokens, :],
+                atol=1e-5,
+            )
 
     @staticmethod
     def _get_output_huggingface(sequences, model_name):
+        hf_outputs = []
+        # setup tokenizer
         tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer.padding_side = "left"
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
+        # setup model
         model = AutoModelForCausalLM.from_pretrained(model_name)
-        outputs = []
-        for input in sequences:
-            input_ids = tokenizer(input, return_tensors="pt").input_ids
+
+        # generate ground truth output
+        for prompt in sequences:
+            input_ids = tokenizer(prompt, return_tensors="pt").input_ids
             generated_ids = model.generate(input_ids, max_new_tokens=16)
             hf_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
-            outputs.append(hf_output)
-        return outputs
-
+            hf_outputs.append(hf_output)
+        return hf_outputs
 
     @staticmethod
-    def _test_against_no_kv_cache_model(inputs, outputs, model_name):
-        pass
+    def _get_cache_state_ort_kv_cache(model_onnx_path, sequence, model_name):
+        # setup tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        tokenizer.padding_side = "left"
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
 
-    def test_freeze(self, setup):
-        pass
+        # setup model and session
+        overwrite_onnx_model_inputs(
+            model_onnx_path, sequence_length=128, input_ids_length=128
+        )
+        sess = onnxruntime.InferenceSession(model_onnx_path)
+
+        # get model inputs
+        onnx_model = onnx.load(model_onnx_path, load_external_data=False)
+        model_inputs = [x.name for x in onnx_model.graph.input]
+        kv_cache = _initialize_kv_cache_state(model=onnx_model)
+
+        inputs = tokenizer(
+            sequence, return_tensors="np", padding="max_length", max_length=128
+        )
+        onnxruntime_inputs = dict(
+            attention_mask=inputs["attention_mask"],
+            input_ids=inputs["input_ids"],
+            **kv_cache,
+        )
+
+        if "positions" in model_inputs:
+            attention_mask = inputs["attention_mask"]
+            positions = attention_mask.cumsum(1) * attention_mask - 1
+            onnxruntime_inputs["positions"] = positions
+
+        if "causal_mask" in model_inputs:
+            causal_mask = create_causal_mask(
+                input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"]
+            )
+            onnxruntime_inputs["causal_mask"] = causal_mask
+
+        # run inference and return the cache state
+        outputs = sess.run(None, onnxruntime_inputs)
+        logits, *kv_cache = outputs
+
+        return kv_cache
