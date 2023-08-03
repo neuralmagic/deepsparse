@@ -132,7 +132,7 @@ def test_pipeline_call_is_async(engine_mock):
     executor = ThreadPoolExecutor(max_workers=1)
     pipeline = Pipeline.create("token_classification", batch_size=1, executor=executor)
 
-    def sleep_then_engine_forward(xs):
+    def sleep_then_engine_forward(xs, context):
         # each call to engine_forward also sleeps
         time.sleep(20 / 1000)
         return pipeline.engine(xs)
