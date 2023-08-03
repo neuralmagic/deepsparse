@@ -19,8 +19,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN python3 -m venv $VIRTUAL_ENV && \
     pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install deepsparse[transformers] && \
-    pip3 install --no-cache-dir "deepsparse[server]>=1.5.2"
+    pip3 install deepsparse[transformers,server]>=1.5.2
 
 # create 'serve' command for sagemaker entrypoint
 RUN mkdir /opt/server/
