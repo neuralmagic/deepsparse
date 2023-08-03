@@ -69,6 +69,9 @@ class CLIPCaptionPipeline(BasePipeline):
     :param num_beam_groups: number of beam groups to use in Beam Search
     :param min_seq_len: the minimum length of the caption sequence
     :param max_seq_len: the maxmium length of the caption sequence
+    :param pipeline_engine_args: dictionary of arguments specific to running the
+    pipeline engine. Applied to the text branch, visual branch, and decoder.
+    See pipeline.py for a full list of arguments.
 
     """
 
@@ -81,6 +84,7 @@ class CLIPCaptionPipeline(BasePipeline):
         num_beam_groups: int = 5,
         min_seq_len: int = 5,
         max_seq_len: int = 20,
+        pipeline_engine_args: dict = None,
         **kwargs,
     ):
         self.num_beams = num_beams
@@ -88,17 +92,23 @@ class CLIPCaptionPipeline(BasePipeline):
         self.max_seq_len = max_seq_len
         self.min_seq_len = min_seq_len
 
+        if pipeline_engine_args is None:
+            pipeline_engine_args = {}
+
+        pipeline_engine_args["model_path"] = visual_model_path
         self.visual = Pipeline.create(
             task="clip_visual",
-            **{"model_path": visual_model_path},
+            **pipeline_engine_args,
         )
+        pipeline_engine_args["model_path"] = text_model_path
         self.text = Pipeline.create(
             task="clip_text",
-            **{"model_path": text_model_path},
+            **pipeline_engine_args,
         )
+        pipeline_engine_args["model_path"] = decoder_model_path
         self.decoder = Pipeline.create(
             task="clip_decoder",
-            **{"model_path": decoder_model_path},
+            **pipeline_engine_args,
         )
 
         super().__init__(**kwargs)

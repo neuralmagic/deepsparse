@@ -64,14 +64,26 @@ class CLIPZeroShotPipeline(BasePipeline):
     branch onnx model
     :param text_model_path: either a local path or sparsezoo stub for the CLIP text
     branch onnx model
+    :param pipeline_engine_args: dictionary of arguments specific to running the
+    pipeline engine. Applied to both the text branch pipeline and visual branch pipeline
+    See pipeline.py for a full list of arguments.
 
     """
 
-    def __init__(self, visual_model_path: str, text_model_path: str, **kwargs):
-        self.visual = Pipeline.create(
-            task="clip_visual", **{"model_path": visual_model_path}
-        )
-        self.text = Pipeline.create(task="clip_text", **{"model_path": text_model_path})
+    def __init__(
+        self,
+        visual_model_path: str,
+        text_model_path: str,
+        pipeline_engine_args: dict = None,
+        **kwargs,
+    ):
+        if pipeline_engine_args is None:
+            pipeline_engine_args = {}
+
+        pipeline_engine_args["model_path"] = visual_model_path
+        self.visual = Pipeline.create(task="clip_visual", **pipeline_engine_args)
+        pipeline_engine_args["model_path"] = text_model_path
+        self.text = Pipeline.create(task="clip_text", **pipeline_engine_args)
 
         super().__init__(**kwargs)
 

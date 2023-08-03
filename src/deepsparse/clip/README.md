@@ -101,11 +101,13 @@ root = "caption_models"
 model_path_visual = f"{root}/clip_visual.onnx"
 model_path_text = f"{root}/clip_text.onnx"
 model_path_decoder = f"{root}/clip_text_decoder.onnx"
+engine_args = {"num_cores": 8}
 
 kwargs = {
     "visual_model_path": model_path_visual,
     "text_model_path": model_path_text,
     "decoder_model_path": model_path_decoder,
+    "pipeline_engine_args": engine_args
 }
 pipeline = BasePipeline.create(task="clip_caption", **kwargs)
 
