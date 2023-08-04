@@ -25,8 +25,8 @@ import onnx
 from onnx import ModelProto
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
-from deepsparse.utils.extractor import Extractor
 from deepsparse.utils import parse_input_shapes
+from deepsparse.utils.extractor import Extractor
 from sparsezoo.utils import save_onnx, validate_onnx
 
 

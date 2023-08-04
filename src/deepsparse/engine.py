@@ -16,8 +16,8 @@
 Code related to interfacing with a Neural Network in the DeepSparse Engine using python
 """
 
-import os
 import logging
+import os
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
