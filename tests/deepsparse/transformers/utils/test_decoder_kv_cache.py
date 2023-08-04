@@ -22,10 +22,14 @@ from deepsparse.transformers.utils import DecoderKVCache
 @pytest.mark.parametrize(
     "state, input_ids_len, freeze_first_position, state_updated",
     [
-        (
+        (  # dummy state of the kv cache
+            # needs to be (batch_size, num_heads, seq_len, hidden_size)
             {"dummy_cache_name": np.array([[[[0], [0], [1], [2], [3]]]])},
+            # number of tokens by which the kv cache is updated
             1,
+            # whether the first position of the kv cache is frozen
             False,
+            # expected updated state
             {"dummy_cache_name": np.array([[[[0], [1], [2], [3]]]])},
         ),
         (
@@ -40,6 +44,24 @@ from deepsparse.transformers.utils import DecoderKVCache
             True,
             {"dummy_cache_name": np.array([[[[1], [3], [4]]]])},
         ),
+        (
+            {"dummy_cache_name": np.array([[[[0], [0], [1], [2], [3]]]])},
+            3,
+            False,
+            {"dummy_cache_name": np.array([[[[2], [3]]]])},
+        ),
+        (
+            {"dummy_cache_name": np.array([[[[1], [2], [3], [4]]]])},
+            3,
+            False,
+            {"dummy_cache_name": np.array([[[[4]]]])},
+        ),
+        (
+            {"dummy_cache_name": np.array([[[[1], [3], [4], [5]]]])},
+            2,
+            True,
+            {"dummy_cache_name": np.array([[[[1], [5]]]])},
+        ),
     ],
 )
 class TestDecoderKVCache:
@@ -52,19 +74,76 @@ class TestDecoderKVCache:
         state_updated,
     ):
         session = DecoderKVCache()
+
+        # compute the number of processed tokens
         state_flattened = state["dummy_cache_name"].flatten()
         num_processed_tokens = state_flattened[state_flattened != 0].shape[0]
+
+        # initialize a session
         session.setup(
-            session_id="None",
+            session_id="dummy_id",
             state=state,
             num_processed_tokens=num_processed_tokens,
             freeze_first_position=freeze_first_position,
         )
-        yield session, state, input_ids_len, state_updated
+        yield session, input_ids_len, state_updated
+
+    def test_session_attributes(self, setup):
+        session, _, _ = setup
+
+        # check if the session attributes are set correctly
+        state = session.cached_inputs
+        assert session.num_non_blank_entries == np.count_nonzero(
+            state["dummy_cache_name"].flatten()
+        )
+        assert session.capacity == state["dummy_cache_name"].shape[2]
+        assert session.id == "dummy_id"
+
+    def test_set_capacity(self, setup):
+        session, _, _ = setup
+
+        # check if the capacity is set correctly
+        self._test_increase_capacity(session)  # increase
+        self._test_decrease_capacity(session)  # decrease
+        self._test_constant_capacity(session)  # constant
+
 
     def test_update_session(self, setup):
-        session, state, input_ids_len, exp_state_updated = setup
-        session.update(copy.deepcopy(state), input_ids_len)
+        session, input_ids_len, expected_updated_state = setup
+        state = copy.deepcopy(session.cached_inputs)
+        # update the session
+        session.update(state, input_ids_len)
         state_updated = session.cached_inputs
         for key in state_updated.keys():
-            assert np.array_equal(state_updated[key], exp_state_updated[key])
+            assert np.array_equal(state_updated[key], expected_updated_state[key])
+
+    @staticmethod
+    def _test_increase_capacity(session_):
+        session = copy.deepcopy(session_)
+        capacity = session.capacity
+        # increase capacity by 3
+        session.set_capacity(capacity + 3)
+        kv_cache_state = session.cached_inputs
+        # check if the capacity has been increased by 3
+        assert np.array_equal(
+            np.concatenate(
+                [[[[[0], [0], [0]]]], session_.cached_inputs["dummy_cache_name"]],
+                axis=2,
+            ),
+            kv_cache_state["dummy_cache_name"],
+        )
+
+    @staticmethod
+    def _test_decrease_capacity(session_):
+        pass
+
+    @staticmethod
+    def _test_constant_capacity(session_):
+        session = copy.deepcopy(session_)
+        capacity = session.capacity
+        session.set_capacity(capacity)
+        kv_cache_state = session.cached_inputs
+        assert np.array_equal(
+            session_.cached_inputs["dummy_cache_name"],
+            kv_cache_state["dummy_cache_name"],
+        )

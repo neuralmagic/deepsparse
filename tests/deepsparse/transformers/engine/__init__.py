@@ -11,14 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# flake8: noqa
-
-from deepsparse.analytics import deepsparse_analytics as _analytics
-
-from .ort_engine import *
-from .results import *
-from .torchscript_engine import *
-
-
-_analytics.send_event("python__benchmark__init")
