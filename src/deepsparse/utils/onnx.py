@@ -26,6 +26,7 @@ from onnx import ModelProto
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
 from deepsparse.utils.extractor import Extractor
+from deepsparse.utils import parse_input_shapes
 from sparsezoo.utils import save_onnx, validate_onnx
 
 
@@ -206,11 +207,16 @@ def generate_random_inputs(
         if batch_size is not None:
             in_shape[0] = batch_size
 
-        _LOGGER.info(
-            "Generating input '{}', type = {}, shape = {}".format(
-                external_input.name, numpy.dtype(elem_type).name, in_shape
-            )
+        input_string = "input '{}', type = {}, shape = {}".format(
+            external_input.name, numpy.dtype(elem_type).name, in_shape
         )
+
+        assert not any(dim < 1 for dim in in_shape), (
+            f"Dynamic shape found in {input_string}. "
+            "All shapes must be non-zero in order to generate random data"
+        )
+
+        _LOGGER.info(f"Generating {input_string}")
         input_data_list.append(numpy.random.rand(*in_shape).astype(elem_type))
     return input_data_list
 
@@ -262,7 +268,7 @@ def override_onnx_batch_size(
 @contextlib.contextmanager
 def override_onnx_input_shapes(
     onnx_filepath: str,
-    input_shapes: Union[List[int], List[List[int]]],
+    input_shapes: Union[None, str, List[int], List[List[int]]],
     inplace: bool = True,
 ) -> str:
     """
@@ -290,6 +296,9 @@ def override_onnx_input_shapes(
     external_inputs = [
         input for input in all_inputs if input.name not in initializer_input_names
     ]
+
+    if isinstance(input_shapes, str):
+        input_shapes = parse_input_shapes(input_shapes)
 
     # Input shapes should be a list of lists, even if there is only one input
     if not all(isinstance(inp, list) for inp in input_shapes):
