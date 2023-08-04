@@ -14,11 +14,18 @@
 
 # flake8: noqa
 
-from deepsparse.analytics import deepsparse_analytics as _analytics
-
-from .ort_engine import *
-from .results import *
-from .torchscript_engine import *
-
-
-_analytics.send_event("python__benchmark__init")
+from deepsparse.clip.text_pipeline import (
+    CLIPTextInput,
+    CLIPTextOutput,
+    CLIPTextPipeline,
+)
+from deepsparse.clip.visual_pipeline import (
+    CLIPVisualInput,
+    CLIPVisualOutput,
+    CLIPVisualPipeline,
+)
+from deepsparse.clip.zeroshot_pipeline import (
+    CLIPZeroShotInput,
+    CLIPZeroShotOutput,
+    CLIPZeroShotPipeline,
+)

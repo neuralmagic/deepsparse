@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
 
-from deepsparse.analytics import deepsparse_analytics as _analytics
+__all__ = ["CLIP_RGB_MEANS", "CLIP_RGB_STDS"]
 
-from .ort_engine import *
-from .results import *
-from .torchscript_engine import *
-
-
-_analytics.send_event("python__benchmark__init")
+CLIP_RGB_MEANS = [0.48145466, 0.4578275, 0.40821073]
+CLIP_RGB_STDS = [0.26862954, 0.26130258, 0.27577711]

@@ -16,10 +16,11 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Generator, List, Optional, Tuple, Type, Union
+from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
+from transformers import TextStreamer
 
 from deepsparse import Pipeline
 from deepsparse.cpu import cpu_avx512_compatible
@@ -46,6 +47,9 @@ class _TextGenerationTimings:
 
 
 class TextGenerationInput(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
     sequences: Union[str, List[str]] = Field(
         description="The input sequences to generate the text from.",
     )
@@ -70,6 +74,13 @@ class TextGenerationInput(BaseModel):
         "of tokens. Useful, when a batch of predictions needs "
         "to have consistent length so one "
         "can compute metric in a batched fashion. ",
+    )
+    streamer: Optional[TextStreamer] = Field(
+        default=None,
+        description="Streamer object that will be used to stream the "
+        "generated sequences. Generated tokens are passed through "
+        "`streamer.put(token_ids)` and the streamer is responsible "
+        "for any further processing.",
     )
 
 
@@ -290,7 +301,9 @@ class TextGenerationPipeline(TransformersPipeline):
             self.engine.session_id = inputs.session_id
             self.multitoken_engine.session_id = inputs.session_id
 
-        postprocessing_kwargs = dict(return_logits=inputs.return_logits)
+        postprocessing_kwargs = dict(
+            return_logits=inputs.return_logits, streamer=inputs.streamer
+        )
         return engine_input, postprocessing_kwargs
 
     def process_engine_outputs(
@@ -311,7 +324,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return TextGenerationOutput(sequences=sequences, logits=logits)
 
     def engine_forward(
-        self, engine_inputs: List[numpy.ndarray], **kwargs
+        self, engine_inputs: List[numpy.ndarray], context: Dict
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
         Run the forward pass on the engine.
@@ -327,6 +340,8 @@ class TextGenerationPipeline(TransformersPipeline):
         # main thread. That is why `engine_` is prepended to each of the timer phase
         # names in this context
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
+            streamer = context.get("streamer")
+
             if not self.multitoken_engine.kv_cache_enabled:
                 tokens, prompt_logits = self.multitoken_engine(engine_inputs)
                 return numpy.array([tokens]), prompt_logits
@@ -335,6 +350,9 @@ class TextGenerationPipeline(TransformersPipeline):
                 # run the prompt through
                 with timer.time(_TextGenerationTimings.PROMPT_PREFILL):
                     tokens, prompt_logits = self.prompt_inference(engine_inputs)
+
+            if streamer is not None:
+                streamer.put(numpy.array(tokens))
 
             # create the generated output
             max_tokens = (
@@ -354,11 +372,17 @@ class TextGenerationPipeline(TransformersPipeline):
                     generated_tokens.append(token)
                     generated_logits.append(logits)
 
+                    if streamer is not None:
+                        streamer.put(numpy.array([token]))
+
                     if (
                         token == self.tokenizer.eos_token_id
                         and not self.force_max_tokens
                     ):
                         break
+
+            if streamer is not None:
+                streamer.end()
 
         return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
@@ -428,6 +452,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
+
         new_token = tokens[-1]
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
@@ -438,7 +463,17 @@ class TextGenerationPipeline(TransformersPipeline):
         positions -= 1
         input_ids = numpy.array([[new_token]])
         causal_mask = create_causal_mask(input_ids, attention_mask)
-        engine_inputs = [input_ids, attention_mask, positions, causal_mask]
+
+        # filter out the inputs that are not needed by the engine
+        engine_inputs_map = dict(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            causal_mask=causal_mask,
+            positions=positions,
+        )
+        engine_inputs = [
+            engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
+        ]
 
         generated_token, generated_logits = self.engine(engine_inputs)
 

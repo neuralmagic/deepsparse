@@ -43,6 +43,7 @@ from deepsparse.utils import (
 __all__ = [
     "DEEPSPARSE_ENGINE",
     "ORT_ENGINE",
+    "TORCHSCRIPT_ENGINE",
     "SUPPORTED_PIPELINE_ENGINES",
     "Pipeline",
     "BasePipeline",
@@ -62,6 +63,7 @@ __all__ = [
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
+TORCHSCRIPT_ENGINE = "torchscript"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
@@ -151,7 +153,7 @@ class Pipeline(BasePipeline):
         context: Optional[Context] = None,
         executor: Optional[Union[ThreadPoolExecutor, int]] = None,
         benchmark: bool = False,
-        _delay_engine_initialize: bool = False,
+        _delay_engine_initialize: bool = False,  # internal use only
         **kwargs,
     ):
         self._benchmark = benchmark
@@ -227,9 +229,9 @@ class Pipeline(BasePipeline):
             # batch size of the inputs may be `> self._batch_size` at this point
             engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
             if isinstance(engine_inputs, tuple):
-                engine_inputs, postprocess_kwargs = engine_inputs
+                engine_inputs, context = engine_inputs
             else:
-                postprocess_kwargs = {}
+                context = {}
 
             timer.stop(InferenceStages.PRE_PROCESS)
             self.log(
@@ -246,8 +248,10 @@ class Pipeline(BasePipeline):
             )
 
             # submit split batches to engine threadpool
-            batch_outputs = list(self.executor.map(self.engine_forward, batches))
-            batch_outputs = [self.engine_forward(x) for x in batches]
+            engine_forward_with_context = partial(self.engine_forward, context=context)
+            batch_outputs = list(
+                self.executor.map(engine_forward_with_context, batches)
+            )
 
             # join together the batches of size `self._batch_size`
             engine_outputs = self.join_engine_outputs(batch_outputs, orig_batch_size)
@@ -270,9 +274,7 @@ class Pipeline(BasePipeline):
 
             # ------ POSTPROCESSING ------
             timer.start(InferenceStages.POST_PROCESS)
-            pipeline_outputs = self.process_engine_outputs(
-                engine_outputs, **postprocess_kwargs
-            )
+            pipeline_outputs = self.process_engine_outputs(engine_outputs, **context)
             if not isinstance(pipeline_outputs, self.output_schema):
                 raise ValueError(
                     f"Outputs of {self.__class__} must be instances of "
@@ -486,10 +488,13 @@ class Pipeline(BasePipeline):
         """
         return split_engine_inputs(items, batch_size)
 
-    def engine_forward(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+    def engine_forward(
+        self, engine_inputs: List[numpy.ndarray], context: Dict = {}
+    ) -> List[numpy.ndarray]:
         """
         :param engine_inputs: list of numpy inputs to Pipeline engine forward
             pass
+        :param context: optional dictionary to be used during engine execution
         :return: result of forward pass to Pipeline engine
         """
         return self.engine(engine_inputs)
@@ -507,7 +512,9 @@ class Pipeline(BasePipeline):
                 category=MetricCategories.SYSTEM,
             )
 
-    def _initialize_engine(self) -> Union[Engine, MultiModelEngine, ORTEngine]:
+    def _initialize_engine(
+        self,
+    ) -> Union[Engine, MultiModelEngine, ORTEngine, TorchScriptEngine]:
         return create_engine(
             self.onnx_file_path, self.engine_type, self._engine_args, self.context
         )
@@ -714,6 +721,9 @@ def create_engine(
 
     if engine_type == ORT_ENGINE:
         return ORTEngine(onnx_file_path, **engine_args)
+
+    if engine_type == TORCHSCRIPT_ENGINE:
+        return TorchScriptEngine(onnx_file_path, **engine_args)
 
     raise ValueError(
         f"Unknown engine_type {engine_type}. Supported values include: "
