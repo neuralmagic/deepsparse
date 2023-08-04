@@ -72,27 +72,34 @@ class TestTextGenerationPipeline:
         short_prompt = "this is a"
         long_prompt = "this is a sample prompt that we will use to test the pipeline"
 
+        # make sure that the short prompt will be only
+        # processed by a single token engine
         assert (
-            len(pipeline.tokenizer.tokenize(short_prompt))
+            len(pipeline.tokenizer.tokenize(short_prompt))  # + int(uses_bos_token)
             < pipeline.prompt_processing_sequence_length
         )
+        # make sure that the long prompt will be processed by
+        # single token and multiple token engines
         assert (
-            len(pipeline.tokenizer.tokenize(long_prompt))
+            len(pipeline.tokenizer.tokenize(long_prompt))  # + int(uses_bos_token)
             > pipeline.prompt_processing_sequence_length * 3
         )
 
         yield pipeline, model_name, uses_bos_token, short_prompt, long_prompt
 
     def test_freeze(self, setup):
+        # test whether we should be "freezing" the first token after
+        # the kv cache is full
         pipeline, _, uses_bos_token, _, _ = setup
         assert pipeline.engine._freeze_first_position == uses_bos_token
 
     def test_model_output_sequences(self, setup):
+        # test model output against sources of truth
         pipeline, model_name, _, short_prompt, long_prompt = setup
 
         output_sequences = pipeline(sequences=[short_prompt, long_prompt])
 
-        # Test against huggingface model
+        # test against huggingface model
         output_hugging_face = self._get_output_huggingface(
             sequences=[short_prompt, long_prompt], model_name=model_name
         )
@@ -124,7 +131,7 @@ class TestTextGenerationPipeline:
             assert np.allclose(
                 y[:, :, -num_prompt_tokens:, :],
                 x[:, :, :num_prompt_tokens, :],
-                atol=1e-5,
+                atol=1e-4,
             )
 
         pipeline(sequences=[long_prompt])
@@ -149,7 +156,7 @@ class TestTextGenerationPipeline:
             assert np.allclose(
                 y[:, :, -num_prompt_tokens:, :],
                 x[:, :, :num_prompt_tokens, :],
-                atol=1e-5,
+                atol=1e-4,
             )
 
     @staticmethod

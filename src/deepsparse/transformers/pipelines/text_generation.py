@@ -410,7 +410,7 @@ class TextGenerationPipeline(TransformersPipeline):
             ):
                 new_token, new_logits = self.autoregressive_inference(
                     run_tokens,
-                    shift_positions_by_one=not self.engine._freeze_first_position,
+                    shift_positions_by_one=True,
                 )
             prompt_logits.append(new_logits)
 
