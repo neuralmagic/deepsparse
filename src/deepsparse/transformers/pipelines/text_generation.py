@@ -225,8 +225,6 @@ class TextGenerationPipeline(TransformersPipeline):
                 "Set `max_generated_tokens` to 1 to support that scenario."
             )
 
-        self._use_session_ids = False
-
     @staticmethod
     def route_input_to_bucket(
         *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
@@ -328,10 +326,8 @@ class TextGenerationPipeline(TransformersPipeline):
         )
         logits = generated_logits if kwargs.get("return_logits") else None
 
-        session_id = self.multitoken_engine.session_id
-
         return TextGenerationOutput(
-            sequences=sequences, logits=logits, session_ids=session_id
+            sequences=sequences, logits=logits, session_ids=self.engine.session_id
         )
 
     def engine_forward(
@@ -422,6 +418,11 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = 0
 
         if len(tokens) > self.prompt_processing_sequence_length:
+            if self.engine.kv_cache_storage.get(self.engine.session_id):
+                self.multitoken_engine.transfer_cache_storage(
+                    storage=self.engine.kv_cache_storage
+                )
+
             self.multitoken_engine.initialize_session()
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
