@@ -16,7 +16,6 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy
-import onnx
 from transformers import AutoTokenizer
 
 from deepsparse.engine import Context
@@ -27,7 +26,6 @@ from deepsparse.transformers.utils.helpers import (
     overwrite_onnx_model_inputs,
 )
 from deepsparse.utils.data import numpy_softmax
-from sparsezoo.utils.onnx import save_onnx
 
 
 _LOGGER = logging.getLogger(__name__)

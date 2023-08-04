@@ -28,13 +28,16 @@ from deepsparse.transformers.utils.helpers import (
 
 
 def _initialize_kv_cache_state(model, length=0):
+    # get one of the cache inputs
     cache_input = next(
         input for input in model.graph.input if input.name.startswith("past_key_values")
     )
+    # read the shape of the cache input
     batch_size = cache_input.type.tensor_type.shape.dim[0].dim_value
     num_attention_heads = cache_input.type.tensor_type.shape.dim[1].dim_value
     hidden_dims = cache_input.type.tensor_type.shape.dim[3].dim_value
 
+    # create a kv cache dictionary
     kv_cache = {
         input_.name: np.zeros(
             (batch_size, num_attention_heads, length, hidden_dims), dtype=np.float32
@@ -47,6 +50,7 @@ def _initialize_kv_cache_state(model, length=0):
 
 
 @pytest.mark.parametrize(
+    # TODO: Change to stubs
     "model_path, model_name, uses_bos_token",
     [
         ("/home/ubuntu/damian/sparseml/deployment_opt", "facebook/opt-350m", True),
@@ -61,27 +65,28 @@ def _initialize_kv_cache_state(model, length=0):
 class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_path, model_name, uses_bos_token):
+        self.max_generated_tokens = 16
         pipeline = Pipeline.create(
             task="text_generation",
             model_path=model_path,
             sequence_length=32,
             prompt_processing_sequence_length=4,
-            max_generated_tokens=16,
+            max_generated_tokens=self.max_generated_tokens,
             use_deepsparse_cache=False,
         )
-        short_prompt = "this is a"
+        short_prompt = "this"
         long_prompt = "this is a sample prompt that we will use to test the pipeline"
 
         # make sure that the short prompt will be only
         # processed by a single token engine
         assert (
-            len(pipeline.tokenizer.tokenize(short_prompt))  # + int(uses_bos_token)
+            len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
             < pipeline.prompt_processing_sequence_length
         )
         # make sure that the long prompt will be processed by
         # single token and multiple token engines
         assert (
-            len(pipeline.tokenizer.tokenize(long_prompt))  # + int(uses_bos_token)
+            len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
             > pipeline.prompt_processing_sequence_length * 3
         )
 
@@ -108,59 +113,51 @@ class TestTextGenerationPipeline:
 
     def test_model_output_cache(self, setup):
         pipeline, model_name, _, short_prompt, long_prompt = setup
+        self._test_cache_state(short_prompt, pipeline, model_name)
+        self._test_cache_state(long_prompt, pipeline, model_name)
 
-        pipeline(sequences=[short_prompt])
+    def _test_cache_state(self, prompt, pipeline, model_name):
+        # make sure that the cache state after running a prompt
+        # is correct
+
+        pipeline(sequences=prompt)
         cache_state_dict = pipeline.engine.kv_cache.cached_inputs
         cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
 
+        # generate ground truth from ORT
         target_cache_state = self._get_cache_state_ort_kv_cache(
             model_onnx_path=os.path.join(pipeline._model_path, "model.onnx"),
-            sequence=short_prompt,
+            sequence=prompt,
             model_name=model_name,
         )
-        num_prompt_tokens = len(pipeline.tokenizer.tokenize(short_prompt)) + int(
+        # get the number of processed prompt tokens
+        num_prompt_tokens = len(pipeline.tokenizer.tokenize(prompt)) + int(
             pipeline.engine._freeze_first_position
         )
 
         for x, y in zip(cache_state_list, target_cache_state):
-            blank_entries = [
+            """
+            x will be a cache array
+            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ..., gen_token_cache_1, gen_token_cache_2, ...]
+            we need to first remove blank entries and then keep the
+            remaining prompt_cache entries (remove gen_token_cache entries)
+            """
+            first_non_blank_cache_entry = min(
                 i for i in range(x.shape[2]) if np.count_nonzero(x[:, :, i, :])
-            ]
-            x = x[:, :, min(blank_entries) :, :]
-
-            assert np.allclose(
-                y[:, :, -num_prompt_tokens:, :],
-                x[:, :, :num_prompt_tokens, :],
-                atol=1e-4,
             )
+            x = x[:, :, first_non_blank_cache_entry:, :]
+            x = x[:, :, :num_prompt_tokens, :]
 
-        pipeline(sequences=[long_prompt])
-        cache_state_dict = pipeline.engine.kv_cache.cached_inputs
-        cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
+            """
+            y will be a cache array
+            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ...]
+            we need to keep the prompt_cache entries only
+            """
+            y = y[:, :, -num_prompt_tokens:, :]
 
-        target_cache_state = self._get_cache_state_ort_kv_cache(
-            model_onnx_path=os.path.join(pipeline._model_path, "model.onnx"),
-            sequence=long_prompt,
-            model_name=model_name,
-        )
-        num_prompt_tokens = len(pipeline.tokenizer.tokenize(long_prompt)) + int(
-            pipeline.engine._freeze_first_position
-        )
+            assert np.allclose(x, y, atol=1e-4)
 
-        for x, y in zip(cache_state_list, target_cache_state):
-            blank_entries = [
-                i for i in range(x.shape[2]) if np.count_nonzero(x[:, :, i, :])
-            ]
-            x = x[:, :, min(blank_entries) :, :]
-
-            assert np.allclose(
-                y[:, :, -num_prompt_tokens:, :],
-                x[:, :, :num_prompt_tokens, :],
-                atol=1e-4,
-            )
-
-    @staticmethod
-    def _get_output_huggingface(sequences, model_name):
+    def _get_output_huggingface(self, sequences, model_name):
         hf_outputs = []
         # setup tokenizer
         tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -174,7 +171,9 @@ class TestTextGenerationPipeline:
         # generate ground truth output
         for prompt in sequences:
             input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-            generated_ids = model.generate(input_ids, max_new_tokens=16)
+            generated_ids = model.generate(
+                input_ids, max_new_tokens=self.max_generated_tokens
+            )
             hf_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
             hf_outputs.append(hf_output)
         return hf_outputs
@@ -188,6 +187,7 @@ class TestTextGenerationPipeline:
             tokenizer.pad_token = tokenizer.eos_token
 
         # setup model and session
+        # (run full sequence inference)
         overwrite_onnx_model_inputs(
             model_onnx_path, sequence_length=128, input_ids_length=128
         )

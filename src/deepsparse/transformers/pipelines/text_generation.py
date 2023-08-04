@@ -408,10 +408,8 @@ class TextGenerationPipeline(TransformersPipeline):
             with self.timer_manager.current.time(
                 _TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
-                new_token, new_logits = self.autoregressive_inference(
-                    run_tokens,
-                    shift_positions_by_one=True,
-                )
+                new_token, new_logits = self.autoregressive_inference(run_tokens)
+
             prompt_logits.append(new_logits)
 
         tokens.append(new_token)
@@ -421,16 +419,12 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
-        shift_positions_by_one: bool = True,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
         a new token and new logits.
 
         :param tokens: The current context (prompt + generated tokens so far)
-        :param shift_positions_by_one: Whether to shift the positions
-            by one. Used if we are processing the prompt from the scratch
-            (i.e. not using the multitoken engine)
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
@@ -441,8 +435,7 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_processed:] = 1
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
-        if shift_positions_by_one:
-            positions -= 1
+        positions -= 1
         input_ids = numpy.array([[new_token]])
         causal_mask = create_causal_mask(input_ids, attention_mask)
         engine_inputs = [input_ids, attention_mask, positions, causal_mask]
