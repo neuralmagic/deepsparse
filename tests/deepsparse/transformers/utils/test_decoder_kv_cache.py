@@ -107,7 +107,6 @@ class TestDecoderKVCache:
         self._test_decrease_capacity(session)  # decrease
         self._test_constant_capacity(session)  # constant
 
-
     def test_update_session(self, setup):
         session, input_ids_len, expected_updated_state = setup
         state = copy.deepcopy(session.cached_inputs)

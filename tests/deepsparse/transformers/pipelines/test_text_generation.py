@@ -138,7 +138,8 @@ class TestTextGenerationPipeline:
         for x, y in zip(cache_state_list, target_cache_state):
             """
             x will be a cache array
-            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ..., gen_token_cache_1, gen_token_cache_2, ...]
+            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ..., 
+             gen_token_cache_1, gen_token_cache_2, ...]
             we need to first remove blank entries and then keep the
             remaining prompt_cache entries (remove gen_token_cache entries)
             """

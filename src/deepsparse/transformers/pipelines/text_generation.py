@@ -16,7 +16,7 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field, validator
@@ -29,7 +29,6 @@ from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
-    generate_session_id,
     pad_to_fixed_length,
 )
 
@@ -86,47 +85,8 @@ class TextGenerationInput(BaseModel):
 
     @validator("session_ids")
     def validate_session_ids(cls, value, values) -> Union[None, List[str]]:
-        value = cls._check_session_ids_duplicates(value)
-        value = cls._check_session_ids_length(value, values)
-        value = cls._session_ids_to_list(value)
+        pass  # TODO
         return value
-
-    @staticmethod
-    def _check_session_ids_duplicates(
-        session_ids: Union[None, List[str], str]
-    ) -> Union[None, List[str], str]:
-        # make sure that the session_id list has unique elements
-        if isinstance(session_ids, list):
-            if len(session_ids) != len(set(session_ids)):
-                raise ValueError(
-                    "The session_id list has duplicates. "
-                    "The session_id list passed to the pipeline"
-                    "cannot have duplicates, this could lead "
-                    "to unexpected behavior."
-                )
-        return session_ids
-
-    @staticmethod
-    def _check_session_ids_length(
-        session_ids: Union[None, List[str], str], attributes: Dict[str, Any]
-    ) -> Union[None, List[str], str]:
-        if isinstance(session_ids, list):
-            if len(session_ids) != len(attributes["sequences"]):
-                raise ValueError(
-                    "The session_id list has different length "
-                    "than the input sequences. If running a pipeline "
-                    "with session_ids, it is expected to have one "
-                    "session_id per input sequence."
-                )
-        return session_ids
-
-    @staticmethod
-    def _session_ids_to_list(
-        session_ids: Union[None, List[str], str]
-    ) -> Union[None, List[str]]:
-        if isinstance(session_ids, str):
-            return [session_ids]
-        return session_ids
 
 
 class TextGenerationOutput(BaseModel):
@@ -343,12 +303,10 @@ class TextGenerationPipeline(TransformersPipeline):
         onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
-        self._use_session_ids = False
-        if inputs.session_ids is not None:
-            # TODO: This is ugly, we should find a better way to pass
-            # session_id to the engine, maybe use the refactored pipeline
-            engine_input.append(numpy.array(inputs.session_ids))
-            self._use_session_ids = True
+        # set the session id for the engine
+        session_ids = inputs.session_ids
+        self.multitoken_engine.session_id = session_ids
+        self.engine.session_id = session_ids
 
         postprocessing_kwargs = dict(
             return_logits=inputs.return_logits, streamer=inputs.streamer
@@ -364,15 +322,16 @@ class TextGenerationPipeline(TransformersPipeline):
         :param engine_outputs: the outputs from the engine
         :return: the output schema for the pipeline
         """
-        generated_tokens, generated_logits, session_ids = engine_outputs
+        generated_tokens, generated_logits = engine_outputs
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
         logits = generated_logits if kwargs.get("return_logits") else None
-        session_ids = session_ids.tolist() if self._use_session_ids else None
+
+        session_id = self.multitoken_engine.session_id
 
         return TextGenerationOutput(
-            sequences=sequences, logits=logits, session_ids=session_ids
+            sequences=sequences, logits=logits, session_ids=session_id
         )
 
     def engine_forward(
@@ -387,8 +346,6 @@ class TextGenerationPipeline(TransformersPipeline):
             sequence of generated tokens and a sequence
             of logits for each generated token
         """
-
-        session_id, engine_inputs = self._extract_session_id(engine_inputs)
         # engine_forward is always called in a threadpool due to batch splitting
         # as such, a new context needs to be created since we are no longer in the
         # main thread. That is why `engine_` is prepended to each of the timer phase
@@ -403,9 +360,7 @@ class TextGenerationPipeline(TransformersPipeline):
             else:
                 # run the prompt through
                 with timer.time(_TextGenerationTimings.PROMPT_PREFILL):
-                    tokens, prompt_logits = self.prompt_inference(
-                        engine_inputs, session_id
-                    )
+                    tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
             if streamer is not None:
                 streamer.put(numpy.array(tokens))
@@ -440,16 +395,13 @@ class TextGenerationPipeline(TransformersPipeline):
             if streamer is not None:
                 streamer.end()
 
-        return (
-            numpy.array([generated_tokens]),
-            numpy.concatenate(generated_logits, axis=1),
-            numpy.array([session_id]),
+        return numpy.array([generated_tokens]), numpy.concatenate(
+            generated_logits, axis=1
         )
 
     def prompt_inference(
         self,
         engine_inputs: List[numpy.ndarray],
-        session_id: str,
     ) -> Tuple[List[int], List[numpy.ndarray]]:
         """
         An inference run that processes the prompt through the
@@ -470,18 +422,7 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = 0
 
         if len(tokens) > self.prompt_processing_sequence_length:
-            if self.engine.session is not None:
-                self.multitoken_engine.transfer_cache_storage(
-                    storage=self.engine.kv_cache_storage
-                )
-            session_contains_bos_token = self.multitoken_engine.initialize_session(
-                session_id
-            )
-            # remove the first (BOS) token if it is
-            # already included in the session kv cache
-            if session_contains_bos_token:
-                tokens = tokens[1:]
-
+            self.multitoken_engine.initialize_session()
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
                 num_tokens_processed += self.prompt_processing_sequence_length
@@ -495,9 +436,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
-        session_contains_bos_token = self.engine.initialize_session(session_id)
-        if session_contains_bos_token and num_tokens_processed == 0:
-            tokens = tokens[1:]
+
+        self.engine.initialize_session()
+
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             with self.timer_manager.current.time(
@@ -671,7 +612,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
-        tokens, logits, session_ids = zip(*batch_outputs)
+        tokens, logits = zip(*batch_outputs)
 
         # find the longest sequence in the batch of tokens
         max_len = max([token.shape[1] for token in tokens])
@@ -697,15 +638,4 @@ class TextGenerationPipeline(TransformersPipeline):
         ]
         logits = numpy.concatenate(logits, axis=0)
 
-        session_ids = numpy.concatenate(session_ids, axis=0)
-        return [tokens, logits, session_ids]
-
-    def _extract_session_id(
-        self, engine_inputs: List[numpy.ndarray]
-    ) -> Tuple[str, List[numpy.ndarray]]:
-        if self._use_session_ids:
-            *engine_inputs, session_id = engine_inputs
-            _LOGGER.debug(f"Using pre-existing session id: {session_id[0]}")
-            return session_id[0], engine_inputs
-
-        return generate_session_id(), engine_inputs
+        return [tokens, logits]
