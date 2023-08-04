@@ -19,6 +19,7 @@ inference engine and include pre/postprocessing
 import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
@@ -27,7 +28,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.base_pipeline import _REGISTERED_PIPELINES, BasePipeline, SupportedTasks
-from deepsparse.benchmark import ORTEngine
+from deepsparse.benchmark import ORTEngine, TorchScriptEngine
 from deepsparse.cpu import cpu_details
 from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.loggers.constants import MetricCategories, SystemGroups
@@ -193,7 +194,6 @@ class Pipeline(BasePipeline):
             self.engine = None
         else:
             self.engine = self._initialize_engine()
-
         self._batch_size = self._batch_size or 1
 
         self.log(
