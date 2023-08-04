@@ -267,3 +267,37 @@ Running CodeGen text generation for 30 seconds asynchronously
 ```
 deepsparse.benchmark_pipeline text_generation zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/pruned50-none -c config.json -t 30 -s async
 ```
+### Example Output
+Command:
+```
+deepsparse.benchmark_pipeline text_classification zoo:nlp/sentiment_analysis/distilbert-none/pytorch/huggingface/sst2/pruned90-none -c config.json
+```
+config.json:
+```json
+{
+    "data_type": "real",
+    "gen_sequence_length": 1000,
+    "data_folder": "/home/sadkins/text_data/",
+    "recursive_search": true,
+    "max_string_length": -1
+}
+```
+
+Output:
+```
+Batch Size: 1
+Scenario: sync
+Iterations: 955
+Total Runtime: 10.0090
+Throughput (items/sec): 95.4137
+Processing Time Breakdown: 
+     total_inference: 99.49%
+     pre_process: 25.70%
+     engine_forward: 72.56%
+     post_process: 1.03%
+Mean Latency Breakdown (ms/batch): 
+     total_inference: 10.4274
+     pre_process: 2.6938
+     engine_forward: 7.6051
+     post_process: 0.1077
+```
