@@ -15,7 +15,7 @@
 from typing import Any, List, Type
 
 import numpy as np
-from numpy import linalg as la
+from numpy import linalg as lingalg
 from pydantic import BaseModel, Field
 
 from deepsparse.clip import CLIPTextInput, CLIPVisualInput
@@ -32,9 +32,13 @@ class CLIPZeroShotInput(BaseModel):
     """
 
     image: CLIPVisualInput = Field(
-        description="Path to image to run zero-shot prediction on."
+        description="Image(s) to run zero-shot prediction. See CLIPVisualPipeline "
+        "for details."
     )
-    text: CLIPTextInput = Field(description="List of text to process")
+    text: CLIPTextInput = Field(
+        description="Text/classes to run zero-shot prediction "
+        "see CLIPTextPipeline for details."
+    )
 
 
 class CLIPZeroShotOutput(BaseModel):
@@ -42,8 +46,9 @@ class CLIPZeroShotOutput(BaseModel):
     Output for the CLIP Zero Shot Model
     """
 
-    # TODO: Maybe change this to a dictionary where keys are text inputs
-    text_scores: List[Any] = Field(description="Probability of each text class")
+    text_scores: List[Any] = Field(
+        description="np.array consisting of probabilities " " each class provided."
+    )
 
 
 @BasePipeline.register(task="clip_zeroshot", default_model_path=None)
@@ -59,14 +64,26 @@ class CLIPZeroShotPipeline(BasePipeline):
     branch onnx model
     :param text_model_path: either a local path or sparsezoo stub for the CLIP text
     branch onnx model
+    :param pipeline_engine_args: dictionary of arguments specific to running the
+    pipeline engine. Applied to both the text branch pipeline and visual branch pipeline
+    See pipeline.py for a full list of arguments.
 
     """
 
-    def __init__(self, visual_model_path: str, text_model_path: str, **kwargs):
-        self.visual = Pipeline.create(
-            task="clip_visual", **{"model_path": visual_model_path}
-        )
-        self.text = Pipeline.create(task="clip_text", **{"model_path": text_model_path})
+    def __init__(
+        self,
+        visual_model_path: str,
+        text_model_path: str,
+        pipeline_engine_args: dict = None,
+        **kwargs,
+    ):
+        if pipeline_engine_args is None:
+            pipeline_engine_args = {}
+
+        pipeline_engine_args["model_path"] = visual_model_path
+        self.visual = Pipeline.create(task="clip_visual", **pipeline_engine_args)
+        pipeline_engine_args["model_path"] = text_model_path
+        self.text = Pipeline.create(task="clip_text", **pipeline_engine_args)
 
         super().__init__(**kwargs)
 
@@ -82,8 +99,8 @@ class CLIPZeroShotPipeline(BasePipeline):
         visual_output = self.visual(pipeline_inputs.image).image_embeddings[0]
         text_output = self.text(pipeline_inputs.text).text_embeddings[0]
 
-        visual_output /= la.norm(visual_output, axis=-1, keepdims=True)
-        text_output /= la.norm(text_output, axis=-1, keepdims=True)
+        visual_output /= lingalg.norm(visual_output, axis=-1, keepdims=True)
+        text_output /= lingalg.norm(text_output, axis=-1, keepdims=True)
 
         output_product = 100.0 * visual_output @ text_output.T
         text_probs = softmax(output_product, axis=-1)
