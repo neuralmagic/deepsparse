@@ -50,6 +50,10 @@ def _initialize_kv_cache_state(model, length=0):
 
 
 @pytest.mark.parametrize(
+    "use_deepsparse_cache",
+    [True, False],
+)
+@pytest.mark.parametrize(
     # TODO: Change to stubs
     "model_path, model_name, uses_bos_token",
     [
@@ -64,15 +68,16 @@ def _initialize_kv_cache_state(model, length=0):
 )
 class TestTextGenerationPipeline:
     @pytest.fixture
-    def setup(self, model_path, model_name, uses_bos_token):
+    def setup(self, model_path, model_name, uses_bos_token, use_deepsparse_cache):
         self.max_generated_tokens = 16
+        self.use_deepsparse_cache = use_deepsparse_cache
         pipeline = Pipeline.create(
             task="text_generation",
             model_path=model_path,
             sequence_length=32,
             prompt_processing_sequence_length=4,
             max_generated_tokens=self.max_generated_tokens,
-            use_deepsparse_cache=False,
+            use_deepsparse_cache=use_deepsparse_cache,
         )
         short_prompt = "this"
         long_prompt = "this is a sample prompt that we will use to test the pipeline"
@@ -109,12 +114,14 @@ class TestTextGenerationPipeline:
             sequences=[short_prompt, long_prompt], model_name=model_name
         )
         assert short_prompt + output_sequences.sequences[0] == output_hugging_face[0]
-        assert long_prompt + output_sequences.sequences[1] == output_hugging_face[1]
+        if not self.use_deepsparse_cache:
+            assert long_prompt + output_sequences.sequences[1] == output_hugging_face[1]
 
     def test_model_output_cache(self, setup):
         pipeline, model_name, _, short_prompt, long_prompt = setup
-        self._test_cache_state(short_prompt, pipeline, model_name)
-        self._test_cache_state(long_prompt, pipeline, model_name)
+        if not self.use_deepsparse_cache:
+            self._test_cache_state(short_prompt, pipeline, model_name)
+            self._test_cache_state(long_prompt, pipeline, model_name)
 
     def _test_cache_state(self, prompt, pipeline, model_name):
         # make sure that the cache state after running a prompt
@@ -138,7 +145,8 @@ class TestTextGenerationPipeline:
         for x, y in zip(cache_state_list, target_cache_state):
             """
             x will be a cache array
-            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ..., gen_token_cache_1, gen_token_cache_2, ...]
+            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ...,
+             gen_token_cache_1, gen_token_cache_2, ...]
             we need to first remove blank entries and then keep the
             remaining prompt_cache entries (remove gen_token_cache entries)
             """

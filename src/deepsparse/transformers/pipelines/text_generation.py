@@ -212,6 +212,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 "Set `max_generated_tokens` to 1 to support that scenario."
             )
 
+        self.use_deepsparse_cache = use_deepsparse_cache
+
     @staticmethod
     def route_input_to_bucket(
         *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
@@ -406,7 +408,16 @@ class TextGenerationPipeline(TransformersPipeline):
         # to refrain from resetting if session id is being passed
         self._reset_engines_cache()
 
-        if len(tokens) > self.prompt_processing_sequence_length:
+        # route the user input through the multi-token engine
+        # ONLY if the use_deepsparse_cache is
+        # disabled. Otherwise, temporarily, to maximize performance,
+        # route to go single-token engine
+        # (which has full internal kv cache support)
+        if (
+            len(tokens) > self.prompt_processing_sequence_length
+            and not self.use_deepsparse_cache
+        ):
+
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
                 num_tokens_processed += self.prompt_processing_sequence_length
