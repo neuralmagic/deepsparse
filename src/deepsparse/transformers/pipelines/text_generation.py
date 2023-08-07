@@ -86,7 +86,8 @@ class TextGenerationInput(BaseModel):
 
     @validator("session_ids")
     def validate_session_ids(cls, value, values) -> Union[None, List[str]]:
-        pass  # TODO
+        if isinstance(value, list):
+            raise NotImplementedError("The list of session_ids is not supported.")
         return value
 
 
@@ -334,7 +335,7 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         Run the forward pass on the engine.
 
-        :param engine_inputs: list of numpy inputs to
+        :param engine_inputs: List of numpy inputs to
             Pipeline engine forward pass
         :return: A tuple of numpy array that contains the
             sequence of generated tokens and a sequence
@@ -408,8 +409,9 @@ class TextGenerationPipeline(TransformersPipeline):
         An inference run that processes the prompt through the
         model to generate the new token and logits
 
-        :param engine_inputs: the prompt (context) represented by a
+        :param engine_inputs: The prompt (context) represented by a
             list of numpy inputs to the engine
+        :param session_id: The session id to run the inference under
         :return: A tuple of:
             - The list of prompt tokens plus the new, generated token
             - The logits generated from the prompt (with dimensions
@@ -423,6 +425,7 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = 0
 
         if len(tokens) > self.prompt_processing_sequence_length:
+            # synchronize the cache state of both engines
             if self.engine.kv_cache_storage.get(session_id):
                 self.multitoken_engine.transfer_cache_storage(
                     storage=self.engine.kv_cache_storage
@@ -437,6 +440,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
 
+        # synchronize the cache state of both engines
         if self.multitoken_engine.kv_cache_storage.get(session_id):
             self.engine.transfer_cache_storage(
                 storage=self.multitoken_engine.kv_cache_storage
@@ -460,13 +464,14 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
-        session_id,
+        session_id: str,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
         a new token and new logits.
 
         :param tokens: The current context (prompt + generated tokens so far)
+        :param session_id: The session id to run the inference under
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
@@ -533,6 +538,7 @@ class TextGenerationPipeline(TransformersPipeline):
             - causal_mask: derived from the input_ids and attention_mask
 
         :param tokens: the list of tokens to process
+        :param session_id: the session id to run the inference under
         :return: a generator of engine inputs
         """
 

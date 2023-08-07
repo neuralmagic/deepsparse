@@ -117,11 +117,13 @@ class NLDecoderEngine:
 
     def num_non_blank_cache_entries(self, session_id: str) -> int:
         """
-        Fetch the appropriate session from the kv cache storage
-        and return the number of non-blank entries in the kv cache
+        Fetch the appropriate kv cache session from the kv cache storage
+        and return the number of non-blank entries in the kv cache session
+        cache state. Note, if the expected kv cache session is not found,
+        a new session for this engine will be initialized.
 
-        :return a number of non-blank entries in the
-            kv cache
+        :param session_id: The session id to fetch the kv cache session for
+        :return a number of non-blank entries in the kv cache
         """
         session = self.kv_cache_storage.get(session_id)
         if session is None:
@@ -140,6 +142,7 @@ class NLDecoderEngine:
         :param inp: The input to run the engine with. We expect a
             list of numpy arrays that contain the input ids,
             attention mask, and position ids (optionally)
+        :param session_id: The session id to run the engine with
         :param val_inp: Whether the input is for validation or not
         :return: The generated token and corresponding logits
         """
@@ -169,14 +172,14 @@ class NLDecoderEngine:
     def __repr__(self):
         return str(self)
 
-    def initialize_session(self, session_id: str):
+    def initialize_session(self, session_id: str) -> DecoderKVCache:
         """
-        Initializes the session for the engine.
-        If the appropriate session is already in the kv cache storage,
-        it will be fetched from there and adjusted, so that the session
-        has the appropriate capacity.
-        Otherwise, a new session is created.
-        Finally, the session is put into the kv cache storage.
+        Initializes the session for the engine and puts it into storage.
+        Note, if the session with the `session_id` is already in the storage,
+        this method will overwrite it.
+
+        :param session_id: The session id to initialize the session for
+        :return: The initialized session
         """
         kv_cache_state = self._initialize_kv_cache_state(self.capacity)
         session = DecoderKVCache(use_deepsparse_cache=self.use_deepsparse_cache)
@@ -216,12 +219,13 @@ class NLDecoderEngine:
         return numpy.random.choice(len(probs), p=probs)
 
     def add_kv_cache_to_input(
-        self, inp: List[numpy.ndarray], session_id
+        self, inp: List[numpy.ndarray], session_id: str
     ) -> List[numpy.ndarray]:
         """
         Takes the input and adds the past kv cache state to it.
 
         :param inp: The input to the model
+        :param session_id: The session id to fetch the kv cache state for
         :return The input with the kv cache state added to it
         """
         session = self.kv_cache_storage.get(session_id)
@@ -249,6 +253,7 @@ class NLDecoderEngine:
 
         :param kv_cache_state: The state of the kv cache storage
         :param input_ids_len: The length of input_ids
+        :param session_id: The session id to fetch the kv cache session for
         """
         cache_onnx_names = [
             name
