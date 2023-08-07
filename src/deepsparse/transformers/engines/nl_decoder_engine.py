@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -219,10 +218,9 @@ class NLDecoderEngine:
         :param cache: The `DecoderKVCache` object to transfer to the engine
             from
         """
-        cache_to_copy = copy.copy(cache)
         target_cache_capacity = self.sequence_length - self.input_ids_length
-        cache_to_copy.set_capacity(target_cache_capacity)
-        self.kv_cache = cache_to_copy
+        cache.set_capacity(target_cache_capacity)
+        self.kv_cache = cache
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
