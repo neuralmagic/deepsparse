@@ -121,7 +121,9 @@ class TestTextGenerationPipeline:
         # is correct
 
         pipeline(sequences=prompt)
-        cache_state_dict = pipeline.engine.kv_cache.cached_inputs
+        cache_state_dict = next(
+            iter(pipeline.engine.kv_cache_storage._memory)
+        ).cached_inputs
         cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
 
         # generate ground truth from ORT

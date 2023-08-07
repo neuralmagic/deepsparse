@@ -21,10 +21,7 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import (
-    generate_session_id,
-    overwrite_onnx_model_inputs,
-)
+from deepsparse.transformers.utils.helpers import overwrite_onnx_model_inputs
 from deepsparse.transformers.utils.storage_kv_cache import SessionStorageKVCache
 from deepsparse.utils.data import numpy_softmax
 
@@ -102,27 +99,9 @@ class NLDecoderEngine:
         self.use_deepsparse_cache = use_deepsparse_cache
         self.input_ids_length = input_ids_length
         self.kv_cache_enabled = kv_cache_enabled
+        self.capacity = self.sequence_length - self.input_ids_length
         self.kv_cache_storage = SessionStorageKVCache() if kv_cache_enabled else None
-        self._session_id = None
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
-
-    @property
-    def session_id(self) -> str:
-        """
-        :return: The session id for the kv cache
-        """
-        return self._session_id
-
-    @session_id.setter
-    def session_id(self, session_id: Optional[str] = None):
-        """
-        :param session_id: The session id for the kv cache.
-            If None, a new session id will be generated
-        """
-        if session_id is None:
-            session_id = generate_session_id()
-        _LOGGER.debug(f"Setting session id: {session_id}")
-        self._session_id = session_id
 
     @property
     def onnx_input_names_no_cache(self) -> List[str]:
@@ -136,8 +115,7 @@ class NLDecoderEngine:
             if not name.startswith(_CACHE_INPUT_NAME)
         ]
 
-    @property
-    def num_non_blank_cache_entries(self) -> int:
+    def num_non_blank_cache_entries(self, session_id: str) -> int:
         """
         Fetch the appropriate session from the kv cache storage
         and return the number of non-blank entries in the kv cache
@@ -145,11 +123,15 @@ class NLDecoderEngine:
         :return a number of non-blank entries in the
             kv cache
         """
-        return self.kv_cache_storage.get(self.session_id).num_non_blank_entries
+        session = self.kv_cache_storage.get(session_id)
+        if session is None:
+            session = self.initialize_session(session_id)
+        return session.num_non_blank_entries
 
     def __call__(
         self,
         inp: List[numpy.ndarray],
+        session_id: str,
         val_inp: bool = True,
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
@@ -162,14 +144,16 @@ class NLDecoderEngine:
         :return: The generated token and corresponding logits
         """
         if self.kv_cache_enabled:
-            inp = self.add_kv_cache_to_input(inp)
+            inp = self.add_kv_cache_to_input(inp, session_id)
 
         out = self.engine.run(inp, val_inp)
 
         if self.kv_cache_enabled:
             logits, *kv_cache_state = out
             self.update_kv_cache(
-                kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
+                kv_cache_state=kv_cache_state,
+                input_ids_len=self.input_ids_length,
+                session_id=session_id,
             )
         else:
             logits = out[0]
@@ -185,7 +169,7 @@ class NLDecoderEngine:
     def __repr__(self):
         return str(self)
 
-    def initialize_session(self):
+    def initialize_session(self, session_id: str):
         """
         Initializes the session for the engine.
         If the appropriate session is already in the kv cache storage,
@@ -194,22 +178,17 @@ class NLDecoderEngine:
         Otherwise, a new session is created.
         Finally, the session is put into the kv cache storage.
         """
-        session = self.kv_cache_storage.get(self.session_id)
-        capacity = self.sequence_length - self.input_ids_length
-
-        if session is None:
-            kv_cache_state = self._initialize_kv_cache_state(capacity)
-            session = DecoderKVCache(use_deepsparse_cache=self.use_deepsparse_cache)
-            session.setup(
-                session_id=self.session_id,
-                state=kv_cache_state,
-                num_processed_tokens=0,
-                freeze_first_position=self._freeze_first_position,
-            )
-        else:
-            session.set_capacity(capacity)
+        kv_cache_state = self._initialize_kv_cache_state(self.capacity)
+        session = DecoderKVCache(use_deepsparse_cache=self.use_deepsparse_cache)
+        session.setup(
+            session_id=session_id,
+            state=kv_cache_state,
+            num_processed_tokens=0,
+            freeze_first_position=self._freeze_first_position,
+        )
 
         self.kv_cache_storage.put(session)
+        return session
 
     def transfer_cache_storage(self, storage: SessionStorageKVCache):
         """
@@ -236,14 +215,21 @@ class NLDecoderEngine:
 
         return numpy.random.choice(len(probs), p=probs)
 
-    def add_kv_cache_to_input(self, inp: List[numpy.ndarray]) -> List[numpy.ndarray]:
+    def add_kv_cache_to_input(
+        self, inp: List[numpy.ndarray], session_id
+    ) -> List[numpy.ndarray]:
         """
         Takes the input and adds the past kv cache state to it.
 
         :param inp: The input to the model
         :return The input with the kv cache state added to it
         """
-        kv_cache_state = self.kv_cache_storage.get(self.session_id).cached_inputs
+        session = self.kv_cache_storage.get(session_id)
+        if session is None:
+            session = self.initialize_session(session_id)
+        else:
+            session.set_capacity(self.capacity)
+        kv_cache_state = session.cached_inputs
 
         for idx, input_name in enumerate(self.onnx_input_names_no_cache):
             kv_cache_state[input_name] = inp[idx]
@@ -255,6 +241,7 @@ class NLDecoderEngine:
         self,
         kv_cache_state: List[numpy.ndarray],
         input_ids_len: int,
+        session_id: str,
     ):
         """
         Pull the appropriate session from the kv cache storage
@@ -272,7 +259,7 @@ class NLDecoderEngine:
             name: array for name, array in zip(cache_onnx_names, kv_cache_state)
         }
 
-        session = self.kv_cache_storage.get(self.session_id)
+        session = self.kv_cache_storage.get(session_id)
         session.update(state=kv_cache_state, input_ids_len=input_ids_len)
         self.kv_cache_storage.put(session)
 
