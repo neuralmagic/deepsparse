@@ -44,8 +44,10 @@ class CLIPVisualOutput(BaseModel):
     """
 
     image_embeddings: List[Any] = Field(
-        description="Image embeddings for the single image or list of embeddings for "
-        "multiple images"
+        description="np.arrays consisting of image embeddings. For the caption "
+        "pipeline, a list of two image embeddings is produced. For zero-shot "
+        "classifcation, one array is produced with the embeddings stacked along "
+        "batch axis."
     )
 
 
@@ -61,8 +63,9 @@ class CLIPVisualPipeline(Pipeline):
                     size=self._image_size,
                     interpolation=InterpolationMode.BICUBIC,
                     max_size=None,
+                    antialias="warn",
                 ),
-                transforms.CenterCrop(size=self._image_size),
+                transforms.CenterCrop(size=(self._image_size, self._image_size)),
             ]
         )
 
@@ -97,30 +100,33 @@ class CLIPVisualPipeline(Pipeline):
         :param inputs: CLIPVisualInput
         :return: list of preprocessed numpy arrays
         """
-        if isinstance(inputs.images, str):
+        if not isinstance(inputs.images, list):
             inputs.images = [inputs.images]
 
         def _process_image(image) -> np.array:
-            image = Image.open(image)
-            image = self._preprocess_transforms(image)
+            if isinstance(image, str):
+                image = Image.open(image).convert("RGB")
+                image = self._preprocess_transforms(image)
 
-            # image.convert("RGB") should make the image 8 bit
-            image_array = np.array(image.convert("RGB"))
+                image_array = np.array(image)
 
-            # make channel dim the first dim
-            image_array = image_array.transpose(2, 1, 0).astype("float32")
+                # make channel dim the first dim
+                image_array = image_array.transpose(2, 0, 1).astype("float32")
 
-            image_array /= 255.0
-            image_array = (
-                image_array - np.array(CLIP_RGB_MEANS).reshape((3, 1, 1))
-            ) / np.array(CLIP_RGB_STDS).reshape((3, 1, 1))
+                image_array /= 255.0
+                image_array = (
+                    image_array - np.array(CLIP_RGB_MEANS).reshape((3, 1, 1))
+                ) / np.array(CLIP_RGB_STDS).reshape((3, 1, 1))
 
-            image.close()
+                image.close()
+            else:
+                image_array = image
             return np.ascontiguousarray(image_array, dtype=np.float32)
 
         batch = list(self.executor.map(_process_image, inputs.images))
-        batch = np.stack(batch, axis=0)
-        return [batch]
+        if batch[0].ndim == 3:
+            batch = [np.stack(batch, axis=0)]
+        return batch
 
     def process_engine_outputs(
         self, engine_outputs: List[np.array]
