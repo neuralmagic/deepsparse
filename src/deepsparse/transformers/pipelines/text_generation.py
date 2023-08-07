@@ -31,6 +31,7 @@ from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     generate_session_id,
     pad_to_fixed_length,
+    validate_session_ids,
 )
 
 
@@ -86,9 +87,8 @@ class TextGenerationInput(BaseModel):
 
     @validator("session_ids")
     def validate_session_ids(cls, value, values) -> Union[None, List[str]]:
-        if isinstance(value, list):
-            raise NotImplementedError("The list of session_ids is not supported.")
-        return value
+        session_ids = validate_session_ids(session_ids=value, other_attributes=values)
+        return session_ids
 
 
 class TextGenerationOutput(BaseModel):

@@ -23,6 +23,7 @@ class DummyDecoderKVCache:
 class TestSessionStorageKVCache:
     storage = SessionStorageKVCache()
 
+    timestamp_1 = storage.timestamp
     storage.put(DummyDecoderKVCache(session_id="first_session"))
     storage.put(DummyDecoderKVCache(session_id="second_session"))
     assert len(storage) == 2
@@ -30,6 +31,9 @@ class TestSessionStorageKVCache:
     # overwrite a session
     storage.put(DummyDecoderKVCache(session_id="first_session"))
     assert len(storage) == 2
+    timestamp_2 = storage.timestamp
+
+    assert timestamp_2 > timestamp_1
 
     def test_str(self):
         assert str(self.storage)

@@ -14,7 +14,7 @@
 
 import logging
 import uuid
-from typing import List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -28,6 +28,7 @@ __all__ = [
     "pad_to_fixed_length",
     "create_causal_mask",
     "overwrite_onnx_model_inputs",
+    "validate_session_ids",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -107,6 +108,42 @@ def generate_session_id() -> str:
     """
     session_id = str(uuid.uuid4())
     return session_id
+
+
+def validate_session_ids(
+    session_ids: str, other_attributes: Dict[str, Any]
+) -> Optional[List[str]]:
+    """
+    Helper function to validate the session ids for TextGenerationInput schema
+
+    :param session_ids: The session ids to validate
+    :param other_attributes: The other attributes of the input schema
+    """
+    if session_ids is None:
+        return None
+
+    if isinstance(session_ids, list):
+        session_ids = [str(session_id) for session_id in session_ids]
+
+    if isinstance(other_attributes.sequences, str) and len(session_ids) != 1:
+        raise ValueError(
+            f"Only one session id is allowed for a single input sequence. "
+            f"Detected 1 input sequence and {len(session_ids)} session ids"
+        )
+    if isinstance(other_attributes.sequences, list) and len(session_ids) != len(
+        other_attributes.sequences
+    ):
+        raise ValueError(
+            f"Number of session ids must match the number of input sequences. "
+            f"Detected {len(other_attributes.sequences)} "
+            f"input sequences and {len(session_ids)} session ids"
+        )
+    if len(session_ids) != len(set(session_ids)):
+        raise ValueError(
+            f"Session ids must be unique. Detected session_ids: {session_ids}"
+        )
+
+    return session_ids
 
 
 def pad_to_fixed_length(
