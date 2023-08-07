@@ -395,6 +395,9 @@ class TextGenerationPipeline(TransformersPipeline):
                     ):
                         break
 
+            # do not generate more tokens, but run inference to
+            # generate cache entry for the last generated token
+            self.autoregressive_inference(tokens, session_id)
             if streamer is not None:
                 streamer.end()
 
@@ -425,11 +428,14 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = 0
 
         if len(tokens) > self.prompt_processing_sequence_length:
-            # synchronize the cache state of both engines
-            if self.engine.kv_cache_storage.get(session_id):
-                self.multitoken_engine.transfer_cache_storage(
-                    storage=self.engine.kv_cache_storage
-                )
+
+            session_exists = self.synchronize_engines(session_id)
+            tokens = (
+                self._remove_bos_token_if_applicable(tokens)
+                if session_exists
+                else tokens
+            )
+
             for engine_inputs in self.engine_inputs_for_prefill(tokens, session_id):
                 new_token, new_logits = self.multitoken_engine(
                     engine_inputs, session_id
@@ -440,11 +446,12 @@ class TextGenerationPipeline(TransformersPipeline):
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
 
-        # synchronize the cache state of both engines
-        if self.multitoken_engine.kv_cache_storage.get(session_id):
-            self.engine.transfer_cache_storage(
-                storage=self.multitoken_engine.kv_cache_storage
-            )
+        session_exists = self.synchronize_engines(session_id)
+        tokens = (
+            self._remove_bos_token_if_applicable(tokens)
+            if session_exists and not num_tokens_processed
+            else tokens
+        )
 
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
@@ -608,6 +615,33 @@ class TextGenerationPipeline(TransformersPipeline):
 
             yield engine_inputs
 
+    def synchronize_engines(self, session_id: str) -> bool:
+        """
+        Make sure that the multitoken engine and the (single token) engine
+        are in sync i.e. they contain the newest version of the kv cache storage.
+
+        Additionally returns a boolean indicating whether the session with
+        the session_id exists in the kv cache storage
+
+        :param session_id: the session id to synchronize
+        :return: True if the session exists in the kv cache storage, False otherwise
+        """
+        engine_storage_timestamp = self.engine.kv_cache_storage.timestamp
+        multitoken_engine_storage_timestamp = (
+            self.multitoken_engine.kv_cache_storage.timestamp
+        )
+
+        if engine_storage_timestamp > multitoken_engine_storage_timestamp:
+            # engine's storage is newer,
+            # # so we need to transfer it to the multitoken engine
+            self.multitoken_engine.transfer_cache_storage(self.engine.kv_cache_storage)
+            return self.multitoken_engine.kv_cache_storage.has_session(session_id)
+
+        # multitoken engine's storage is newer,
+        # # so we need to transfer it to the engine
+        self.engine.transfer_cache_storage(self.multitoken_engine.kv_cache_storage)
+        return self.engine.kv_cache_storage.has_session(session_id)
+
     @property
     def has_cache(self) -> bool:
         """
@@ -657,3 +691,8 @@ class TextGenerationPipeline(TransformersPipeline):
         logits = numpy.concatenate(logits, axis=0)
 
         return [tokens, logits]
+
+    def _remove_bos_token_if_applicable(self, tokens: List[int]):
+        if hasattr(self.tokenizer, "add_bos_token"):
+            return tokens[1:]
+        return tokens

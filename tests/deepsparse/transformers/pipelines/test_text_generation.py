@@ -65,11 +65,11 @@ def _initialize_kv_cache_state(model, length=0):
 class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_path, model_name, uses_bos_token):
-        self.max_generated_tokens = 16
+        self.max_generated_tokens = 8
         pipeline = Pipeline.create(
             task="text_generation",
             model_path=model_path,
-            sequence_length=32,
+            sequence_length=64,
             prompt_processing_sequence_length=4,
             max_generated_tokens=self.max_generated_tokens,
             use_deepsparse_cache=False,
@@ -115,6 +115,24 @@ class TestTextGenerationPipeline:
         pipeline, model_name, _, short_prompt, long_prompt = setup
         self._test_cache_state(short_prompt, pipeline, model_name)
         self._test_cache_state(long_prompt, pipeline, model_name)
+
+    def test_model_session_storage(self, setup):
+        pipeline, _, _, short_prompt, long_prompt = setup
+
+        # test whether the session storage is working correctly,
+        # i.e storage memory is composable and there is no leakage
+        # between sessions
+
+        output = pipeline(sequences=short_prompt, session_ids="session_one")
+        intermediate_prompt = output.sequences[0]
+        out_1 = pipeline(sequences=long_prompt, session_ids="session_one")
+
+        out_2 = pipeline(
+            sequences=short_prompt + intermediate_prompt + long_prompt,
+            session_ids="session_two",
+        )
+
+        assert out_1.sequences[0] == out_2.sequences[0]
 
     def _test_cache_state(self, prompt, pipeline, model_name):
         # make sure that the cache state after running a prompt

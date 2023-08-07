@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import time
 from typing import Set, Union
 
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
@@ -32,6 +33,7 @@ class SessionStorageKVCache:
 
     def __init__(self):
         self._memory: Set[DecoderKVCache] = set()
+        self.timestamp = time.time()
 
     def __len__(self):
         return len(self._memory)
@@ -42,6 +44,13 @@ class SessionStorageKVCache:
             f"\tsessions: {[session.id for session in self._memory]}\n"
         )
 
+    def update_timestamp(func):
+        def wrapper(self, *args, **kwargs):
+            self.timestamp = time.time()
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
     def has_session(self, session_id: str) -> bool:
         """
         Check if the storage has a session with the given session id.
@@ -50,6 +59,7 @@ class SessionStorageKVCache:
         """
         return any(session.id == session_id for session in self._memory)
 
+    @update_timestamp
     def put(self, session: DecoderKVCache):
         """
         Put the cache session in the storage.
