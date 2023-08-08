@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest.mock import patch
+
 import numpy as np
 
 from deepsparse.transformers.engines import NLDecoderEngine
 from flaky import flaky
-from mock import patch
 
 
 class DummyKVCacheDecoder:
