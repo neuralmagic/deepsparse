@@ -4,7 +4,7 @@ FROM python:3.8
 WORKDIR /app
 
 # install streamlit library
-RUN pip install streamlit==1.8.1
+RUN pip install streamlit>=1.11.1
 
 # copy client directory. Could be replaced with a volume mapping 
 COPY . /app/client
