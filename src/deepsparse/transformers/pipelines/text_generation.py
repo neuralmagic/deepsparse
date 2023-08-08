@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
+import onnx
 from pydantic import BaseModel, Field
 from transformers import TextStreamer
 
@@ -164,6 +165,15 @@ class TextGenerationPipeline(TransformersPipeline):
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
+        if not self._multitoken_prefill_supported():
+            _LOGGER.info(
+                "The model temporarily does not support "
+                "the optimized prompt processing. "
+                "This is due to the lack of causal mask input in the ONNX model. "
+                "Setting prompt_processing_sequence_length=1. The prompt will be "
+                "processed in autoregressive fashion."
+            )
+            prompt_processing_sequence_length = 1
 
         if self.engine_type == DEEPSPARSE_ENGINE:
             if "WAND_OPT_FLAGS" not in os.environ:
@@ -632,3 +642,13 @@ class TextGenerationPipeline(TransformersPipeline):
     def _reset_engines_cache(self):
         self.engine.reset_kv_cache()
         self.multitoken_engine.reset_kv_cache()
+
+    def _multitoken_prefill_supported(self):
+        if any(
+            inp.name == "causal_mask"
+            for inp in onnx.load(
+                self.onnx_file_path, load_external_data=False
+            ).graph.input
+        ):
+            return True
+        return False
