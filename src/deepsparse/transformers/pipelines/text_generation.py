@@ -165,15 +165,7 @@ class TextGenerationPipeline(TransformersPipeline):
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
-        if not self._multitoken_prefill_supported():
-            _LOGGER.info(
-                "The model temporarily does not support "
-                "the optimized prompt processing. "
-                "This is due to the lack of causal mask input in the ONNX model. "
-                "Setting prompt_processing_sequence_length=1. The prompt will be "
-                "processed in autoregressive fashion."
-            )
-            prompt_processing_sequence_length = 1
+        self.enable_multitoken_prefill = self._causal_mask_input_present()
 
         if self.engine_type == DEEPSPARSE_ENGINE:
             if "WAND_OPT_FLAGS" not in os.environ:
@@ -229,6 +221,20 @@ class TextGenerationPipeline(TransformersPipeline):
                 "assumed that it maps from the token sequence to predicted logits."
                 "Set `max_generated_tokens` to 1 to support that scenario."
             )
+        if self.has_cache:
+
+            if not self.enable_multitoken_prefill:
+                warnings(
+                    "The prompt will not be processed in a multitoken fashion. "
+                    "The ONNX graph does not support it. The prompt will be "
+                    "processed in autoregressive fashion."
+                )
+            else:
+                _LOGGER.info(
+                    "The prompt will be processed in a multitoken fashion. "
+                    "This guarantees better performance, but also result "
+                    "in additional extra memory consumption"
+                )
 
     @staticmethod
     def route_input_to_bucket(
@@ -424,7 +430,10 @@ class TextGenerationPipeline(TransformersPipeline):
         # to refrain from resetting if session id is being passed
         self._reset_engines_cache()
 
-        if len(tokens) > self.prompt_processing_sequence_length:
+        if (
+            len(tokens) > self.prompt_processing_sequence_length
+            and self.enable_multitoken_prefill
+        ):
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
                 num_tokens_processed += self.prompt_processing_sequence_length
@@ -643,12 +652,12 @@ class TextGenerationPipeline(TransformersPipeline):
         self.engine.reset_kv_cache()
         self.multitoken_engine.reset_kv_cache()
 
-    def _multitoken_prefill_supported(self):
-        if any(
+    def _causal_mask_input_present(self):
+        # if causal mask is not present in the model,
+        # we need to disable enable the multitoken prefill
+        return any(
             inp.name == "causal_mask"
             for inp in onnx.load(
                 self.onnx_file_path, load_external_data=False
             ).graph.input
-        ):
-            return True
-        return False
+        )
