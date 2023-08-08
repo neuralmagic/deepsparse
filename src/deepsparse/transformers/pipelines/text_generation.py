@@ -191,7 +191,7 @@ class TextGenerationPipeline(TransformersPipeline):
          or
          - model does not have kv cache support
 
-         Initialize single token engine only if model has kv cache support
+        Initialize single token engine only if model has kv cache support
         """
         if self.cache_support_enabled:
             if not self.enable_multitoken_prefill:
