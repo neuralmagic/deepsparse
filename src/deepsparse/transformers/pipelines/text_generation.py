@@ -32,6 +32,7 @@ from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     pad_to_fixed_length,
 )
+from deepsparse.utils.onnx import default_cached_outputs
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -165,15 +166,7 @@ class TextGenerationPipeline(TransformersPipeline):
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
-        if not self._multitoken_prefill_supported():
-            _LOGGER.info(
-                "The model temporarily does not support "
-                "the optimized prompt processing. "
-                "This is due to the lack of causal mask input in the ONNX model. "
-                "Setting prompt_processing_sequence_length=1. The prompt will be "
-                "processed in autoregressive fashion."
-            )
-            prompt_processing_sequence_length = 1
+        self.enable_multitoken_prefill = self._causal_mask_input_present()
 
         if self.engine_type == DEEPSPARSE_ENGINE:
             if "WAND_OPT_FLAGS" not in os.environ:
@@ -190,24 +183,49 @@ class TextGenerationPipeline(TransformersPipeline):
         if not self.tokenizer.pad_token:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        self.engine = None
+        self.engine, self.multitoken_engine = None, None
 
-        self.multitoken_engine = NLDecoderEngine(
-            onnx_file_path=self.onnx_file_path,
-            engine_type=self.engine_type,
-            engine_args=self.engine_args,
-            engine_context=self.context,
-            sampling_temperature=self.sampling_temperature,
-            deterministic=self.deterministic,
-            sequence_length=self.sequence_length,
-            input_ids_length=prompt_processing_sequence_length,
-            tokenizer=self.tokenizer,
-            use_deepsparse_cache=use_deepsparse_cache,
-        )
+        """
+        Inititalize multitoken engine only if:
+         - model has kv cache support and multitoken prefill is enabled
+         or
+         - model does not have kv cache support
 
-        if self.multitoken_engine.kv_cache_enabled:
-            # unless kv cache is enabled, we don't
-            # need to initialize the single token engine
+         Initialize single token engine only if model has kv cache support
+        """
+        if self.cache_support_enabled:
+            if not self.enable_multitoken_prefill:
+                warnings.warn(
+                    "The ONNX graph does not support processing the prompt in "
+                    "multitoken fashion. The prompt will be processed in "
+                    "autoregressive fashion."
+                )
+            else:
+                _LOGGER.info(
+                    "Creating an auxiliary engine to process a prompt in a "
+                    "multitoken fashion. "
+                    "This guarantees better performance, but may result "
+                    "in additional memory consumption"
+                )
+
+        if (
+            self.cache_support_enabled and self.enable_multitoken_prefill
+        ) or not self.cache_support_enabled:
+            self.multitoken_engine = NLDecoderEngine(
+                onnx_file_path=self.onnx_file_path,
+                engine_type=self.engine_type,
+                engine_args=self.engine_args,
+                engine_context=self.context,
+                sampling_temperature=self.sampling_temperature,
+                deterministic=self.deterministic,
+                sequence_length=self.sequence_length,
+                input_ids_length=prompt_processing_sequence_length,
+                tokenizer=self.tokenizer,
+                use_deepsparse_cache=use_deepsparse_cache,
+            )
+
+        if self.cache_support_enabled:
+
             self.engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
@@ -220,10 +238,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=use_deepsparse_cache,
             )
-        if (
-            not self.multitoken_engine.kv_cache_enabled
-            and self.max_generated_tokens > 1
-        ):
+        if not self.cache_support_enabled and self.max_generated_tokens > 1:
             raise ValueError(
                 "The model used for inference does not support kv cache. It is "
                 "assumed that it maps from the token sequence to predicted logits."
@@ -303,7 +318,11 @@ class TextGenerationPipeline(TransformersPipeline):
         input_tokens = dict(
             **input_tokens, positions=positions, causal_mask=causal_mask
         )
-        onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
+        onnx_input_names = (
+            self.multitoken_engine.onnx_input_names_no_cache
+            if self.multitoken_engine
+            else self.engine.onnx_input_names_no_cache
+        )
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
         if inputs.session_id is not None:
@@ -352,7 +371,7 @@ class TextGenerationPipeline(TransformersPipeline):
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             streamer = context.get("streamer")
 
-            if not self.multitoken_engine.kv_cache_enabled:
+            if not self.cache_support_enabled:
                 tokens, prompt_logits = self.multitoken_engine(engine_inputs)
                 return numpy.array([tokens]), prompt_logits
 
@@ -424,7 +443,10 @@ class TextGenerationPipeline(TransformersPipeline):
         # to refrain from resetting if session id is being passed
         self._reset_engines_cache()
 
-        if len(tokens) > self.prompt_processing_sequence_length:
+        if (
+            len(tokens) > self.prompt_processing_sequence_length
+            and self.enable_multitoken_prefill
+        ):
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
                 num_tokens_processed += self.prompt_processing_sequence_length
@@ -589,13 +611,13 @@ class TextGenerationPipeline(TransformersPipeline):
             yield engine_inputs
 
     @property
-    def has_cache(self) -> bool:
+    def cache_support_enabled(self) -> bool:
         """
         Returns whether the ran model has kv cache or not
 
         :return: True if the model has kv cache, False otherwise
         """
-        return self.multitoken_engine.kv_cache_enabled
+        return any(default_cached_outputs(self.onnx_file_path))
 
     def join_engine_outputs(
         self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
@@ -639,14 +661,14 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def _reset_engines_cache(self):
         self.engine.reset_kv_cache()
-        self.multitoken_engine.reset_kv_cache()
+        self.multitoken_engine.reset_kv_cache() if self.multitoken_engine else None
 
-    def _multitoken_prefill_supported(self):
-        if any(
+    def _causal_mask_input_present(self):
+        # if causal mask is not present in the model,
+        # we need to disable enable the multitoken prefill
+        return any(
             inp.name == "causal_mask"
             for inp in onnx.load(
                 self.onnx_file_path, load_external_data=False
             ).graph.input
-        ):
-            return True
-        return False
+        )
