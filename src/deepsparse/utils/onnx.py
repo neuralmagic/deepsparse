@@ -512,7 +512,7 @@ def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
 
 def overwrite_sequence_length(
     model_path: str, sequence_length: Optional[int] = None
-) -> str:
+) -> Tuple[str, int]:
     """
     Takes a path to an onnx model and enforces that it has
     static input dimensions.
@@ -525,9 +525,13 @@ def overwrite_sequence_length(
         overwrite_onnx_model_inputs_for_kv_cache_models,
     )
 
-    onnx_file_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
-        onnx_file_path=model_path, sequence_length=sequence_length
-    )
+    if sequence_length is not None:
+        onnx_file_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+            onnx_file_path=model_path, sequence_length=sequence_length
+        )
+    else:
+        onnx_file_path = model_path
+
     attention_input_info = [
         input
         for input in onnx.load(onnx_file_path, load_external_data=False).graph.input

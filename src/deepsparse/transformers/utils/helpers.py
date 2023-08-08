@@ -41,7 +41,7 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
     sequence_length: int = 128,
     input_ids_length: int = 1,
     batch_size: int = 1,
-) -> Tuple[str, List[int], Optional[numpy.dtype]]:
+) -> Tuple[str, List[bool], Optional[numpy.dtype]]:
     """
     Enforces the appropriate input shapes for the onnx model, as well as
     checks whether kv cache is enabled or not.
