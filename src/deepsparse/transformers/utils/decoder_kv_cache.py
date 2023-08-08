@@ -45,7 +45,7 @@ class DecoderKVCache:
         self._state = None
         self._kv_cache = None
 
-    def setup_session(
+    def setup(
         self,
         session_id: str,
         state: Dict[str, Any],
@@ -80,7 +80,7 @@ class DecoderKVCache:
         if self._use_deepsparse_cache:
             raise NotImplementedError("DeepSparse cache is not supported yet.")
 
-    def update_session(
+    def update(
         self,
         state: Dict[str, Any],
         input_ids_len: int,
@@ -233,7 +233,7 @@ class DecoderKVCache:
         return state
 
     @property
-    def session_id(self):
+    def id(self):
         if self._session_id is None:
             raise ValueError("Attempted to access session_id before setting up session")
         return self._session_id
@@ -259,8 +259,8 @@ class DecoderKVCache:
             self._sequence_len_axis
         ]
 
-    @session_id.setter
-    def session_id(self, session_id: str):
+    @id.setter
+    def id(self, session_id: str):
         self._session_id = session_id
 
     @property
