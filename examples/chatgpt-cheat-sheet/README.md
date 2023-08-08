@@ -22,7 +22,6 @@ content creation, natural language processing, and programming.
 
 Given the intrinsic randomness of ChatGPT, answers may vary when attempting to replicate the output shown in this guide. 
 
-
 **Table of Contents**:
 1. [NLP Tasks](#nlp-tasks)
 2. [Code](#code)
@@ -32,7 +31,7 @@ Given the intrinsic randomness of ChatGPT, answers may vary when attempting to r
 6. [Meta ChatGPT](#meta)
 7. [Expert Prompting](#expert)
 
-## 1. NLP Tasks {#nlp-tasks}
+## 1. NLP Tasks <a id="nlp-tasks"></a>
 
 ### Text Generation
 **Prompt:** write an intro paragraph to a mystery novel
@@ -142,7 +141,7 @@ River on December 25, 1776 during the American Revolutionary War.
 
     Bem-vindo à matriz.
 
-## 2. Code {#code}
+## 2. Code <a id="code"></a>
 
 ### Code Generation
 **Prompt:** show me how to make an http request in Python
@@ -264,7 +263,7 @@ Magic Platform Documentation</h1>
 
     Neural Magic Platform Documentation
 
-## 3. Structured Output Styles {#structured}
+## 3. Structured Output Styles <a id="structured"></a>
 
 ### List
 **Prompt:** give me a list of 5 citrus fruits
@@ -320,7 +319,7 @@ that time he established himself as one of the greatest players in baseball hist
 
 ![image](./img/Tables.png)
 
-## 4. Unstructured Output Styles {#unstructured}
+## 4. Unstructured Output Styles <a id="unstructured"></a>
 
 ### Narrative Modes (1st, 2nd or in the 3rd person)
 **Prompt:** write a paragraph on how to make brownies in the 1st person
@@ -391,7 +390,7 @@ tool in many fields, including science, engineering, and finance. 💻🧮 Today
 calculators available, from basic models to advanced models with advanced features like graphing
 capabilities and programming languages.📱💻
 
-## 5. Media Types {#media}
+## 5. Media Types <a id="media"></a>
 
 ### Write Social Media Posts
 **Prompt:** write a tweet on futurism
@@ -580,7 +579,7 @@ hesitate to reach out if you have any questions or concerns.
         English (native)
         Spanish (fluent)
 
-## 6. Meta ChatGPT {#meta}
+## 6. Meta ChatGPT <a id="meta"></a>
 
 ### Ask ChatGPT About Its Own Capabilities
 **Prompt:** what ways can you structure text output?
@@ -607,7 +606,7 @@ hesitate to reach out if you have any questions or concerns.
 ### Ask ChatGPT to Expand on Answers
 ![image](./img/expand-on-answers.png)
 
-## 7. Expert Prompting {#expert}
+## 7. Expert Prompting <a id="expert"></a>
 **You can use several conditions discussed in this cheat sheet to prompt ChatGPT to obtain more granular output.**
 
 ### Prompt ChatGPT with Simultaneous Conditions
