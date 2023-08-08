@@ -16,16 +16,16 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy
-import onnx
 from transformers import AutoTokenizer
 
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import generate_session_id
+from deepsparse.transformers.utils.helpers import (
+    generate_session_id,
+    overwrite_onnx_model_inputs,
+)
 from deepsparse.utils.data import numpy_softmax
-from deepsparse.utils.onnx import translate_onnx_type_to_numpy
-from sparsezoo.utils.onnx import save_onnx
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,7 +71,11 @@ class NLDecoderEngine:
         # flag to indicate if the model is quantized or not
         self.kv_cache_data_type = None
 
-        onnx_file_path, output_indices_to_be_cached = self.overwrite_onnx_model_inputs(
+        (
+            onnx_file_path,
+            output_indices_to_be_cached,
+            kv_cache_data_type,
+        ) = overwrite_onnx_model_inputs(
             onnx_file_path=onnx_file_path,
             batch_size=engine_args.get("batch_size", 1),
             sequence_length=sequence_length,
@@ -80,6 +84,7 @@ class NLDecoderEngine:
         kv_cache_enabled = False
         if sum(output_indices_to_be_cached):
             kv_cache_enabled = True
+            self.kv_cache_data_type = kv_cache_data_type
             if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
                 engine_args["cache_output_bools"] = output_indices_to_be_cached
@@ -192,74 +197,6 @@ class NLDecoderEngine:
         cache_to_copy.set_capacity(target_cache_capacity)
         self.kv_cache = cache_to_copy
 
-    def overwrite_onnx_model_inputs(
-        self,
-        onnx_file_path: str,
-        sequence_length: int,
-        input_ids_length: int,
-        batch_size: int = 1,
-    ) -> Tuple[str, List[int]]:
-        """
-        Enforces the appropriate input shapes for the onnx model, as well as
-        checks whether kv cache is enabled or not.
-
-        :param onnx_file_path: The path to the onnx model file that will be
-            overwritten with the new input shapes
-        :param batch_size: The batch size to use for the input
-        :param sequence_length: The sequence length to use for the input
-        :param input_ids_length: The length of input_ids
-        :return: The path to the onnx model file that has been overwritten
-            with the new input shapes, as well as the indices of the inputs
-            that should be cached
-        """
-        model = onnx.load(onnx_file_path, load_external_data=False)
-        initializer_input_names = set(node.name for node in model.graph.initializer)
-        external_inputs = [
-            inp for inp in model.graph.input if inp.name not in initializer_input_names
-        ]
-        for external_input in external_inputs:
-            # overwrite the batch size for all the inputs
-            external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
-
-            if external_input.name in ["input_ids", "positions"]:
-                external_input.type.tensor_type.shape.dim[
-                    1
-                ].dim_value = input_ids_length
-            elif external_input.name == "attention_mask":
-                external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
-            elif external_input.name.startswith(_CACHE_INPUT_NAME):
-                external_input.type.tensor_type.shape.dim[2].dim_value = (
-                    sequence_length - input_ids_length
-                )
-            elif external_input.name.startswith("causal_mask"):
-                external_input.type.tensor_type.shape.dim[
-                    2
-                ].dim_value = input_ids_length
-                external_input.type.tensor_type.shape.dim[3].dim_value = sequence_length
-            else:
-                raise ValueError(
-                    f"Unexpected external input name: {external_input.name}"
-                )
-
-        _LOGGER.info(
-            "Overwriting in-place the input shapes "
-            f"of the transformer model at {onnx_file_path}"
-        )
-        save_onnx(model, onnx_file_path)
-
-        output_indices_to_be_cached = [
-            1 if inp.name.startswith("present") else 0 for inp in model.graph.output
-        ]
-        if any(output_indices_to_be_cached):
-            kv_cache_elem_type = next(
-                inp
-                for inp in model.graph.input
-                if inp.name.startswith(_CACHE_INPUT_NAME)
-            ).type.tensor_type.elem_type
-            self.kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
-
-        return onnx_file_path, output_indices_to_be_cached
-
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
         Samples a token from the logits using the sampling temperature.
@@ -283,7 +220,7 @@ class NLDecoderEngine:
         kv_cache_state = self._initialize_kv_cache_state(
             self.sequence_length - self.input_ids_length
         )
-        self.kv_cache.setup_session(
+        self.kv_cache.setup(
             session_id=self._session_id,
             state=kv_cache_state,
             num_processed_tokens=0,
@@ -328,7 +265,7 @@ class NLDecoderEngine:
             name: array for name, array in zip(cache_onnx_names, kv_cache_state)
         }
 
-        self.kv_cache.update_session(
+        self.kv_cache.update(
             state=kv_cache_state,
             input_ids_len=input_ids_len,
         )
@@ -364,6 +301,6 @@ class NLDecoderEngine:
         # (True if tokenizer has a prefix for a BOS token)
         if tokenizer is None:
             return False
-        if hasattr(tokenizer, "bos_token"):
+        if hasattr(tokenizer, "add_bos_token"):
             return True
         return False

@@ -432,9 +432,8 @@ class TextGenerationPipeline(TransformersPipeline):
             with self.timer_manager.current.time(
                 _TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
-                new_token, new_logits = self.autoregressive_inference(
-                    run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
-                )
+                new_token, new_logits = self.autoregressive_inference(run_tokens)
+
             prompt_logits.append(new_logits)
 
         tokens.append(new_token)
@@ -444,16 +443,12 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
-        shift_positions_by_one: bool = False,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
         a new token and new logits.
 
         :param tokens: The current context (prompt + generated tokens so far)
-        :param shift_positions_by_one: Whether to shift the positions
-            by one. Used if we are processing the prompt from the scratch
-            (i.e. not using the multitoken engine)
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
@@ -465,8 +460,7 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_processed:] = 1
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
-        if shift_positions_by_one:
-            positions -= 1
+        positions -= 1
         input_ids = numpy.array([[new_token]])
         causal_mask = create_causal_mask(input_ids, attention_mask)
 
@@ -523,28 +517,28 @@ class TextGenerationPipeline(TransformersPipeline):
         num_batches = len(tokens) // self.prompt_processing_sequence_length
 
         token_batches = [
-            tokens[i : i + self.prompt_processing_sequence_length]
-            for i in range(num_batches)
+            tokens[
+                i
+                * self.prompt_processing_sequence_length : (i + 1)
+                * self.prompt_processing_sequence_length
+            ]
+            for i in range(0, num_batches)
         ]
 
         for idx, token_batch in enumerate(token_batches):
             engine_inputs = []
-
+            num_cached_entries = self.multitoken_engine.num_non_blank_cache_entries
             for name in self.multitoken_engine.onnx_input_names_no_cache:
                 if name == "input_ids":
                     engine_input = numpy.array([token_batch])
 
                 elif name == "attention_mask":
-                    num_cached_entries = (
-                        self.multitoken_engine.num_non_blank_cache_entries
-                    )
-
                     # create an empty attention mask
                     engine_input = numpy.zeros(
                         (1, self.sequence_length), dtype=numpy.int64
                     )
                     # fill it out with 1s (from the right), so that the number
-                    # of unmaksed entries is equal to the sum of:
+                    # of unmasked entries is equal to the sum of:
                     engine_input[
                         :,
                         -(
@@ -564,7 +558,11 @@ class TextGenerationPipeline(TransformersPipeline):
                         engine_input = numpy.array([[idx]], dtype=numpy.int64)
                     else:
                         engine_input = (
-                            numpy.arange(self.prompt_processing_sequence_length)
+                            numpy.arange(
+                                num_cached_entries,
+                                num_cached_entries
+                                + self.prompt_processing_sequence_length,
+                            )
                             .reshape(1, -1)
                             .astype(numpy.int64)
                         )
