@@ -57,7 +57,7 @@ def _initialize_kv_cache_state(model, length=0):
     "model_stub, model_name, uses_bos_token",
     [
         (
-            "zoo:nlg/text_generation/opt-1.3b/pytorch/" "huggingface/opt_pretrain/base",
+            "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base",
             "facebook/opt-1.b",
             True,
         ),
