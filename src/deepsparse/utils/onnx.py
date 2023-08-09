@@ -55,7 +55,7 @@ __all__ = [
 
 _LOGGER = logging.getLogger(__name__)
 
-CACHE_OUTPUT_NAME = "present"
+CACHE_OUTPUT_PREFIX = "present"
 
 
 @contextlib.contextmanager
@@ -493,4 +493,4 @@ def default_cached_outputs(model: Union[str, ModelProto]) -> List[bool]:
     outputs = model.graph.output
     assert len(outputs) > 0
 
-    return [output.name.startswith(CACHE_OUTPUT_NAME) for output in outputs]
+    return [output.name.startswith(CACHE_OUTPUT_PREFIX) for output in outputs]
