@@ -55,7 +55,7 @@ __all__ = [
 
 _LOGGER = logging.getLogger(__name__)
 
-CACHE_OUTPUT_NAME = "present"
+CACHE_OUTPUT_PREFIX = "present"
 
 
 @contextlib.contextmanager
