@@ -1,2 +1,2 @@
-deepsparse[server]>=0.11
-streamlit==1.11.1
+deepsparse[transformers,server]>=1.5.2
+streamlit>=1.11.1
