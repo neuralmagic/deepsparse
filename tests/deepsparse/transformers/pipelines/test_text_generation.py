@@ -70,9 +70,9 @@ def _initialize_kv_cache_state(model, length=0):
     ],
     scope="class",
 )
-# @pytest.mark.skip(
-#     reason="Those tests are to heavy to " "run as a normal part of the CI."
-# )
+@pytest.mark.skip(
+    reason="Those tests are too heavy to " "run as a normal part of the CI."
+)
 class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
@@ -126,14 +126,18 @@ class TestTextGenerationPipeline:
             sequences=[short_prompt, long_prompt], model_name=model_name
         )
         assert short_prompt + output_sequences.sequences[0] == output_hugging_face[0]
-        if not self.use_deepsparse_cache:
-            assert long_prompt + output_sequences.sequences[1] == output_hugging_face[1]
+        assert long_prompt + output_sequences.sequences[1] == output_hugging_face[1]
 
     def test_model_output_cache(self, setup):
         pipeline, model_name, _, short_prompt, long_prompt = setup
-        if not self.use_deepsparse_cache:
-            self._test_cache_state(short_prompt, pipeline, model_name)
-            self._test_cache_state(long_prompt, pipeline, model_name)
+        if self.use_deepsparse_cache:
+            pytest.skip(
+                "Running pipeline with internal "
+                "deepsparse cache will not result "
+                "in meaningful cache entries."
+            )
+        self._test_cache_state(short_prompt, pipeline, model_name)
+        self._test_cache_state(long_prompt, pipeline, model_name)
 
     def _test_cache_state(self, prompt, pipeline, model_name):
         # make sure that the cache state after running a prompt
