@@ -50,6 +50,10 @@ def _initialize_kv_cache_state(model, length=0):
 
 
 @pytest.mark.parametrize(
+    "use_deepsparse_cache",
+    [True, False],
+)
+@pytest.mark.parametrize(
     "model_stub, model_name, uses_bos_token",
     [
         (
@@ -67,14 +71,15 @@ def _initialize_kv_cache_state(model, length=0):
     scope="class",
 )
 @pytest.mark.skip(
-    reason="Those tests are to heavy to " "run as a normal part of the CI."
+    reason="Those tests are too heavy to " "run as a normal part of the CI."
 )
 class TestTextGenerationPipeline:
     @pytest.fixture
-    def setup(self, model_stub, model_name, uses_bos_token):
+    def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
 
         self.max_generated_tokens = 16
         self.model = Model(model_stub)
+        self.use_deepsparse_cache = use_deepsparse_cache
 
         pipeline = Pipeline.create(
             task="text_generation",
@@ -125,6 +130,12 @@ class TestTextGenerationPipeline:
 
     def test_model_output_cache(self, setup):
         pipeline, model_name, _, short_prompt, long_prompt = setup
+        if self.use_deepsparse_cache:
+            pytest.skip(
+                "Running pipeline with internal "
+                "deepsparse cache will not result "
+                "in meaningful cache entries."
+            )
         self._test_cache_state(short_prompt, pipeline, model_name)
         self._test_cache_state(long_prompt, pipeline, model_name)
 
