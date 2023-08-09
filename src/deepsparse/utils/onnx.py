@@ -493,4 +493,4 @@ def default_cached_outputs(model: Union[str, ModelProto]) -> List[bool]:
     outputs = model.graph.output
     assert len(outputs) > 0
 
-    return [output.name.startswith(CACHE_OUTPUT_NAME) for output in outputs]
+    return [output.name.startswith(CACHE_OUTPUT_PREFIX) for output in outputs]
