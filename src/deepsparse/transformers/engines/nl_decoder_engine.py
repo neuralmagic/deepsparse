@@ -135,10 +135,24 @@ class NLDecoderEngine:
     @property
     def num_non_blank_cache_entries(self) -> int:
         """
-        :return a number of non-blank entries in the
+        :return A number of non-blank entries in the
         kv cache
         """
         return self.kv_cache.num_non_blank_entries
+
+    @property
+    def internal_cache_support(self) -> bool:
+        """
+        :return: Whether the engine has internal kv cache support
+        """
+        return self.kv_cache_enabled and self.kv_cache._kv_cache is not None
+
+    @property
+    def external_cache_support(self) -> bool:
+        """
+        :return: Whether the engine has external kv cache support
+        """
+        return self.kv_cache_enabled and self.kv_cache._kv_cache is None
 
     def run(self, inputs: List[numpy.ndarray], val_inp: bool) -> List[numpy.ndarray]:
         """
@@ -154,15 +168,12 @@ class NLDecoderEngine:
         :return: The output of the engine
         """
 
-        if self.kv_cache is not None:
-            if self.kv_cache._kv_cache is not None:
-                if val_inp:
-                    self.engine._validate_inputs(inputs)
-                # model has kv cache support, as well as deepsparse
-                # internal management of the kv cache
-                return self.engine._eng_net.execute_list_out(
-                    inputs, self.kv_cache._kv_cache
-                )
+        if self.internal_cache_support:
+            if val_inp:
+                self.engine._validate_inputs(inputs)
+            return self.engine._eng_net.execute_list_out(
+                inputs, self.kv_cache._kv_cache
+            )
 
         return self.engine.run(inputs, val_inp)
 
@@ -180,20 +191,24 @@ class NLDecoderEngine:
         :param val_inp: Whether the input is for validation or not
         :return: The generated token and corresponding logits
         """
-        if self.kv_cache:
-            # if kv cache is enabled, we need to add the kv cache state
-            # to the input
+        if self.external_cache_support:
+            # if external kv cache is enabled, we need
+            # to add the kv cache state to the input
             inp = self.add_kv_cache_to_input(inp)
 
         out = self.run(inp, val_inp)
 
         if self.kv_cache:
             logits, *kv_cache_state = out
+        else:
+            logits = out[0]
+
+        if self.external_cache_support:
+            # if external kv cache is enabled, we need
+            # to update the kv cache state to the session
             self.update_kv_cache(
                 kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
             )
-        else:
-            logits = out[0]
 
         # select batch idx 0, batch is always 1
         token = self.generate_token(logits=logits[0, -1, :])
