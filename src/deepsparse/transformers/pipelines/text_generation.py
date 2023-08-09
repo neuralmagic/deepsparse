@@ -603,30 +603,37 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: A list of joined outputs
         """
         tokens, logits = zip(*batch_outputs)
+        if self.has_cache:
+            # if the model has kv cache, we need to account for
+            # the fact that the predicted outputs may have
+            # different lengths
 
-        # find the longest sequence in the batch of tokens
-        max_len = max([token.shape[1] for token in tokens])
+            # find the longest sequence in the batch of tokens
+            max_len = max([token.shape[1] for token in tokens])
 
-        # pad all tokens to the same length
-        tokens = [
-            pad_to_fixed_length(
-                array=prediction,
-                max_len=max_len,
-                value=self.tokenizer.pad_token_id,
-                axis=1,
-            )
-            for prediction in tokens
-        ]
+            # pad all tokens to the same length
+            tokens = [
+                pad_to_fixed_length(
+                    array=prediction,
+                    max_len=max_len,
+                    value=self.tokenizer.pad_token_id,
+                    axis=1,
+                )
+                for prediction in tokens
+            ]
+
+            # find the longest sequence in the batch of logits
+            max_len = max([logits.shape[1] for logits in logits])
+
+            # pad all logits to the same length
+            logits = [
+                pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
+                for single_logits in logits
+            ]
+
         tokens = numpy.concatenate(tokens, axis=0)
-
-        # find the longest sequence in the batch of logits
-        max_len = max([logits.shape[1] for logits in logits])
-        # pad all logits to the same length
-        logits = [
-            pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
-            for single_logits in logits
-        ]
         logits = numpy.concatenate(logits, axis=0)
+
         return [tokens, logits]
 
     def _reset_engines_cache(self):
