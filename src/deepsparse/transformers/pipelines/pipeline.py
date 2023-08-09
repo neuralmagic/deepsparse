@@ -122,9 +122,9 @@ class TransformersPipeline(Pipeline, Bucketable):
             finetuning_task=self.task if hasattr(self, "task") else None,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_path, 
-            trust_remote_code=self._trust_remote_code, 
-            model_max_length=self.sequence_length
+            tokenizer_path,
+            trust_remote_code=self._trust_remote_code,
+            model_max_length=self.sequence_length,
         )
         self.config_path = os.path.join(config_path, "config.json")
         self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
