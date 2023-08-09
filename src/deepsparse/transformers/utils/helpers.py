@@ -136,7 +136,7 @@ def create_causal_mask(
     dtype: numpy.dtype = numpy.int64,
 ) -> numpy.ndarray:
     """
-    Compute a causal from a set of module inputs.
+    Compute a causal mask from a set of module inputs.
     In transformers, a causal mask is a boolean mask that is used to
     prevent information from future positions in a sequence from
     being used to predict the current position. Each element of the mask
