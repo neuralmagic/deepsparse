@@ -16,10 +16,11 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Generator, List, Optional, Tuple, Type, Union
+from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
+from transformers import TextStreamer
 
 from deepsparse import Pipeline
 from deepsparse.cpu import cpu_avx512_compatible
@@ -46,6 +47,9 @@ class _TextGenerationTimings:
 
 
 class TextGenerationInput(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
     sequences: Union[str, List[str]] = Field(
         description="The input sequences to generate the text from.",
     )
@@ -70,6 +74,13 @@ class TextGenerationInput(BaseModel):
         "of tokens. Useful, when a batch of predictions needs "
         "to have consistent length so one "
         "can compute metric in a batched fashion. ",
+    )
+    streamer: Optional[TextStreamer] = Field(
+        default=None,
+        description="Streamer object that will be used to stream the "
+        "generated sequences. Generated tokens are passed through "
+        "`streamer.put(token_ids)` and the streamer is responsible "
+        "for any further processing.",
     )
 
 
@@ -290,7 +301,9 @@ class TextGenerationPipeline(TransformersPipeline):
             self.engine.session_id = inputs.session_id
             self.multitoken_engine.session_id = inputs.session_id
 
-        postprocessing_kwargs = dict(return_logits=inputs.return_logits)
+        postprocessing_kwargs = dict(
+            return_logits=inputs.return_logits, streamer=inputs.streamer
+        )
         return engine_input, postprocessing_kwargs
 
     def process_engine_outputs(
@@ -311,7 +324,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return TextGenerationOutput(sequences=sequences, logits=logits)
 
     def engine_forward(
-        self, engine_inputs: List[numpy.ndarray], **kwargs
+        self, engine_inputs: List[numpy.ndarray], context: Dict
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
         Run the forward pass on the engine.
@@ -327,6 +340,8 @@ class TextGenerationPipeline(TransformersPipeline):
         # main thread. That is why `engine_` is prepended to each of the timer phase
         # names in this context
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
+            streamer = context.get("streamer")
+
             if not self.multitoken_engine.kv_cache_enabled:
                 tokens, prompt_logits = self.multitoken_engine(engine_inputs)
                 return numpy.array([tokens]), prompt_logits
@@ -335,6 +350,9 @@ class TextGenerationPipeline(TransformersPipeline):
                 # run the prompt through
                 with timer.time(_TextGenerationTimings.PROMPT_PREFILL):
                     tokens, prompt_logits = self.prompt_inference(engine_inputs)
+
+            if streamer is not None:
+                streamer.put(numpy.array(tokens))
 
             # create the generated output
             max_tokens = (
@@ -354,11 +372,17 @@ class TextGenerationPipeline(TransformersPipeline):
                     generated_tokens.append(token)
                     generated_logits.append(logits)
 
+                    if streamer is not None:
+                        streamer.put(numpy.array([token]))
+
                     if (
                         token == self.tokenizer.eos_token_id
                         and not self.force_max_tokens
                     ):
                         break
+
+            if streamer is not None:
+                streamer.end()
 
         return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
@@ -579,30 +603,37 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: A list of joined outputs
         """
         tokens, logits = zip(*batch_outputs)
+        if self.has_cache:
+            # if the model has kv cache, we need to account for
+            # the fact that the predicted outputs may have
+            # different lengths
 
-        # find the longest sequence in the batch of tokens
-        max_len = max([token.shape[1] for token in tokens])
+            # find the longest sequence in the batch of tokens
+            max_len = max([token.shape[1] for token in tokens])
 
-        # pad all tokens to the same length
-        tokens = [
-            pad_to_fixed_length(
-                array=prediction,
-                max_len=max_len,
-                value=self.tokenizer.pad_token_id,
-                axis=1,
-            )
-            for prediction in tokens
-        ]
+            # pad all tokens to the same length
+            tokens = [
+                pad_to_fixed_length(
+                    array=prediction,
+                    max_len=max_len,
+                    value=self.tokenizer.pad_token_id,
+                    axis=1,
+                )
+                for prediction in tokens
+            ]
+
+            # find the longest sequence in the batch of logits
+            max_len = max([logits.shape[1] for logits in logits])
+
+            # pad all logits to the same length
+            logits = [
+                pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
+                for single_logits in logits
+            ]
+
         tokens = numpy.concatenate(tokens, axis=0)
-
-        # find the longest sequence in the batch of logits
-        max_len = max([logits.shape[1] for logits in logits])
-        # pad all logits to the same length
-        logits = [
-            pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
-            for single_logits in logits
-        ]
         logits = numpy.concatenate(logits, axis=0)
+
         return [tokens, logits]
 
     def _reset_engines_cache(self):
