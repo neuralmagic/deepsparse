@@ -159,6 +159,11 @@ def singlestream_benchmark(
     """
     Run pipeline repeatedly on inputs for max_time seconds, storing the runtime of each
     section of the pipeline in batch_timings
+
+    :param pipeline: pipeline to execute
+    :param inputs: inputs to pass through pipeline
+    :param seconds_to_run: how long to run pipeline for
+    :return: list of timings for each forward pass
     """
     benchmark_end_time = time.perf_counter() + seconds_to_run
     batch_timings = []
