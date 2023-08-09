@@ -224,15 +224,15 @@ class TextGenerationPipeline(TransformersPipeline):
             # instantiation the multitoken engine or not
             if not self.enable_multitoken_prefill:
                 warnings.warn(
-                    "The ONNX graph does not support processing the prompt in "
-                    "a single pass. The creation of an auxiliary engine for "
-                    "processing the prompt efficiently is disabled. "
-                    "The prompt will be processed in autoregressive fashion."
+                    "This ONNX graph does not support processing the prompt in "
+                    "with processing length > 1. Creation of an auxiliary engine for "
+                    "processing the prompt at a larger seq_len is disabled. "
+                    "The prompt will be processed in with processing length 1."
                 )
             else:
                 _LOGGER.info(
-                    "Creating an auxiliary engine to process a prompt in a "
-                    "a single pass. This guarantees better performance, but "
+                    "Compiling an auxiliary engine to process a prompt with a "
+                    "larger processing length. This improves performance, but "
                     "may result in additional memory consumption."
                 )
 
@@ -268,6 +268,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 use_deepsparse_cache=self.use_deepsparse_cache,
             )
 
+        assert (engine is not None) or (multitoken_engine is not None)
         return engine, multitoken_engine
 
     @staticmethod
