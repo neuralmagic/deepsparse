@@ -481,7 +481,7 @@ def default_cached_outputs(model_path: str) -> List[bool]:
     :return A list of bools that indicates caching of all outputs except the first one.
     """
 
-    outputs = list(onnx.load(model_path).graph.output)
+    outputs = get_output_names(model_path)
     assert len(outputs) > 0
 
     # Create a boolean list of every output of the
