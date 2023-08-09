@@ -50,7 +50,7 @@ __all__ = [
     "truncate_onnx_model",
     "truncate_onnx_embedding_model",
     "default_cached_outputs",
-    "CACHE_OUTPUT_NAME",
+    "CACHE_OUTPUT_PREFIX",
 ]
 
 _LOGGER = logging.getLogger(__name__)
