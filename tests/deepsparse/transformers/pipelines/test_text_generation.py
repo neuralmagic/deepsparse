@@ -89,14 +89,14 @@ class TestTextGenerationPipeline:
 
         # make sure that the short prompt will be only
         # processed by a single token engine
-        # (DISABLED FOR NOW UNTIL WE HAVE CAUSAL MASK SUPPORT)
+        # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
         # assert (
         #     len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
         #     < pipeline.prompt_processing_sequence_length
         # )
         # make sure that the long prompt will be processed by
         # single token and multiple token engines
-        # (DISABLED FOR NOW UNTIL WE HAVE CAUSAL MASK SUPPORT)
+        # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
         # assert (
         #     len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
         #     > pipeline.prompt_processing_sequence_length * 3
