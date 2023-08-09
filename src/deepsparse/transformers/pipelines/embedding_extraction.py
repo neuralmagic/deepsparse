@@ -330,7 +330,7 @@ class TransformersEmbeddingExtractionPipeline(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        tokenizer = pipelines[0].tokenizer
+        tokenizer = pipelines[-1].tokenizer
         tokens = tokenizer(
             input_schema.inputs,
             add_special_tokens=True,
