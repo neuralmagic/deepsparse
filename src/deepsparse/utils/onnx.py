@@ -487,10 +487,8 @@ def default_cached_outputs(model: Union[str, ModelProto]) -> List[bool]:
     :param model_path: Path to a model
     :return A list of bools that indicate which outputs should be cached.
     """
-    model = (
-        onnx.load(model, load_external_data=False) if isinstance(model, str) else model
-    )
-    outputs = model.graph.output
+
+    outputs = get_output_names(model_path)
     assert len(outputs) > 0
 
     return [output.name.startswith(CACHE_OUTPUT_PREFIX) for output in outputs]
