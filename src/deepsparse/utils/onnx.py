@@ -50,11 +50,13 @@ __all__ = [
     "truncate_onnx_model",
     "truncate_onnx_embedding_model",
     "default_cached_outputs",
+    "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
 ]
 
 _LOGGER = logging.getLogger(__name__)
 
+CACHE_INPUT_PREFIX = "past_key_values"
 CACHE_OUTPUT_PREFIX = "present"
 
 
@@ -478,19 +480,17 @@ def truncate_onnx_embedding_model(
     return output_filepath, tmp_file
 
 
-def default_cached_outputs(model: Union[str, ModelProto]) -> List[bool]:
+def default_cached_outputs(model_path: str) -> List[bool]:
     """
     Get a list of bools that indicate which outputs should be cached.
     The elements that are set to True correspond to cached outputs,
     the rest are set to False.
 
-    :param model_path: Path to a model
+    :param model_path: Path to the model.
     :return A list of bools that indicate which outputs should be cached.
     """
-    model = (
-        onnx.load(model, load_external_data=False) if isinstance(model, str) else model
-    )
-    outputs = model.graph.output
-    assert len(outputs) > 0
 
-    return [output.name.startswith(CACHE_OUTPUT_PREFIX) for output in outputs]
+    output_names = get_output_names(model_path)
+    assert len(output_names) > 0
+
+    return [name.startswith(CACHE_OUTPUT_PREFIX) for name in output_names]

@@ -141,7 +141,6 @@ class NLDecoderEngine:
         """
         return self.kv_cache.num_non_blank_entries
 
-    @property
     def internal_cache_support(self) -> bool:
         """
         :return: Whether the engine has internal kv cache support
