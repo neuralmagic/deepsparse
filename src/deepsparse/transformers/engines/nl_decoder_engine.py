@@ -267,12 +267,12 @@ class NLDecoderEngine:
 
         If the internal kv cache support is enabled, the kv cache state
         will always be reinitialized to zeros. This is just to make sure
-        that the input to the model is correct, the actual values are
+        that the input shapes of the kv cache arrays to the model are correct, the actual values are
         being tracked inside the engine.
 
         If the internal kv cache support is disabled, we need to
         fetch the kv cache state in a form of numpy arrays
-        from the current session or initialize it if appropriate.
+        from the current session, or initialize it if required.
 
 
         :param inp: The input to the model
