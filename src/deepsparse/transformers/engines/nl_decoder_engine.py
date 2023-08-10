@@ -98,6 +98,7 @@ class NLDecoderEngine:
         self.sampling_temperature = sampling_temperature
         self.deterministic = deterministic
         self.input_ids_length = input_ids_length
+        self.cache_length = sequence_length - input_ids_length
         self.kv_cache_enabled = kv_cache_enabled
         self.kv_cache = (
             DecoderKVCache(use_deepsparse_cache) if kv_cache_enabled else None
@@ -147,18 +148,12 @@ class NLDecoderEngine:
         """
         return self.kv_cache_enabled and self.kv_cache._kv_cache is not None
 
-    @property
-    def external_cache_support(self) -> bool:
-        """
-        :return: Whether the engine has external kv cache support
-        """
-        return self.kv_cache_enabled and self.kv_cache._kv_cache is None
-
     def run(self, inputs: List[numpy.ndarray], val_inp: bool) -> List[numpy.ndarray]:
         """
         Run the engine with the given inputs.
 
-        If the internal deepsparse kv cache management is enable,
+        If the self.internal_cache_support=True, the internal
+        deepsparse kv cache management is enabled. In this case
         the LIB.kv_cache class object will be passed to the engine
         call as well.
 
@@ -169,12 +164,14 @@ class NLDecoderEngine:
         """
 
         if self.internal_cache_support:
+            # validate the inputs if needed
             if val_inp:
                 self.engine._validate_inputs(inputs)
+            # run the engine with the LIB.kv_cache object
             return self.engine._eng_net.execute_list_out(
                 inputs, self.kv_cache._kv_cache
             )
-
+        # run the engine without the LIB.kv_cache object
         return self.engine.run(inputs, val_inp)
 
     def __call__(
@@ -191,8 +188,8 @@ class NLDecoderEngine:
         :param val_inp: Whether the input is for validation or not
         :return: The generated token and corresponding logits
         """
-        if self.external_cache_support:
-            # if external kv cache is enabled, we need
+        if self.kv_cache:
+            # if model has kv cache enabled, we need
             # to add the kv cache state to the input
             inp = self.add_kv_cache_to_input(inp)
 
@@ -200,15 +197,16 @@ class NLDecoderEngine:
 
         if self.kv_cache:
             logits, *kv_cache_state = out
+
+            if not self.internal_cache_support:
+                # if internal kv cache support is disabled,
+                # we use the external kv cache, and
+                # thus need to update the kv cache state
+                self.update_kv_cache(
+                    kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
+                )
         else:
             logits = out[0]
-
-        if self.external_cache_support:
-            # if external kv cache is enabled, we need
-            # to update the kv cache state to the session
-            self.update_kv_cache(
-                kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
-            )
 
         # select batch idx 0, batch is always 1
         token = self.generate_token(logits=logits[0, -1, :])
@@ -233,8 +231,7 @@ class NLDecoderEngine:
         :param cache: The `DecoderKVCache` object to transfer to the engine
             from
         """
-        target_cache_capacity = self.sequence_length - self.input_ids_length
-        cache.set_capacity(target_cache_capacity)
+        cache.set_capacity(self.cache_length)
         self.kv_cache = cache
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
@@ -257,9 +254,7 @@ class NLDecoderEngine:
         """
         Resets the kv cache state.
         """
-        kv_cache_state = self._initialize_kv_cache_state(
-            self.sequence_length - self.input_ids_length
-        )
+        kv_cache_state = self._initialize_kv_cache_state(self.cache_length)
         self.kv_cache.setup(
             session_id=self._session_id,
             state=kv_cache_state,
@@ -271,10 +266,24 @@ class NLDecoderEngine:
         """
         Takes the input and adds the past kv cache state to it.
 
+        If the internal kv cache support is enabled, the kv cache state
+        will always be reinitialized to zeros. This is just to make sure
+        that the input to the model is correct, the actual values are
+        being tracked inside the engine.
+
+        If the internal kv cache support is disabled, we need to
+        fetch the kv cache state in a form of numpy arrays
+        from the current session or initialize it if appropriate.
+
+
         :param inp: The input to the model
         :return The input with the kv cache state added to it
         """
-        kv_cache_state = self.kv_cache.cached_inputs
+
+        kv_cache_state = (
+            None if self.internal_cache_support else self.kv_cache.cached_inputs
+        )
+
         if kv_cache_state is None:
             self.reset_kv_cache()
             kv_cache_state = self.kv_cache.cached_inputs
