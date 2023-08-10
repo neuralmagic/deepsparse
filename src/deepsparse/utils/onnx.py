@@ -50,11 +50,13 @@ __all__ = [
     "truncate_onnx_model",
     "truncate_onnx_embedding_model",
     "default_cached_outputs",
+    "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
 ]
 
 _LOGGER = logging.getLogger(__name__)
 
+CACHE_INPUT_PREFIX = "past_key_values"
 CACHE_OUTPUT_PREFIX = "present"
 
 
