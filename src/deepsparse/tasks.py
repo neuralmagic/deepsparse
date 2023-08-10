@@ -144,6 +144,7 @@ class SupportedTasks:
         haystack,
         embedding_extraction,
         open_pif_paf,
+        text_generation,
     ]
 
     @classmethod
