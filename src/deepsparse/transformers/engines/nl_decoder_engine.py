@@ -268,7 +268,8 @@ class NLDecoderEngine:
 
         If the internal kv cache support is enabled, the kv cache state
         will always be reinitialized to zeros. This is just to make sure
-        that the input shapes of the kv cache arrays to the model are correct, the actual values are
+        that the input shapes of the kv cache arrays to the
+        model are correct, the actual values are
         being tracked inside the engine.
 
         If the internal kv cache support is disabled, we need to
@@ -279,14 +280,13 @@ class NLDecoderEngine:
         :param inp: The input to the model
         :return The input with the kv cache state added to it
         """
-
-        kv_cache_state = (
-            None if self.internal_cache_support else self.kv_cache.cached_inputs
-        )
-
-        if kv_cache_state is None:
-            self.reset_kv_cache()
+        if self.internal_cache_support:
+            kv_cache_state = self._initialize_kv_cache_state(self.cache_length)
+        else:
             kv_cache_state = self.kv_cache.cached_inputs
+            if kv_cache_state is None:
+                self.reset_kv_cache()
+                kv_cache_state = self.kv_cache.cached_inputs
 
         for idx, input_name in enumerate(self.onnx_input_names_no_cache):
             kv_cache_state[input_name] = inp[idx]
