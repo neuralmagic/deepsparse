@@ -478,17 +478,17 @@ def truncate_onnx_embedding_model(
     return output_filepath, tmp_file
 
 
-def default_cached_outputs(model: Union[str, ModelProto]) -> List[bool]:
+def default_cached_outputs(model_path: str) -> List[bool]:
     """
     Get a list of bools that indicate which outputs should be cached.
     The elements that are set to True correspond to cached outputs,
     the rest are set to False.
 
-    :param model_path: Path to a model
+    :param model_path: Path to the model.
     :return A list of bools that indicate which outputs should be cached.
     """
 
-    outputs = get_output_names(model_path)
-    assert len(outputs) > 0
+    output_names = get_output_names(model_path)
+    assert len(output_names) > 0
 
-    return [output.name.startswith(CACHE_OUTPUT_PREFIX) for output in outputs]
+    return [name.startswith(CACHE_OUTPUT_PREFIX) for name in output_names]
