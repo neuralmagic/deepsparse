@@ -301,3 +301,44 @@ Mean Latency Breakdown (ms/batch):
      engine_forward: 7.6051
      post_process: 0.1077
 ```
+
+Command:
+```
+deepsparse.benchmark_pipeline text_generation zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base_quant-none -c config.json -t 60
+```
+config.json:
+```json
+{
+    "data_type": "dummy",
+    "gen_sequence_length": 100,
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {}
+} 
+```
+
+Output:
+```
+Batch Size: 1
+Scenario: sync
+Iterations: 6
+Total Runtime: 62.8005
+Throughput (items/sec): 0.0955
+Processing Time Breakdown: 
+     total_inference: 100.00%
+     pre_process: 0.00%
+     engine_forward: 99.98%
+     post_process: 0.01%
+     engine_prompt_prefill: 5.83%
+     engine_prompt_prefill_single: 0.09%
+     engine_token_generation: 93.64%
+     engine_token_generation_single: 0.09%
+Mean Latency Breakdown (ms/batch): 
+     total_inference: 20932.4786
+     pre_process: 0.9729
+     engine_forward: 20930.2190
+     post_process: 1.2150
+     engine_prompt_prefill: 1220.7037
+     engine_prompt_prefill_single: 19.0412
+     engine_token_generation: 19603.0353
+     engine_token_generation_single: 19.1170
+```
