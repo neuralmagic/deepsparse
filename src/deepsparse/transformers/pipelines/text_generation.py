@@ -33,6 +33,7 @@ from deepsparse.transformers.utils.helpers import (
     pad_to_fixed_length,
     validate_session_ids,
 )
+from deepsparse.utils.data import split_engine_inputs
 from deepsparse.utils.onnx import default_cached_outputs
 
 
@@ -354,10 +355,18 @@ class TextGenerationPipeline(TransformersPipeline):
         )
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
+        session_ids = inputs.session_ids
+        if session_ids is None:
+            # session_ids is None, so we need to generate a session id for each input sequence
+            num_input_sequences = (
+                len(inputs.sequences) if isinstance(inputs.sequences, list) else 1
+            )
+            session_ids = [generate_session_id() for _ in range(num_input_sequences)]
+        engine_input.append(session_ids)
+
         postprocessing_kwargs = dict(
             return_logits=inputs.return_logits,
             streamer=inputs.streamer,
-            session_ids=inputs.session_ids,
         )
         return engine_input, postprocessing_kwargs
 
@@ -370,14 +379,14 @@ class TextGenerationPipeline(TransformersPipeline):
         :param engine_outputs: the outputs from the engine
         :return: the output schema for the pipeline
         """
-        generated_tokens, generated_logits = engine_outputs
+        generated_tokens, generated_logits, session_ids = engine_outputs
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
         logits = generated_logits if context.get("return_logits") else None
 
         return TextGenerationOutput(
-            sequences=sequences, logits=logits, session_ids=context.get("session_ids")
+            sequences=sequences, logits=logits, session_ids=session_ids.tolist()
         )
 
     def engine_forward(
@@ -398,10 +407,15 @@ class TextGenerationPipeline(TransformersPipeline):
         # names in this context
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             streamer = context.get("streamer")
-            session_id = context.get("session_ids")
 
-            if session_id is None:
-                session_id = generate_session_id()
+            # pop the session id from the inputs
+            idx_session_id = next(
+                idx for idx, item in enumerate(engine_inputs) if isinstance(item, str)
+            )
+            session_id = engine_inputs.pop(idx_session_id)
+            assert isinstance(
+                session_id, str
+            ), "Session id must be a string not {}".format(type(session_id))
 
             if not self.cache_support_enabled:
                 tokens, prompt_logits = self.multitoken_engine(engine_inputs)
@@ -452,8 +466,10 @@ class TextGenerationPipeline(TransformersPipeline):
             if streamer is not None:
                 streamer.end()
 
-        return numpy.array([generated_tokens]), numpy.concatenate(
-            generated_logits, axis=1
+        return (
+            numpy.array([generated_tokens]),
+            numpy.concatenate(generated_logits, axis=1),
+            session_id,
         )
 
     def prompt_inference(
@@ -478,7 +494,10 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
-        if len(tokens) > self.prompt_processing_sequence_length and self.enable_multitoken_prefill:
+        if (
+            len(tokens) > self.prompt_processing_sequence_length
+            and self.enable_multitoken_prefill
+        ):
 
             session_exists = self.synchronize_engines(session_id)
             tokens = (
@@ -668,11 +687,12 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def synchronize_engines(self, session_id: str) -> bool:
         """
-        Make sure that the multitoken engine and the (single token) engine
-        are in sync i.e. they contain the newest version of the kv cache storage.
+        Make sure that the existing engines are in sync i.e.
+        they contain the newest version of the kv cache storage.
 
-        Additionally returns a boolean indicating whether the session with
-        the session_id exists in the kv cache storage
+        Additionally returns a boolean flag indicating whether
+        the session with the session_id exists in the most recent
+        kv cache storage
 
         :param session_id: the session id to synchronize
         :return: True if the session exists in the kv cache storage, False otherwise
@@ -689,7 +709,7 @@ class TextGenerationPipeline(TransformersPipeline):
             return self.multitoken_engine.kv_cache_storage.has_session(session_id)
 
         # multitoken engine's storage is newer,
-        # # so we need to transfer it to the engine
+        # so we need to transfer it to the engine
         self.engine.transfer_cache_storage(self.multitoken_engine.kv_cache_storage)
         return self.engine.kv_cache_storage.has_session(session_id)
 
@@ -701,6 +721,29 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: True if the model has kv cache, False otherwise
         """
         return any(default_cached_outputs(self.onnx_file_path))
+
+    def split_engine_inputs(
+        self, items: List[Union[numpy.ndarray, List[str]]], batch_size: int
+    ) -> Tuple[List[List[numpy.ndarray]], int]:
+        """
+        Custom implementation of splitting the engine inputs that takes into
+        account the fact that the `items` contain additionally a list of
+        session_ids, that need to be distributed across the batches.
+
+        :param items: list of numpy arrays to split (plus list of session_ids)
+        :param batch_size: size of each batch to split into
+        :return: list of batches, where each batch is a list of numpy arrays,
+            as well as the total batch size
+        """
+        session_ids = next((item for item in items if isinstance(item, list)), None)
+
+        batches, orig_batch_size = split_engine_inputs(items, batch_size)
+        # append the session_ids to the batches
+        batches = [
+            batch.append(session_id)
+            for (batch, session_id) in zip(batches, session_ids)
+        ]
+        return batches, orig_batch_size
 
     def join_engine_outputs(
         self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
@@ -715,7 +758,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
-        tokens, logits = zip(*batch_outputs)
+        tokens, logits, session_ids = zip(*batch_outputs)
         if self.cache_support_enabled:
             # if the model has kv cache, we need to account for
             # the fact that the predicted outputs may have
@@ -746,8 +789,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
         tokens = numpy.concatenate(tokens, axis=0)
         logits = numpy.concatenate(logits, axis=0)
+        session_ids = numpy.concatenate(session_ids, axis=0)
 
-        return [tokens, logits]
+        return [tokens, logits, session_ids]
 
     @staticmethod
     def causal_mask_input_present(model_path: str) -> bool:
@@ -767,6 +811,7 @@ class TextGenerationPipeline(TransformersPipeline):
     def _reset_engines_cache(self):
         self.engine.reset_kv_cache()
         self.multitoken_engine.reset_kv_cache() if self.multitoken_engine else None
+
     def _remove_bos_token_if_applicable(self, tokens: List[int]):
         if hasattr(self.tokenizer, "add_bos_token"):
             return tokens[1:]
