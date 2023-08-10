@@ -24,13 +24,16 @@ from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     overwrite_onnx_model_inputs,
 )
+from deepsparse.utils.onnx import CACHE_INPUT_PREFIX
 from sparsezoo import Model
 
 
 def _initialize_kv_cache_state(model, length=0):
     # get one of the cache inputs
     cache_input = next(
-        input for input in model.graph.input if input.name.startswith("past_key_values")
+        input
+        for input in model.graph.input
+        if input.name.startswith(CACHE_INPUT_PREFIX)
     )
     # read the shape of the cache input
     batch_size = cache_input.type.tensor_type.shape.dim[0].dim_value
@@ -43,7 +46,7 @@ def _initialize_kv_cache_state(model, length=0):
             (batch_size, num_attention_heads, length, hidden_dims), dtype=np.float32
         )
         for input_ in model.graph.input
-        if input_.name.startswith("past_key_values")
+        if input_.name.startswith(CACHE_INPUT_PREFIX)
     }
 
     return kv_cache
@@ -88,7 +91,7 @@ class TestTextGenerationPipeline:
             sequence_length=32,
             prompt_processing_sequence_length=4,
             max_generated_tokens=self.max_generated_tokens,
-            use_deepsparse_cache=False,
+            use_deepsparse_cache=self.use_deepsparse_cache,
         )
         short_prompt = "this"
         long_prompt = "this is a sample prompt that we will use to test the pipeline"
