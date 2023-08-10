@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -85,7 +84,7 @@ class NLDecoderEngine:
             self.kv_cache_data_type = kv_cache_data_type
             if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
-                engine_args["cache_output_bools"] = output_indices_to_be_cached
+                engine_args["cached_outputs"] = output_indices_to_be_cached
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
@@ -102,6 +101,22 @@ class NLDecoderEngine:
         self.capacity = self.sequence_length - self.input_ids_length
         self.kv_cache_storage = SessionStorageKVCache() if kv_cache_enabled else None
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
+        self._session_id = generate_session_id()
+        self._engine_type = engine_type
+
+    @property
+    def session_id(self) -> str:
+        """
+        :return: The session id for the kv_cache if enabled
+        """
+        return self._session_id
+
+    @session_id.setter
+    def session_id(self, session_id: str):
+        """
+        :param session_id: The session id to set for the kv_cache
+        """
+        self._session_id = session_id
 
     @property
     def onnx_input_names_no_cache(self) -> List[str]:
@@ -130,6 +145,32 @@ class NLDecoderEngine:
             session = self.initialize_session(session_id)
         return session.num_non_blank_entries
 
+    def run(self, inputs: List[numpy.ndarray], val_inp: bool) -> List[numpy.ndarray]:
+        """
+        Run the engine with the given inputs.
+
+        If the internal deepsparse kv cache management is enable,
+        the LIB.kv_cache class object will be passed to the engine
+        call as well.
+
+        :param inputs: The inputs to run the engine with
+        :param val_inp: Whether the input is for validation or not
+
+        :return: The output of the engine
+        """
+
+        if self.kv_cache is not None:
+            if self.kv_cache._kv_cache is not None:
+                if val_inp:
+                    self.engine._validate_inputs(inputs)
+                # model has kv cache support, as well as deepsparse
+                # internal management of the kv cache
+                return self.engine._eng_net.execute_list_out(
+                    inputs, self.kv_cache._kv_cache
+                )
+
+        return self.engine.run(inputs, val_inp)
+
     def __call__(
         self,
         inp: List[numpy.ndarray],
@@ -149,7 +190,7 @@ class NLDecoderEngine:
         if self.kv_cache_enabled:
             inp = self.add_kv_cache_to_input(inp, session_id)
 
-        out = self.engine.run(inp, val_inp)
+        out = self.run(inp, val_inp)
 
         if self.kv_cache_enabled:
             logits, *kv_cache_state = out
@@ -200,7 +241,7 @@ class NLDecoderEngine:
 
         :param storage: The external storage object
         """
-        self.kv_cache_storage = copy.deepcopy(storage)
+        self.kv_cache_storage = storage
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """

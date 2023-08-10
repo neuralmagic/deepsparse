@@ -12,62 +12,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List, Type, Union
+from typing import Any, List, Type
 
 import numpy as np
 from pydantic import BaseModel, Field
 
-from deepsparse.pipeline import Pipeline
+from deepsparse import Pipeline
 from deepsparse.utils import model_to_path
-from open_clip.tokenizer import tokenize
 
 
-__all__ = ["CLIPTextInput", "CLIPTextOutput", "CLIPTextPipeline"]
+__all__ = ["CLIPDecoderInput", "CLIPDecoderOutput", "CLIPDecoderPipeline"]
 
 
-class CLIPTextInput(BaseModel):
+class CLIPDecoderInput(BaseModel):
     """
-    Input for the CLIP Text Branch
+    Input for the CLIP Decoder Branch
     """
 
-    text: Union[str, List[str], Any, List[Any]] = Field(
-        description="Either raw strings or an np.array with tokenized text"
+    text_embeddings: Any = Field(
+        description="np.array of text emebddings from the " "text branch"
+    )
+    image_embeddings: Any = Field(
+        description="np.array of image embeddings from the " "visual branch"
     )
 
 
-class CLIPTextOutput(BaseModel):
+class CLIPDecoderOutput(BaseModel):
     """
-    Output for the CLIP Text Branch
+    Output for the CLIP Decoder Branch
     """
 
-    text_embeddings: List[Any] = Field(
-        description="np.array of text embeddings. For the caption "
-        "pipeline, a list of two embeddings is produced. For zero-shot "
-        "classifcation, one array is produced with the embeddings stacked along "
-        "batch axis."
+    logits: List[Any] = Field(
+        description="np.array of logits produced from the decoder."
     )
 
 
-@Pipeline.register(task="clip_text", default_model_path=None)
-class CLIPTextPipeline(Pipeline):
+@Pipeline.register(task="clip_decoder", default_model_path=None)
+class CLIPDecoderPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.tokenizer = tokenize
-
     @property
-    def input_schema(self) -> Type[CLIPTextInput]:
+    def input_schema(self) -> Type[CLIPDecoderInput]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return CLIPTextInput
+        return CLIPDecoderInput
 
     @property
-    def output_schema(self) -> Type[CLIPTextOutput]:
+    def output_schema(self) -> Type[CLIPDecoderOutput]:
         """
         :return: pydantic model class that inputs to this pipeline must comply to
         """
-        return CLIPTextOutput
+        return CLIPDecoderOutput
 
     def setup_onnx_file_path(self):
         """
@@ -79,32 +76,24 @@ class CLIPTextPipeline(Pipeline):
         """
         return model_to_path(self.model_path)
 
-    def process_inputs(self, inputs: CLIPTextInput) -> List[np.ndarray]:
+    def process_inputs(self, inputs: CLIPDecoderInput) -> List[np.array]:
         """
-        Preprocess inputs for CLIP's Trext Branch to comply with the DeepSparse Engine
+        Preprocess inputs for CLIP's Decoder Branch to comply with the DeepSparse Engine
 
-        :param inputs: CLITextInput
+        :param inputs: CLIPDecoderInput
         :return: list of preprocessed numpy arrays
         """
-        if not isinstance(inputs.text, list):
-            inputs.text = [inputs.text]
-
-        # If passing in an array, part of the captioning pipeline. No need to tokenize
-        if not isinstance(inputs.text[0], str):
-            return inputs.text
-
-        tokens = self.tokenizer(inputs.text)
-        tokens = [np.array(t).astype(np.int32) for t in tokens]
-        tokens = np.stack(tokens, axis=0)
-        return [tokens]
+        image_embeddings = inputs.image_embeddings
+        text_embeddings = inputs.text_embeddings
+        return [image_embeddings, text_embeddings]
 
     def process_engine_outputs(
-        self, engine_outputs: List[np.array], **kwargs
-    ) -> CLIPTextOutput:
+        self, engine_outputs: List[np.array]
+    ) -> CLIPDecoderOutput:
         """
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
-        return self.output_schema(text_embeddings=engine_outputs)
+        return self.output_schema(logits=engine_outputs)

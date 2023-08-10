@@ -11,21 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # flake8: noqa
+from deepsparse.clip.decoder_pipeline import *
+from deepsparse.clip.text_pipeline import *
+from deepsparse.clip.visual_pipeline import *
 
-from deepsparse.clip.text_pipeline import (
-    CLIPTextInput,
-    CLIPTextOutput,
-    CLIPTextPipeline,
-)
-from deepsparse.clip.visual_pipeline import (
-    CLIPVisualInput,
-    CLIPVisualOutput,
-    CLIPVisualPipeline,
-)
-from deepsparse.clip.zeroshot_pipeline import (
-    CLIPZeroShotInput,
-    CLIPZeroShotOutput,
-    CLIPZeroShotPipeline,
-)
+
+from deepsparse.clip.zeroshot_pipeline import *  # isort:skip
+from deepsparse.clip.captioning_pipeline import *  # isort:skip
