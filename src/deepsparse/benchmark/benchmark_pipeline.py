@@ -83,7 +83,6 @@ deepsparse.benchmark_pipeline \
 
 import json
 import logging
-import queue
 import threading
 import time
 from typing import Dict, List, Tuple
@@ -113,7 +112,6 @@ from deepsparse.benchmark.helpers import (
 )
 from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
-from deepsparse.utils.timer import StagedTimer
 
 
 __all__ = ["benchmark_pipeline"]
@@ -127,8 +125,8 @@ ORT_ENGINE = "onnxruntime"
 
 class PipelineExecutorThread(threading.Thread):
     """
-    Run pipeline reoeatedly on inputs for max_time seconds, pushing the timer data to
-    the timer queue to store the runtime of each section of the pipeline.
+    Run pipeline reoeatedly on inputs for max_time seconds, storing the runtime of each
+    section of the pipeline in its timer manager
 
     For intended usage, see multistream_benchmark
     """
@@ -137,42 +135,32 @@ class PipelineExecutorThread(threading.Thread):
         self,
         pipeline: Pipeline,
         inputs: List[any],
-        time_queue: queue.Queue,
         max_time: float,
     ):
         super(PipelineExecutorThread, self).__init__()
         self._pipeline = pipeline
         self._inputs = inputs
-        self._time_queue = time_queue
         self._max_time = max_time
 
     def run(self):
         while time.perf_counter() < self._max_time:
             _ = self._pipeline(self._inputs)
-            for timer in self._pipeline.timer_manager.timers:
-                self._time_queue.put(timer)
 
 
 def singlestream_benchmark(
     pipeline: Pipeline, inputs: List[any], seconds_to_run: float
-) -> List[StagedTimer]:
+):
     """
     Run pipeline repeatedly on inputs for max_time seconds, storing the runtime of each
-    section of the pipeline in batch_timings
+    section of the pipeline in its timer manager
 
     :param pipeline: pipeline to execute
     :param inputs: inputs to pass through pipeline
     :param seconds_to_run: how long to run pipeline for
-    :return: list of timings for each forward pass
     """
     benchmark_end_time = time.perf_counter() + seconds_to_run
-    batch_timings = []
     while time.perf_counter() < benchmark_end_time:
         _ = pipeline(inputs)
-        for timer in pipeline.timer_manager.timers:
-            batch_timings.append(timer)
-
-    return batch_timings
 
 
 def multistream_benchmark(
@@ -180,25 +168,27 @@ def multistream_benchmark(
     inputs: List[any],
     seconds_to_run: float,
     num_streams: int,
-) -> List[StagedTimer]:
+):
     """
     Create num_streams threads, each of which calls PipelineExecutorThread.run() for
-    seconds_to_run seconds. Stores all timing info in a shared queue.
+    seconds_to_run seconds. All timing info stored in pipeline.timer_manager
+
+    :param pipeline: pipeline to execute
+    :param inputs: inputs to pass through pipeline
+    :param seconds_to_run: how long to run pipeline for
+    :param num_streams: number of threads to launch
     """
-    time_queue = queue.Queue()
     max_time = time.perf_counter() + seconds_to_run
     threads = []
 
     for thread in range(num_streams):
-        threads.append(PipelineExecutorThread(pipeline, inputs, time_queue, max_time))
+        threads.append(PipelineExecutorThread(pipeline, inputs, max_time))
 
     for thread in threads:
         thread.start()  # triggers PipelineExecutorThread.run()
 
     for thread in threads:
         thread.join()
-
-    return list(time_queue.queue)
 
 
 def create_input_schema(
@@ -255,7 +245,7 @@ def benchmark_pipeline(
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
     quiet: bool = False,
-) -> Tuple[List[StagedTimer], float]:
+) -> Tuple[Dict[str, List[float]], float]:
     """
     Run a benchmark over the specified pipeline, tracking timings for pre-processing,
     forward pass and post-processing. Results are printed to the console and optionally
@@ -273,7 +263,7 @@ def benchmark_pipeline(
     :param thread_pinning: enable binding threads to cores
     :param engine: inference engine, deepsparse or onnxruntime
     :param quiet: lower logging verbosity
-    :return: list of StagedTimer objects for each forward pass and the total run time
+    :return: dictionary of section times for each forward pass and the total run time
     """
 
     if quiet:
@@ -289,6 +279,7 @@ def benchmark_pipeline(
 
     input_type = config.data_type
     kwargs = config.pipeline_kwargs
+    kwargs["benchmark"] = True
     pipeline = Pipeline.create(
         task=task,
         model_path=model_path,
@@ -302,25 +293,25 @@ def benchmark_pipeline(
 
     if scenario == "singlestream":
         singlestream_benchmark(pipeline, inputs, warmup_time)
+        pipeline.timer_manager.clear()
         start_time = time.perf_counter()
-        batch_times = singlestream_benchmark(pipeline, inputs, seconds_to_run)
+        singlestream_benchmark(pipeline, inputs, seconds_to_run)
     elif scenario == "multistream":
         multistream_benchmark(pipeline, inputs, warmup_time, num_streams)
+        pipeline.timer_manager.clear()
         start_time = time.perf_counter()
-        batch_times = multistream_benchmark(
-            pipeline, inputs, seconds_to_run, num_streams
-        )
+        multistream_benchmark(pipeline, inputs, seconds_to_run, num_streams)
     elif scenario == "elastic":
         multistream_benchmark(pipeline, inputs, warmup_time, num_streams)
+        pipeline.timer_manager.clear()
         start_time = time.perf_counter()
-        batch_times = multistream_benchmark(
-            pipeline, inputs, seconds_to_run, num_streams
-        )
+        multistream_benchmark(pipeline, inputs, seconds_to_run, num_streams)
     else:
         raise Exception(f"Unknown scenario '{scenario}'")
 
     end_time = time.perf_counter()
     total_run_time = end_time - start_time
+    batch_times = pipeline.timer_manager.all_times
     if len(batch_times) == 0:
         raise Exception(
             "Generated no batch timings, try extending benchmark time with '--time'"
@@ -350,20 +341,13 @@ def calculate_statistics(
 
 
 def calculate_section_stats(
-    batch_times: List[StagedTimer], total_run_time: float, num_streams: int
+    batch_times: Dict[str, List[float]], total_run_time: float, num_streams: int
 ) -> Dict[str, Dict]:
     total_run_time_ms = total_run_time * 1000
 
-    section_times = {}
-    for timer in batch_times:
-        for section in timer.stages:
-            if section not in section_times:
-                section_times[section] = []
-            section_times[section].append(timer.times[section] * 1000)
-
     sections = {}
-    for section_name in section_times:
-        times = section_times[section_name]
+    for section_name in batch_times:
+        times = [t * 1000 for t in batch_times[section_name]]
         sections[section_name] = calculate_statistics(
             times, total_run_time_ms, num_streams
         )
@@ -513,7 +497,7 @@ def main(
     )
 
     section_stats = calculate_section_stats(batch_times, total_run_time, num_streams)
-    items_per_sec = (len(batch_times) * batch_size) / total_run_time
+    items_per_sec = (len(batch_times["total_inference"]) * batch_size) / total_run_time
 
     benchmark_results = {
         "items_per_sec": items_per_sec,

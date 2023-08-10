@@ -28,7 +28,7 @@ from deepsparse.benchmark.data_creation import (
     generate_text_data,
     get_input_schema_type,
 )
-from deepsparse.utils import StagedTimer
+from deepsparse.utils import StagedTimer, TimerManager
 from tests.helpers import run_command
 
 
@@ -97,6 +97,7 @@ def test_pipeline_benchmark(
     assert res.returncode == 0
     assert "error" not in res.stdout.lower()
     assert "fail" not in res.stdout.lower()
+    assert "total_inference" in res.stdout.lower()
 
 
 def test_generate_image_data():
@@ -152,6 +153,7 @@ def test_get_input_schema_type(task_name, input_schema):
 
 def test_calculations():
     batch_times = []
+    timer_manager = TimerManager()
     for i in range(5):
         timer = StagedTimer()
         timer._staged_start_times["stage_1"] = [i + 0.1]
@@ -160,8 +162,9 @@ def test_calculations():
         timer._staged_start_times["stage_2"] = [i + 0.6]
         timer._staged_stop_times["stage_2"] = [i + 0.9]
 
-        batch_times.append(timer)
+        timer_manager._timers.append(timer)
 
+    batch_times = timer_manager.all_times
     total_run_time = 6.0
     section_stats = calculate_section_stats(batch_times, total_run_time, 1)
     assert math.isclose(
