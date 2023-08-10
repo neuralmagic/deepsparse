@@ -162,6 +162,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.enable_multitoken_prefill = self.causal_mask_input_present(
             model_path=self.onnx_file_path
         )
+        self.cache_support_enabled = self.is_cache_support_enabled()
 
         if self.engine_type == DEEPSPARSE_ENGINE:
             if "WAND_OPT_FLAGS" not in os.environ:
@@ -217,15 +218,15 @@ class TextGenerationPipeline(TransformersPipeline):
             # instantiation the multitoken engine or not
             if not self.enable_multitoken_prefill:
                 warnings.warn(
-                    "The ONNX graph does not support processing the prompt in "
-                    "a single pass. The creation of an auxiliary engine for "
-                    "processing the prompt efficiently is disabled. "
-                    "The prompt will be processed in autoregressive fashion."
+                    "This ONNX graph does not support processing the prompt in "
+                    "with processing length > 1. Creation of an auxiliary engine for "
+                    "processing the prompt at a larger processing length is disabled. "
+                    "The prompt will be processed in with processing length 1."
                 )
             else:
                 _LOGGER.info(
-                    "Creating an auxiliary engine to process a prompt in a "
-                    "a single pass. This guarantees better performance, but "
+                    "Compiling an auxiliary engine to process a prompt with a "
+                    "larger processing length. This improves performance, but "
                     "may result in additional memory consumption."
                 )
 
@@ -261,6 +262,9 @@ class TextGenerationPipeline(TransformersPipeline):
                 use_deepsparse_cache=self.use_deepsparse_cache,
             )
 
+        assert (engine is not None) or (
+            multitoken_engine is not None
+        ), "At least one of the engines must be initialized for the pipeline!"
         return engine, multitoken_engine
 
     @staticmethod
@@ -628,8 +632,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
             yield engine_inputs
 
-    @property
-    def cache_support_enabled(self) -> bool:
+    def is_cache_support_enabled(self) -> bool:
         """
         Returns whether the ran model has kv cache or not
 
