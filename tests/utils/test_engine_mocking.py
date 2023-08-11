@@ -46,7 +46,7 @@ def test_mock_engine_calls(engine_mock: MagicMock):
         1,
         "elastic",
         context.value,
-        [False],
+        None,
     )
 
 
