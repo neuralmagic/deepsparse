@@ -357,7 +357,6 @@ def main():
         num_iterations=args.num_iterations,
         num_warmup_iterations=args.num_warmup_iterations,
         optimization_level=int(args.optimization),
-        disable_batch_override=args.disable_batch_override,
         imposed_ks=imposed_kernel_sparsity,
         input_shapes=input_shapes,
         kv_cache_params=kv_cache_params,
