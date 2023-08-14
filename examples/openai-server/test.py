@@ -17,7 +17,7 @@
 python examples/openai-server/server.py \
     --model zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none \
     --prompt-processing-sequence-length 1
-"""
+"""  # noqa: E501
 
 import unittest
 
