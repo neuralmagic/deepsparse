@@ -714,8 +714,7 @@ if __name__ == "__main__":
 
     max_model_len = args.max_model_len
 
-    engine = DeepSparseOpenAIEngine
-(
+    engine = DeepSparseOpenAIEngine(
         model=args.model,
         sequence_length=max_model_len,
         prompt_processing_sequence_length=args.prompt_processing_sequence_length,
