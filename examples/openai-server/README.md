@@ -17,9 +17,9 @@ limitations under the License.
 Goal: Make a text-generation server that is compatible with the [OpenAI API Reference](https://platform.openai.com/docs/api-reference/introduction) so it can plug-in readily with applications that use the interface.
 
 ## Install requirements
-`pip install deepsparse-nightly[server] transformers`
+`pip install -r requirements.txt`
 
-## Example usage
+## Simple CLI usage
 Set up the server:
 ```
 python examples/openai-server/server.py --model zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none --prompt-processing-sequence-length 1
@@ -43,6 +43,8 @@ curl http://localhost:8000/v1/models
 ```
 
 Then you can hit the [Completions API](https://platform.openai.com/docs/api-reference/completions) with a `curl` command and see the streaming output:
+<details>
+
 ```
 curl http://localhost:8000/v1/completions \
     -H "Content-Type: application/json" \
@@ -90,6 +92,7 @@ data: {"id": "cmpl-473d4978ecc64a61a5eb6c442505aeba", "object": "text_completion
 
 data: [DONE]
 ```
+</details>
 
 ====
 
@@ -114,7 +117,7 @@ completion = openai.Completion.create(
     model=model,
     prompt="def fib():",
     stream=stream,
-    max_tokens=32)
+    max_tokens=16)
 
 print("Completion results:")
 if stream:
@@ -125,3 +128,290 @@ else:
 ```
 
 Output:
+<details>
+
+```
+Models: {
+  "object": "list",
+  "data": [
+    {
+      "id": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+      "object": "model",
+      "created": 1692040552,
+      "owned_by": "neuralmagic",
+      "root": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+      "parent": null,
+      "permission": [
+        {
+          "id": "modelperm-23ab758b9a9a43b6ba9584146508f9eb",
+          "object": "model_permission",
+          "created": 1692040552,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ]
+    }
+  ]
+}
+Completion results:
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "def fib():\n",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "a, ",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "0, ",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "  ",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "while ",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "True:\n",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "  ",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+{
+  "id": "cmpl-98386417df264683bc558aaf8a060dd1",
+  "object": "text_completion",
+  "created": 1692040552,
+  "model": "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",
+  "choices": [
+    {
+      "index": 0,
+      "text": "",
+      "logprobs": null,
+      "finish_reason": null
+    }
+  ]
+}
+```
+</details>

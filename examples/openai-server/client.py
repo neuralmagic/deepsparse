@@ -28,7 +28,7 @@ model = models["data"][0]["id"]
 # Completion API
 stream = True
 completion = openai.Completion.create(
-    model=model, prompt="def fib():", stream=stream, max_tokens=32
+    model=model, prompt="def fib():", stream=stream, max_tokens=16
 )
 
 print("Completion results:")
