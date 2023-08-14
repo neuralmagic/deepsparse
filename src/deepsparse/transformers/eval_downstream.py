@@ -63,13 +63,19 @@ python eval_downstream.py \
 import argparse
 import json
 from cProfile import Profile
+from functools import partial
 from pstats import Stats
 
 import numpy
 from tqdm.auto import tqdm
 
+import torch
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
+from deepsparse.transformers.utils.helpers import (
+    create_causal_mask,
+    pad_to_fixed_length,
+)
 
 
 from datasets import load_dataset, load_metric  # isort: skip
@@ -109,11 +115,15 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
     return perplexity_metrics
 
 
-def perplexity_opt_eval(args, batch_size=16, dataset_name=""):
+def perplexity_wikitext_eval(args, batch_size=16, dataset_name=""):
     if args.max_samples:
         batch_size = min(batch_size, args.max_samples)
 
     dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
 
     text_generation = Pipeline.create(
         task="text-generation",
@@ -124,27 +134,68 @@ def perplexity_opt_eval(args, batch_size=16, dataset_name=""):
         prompt_processing_sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
     )
-    perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
-    active_engines = [
-        engine
-        for engine in [text_generation.engine, text_generation.multitoken_engine]
-        if engine
-    ]
-    print("Engine info: ")
-    [print(f"{engine}\n") for engine in active_engines]
-    predictions = []
-    count = 0
-    for idx, sample in _enumerate_progress(dataset, args.max_samples):
-        if len(sample["text"]) == 0:
-            continue
-        count += 1
-        predictions.append(sample["text"])
-        if len(predictions) == batch_size:
-            perplexity_metrics.add_batch(predictions)
-            predictions = []
-        if args.max_samples and count >= args.max_samples:
-            break
-    return perplexity_metrics
+    all_samples = "\n\n".join(dataset["text"])
+    testenc = tokenizer(all_samples, return_tensors="np")
+    seq_len = args.max_sequence_length
+    nsamples = testenc["input_ids"].shape[1] // seq_len
+    nlls = []
+    for i in tqdm(range(nsamples)):
+        start = i * seq_len
+        end = min((i + 1) * seq_len, testenc["input_ids"].shape[1])
+        input_ids = testenc["input_ids"][:, start:end]
+        attention_mask = testenc["attention_mask"][:, start:end]
+        positions = attention_mask.cumsum(1) * attention_mask
+        positions -= 1  # assert that positions start at 0
+
+        causal_mask = create_causal_mask(input_ids, attention_mask)
+
+        input_tokens = dict(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            positions=positions,
+            causal_mask=causal_mask,
+        )
+
+        onnx_input_names = text_generation.multitoken_engine.onnx_input_names_no_cache
+        engine_inputs = text_generation.tokens_to_engine_input(
+            input_tokens, onnx_input_names
+        )
+        postprocessing_kwargs = dict(return_logits=True, streamer=None)
+        batches, orig_batch_size = text_generation.split_engine_inputs(
+            engine_inputs, text_generation._batch_size
+        )
+        engine_forward_with_context = partial(
+            text_generation.engine_forward, context=postprocessing_kwargs
+        )
+        batch_outputs = list(
+            text_generation.executor.map(engine_forward_with_context, batches)
+        )
+        engine_outputs = text_generation.join_engine_outputs(
+            batch_outputs, orig_batch_size
+        )
+        pipeline_outputs = text_generation.process_engine_outputs(
+            engine_outputs, **postprocessing_kwargs
+        )
+        logits = pipeline_outputs.logits
+        if not text_generation.has_cache:
+            logits = [
+                logit[-attn_mask.sum() :, :]
+                for (logit, attn_mask) in zip(logits, attention_mask)
+            ]
+            logits = [pad_to_fixed_length(logit, seq_len) for logit in logits]
+            logits = numpy.stack(logits)
+
+        shift_logits = logits[:, :-1, :]
+        shift_labels = input_ids[:, 1:]
+        loss_fct = torch.nn.CrossEntropyLoss()
+        loss = loss_fct(
+            torch.tensor(shift_logits.transpose(0, 2, 1)),
+            torch.tensor(shift_labels),
+        )
+        neg_log_likelihood = loss.float() * seq_len
+        nlls.append(neg_log_likelihood)
+    ppl = torch.exp(torch.stack(nlls).sum() / (nsamples * seq_len))
+    return ppl
 
 
 def qa_eval(args, dataset_name="squad"):
@@ -513,7 +564,7 @@ SUPPORTED_DATASETS = {
     "conll2003": conll2003_eval,
     "go_emotions": go_emotions_eval,
     "openai_humaneval": perplexity_eval,
-    "wikitext": perplexity_opt_eval
+    "wikitext": perplexity_wikitext_eval,
 }
 
 
@@ -666,9 +717,11 @@ def _main(args):
         mnli_metrics = {k + "_m": v for k, v in mnli_metrics_matched.items()}
         mnli_metrics.update({k + "_mm": v for k, v in mnli_metrics_mismatched.items()})
         print(f"\nmnli eval results: {mnli_metrics}")
+    elif dataset == "wikitext":
+        ppl = perplexity_wikitext_eval(args)
+        print(f"Perplexity on wikitext-2-raw-v1 test split by OPT: {ppl}")
     else:
         metrics = SUPPORTED_DATASETS[dataset](args)
-
         print(f"\n{dataset} eval results: {metrics.compute()}")
 
 
