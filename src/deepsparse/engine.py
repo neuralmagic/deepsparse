@@ -288,6 +288,8 @@ class Engine(BaseEngine):
         concurrently.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cached_outputs: List of bools corresponding to which model outputs are
+        included in KV cache
     """
 
     def __init__(
@@ -298,6 +300,7 @@ class Engine(BaseEngine):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: Optional[List[List[int]]] = None,
+        cached_outputs: Optional[List[bool]] = None,
     ):
         BaseEngine.construct(
             self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
@@ -318,6 +321,7 @@ class Engine(BaseEngine):
                     self._num_streams,
                     self._scheduler.value,
                     None,
+                    cached_outputs,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -327,6 +331,7 @@ class Engine(BaseEngine):
                 self._num_streams,
                 self._scheduler.value,
                 None,
+                cached_outputs,
             )
 
     def __call__(
@@ -878,6 +883,8 @@ class MultiModelEngine(Engine):
     :param context: See above. This object should be constructed with the desired number of
         cores and passed into each instance of the MultiModelEngine.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cached_outputs: List of bools corresponding to which model outputs are
+        included in KV cache
     """
 
     def __init__(
@@ -886,6 +893,7 @@ class MultiModelEngine(Engine):
         batch_size: Optional[int],
         context: Context,
         input_shapes: Optional[List[List[int]]] = None,
+        cached_outputs: Optional[List[bool]] = None,
     ):
         BaseEngine.construct_with_context(
             self, model, batch_size, context, input_shapes
@@ -906,6 +914,7 @@ class MultiModelEngine(Engine):
                     self._num_streams,
                     self._scheduler.value,
                     context.value,
+                    cached_outputs,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
@@ -915,6 +924,7 @@ class MultiModelEngine(Engine):
                 self._num_streams,
                 self._scheduler.value,
                 context.value,
+                cached_outputs,
             )
 
 
