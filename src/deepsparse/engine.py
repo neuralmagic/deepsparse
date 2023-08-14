@@ -334,6 +334,9 @@ class Engine(BaseEngine):
                 cached_outputs,
             )
 
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
+
     def __call__(
         self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> List[numpy.ndarray]:
@@ -843,6 +846,9 @@ class DebugAnalysisEngine(Engine):
         else:
             make_engine(self, self._model_path)
 
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
+
     def analyze(
         self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> List[numpy.ndarray]:
@@ -926,6 +932,9 @@ class MultiModelEngine(Engine):
                 context.value,
                 cached_outputs,
             )
+
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
 
 
 def compile_model(

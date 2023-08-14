@@ -248,6 +248,10 @@ def override_onnx_batch_size(
         model. Else the modified model will be saved to a
         temporary file.
     """
+
+    if batch_size is None:
+        return onnx_filepath
+
     model = onnx.load(onnx_filepath, load_external_data=not inplace)
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
