@@ -72,9 +72,7 @@ from tqdm.auto import tqdm
 import torch
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
-from deepsparse.transformers.utils.helpers import (
-    create_causal_mask
-)
+from deepsparse.transformers.utils.helpers import create_causal_mask
 
 
 from datasets import load_dataset, load_metric  # isort: skip
