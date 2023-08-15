@@ -129,7 +129,9 @@ def test_generate_random_question_data():
     avg_word_len = 10
     config_args = {"gen_sequence_length": 50}
     config = PipelineBenchmarkConfig(**config_args)
-    question, context = generate_random_question_data(config, 1, avg_word_len=avg_word_len)
+    question, context = generate_random_question_data(
+        config, 1, avg_word_len=avg_word_len
+    )
     assert len(question) == config.gen_sequence_length
     assert len(context) == config.gen_sequence_length
     num_q_spaces = question.count(" ")

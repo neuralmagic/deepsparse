@@ -110,7 +110,10 @@ def generate_random_image_data(
             f"Using default image shape {image_shape}"
         )
 
-    input_data = [numpy.random.randint(0, high=255, size=image_shape).astype(numpy.uint8) for _ in range(batch_size)]
+    input_data = [
+        numpy.random.randint(0, high=255, size=image_shape).astype(numpy.uint8)
+        for _ in range(batch_size)
+    ]
     return input_data
 
 

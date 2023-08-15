@@ -36,6 +36,7 @@ __all__ = [
 DEFAULT_STRING_LENGTH = 50
 DEFAULT_IMAGE_SHAPE = (240, 240, 3)
 
+
 class ThreadPinningMode:
     CORE: str = "core"
     NUMA: str = "numa"
