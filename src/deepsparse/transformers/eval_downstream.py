@@ -177,13 +177,6 @@ def perplexity_wikitext_eval(args, batch_size=16, dataset_name=""):
             engine_outputs, **postprocessing_kwargs
         )
         logits = pipeline_outputs.logits
-        if not text_generation.has_cache:
-            logits = [
-                logit[-attn_mask.sum() :, :]
-                for (logit, attn_mask) in zip(logits, attention_mask)
-            ]
-            logits = [pad_to_fixed_length(logit, seq_len) for logit in logits]
-            logits = numpy.stack(logits)
 
         shift_logits = logits[:, :-1, :]
         shift_labels = input_ids[:, 1:]

@@ -122,22 +122,6 @@ class Perplexity:
 
             logits = out.logits
 
-            if not self._pipeline.has_cache:
-                # when running inference without cache, we need to apply
-                # analogous transformations to the logits as we did to the labels
-                # and attention mask
-
-                # remove "nonsensical" logits for <PAD> tokens
-                logits = [
-                    logit[-attn_mask.sum() :, :]
-                    for (logit, attn_mask) in zip(logits, attention_mask)
-                ]
-                # pad logits to max length
-                logits = [
-                    pad_to_fixed_length(logit, max_sequence_len) for logit in logits
-                ]
-                logits = numpy.stack(logits)
-
             # shift logits and labels create the input and target for the loss function
             shift_logits = logits[:, :-1, :]
             shift_labels = labels[:, 1:]
