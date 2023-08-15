@@ -25,11 +25,6 @@ from deepsparse import Pipeline
 from deepsparse.benchmark.config import PipelineBenchmarkConfig
 
 
-_LOGGER = logging.getLogger(__name__)
-
-DEFAULT_STRING_LENGTH = 50
-DEFAULT_IMAGE_SHAPE = (240, 240, 3)
-
 __all__ = [
     "get_input_schema_type",
     "generate_random_image_data",
@@ -39,6 +34,11 @@ __all__ = [
     "generate_random_question_data",
     "load_question_data",
 ]
+
+_LOGGER = logging.getLogger(__name__)
+
+DEFAULT_STRING_LENGTH = 50
+DEFAULT_IMAGE_SHAPE = (240, 240, 3)
 
 
 class SchemaType:
@@ -72,7 +72,7 @@ def get_input_schema_type(pipeline: Pipeline) -> str:
     raise Exception("Unknown schema requirement {}".format(input_schema_requirements))
 
 
-def get_files_with_endings(
+def get_files_with_suffixes(
     folder: str, num_files: int, recursive: bool, file_endings: Tuple[str]
 ) -> List[str]:
     if not path.exists(folder):
@@ -122,7 +122,7 @@ def load_image_data(config: PipelineBenchmarkConfig, batch_size: int) -> List[st
         raise Exception("Data folder must be defined for real inputs")
     path_to_data = config.data_folder
     recursive_search = config.recursive_search
-    return get_files_with_endings(
+    return get_files_with_suffixes(
         path_to_data, batch_size, recursive_search, (".jpg", ".jpeg", ".gif")
     )
 
@@ -148,7 +148,7 @@ def load_text_data(config: PipelineBenchmarkConfig, batch_size: int) -> List[str
         raise Exception("Data folder must be defined for real inputs")
     path_to_data = config.data_folder
     recursive_search = config.recursive_search
-    input_files = get_files_with_endings(
+    input_files = get_files_with_suffixes(
         path_to_data, batch_size, recursive_search, (".txt")
     )
     if config.max_string_length:

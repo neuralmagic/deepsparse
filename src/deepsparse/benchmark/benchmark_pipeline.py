@@ -79,6 +79,8 @@ deepsparse.benchmark_pipeline \
     zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/
     bigpython_bigquery_thepile/pruned50-none \
     -c config.json -t 30 -s async
+
+Refer to README for config.json examples
 """
 
 import json
@@ -125,7 +127,7 @@ ORT_ENGINE = "onnxruntime"
 
 class PipelineExecutorThread(threading.Thread):
     """
-    Run pipeline reoeatedly on inputs for max_time seconds, storing the runtime of each
+    Run pipeline repeatedly on inputs for max_time seconds, storing the runtime of each
     section of the pipeline in its timer manager
 
     For intended usage, see multistream_benchmark
