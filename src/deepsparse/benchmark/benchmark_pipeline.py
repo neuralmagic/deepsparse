@@ -95,9 +95,9 @@ from deepsparse import Pipeline, __version__
 from deepsparse.benchmark.config import PipelineBenchmarkConfig, PipelineInputType
 from deepsparse.benchmark.data_creation import (
     SchemaType,
-    generate_image_data,
-    generate_question_data,
-    generate_text_data,
+    generate_random_image_data,
+    generate_random_question_data,
+    generate_random_text_data,
     get_input_schema_type,
     load_image_data,
     load_question_data,
@@ -202,16 +202,16 @@ def create_input_schema(
 
     if input_type == PipelineInputType.DUMMY:
         if input_schema_requirement == SchemaType.IMAGE:
-            input_data = generate_image_data(config, batch_size)
+            input_data = generate_random_image_data(config, batch_size)
             inputs = pipeline.input_schema(images=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.TEXT_SEQ:
-            input_data = generate_text_data(config, batch_size)
+            input_data = generate_random_text_data(config, batch_size)
             inputs = pipeline.input_schema(sequences=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.TEXT_INPUT:
-            input_data = generate_text_data(config, batch_size)
+            input_data = generate_random_text_data(config, batch_size)
             inputs = pipeline.input_schema(inputs=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.QUESTION:
-            question, context = generate_question_data(config, batch_size)
+            question, context = generate_random_question_data(config, batch_size)
             inputs = pipeline.input_schema(question=question, context=context, **kwargs)
     elif input_type == PipelineInputType.REAL:
         if input_schema_requirement == SchemaType.IMAGE:

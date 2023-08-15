@@ -23,9 +23,9 @@ from deepsparse.benchmark.benchmark_pipeline import calculate_section_stats
 from deepsparse.benchmark.config import PipelineBenchmarkConfig
 from deepsparse.benchmark.data_creation import (
     SchemaType,
-    generate_image_data,
-    generate_question_data,
-    generate_text_data,
+    generate_random_image_data,
+    generate_random_question_data,
+    generate_random_text_data,
     get_input_schema_type,
 )
 from deepsparse.utils import StagedTimer, TimerManager
@@ -100,11 +100,11 @@ def test_pipeline_benchmark(
     assert "total_inference" in res.stdout.lower()
 
 
-def test_generate_image_data():
+def test_generate_random_image_data():
     batch_size = 32
     config_args = {"input_image_shape": (600, 600, 1)}
     config = PipelineBenchmarkConfig(**config_args)
-    image_data = generate_image_data(config, batch_size)
+    image_data = generate_random_image_data(config, batch_size)
     assert len(image_data) == batch_size
     img = image_data[0]
     assert img.shape == (600, 600, 1)
@@ -112,12 +112,12 @@ def test_generate_image_data():
     assert numpy.max(img) < 255 and numpy.min(img) >= 0
 
 
-def test_generate_text_data():
+def test_generate_random_text_data():
     batch_size = 16
     avg_word_len = 8
     config_args = {"gen_sequence_length": 250}
     config = PipelineBenchmarkConfig(**config_args)
-    text_data = generate_text_data(config, batch_size, avg_word_len=avg_word_len)
+    text_data = generate_random_text_data(config, batch_size, avg_word_len=avg_word_len)
     assert len(text_data) == batch_size
     text = text_data[0]
     assert len(text) == 250
@@ -125,11 +125,11 @@ def test_generate_text_data():
     assert num_spaces == int(len(text) / avg_word_len)
 
 
-def test_generate_question_data():
+def test_generate_random_question_data():
     avg_word_len = 10
     config_args = {"gen_sequence_length": 50}
     config = PipelineBenchmarkConfig(**config_args)
-    question, context = generate_question_data(config, 1, avg_word_len=avg_word_len)
+    question, context = generate_random_question_data(config, 1, avg_word_len=avg_word_len)
     assert len(question) == config.gen_sequence_length
     assert len(context) == config.gen_sequence_length
     num_q_spaces = question.count(" ")

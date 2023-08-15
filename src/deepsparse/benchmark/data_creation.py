@@ -32,11 +32,11 @@ DEFAULT_IMAGE_SHAPE = (240, 240, 3)
 
 __all__ = [
     "get_input_schema_type",
-    "generate_image_data",
+    "generate_random_image_data",
     "load_image_data",
-    "generate_text_data",
+    "generate_random_text_data",
     "load_text_data",
-    "generate_question_data",
+    "generate_random_question_data",
     "load_question_data",
 ]
 
@@ -86,7 +86,7 @@ def get_files_with_endings(
     return random.sample(files, num_files)
 
 
-def generate_sentence(string_length: int, avg_word_length: int = 5):
+def generate_random_sentence(string_length: int, avg_word_length: int = 5):
     random_chars = "".join(random.choices(string.ascii_letters, k=string_length))
     space_locations = random.sample(
         range(string_length), int(string_length / avg_word_length)
@@ -97,7 +97,7 @@ def generate_sentence(string_length: int, avg_word_length: int = 5):
     return "".join(random_chars)
 
 
-def generate_image_data(
+def generate_random_image_data(
     config: PipelineBenchmarkConfig, batch_size: int
 ) -> List[numpy.ndarray]:
     input_data = []
@@ -107,15 +107,10 @@ def generate_image_data(
         image_shape = DEFAULT_IMAGE_SHAPE
         _LOGGER.warning(
             f"Could not parse {config.input_image_shape}, "
-            "Using default image shape {image_shape}"
+            f"Using default image shape {image_shape}"
         )
 
-    for _ in range(batch_size):
-        rand_array = numpy.random.randint(0, high=255, size=image_shape).astype(
-            numpy.uint8
-        )
-        input_data.append(rand_array)
-
+    input_data = [numpy.random.randint(0, high=255, size=image_shape).astype(numpy.uint8) for _ in range(batch_size)]
     return input_data
 
 
@@ -129,7 +124,7 @@ def load_image_data(config: PipelineBenchmarkConfig, batch_size: int) -> List[st
     )
 
 
-def generate_text_data(
+def generate_random_text_data(
     config: PipelineBenchmarkConfig, batch_size: int, avg_word_len=5
 ) -> List[str]:
     if config.gen_sequence_length:
@@ -139,7 +134,7 @@ def generate_text_data(
         _LOGGER.warning("Ssing default string length %d" % string_length)
 
     input_data = [
-        generate_sentence(string_length, avg_word_length=avg_word_len)
+        generate_random_sentence(string_length, avg_word_length=avg_word_len)
         for _ in range(batch_size)
     ]
     return input_data
@@ -166,7 +161,7 @@ def load_text_data(config: PipelineBenchmarkConfig, batch_size: int) -> List[str
     return input_data
 
 
-def generate_question_data(
+def generate_random_question_data(
     config: PipelineBenchmarkConfig, batch_size: int, avg_word_len=5
 ) -> Tuple[str, str]:
     if batch_size != 1:
@@ -178,8 +173,8 @@ def generate_question_data(
     else:
         string_length = DEFAULT_STRING_LENGTH
         _LOGGER.warning("Using default string length %d" % string_length)
-    question = generate_sentence(string_length, avg_word_length=avg_word_len)
-    context = generate_sentence(string_length, avg_word_length=avg_word_len)
+    question = generate_random_sentence(string_length, avg_word_length=avg_word_len)
+    context = generate_random_sentence(string_length, avg_word_length=avg_word_len)
     return (question, context)
 
 

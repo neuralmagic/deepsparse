@@ -36,17 +36,29 @@ __all__ = [
 DEFAULT_STRING_LENGTH = 50
 DEFAULT_IMAGE_SHAPE = (240, 240, 3)
 
+class ThreadPinningMode:
+    CORE: str = "core"
+    NUMA: str = "numa"
+    NONE: str = "none"
+
 
 def decide_thread_pinning(pinning_mode: str) -> None:
+    """
+    Enable binding threads to cores ('core' the default), threads to cores on sockets
+    ('numa'), or disable ('none')"
+
+    :param pinning_mode: thread pinning mode to use
+    :return: None
+    """
     pinning_mode = pinning_mode.lower()
-    if pinning_mode in "core":
+    if pinning_mode == ThreadPinningMode.CORE:
         os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
         _LOGGER.info("Thread pinning to cores enabled")
-    elif pinning_mode in "numa":
+    elif pinning_mode == ThreadPinningMode.NUMA:
         os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
         os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "1"
         _LOGGER.info("Thread pinning to socket/numa nodes enabled")
-    elif pinning_mode in "none":
+    elif pinning_mode in ThreadPinningMode.NONE:
         os.environ["NM_BIND_THREADS_TO_CORES"] = "0"
         os.environ["NM_BIND_THREADS_TO_SOCKETS"] = "0"
         _LOGGER.info("Thread pinning disabled, performance may be sub-optimal")
@@ -57,6 +69,12 @@ def decide_thread_pinning(pinning_mode: str) -> None:
 
 
 def parse_scheduler(scenario: str) -> Scheduler:
+    """
+    Returns a threading scheduler based on desired scenario
+
+    :param scenario: scheduling scenario to use
+    :return: scehduler with desred scenario
+    """
     scenario = scenario.lower()
     if scenario == "multistream":
         return Scheduler.multi_stream
@@ -77,7 +95,7 @@ def parse_scenario(scenario: str) -> str:
     elif scenario == "elastic":
         return "elastic"
     else:
-        _LOGGER.info(
+        _LOGGER.warning(
             "Recieved invalid option for scenario'%s', defaulting to async" % scenario
         )
         return "multistream"
@@ -96,7 +114,7 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
             return num_streams
         else:
             default_num_streams = max(1, int(num_cores / 2))
-            _LOGGER.info(
+            _LOGGER.warning(
                 "num_streams default value chosen of %d. "
                 "This requires tuning and may be sub-optimal" % default_num_streams
             )
@@ -111,3 +129,4 @@ def parse_input_config(input_config_file: str) -> Dict[str, any]:
         return PipelineBenchmarkConfig(**config)
     except ValidationError as e:
         _LOGGER.error(e)
+        raise e
