@@ -197,14 +197,9 @@ class NLDecoderEngine:
 
         if self.kv_cache:
             logits, *kv_cache_state = out
-
-            if not self.internal_cache_support:
-                # if internal kv cache support is disabled,
-                # we use the external kv cache, and
-                # thus need to update the kv cache state
-                self.update_kv_cache(
-                    kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
-                )
+            self.update_kv_cache(
+                kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
+            )
         else:
             logits = out[0]
 
@@ -270,10 +265,10 @@ class NLDecoderEngine:
         will always be reinitialized to zeros. This is just to make sure
         that the input shapes of the kv cache arrays to the
         model are correct, the actual values are
-        being tracked inside the engine.
+        being tracked internally inside the engine.
 
         If the internal kv cache support is disabled, we need to
-        fetch the kv cache state in a form of numpy arrays
+        fetch the kv cache state as numpy arrays
         from the current session, or initialize it if required.
 
 
@@ -302,9 +297,17 @@ class NLDecoderEngine:
         """
         Updates the state of the kv cache
 
+        If the internal kv cache support is enabled, we refrain from
+        updating the kv cache state as it is being tracked internally
+        inside the engine. We only update the number of tokens processed.
+
         :param kv_cache_state: The state of the kv cache storage
         :param input_ids_len: The length of input_ids
         """
+        if self.internal_cache_support:
+            self.kv_cache.total_num_processed_tokens += input_ids_len
+            return
+
         cache_onnx_names = [
             name
             for name in self.engine.input_names
