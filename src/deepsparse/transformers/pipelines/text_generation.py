@@ -16,7 +16,7 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
@@ -89,7 +89,7 @@ class TextGenerationOutput(BaseModel):
     sequences: Union[str, List[str]] = Field(
         description="The generated text sequences.",
     )
-    logits: Optional[numpy.ndarray] = Field(
+    logits: Optional[Any] = Field(  # numpy array, set to Any for FastAPI compatibility
         default=None,
         description="The logits for the generated text sequence."
         "The logits have dimensions "
