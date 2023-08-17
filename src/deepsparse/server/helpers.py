@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from typing import Dict, List, Optional
+from pydantic import BaseModel
+import numpy
 
 from deepsparse import (
     BaseLogger,
@@ -24,7 +26,7 @@ from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingGroup
 from deepsparse.server.config import EndpointConfig, ServerConfig
 
 
-__all__ = ["server_logger_from_config"]
+__all__ = ["server_logger_from_config", "prep_outputs_for_serialization"]
 
 
 def server_logger_from_config(config: ServerConfig) -> BaseLogger:
@@ -56,6 +58,20 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
         loggers_config=config.loggers,
         data_logging_config=_extract_data_logging_from_endpoints(config.endpoints),
     )
+
+
+def prep_outputs_for_serialization(pipeline_outputs: BaseModel):
+    """
+    Prepares a pipeline output for JSON serialization by converting any numpy array
+    field to a list. In-place operation.
+
+    :param pipeline_outputs: output data to clean
+    """
+    for field_name in pipeline_outputs.__fields__.keys():
+        field_value = getattr(pipeline_outputs, field_name)
+        if isinstance(field_value, numpy.ndarray):
+            # numpy arrays aren't JSON serializable
+            setattr(pipeline_outputs, field_name, field_value.tolist())
 
 
 def _extract_system_logging_from_endpoints(
