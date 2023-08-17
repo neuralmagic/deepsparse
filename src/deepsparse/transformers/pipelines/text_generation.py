@@ -214,6 +214,20 @@ class TextGenerationPipeline(TransformersPipeline):
         engine, multitoken_engine = None, None
 
         if self.cache_support_enabled:
+            if (
+                self.engine_type == DEEPSPARSE_ENGINE
+                and self.sequence_length <= self.prompt_processing_sequence_length
+                and self.enable_multitoken_prefill
+            ):
+                raise ValueError(
+                    "Attempting to initialize auxiliary DeepSparse engine to "
+                    "process a prompt with a larger processing length. "
+                    "However, it is assumed that `prompt_processing_sequence_length` "
+                    "is smaller than the `sequence_length`. "
+                    "Please adjust the `prompt_processing_sequence_length` "
+                    "argument accordingly."
+                )
+
             # emit the appropriate user message depending whether we are
             # instantiation the multitoken engine or not
             if not self.enable_multitoken_prefill:
@@ -248,7 +262,6 @@ class TextGenerationPipeline(TransformersPipeline):
             )
 
         if self.cache_support_enabled:
-
             engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
