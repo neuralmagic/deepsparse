@@ -122,7 +122,7 @@ class Perplexity:
 
             logits = out.logits
 
-            if not self._pipeline.has_cache:
+            if not self._pipeline.cache_support_enabled:
                 # when running inference without cache, we need to apply
                 # analogous transformations to the logits as we did to the labels
                 # and attention mask
