@@ -35,8 +35,8 @@ from deepsparse.server.config import (
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
 from deepsparse.server.helpers import (
-    server_logger_from_config,
     prep_outputs_for_serialization,
+    server_logger_from_config,
 )
 from deepsparse.server.system_logging import (
     SystemLoggingMiddleware,

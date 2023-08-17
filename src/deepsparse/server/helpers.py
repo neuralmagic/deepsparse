@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from typing import Dict, List, Optional
-from pydantic import BaseModel
+
 import numpy
+from pydantic import BaseModel
 
 from deepsparse import (
     BaseLogger,
