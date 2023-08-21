@@ -64,7 +64,8 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
 def prep_outputs_for_serialization(pipeline_outputs: BaseModel):
     """
     Prepares a pipeline output for JSON serialization by converting any numpy array
-    field to a list. In-place operation.
+    field to a list. In-place operation. For large numpy arrays, this operation 
+    will take a while to run.
 
     :param pipeline_outputs: output data to clean
     """
