@@ -87,7 +87,7 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
-        prompt_processing_sequence_length=args.max_sequence_length,
+        prompt_sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
     )
     perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)

@@ -26,12 +26,12 @@ SEQUENCE_LENGTH_AXIS = 2
 
 
 class DecoderKVCache:
-    def __init__(self, use_deepsparse_cache: bool = False):
+    def __init__(self, internal_kv_cache: bool = False):
         """
         The goal this object is to handle the manipulation
         of the key value cache.
 
-        :param use_deepsparse_cache: If set to True, the `kv_cache` object
+        :param internal_kv_cache: If set to True, the `kv_cache` object
             from the deepsparse.LIB will be loaded as an attribute.
             This object is used to handle the manipulation of the
             key/value buffers on the DeepSparse engine side.
@@ -41,7 +41,7 @@ class DecoderKVCache:
         # assuming that kv cache arrays are of shape
         # [batch_size, num_heads, sequence_length, hidden_size]
         self._sequence_len_axis = SEQUENCE_LENGTH_AXIS
-        self._use_deepsparse_cache = use_deepsparse_cache
+        self._internal_kv_cache = internal_kv_cache
         self._session_id = None
         self._freeze_first_position = None
         self._state = None
@@ -79,7 +79,7 @@ class DecoderKVCache:
         self._freeze_first_position = freeze_first_position
         self.total_num_processed_tokens = num_processed_tokens
 
-        if self._use_deepsparse_cache:
+        if self._internal_kv_cache:
             prev_num_tokens = self.total_num_processed_tokens
             num_frozen_tokens = int(self._freeze_first_position)
             self._kv_cache = LIB.kv_cache(prev_num_tokens, num_frozen_tokens)
