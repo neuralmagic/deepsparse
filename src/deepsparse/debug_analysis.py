@@ -142,12 +142,6 @@ def parse_args():
         default="",
     )
     parser.add_argument(
-        "--disable-batch-override",
-        help="Ignores the batch_size parameter",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
         "--use-kvcache", help="Enable KVCache", action="store_true", default=False
     )
     parser.add_argument(
