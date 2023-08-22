@@ -61,19 +61,24 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     )
 
 
-def prep_outputs_for_serialization(pipeline_outputs: BaseModel):
+def prep_outputs_for_serialization(pipeline_outputs: any):
     """
     Prepares a pipeline output for JSON serialization by converting any numpy array
-    field to a list. In-place operation. For large numpy arrays, this operation
-    will take a while to run.
+    field to a list. For large numpy arrays, this operation will take a while to run.
 
     :param pipeline_outputs: output data to clean
+    :return: cleaned pipeline_outputs
     """
-    for field_name in pipeline_outputs.__fields__.keys():
-        field_value = getattr(pipeline_outputs, field_name)
-        if isinstance(field_value, numpy.ndarray):
-            # numpy arrays aren't JSON serializable
-            setattr(pipeline_outputs, field_name, field_value.tolist())
+    if isinstance(pipeline_outputs, BaseModel):
+        for field_name in pipeline_outputs.__fields__.keys():
+            field_value = getattr(pipeline_outputs, field_name)
+            if isinstance(field_value, numpy.ndarray):
+                # numpy arrays aren't JSON serializable
+                setattr(pipeline_outputs, field_name, field_value.tolist())
+    elif isinstance(pipeline_outputs, numpy.ndarray):
+        pipeline_outputs = pipeline_outputs.tolist()
+
+    return pipeline_outputs
 
 
 def _extract_system_logging_from_endpoints(

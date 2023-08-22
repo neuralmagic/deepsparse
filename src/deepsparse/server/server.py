@@ -264,7 +264,7 @@ def _add_pipeline_endpoint(
                 server_logger=server_logger,
                 system_logging_config=system_logging_config,
             )
-        prep_outputs_for_serialization(pipeline_outputs)
+        pipeline_outputs = prep_outputs_for_serialization(pipeline_outputs)
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):
