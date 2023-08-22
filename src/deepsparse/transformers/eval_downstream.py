@@ -85,8 +85,8 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         ]
         accumulate_likelihood = True
     else:
-        accumulate_likelihood = False
         dataset = load_dataset(dataset_name, split="test")
+        accumulate_likelihood = False
 
     # We'll use the text generation pipeline to generate a single token.
     # Along with the token, it returns the logits for input sequence

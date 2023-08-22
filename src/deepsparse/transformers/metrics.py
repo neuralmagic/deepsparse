@@ -43,7 +43,7 @@ class Perplexity:
         """
         self._predictions = None
         self._targets = None
-        self._loss_fct = torch.nn.CrossEntropyLoss(reduction="none")
+        self._loss_fct = torch.nn.CrossEntropyLoss()
         self._accumulate_likelihood = accumulate_likelihood
 
     def add_batch(self, predictions: numpy.ndarray, targets: numpy.ndarray):
@@ -79,7 +79,7 @@ class Perplexity:
                 self._loss_fct(
                     torch.tensor(prediction.transpose(0, 2, 1)),
                     torch.tensor(target),
-                ).mean().item()
+                ).item()
             )
 
         if self._accumulate_likelihood:
