@@ -83,7 +83,9 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
             dataset[i*args.max_sequence_length:(i+1)*args.max_sequence_length]
             for i in range(len(dataset) // args.max_sequence_length)
         ]
+        accumulate_likelihood = True
     else:
+        accumulate_likelihood = False
         dataset = load_dataset(dataset_name, split="test")
 
     # We'll use the text generation pipeline to generate a single token.
@@ -99,7 +101,7 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
     )
 
     # Instantiate perplexity metric
-    perplexity_metrics = Perplexity()
+    perplexity_metrics = Perplexity(accumulate_likelihood=accumulate_likelihood)
 
     # Loop through samples
     for idx, sample in _enumerate_progress(dataset, args.max_samples):
