@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy
 from pydantic import BaseModel
@@ -61,7 +61,7 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
     )
 
 
-def prep_outputs_for_serialization(pipeline_outputs: any):
+def prep_outputs_for_serialization(pipeline_outputs: Any):
     """
     Prepares a pipeline output for JSON serialization by converting any numpy array
     field to a list. For large numpy arrays, this operation will take a while to run.
