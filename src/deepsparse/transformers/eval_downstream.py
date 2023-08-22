@@ -75,12 +75,15 @@ from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 from datasets import load_dataset, load_metric  # isort: skip
 
 
-def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
-    if args.max_samples:
-        batch_size = min(batch_size, args.max_samples)
+def perplexity_eval(args, dataset_name="openai_humaneval"):
+    if dataset_name == "wikitext":
+        dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+        dataset = dataset["text"]
+    else:
+        dataset = load_dataset(dataset_name, split="test")
 
-    dataset = load_dataset(dataset_name)["test"]
-
+    # We'll use the text generation pipeline to generate a single token.
+    # Along with the token, it returns the logits for input sequence
     text_generation = Pipeline.create(
         task="text-generation",
         model_path=args.model_path,
@@ -90,22 +93,37 @@ def perplexity_eval(args, batch_size=16, dataset_name="openai_humaneval"):
         prompt_processing_sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
     )
-    perplexity_metrics = Perplexity(pipeline=text_generation, batch_size=batch_size)
-    active_engines = [
-        engine
-        for engine in [text_generation.engine, text_generation.multitoken_engine]
-        if engine
-    ]
-    print("Engine info: ")
-    [print(f"{engine}\n") for engine in active_engines]
-    predictions = []
+
+    # Instantiate perplexity metric
+    perplexity_metrics = Perplexity()
+
+    # Loop through samples
     for idx, sample in _enumerate_progress(dataset, args.max_samples):
-        predictions.append(sample["prompt"] + sample["canonical_solution"])
-        if len(predictions) == batch_size:
-            perplexity_metrics.add_batch(predictions)
-            predictions = []
+        # Collect input sequence
+        if dataset_name == "openai_humaneval":
+            sample = sample["prompt"] + sample["canonical_solution"]
+
+        # Perform single token generation
+        prediction = text_generation(
+            sequences=sample,
+            return_logits=True,
+            return_input_tokens=True,
+            fixed_sequences_length=True,
+        )
+
+        # Need to remove tokens that were masked
+        input_ids = prediction.input_tokens["input_ids"]
+        attention_mask = prediction.input_tokens["attention_mask"].flatten()
+
+        logits = numpy.compress(attention_mask, prediction.logits, axis=1)[:, :-1, :]
+        input_ids = numpy.compress(attention_mask, input_ids, axis=1)[:, 1:]
+
+        # Add predictions (logits) and targets (input_ids) to metric
+        perplexity_metrics.add_batch(logits, input_ids)
+
         if args.max_samples and idx >= args.max_samples:
             break
+
     return perplexity_metrics
 
 
@@ -474,7 +492,8 @@ SUPPORTED_DATASETS = {
     "imdb": imdb_eval,
     "conll2003": conll2003_eval,
     "go_emotions": go_emotions_eval,
-    "openai_humaneval": perplexity_eval,
+    "openai_humaneval": lambda args: perplexity_eval(args, dataset_name="openai_humaneval"),
+    "wikitext": lambda args: perplexity_eval(args, dataset_name="wikitext"),
 }
 
 
