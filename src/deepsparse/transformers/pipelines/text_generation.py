@@ -60,6 +60,11 @@ class TextGenerationInput(BaseModel):
         "the logits for the input text sequence and the "
         "generated text sequence. ",
     )
+    return_input_tokens: bool = Field(
+        default=False,
+        description="A flag that indicates whether to return "
+        "the input_tokens. ",
+    )
     session_id: Optional[str] = Field(
         default=None,
         description="A user may set a string identifier "
@@ -94,6 +99,13 @@ class TextGenerationOutput(BaseModel):
         description="The logits for the generated text sequence."
         "The logits have dimensions "
         "[batch_size, sequence_length, vocab_size]",
+    )
+    input_tokens: Optional[Any] = Field(  # dictionary mapping "token_ids" and "attention_mask" to numpy arrays
+        default=None,
+        description="The output of the tokenizer."
+        "Dictionary containing token_ids and attention_mask, "
+        "both mapping to arrays of size "
+        "[batch_size, sequence_length]",
     )
     session_id: Optional[str] = Field(
         default=None, description="A string identifier for the kv cache session."
@@ -353,7 +365,10 @@ class TextGenerationPipeline(TransformersPipeline):
             self.multitoken_engine.session_id = inputs.session_id
 
         postprocessing_kwargs = dict(
-            return_logits=inputs.return_logits, streamer=inputs.streamer
+            return_logits=inputs.return_logits,
+            return_input_tokens=inputs.return_input_tokens,
+            input_tokens=input_tokens,
+            streamer=inputs.streamer,
         )
         return engine_input, postprocessing_kwargs
 
@@ -371,8 +386,9 @@ class TextGenerationPipeline(TransformersPipeline):
             generated_tokens, skip_special_tokens=True
         )
         logits = generated_logits if kwargs.get("return_logits") else None
+        input_tokens = kwargs.get("input_tokens") if kwargs.get("return_input_tokens") else None
 
-        return TextGenerationOutput(sequences=sequences, logits=logits)
+        return TextGenerationOutput(sequences=sequences, logits=logits, input_tokens=input_tokens)
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
