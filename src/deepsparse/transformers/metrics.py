@@ -31,7 +31,7 @@ __all__ = [
 
 
 class Perplexity:
-    def __init__(self):
+    def __init__(self, accumulate_likelihood: bool = False):
         """
         Given the pipeline, compute the perplexity of the model
         on the given text input.
@@ -44,6 +44,7 @@ class Perplexity:
         self._predictions = None
         self._targets = None
         self._loss_fct = torch.nn.CrossEntropyLoss(reduction="none")
+        self._accumulate_likelihood = accumulate_likelihood
 
     def add_batch(self, predictions: numpy.ndarray, targets: numpy.ndarray):
         """
@@ -72,20 +73,24 @@ class Perplexity:
             and the list of perplexities
         """
         # compile results into required str -> float dict
-        results = {"perplexities": []}
+        neg_log_likelihoods = []
         for prediction, target in zip(self._predictions, self._targets):
-            sample_perplexity = torch.exp(
+            neg_log_likelihoods.append(
                 self._loss_fct(
                     torch.tensor(prediction.transpose(0, 2, 1)),
                     torch.tensor(target),
-                ).mean()
+                ).mean().item()
             )
 
-            results["perplexities"].append(sample_perplexity.item())
-
-        results["mean_perplexity"] = numpy.mean(results["perplexities"])
-
-        return results
+        if self._accumulate_likelihood:
+            neg_log_likelihood = numpy.mean(neg_log_likelihoods)
+            return {"perplexity": numpy.exp(neg_log_likelihood)}
+        else:
+            perplexities = [numpy.exp(nll) for nll in neg_log_likelihoods]
+            return {
+                "perplexities": perplexities,
+                "mean_perplexity": numpy.mean(perplexities),
+            }
 
 
 class PrecisionRecallF1:
