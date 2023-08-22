@@ -224,7 +224,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     "process a prompt with a larger processing length. "
                     "However, it is assumed that `prompt_processing_sequence_length` "
                     "is smaller than the `sequence_length`. "
-                    "Please adjust the `prompt_processing_sequence_length` "
+                    "Adjust the `prompt_processing_sequence_length` "
                     "argument accordingly."
                 )
 
