@@ -142,17 +142,17 @@ class NLDecoderEngine:
         return self.kv_cache.num_non_blank_entries
 
     @property
-    def internal_cache_support(self) -> bool:
+    def internal_cache_active(self) -> bool:
         """
-        :return: Whether the engine has internal kv cache support
+        :return: Whether the internal kv cache is active
         """
-        return self.kv_cache_enabled and self.kv_cache._kv_cache is not None
+        return self.kv_cache_enabled and self.kv_cache.engine_internal_cache is not None
 
     def run(self, inputs: List[numpy.ndarray], val_inp: bool) -> List[numpy.ndarray]:
         """
         Run the engine with the given inputs.
 
-        If the self.internal_cache_support=True, the internal
+        If the self.internal_cache_active=True, the internal
         deepsparse kv cache management is enabled. In this case
         the LIB.kv_cache class object will be passed to the engine
         call as well.
@@ -163,13 +163,13 @@ class NLDecoderEngine:
         :return: The output of the engine
         """
 
-        if self.internal_cache_support:
+        if self.internal_cache_active:
             # validate the inputs if needed
             if val_inp:
                 self.engine._validate_inputs(inputs)
             # run the engine with the LIB.kv_cache object
             return self.engine._eng_net.execute_list_out(
-                inputs, self.kv_cache._kv_cache
+                inputs, self.kv_cache.engine_internal_cache
             )
         # run the engine without the LIB.kv_cache object
         return self.engine.run(inputs, val_inp)
@@ -261,13 +261,13 @@ class NLDecoderEngine:
         """
         Takes the input and adds the past kv cache state to it.
 
-        If the internal kv cache support is enabled, the kv cache state
+        If the internal kv cache is enabled, the kv cache state
         will always be reinitialized to zeros. This is just to make sure
         that the input shapes of the kv cache arrays to the
         model are correct, the actual values are
         being tracked internally inside the engine.
 
-        If the internal kv cache support is disabled, we need to
+        If the internal kv cache is disabled, we need to
         fetch the kv cache state as numpy arrays
         from the current session, or initialize it if required.
 
@@ -275,7 +275,7 @@ class NLDecoderEngine:
         :param inp: The input to the model
         :return The input with the kv cache state added to it
         """
-        if self.internal_cache_support:
+        if self.internal_cache_active:
             kv_cache_state = self._initialize_kv_cache_state(self.cache_length)
         else:
             kv_cache_state = self.kv_cache.cached_inputs
@@ -297,14 +297,14 @@ class NLDecoderEngine:
         """
         Updates the state of the kv cache
 
-        If the internal kv cache support is enabled, we refrain from
+        If the internal kv cache is enabled, we refrain from
         updating the kv cache state as it is being tracked internally
         inside the engine. We only update the number of tokens processed.
 
         :param kv_cache_state: The state of the kv cache storage
         :param input_ids_len: The length of input_ids
         """
-        if self.internal_cache_support:
+        if self.internal_cache_active:
             self.kv_cache.total_num_processed_tokens += input_ids_len
             return
 
