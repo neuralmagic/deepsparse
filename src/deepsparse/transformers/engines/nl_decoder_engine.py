@@ -262,7 +262,7 @@ class NLDecoderEngine:
         Takes the input and adds the past kv cache state to it.
 
         If the internal kv cache is enabled, the kv cache state
-        will always be reinitialized to zeros. This is just to make sure
+        will always be an empty array. This is just to make sure
         that the input shapes of the kv cache arrays to the
         model are correct, the actual values are
         being tracked internally inside the engine.
@@ -336,7 +336,7 @@ class NLDecoderEngine:
         ]
 
         empty_kv_cache_tensor = numpy.zeros(
-            (batch_size, num_attention_heads, length, hidden_dims),
+            (0, num_attention_heads, length, hidden_dims),  # effective array size 0
             dtype=self.kv_cache_data_type,
         )
 
