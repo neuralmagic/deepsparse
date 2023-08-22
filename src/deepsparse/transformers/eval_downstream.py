@@ -78,7 +78,11 @@ from datasets import load_dataset, load_metric  # isort: skip
 def perplexity_eval(args, dataset_name="openai_humaneval"):
     if dataset_name == "wikitext":
         dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
-        dataset = dataset["text"]
+        dataset = "\n\n".join(dataset["text"])
+        dataset = [
+            dataset[i*args.max_sequence_length:(i+1)*args.max_sequence_length]
+            for i in range(len(dataset) // args.max_sequence_length)
+        ]
     else:
         dataset = load_dataset(dataset_name, split="test")
 
