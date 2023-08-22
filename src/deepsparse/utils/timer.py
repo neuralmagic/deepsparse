@@ -338,6 +338,10 @@ class TimerManager:
 
         return all_times
 
+    def clear(self):
+        for t in self._timers:
+            t.clear()
+
     @contextmanager
     def new_timer_context(self, total_inference: bool = True) -> StagedTimer:
         """
