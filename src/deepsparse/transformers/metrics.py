@@ -31,65 +31,95 @@ __all__ = [
 
 
 class Perplexity:
-    def __init__(self, accumulate_likelihood: bool = False):
+    def __init__(self, accumulate: bool = False):
         """
-        Given the pipeline, compute the perplexity of the model
-        on the given text input.
-
-        Code adapted from:
-        https://huggingface.co/spaces/evaluate-metric/perplexity/blob/main/perplexity.py # noqa: E501
-
-         non-overlapping batches
+        Class for computing perplexity.
         """
         self._predictions = None
         self._targets = None
-        self._loss_fct = torch.nn.CrossEntropyLoss()
-        self._accumulate_likelihood = accumulate_likelihood
+        self._accumulate = accumulate
+        if accumulate:
+            self._neg_log_likelihood = 0.
+            self._number_tokens = 0
+        else:
+            self._perplexities = None
 
     def add_batch(self, predictions: numpy.ndarray, targets: numpy.ndarray):
         """
-        adds a batch of prediction results to track, should be of shape
-        (batch_size, num_labels)
+        Computes perplexity or negative log-likelihood for each batch
+        (depending on accumulate argument)
+        and track results.
 
-        :param predictions: predicted scores from pipeline
-        :param targets: target values - label column should be 1 if a label is positive
-            0 otherwise
+        Tracks perplexity or negative log-likelihood since storing
+        predictions may require a lot of memory.
+
+        :param predictions: predicted scores.
+            Accepted shapes:
+              - [batch_size, sequence_length, vocab_size]
+              - [sequence_length, vocab_size] (batch size = 1)
+            Note: sequence length has to be uniform within a batch, but not all
+              batches require the same sequence length
+        :param targets: target values - index of correct vocabulary entry
         """
-        if predictions.ndim == 1:
-            predictions = predictions.reshape(1, predictions.shape[0])
-        if targets.ndim == 1:
-            targets = targets.reshape(1, targets.shape[0])
 
-        if self._predictions is None:
-            self._predictions = [predictions]
-            self._targets = [targets]
+        if self._accumulate:
+            # If accumulate is True, every token from the batch contributes equally to the
+            # negative log-likelihood.
+            # Thus, merge batch and sequence length dimensions and compute negative
+            # log-likelihood for all tokens, and accumulate to total
+            predictions = numpy.reshape(predictions, (-1, predictions.shape[-1]))
+            targets = targets.flatten()
+
+            # Compute negative log-likelihood and accumulate
+            self._neg_log_likelihood += torch.nn.functional.cross_entropy(
+                torch.tensor(predictions),
+                torch.tensor(targets),
+                reduction="sum",
+            ).item()
+
+            # Track number of tokens processed
+            self._number_tokens += predictions.shape[0]
         else:
-            self._predictions.append(predictions)
-            self._targets.append(targets)
+            # If accumulate is False, compute perplexity for each sample individually.
+            # We assume that sequence length is uniform within a batch, but may vary from batch
+            # to batch.
+
+            # Create batch dimension if it doesn't exist
+            if targets.ndim == 1:
+                predictions = numpy.expand_dims(predictions, axis=0)
+                targets = numpy.expand_dims(targets, axis=0)
+
+            # Compute negative log-likelihoods for batch
+            neg_log_likelihoods = torch.nn.functional.cross_entropy(
+                torch.tensor(predictions.transpose(0, 2, 1)),
+                torch.tensor(targets),
+                reduction="none",
+            ).numpy().mean(-1)
+
+            # Compute perplexities for batch
+            perplexities = numpy.exp(neg_log_likelihoods)
+
+            # Store perplexities
+            if self._perplexities is None:
+                self._perplexities = perplexities
+            else:
+                self._perplexities = numpy.concatenate((self._perplexities, perplexities))
 
     def compute(self) -> Dict[str, Any]:
         """
-        :return: A dictionary containing the mean perplexity
-            and the list of perplexities
+        :return: A dictionary containing the final results.
+        If accumulate is True, return single perplexity.
+        Else, return a list of perplexities (one for each sample)
+        and mean perplexity.
         """
-        # compile results into required str -> float dict
-        neg_log_likelihoods = []
-        for prediction, target in zip(self._predictions, self._targets):
-            neg_log_likelihoods.append(
-                self._loss_fct(
-                    torch.tensor(prediction.transpose(0, 2, 1)),
-                    torch.tensor(target),
-                ).item()
-            )
 
-        if self._accumulate_likelihood:
-            neg_log_likelihood = numpy.mean(neg_log_likelihoods)
-            return {"perplexity": numpy.exp(neg_log_likelihood)}
+        if self._accumulate:
+            perplexity = numpy.exp(self._neg_log_likelihood / self._number_tokens)
+            return {"perplexity": perplexity}
         else:
-            perplexities = [numpy.exp(nll) for nll in neg_log_likelihoods]
             return {
-                "perplexities": perplexities,
-                "mean_perplexity": numpy.mean(perplexities),
+                "perplexities": self._perplexities,
+                "mean_perplexity": numpy.mean(self._perplexities),
             }
 
 
