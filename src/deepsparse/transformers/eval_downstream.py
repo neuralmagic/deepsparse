@@ -81,36 +81,9 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
 
         # Dataset is split into sections that contain "max_sequence_length" tokens.
         # To split the dataset, first tokenize text
-        tokenizer = AutoTokenizer.from_pretrained(args.model_path)
         raw_text = "\n\n".join(raw_dataset["text"])
-        input_tokens = tokenizer(
-            raw_text,
-            return_tensors="np",
-        )["input_ids"][0]
-
-        # Then split the tokenized text into sections of size "max_sequence_length" and
-        # decode each section back into text format
-        dataset = []
-        for i in range(len(input_tokens) // args.max_sequence_length):
-            start = i * args.max_sequence_length
-            end = (i+1) * args.max_sequence_length
-            dataset.append(
-                tokenizer.decode(
-                    input_tokens[start:end],
-                    clean_up_tokenization_spaces=False,
-                )
-            )
-
-        # Handle any leftover tokens
-        if (i+1) * args.max_sequence_length < len(input_tokens):
-            start = (i+1) * args.max_sequence_length
-            end = len(input_tokens)
-            dataset.append(
-                tokenizer.decode(
-                    input_tokens[start:end],
-                    clean_up_tokenization_spaces=False,
-                )
-            )
+        tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+        dataset = _split_text_by_tokens(raw_text, tokenizer, args.max_sequence_length)
 
         # Set perplexity computation to accumulate negative log-likelihood across
         # sections
@@ -538,6 +511,38 @@ def _split_train_val(train_dataset, val_ratio, seed=42):
     val_ds = ds.pop("test")
     return train_ds, val_ds
 
+
+def _split_text_by_tokens(text, tokenizer, sequence_length):
+    input_tokens = tokenizer(
+        text,
+        return_tensors="np",
+    )["input_ids"][0]
+
+    # Then split the tokenized text into sections of size "max_sequence_length" and
+    # decode each section back into text format
+    split_text = []
+    for i in range(len(input_tokens) // sequence_length):
+        start = i * sequence_length
+        end = (i + 1) * sequence_length
+        split_text.append(
+            tokenizer.decode(
+                input_tokens[start:end],
+                clean_up_tokenization_spaces=False,
+            )
+        )
+
+    # Handle any leftover tokens
+    if (i + 1) * sequence_length < len(input_tokens):
+        start = (i + 1) * sequence_length
+        end = len(input_tokens)
+        split_text.append(
+            tokenizer.decode(
+                input_tokens[start:end],
+                clean_up_tokenization_spaces=False,
+            )
+        )
+
+    return split_text
 
 # Register all the supported downstream datasets here
 SUPPORTED_DATASETS = {
