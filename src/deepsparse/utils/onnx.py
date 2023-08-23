@@ -51,7 +51,7 @@ __all__ = [
     "truncate_onnx_embedding_model",
     "default_cached_outputs",
     "has_model_kv_cache",
-    "overwrite_sequence_length",
+    "overwrite_cache_model_inputs",
     "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
 ]
@@ -508,14 +508,17 @@ def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
     return bool(any(default_cached_outputs(model)))
 
 
-def overwrite_sequence_length(
-    model_path: str, sequence_length: Optional[int] = None
+def overwrite_cache_model_inputs(
+    model_path: str,
+    input_ids_length: int,
+    sequence_length: int,
 ) -> Tuple[str, int]:
     """
     Takes a path to an onnx model and enforces that it has
     static input dimensions.
 
     :param model_path: Path to a model.
+    :param input_ids_length: The input_ids length to overwrite the model with.
     :param sequence_length: The sequence length to overwrite the model with.
     :return: Path to the model with static input dimensions.
     """
@@ -523,17 +526,15 @@ def overwrite_sequence_length(
         overwrite_onnx_model_inputs_for_kv_cache_models,
     )
 
-    if sequence_length is not None:
-        onnx_file_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
-            onnx_file_path=model_path, sequence_length=sequence_length
-        )
-    else:
-        onnx_file_path = model_path
+    assert input_ids_length < sequence_length, (
+        f"input_ids_length {input_ids_length} "
+        f"must be less than sequence_length {sequence_length}"
+    )
 
-    attention_input_info = [
-        input
-        for input in onnx.load(onnx_file_path, load_external_data=False).graph.input
-        if "attention" in input.name
-    ][0]
-    sequence_length = attention_input_info.type.tensor_type.shape.dim[1].dim_value
-    return onnx_file_path, sequence_length
+    onnx_file_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+        onnx_file_path=model_path,
+        sequence_length=sequence_length,
+        input_ids_length=input_ids_length,
+    )
+
+    return onnx_file_path

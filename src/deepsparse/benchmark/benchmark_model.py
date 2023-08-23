@@ -82,11 +82,12 @@ deepsparse.benchmark \
    --input_shapes "[1,512],[1,512],[1,512]"
 
 ##########
-Example on a OPT (Large Language Model) from SparseZoo with sequence length 256:
+Example on a CodeGen (model with KV cache support)
+from SparseZoo with input_ids_length 10 and sequence length 256:
 deepsparse.benchmark \
-   zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/
-   opt_pretrain/pruned50_quantW8A8-none \
-   --sequence_length 256
+   zoo:nlg/text_generation/codegen_mono-350m/pytorch/
+   huggingface/bigpython_bigquery_thepile/pruned50-none
+   --input_ids_length 10 --sequence_length 256
 
 ##########
 Example on local ONNX model:
@@ -120,7 +121,7 @@ from deepsparse.utils import (
     has_model_kv_cache,
     model_to_path,
     override_onnx_input_shapes,
-    overwrite_sequence_length,
+    overwrite_cache_model_inputs,
     parse_input_shapes,
 )
 
@@ -157,9 +158,20 @@ def parse_args():
         "-seq_len",
         "--sequence_length",
         type=int,
-        default=None,
+        default=128,
         help="The sequence length to run the "
-        "Large Language Models (LLMs) benchmarks for. Must be greater than 0",
+        "KV cache supported model benchmarks for. "
+        "Must be greater than 0, default is 128",
+    )
+
+    parser.add_argument(
+        "-input_ids_len",
+        "--input_ids_length",
+        type=int,
+        default=1,
+        help="The input ids length to run the "
+        "KV cache supported model benchmarks for. "
+        "Must be greater than 0, default is 1",
     )
     parser.add_argument(
         "-i",
@@ -284,6 +296,7 @@ def benchmark_model(
     model_path: str,
     batch_size: int = 1,
     sequence_length: Optional[int] = None,
+    input_ids_length: Optional[int] = None,
     input_shapes: str = "",
     num_cores: int = None,
     scenario: str = "sync",
@@ -317,13 +330,18 @@ def benchmark_model(
                 "for batch size different than one."
                 "Please set batch size to 1 and try again"
             )
-        model_path, sequence_length = overwrite_sequence_length(
-            model_path=model_path, sequence_length=sequence_length
-        )
+
         _LOGGER.info(
-            "Found model that contains KV cache support. "
+            "Found model with KV cache support. "
             "Benchmarking the autoregressive model with "
+            f"input_ids_length: {input_ids_length} and "
             f"sequence length: {sequence_length}."
+        )
+
+        model_path = overwrite_cache_model_inputs(
+            model_path=model_path,
+            input_ids_length=input_ids_length,
+            sequence_length=sequence_length,
         )
 
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
@@ -388,6 +406,7 @@ def benchmark_model(
         "model_path": model_path,
         "batch_size": batch_size,
         "sequence_length": sequence_length,
+        "input_ids_length": input_ids_length,
         "input_shapes": input_shapes,
         "num_cores": num_cores,
         "scenario": scenario,
@@ -414,6 +433,7 @@ def main():
     result = benchmark_model(
         model_path=args.model_path,
         sequence_length=args.sequence_length,
+        input_ids_length=args.input_ids_length,
         batch_size=args.batch_size,
         input_shapes=args.input_shapes,
         num_cores=args.num_cores,
@@ -432,6 +452,8 @@ def main():
     print("Batch Size: {}".format(args.batch_size))
     if args.sequence_length is not None:
         print("Sequence Length: {}".format(args.sequence_length))
+    if args.input_ids_length is not None:
+        print("Input IDs Length: {}".format(args.input_ids_length))
     print("Scenario: {}".format(args.scenario))
     print(
         "Throughput (items/sec): {:.4f}".format(
