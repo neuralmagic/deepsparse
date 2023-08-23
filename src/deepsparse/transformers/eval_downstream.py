@@ -71,22 +71,53 @@ from tqdm.auto import tqdm
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 
-
+from transformers import AutoTokenizer
 from datasets import load_dataset, load_metric  # isort: skip
 
 
 def perplexity_eval(args, dataset_name="openai_humaneval"):
     if dataset_name == "wikitext":
-        dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
-        dataset = "\n\n".join(dataset["text"])
-        dataset = [
-            dataset[i*args.max_sequence_length:(i+1)*args.max_sequence_length]
-            for i in range(len(dataset) // args.max_sequence_length)
-        ]
-        accumulate_likelihood = True
+        raw_dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+
+        # Dataset is split into sections that contain "max_sequence_length" tokens.
+        # To split the dataset, first tokenize text
+        tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+        raw_text = "\n\n".join(raw_dataset["text"])
+        input_tokens = tokenizer(
+            raw_text,
+            return_tensors="np",
+        )["input_ids"][0]
+
+        # Then split the tokenized text into sections of size "max_sequence_length" and
+        # decode each section back into text format
+        dataset = []
+        for i in range(len(input_tokens) // args.max_sequence_length):
+            start = i * args.max_sequence_length
+            end = (i+1) * args.max_sequence_length
+            dataset.append(
+                tokenizer.decode(
+                    input_tokens[start:end],
+                    clean_up_tokenization_spaces=False,
+                )
+            )
+
+        # Handle any leftover tokens
+        if (i+1) * args.max_sequence_length < len(input_tokens):
+            start = (i+1) * args.max_sequence_length
+            end = len(input_tokens)
+            dataset.append(
+                tokenizer.decode(
+                    input_tokens[start:end],
+                    clean_up_tokenization_spaces=False,
+                )
+            )
+
+        # Set perplexity computation to accumulate negative log-likelihood across
+        # sections
+        accumulate = True
     else:
         dataset = load_dataset(dataset_name, split="test")
-        accumulate_likelihood = False
+        accumulate = False
 
     # We'll use the text generation pipeline to generate a single token.
     # Along with the token, it returns the logits for input sequence
@@ -101,33 +132,54 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
     )
 
     # Instantiate perplexity metric
-    perplexity_metrics = Perplexity(accumulate_likelihood=accumulate_likelihood)
+    perplexity_metrics = Perplexity(accumulate=accumulate)
 
     # Loop through samples
+    batch_samples = []
+    run_inference = False
+    end_evaluation = False
+    dataset_length = len(dataset)
     for idx, sample in _enumerate_progress(dataset, args.max_samples):
+
         # Collect input sequence
         if dataset_name == "openai_humaneval":
             sample = sample["prompt"] + sample["canonical_solution"]
+        batch_samples.append(sample)
 
-        # Perform single token generation
-        prediction = text_generation(
-            sequences=sample,
-            return_logits=True,
-            return_input_tokens=True,
-            fixed_sequences_length=True,
-        )
+        if args.max_samples and idx == args.max_samples - 1:
+            run_inference = True
+            end_evaluation = True
 
-        # Need to remove tokens that were masked
-        input_ids = prediction.input_tokens["input_ids"]
-        attention_mask = prediction.input_tokens["attention_mask"].flatten()
+        if (idx + 1) % args.batch_size == 0 or idx == dataset_length - 1:
+            run_inference = True
 
-        logits = numpy.compress(attention_mask, prediction.logits, axis=1)[:, :-1, :]
-        input_ids = numpy.compress(attention_mask, input_ids, axis=1)[:, 1:]
+        if run_inference:
+            # Perform single token generation
+            prediction = text_generation(
+                sequences=batch_samples,
+                return_logits=True,
+                return_input_tokens=True,
+                fixed_sequences_length=True,
+            )
 
-        # Add predictions (logits) and targets (input_ids) to metric
-        perplexity_metrics.add_batch(logits, input_ids)
+            # Handle one sample at a time to make it simpler for masking
+            for s in range(len(batch_samples)):
+                # Need to remove tokens that were masked
+                input_ids = prediction.input_tokens["input_ids"][s].flatten()
+                logits = prediction.logits[s]
+                attention_mask = prediction.input_tokens["attention_mask"][s].flatten()
 
-        if args.max_samples and idx >= args.max_samples:
+                logits = numpy.compress(attention_mask, logits, axis=0)[:-1, :]
+                input_ids = numpy.compress(attention_mask, input_ids)[1:]
+
+                # Add predictions (logits) and targets (input_ids) to metric
+                perplexity_metrics.add_batch(logits, input_ids)
+
+            # Reset batch
+            batch_samples.clear()
+            run_inference = False
+
+        if end_evaluation:
             break
 
     return perplexity_metrics
@@ -502,7 +554,6 @@ SUPPORTED_DATASETS = {
     "wikitext": lambda args: perplexity_eval(args, dataset_name="wikitext"),
 }
 
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Evaluate a Hugging Face Transformers "
@@ -630,7 +681,12 @@ def parse_args():
         type=bool,
         default=False,
     )
-
+    parser.add_argument(
+        "--batch-size",
+        help="Batch size to evaluate model. Default is 1",
+        type=int,
+        default=1,
+    )
     return parser.parse_args()
 
 
