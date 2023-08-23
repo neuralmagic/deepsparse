@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+
+import logging
 import uuid
 from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 import numpy
 import onnx
@@ -23,6 +26,10 @@ from deepsparse.utils.onnx import (
     default_cached_outputs,
     translate_onnx_type_to_numpy,
 )
+from sparsezoo.utils import save_onnx
+import onnx
+
+from deepsparse.utils.onnx import translate_onnx_type_to_numpy
 from sparsezoo.utils import save_onnx
 
 
@@ -36,12 +43,12 @@ __all__ = [
 _LOGGER = logging.getLogger(__name__)
 
 
-def overwrite_onnx_model_inputs_for_kv_cache_models(
+def overwrite_onnx_model_inputs(
     onnx_file_path: str,
-    sequence_length: int = 128,
-    input_ids_length: int = 1,
+    sequence_length: int,
+    input_ids_length: int,
     batch_size: int = 1,
-) -> Tuple[str, List[bool], Optional[numpy.dtype]]:
+) -> Tuple[str, List[int]]:
     """
     Enforces the appropriate input shapes for the onnx model, as well as
     checks whether kv cache is enabled or not.
@@ -57,7 +64,7 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
         -   boolean list, where elements are set to True if the
             corresponding model output should be cached or False
             if not.
-        -  the data type of the kv cache. If the model does not
+        -   the data type of the kv cache. If the model does not
             use kv cache, then the data type is None
     """
     model = onnx.load(onnx_file_path, load_external_data=False)
@@ -73,7 +80,7 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
             external_input.type.tensor_type.shape.dim[1].dim_value = input_ids_length
         elif external_input.name == "attention_mask":
             external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
-        elif external_input.name.startswith(CACHE_INPUT_NAME):
+        elif external_input.name.startswith("past_key_values"):
             external_input.type.tensor_type.shape.dim[2].dim_value = (
                 sequence_length - input_ids_length
             )
@@ -89,12 +96,14 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
     )
     save_onnx(model, onnx_file_path)
 
-    output_indices_to_be_cached = default_cached_outputs(model)
+    output_indices_to_be_cached = [
+        1 if inp.name.startswith("present") else 0 for inp in model.graph.output
+    ]
 
     kv_cache_data_type = None
     if any(output_indices_to_be_cached):
         kv_cache_elem_type = next(
-            inp for inp in model.graph.input if inp.name.startswith(CACHE_INPUT_NAME)
+            inp for inp in model.graph.input if inp.name.startswith("past_key_values")
         ).type.tensor_type.elem_type
         kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
 
@@ -137,7 +146,7 @@ def create_causal_mask(
     dtype: numpy.dtype = numpy.int64,
 ) -> numpy.ndarray:
     """
-    Compute a causal from a set of module inputs.
+    Compute a causal mask from a set of module inputs.
     In transformers, a causal mask is a boolean mask that is used to
     prevent information from future positions in a sequence from
     being used to predict the current position. Each element of the mask

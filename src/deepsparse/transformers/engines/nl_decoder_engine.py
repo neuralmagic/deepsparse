@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -24,6 +23,10 @@ from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import generate_session_id
 from deepsparse.transformers.utils.helpers import (
     overwrite_onnx_model_inputs_for_kv_cache_models as overwrite_onnx_model_inputs,
+)
+from deepsparse.transformers.utils.helpers import (
+    generate_session_id,
+    overwrite_onnx_model_inputs,
 )
 from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import CACHE_INPUT_NAME, CACHE_OUTPUT_NAME
@@ -86,7 +89,7 @@ class NLDecoderEngine:
             self.kv_cache_data_type = kv_cache_data_type
             if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
-                engine_args["cache_output_bools"] = output_indices_to_be_cached
+                engine_args["cached_outputs"] = output_indices_to_be_cached
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
@@ -104,6 +107,7 @@ class NLDecoderEngine:
         )
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
+        self._engine_type = engine_type
 
     @property
     def session_id(self) -> str:
@@ -139,6 +143,32 @@ class NLDecoderEngine:
         """
         return self.kv_cache.num_non_blank_entries
 
+    def run(self, inputs: List[numpy.ndarray], val_inp: bool) -> List[numpy.ndarray]:
+        """
+        Run the engine with the given inputs.
+
+        If the internal deepsparse kv cache management is enable,
+        the LIB.kv_cache class object will be passed to the engine
+        call as well.
+
+        :param inputs: The inputs to run the engine with
+        :param val_inp: Whether the input is for validation or not
+
+        :return: The output of the engine
+        """
+
+        if self.kv_cache is not None:
+            if self.kv_cache._kv_cache is not None:
+                if val_inp:
+                    self.engine._validate_inputs(inputs)
+                # model has kv cache support, as well as deepsparse
+                # internal management of the kv cache
+                return self.engine._eng_net.execute_list_out(
+                    inputs, self.kv_cache._kv_cache
+                )
+
+        return self.engine.run(inputs, val_inp)
+
     def __call__(
         self,
         inp: List[numpy.ndarray],
@@ -158,7 +188,7 @@ class NLDecoderEngine:
             # to the input
             inp = self.add_kv_cache_to_input(inp)
 
-        out = self.engine.run(inp, val_inp)
+        out = self.run(inp, val_inp)
 
         if self.kv_cache:
             logits, *kv_cache_state = out
@@ -191,10 +221,9 @@ class NLDecoderEngine:
         :param cache: The `DecoderKVCache` object to transfer to the engine
             from
         """
-        cache_to_copy = copy.deepcopy(cache)
         target_cache_capacity = self.sequence_length - self.input_ids_length
-        cache_to_copy.set_capacity(target_cache_capacity)
-        self.kv_cache = cache_to_copy
+        cache.set_capacity(target_cache_capacity)
+        self.kv_cache = cache
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
@@ -219,7 +248,7 @@ class NLDecoderEngine:
         kv_cache_state = self._initialize_kv_cache_state(
             self.sequence_length - self.input_ids_length
         )
-        self.kv_cache.setup_session(
+        self.kv_cache.setup(
             session_id=self._session_id,
             state=kv_cache_state,
             num_processed_tokens=0,
@@ -264,7 +293,7 @@ class NLDecoderEngine:
             name: array for name, array in zip(cache_onnx_names, kv_cache_state)
         }
 
-        self.kv_cache.update_session(
+        self.kv_cache.update(
             state=kv_cache_state,
             input_ids_len=input_ids_len,
         )
@@ -300,6 +329,6 @@ class NLDecoderEngine:
         # (True if tokenizer has a prefix for a BOS token)
         if tokenizer is None:
             return False
-        if hasattr(tokenizer, "bos_token"):
+        if hasattr(tokenizer, "add_bos_token"):
             return True
         return False
