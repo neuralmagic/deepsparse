@@ -137,7 +137,7 @@ class NLDecoderEngine:
     def num_non_blank_cache_entries(self) -> int:
         """
         :return A number of non-blank entries in the
-        kv cache
+            kv cache
         """
         return self.kv_cache.num_non_blank_entries
 
@@ -159,7 +159,6 @@ class NLDecoderEngine:
 
         :param inputs: The inputs to run the engine with
         :param val_inp: Whether the input is for validation or not
-
         :return: The output of the engine
         """
 
