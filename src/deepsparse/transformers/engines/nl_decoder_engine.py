@@ -20,9 +20,9 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import generate_session_id
 from deepsparse.transformers.utils.helpers import (
-    overwrite_onnx_model_inputs_for_kv_cache_models as overwrite_onnx_model_inputs,
+    generate_session_id,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
 )
 from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
@@ -72,7 +72,7 @@ class NLDecoderEngine:
             onnx_file_path,
             output_indices_to_be_cached,
             kv_cache_data_type,
-        ) = overwrite_onnx_model_inputs(
+        ) = overwrite_onnx_model_inputs_for_kv_cache_models(
             onnx_file_path=onnx_file_path,
             batch_size=engine_args.get("batch_size", 1),
             sequence_length=sequence_length,

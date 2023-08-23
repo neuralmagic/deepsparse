@@ -13,7 +13,7 @@
 # limitations under the License.
 import logging
 import uuid
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -37,7 +37,7 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
     sequence_length: int,
     input_ids_length: int,
     batch_size: int = 1,
-) -> Tuple[str, List[int]]:
+) -> Tuple[str, List[int], Optional[int]]:
     """
     Enforces the appropriate input shapes for the onnx model, as well as
     checks whether kv cache is enabled or not.

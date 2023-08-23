@@ -512,7 +512,7 @@ def overwrite_cache_model_inputs(
     model_path: str,
     input_ids_length: int,
     sequence_length: int,
-) -> Tuple[str, int]:
+) -> Tuple[str, List[int], Optional[int]]:
     """
     Takes a path to an onnx model and enforces that it has
     static input dimensions.
@@ -520,7 +520,14 @@ def overwrite_cache_model_inputs(
     :param model_path: Path to a model.
     :param input_ids_length: The input_ids length to overwrite the model with.
     :param sequence_length: The sequence length to overwrite the model with.
-    :return: Path to the model with static input dimensions.
+    :return: A tuple that contains:
+        -   the path to the onnx model file that has been overwritten
+            with the new input shapes
+        -   boolean list, where elements are set to True if the
+            corresponding model output should be cached or False
+            if not.
+        -   the data type of the kv cache. If the model does not
+            use kv cache, then the data type is None
     """
     from deepsparse.transformers.utils.helpers import (
         overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -531,10 +538,14 @@ def overwrite_cache_model_inputs(
         f"must be less than sequence_length {sequence_length}"
     )
 
-    onnx_file_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+    (
+        onnx_file_path,
+        output_indices_to_be_cached,
+        kv_cache_data_type,
+    ) = overwrite_onnx_model_inputs_for_kv_cache_models(
         onnx_file_path=model_path,
         sequence_length=sequence_length,
         input_ids_length=input_ids_length,
     )
 
-    return onnx_file_path
+    return onnx_file_path, output_indices_to_be_cached, kv_cache_data_type

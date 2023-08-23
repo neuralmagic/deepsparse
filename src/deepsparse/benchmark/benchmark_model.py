@@ -338,7 +338,7 @@ def benchmark_model(
             f"sequence length: {sequence_length}."
         )
 
-        model_path = overwrite_cache_model_inputs(
+        model_path, _, _ = overwrite_cache_model_inputs(
             model_path=model_path,
             input_ids_length=input_ids_length,
             sequence_length=sequence_length,
