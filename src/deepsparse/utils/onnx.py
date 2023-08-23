@@ -51,8 +51,6 @@ __all__ = [
     "truncate_onnx_embedding_model",
     "default_cached_outputs",
     "has_model_kv_cache",
-    "CACHE_INPUT_NAME",
-    "CACHE_OUTPUT_NAME",
     "overwrite_sequence_length",
     "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
@@ -498,6 +496,7 @@ def default_cached_outputs(model_path: str) -> List[bool]:
     assert len(output_names) > 0
 
     return [name.startswith(CACHE_OUTPUT_PREFIX) for name in output_names]
+
 
 def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
     """

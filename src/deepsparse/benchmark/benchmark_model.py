@@ -102,7 +102,6 @@ import argparse
 import importlib
 import json
 import logging
-import os
 from typing import Dict, Optional
 
 from deepsparse import __version__, compile_model

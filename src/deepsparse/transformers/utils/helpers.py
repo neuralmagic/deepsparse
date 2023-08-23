@@ -12,21 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-
-import logging
 import uuid
-from typing import List, Optional, Tuple, Union
 from typing import List, Tuple, Union
 
 import numpy
-import onnx
-
-from deepsparse.utils.onnx import (
-    CACHE_INPUT_NAME,
-    default_cached_outputs,
-    translate_onnx_type_to_numpy,
-)
-from sparsezoo.utils import save_onnx
 import onnx
 
 from deepsparse.utils.onnx import translate_onnx_type_to_numpy
@@ -43,7 +32,7 @@ __all__ = [
 _LOGGER = logging.getLogger(__name__)
 
 
-def overwrite_onnx_model_inputs(
+def overwrite_onnx_model_inputs_for_kv_cache_models(
     onnx_file_path: str,
     sequence_length: int,
     input_ids_length: int,

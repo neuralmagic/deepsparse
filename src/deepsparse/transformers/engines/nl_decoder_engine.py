@@ -24,12 +24,8 @@ from deepsparse.transformers.utils.helpers import generate_session_id
 from deepsparse.transformers.utils.helpers import (
     overwrite_onnx_model_inputs_for_kv_cache_models as overwrite_onnx_model_inputs,
 )
-from deepsparse.transformers.utils.helpers import (
-    generate_session_id,
-    overwrite_onnx_model_inputs,
-)
 from deepsparse.utils.data import numpy_softmax
-from deepsparse.utils.onnx import CACHE_INPUT_NAME, CACHE_OUTPUT_NAME
+from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -132,7 +128,7 @@ class NLDecoderEngine:
         return [
             name
             for name in self.engine.input_names
-            if not name.startswith(CACHE_INPUT_NAME)
+            if not name.startswith(CACHE_INPUT_PREFIX)
         ]
 
     @property
@@ -287,7 +283,7 @@ class NLDecoderEngine:
         cache_onnx_names = [
             name
             for name in self.engine.input_names
-            if name.startswith(CACHE_INPUT_NAME)
+            if name.startswith(CACHE_INPUT_PREFIX)
         ]
         kv_cache_state = {
             name: array for name, array in zip(cache_onnx_names, kv_cache_state)
@@ -305,7 +301,7 @@ class NLDecoderEngine:
         cache_engine_input_index = next(
             i
             for i, name in enumerate(self.engine.input_names)
-            if CACHE_INPUT_NAME in name
+            if CACHE_INPUT_PREFIX in name
         )
         batch_size, num_attention_heads, _, hidden_dims = self.engine.input_shapes[
             cache_engine_input_index
@@ -317,9 +313,9 @@ class NLDecoderEngine:
         )
 
         cache_keys = [
-            output_name.replace(CACHE_OUTPUT_NAME, CACHE_INPUT_NAME)
+            output_name.replace(CACHE_OUTPUT_PREFIX, CACHE_INPUT_PREFIX)
             for output_name in self.engine.output_names
-            if output_name.startswith(CACHE_OUTPUT_NAME)
+            if output_name.startswith(CACHE_OUTPUT_PREFIX)
         ]
         return {key: empty_kv_cache_tensor for key in cache_keys}
 
