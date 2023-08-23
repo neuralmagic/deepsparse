@@ -103,7 +103,7 @@ import argparse
 import importlib
 import json
 import logging
-from typing import Dict, Optional
+from typing import Dict
 
 from deepsparse import __version__, compile_model
 from deepsparse.benchmark.helpers import (
@@ -158,10 +158,10 @@ def parse_args():
         "-seq_len",
         "--sequence_length",
         type=int,
-        default=128,
+        default=2048,
         help="The sequence length to run the "
         "KV cache supported model benchmarks for. "
-        "Must be greater than 0, default is 128",
+        "Must be greater than 0, default is 2048",
     )
 
     parser.add_argument(
@@ -295,8 +295,8 @@ def load_custom_engine(custom_engine_identifier: str):
 def benchmark_model(
     model_path: str,
     batch_size: int = 1,
-    sequence_length: Optional[int] = None,
-    input_ids_length: Optional[int] = None,
+    sequence_length: int = 2048,
+    input_ids_length: int = 1,
     input_shapes: str = "",
     num_cores: int = None,
     scenario: str = "sync",
