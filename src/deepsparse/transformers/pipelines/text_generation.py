@@ -111,9 +111,9 @@ class TextGenerationPipeline(TransformersPipeline):
     """
     Pipeline for text generation tasks.
 
-    :param deterministic: if True, the pipeline will sample from
+    :param deterministic: if False, the pipeline will sample from
         the probability distribution computed from the logits.
-        If False, the pipeline will get the next token by applying
+        If True, the pipeline will get the next token by applying
         an argmax function to the logits.
     :param sampling_temperature: the temperature to use when sampling
         from the probability distribution computed from the logits.
@@ -126,7 +126,7 @@ class TextGenerationPipeline(TransformersPipeline):
         sequence is reached.
     :param prompt_processing_sequence_length: For large prompts, the prompt is
         processed in chunks of this length. This is to maximize the inference
-        speed. By default, this is set to 128.
+        speed. By default, this is set to 64.
     :param force_max_tokens: if True, the pipeline will generate the maximum number
         of tokens supplied even if the stop token is reached.
     :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
@@ -214,6 +214,20 @@ class TextGenerationPipeline(TransformersPipeline):
         engine, multitoken_engine = None, None
 
         if self.cache_support_enabled:
+            if (
+                self.engine_type == DEEPSPARSE_ENGINE
+                and self.sequence_length <= self.prompt_processing_sequence_length
+                and self.enable_multitoken_prefill
+            ):
+                raise ValueError(
+                    "Attempting to initialize auxiliary DeepSparse engine to "
+                    "process a prompt with a larger processing length. "
+                    "However, it is assumed that `prompt_processing_sequence_length` "
+                    "is smaller than the `sequence_length`. "
+                    "Adjust the `prompt_processing_sequence_length` "
+                    "argument accordingly."
+                )
+
             # emit the appropriate user message depending whether we are
             # instantiation the multitoken engine or not
             if not self.enable_multitoken_prefill:
@@ -248,7 +262,6 @@ class TextGenerationPipeline(TransformersPipeline):
             )
 
         if self.cache_support_enabled:
-
             engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
