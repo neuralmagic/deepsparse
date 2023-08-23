@@ -185,3 +185,4 @@ def _cross_entropy(predictions, targets, reduction="mean"):
         neg_log_likelihoods = neg_log_likelihoods.sum(axis=-1)
 
     return neg_log_likelihoods
+  
