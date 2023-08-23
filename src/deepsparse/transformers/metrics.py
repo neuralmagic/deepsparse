@@ -23,7 +23,6 @@ from typing import Any, Dict, List, Optional
 import numpy
 from tqdm import tqdm
 
-import torch
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from deepsparse.transformers.utils.helpers import pad_to_fixed_length
@@ -49,6 +48,7 @@ class Perplexity:
         :param batch_size: The batch size to split the input text into
          non-overlapping batches
         """
+        torch = _import_torch()
         if not isinstance(pipeline, TextGenerationPipeline):
             raise ValueError(
                 "Perplexity can only be computed for text generation pipelines"
@@ -67,6 +67,7 @@ class Perplexity:
 
         :param predictions: The predictions to compute perplexity on
         """
+        torch = _import_torch()
         # tokenize the input text
         encodings = self._pipeline.tokenizer(
             predictions,
@@ -225,3 +226,21 @@ class PrecisionRecallF1:
         results["f1_std"] = f1.std()
 
         return results
+
+
+def _import_torch():
+    """
+    Import and return the required torch module. Raises an ImportError if torch is not
+    installed.
+
+    :raises ImportError: if torch is not installed
+    :return: torch module
+    """
+    try:
+        import torch
+
+        return torch
+    except ImportError as import_error:
+        raise ImportError(
+            "Please install `deepsparse[torch]` to use this pathway"
+        ) from import_error
