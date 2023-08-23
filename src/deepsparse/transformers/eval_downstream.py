@@ -141,6 +141,12 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
                 logits = prediction.logits[s]
                 attention_mask = prediction.input_tokens["attention_mask"][s].flatten()
 
+                sequence_length = logits.shape[0]
+                attention_mask = attention_mask[:sequence_length]
+                input_ids = input_ids[:sequence_length]
+
+                print(attention_mask.shape)
+                print(logits.shape)
                 logits = numpy.compress(attention_mask, logits, axis=0)[:-1, :]
                 input_ids = numpy.compress(attention_mask, input_ids)[1:]
 
@@ -554,8 +560,12 @@ SUPPORTED_DATASETS = {
     "imdb": imdb_eval,
     "conll2003": conll2003_eval,
     "go_emotions": go_emotions_eval,
-    "openai_humaneval": lambda args: perplexity_eval(args, dataset_name="openai_humaneval"),
-    "wikitext": lambda args: perplexity_eval(args, dataset_name="wikitext"),
+    "openai_humaneval": lambda args: perplexity_eval(
+        args, dataset_name="openai_humaneval",
+    ),
+    "wikitext": lambda args: perplexity_eval(
+        args, dataset_name="wikitext",
+    ),
 }
 
 def parse_args():
