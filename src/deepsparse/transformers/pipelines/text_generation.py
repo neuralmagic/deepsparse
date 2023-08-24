@@ -712,4 +712,3 @@ class TextGenerationPipeline(TransformersPipeline):
             inp.name == "causal_mask"
             for inp in onnx.load(model_path, load_external_data=False).graph.input
         )
-        
