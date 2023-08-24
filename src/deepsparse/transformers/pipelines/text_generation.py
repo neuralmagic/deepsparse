@@ -256,7 +256,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 sampling_temperature=self.sampling_temperature,
                 deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
-                input_ids_length=self.prompt_processing_sequence_length,
+                input_ids_length=self.prompt_processing_sequence_length if self.cache_support_enabled else self.sequence_length,
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=self.use_deepsparse_cache,
             )
