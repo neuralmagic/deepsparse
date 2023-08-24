@@ -95,7 +95,7 @@ class Scheduler(Enum):
 
     @staticmethod
     def from_str(key: str):
-        if key in ("sync", "single", "single_stream"):
+        if key in ("sync", "single", "single_stream", "default"):
             return Scheduler.single_stream
         elif key in ("async", "multi", "multi_stream"):
             return Scheduler.multi_stream
@@ -169,11 +169,14 @@ class Context(object):
         will try to distribute them evenly across as few sockets as possible.
     :param num_streams: The max number of requests the model can handle
         concurrently.
+    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     """
 
-    def __init__(self, num_cores: int = None, num_streams: int = None):
+    def __init__(
+        self, num_cores: int = None, num_streams: int = None, scheduler: str = "elastic"
+    ):
         self._num_cores = _validate_num_cores(num_cores)
-        self._scheduler = Scheduler.from_str("elastic")
+        self._scheduler = Scheduler.from_str(scheduler)
         self._deepsparse_context = LIB.deepsparse_context(
             self._num_cores,
             _validate_num_streams(num_streams, self._num_cores),
