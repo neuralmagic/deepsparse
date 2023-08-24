@@ -145,8 +145,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
                 attention_mask = attention_mask[:sequence_length]
                 input_ids = input_ids[:sequence_length]
 
-                print(attention_mask.shape)
-                print(logits.shape)
                 logits = numpy.compress(attention_mask, logits, axis=0)[:-1, :]
                 input_ids = numpy.compress(attention_mask, input_ids)[1:]
 
