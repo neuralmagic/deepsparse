@@ -33,7 +33,6 @@ from deepsparse.transformers.utils.helpers import (
 )
 from deepsparse.utils.onnx import default_cached_outputs
 
-
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["TextGenerationPipeline"]
@@ -57,36 +56,36 @@ class TextGenerationInput(BaseModel):
     return_logits: bool = Field(
         default=False,
         description="A flag that indicates whether to return "
-        "the logits for the input text sequence and the "
-        "generated text sequence. ",
+                    "the logits for the input text sequence and the "
+                    "generated text sequence. ",
     )
     return_input_tokens: bool = Field(
         default=False,
         description="A flag that indicates whether to return "
-        "the input_tokens. ",
+                    "the input_tokens. ",
     )
     session_id: Optional[str] = Field(
         default=None,
         description="A user may set a string identifier "
-        "for the kv cache session. If None, "
-        "and the model is using kv cache, it "
-        "will be set to a random uuid.",
+                    "for the kv cache session. If None, "
+                    "and the model is using kv cache, it "
+                    "will be set to a random uuid.",
     )
     fixed_sequences_length: bool = Field(
         default=False,
         description="A flag that indicates whether to modify "
-        "(pad or truncate) each input text sequence, so that "
-        "its tokenized length is equal to `sequence_length` "
-        "of tokens. Useful, when a batch of predictions needs "
-        "to have consistent length so one "
-        "can compute metric in a batched fashion. ",
+                    "(pad or truncate) each input text sequence, so that "
+                    "its tokenized length is equal to `sequence_length` "
+                    "of tokens. Useful, when a batch of predictions needs "
+                    "to have consistent length so one "
+                    "can compute metric in a batched fashion. ",
     )
     streamer: Optional[TextStreamer] = Field(
         default=None,
         description="Streamer object that will be used to stream the "
-        "generated sequences. Generated tokens are passed through "
-        "`streamer.put(token_ids)` and the streamer is responsible "
-        "for any further processing.",
+                    "generated sequences. Generated tokens are passed through "
+                    "`streamer.put(token_ids)` and the streamer is responsible "
+                    "for any further processing.",
     )
 
 
@@ -97,15 +96,15 @@ class TextGenerationOutput(BaseModel):
     logits: Optional[Any] = Field(  # numpy array, set to Any for FastAPI compatibility
         default=None,
         description="The logits for the generated text sequence."
-        "The logits have dimensions "
-        "[batch_size, sequence_length, vocab_size]",
+                    "The logits have dimensions "
+                    "[batch_size, sequence_length, vocab_size]",
     )
     input_tokens: Optional[Any] = Field(  # dictionary mapping "token_ids" and "attention_mask" to numpy arrays
         default=None,
         description="The output of the tokenizer."
-        "Dictionary containing token_ids and attention_mask, "
-        "both mapping to arrays of size "
-        "[batch_size, sequence_length]",
+                    "Dictionary containing token_ids and attention_mask, "
+                    "both mapping to arrays of size "
+                    "[batch_size, sequence_length]",
     )
     session_id: Optional[str] = Field(
         default=None, description="A string identifier for the kv cache session."
@@ -147,14 +146,14 @@ class TextGenerationPipeline(TransformersPipeline):
     """
 
     def __init__(
-        self,
-        deterministic: bool = True,
-        sampling_temperature: float = 1.0,
-        max_generated_tokens: Optional[int] = 1024,
-        prompt_processing_sequence_length: int = 64,
-        force_max_tokens: bool = False,
-        use_deepsparse_cache: bool = True,
-        **kwargs,
+            self,
+            deterministic: bool = True,
+            sampling_temperature: float = 1.0,
+            max_generated_tokens: Optional[int] = 1024,
+            prompt_processing_sequence_length: int = 64,
+            force_max_tokens: bool = False,
+            use_deepsparse_cache: bool = True,
+            **kwargs,
     ):
         kwargs_engine_type = kwargs.get("engine_type", DEEPSPARSE_ENGINE)
 
@@ -202,7 +201,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self.engine, self.multitoken_engine = self.initialize_engines()
 
     def initialize_engines(
-        self,
+            self,
     ) -> Tuple[Optional[NLDecoderEngine], Optional[NLDecoderEngine]]:
         """
         Inititalizes a pair of engines for the pipeline.
@@ -227,9 +226,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
         if self.cache_support_enabled:
             if (
-                self.engine_type == DEEPSPARSE_ENGINE
-                and self.sequence_length <= self.prompt_processing_sequence_length
-                and self.enable_multitoken_prefill
+                    self.engine_type == DEEPSPARSE_ENGINE
+                    and self.sequence_length <= self.prompt_processing_sequence_length
+                    and self.enable_multitoken_prefill
             ):
                 raise ValueError(
                     "Attempting to initialize auxiliary DeepSparse engine to "
@@ -257,9 +256,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
 
         if (
-            self.cache_support_enabled and self.enable_multitoken_prefill
+                self.cache_support_enabled and self.enable_multitoken_prefill
         ) or not self.cache_support_enabled:
-
             multitoken_engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
@@ -268,7 +266,9 @@ class TextGenerationPipeline(TransformersPipeline):
                 sampling_temperature=self.sampling_temperature,
                 deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
-                input_ids_length=self.prompt_processing_sequence_length,
+                input_ids_length=self.prompt_processing_sequence_length
+                if self.cache_support_enabled
+                else self.sequence_length,
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=self.use_deepsparse_cache,
             )
@@ -288,13 +288,13 @@ class TextGenerationPipeline(TransformersPipeline):
             )
 
         assert (engine is not None) or (
-            multitoken_engine is not None
+                multitoken_engine is not None
         ), "At least one of the engines must be initialized for the pipeline!"
         return engine, multitoken_engine
 
     @staticmethod
     def route_input_to_bucket(
-        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
+            *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
     ) -> Pipeline:
         """
         This method is used to route the input to the correct pipeline.
@@ -386,7 +386,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return engine_input, postprocessing_kwargs
 
     def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], **kwargs
+            self, engine_outputs: List[numpy.ndarray], **kwargs
     ) -> TextGenerationOutput:
         """
         Convert the engine outputs to the output schema for the pipeline.
@@ -404,7 +404,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return TextGenerationOutput(sequences=sequences, logits=logits, input_tokens=input_tokens)
 
     def engine_forward(
-        self, engine_inputs: List[numpy.ndarray], context: Dict
+            self, engine_inputs: List[numpy.ndarray], context: Dict
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
         Run the forward pass on the engine.
@@ -456,8 +456,8 @@ class TextGenerationPipeline(TransformersPipeline):
                         streamer.put(numpy.array([token]))
 
                     if (
-                        token == self.tokenizer.eos_token_id
-                        and not self.force_max_tokens
+                            token == self.tokenizer.eos_token_id
+                            and not self.force_max_tokens
                     ):
                         break
 
@@ -469,7 +469,7 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
     def prompt_inference(
-        self, engine_inputs: List[numpy.ndarray]
+            self, engine_inputs: List[numpy.ndarray]
     ) -> Tuple[List[int], List[numpy.ndarray]]:
         """
         An inference run that processes the prompt through the
@@ -495,8 +495,8 @@ class TextGenerationPipeline(TransformersPipeline):
         self._reset_engines_cache()
 
         if (
-            len(tokens) > self.prompt_processing_sequence_length
-            and self.enable_multitoken_prefill
+                len(tokens) > self.prompt_processing_sequence_length
+                and self.enable_multitoken_prefill
         ):
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
@@ -513,7 +513,7 @@ class TextGenerationPipeline(TransformersPipeline):
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             with self.timer_manager.current.time(
-                _TextGenerationTimings.PROMPT_PREFILL_SINGLE
+                    _TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
                 new_token, new_logits = self.autoregressive_inference(run_tokens)
 
@@ -524,8 +524,8 @@ class TextGenerationPipeline(TransformersPipeline):
         return tokens, prompt_logits
 
     def autoregressive_inference(
-        self,
-        tokens: List[int],
+            self,
+            tokens: List[int],
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
@@ -563,7 +563,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return generated_token, generated_logits
 
     def engine_inputs_for_prefill(
-        self, tokens: List[int]
+            self, tokens: List[int]
     ) -> Generator[List[numpy.ndarray], None, None]:
         """
         Takes a list of tokens and creates a generator
@@ -601,9 +601,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
         token_batches = [
             tokens[
-                i
-                * self.prompt_processing_sequence_length : (i + 1)
-                * self.prompt_processing_sequence_length
+            i
+            * self.prompt_processing_sequence_length: (i + 1)
+                                                      * self.prompt_processing_sequence_length
             ]
             for i in range(0, num_batches)
         ]
@@ -623,13 +623,13 @@ class TextGenerationPipeline(TransformersPipeline):
                     # fill it out with 1s (from the right), so that the number
                     # of unmasked entries is equal to the sum of:
                     engine_input[
-                        :,
-                        -(
-                            # ...the number of current input tokens...
+                    :,
+                    -(
+                        # ...the number of current input tokens...
                             self.prompt_processing_sequence_length
                             # ...and the number of the previous cache entries
                             + num_cached_entries
-                        ) :,
+                    ):,
                     ] = 1
                 elif name == "causal_mask":
                     # delay creation of the causal mask
@@ -646,8 +646,8 @@ class TextGenerationPipeline(TransformersPipeline):
                                 num_cached_entries
                                 + self.prompt_processing_sequence_length,
                             )
-                            .reshape(1, -1)
-                            .astype(numpy.int64)
+                                .reshape(1, -1)
+                                .astype(numpy.int64)
                         )
 
                 engine_inputs.append(engine_input)
@@ -670,7 +670,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return any(default_cached_outputs(self.onnx_file_path))
 
     def join_engine_outputs(
-        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
+            self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
     ) -> List[numpy.ndarray]:
         """
         Takes a list of outputs (batches) from the engine
