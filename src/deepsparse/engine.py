@@ -705,7 +705,7 @@ class Engine(BaseEngine):
 
         for arr in inp:
             if not self._disable_batch_override:
-                if arr.shape[0] != self._batch_size:
+                if arr.shape[0] != self._batch_size and not arr.shape[0] == 0: # TODO assert this is a kvcache input or sth?
                     raise ValueError(
                         (
                             "array batch size of {} must match the batch size "
