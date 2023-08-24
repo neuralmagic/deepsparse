@@ -429,7 +429,7 @@ class TextGenerationPipeline(TransformersPipeline):
             generated_logits = prompt_logits
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
-                while len(generated_tokens) < max_tokens:
+                while len(generated_tokens) <= max_tokens:
                     with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                         token, logits = self.autoregressive_inference(tokens)
                     tokens.append(token)
