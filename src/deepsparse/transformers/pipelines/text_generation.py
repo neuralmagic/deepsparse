@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 from transformers import TextStreamer
 
 from deepsparse import Pipeline
+from deepsparse.engine import Context, Scheduler
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
@@ -156,6 +157,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
                 use_deepsparse_cache = False
 
+        kwargs["context"] = self._update_context(**kwargs)
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
@@ -243,7 +245,6 @@ class TextGenerationPipeline(TransformersPipeline):
                     "larger processing length. This improves performance, but "
                     "may result in additional memory consumption."
                 )
-
         if (
             self.cache_support_enabled and self.enable_multitoken_prefill
         ) or not self.cache_support_enabled:
@@ -718,3 +719,55 @@ class TextGenerationPipeline(TransformersPipeline):
     def _reset_engines_cache(self):
         self.engine.reset_kv_cache()
         self.multitoken_engine.reset_kv_cache() if self.multitoken_engine else None
+
+    def _update_context(self, **kwargs) -> Context:
+        """
+        Create a new `Context` object to account for the fact that `text-generation` pipelines
+        only support `single_stream` scheduler. If the kwargs contain a `Context`
+        then it is used to fetch `num_cores`, else kwargs are used to fetch `num_cores` directly. 
+        If `num_cores` is not provided, then we use the default `num_cores`. The `num_streams`
+        argument is ignored, and it is assumed that the engine will decide the right 
+        number of streams to use.
+        
+        :param kwargs: kwargs to pass to the TransformersPipeline, may contain `Context` object
+            and/or `num_cores` argument
+        :return: a new `Context` object, with the right scheduler for `text-generation` pipelines
+        """
+        num_cores = None # use default num_cores
+        default_scheduler = "single_stream"
+
+        context = kwargs.get("context")
+        if context is not None and isinstance(context, Context):
+            if context.num_streams > 1:
+                _LOGGER.warning(
+                    "Multistream is not supported for generation pipelines. "
+                    "The `num_streams` argument will be ignored."
+                )
+
+            if context.scheduler != Scheduler.default:
+                _LOGGER.warning(
+                    "Only `default`(%s) Scheduler is supported for "
+                    "generation pipelines, but got %s."
+                    "This `scheduler` argument will be ignored."
+                    % (default_scheduler, context.scheduler)
+                )
+            num_cores = context.num_cores
+
+        else:
+            num_streams = kwargs.pop("num_streams", None)
+            num_cores = kwargs.pop("num_cores", None)
+
+            if num_streams is not None and num_streams > 1:
+                _LOGGER.warning(
+                    "Multistream is not supported for generation pipelines. "
+                    "The `num_streams` argument will be ignored."
+                )
+
+        # let the engine decide the number of streams, use same number of cores
+        #  as specified by the user
+        context = Context(
+            num_cores=num_cores,
+            scheduler=default_scheduler,
+        )
+        _LOGGER.info("Built context: %s" % context)
+        return context
