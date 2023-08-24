@@ -169,7 +169,7 @@ class Context(object):
         will try to distribute them evenly across as few sockets as possible.
     :param num_streams: The max number of requests the model can handle
         concurrently.
-    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    :param scheduler: The kind of scheduler to execute with. Default is `elastic`
     """
 
     def __init__(

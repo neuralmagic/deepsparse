@@ -229,34 +229,38 @@ def update_context_to_single_stream(**kwargs) -> Context:
     :return: a new `Context` object, with the `scheduler` set to `single_stream`
     """
     num_cores = None  # use default num_cores
+    num_streams = None  # ignore num_streams
+    current_scheduler = None
     default_scheduler = "single_stream"
 
     context = kwargs.get("context")
     if context is not None and isinstance(context, Context):
-        if context.num_streams > 1:
-            _LOGGER.warning(
-                "Multistream is not supported for generation pipelines. "
-                "The `num_streams` argument will be ignored."
-            )
-
-        if context.scheduler != Scheduler.default:
-            _LOGGER.warning(
-                "Only `default`(%s) Scheduler is supported for "
-                "generation pipelines, but got %s."
-                "This `scheduler` argument will be ignored."
-                % (default_scheduler, context.scheduler)
-            )
+        num_streams = context.num_streams
+        current_scheduler = context.scheduler
         num_cores = context.num_cores
 
     else:
         num_streams = kwargs.pop("num_streams", None)
         num_cores = kwargs.pop("num_cores", None)
+        current_scheduler = kwargs.pop("scheduler", None)
 
-        if num_streams is not None and num_streams > 1:
-            _LOGGER.warning(
-                "Multistream is not supported for generation pipelines. "
-                "The `num_streams` argument will be ignored."
-            )
+    if num_streams is not None and num_streams > 1:
+        _LOGGER.warning(
+            "Multistream is not supported for generation pipelines. "
+            "The `num_streams` argument will be ignored."
+        )
+
+    current_scheduler_is_default = (
+        current_scheduler == Scheduler.default.value
+        or current_scheduler == Scheduler.default
+    )
+    if current_scheduler is not None and not current_scheduler_is_default:
+        _LOGGER.warning(
+            "Only `default`(%s) Scheduler is supported for "
+            "generation pipelines, but got %s."
+            "This `scheduler` argument will be ignored."
+            % (default_scheduler, current_scheduler)
+        )
 
     # let the engine decide the number of streams, use same number of cores
     #  as specified by the user
