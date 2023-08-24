@@ -26,29 +26,29 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 
 _analytics.send_event("python__transformers__init")
 
-#
-# try:
-#     import transformers as _transformers
-#
-#     import datasets as _datasets
-# except ImportError:
-#     raise ImportError("Please install deepsparse[transformers] to use this pathway")
-#
-#
-# _LOGGER = _logging.getLogger(__name__)
-#
-#
-# def _check_transformers_install():
-#     import transformers as _transformers
-#
-#     if not getattr(_transformers, "NM_INTEGRATED", False):
-#         _LOGGER.warning(
-#             "The neuralmagic fork of transformers may not be installed. It can be "
-#             "installed via `pip install nm_transformers`"
-#         )
-#
-#
-# _check_transformers_install()
+
+try:
+    import transformers as _transformers
+
+    import datasets as _datasets
+except ImportError:
+    raise ImportError("Please install deepsparse[transformers] to use this pathway")
+
+
+_LOGGER = _logging.getLogger(__name__)
+
+
+def _check_transformers_install():
+    import transformers as _transformers
+
+    if not getattr(_transformers, "NM_INTEGRATED", False):
+        _LOGGER.warning(
+            "The neuralmagic fork of transformers may not be installed. It can be "
+            "installed via `pip install nm_transformers`"
+        )
+
+
+_check_transformers_install()
 
 
 from .helpers import *

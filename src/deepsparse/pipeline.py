@@ -254,7 +254,9 @@ class Pipeline(BasePipeline):
 
             # submit split batches to engine threadpool
             engine_forward_with_context = partial(self.engine_forward, context=context)
-            batch_outputs = [engine_forward_with_context(x) for x in batches]
+            batch_outputs = list(
+                self.executor.map(engine_forward_with_context, batches)
+            )
 
             # join together the batches of size `self._batch_size`
             engine_outputs = self.join_engine_outputs(batch_outputs, orig_batch_size)
