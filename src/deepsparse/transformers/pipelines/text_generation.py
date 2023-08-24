@@ -474,20 +474,17 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
-        # clean the state of engines' cache
-        # in the future, this will be paired with the session ids
-        # to refrain from resetting if session id is being passed
-        self._reset_engines_cache()
-
         if (
             len(tokens) > self.prompt_processing_sequence_length
             and self.enable_multitoken_prefill
         ):
+            self.multitoken_engine.reset_kv_cache()
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
                 num_tokens_processed += self.prompt_processing_sequence_length
                 prompt_logits.append(new_logits)
 
+        self.engine.reset_kv_cache()
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
             self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
