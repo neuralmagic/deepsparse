@@ -59,6 +59,23 @@ class SessionStorageKVCache:
         """
         return any(session.id == session_id for session in self._memory)
 
+    @property
+    def internal_cache_active(self) -> bool:
+        """
+        Check if the internal cache is active for sessions in the storage.
+        Note: This assumes that all the sessions in
+        the storage have the same internal cache state.
+
+        :return: True if the internal cache is active
+            for any of the sessions in the storage.
+        """
+        if len(self._memory) == 0:
+            raise ValueError(
+                "Attempting to determine if internal cache is active for "
+                "sessions of the KV cache storage. However, the storage is empty."
+            )
+        return next(iter(self._memory)).engine_internal_cache is not None
+
     @update_timestamp
     def put(self, session: DecoderKVCache):
         """

@@ -370,7 +370,8 @@ class TextGenerationPipeline(TransformersPipeline):
 
         session_ids = inputs.session_ids
         if session_ids is None:
-            # session_ids is None, so we need to generate a session id for each input sequence
+            # session_ids is None, so we need to generate
+            # a session id for each input sequence
             num_input_sequences = (
                 len(inputs.sequences) if isinstance(inputs.sequences, list) else 1
             )
@@ -422,10 +423,14 @@ class TextGenerationPipeline(TransformersPipeline):
             streamer = context.get("streamer")
 
             # pop the session id from the inputs
-            idx_session_id = next(
-                idx for idx, item in enumerate(engine_inputs) if isinstance(item, str)
+            session_id = engine_inputs.pop(
+                next(
+                    idx
+                    for idx, item in enumerate(engine_inputs)
+                    if isinstance(item, str)
+                )
             )
-            session_id = engine_inputs.pop(idx_session_id)
+
             assert isinstance(
                 session_id, str
             ), "Session id must be a string not {}".format(type(session_id))
@@ -482,7 +487,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return (
             numpy.array([generated_tokens]),
             numpy.concatenate(generated_logits, axis=1),
-            session_id,
+            numpy.array([session_id]),
         )
 
     def prompt_inference(
@@ -512,10 +517,10 @@ class TextGenerationPipeline(TransformersPipeline):
             and self.enable_multitoken_prefill
         ):
 
-            session_exists = self.synchronize_engines(session_id)
+            self.synchronize_engines()
             tokens = (
                 self._remove_bos_token_if_applicable(tokens)
-                if session_exists
+                if self.multitoken_engine.kv_cache_storage.has_session(session_id)
                 else tokens
             )
 
@@ -529,10 +534,11 @@ class TextGenerationPipeline(TransformersPipeline):
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
 
-        session_exists = self.synchronize_engines(session_id)
+        self.synchronize_engines()
         tokens = (
             self._remove_bos_token_if_applicable(tokens)
-            if session_exists and not num_tokens_processed
+            if self.engine.kv_cache_storage.has_session(session_id)
+            and not num_tokens_processed
             else tokens
         )
 
@@ -698,17 +704,10 @@ class TextGenerationPipeline(TransformersPipeline):
 
             yield engine_inputs
 
-    def synchronize_engines(self, session_id: str) -> bool:
+    def synchronize_engines(self):
         """
         Make sure that the existing engines are in sync i.e.
         they contain the newest version of the kv cache storage.
-
-        Additionally returns a boolean flag indicating whether
-        the session with the session_id exists in the most recent
-        kv cache storage
-
-        :param session_id: the session id to synchronize
-        :return: True if the session exists in the kv cache storage, False otherwise
         """
         engine_storage_timestamp = self.engine.kv_cache_storage.timestamp
         multitoken_engine_storage_timestamp = (
@@ -719,14 +718,11 @@ class TextGenerationPipeline(TransformersPipeline):
             # engine's storage is newer,
             # # so we need to transfer it to the multitoken engine
             self.multitoken_engine.transfer_cache_storage(self.engine.kv_cache_storage)
-            return self.multitoken_engine.kv_cache_storage.has_session(session_id)
 
         # multitoken engine's storage is newer,
         # so we need to transfer it to the engine
         self.engine.transfer_cache_storage(self.multitoken_engine.kv_cache_storage)
-        return self.engine.kv_cache_storage.has_session(session_id)
 
-    @property
     def is_cache_support_enabled(self) -> bool:
         """
         Returns whether the ran model has kv cache or not
@@ -745,18 +741,21 @@ class TextGenerationPipeline(TransformersPipeline):
 
         :param items: list of numpy arrays to split (plus list of session_ids)
         :param batch_size: size of each batch to split into
-        :return: list of batches, where each batch is a list of numpy arrays,
-            as well as the total batch size
+        :return: list of batches, where each batch is a list of numpy arrays
+            (plus session_ids), as well as the total batch size
         """
+        # extract the session_ids from the items
         session_ids = next((item for item in items if isinstance(item, list)), None)
+        items = [item for item in items if not isinstance(item, list)]
 
         batches, orig_batch_size = split_engine_inputs(items, batch_size)
-        # append the session_ids to the batches
-        batches = [
-            batch.append(session_id)
-            for (batch, session_id) in zip(batches, session_ids)
+
+        # distribute session_ids across batches
+        batches_w_session_ids = [
+            batch + [session_ids[i]] for i, batch in enumerate(batches)
         ]
-        return batches, orig_batch_size
+
+        return batches_w_session_ids, orig_batch_size
 
     def join_engine_outputs(
         self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int

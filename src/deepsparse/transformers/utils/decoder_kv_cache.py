@@ -217,6 +217,7 @@ class DecoderKVCache:
             # required to make sure that both
             # quantized and non quantized caches
             # are supported
+            # TODO: Potentially make it faster
             state_dtype = value.dtype
             # change padding_value dtype to match the state dtype
             padding_value = numpy.array(padding_value, dtype=state_dtype)

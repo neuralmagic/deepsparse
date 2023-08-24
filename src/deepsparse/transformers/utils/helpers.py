@@ -125,17 +125,17 @@ def validate_session_ids(
     if isinstance(session_ids, list):
         session_ids = [str(session_id) for session_id in session_ids]
 
-    if isinstance(other_attributes.sequences, str) and len(session_ids) != 1:
+    if isinstance(other_attributes["sequences"], str) and len(session_ids) != 1:
         raise ValueError(
             f"Only one session id is allowed for a single input sequence. "
             f"Detected 1 input sequence and {len(session_ids)} session ids"
         )
-    if isinstance(other_attributes.sequences, list) and len(session_ids) != len(
-        other_attributes.sequences
+    if isinstance(other_attributes["sequences"], list) and len(session_ids) != len(
+        other_attributes["sequences"]
     ):
         raise ValueError(
             f"Number of session ids must match the number of input sequences. "
-            f"Detected {len(other_attributes.sequences)} "
+            f"Detected {len(other_attributes['sequences'])} "
             f"input sequences and {len(session_ids)} session ids"
         )
     if len(session_ids) != len(set(session_ids)):

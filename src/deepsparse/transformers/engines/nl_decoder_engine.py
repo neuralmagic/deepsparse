@@ -23,13 +23,12 @@ from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import overwrite_onnx_model_inputs
 from deepsparse.transformers.utils.storage_kv_cache import SessionStorageKVCache
 from deepsparse.utils.data import numpy_softmax
+from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["NLDecoderEngine"]
-
-_CACHE_INPUT_NAME = "past_key_values"
 
 
 class NLDecoderEngine:
@@ -98,10 +97,9 @@ class NLDecoderEngine:
         self.use_deepsparse_cache = use_deepsparse_cache
         self.input_ids_length = input_ids_length
         self.kv_cache_enabled = kv_cache_enabled
-        self.capacity = self.sequence_length - self.input_ids_length
+        self.capacity = sequence_length - input_ids_length
         self.kv_cache_storage = SessionStorageKVCache() if kv_cache_enabled else None
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
-        self._session_id = generate_session_id()
         self._engine_type = engine_type
 
     @property
@@ -127,7 +125,7 @@ class NLDecoderEngine:
         return [
             name
             for name in self.engine.input_names
-            if not name.startswith(_CACHE_INPUT_NAME)
+            if not name.startswith(CACHE_INPUT_PREFIX)
         ]
 
     def num_non_blank_cache_entries(self, session_id: str) -> int:
@@ -150,9 +148,11 @@ class NLDecoderEngine:
         """
         :return: Whether the internal kv cache is active
         """
-        return self.kv_cache_enabled and self.kv_cache.engine_internal_cache is not None
+        return self.kv_cache_enabled and self.kv_cache_storage.internal_cache_active
 
-    def run(self, inputs: List[numpy.ndarray], val_inp: bool) -> List[numpy.ndarray]:
+    def run(
+        self, inputs: List[numpy.ndarray], session_id: str, val_inp: bool
+    ) -> List[numpy.ndarray]:
         """
         Run the engine with the given inputs.
 
@@ -162,6 +162,8 @@ class NLDecoderEngine:
         call as well.
 
         :param inputs: The inputs to run the engine with
+        :param session_id: The session id to potentially fetch
+            the engine internal cache for
         :param val_inp: Whether the input is for validation or not
         :return: The output of the engine
         """
@@ -171,9 +173,10 @@ class NLDecoderEngine:
             if val_inp:
                 self.engine._validate_inputs(inputs)
             # run the engine with the LIB.kv_cache object
-            return self.engine._eng_net.execute_list_out(
-                inputs, self.kv_cache.engine_internal_cache
-            )
+            engine_internal_cache = self.kv_cache_storage.get(
+                session_id
+            ).engine_internal_cache
+            return self.engine._eng_net.execute_list_out(inputs, engine_internal_cache)
         # run the engine without the LIB.kv_cache object
         return self.engine.run(inputs, val_inp)
 
@@ -196,9 +199,9 @@ class NLDecoderEngine:
         if self.kv_cache_enabled:
             # if model has kv cache enabled, we need
             # to add the kv cache state to the input
-            inp = self.add_kv_cache_to_input(inp)
+            inp = self.add_kv_cache_to_input(inp, session_id)
 
-        out = self.run(inp, val_inp)
+        out = self.run(inp, session_id, val_inp)
 
         if self.kv_cache_enabled:
             logits, *kv_cache_state = out
@@ -273,34 +276,30 @@ class NLDecoderEngine:
         """
         Takes the input and adds the past kv cache state to it.
 
-        If the internal kv cache is enabled, the kv cache state
+        If the internal kv cache is active, the kv cache state
         will always be reinitialized to zeros. This is just to make sure
         that the input shapes of the kv cache arrays to the
         model are correct, the actual values are
         being tracked internally inside the engine.
 
-        If the internal kv cache is disabled, we need to
+        If the internal kv cache is not active, we need to
         fetch the kv cache state as numpy arrays
-        from the current session, or initialize it if required.
-
+        from the current kv cache storage. If no session
+        present, initialize it if required.
 
         :param inp: The input to the model
         :param session_id: The session id to fetch the kv cache state for
         :return The input with the kv cache state added to it
         """
-        session = self.kv_cache_storage.get(session_id)
-        if session is None:
-            session = self.initialize_session(session_id)
-        else:
-            session.set_capacity(self.capacity)
-        kv_cache_state = session.cached_inputs
         if self.internal_cache_active:
-            kv_cache_state = self._initialize_kv_cache_state(self.cache_length)
+            kv_cache_state = self._initialize_kv_cache_state(self.capacity)
         else:
-            kv_cache_state = self.kv_cache.cached_inputs
-            if kv_cache_state is None:
-                self.reset_kv_cache()
-                kv_cache_state = self.kv_cache.cached_inputs
+            session = self.kv_cache_storage.get(session_id)
+            if session is None:
+                session = self.initialize_session(session_id)
+            else:
+                session.set_capacity(self.capacity)
+            kv_cache_state = session.cached_inputs
 
         for idx, input_name in enumerate(self.onnx_input_names_no_cache):
             kv_cache_state[input_name] = inp[idx]
@@ -327,13 +326,15 @@ class NLDecoderEngine:
         :param session_id: The session id to fetch the kv cache session for
         """
         if self.internal_cache_active:
-            self.kv_cache.total_num_processed_tokens += input_ids_len
+            session = self.kv_cache_storage.get(session_id)
+            # TODO: Check whether this gets updated correctly
+            session.total_num_processed_tokens += input_ids_len
             return
 
         cache_onnx_names = [
             name
             for name in self.engine.input_names
-            if name.startswith(_CACHE_INPUT_NAME)
+            if name.startswith(CACHE_INPUT_PREFIX)
         ]
         kv_cache_state = {
             name: array for name, array in zip(cache_onnx_names, kv_cache_state)
@@ -350,7 +351,7 @@ class NLDecoderEngine:
         cache_engine_input_index = next(
             i
             for i, name in enumerate(self.engine.input_names)
-            if _CACHE_INPUT_NAME in name
+            if CACHE_INPUT_PREFIX in name
         )
         batch_size, num_attention_heads, _, hidden_dims = self.engine.input_shapes[
             cache_engine_input_index
@@ -362,9 +363,9 @@ class NLDecoderEngine:
         )
 
         cache_keys = [
-            output_name.replace("present", _CACHE_INPUT_NAME)
+            output_name.replace(CACHE_OUTPUT_PREFIX, CACHE_INPUT_PREFIX)
             for output_name in self.engine.output_names
-            if output_name.startswith("present")
+            if output_name.startswith(CACHE_OUTPUT_PREFIX)
         ]
         return {key: empty_kv_cache_tensor for key in cache_keys}
 

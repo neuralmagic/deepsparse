@@ -47,3 +47,6 @@ class TestSessionStorageKVCache:
         assert self.storage.get("first_session")
         assert self.storage.get("second_session")
         assert not self.storage.get("third_session")
+
+    def test_internal_cache_active(self):
+        assert not self.storage.internal_cache_active
