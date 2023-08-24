@@ -91,7 +91,7 @@ class DecoderKVCache:
     ):
         """
         Updating the session is identical with taking the kv cache
-        output of from the forward pass and restructuring it, so it
+        output from the forward pass and restructuring it, so it
         can be directly used as input for the next forward pass.
 
         :param state: The state of the cache. This is a dictionary
