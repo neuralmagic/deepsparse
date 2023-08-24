@@ -16,7 +16,7 @@ Before you start your adventure with the DeepSparse Engine, make sure that your 
 ### Model Format
 By default, to deploy CLIP models using the DeepSparse Engine, it is required to supply the model in the ONNX format. This grants the engine the flexibility to serve any model in a framework-agnostic environment. To see examples of pulling CLIP models and exporting them to ONNX, please see the [sparseml documentation](https://github.com/neuralmagic/sparseml/tree/main/integrations/clip). 
 
-For the Zero-shot image classification workflow, two ONNX models are required, a visual model for CLIP's visual branch, and a text model for CLIP's text branch. Both of these models can be produced through the sparseml integration linked above. For caption generation, specific models called CoCa models are required and instructions on how to export CoCa models are also provided in the sparseml documentation above. The CoCa exporting pathway will generate one additional decoder model, along with the text and visual models.
+For the Zero-shot image classification workflow, two ONNX models are required, a visual model for CLIP's visual branch, and a text model for CLIP's text branch. Both of these models can be produced through the sparseml integration linked above. For caption generation, specific models called CoCa models are required and instructions on how to export CoCa models are also provided in the sparseml documentation. The CoCa exporting pathway will generate one additional decoder model, along with the text and visual models.
 
 ### Deployment examples:
 The following example uses pipelines to run the CLIP models for inference. For Zero-shot prediction, the pipeline ingests a list of images and a list of possible classes. A class is returned for each of the provided images. For caption generation, only an image file is required.
@@ -60,8 +60,8 @@ from deepsparse.clip import (
 possible_classes = ["ice cream", "an elephant", "a dog", "a building", "a church"]
 images = ["basilica.jpg", "buddy.jpeg", "thailand.jpg"]
 
-model_path_text = "zeroshot_research/text/model.onnx"
-model_path_visual = "zeroshot_research/visual/model.onnx"
+model_path_text = "zeroshot_research/clip_text.onnx"
+model_path_visual = "zeroshot_research/clip_visual.onnx"
 
 kwargs = {
     "visual_model_path": model_path_visual,
