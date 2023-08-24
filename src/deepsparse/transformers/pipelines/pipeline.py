@@ -66,23 +66,31 @@ class TransformersPipeline(Pipeline, Bucketable):
         If a list of lengths is provided, then for each length, a model and
         tokenizer will be compiled capable of handling that sequence length
         (also known as a bucket). Default is 128
+    :param trust_remote_code: if True, will trust remote code. This option
+        should only be set to `True` for repositories you trust and in which
+        you have read the code, as it will execute possibly unsafe code
+        on your local machine. Default is False
     """
 
     def __init__(
         self,
         *,
         sequence_length: Union[int, List[int]] = 128,
+        trust_remote_code: bool = False,
         **kwargs,
     ):
 
         self._sequence_length = sequence_length
+        self._trust_remote_code = trust_remote_code
 
         self.config = None
         self.tokenizer = None
         self.config_path = None
         self.tokenizer_config_path = None  # path to 'tokenizer.json'
         self.onnx_input_names = None
-
+        self._delay_overwriting_inputs = (
+            kwargs.pop("_delay_overwriting_inputs", None) or False
+        )
         self._temp_model_directory = None
 
         super().__init__(**kwargs)
@@ -99,6 +107,9 @@ class TransformersPipeline(Pipeline, Bucketable):
         Parses ONNX, tokenizer, and config file paths from the given `model_path`.
         Supports sparsezoo stubs
 
+        :param delay_overwriting_inputs: if True, do not overwrite the ONNX model
+            inputs to the given sequence length. Default is False
+
         :return: file path to the processed ONNX file for the engine to compile
         """
         onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
@@ -106,39 +117,48 @@ class TransformersPipeline(Pipeline, Bucketable):
         )
 
         self.config = AutoConfig.from_pretrained(
-            config_path, finetuning_task=self.task if hasattr(self, "task") else None
+            config_path,
+            trust_remote_code=self._trust_remote_code,
+            finetuning_task=self.task if hasattr(self, "task") else None,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_path, model_max_length=self.sequence_length
+            tokenizer_path,
+            trust_remote_code=self._trust_remote_code,
+            model_max_length=self.sequence_length,
         )
         self.config_path = os.path.join(config_path, "config.json")
         self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
 
-        # overwrite onnx graph to given required input shape
-        (
-            onnx_path,
-            self.onnx_input_names,
-            self._temp_model_directory,
-        ) = overwrite_transformer_onnx_model_inputs(
-            onnx_path, max_length=self.sequence_length
-        )
+        if not self._delay_overwriting_inputs:
+            # overwrite onnx graph to given required input shape
+            (
+                onnx_path,
+                self.onnx_input_names,
+                self._temp_model_directory,
+            ) = overwrite_transformer_onnx_model_inputs(
+                onnx_path, max_length=self.sequence_length
+            )
 
         return onnx_path
 
     def tokens_to_engine_input(
-        self, tokens: Mapping[Any, numpy.ndarray]
+        self,
+        tokens: Mapping[Any, numpy.ndarray],
+        onnx_input_names: Optional[List[str]] = None,
     ) -> List[numpy.ndarray]:
         """
         :param tokens: outputs of the pipeline tokenizer
         :return: list of numpy arrays in expected order for model input
         """
-        if not all(name in tokens for name in self.onnx_input_names):
+        if onnx_input_names is None:
+            onnx_input_names = self.onnx_input_names
+        if not all(name in tokens for name in onnx_input_names):
             raise ValueError(
-                f"pipeline expected arrays with names {self.onnx_input_names}, "
+                f"pipeline expected arrays with names {onnx_input_names}, "
                 f"received inputs: {list(tokens.keys())}"
             )
 
-        return [tokens[name] for name in self.onnx_input_names]
+        return [tokens[name] for name in onnx_input_names]
 
     @staticmethod
     def should_bucket(*args, **kwargs) -> bool:

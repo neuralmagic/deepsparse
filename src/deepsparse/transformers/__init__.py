@@ -41,10 +41,10 @@ _LOGGER = _logging.getLogger(__name__)
 def _check_transformers_install():
     import transformers as _transformers
 
-    if not _transformers.NM_INTEGRATED:
+    if not getattr(_transformers, "NM_INTEGRATED", False):
         _LOGGER.warning(
-            "the neuralmagic fork of transformers may not be installed. it can be "
-            f"installed via `pip install {nm_transformers}`"
+            "The neuralmagic fork of transformers may not be installed. It can be "
+            "installed via `pip install nm_transformers`"
         )
 
 

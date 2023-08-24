@@ -15,6 +15,7 @@ on:
 
 env:
   SPARSEZOO_TEST_MODE: true
+  NM_DISABLE_ANALYTICS: "true"
 
 jobs:
   base-tests:
@@ -31,7 +32,7 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip3 install .[dev,server,image_classification,transformers] opencv-python
+        run: pip3 install .[dev,server,image_classification,transformers,clip] opencv-python
       - name: Run base tests
         run: make test
   cli-smoke-tests:

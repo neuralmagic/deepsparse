@@ -12,15 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
 
+__all__ = ["CLIP_RGB_MEANS", "CLIP_RGB_STDS"]
 
-__all__ = ["InferencePhases"]
-
-
-@dataclass(frozen=True)
-class InferencePhases:
-    PRE_PROCESS: str = "pre_process"
-    ENGINE_FORWARD: str = "engine_forward"
-    POST_PROCESS: str = "post_process"
-    TOTAL_INFERENCE: str = "total_inference"
+CLIP_RGB_MEANS = [0.48145466, 0.4578275, 0.40821073]
+CLIP_RGB_STDS = [0.26862954, 0.26130258, 0.27577711]

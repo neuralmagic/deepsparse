@@ -187,3 +187,158 @@ Latency Median (ms/batch): 15.7850
 Latency Std (ms/batch): 1.0427
 Iterations: 622
 ```
+
+## 📜 Benchmarking Pipelines
+Expanding on the model benchmarking script, `deepsparse.benchmark_pipeline` is a tool for benchmarking end-to-end inference, including pre and post processing. The script can generate fake input data based on the pipeline's input schema, or load it from a local folder. The pipeline then runs pre-processing, engine inference and post-processing. Benchmarking results are reported by section, useful for identifying bottlenecks. 
+
+### Usage 
+Input arguments are the same as the Engine benchmarker, but with two additions:
+
+```
+positional arguments:
+  task_name             Type of pipeline to run(i.e "text_generation")
+
+optional arguments:
+  -c INPUT_CONFIG, --input_config INPUT_CONFIG
+                        JSON file containing schema for input data
+```
+
+The `input_config` argument is a path to a json file specifying details on the input schema to the pipeline, detailed below.
+
+### Configuring Pipeline Inputs
+
+Inputs to the pipeline are configured through a json config file. The `data_type` field should be set to `"dummy"` if passing randomly generated data through the pipeline, and `"real"` if passing in data from files.
+
+#### Dummy Input Configuration
+An example dummy input configuration is shown below.
+* `gen_sequence_length`: number of characters to generate for pipelines that take text input
+* `input_image_shape`: configures image size for pipelines that take image input, must be 3 dimmensional with channel as the last dimmension
+
+```json
+{
+    "data_type": "dummy",
+    "gen_sequence_length": 100,
+    "input_image_shape": [500,500,3],
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {}
+} 
+```
+
+#### Real Input Configuration
+An example real input configuration is shown below.
+* `data_folder`: path to local folder of input data, should contain text or image files
+* `recursive_search`: whether to recursively search through `data_folder` for files
+* `max_string_length`: maximum characters to read from each file containing text data, -1 for no max length
+
+```json
+{
+    "data_type": "real",
+    "data_folder": "/home/sadkins/imagenette2-320/",
+    "recursive_search": true,
+    "max_string_length": -1,
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {}
+} 
+```
+
+#### Keyword Arguments
+Additional arguments to the pipeline or input_schema can be added to the `pipeline_kwargs` and `input_schema_kwargs` fields respectively. For instance, to pass class_names to a YOLO pipeline and conf_thres to the input schema
+```json
+{
+    "data_type": "dummy",
+    "input_image_shape": [500,500,3],
+    "pipeline_kwargs": {
+        "class_names": ["classA", "classB"]
+    },
+    "input_schema_kwargs": {
+        "conf_thres": 0.7
+    }
+} 
+```
+
+### Example Usage
+
+Running ResNet image classification for 30 seconds with a batch size of 32:
+```
+deepsparse.benchmark_pipeline image_classification zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none -c config.json -t 60 -b 32
+```
+
+Running CodeGen text generation for 30 seconds asynchronously 
+```
+deepsparse.benchmark_pipeline text_generation zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/pruned50-none -c config.json -t 30 -s async
+```
+### Example Output
+Command:
+```
+deepsparse.benchmark_pipeline text_classification zoo:nlp/sentiment_analysis/distilbert-none/pytorch/huggingface/sst2/pruned90-none -c config.json
+```
+config.json:
+```json
+{
+    "data_type": "real",
+    "gen_sequence_length": 1000,
+    "data_folder": "/home/sadkins/text_data/",
+    "recursive_search": true,
+    "max_string_length": -1
+}
+```
+
+Output:
+```
+Batch Size: 1
+Scenario: sync
+Iterations: 955
+Total Runtime: 10.0090
+Throughput (items/sec): 95.4137
+Processing Time Breakdown: 
+     total_inference: 99.49%
+     pre_process: 25.70%
+     engine_forward: 72.56%
+     post_process: 1.03%
+Mean Latency Breakdown (ms/batch): 
+     total_inference: 10.4274
+     pre_process: 2.6938
+     engine_forward: 7.6051
+     post_process: 0.1077
+```
+
+Command:
+```
+deepsparse.benchmark_pipeline text_generation zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base_quant-none -c config.json -t 60
+```
+config.json:
+```json
+{
+    "data_type": "dummy",
+    "gen_sequence_length": 100,
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {}
+} 
+```
+
+Output:
+```
+Batch Size: 1
+Scenario: sync
+Iterations: 6
+Total Runtime: 62.8005
+Throughput (items/sec): 0.0955
+Processing Time Breakdown: 
+     total_inference: 100.00%
+     pre_process: 0.00%
+     engine_forward: 99.98%
+     post_process: 0.01%
+     engine_prompt_prefill: 5.83%
+     engine_prompt_prefill_single: 0.09%
+     engine_token_generation: 93.64%
+     engine_token_generation_single: 0.09%
+Mean Latency Breakdown (ms/batch): 
+     total_inference: 20932.4786
+     pre_process: 0.9729
+     engine_forward: 20930.2190
+     post_process: 1.2150
+     engine_prompt_prefill: 1220.7037
+     engine_prompt_prefill_single: 19.0412
+     engine_token_generation: 19603.0353
+     engine_token_generation_single: 19.1170
+```

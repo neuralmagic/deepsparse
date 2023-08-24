@@ -122,7 +122,8 @@ INTEGRATION_OPTION = click.option(
 @click.group(
     invoke_without_command=True,
     context_settings=dict(
-        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
+        token_normalize_func=lambda x: "_".join(x.replace("-", "_").split()),
+        show_default=True,
     ),
 )
 @click.option(
@@ -228,6 +229,7 @@ def main(
             loggers={},
         )
 
+        # saving yaml config to temporary directory
         with TemporaryDirectory() as tmp_dir:
             config_path = os.path.join(tmp_dir, "server-config.yaml")
             with open(config_path, "w") as fp:
