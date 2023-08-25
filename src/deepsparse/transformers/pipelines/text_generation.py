@@ -435,13 +435,14 @@ class TextGenerationPipeline(TransformersPipeline):
                 else 100 * self.sequence_length
             )  # set safety for absolute max generation
 
+            # last prompt token is the first generated token
             generated_tokens = [tokens[-1]]
             generated_logits = (
                 prompt_logits if context.get("include_prompt_logits") else []
             )
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
-                while len(generated_tokens) <= max_tokens:
+                while len(generated_tokens) < max_tokens:
                     with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                         token, logits = self.autoregressive_inference(tokens)
                     tokens.append(token)
