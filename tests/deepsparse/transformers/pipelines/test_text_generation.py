@@ -52,6 +52,9 @@ def _initialize_kv_cache_state(model, length=0):
     return kv_cache
 
 
+START = 0 # global variable for dummy_callback
+
+
 @pytest.mark.parametrize(
     "use_deepsparse_cache",
     [True, False],
@@ -142,6 +145,23 @@ class TestTextGenerationPipeline:
             )
         self._test_cache_state(short_prompt, pipeline, model_name)
         self._test_cache_state(long_prompt, pipeline, model_name)
+
+    def test_callback(self, setup):
+        pipeline, *_ = setup
+
+        def dummy_callback(token):
+            global START
+            START += 1
+            return START < 3
+
+        inputs = {
+            "sequences": "def fib(a, b, accumulator=0)",
+            "callback": dummy_callback,
+            "return_logits": True,
+        }
+
+        outs = pipeline(**inputs)
+        assert outs.logits.shape[1] == 3
 
     def _test_cache_state(self, prompt, pipeline, model_name):
         # make sure that the cache state after running a prompt
