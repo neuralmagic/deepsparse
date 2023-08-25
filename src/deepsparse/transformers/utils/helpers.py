@@ -14,12 +14,13 @@
 
 import logging
 import uuid
-from typing import List, Tuple, Union
+import warnings
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy
 import onnx
 
-from deepsparse.engine import Context, Scheduler
+from deepsparse.engine import Context
 from deepsparse.utils.onnx import translate_onnx_type_to_numpy
 from sparsezoo.utils import save_onnx
 
@@ -214,59 +215,49 @@ def create_causal_mask(
     return causal_mask
 
 
-def update_context_to_single_stream(**kwargs) -> Context:
+def force_num_streams_to_one(**kwargs) -> Dict[str, Any]:
     """
-    Create a new `Context` object to account for the fact that a few pipelines
-    like `text-generation` only support `single_stream` scheduler. If the
-    kwargs contain a `Context` then it is used to fetch `num_cores`, else
-    kwargs are used to fetch `num_cores` directly. If `num_cores` is not
-    provided, then we use the default `num_cores`. The `num_streams` argument
-    is ignored, and it is assumed that the engine will decide the right
-    number of streams to use.
+    Override the `num_streams` argument to 1 for pipelines that only support
+    a single stream of inference requests. Additionally creates a new `Context`
+    object if needed.
 
-    :param kwargs: kwargs to pass to the TransformersPipeline, may contain
-        `Context` object and/or `num_cores` argument
-    :return: a new `Context` object, with the `scheduler` set to `single_stream`
+    This function is needed because a few pipelines (e.g. `TextGenerationPipeline`)
+    do not support multiple streams of inference requests with KV Cache enabled.
+    This is because the KV Cache is shared across all the streams and hence
+    is not thread-safe. Overriding the `num_streams` argument to 1 is a workaround
+    for this issue.
+
+    :param kwargs: keyword arguments to pass to the Pipeline, may contain
+        `context` (with a `Context` object) and/or `num_streams` keys.
+    :return: The same kwargs with `num_streams` set to 1; either directly
+        in kwargs or via a new `Context` object
     """
-    num_cores = None  # use default num_cores
-    num_streams = None  # ignore num_streams
-    current_scheduler = None
-    default_scheduler = "single_stream"
+    expected_num_streams = 1
 
-    context = kwargs.get("context")
-    if context is not None and isinstance(context, Context):
-        num_streams = context.num_streams
-        current_scheduler = context.scheduler
-        num_cores = context.num_cores
+    def raise_warning_on_mismatch(num_streams):
+        if num_streams != expected_num_streams:
+            warnings.warn(
+                "Expected `num_streams` to be %s, but got %s."
+                "The `num_streams` argument will be over-ridden to %s"
+                % (expected_num_streams, num_streams, expected_num_streams)
+            )
 
-    else:
-        num_streams = kwargs.pop("num_streams", None)
-        num_cores = kwargs.pop("num_cores", None)
-        current_scheduler = kwargs.pop("scheduler", None)
+    # Override number of streams to 1
 
-    if num_streams is not None and num_streams > 1:
-        _LOGGER.warning(
-            "Multistream is not supported for generation pipelines. "
-            "The `num_streams` argument will be ignored."
+    if (context := kwargs.get("context")) is not None and isinstance(context, Context):
+        raise_warning_on_mismatch(context.num_streams)
+
+        # Update with a new Context object
+
+        kwargs["context"] = Context(
+            num_cores=context.num_cores,
+            num_streams=expected_num_streams,
         )
+        return kwargs
 
-    current_scheduler_is_default = (
-        current_scheduler == Scheduler.default.value
-        or current_scheduler == Scheduler.default
-    )
-    if current_scheduler is not None and not current_scheduler_is_default:
-        _LOGGER.warning(
-            "Only `default`(%s) Scheduler is supported for "
-            "generation pipelines, but got %s."
-            "This `scheduler` argument will be ignored."
-            % (default_scheduler, current_scheduler)
-        )
+    # Context object not found update the kwargs directly
+    raise_warning_on_mismatch(num_streams=kwargs.get("num_streams"))
 
-    # let the engine decide the number of streams, use same number of cores
-    #  as specified by the user
-    context = Context(
-        num_cores=num_cores,
-        scheduler=default_scheduler,
-    )
-    _LOGGER.info("Built context: %s" % context)
-    return context
+    # Update num_streams to 1
+    kwargs["num_streams"] = expected_num_streams
+    return kwargs

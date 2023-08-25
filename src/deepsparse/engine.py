@@ -95,7 +95,7 @@ class Scheduler(Enum):
 
     @staticmethod
     def from_str(key: str):
-        if key in ("sync", "single", "single_stream", "default"):
+        if key in ("sync", "single", "single_stream"):
             return Scheduler.single_stream
         elif key in ("async", "multi", "multi_stream"):
             return Scheduler.multi_stream
@@ -162,21 +162,20 @@ class Context(object):
     Contexts can be used to run multiple instances of the MultiModelEngine with the same
     scheduler. This allows one scheduler to manage the resources of the system
     effectively, keeping engines that are running different models from fighting over system
-    resources.
+    resources. (Invariant: scheduler will always be `elastic`)
 
     :param num_cores: The number of physical cores to run the model on. If more
         cores are requested than are available on a single socket, the engine
         will try to distribute them evenly across as few sockets as possible.
     :param num_streams: The max number of requests the model can handle
         concurrently.
-    :param scheduler: The kind of scheduler to execute with. Default is `elastic`
     """
 
-    def __init__(
-        self, num_cores: int = None, num_streams: int = None, scheduler: str = "elastic"
-    ):
+    def __init__(self, num_cores: int = None, num_streams: int = None):
         self._num_cores = _validate_num_cores(num_cores)
-        self._scheduler = Scheduler.from_str(scheduler)
+        # do not update the next line, Context should force scheduler
+        # to be elastic
+        self._scheduler = Scheduler.from_str("elastic")
         self._deepsparse_context = LIB.deepsparse_context(
             self._num_cores,
             _validate_num_streams(num_streams, self._num_cores),

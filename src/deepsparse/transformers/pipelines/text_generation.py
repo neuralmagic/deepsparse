@@ -29,8 +29,8 @@ from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
+    force_num_streams_to_one,
     pad_to_fixed_length,
-    update_context_to_single_stream,
 )
 from deepsparse.utils.onnx import default_cached_outputs
 
@@ -157,7 +157,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
                 use_deepsparse_cache = False
 
-        kwargs["context"] = update_context_to_single_stream(**kwargs)
+        kwargs = force_num_streams_to_one(**kwargs)
         super().__init__(
             **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
         )
