@@ -497,7 +497,7 @@ class TextGenerationPipeline(TransformersPipeline):
                             else decoded_token.strip()
                         )
                         if decoded_token in stop:
-                            _LOGGER.info(
+                            _LOGGER.debug(
                                 "Stop token %s generated. Stopping generation."
                                 % decoded_token
                             )
