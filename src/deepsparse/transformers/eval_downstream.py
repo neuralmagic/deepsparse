@@ -78,19 +78,29 @@ from datasets import load_dataset, load_metric  # isort: skip
 def perplexity_eval(args, dataset_name="openai_humaneval"):
     if dataset_name == "wikitext":
         raw_dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+        raw_text = "\n\n".join(raw_dataset["text"])
+        max_token_length = None
+    elif dataset_name == "c4":
+        raw_dataset = load_dataset(
+            "allenai/c4",
+            "allenai--c4",
+            data_files={"validation": "en/c4-validation.00000-of-00008.json.gz"},
+            split="validation",
+        )
+        raw_text = " ".join(raw_dataset[:1100]["text"])
+        max_token_length = 256 * args.max_sequence_length
+    else:
+        dataset = load_dataset(dataset_name, split="test")
 
+    if dataset_name in ["wikitext", "c4"]:
         # Dataset is split into sections that contain "max_sequence_length" tokens.
         # To split the dataset, first tokenize text
-        raw_text = "\n\n".join(raw_dataset["text"])
         tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-        dataset = _split_text_by_tokens(raw_text, tokenizer, args.max_sequence_length)
+        dataset = _split_text_by_tokens(raw_text, tokenizer, args.max_sequence_length, max_token_length)
 
         # Set perplexity computation to accumulate negative log-likelihood across
         # sections
         accumulate = True
-    else:
-        dataset = load_dataset(dataset_name, split="test")
-        accumulate = False
 
     # We'll use the text generation pipeline to generate a single token.
     # Along with the token, it returns the logits for input sequence
@@ -517,11 +527,14 @@ def _split_train_val(train_dataset, val_ratio, seed=42):
     return train_ds, val_ds
 
 
-def _split_text_by_tokens(text, tokenizer, sequence_length):
+def _split_text_by_tokens(text, tokenizer, sequence_length, max_token_length):
     input_tokens = tokenizer(
         text,
         return_tensors="np",
     )["input_ids"][0]
+
+    if max_token_length is not None:
+        input_tokens = input_tokens[:max_token_length]
 
     # Then split the tokenized text into sections of size "max_sequence_length" and
     # decode each section back into text format
@@ -565,6 +578,9 @@ SUPPORTED_DATASETS = {
     ),
     "wikitext": lambda args: perplexity_eval(
         args, dataset_name="wikitext",
+    ),
+    "c4": lambda args: perplexity_eval(
+        args, dataset_name="c4",
     ),
 }
 
