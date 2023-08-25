@@ -422,22 +422,35 @@ class TextGenerationPipeline(TransformersPipeline):
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             streamer = context.get("streamer")
 
-            # pop the session id from the inputs
-            session_id = engine_inputs.pop(
-                next(
-                    idx
-                    for idx, item in enumerate(engine_inputs)
-                    if isinstance(item, str)
+            if self.cache_support_enabled:
+                # engine_inputs is a list of numpy arrays plus additional
+                # session_id string. We need to pop the session_id string
+                # and from the engine_inputs. The session_id will be used
+                # seperately to keep track of the appropriate kv cache session
+                # (if kv cache is enabled)
+                session_id = engine_inputs.pop(
+                    next(
+                        idx
+                        for idx, item in enumerate(engine_inputs)
+                        if isinstance(item, str)
+                    )
                 )
-            )
 
-            assert isinstance(
-                session_id, str
-            ), "Session id must be a string not {}".format(type(session_id))
+                assert isinstance(
+                    session_id, str
+                ), "Session id must be a string not {}".format(type(session_id))
+            else:
+                session_id = None
 
             if not self.cache_support_enabled:
-                tokens, prompt_logits = self.multitoken_engine(engine_inputs)
-                return numpy.array([tokens]), prompt_logits
+                tokens, prompt_logits = self.multitoken_engine(
+                    engine_inputs, session_id
+                )
+                return (
+                    numpy.array([tokens]),
+                    prompt_logits,
+                    numpy.array([session_id]),
+                )
 
             else:
                 # run the prompt through
@@ -517,7 +530,7 @@ class TextGenerationPipeline(TransformersPipeline):
             and self.enable_multitoken_prefill
         ):
 
-            self.synchronize_engines()
+            self.synchronize_engines(session_id)
             tokens = (
                 self._remove_bos_token_if_applicable(tokens)
                 if self.multitoken_engine.kv_cache_storage.has_session(session_id)
@@ -534,7 +547,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
 
-        self.synchronize_engines()
+        self.synchronize_engines(session_id)
         tokens = (
             self._remove_bos_token_if_applicable(tokens)
             if self.engine.kv_cache_storage.has_session(session_id)
@@ -571,6 +584,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
+        # TODO: Possibly remove this
         num_cached_entries = self.engine.num_non_blank_cache_entries(session_id)
 
         new_token = tokens[-1]
@@ -651,6 +665,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for idx, token_batch in enumerate(token_batches):
             engine_inputs = []
+            # TODO: let's see if we need this
             num_cached_entries = self.multitoken_engine.num_non_blank_cache_entries(
                 session_id
             )
@@ -704,24 +719,24 @@ class TextGenerationPipeline(TransformersPipeline):
 
             yield engine_inputs
 
-    def synchronize_engines(self):
+    def synchronize_engines(self, session_id: str):
         """
         Make sure that the existing engines are in sync i.e.
-        they contain the newest version of the kv cache storage.
+        they contain the newest version of kv cache session with
+        the given session id.
+
+        :param session_id: the session id of the session to synchronize
         """
-        engine_storage_timestamp = self.engine.kv_cache_storage.timestamp
-        multitoken_engine_storage_timestamp = (
-            self.multitoken_engine.kv_cache_storage.timestamp
-        )
+        engine_session = self.engine.kv_cache_storage.get(session_id)
+        multitoken_session = self.multitoken_engine.kv_cache_storage.get(session_id)
 
-        if engine_storage_timestamp > multitoken_engine_storage_timestamp:
-            # engine's storage is newer,
-            # # so we need to transfer it to the multitoken engine
-            self.multitoken_engine.transfer_cache_storage(self.engine.kv_cache_storage)
+        engine_session_timestamp = engine_session.timestamp
+        multitoken_session_timestamp = multitoken_session.timestamp
 
-        # multitoken engine's storage is newer,
-        # so we need to transfer it to the engine
-        self.engine.transfer_cache_storage(self.multitoken_engine.kv_cache_storage)
+        if engine_session_timestamp > multitoken_session_timestamp:
+            self.multitoken_engine.transfer_cache_session(engine_session)
+
+        self.engine.transfer_cache_session(multitoken_session)
 
     def is_cache_support_enabled(self) -> bool:
         """
@@ -819,10 +834,6 @@ class TextGenerationPipeline(TransformersPipeline):
             inp.name == "causal_mask"
             for inp in onnx.load(model_path, load_external_data=False).graph.input
         )
-
-    def _reset_engines_cache(self):
-        self.engine.reset_kv_cache()
-        self.multitoken_engine.reset_kv_cache() if self.multitoken_engine else None
 
     def _remove_bos_token_if_applicable(self, tokens: List[int]):
         if hasattr(self.tokenizer, "add_bos_token"):

@@ -241,7 +241,7 @@ class DecoderKVCache:
 
         # given a 2D array get number of rows that are not entirely zero
         single_kv_cache_entry = self.cached_inputs[list(self.cached_inputs.keys())[0]]
-        # TODO: Make it more elegant
+        # TODO: Make it more elegant, potentially remove
         return numpy.count_nonzero(single_kv_cache_entry.sum(0).sum(0).sum(1))
 
     @property

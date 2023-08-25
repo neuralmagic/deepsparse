@@ -111,7 +111,7 @@ def generate_session_id() -> str:
 
 
 def validate_session_ids(
-    session_ids: str, other_attributes: Dict[str, Any]
+    session_ids: Optional[str], other_attributes: Dict[str, Any]
 ) -> Optional[List[str]]:
     """
     Helper function to validate the session ids for TextGenerationInput schema
@@ -122,8 +122,8 @@ def validate_session_ids(
     if session_ids is None:
         return None
 
-    if isinstance(session_ids, list):
-        session_ids = [str(session_id) for session_id in session_ids]
+    if not isinstance(session_ids, list):
+        session_ids = [session_ids]
 
     if isinstance(other_attributes["sequences"], str) and len(session_ids) != 1:
         raise ValueError(
