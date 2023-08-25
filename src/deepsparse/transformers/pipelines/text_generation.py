@@ -469,7 +469,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         break
 
                     if callback is not None and callback(token) is False:
-                        _LOGGER.info(
+                        _LOGGER.debug(
                             "callback %s returned False, stopping generation."
                             % callback.__qualname__
                         )
