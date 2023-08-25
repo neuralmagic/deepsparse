@@ -15,6 +15,7 @@
 import logging
 import os
 import warnings
+from dataclasses import dataclass
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
@@ -30,13 +31,20 @@ from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     pad_to_fixed_length,
 )
-from deepsparse.transformers.utils.timings import TextGenerationTimings
 from deepsparse.utils.onnx import default_cached_outputs
 
 
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["TextGenerationPipeline"]
+
+
+@dataclass(frozen=True)
+class _TextGenerationTimings:
+    PROMPT_PREFILL: str = "engine_prompt_prefill"
+    PROMPT_PREFILL_SINGLE: str = "engine_prompt_prefill_single"
+    TOKEN_GENERATION: str = "engine_token_generation"
+    TOKEN_GENERATION_SINGLE: str = "engine_token_generation_single"
 
 
 class TextGenerationInput(BaseModel):
@@ -51,6 +59,14 @@ class TextGenerationInput(BaseModel):
         description="A flag that indicates whether to return "
         "the logits for the input text sequence and the "
         "generated text sequence. ",
+    )
+    include_prompt_logits: bool = Field(
+        default=False,
+        description="A flag that indicates whether to return "
+        "the logits for the prompt. If set, prompt_logits are "
+        "`prepended` to the logits for the generated text sequence."
+        "Note: This flag is only applicable when return_logits "
+        "is `True`.",
     )
     session_id: Optional[str] = Field(
         default=None,
@@ -160,7 +176,7 @@ class TextGenerationPipeline(TransformersPipeline):
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
-        if not self.cache_support_enabled and self.max_generated_tokens > 1:
+        if not self.cache_support_enabled and max_generated_tokens > 1:
             raise ValueError(
                 "The model used for inference does not support kv cache. It is "
                 "assumed that it maps from the token sequence to predicted logits."
@@ -251,7 +267,6 @@ class TextGenerationPipeline(TransformersPipeline):
                 input_ids_length=self.prompt_processing_sequence_length,
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=self.use_deepsparse_cache,
-                timer_manager=self.timer_manager,
             )
 
         if self.cache_support_enabled:
@@ -266,7 +281,6 @@ class TextGenerationPipeline(TransformersPipeline):
                 input_ids_length=1,
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=self.use_deepsparse_cache,
-                timer_manager=self.timer_manager,
             )
 
         assert (engine is not None) or (
@@ -360,7 +374,9 @@ class TextGenerationPipeline(TransformersPipeline):
             self.multitoken_engine.session_id = inputs.session_id
 
         postprocessing_kwargs = dict(
-            return_logits=inputs.return_logits, streamer=inputs.streamer
+            return_logits=inputs.return_logits,
+            streamer=inputs.streamer,
+            include_prompt_logits=inputs.include_prompt_logits,
         )
         return engine_input, postprocessing_kwargs
 
@@ -406,7 +422,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
             else:
                 # run the prompt through
-                with timer.time(TextGenerationTimings.PROMPT_PREFILL):
+                with timer.time(_TextGenerationTimings.PROMPT_PREFILL):
                     tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
             if streamer is not None:
@@ -420,11 +436,13 @@ class TextGenerationPipeline(TransformersPipeline):
             )  # set safety for absolute max generation
 
             generated_tokens = [tokens[-1]]
-            generated_logits = prompt_logits
+            generated_logits = (
+                prompt_logits if context.get("include_prompt_logits") else []
+            )
 
-            with timer.time(TextGenerationTimings.TOKEN_GENERATION):
-                while len(generated_tokens) < max_tokens:
-                    with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
+            with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
+                while len(generated_tokens) <= max_tokens:
+                    with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                         token, logits = self.autoregressive_inference(tokens)
                     tokens.append(token)
                     generated_tokens.append(token)
@@ -488,7 +506,7 @@ class TextGenerationPipeline(TransformersPipeline):
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             with self.timer_manager.current.time(
-                TextGenerationTimings.PROMPT_PREFILL_SINGLE
+                _TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
                 new_token, new_logits = self.autoregressive_inference(run_tokens)
 
