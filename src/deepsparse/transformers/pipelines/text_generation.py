@@ -488,20 +488,13 @@ class TextGenerationPipeline(TransformersPipeline):
                         and not self.force_max_tokens
                     ):
                         break
-                    if stop is not None:
-                        decoded_token = self.tokenizer.decode(token)
 
-                        decoded_token = (
-                            decoded_token
-                            if decoded_token.isspace()
-                            else decoded_token.strip()
+                    if self._stop_token_generated(token, stop_tokens=stop):
+                        _LOGGER.debug(
+                            "Stop token %s generated. Stopping generation."
+                            % self.tokenizer.decode(token)
                         )
-                        if decoded_token in stop:
-                            _LOGGER.debug(
-                                "Stop token %s generated. Stopping generation."
-                                % decoded_token
-                            )
-                            break
+                        break
 
                     if callback is not None and callback(token) is False:
                         _LOGGER.debug(
@@ -776,3 +769,15 @@ class TextGenerationPipeline(TransformersPipeline):
             inp.name == "causal_mask"
             for inp in onnx.load(model_path, load_external_data=False).graph.input
         )
+
+    def _stop_token_generated(
+        self, token, stop_tokens: Union[None, str, Sequence[str]]
+    ) -> bool:
+        if stop_tokens is None:
+            return False
+
+        decoded_token = self.tokenizer.decode(token)
+        decoded_token = (
+            decoded_token if decoded_token.isspace() else decoded_token.strip()
+        )
+        return decoded_token in stop_tokens
