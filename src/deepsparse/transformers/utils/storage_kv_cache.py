@@ -26,8 +26,10 @@ __all__ = ["SessionStorageKVCache"]
 class SessionStorageKVCache:
     """
     A storage that stores the kv cache sessions.
-    Each session is a DecoderKVCache object that stores the state of the kv cache.
-    The storage is a set of all the active sessions.
+    Each session is a DecoderKVCache object that
+    stores the state of the kv cache.
+    The storage is a dictionary that where keys are session_ids
+    and values are of all the active sessions.
     """
 
     def __init__(self):
@@ -88,9 +90,6 @@ class SessionStorageKVCache:
         :param session_id: The identifier of the cache session.
         :return: The state of the kv cache for the session.
         """
-        return self._get(session_id)
-
-    def _get(self, session_id: str) -> Union[DecoderKVCache, None]:
         session = self._memory.get(session_id)
         if session is None:
             _LOGGER.debug(f"No cache session found for session id: {session_id}")

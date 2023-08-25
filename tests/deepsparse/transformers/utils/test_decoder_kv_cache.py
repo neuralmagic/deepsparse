@@ -134,8 +134,19 @@ class TestDecoderKVCache:
 
     @staticmethod
     def _test_decrease_capacity(session_):
-        # TODO: Implement this!
-        pass
+        session = copy.deepcopy(session_)
+        capacity = session.capacity
+        # decrease capacity by 3
+        session.set_capacity(capacity - 3)
+        kv_cache_state = session.cached_inputs
+        # check if the capacity has been decreased by 3
+        if session_._freeze_first_position:
+            bos_token = session_.cached_inputs["dummy_cache_name"][:, :, :1, :]
+            new_array = session_.cached_inputs["dummy_cache_name"][:, :, 4:, :]
+            target_array = np.concatenate([bos_token, new_array], axis=2)
+        else:
+            target_array = session_.cached_inputs["dummy_cache_name"][:, :, 3:, :]
+        assert np.array_equal(target_array, kv_cache_state["dummy_cache_name"])
 
     @staticmethod
     def _test_constant_capacity(session_):

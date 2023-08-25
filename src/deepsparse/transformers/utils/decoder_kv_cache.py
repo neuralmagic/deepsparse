@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List
+import time
+from typing import Any, Dict
 
 import numpy
 
@@ -47,7 +48,16 @@ class DecoderKVCache:
         self._freeze_first_position = None
         self._state = None
         self.engine_internal_cache = None
+        self.timestamp = time.time()
 
+    def update_timestamp(func):
+        def wrapper(self, *args, **kwargs):
+            self.timestamp = time.time()
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    @update_timestamp
     def setup(
         self,
         session_id: str,
@@ -87,6 +97,7 @@ class DecoderKVCache:
                 prev_num_tokens, num_frozen_tokens
             )
 
+    @update_timestamp
     def update(
         self,
         state: Dict[str, Any],
@@ -178,6 +189,7 @@ class DecoderKVCache:
             )
         return new_cache_array
 
+    @update_timestamp
     def set_capacity(self, capacity: int):
         """
         Enforce a new total capacity for the state
@@ -202,29 +214,23 @@ class DecoderKVCache:
             self.update(state, input_ids_len=capacity_difference)
 
         elif capacity_difference < 0:
-            indices = [0] * abs(capacity_difference)
-            state = self._add_entries(state, indices=indices)
+            state = self._expand_capacity(
+                state, num_additional_entries=abs(capacity_difference)
+            )
             self._state = state
         else:
             pass
 
         return
 
-    def _add_entries(
-        self, state: Dict[str, Any], indices: List[int], padding_value: int = 0
+    def _expand_capacity(
+        self, state: Dict[str, Any], num_additional_entries: int, padding_value: int = 0
     ) -> Dict[str, Any]:
         for key, value in state.items():
-            # required to make sure that both
-            # quantized and non quantized caches
-            # are supported
-            # TODO: Potentially make it faster
-            state_dtype = value.dtype
-            # change padding_value dtype to match the state dtype
-            padding_value = numpy.array(padding_value, dtype=state_dtype)
-
-            state[key] = numpy.insert(
-                value, indices, padding_value, axis=self._sequence_len_axis
+            zeros = numpy.zeros_like(
+                (value[:, :, :num_additional_entries, :]), dtype=value.dtype
             )
+            state[key] = numpy.concatenate([zeros, value], axis=self._sequence_len_axis)
         return state
 
     @property
@@ -232,17 +238,6 @@ class DecoderKVCache:
         if self._session_id is None:
             raise ValueError("Attempted to access session_id before setting up session")
         return self._session_id
-
-    @property
-    def num_non_blank_entries(self):
-        """
-        :return: the number of non-blank entries in the kv cache
-        """
-
-        # given a 2D array get number of rows that are not entirely zero
-        single_kv_cache_entry = self.cached_inputs[list(self.cached_inputs.keys())[0]]
-        # TODO: Make it more elegant, potentially remove
-        return numpy.count_nonzero(single_kv_cache_entry.sum(0).sum(0).sum(1))
 
     @property
     def capacity(self) -> int:

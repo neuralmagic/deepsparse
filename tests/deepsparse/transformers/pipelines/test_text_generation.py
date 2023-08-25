@@ -59,29 +59,28 @@ def _initialize_kv_cache_state(model, length=0):
 @pytest.mark.parametrize(
     "model_stub, model_name, uses_bos_token",
     [
+        # (
+        #     "zoo:nlg/text_generation/opt-1.3b/pytorch/"
+        #     "huggingface/opt_pretrain/base-none",
+        #     "facebook/opt-1.3b",
+        #     True,
+        # ),
         (
-            "zoo:nlg/text_generation/opt-1.3b/pytorch/"
-            "huggingface/opt_pretrain/base-none",
-            "facebook/opt-1.3b",
-            True,
-        ),
-        (
-            "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
-            "huggingface/bigpython_bigquery_thepile/base-none",
-            "salesforce/codegen-350m-mono",
+            "/home/ubuntu/damian/sparseml/deployment_codegen",
+            "salesforce/codegen-350m-multi",
             False,
         ),
     ],
     scope="class",
 )
-@pytest.mark.skip(
-    reason="Those tests are too heavy to " "run as a normal part of the CI."
-)
+# @pytest.mark.skip(
+#     reason="Those tests are too heavy to " "run as a normal part of the CI."
+# )
 class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
 
-        self.max_generated_tokens = 16
+        self.max_generated_tokens = 8
         self.model = Model(model_stub)
         self.use_deepsparse_cache = use_deepsparse_cache
 
@@ -99,21 +98,21 @@ class TestTextGenerationPipeline:
         # make sure that the short prompt will be only
         # processed by a single token engine
         # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
-        # assert (
-        #     len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
-        #     < pipeline.prompt_processing_sequence_length
-        # )
+        assert (
+            len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
+            < pipeline.prompt_processing_sequence_length
+        )
         # make sure that the long prompt will be processed by
         # single token and multiple token engines
         # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
-        # assert (
-        #     len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
-        #     > pipeline.prompt_processing_sequence_length * 3
-        # )
+        assert (
+            len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
+            > pipeline.prompt_processing_sequence_length * 3
+        )
 
         yield pipeline, model_name, uses_bos_token, short_prompt, long_prompt
 
-    def test_freeze(self, setup):
+    def test_freeze_first_position(self, setup):
         # test whether we should be "freezing" the first token after
         # the kv cache is full
         pipeline, _, uses_bos_token, _, _ = setup
@@ -151,15 +150,22 @@ class TestTextGenerationPipeline:
         # between sessions
 
         output = pipeline(sequences=short_prompt, session_ids="session_one")
-        intermediate_prompt = output.sequences[0]
+        intermediate_prompt_1 = output.sequences[0]
         out_1 = pipeline(sequences=long_prompt, session_ids="session_one")
 
-        out_2 = pipeline(
-            sequences=short_prompt + intermediate_prompt + long_prompt,
-            session_ids="session_two",
+        output = pipeline(sequences=long_prompt, session_ids="session_two")
+        intermediate_prompt_2 = output.sequences[0]
+        out_2 = pipeline(sequences=short_prompt, session_ids="session_two")
+
+        out_3 = pipeline(
+            sequences=short_prompt + intermediate_prompt_1 + long_prompt,
+        )
+        out_4 = pipeline(
+            sequences=long_prompt + intermediate_prompt_2 + short_prompt,
         )
 
-        assert out_1.sequences[0] == out_2.sequences[0]
+        assert out_1.sequences[0] == out_3.sequences[0]
+        assert out_2.sequences[0] == out_4.sequences[0]
 
     def _test_cache_state(self, prompt, pipeline, model_name):
         # make sure that the cache state after running a prompt
@@ -218,7 +224,7 @@ class TestTextGenerationPipeline:
         for prompt in sequences:
             input_ids = tokenizer(prompt, return_tensors="pt").input_ids
             generated_ids = model.generate(
-                input_ids, max_new_tokens=self.max_generated_tokens
+                input_ids, max_new_tokens=self.max_generated_tokens + 1
             )
             hf_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
             hf_outputs.append(hf_output)

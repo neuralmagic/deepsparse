@@ -20,7 +20,9 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import overwrite_onnx_model_inputs
+from deepsparse.transformers.utils.helpers import (
+    overwrite_onnx_model_inputs_for_kv_cache_models,
+)
 from deepsparse.transformers.utils.storage_kv_cache import SessionStorageKVCache
 from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
@@ -103,20 +105,6 @@ class NLDecoderEngine:
         self._engine_type = engine_type
 
     @property
-    def session_id(self) -> str:
-        """
-        :return: The session id for the kv_cache if enabled
-        """
-        return self._session_id
-
-    @session_id.setter
-    def session_id(self, session_id: str):
-        """
-        :param session_id: The session id to set for the kv_cache
-        """
-        self._session_id = session_id
-
-    @property
     def onnx_input_names_no_cache(self) -> List[str]:
         """
         :return: The input names for the onnx model, excluding
@@ -128,20 +116,11 @@ class NLDecoderEngine:
             if not name.startswith(CACHE_INPUT_PREFIX)
         ]
 
-    def num_non_blank_cache_entries(self, session_id: str) -> int:
-        """
-        Fetch the appropriate kv cache session from the kv cache storage
-        and return the number of non-blank entries in the kv cache session
-        cache state. Note, if the expected kv cache session is not found,
-        a new session for this engine will be initialized.
-
-        :param session_id: The session id to fetch the kv cache session for
-        :return a number of non-blank entries in the kv cache
-        """
+    def total_num_processed_tokens(self, session_id: str) -> int:
         session = self.kv_cache_storage.get(session_id)
         if session is None:
             session = self.initialize_session(session_id)
-        return session.num_non_blank_entries
+        return session.total_num_processed_tokens
 
     @property
     def internal_cache_active(self) -> bool:
@@ -245,14 +224,14 @@ class NLDecoderEngine:
         self.kv_cache_storage.put(session)
         return session
 
-    def transfer_cache_storage(self, storage: SessionStorageKVCache):
+    def transfer_cache_session(self, session: DecoderKVCache):
         """
-        Set the kv cache storage of this decoder engine to
-        an external storage object.
+        Update the kv cache storage of this decoder engine with
+        an external DecoderKVCache object.
 
-        :param storage: The external storage object
+        :param session: The external DecoderKVCache object
         """
-        self.kv_cache_storage = storage
+        self.kv_cache_storage.put(session)
 
     def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
@@ -327,7 +306,6 @@ class NLDecoderEngine:
         """
         if self.internal_cache_active:
             session = self.kv_cache_storage.get(session_id)
-            # TODO: Check whether this gets updated correctly
             session.total_num_processed_tokens += input_ids_len
             return
 

@@ -431,27 +431,25 @@ class TextGenerationPipeline(TransformersPipeline):
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             streamer = context.get("streamer")
 
-            if self.cache_support_enabled:
-                # engine_inputs is a list of numpy arrays plus additional
-                # session_id string. We need to pop the session_id string
-                # and from the engine_inputs. The session_id will be used
-                # seperately to keep track of the appropriate kv cache session
-                # (if kv cache is enabled)
-                session_id = engine_inputs.pop(
-                    next(
-                        idx
-                        for idx, item in enumerate(engine_inputs)
-                        if isinstance(item, str)
-                    )
+            # engine_inputs is a list of numpy arrays plus additional
+            # session_id string. We need to pop the session_id string
+            # and from the engine_inputs. The session_id will be used
+            # seperately to keep track of the appropriate kv cache session
+            # (if kv cache is enabled)
+            session_id = engine_inputs.pop(
+                next(
+                    idx
+                    for idx, item in enumerate(engine_inputs)
+                    if isinstance(item, str)
                 )
+            )
 
-                assert isinstance(
-                    session_id, str
-                ), "Session id must be a string not {}".format(type(session_id))
-            else:
-                session_id = None
+            assert isinstance(
+                session_id, str
+            ), "Session id must be a string not {}".format(type(session_id))
 
             if not self.cache_support_enabled:
+                session_id = None
                 tokens, prompt_logits = self.multitoken_engine(
                     engine_inputs, session_id
                 )
@@ -595,20 +593,20 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
-        # TODO: Possibly remove this
-        num_cached_entries = self.engine.num_non_blank_cache_entries(session_id)
+        num_total_processed_tokens = self.engine.total_num_processed_tokens(session_id)
 
         new_token = tokens[-1]
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        # TODO: We probably don't need this line below but let's see
-        num_tokens_processed = min(
-            num_cached_entries + 1, self.sequence_length
+
+        num_attention_entries_to_unmask = min(
+            num_total_processed_tokens + 1, self.sequence_length
         )  # cap by seq len
-        attention_mask[:, -num_tokens_processed:] = 1
-        positions = numpy.array([[num_cached_entries + 1]], dtype=numpy.int64)
-        positions -= 1
+        attention_mask[:, -num_attention_entries_to_unmask:] = 1
+
+        positions = numpy.array([[num_total_processed_tokens]], dtype=numpy.int64)
+
         input_ids = numpy.array([[new_token]])
         causal_mask = create_causal_mask(input_ids, attention_mask)
 
@@ -648,8 +646,8 @@ class TextGenerationPipeline(TransformersPipeline):
             the sum of:
                 a) the number of tokens in the batch
                 (self.prompt_processing_sequence_length)
-                b) the number of non-blank cache entries
-                (num_non_blank_cache_entries)
+                b) the number of processed tokens so far
+                (num_total_processed_tokens)
             so that the attention_mask properly attends to the
             current input tokens, as well as the previous cache
             entries.
@@ -676,10 +674,10 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for idx, token_batch in enumerate(token_batches):
             engine_inputs = []
-            # TODO: let's see if we need this
-            num_cached_entries = self.multitoken_engine.num_non_blank_cache_entries(
-                session_id
+            num_total_processed_tokens = (
+                self.multitoken_engine.total_num_processed_tokens(session_id)
             )
+
             for name in self.multitoken_engine.onnx_input_names_no_cache:
                 if name == "input_ids":
                     engine_input = numpy.array([token_batch])
@@ -689,17 +687,13 @@ class TextGenerationPipeline(TransformersPipeline):
                     engine_input = numpy.zeros(
                         (1, self.sequence_length), dtype=numpy.int64
                     )
-                    # fill it out with 1s (from the right), so that the number
-                    # of unmasked entries is equal to the sum of:
-                    engine_input[
-                        :,
-                        -(
-                            # ...the number of current input tokens...
-                            self.prompt_processing_sequence_length
-                            # ...and the number of the previous cache entries
-                            + num_cached_entries
-                        ) :,
-                    ] = 1
+                    num_attention_entries_to_unmask = min(
+                        num_total_processed_tokens
+                        + self.prompt_processing_sequence_length,
+                        self.sequence_length,
+                    )
+                    engine_input[:, -num_attention_entries_to_unmask:] = 1
+
                 elif name == "causal_mask":
                     # delay creation of the causal mask
                     continue
@@ -707,12 +701,14 @@ class TextGenerationPipeline(TransformersPipeline):
                     if self.prompt_processing_sequence_length == 1:
                         # we need to treat `positions` as if we were in
                         # the autoregressive mode
-                        engine_input = numpy.array([[idx]], dtype=numpy.int64)
+                        engine_input = numpy.array(
+                            [[num_total_processed_tokens]], dtype=numpy.int64
+                        )
                     else:
                         engine_input = (
                             numpy.arange(
-                                num_cached_entries,
-                                num_cached_entries
+                                num_total_processed_tokens,
+                                num_total_processed_tokens
                                 + self.prompt_processing_sequence_length,
                             )
                             .reshape(1, -1)
@@ -741,13 +737,15 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_session = self.engine.kv_cache_storage.get(session_id)
         multitoken_session = self.multitoken_engine.kv_cache_storage.get(session_id)
 
-        engine_session_timestamp = engine_session.timestamp
-        multitoken_session_timestamp = multitoken_session.timestamp
+        if engine_session is None and multitoken_session:
+            self.engine.transfer_cache_session(multitoken_session)
+            return
 
-        if engine_session_timestamp > multitoken_session_timestamp:
+        elif engine_session and multitoken_session is None:
             self.multitoken_engine.transfer_cache_session(engine_session)
-
-        self.engine.transfer_cache_session(multitoken_session)
+            return
+        else:
+            return
 
     def is_cache_support_enabled(self) -> bool:
         """
