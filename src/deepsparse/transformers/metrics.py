@@ -34,6 +34,10 @@ class Perplexity:
     def __init__(self, accumulate: bool = False):
         """
         Class for computing perplexity.
+
+        :param accumulate: If True, accumulate negative log-likelihood
+            over samples. If False, perplexity is computed separately
+            for each sampled and then averaged in the end.
         """
         self._predictions = None
         self._targets = None
