@@ -16,7 +16,7 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 import onnx
@@ -90,6 +90,12 @@ class TextGenerationInput(BaseModel):
         "generated sequences. Generated tokens are passed through "
         "`streamer.put(token_ids)` and the streamer is responsible "
         "for any further processing.",
+    )
+    callback: Optional[Callable[[Any], Union[bool, Any]]] = Field(
+        default=None,
+        description="Callable that will be invoked "
+        "on each generated token. If the callable returns "
+        "`False`, the generation will stop. Default is `None`.",
     )
 
 
@@ -377,6 +383,7 @@ class TextGenerationPipeline(TransformersPipeline):
             return_logits=inputs.return_logits,
             streamer=inputs.streamer,
             include_prompt_logits=inputs.include_prompt_logits,
+            callback=inputs.callback,
         )
         return engine_input, postprocessing_kwargs
 
@@ -443,7 +450,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 if context.get("include_prompt_logits")
                 else [prompt_logits[-1]]
             )
-
+            callback = context.get("callback")
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
                     with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
@@ -459,6 +466,13 @@ class TextGenerationPipeline(TransformersPipeline):
                         token == self.tokenizer.eos_token_id
                         and not self.force_max_tokens
                     ):
+                        break
+
+                    if callback is not None and callback(token) is False:
+                        _LOGGER.debug(
+                            "callback %s returned False, stopping generation."
+                            % callback.__qualname__
+                        )
                         break
 
             if streamer is not None:
