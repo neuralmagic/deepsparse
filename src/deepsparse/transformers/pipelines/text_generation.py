@@ -91,12 +91,10 @@ class TextGenerationInput(BaseModel):
         "`streamer.put(token_ids)` and the streamer is responsible "
         "for any further processing.",
     )
-    callback: Optional[Callable[[Any], bool]] = Field(
+    callback: Optional[Callable[[Any], Union[bool, Any]]] = Field(
         default=None,
         description="Callable that will be invoked "
-        "on each generated token. The callable must return a "
-        "Boolean value. If invocation returns `True`, the "
-        "generation will continue. If the callable returns "
+        "on each generated token. If the callable returns "
         "`False`, the generation will stop. Default is `None`.",
     )
 
@@ -470,7 +468,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     ):
                         break
 
-                    if callback is not None and not callback(token):
+                    if callback is not None and callback(token) is False:
                         _LOGGER.info(
                             "callback %s returned False, stopping generation."
                             % callback.__qualname__
