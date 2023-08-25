@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 import uuid
 from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -24,22 +24,22 @@ from sparsezoo.utils import save_onnx
 
 
 __all__ = [
+    "overwrite_onnx_model_inputs_for_kv_cache_models",
     "generate_session_id",
     "pad_to_fixed_length",
     "create_causal_mask",
-    "overwrite_onnx_model_inputs",
     "validate_session_ids",
 ]
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def overwrite_onnx_model_inputs(
+def overwrite_onnx_model_inputs_for_kv_cache_models(
     onnx_file_path: str,
     sequence_length: int,
     input_ids_length: int,
     batch_size: int = 1,
-) -> Tuple[str, List[int]]:
+) -> Tuple[str, List[int], Optional[int]]:
     """
     Enforces the appropriate input shapes for the onnx model, as well as
     checks whether kv cache is enabled or not.

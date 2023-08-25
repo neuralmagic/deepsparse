@@ -22,7 +22,7 @@ import pytest
 from deepsparse import Pipeline
 from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
-    overwrite_onnx_model_inputs,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
 )
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX
 from sparsezoo import Model
@@ -234,7 +234,7 @@ class TestTextGenerationPipeline:
 
         # setup model and session
         # (run full sequence inference)
-        overwrite_onnx_model_inputs(
+        overwrite_onnx_model_inputs_for_kv_cache_models(
             model_onnx_path, sequence_length=128, input_ids_length=128
         )
         sess = onnxruntime.InferenceSession(model_onnx_path)

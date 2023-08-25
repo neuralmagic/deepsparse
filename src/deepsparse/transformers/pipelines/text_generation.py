@@ -63,6 +63,14 @@ class TextGenerationInput(BaseModel):
         "the logits for the input text sequence and the "
         "generated text sequence. ",
     )
+    include_prompt_logits: bool = Field(
+        default=False,
+        description="A flag that indicates whether to return "
+        "the logits for the prompt. If set, prompt_logits are "
+        "`prepended` to the logits for the generated text sequence."
+        "Note: This flag is only applicable when return_logits "
+        "is `True`.",
+    )
     session_ids: Union[None, List[str], str] = Field(
         default=None,
         description="A user may set a string identifier(s) "
@@ -176,7 +184,7 @@ class TextGenerationPipeline(TransformersPipeline):
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
-        if not self.cache_support_enabled and self.max_generated_tokens > 1:
+        if not self.cache_support_enabled and max_generated_tokens > 1:
             raise ValueError(
                 "The model used for inference does not support kv cache. It is "
                 "assumed that it maps from the token sequence to predicted logits."
@@ -381,6 +389,7 @@ class TextGenerationPipeline(TransformersPipeline):
         postprocessing_kwargs = dict(
             return_logits=inputs.return_logits,
             streamer=inputs.streamer,
+            include_prompt_logits=inputs.include_prompt_logits,
         )
         return engine_input, postprocessing_kwargs
 
@@ -470,10 +479,12 @@ class TextGenerationPipeline(TransformersPipeline):
             )  # set safety for absolute max generation
 
             generated_tokens = [tokens[-1]]
-            generated_logits = prompt_logits
+            generated_logits = (
+                prompt_logits if context.get("include_prompt_logits") else []
+            )
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
-                while len(generated_tokens) < max_tokens:
+                while len(generated_tokens) <= max_tokens:
                     with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                         token, logits = self.autoregressive_inference(
                             tokens, session_id

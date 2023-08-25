@@ -66,17 +66,17 @@ class NLDecoderEngine:
     ):
         # flag to indicate if the model is quantized or not
         self.kv_cache_data_type = None
-
         (
             onnx_file_path,
             output_indices_to_be_cached,
             kv_cache_data_type,
-        ) = overwrite_onnx_model_inputs(
+        ) = overwrite_onnx_model_inputs_for_kv_cache_models(
             onnx_file_path=onnx_file_path,
             batch_size=engine_args.get("batch_size", 1),
             sequence_length=sequence_length,
             input_ids_length=input_ids_length,
         )
+
         kv_cache_enabled = False
         if sum(output_indices_to_be_cached):
             kv_cache_enabled = True
