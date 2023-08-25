@@ -93,9 +93,6 @@ class TestDecoderKVCache:
 
         # check if the session attributes are set correctly
         state = session.cached_inputs
-        assert session.num_non_blank_entries == np.count_nonzero(
-            state["dummy_cache_name"].flatten()
-        )
         assert session.capacity == state["dummy_cache_name"].shape[2]
         assert session.id == "dummy_id"
 

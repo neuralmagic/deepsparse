@@ -59,12 +59,11 @@ def _initialize_kv_cache_state(model, length=0):
 @pytest.mark.parametrize(
     "model_stub, model_name, uses_bos_token",
     [
-        # (
-        #     "zoo:nlg/text_generation/opt-1.3b/pytorch/"
-        #     "huggingface/opt_pretrain/base-none",
-        #     "facebook/opt-1.3b",
-        #     True,
-        # ),
+        (
+            "/home/ubuntu/damian/sparseml/deployment_opt",
+            "facebook/opt-350m",
+            True,
+        ),
         (
             "/home/ubuntu/damian/sparseml/deployment_codegen",
             "salesforce/codegen-350m-multi",
@@ -80,14 +79,14 @@ class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
 
-        self.max_generated_tokens = 8
+        self.max_generated_tokens = 16
         self.model = Model(model_stub)
         self.use_deepsparse_cache = use_deepsparse_cache
 
         pipeline = Pipeline.create(
             task="text_generation",
             model_path=model_stub,
-            sequence_length=32,
+            sequence_length=64,
             prompt_processing_sequence_length=4,
             max_generated_tokens=self.max_generated_tokens,
             use_deepsparse_cache=self.use_deepsparse_cache,
@@ -170,9 +169,10 @@ class TestTextGenerationPipeline:
     def _test_cache_state(self, prompt, pipeline, model_name):
         # make sure that the cache state after running a prompt
         # is correct
-
-        pipeline(sequences=prompt)
-        cache_state_dict = pipeline.engine.kv_cache.cached_inputs
+        pipeline(sequences=prompt, session_ids="cache_state_test")
+        cache_state_dict = pipeline.engine.kv_cache_storage.get(
+            "cache_state_test"
+        ).cached_inputs
         cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
 
         # generate ground truth from ORT

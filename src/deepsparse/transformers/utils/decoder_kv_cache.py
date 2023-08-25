@@ -50,14 +50,6 @@ class DecoderKVCache:
         self.engine_internal_cache = None
         self.timestamp = time.time()
 
-    def update_timestamp(func):
-        def wrapper(self, *args, **kwargs):
-            self.timestamp = time.time()
-            return func(self, *args, **kwargs)
-
-        return wrapper
-
-    @update_timestamp
     def setup(
         self,
         session_id: str,
@@ -97,11 +89,11 @@ class DecoderKVCache:
                 prev_num_tokens, num_frozen_tokens
             )
 
-    @update_timestamp
     def update(
         self,
         state: Dict[str, Any],
         input_ids_len: int,
+        increment_total_num_processed_tokens: int = True,
     ):
         """
         Updating the session is identical with taking the kv cache
@@ -116,7 +108,8 @@ class DecoderKVCache:
             input batch: (batch_size, length).
             Corresponds to `input_ids.shape[1]`
         """
-        self.total_num_processed_tokens += input_ids_len
+        if increment_total_num_processed_tokens:
+            self.total_num_processed_tokens += input_ids_len
 
         input_state_capacity = state[list(state.keys())[0]].shape[
             self._sequence_len_axis
@@ -189,7 +182,6 @@ class DecoderKVCache:
             )
         return new_cache_array
 
-    @update_timestamp
     def set_capacity(self, capacity: int):
         """
         Enforce a new total capacity for the state
@@ -211,7 +203,11 @@ class DecoderKVCache:
         state = self.cached_inputs
 
         if capacity_difference > 0:
-            self.update(state, input_ids_len=capacity_difference)
+            self.update(
+                state,
+                input_ids_len=capacity_difference,
+                increment_total_num_processed_tokens=False,
+            )
 
         elif capacity_difference < 0:
             state = self._expand_capacity(

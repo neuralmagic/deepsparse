@@ -117,6 +117,15 @@ class NLDecoderEngine:
         ]
 
     def total_num_processed_tokens(self, session_id: str) -> int:
+        """
+        Fetch the total number of processed tokens for the kv
+        session related to session_id identifier.
+
+        :param session_id: The identifier for session to fetch
+            the total number of processed tokens for
+        :return: The total number of processed tokens for the
+            kv session
+        """
         session = self.kv_cache_storage.get(session_id)
         if session is None:
             session = self.initialize_session(session_id)

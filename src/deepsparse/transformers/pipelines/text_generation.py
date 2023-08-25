@@ -500,9 +500,9 @@ class TextGenerationPipeline(TransformersPipeline):
                     ):
                         break
 
-            # do not generate more tokens, but run inference to
-            # generate cache entry for the last generated token
-            self.autoregressive_inference(tokens, session_id)
+                # do not generate more tokens, but run inference to
+                # generate cache entry for the last generated token
+                self.autoregressive_inference(tokens, session_id)
             if streamer is not None:
                 streamer.end()
 
@@ -606,7 +606,6 @@ class TextGenerationPipeline(TransformersPipeline):
         attention_mask[:, -num_attention_entries_to_unmask:] = 1
 
         positions = numpy.array([[num_total_processed_tokens]], dtype=numpy.int64)
-
         input_ids = numpy.array([[new_token]])
         causal_mask = create_causal_mask(input_ids, attention_mask)
 
@@ -620,7 +619,7 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs = [
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
-
+        print(f"position: {positions}, token: {input_ids} (autoregressive)")
         generated_token, generated_logits = self.engine(engine_inputs, session_id)
 
         return generated_token, generated_logits
@@ -716,7 +715,9 @@ class TextGenerationPipeline(TransformersPipeline):
                         )
 
                 engine_inputs.append(engine_input)
-
+            print(
+                f"position: {engine_inputs[2]}, token: {engine_inputs[0]} (multitoken)"
+            )
             # create the causal mask once we have the input_ids and attention_mask
             if "causal_mask" in self.multitoken_engine.onnx_input_names_no_cache:
                 causal_mask = create_causal_mask(
