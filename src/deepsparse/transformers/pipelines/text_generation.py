@@ -436,9 +436,12 @@ class TextGenerationPipeline(TransformersPipeline):
             )  # set safety for absolute max generation
 
             # last prompt token is the first generated token
+            # add it to generated tokens, and the logits
             generated_tokens = [tokens[-1]]
             generated_logits = (
-                prompt_logits if context.get("include_prompt_logits") else []
+                prompt_logits
+                if context.get("include_prompt_logits")
+                else [prompt_logits[-1]]
             )
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
