@@ -52,7 +52,7 @@ def _initialize_kv_cache_state(model, length=0):
     return kv_cache
 
 
-START = 0 # global variable for dummy_callback
+START = 0  # global variable for dummy_callback
 
 
 @pytest.mark.parametrize(
