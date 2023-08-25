@@ -16,7 +16,18 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+)
 
 import numpy
 import onnx
@@ -96,6 +107,13 @@ class TextGenerationInput(BaseModel):
         description="Callable that will be invoked "
         "on each generated token. If the callable returns "
         "`False`, the generation will stop. Default is `None`.",
+    )
+    stop: Union[None, str, Sequence[str]] = Field(
+        default=None,
+        description="A string or a list of strings that will be used as"
+        " stop tokens. (token generation will stop when any of the stop"
+        " tokens is generated). Set to `None` to ignore this parameter."
+        " Default is `None`.",
     )
 
 
@@ -384,6 +402,7 @@ class TextGenerationPipeline(TransformersPipeline):
             streamer=inputs.streamer,
             include_prompt_logits=inputs.include_prompt_logits,
             callback=inputs.callback,
+            stop=inputs.stop,
         )
         return engine_input, postprocessing_kwargs
 
@@ -451,6 +470,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 else [prompt_logits[-1]]
             )
             callback = context.get("callback")
+            stop = context.get("stop")
+
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
                     with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
@@ -467,6 +488,20 @@ class TextGenerationPipeline(TransformersPipeline):
                         and not self.force_max_tokens
                     ):
                         break
+                    if stop is not None:
+                        decoded_token = self.tokenizer.decode(token)
+
+                        decoded_token = (
+                            decoded_token
+                            if decoded_token.isspace()
+                            else decoded_token.strip()
+                        )
+                        if decoded_token in stop:
+                            _LOGGER.info(
+                                "Stop token %s generated. Stopping generation."
+                                % decoded_token
+                            )
+                            break
 
                     if callback is not None and callback(token) is False:
                         _LOGGER.debug(
