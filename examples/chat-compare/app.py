@@ -22,7 +22,7 @@ from deepsparse import Pipeline
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Simulate an interactive text-generation interface " "to evaluate a model."
+            "Simulate an interactive text-generation interface to evaluate a model."
         )
     )
     parser.add_argument(
@@ -36,7 +36,7 @@ def main():
     parser.add_argument(
         "--max_new_tokens",
         type=int,
-        default=16,
+        default=64,
         help="Maximum number of new tokens to generate",
     )
     parser.add_argument(
