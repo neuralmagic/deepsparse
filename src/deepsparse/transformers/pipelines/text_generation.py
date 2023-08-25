@@ -64,6 +64,14 @@ class TextGenerationInput(BaseModel):
         description="A flag that indicates whether to return "
                     "the input_tokens. ",
     )
+    include_prompt_logits: bool = Field(
+        default=False,
+        description="A flag that indicates whether to return "
+        "the logits for the prompt. If set, prompt_logits are "
+        "`prepended` to the logits for the generated text sequence."
+        "Note: This flag is only applicable when return_logits "
+        "is `True`.",
+    )
     session_id: Optional[str] = Field(
         default=None,
         description="A user may set a string identifier "
@@ -382,6 +390,7 @@ class TextGenerationPipeline(TransformersPipeline):
             return_input_tokens=inputs.return_input_tokens,
             input_tokens=input_tokens,
             streamer=inputs.streamer,
+            include_prompt_logits=inputs.include_prompt_logits,
         )
         return engine_input, postprocessing_kwargs
 
@@ -441,8 +450,14 @@ class TextGenerationPipeline(TransformersPipeline):
                 else 100 * self.sequence_length
             )  # set safety for absolute max generation
 
+            # last prompt token is the first generated token
+            # add it to generated tokens, and the logits
             generated_tokens = [tokens[-1]]
-            generated_logits = prompt_logits
+            generated_logits = (
+                prompt_logits
+                if context.get("include_prompt_logits")
+                else [prompt_logits[-1]]
+            )
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
