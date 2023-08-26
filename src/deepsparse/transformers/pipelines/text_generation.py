@@ -192,7 +192,10 @@ class TextGenerationPipeline(TransformersPipeline):
                 use_deepsparse_cache = False
 
         super().__init__(
-            **kwargs, sequence_length=sequence_length, _delay_engine_initialize=True, _delay_overwriting_inputs=True
+            **kwargs,
+            sequence_length=sequence_length,
+            _delay_engine_initialize=True,
+            _delay_overwriting_inputs=True,
         )
         self.enable_multitoken_prefill = self.causal_mask_input_present(
             model_path=self.onnx_file_path
