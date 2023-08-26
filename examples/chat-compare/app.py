@@ -54,6 +54,7 @@ def main():
         sequence_length=args.sequence_length,
         max_generated_tokens=args.max_new_tokens,
         prompt_processing_sequence_length=1,
+        sampling_temperature=0,
         use_deepsparse_cache=False,
         engine_type="deepsparse",
         trust_remote_code=True,
@@ -64,6 +65,7 @@ def main():
         sequence_length=args.sequence_length,
         max_generated_tokens=args.max_new_tokens,
         prompt_processing_sequence_length=1,
+        sampling_temperature=0,
         use_deepsparse_cache=False,
         engine_type="onnxruntime",
         trust_remote_code=True,
@@ -81,10 +83,10 @@ def main():
 
         streamer = TextStreamer(ds_pipe.tokenizer)
 
-        print("DeepSparse output:")
+        print("\n<DeepSparse output>\n")
         _ = ds_pipe(sequences=user_input, streamer=streamer)
 
-        print("ORT output:")
+        print("\n<ORT output>\n")
         _ = ort_pipe(sequences=user_input, streamer=streamer)
 
 
