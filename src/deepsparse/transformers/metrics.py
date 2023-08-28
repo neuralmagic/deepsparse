@@ -118,7 +118,10 @@ class Perplexity:
             labels = encoded_batch
 
             out = self._pipeline(
-                sequences=predictions, return_logits=True, fixed_sequences_length=True
+                sequences=predictions,
+                return_logits=True,
+                fixed_sequences_length=True,
+                include_prompt_logits=True,
             )
 
             logits = out.logits
