@@ -353,7 +353,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the inputs for the engine
         """
 
-        if inputs.fixed_sequences_length:
+        if inputs.fixed_sequences_length or not self.cache_support_enabled:
             # to enforce a fixed sequence length, we need to
             # truncate the input to the maximum sequence length
             # or/and pad it to the maximum sequence length
