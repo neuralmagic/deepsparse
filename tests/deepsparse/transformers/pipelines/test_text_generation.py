@@ -77,14 +77,14 @@ START = 0  # global variable for dummy_callback
     ],
     scope="class",
 )
-# @pytest.mark.skip(
-#     reason="Those tests are too heavy to " "run as a normal part of the CI."
-# )
+@pytest.mark.skip(
+    reason="Those tests are too heavy to " "run as a normal part of the CI."
+)
 class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
 
-        self.max_generated_tokens = 16
+        self.max_generated_tokens = 32
         self.model = Model(model_stub)
         self.use_deepsparse_cache = use_deepsparse_cache
 
@@ -171,7 +171,7 @@ class TestTextGenerationPipeline:
         # between sessions
 
         short_prompt = "this"
-        long_prompt = "this is a sample prompt"
+        long_prompt = "this is a cool sample prompt"
 
         output = pipeline(sequences=short_prompt, session_ids="session_one")
         intermediate_prompt_1 = output.sequences[0]

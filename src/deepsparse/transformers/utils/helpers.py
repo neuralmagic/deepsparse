@@ -117,6 +117,8 @@ def validate_session_ids(
 
     :param session_ids: The session ids to validate
     :param other_attributes: The other attributes of the input schema
+    :return: The session ids if they were not None in the
+        first place, otherwise None
     """
     if session_ids is None:
         return None

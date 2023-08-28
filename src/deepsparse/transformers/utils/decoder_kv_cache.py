@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 from typing import Any, Dict
 
 import numpy
@@ -48,7 +47,6 @@ class DecoderKVCache:
         self._freeze_first_position = None
         self._state = None
         self.engine_internal_cache = None
-        self.timestamp = time.time()
 
     def setup(
         self,
@@ -107,6 +105,9 @@ class DecoderKVCache:
         :param input_ids_len: The number of input ids in the current
             input batch: (batch_size, length).
             Corresponds to `input_ids.shape[1]`
+        :param increment_total_num_processed_tokens: If set to True,
+            the total number of processed tokens will be incremented
+            by the input_ids_len.
         """
         if increment_total_num_processed_tokens:
             self.total_num_processed_tokens += input_ids_len
