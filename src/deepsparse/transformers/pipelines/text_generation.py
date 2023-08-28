@@ -68,7 +68,10 @@ class TextGenerationInput(BaseModel):
     )
     num_generated_predictions: int = Field(
         default=1,
-        description="The number of text generations to create from a single prompt",
+        description="The number of text generations to create from a single prompt. If "
+        "the same sequence is given as an input multiple times, the number of generated"
+        "the number of generated predictins is equivalent to the number of times the "
+        "the sequence is repeated."
     )
     max_tokens: int = Field(
         default=1024,
