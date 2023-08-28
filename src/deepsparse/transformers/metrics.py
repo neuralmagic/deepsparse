@@ -20,8 +20,8 @@ from typing import Any, Dict, Optional
 
 import numpy
 
-from sklearn.metrics import precision_recall_fscore_support
 from scipy.special import log_softmax
+from sklearn.metrics import precision_recall_fscore_support
 
 
 __all__ = [
@@ -43,7 +43,7 @@ class Perplexity:
         self._targets = None
         self._accumulate = accumulate
         if accumulate:
-            self._neg_log_likelihood = 0.
+            self._neg_log_likelihood = 0.0
             self._number_tokens = 0
         else:
             self._perplexities = None
@@ -75,7 +75,9 @@ class Perplexity:
             targets = targets.flatten()
 
             # Compute negative log-likelihood and accumulate
-            self._neg_log_likelihood += _cross_entropy(predictions, targets, reduction="sum").sum()
+            self._neg_log_likelihood += _cross_entropy(
+                predictions, targets, reduction="sum"
+            ).sum()
 
             # Track number of tokens processed
             self._number_tokens += predictions.shape[0]
@@ -99,7 +101,9 @@ class Perplexity:
             if self._perplexities is None:
                 self._perplexities = perplexities
             else:
-                self._perplexities = numpy.concatenate((self._perplexities, perplexities))
+                self._perplexities = numpy.concatenate(
+                    (self._perplexities, perplexities)
+                )
 
     def compute(self) -> Dict[str, Any]:
         """
@@ -181,7 +185,9 @@ class PrecisionRecallF1:
 
 def _cross_entropy(predictions, targets, reduction="mean"):
     logp = log_softmax(predictions, axis=-1)
-    neg_log_likelihoods = -1. * numpy.take_along_axis(logp, numpy.expand_dims(targets, axis=-1), axis=-1)
+    neg_log_likelihoods = -1.0 * numpy.take_along_axis(
+        logp, numpy.expand_dims(targets, axis=-1), axis=-1
+    )
     neg_log_likelihoods = numpy.squeeze(neg_log_likelihoods, axis=-1)
     if reduction == "mean":
         neg_log_likelihoods = neg_log_likelihoods.mean(axis=-1)
@@ -189,4 +195,3 @@ def _cross_entropy(predictions, targets, reduction="mean"):
         neg_log_likelihoods = neg_log_likelihoods.sum(axis=-1)
 
     return neg_log_likelihoods
-  

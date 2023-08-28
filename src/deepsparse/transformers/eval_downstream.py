@@ -67,15 +67,18 @@ from pstats import Stats
 
 import numpy
 from tqdm.auto import tqdm
+from transformers import AutoTokenizer
 
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 
-from transformers import AutoTokenizer
+
 from datasets import load_dataset, load_metric  # isort: skip
 
 
 def perplexity_eval(args, dataset_name="openai_humaneval"):
+    accumulate = False
+
     if dataset_name == "wikitext":
         raw_dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
         raw_text = "\n\n".join(raw_dataset["text"])
@@ -96,7 +99,9 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         # Dataset is split into sections that contain "max_sequence_length" tokens.
         # To split the dataset, first tokenize text
         tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-        dataset = _split_text_by_tokens(raw_text, tokenizer, args.max_sequence_length, max_token_length)
+        dataset = _split_text_by_tokens(
+            raw_text, tokenizer, args.max_sequence_length, max_token_length
+        )
 
         # Set perplexity computation to accumulate negative log-likelihood across
         # sections
@@ -144,6 +149,7 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
                 return_logits=True,
                 return_input_tokens=True,
                 fixed_sequences_length=True,
+                include_prompt_logits=True,
             )
 
             # Handle one sample at a time to make it simpler for masking
@@ -528,10 +534,9 @@ def _split_train_val(train_dataset, val_ratio, seed=42):
 
 
 def _split_text_by_tokens(text, tokenizer, sequence_length, max_token_length):
-    input_tokens = tokenizer(
-        text,
-        return_tensors="np",
-    )["input_ids"][0]
+    input_tokens = tokenizer(text, return_tensors="np",)[
+        "input_ids"
+    ][0]
 
     if max_token_length is not None:
         input_tokens = input_tokens[:max_token_length]
@@ -562,6 +567,7 @@ def _split_text_by_tokens(text, tokenizer, sequence_length, max_token_length):
 
     return split_text
 
+
 # Register all the supported downstream datasets here
 SUPPORTED_DATASETS = {
     "squad": lambda args: qa_eval(args, dataset_name="squad"),
@@ -574,15 +580,19 @@ SUPPORTED_DATASETS = {
     "conll2003": conll2003_eval,
     "go_emotions": go_emotions_eval,
     "openai_humaneval": lambda args: perplexity_eval(
-        args, dataset_name="openai_humaneval",
+        args,
+        dataset_name="openai_humaneval",
     ),
     "wikitext": lambda args: perplexity_eval(
-        args, dataset_name="wikitext",
+        args,
+        dataset_name="wikitext",
     ),
     "c4": lambda args: perplexity_eval(
-        args, dataset_name="c4",
+        args,
+        dataset_name="c4",
     ),
 }
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
