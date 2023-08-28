@@ -142,12 +142,6 @@ def parse_args():
         default="",
     )
     parser.add_argument(
-        "--disable-batch-override",
-        help="Ignores the batch_size parameter",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
         "--use-kvcache", help="Enable KVCache", action="store_true", default=False
     )
     parser.add_argument(
@@ -316,10 +310,6 @@ def main():
     print("Analyzing model: {}".format(orig_model_path))
 
     batch_size = args.batch_size
-    if args.disable_batch_override:
-        batch_size = None
-        os.environ["NM_DISABLE_BATCH_OVERRIDE"] = "1"
-        print("Disable batch override: ON")
 
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as tmp_path:
@@ -357,7 +347,6 @@ def main():
         num_iterations=args.num_iterations,
         num_warmup_iterations=args.num_warmup_iterations,
         optimization_level=int(args.optimization),
-        disable_batch_override=args.disable_batch_override,
         imposed_ks=imposed_kernel_sparsity,
         input_shapes=input_shapes,
         kv_cache_params=kv_cache_params,
