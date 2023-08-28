@@ -66,8 +66,10 @@ from deepsparse import KVCacheParams, model_debug_analysis
 from deepsparse.utils import (
     default_cached_outputs,
     generate_random_inputs,
+    has_model_kv_cache,
     model_to_path,
     override_onnx_input_shapes,
+    overwrite_cache_model_inputs,
     parse_input_shapes,
 )
 
@@ -133,7 +135,24 @@ def parse_args():
         default=True,
     )
     parser.add_argument(
+        "-seq_len",
+        "--sequence_length",
+        type=int,
+        default=512,
+        help="The sequence length to run the KV cache supported model "
+        "benchmarks for. Must be 1 <= seq_len, default is 512",
+    )
+    parser.add_argument(
+        "-input_ids_len",
+        "--input_ids_length",
+        type=int,
+        default=1,
+        help="The input ids length to run the KV cache supported model "
+        "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
+    )
+    parser.add_argument(
         "-i",
+        "-shapes",
         "--input_shapes",
         help="Override the shapes of the inputs, "
         'i.e. -shapes "[1,2,3],[4,5,6],[7,8,9]" results in '
@@ -142,7 +161,10 @@ def parse_args():
         default="",
     )
     parser.add_argument(
-        "--use-kvcache", help="Enable KVCache", action="store_true", default=False
+        "--use-kvcache",
+        help="Enable internal KVCache",
+        action="store_true",
+        default=False,
     )
     parser.add_argument(
         "--kv-cache-prev-num-tokens",
@@ -307,9 +329,30 @@ def main():
     orig_model_path = args.model_path
     model_path = model_to_path(args.model_path)
 
-    print("Analyzing model: {}".format(orig_model_path))
+    print(f"Analyzing model: {orig_model_path}")
 
     batch_size = args.batch_size
+
+    if has_model_kv_cache(model_path):
+        if batch_size != 1:
+            raise ValueError(
+                "Unable to run models with KV cache support "
+                "for batch size different than one."
+                "Please set batch size to 1 and try again"
+            )
+
+        print(
+            "Found model with KV cache support. "
+            "Benchmarking the autoregressive model with "
+            f"input_ids_length: {args.input_ids_length} and "
+            f"sequence length: {args.sequence_length}."
+        )
+
+        model_path, _, _ = overwrite_cache_model_inputs(
+            model_path=model_path,
+            input_ids_length=args.input_ids_length,
+            sequence_length=args.sequence_length,
+        )
 
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as tmp_path:
@@ -334,9 +377,8 @@ def main():
         )
 
         print(
-            "Enable KVCache: prev_num_tokens = {}, num_frozen_tokens = {}".format(
-                kv_cache_params.prev_num_tokens, kv_cache_params.num_frozen_tokens
-            )
+            f"Enable KVCache: prev_num_tokens = {kv_cache_params.prev_num_tokens}, "
+            f"num_frozen_tokens = {kv_cache_params.num_frozen_tokens}"
         )
 
     result = model_debug_analysis(
