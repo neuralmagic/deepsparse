@@ -16,7 +16,18 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+)
 
 import numpy
 import onnx
@@ -93,6 +104,19 @@ class TextGenerationInput(BaseModel):
         "generated sequences. Generated tokens are passed through "
         "`streamer.put(token_ids)` and the streamer is responsible "
         "for any further processing.",
+    )
+    callback: Optional[Callable[[Any], Union[bool, Any]]] = Field(
+        default=None,
+        description="Callable that will be invoked "
+        "on each generated token. If the callable returns "
+        "`False`, the generation will stop. Default is `None`.",
+    )
+    stop: Union[None, str, Sequence[str]] = Field(
+        default=None,
+        description="A string or a list of strings that will be used as"
+        " stop tokens. (token generation will stop when any of the stop"
+        " tokens is generated). Set to `None` to ignore this parameter."
+        " Default is `None`.",
     )
 
     @validator("session_ids")
@@ -390,6 +414,8 @@ class TextGenerationPipeline(TransformersPipeline):
             return_logits=inputs.return_logits,
             streamer=inputs.streamer,
             include_prompt_logits=inputs.include_prompt_logits,
+            callback=inputs.callback,
+            stop=inputs.stop,
         )
         return engine_input, postprocessing_kwargs
 
@@ -476,13 +502,19 @@ class TextGenerationPipeline(TransformersPipeline):
                 else 100 * self.sequence_length
             )  # set safety for absolute max generation
 
+            # last prompt token is the first generated token
+            # add it to generated tokens, and the logits
             generated_tokens = [tokens[-1]]
             generated_logits = (
-                prompt_logits if context.get("include_prompt_logits") else []
+                prompt_logits
+                if context.get("include_prompt_logits")
+                else [prompt_logits[-1]]
             )
+            callback = context.get("callback")
+            stop = context.get("stop")
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
-                while len(generated_tokens) <= max_tokens:
+                while len(generated_tokens) < max_tokens:
                     with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                         token, logits = self.autoregressive_inference(
                             tokens, session_id
@@ -500,9 +532,22 @@ class TextGenerationPipeline(TransformersPipeline):
                     ):
                         break
 
-                # do not generate more tokens, but run inference to
-                # generate cache entry for the last generated token
-                self.autoregressive_inference(tokens, session_id)
+                    if self._stop_token_generated(token, stop_tokens=stop):
+                        _LOGGER.debug(
+                            "Stop token %s generated. Stopping generation."
+                            % self.tokenizer.decode(token)
+                        )
+                        break
+
+                    if callback is not None and callback(token) is False:
+                        _LOGGER.debug(
+                            "callback %s returned False, stopping generation."
+                            % callback.__qualname__
+                        )
+                        break
+            # do not generate more tokens, but run inference to
+            # generate cache entry for the last generated token
+            self.autoregressive_inference(tokens, session_id)
             if streamer is not None:
                 streamer.end()
 
@@ -619,8 +664,8 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs = [
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
-        print(f"position: {positions}, token: {input_ids} (autoregressive)")
-        generated_token, generated_logits = self.engine(engine_inputs, session_id)
+
+        generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
 
@@ -715,9 +760,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         )
 
                 engine_inputs.append(engine_input)
-            print(
-                f"position: {engine_inputs[2]}, token: {engine_inputs[0]} (multitoken)"
-            )
+
             # create the causal mask once we have the input_ids and attention_mask
             if "causal_mask" in self.multitoken_engine.onnx_input_names_no_cache:
                 causal_mask = create_causal_mask(
@@ -844,6 +887,18 @@ class TextGenerationPipeline(TransformersPipeline):
             inp.name == "causal_mask"
             for inp in onnx.load(model_path, load_external_data=False).graph.input
         )
+
+    def _stop_token_generated(
+        self, token, stop_tokens: Union[None, str, Sequence[str]]
+    ) -> bool:
+        if stop_tokens is None:
+            return False
+
+        decoded_token = self.tokenizer.decode(token)
+        decoded_token = (
+            decoded_token if decoded_token.isspace() else decoded_token.strip()
+        )
+        return decoded_token in stop_tokens
 
     def _remove_bos_token_if_applicable(self, tokens: List[int]):
         if hasattr(self.tokenizer, "add_bos_token"):

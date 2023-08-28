@@ -52,6 +52,9 @@ def _initialize_kv_cache_state(model, length=0):
     return kv_cache
 
 
+START = 0  # global variable for dummy_callback
+
+
 @pytest.mark.parametrize(
     "use_deepsparse_cache",
     [True, False],
@@ -60,21 +63,23 @@ def _initialize_kv_cache_state(model, length=0):
     "model_stub, model_name, uses_bos_token",
     [
         (
-            "/home/ubuntu/damian/sparseml/deployment_opt",
-            "facebook/opt-350m",
+            "zoo:nlg/text_generation/opt-1.3b/pytorch/"
+            "huggingface/opt_pretrain/base-none",
+            "facebook/opt-1.3b",
             True,
         ),
         (
-            "/home/ubuntu/damian/sparseml/deployment_codegen",
-            "salesforce/codegen-350m-multi",
+            "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
+            "huggingface/bigpython_bigquery_thepile/base-none",
+            "salesforce/codegen-350m-mono",
             False,
         ),
     ],
     scope="class",
 )
-# @pytest.mark.skip(
-#     reason="Those tests are too heavy to " "run as a normal part of the CI."
-# )
+@pytest.mark.skip(
+    reason="Those tests are too heavy to " "run as a normal part of the CI."
+)
 class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
@@ -97,17 +102,17 @@ class TestTextGenerationPipeline:
         # make sure that the short prompt will be only
         # processed by a single token engine
         # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
-        assert (
-            len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
-            < pipeline.prompt_processing_sequence_length
-        )
+        # assert (
+        #     len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
+        #     < pipeline.prompt_processing_sequence_length
+        # )
         # make sure that the long prompt will be processed by
         # single token and multiple token engines
         # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
-        assert (
-            len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
-            > pipeline.prompt_processing_sequence_length * 3
-        )
+        # assert (
+        #     len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
+        #     > pipeline.prompt_processing_sequence_length * 3
+        # )
 
         yield pipeline, model_name, uses_bos_token, short_prompt, long_prompt
 
@@ -140,6 +145,23 @@ class TestTextGenerationPipeline:
             )
         self._test_cache_state(short_prompt, pipeline, model_name)
         self._test_cache_state(long_prompt, pipeline, model_name)
+
+    def test_callback(self, setup):
+        pipeline, *_ = setup
+
+        def dummy_callback(token):
+            global START
+            START += 1
+            return START < 3
+
+        inputs = {
+            "sequences": "def fib(a, b, accumulator=0)",
+            "callback": dummy_callback,
+            "return_logits": True,
+        }
+
+        outs = pipeline(**inputs)
+        assert outs.logits.shape[1] == 3
 
     def test_model_session_storage(self, setup):
         pipeline, _, _, short_prompt, long_prompt = setup
