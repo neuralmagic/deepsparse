@@ -545,8 +545,6 @@ class TextGenerationPipeline(TransformersPipeline):
                             % callback.__qualname__
                         )
                         break
-            # do not generate more tokens, but run inference to
-            # generate cache entry for the last generated token
             self.autoregressive_inference(tokens, session_id)
             if streamer is not None:
                 streamer.end()
@@ -592,6 +590,9 @@ class TextGenerationPipeline(TransformersPipeline):
             )
 
             for engine_inputs in self.engine_inputs_for_prefill(tokens, session_id):
+                print(
+                    f"Tokens: {engine_inputs[0]}, positions: {engine_inputs[2]}, attn_mask sum: {engine_inputs[1].sum()}"
+                )
                 new_token, new_logits = self.multitoken_engine(
                     engine_inputs, session_id
                 )
@@ -665,7 +666,10 @@ class TextGenerationPipeline(TransformersPipeline):
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
 
-        generated_token, generated_logits = self.engine(engine_inputs)
+        generated_token, generated_logits = self.engine(engine_inputs, session_id)
+        print(
+            f"Tokens: {new_token}, positions: {positions}, attn_mask sum: {attention_mask.sum()}"
+        )
 
         return generated_token, generated_logits
 

@@ -77,9 +77,9 @@ START = 0  # global variable for dummy_callback
     ],
     scope="class",
 )
-@pytest.mark.skip(
-    reason="Those tests are too heavy to " "run as a normal part of the CI."
-)
+# @pytest.mark.skip(
+#     reason="Those tests are too heavy to " "run as a normal part of the CI."
+# )
 class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
@@ -164,11 +164,14 @@ class TestTextGenerationPipeline:
         assert outs.logits.shape[1] == 3
 
     def test_model_session_storage(self, setup):
-        pipeline, _, _, short_prompt, long_prompt = setup
+        pipeline, _, _, _, _ = setup
 
         # test whether the session storage is working correctly,
         # i.e storage memory is composable and there is no leakage
         # between sessions
+
+        short_prompt = "this"
+        long_prompt = "this is a sample prompt"
 
         output = pipeline(sequences=short_prompt, session_ids="session_one")
         intermediate_prompt_1 = output.sequences[0]
