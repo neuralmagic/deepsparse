@@ -383,7 +383,7 @@ def main():
         input_list = generate_random_inputs(model_path, batch_size)
 
     kv_cache_params = None
-    if args.use_kvcache:
+    if args.use_internal_kvcache:
         kv_cache_params = KVCacheParams(
             default_cached_outputs(model_path),
             args.kv_cache_prev_num_tokens,
