@@ -78,7 +78,7 @@ optional arguments:
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
                         Store results into a JSON file
-"""
+"""  # noqa E501
 
 import argparse
 import json

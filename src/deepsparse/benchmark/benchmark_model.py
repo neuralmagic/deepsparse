@@ -99,8 +99,7 @@ deepsparse.benchmark \
 Example on a CodeGen (model with KV cache support)
 from SparseZoo with input_ids_length 10 and sequence length 256:
 deepsparse.benchmark \
-   zoo:nlg/text_generation/codegen_mono-350m/pytorch/
-   huggingface/bigpython_bigquery_thepile/pruned50-none
+   zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/pruned50-none \
    --input_ids_length 10 --sequence_length 256
 
 ##########
@@ -111,7 +110,7 @@ deepsparse.benchmark /PATH/TO/model.onnx
 Example on local ONNX model at batch size 32 with synchronous (singlestream) execution:
 deepsparse.benchmark /PATH/TO/model.onnx --batch_size 32 --scenario sync
 
-"""
+"""  # noqa E501
 
 import argparse
 import importlib
