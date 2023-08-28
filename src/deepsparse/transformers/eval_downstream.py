@@ -82,7 +82,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
     if dataset_name == "wikitext":
         raw_dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
         raw_text = "\n\n".join(raw_dataset["text"])
-        max_token_length = None
     elif dataset_name == "c4":
         raw_dataset = load_dataset(
             "allenai/c4",
@@ -91,7 +90,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
             split="validation",
         )
         raw_text = " ".join(raw_dataset[:1100]["text"])
-        max_token_length = 256 * args.max_sequence_length
     else:
         dataset = load_dataset(dataset_name, split="test")
 
@@ -100,7 +98,7 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         # To split the dataset, first tokenize text
         tokenizer = AutoTokenizer.from_pretrained(args.model_path)
         dataset = _split_text_by_tokens(
-            raw_text, tokenizer, args.max_sequence_length, max_token_length
+            raw_text, tokenizer, args.max_sequence_length,
         )
 
         # Set perplexity computation to accumulate negative log-likelihood across
@@ -158,10 +156,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
                 input_ids = prediction.input_tokens["input_ids"][s].flatten()
                 logits = prediction.logits[s]
                 attention_mask = prediction.input_tokens["attention_mask"][s].flatten()
-
-                sequence_length = logits.shape[0]
-                attention_mask = attention_mask[:sequence_length]
-                input_ids = input_ids[:sequence_length]
 
                 logits = numpy.compress(attention_mask, logits, axis=0)[:-1, :]
                 input_ids = numpy.compress(attention_mask, input_ids)[1:]
@@ -537,9 +531,6 @@ def _split_text_by_tokens(text, tokenizer, sequence_length, max_token_length):
     input_tokens = tokenizer(text, return_tensors="np",)[
         "input_ids"
     ][0]
-
-    if max_token_length is not None:
-        input_tokens = input_tokens[:max_token_length]
 
     # Then split the tokenized text into sections of size "max_sequence_length" and
     # decode each section back into text format
