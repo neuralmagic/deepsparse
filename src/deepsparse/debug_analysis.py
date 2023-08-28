@@ -18,12 +18,17 @@ Analysis script for ONNX models with the DeepSparse engine.
 ##########
 Command help:
 usage: deepsparse.debug_analysis [-h] [-wi NUM_WARMUP_ITERATIONS]
-                          [-bi NUM_ITERATIONS] [-ncores NUM_CORES]
-                          [-b BATCH_SIZE] [-ks KERNEL_SPARSITY]
-                          [-ksf KERNEL_SPARSITY_FILE]
-                          [--optimization OPTIMIZATION] [-i INPUT_SHAPES] [-q]
-                          [-x EXPORT_PATH]
-                          model_path
+                                 [-bi NUM_ITERATIONS] [-ncores NUM_CORES]
+                                 [-b BATCH_SIZE] [-ks KERNEL_SPARSITY]
+                                 [-ksf KERNEL_SPARSITY_FILE]
+                                 [--optimization OPTIMIZATION]
+                                 [-seq_len SEQUENCE_LENGTH]
+                                 [-input_ids_len INPUT_IDS_LENGTH]
+                                 [-i INPUT_SHAPES] [--use-kvcache]
+                                 [--kv-cache-prev-num-tokens KV_CACHE_PREV_NUM_TOKENS]
+                                 [--kv-cache-num-frozen-tokens KV_CACHE_NUM_FROZEN_TOKENS]
+                                 [-q] [-x EXPORT_PATH]
+                                 model_path
 
 Analyze ONNX models in the DeepSparse Engine
 
@@ -49,10 +54,25 @@ optional arguments:
                         Filepath to per-layer kernel sparsities JSON
   --optimization OPTIMIZATION
                         To enable or disable optimizations (Tensor Columns)
-  -i INPUT_SHAPES, --input_shapes INPUT_SHAPES
+  -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
+                        The sequence length to run the KV cache supported
+                        model benchmarks for. Must be 1 <= seq_len, default is
+                        512
+  -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
+                        The input ids length to run the KV cache supported
+                        model benchmarks for. Must be 1 <= input_ids_len <=
+                        seq_len, default is 1
+  -i INPUT_SHAPES, -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
                         Override the shapes of the inputs, i.e. -shapes
                         "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
                         input1=[4,5,6] input2=[7,8,9]
+  --use-kvcache         Enable internal KVCache
+  --kv-cache-prev-num-tokens KV_CACHE_PREV_NUM_TOKENS
+                        KVCache: The amount of previous tokens that will be
+                        read from the external KV cache on the first inference
+  --kv-cache-num-frozen-tokens KV_CACHE_NUM_FROZEN_TOKENS
+                        KVCache: The amount of first tokens that we want to
+                        keep permanently in the KV cache
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
                         Store results into a JSON file

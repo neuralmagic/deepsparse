@@ -17,31 +17,40 @@ Benchmarking script for ONNX models with the DeepSparse engine.
 
 ##########
 Command help:
-usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-shapes INPUT_SHAPES]
-                            [-ncores NUM_CORES] [-s {async,sync,elastic}]
-                            [-t TIME] [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
-                            [-pin {none,core,numa}]
-                            [-e {deepsparse,onnxruntime}] [-q]
+usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-seq_len SEQUENCE_LENGTH]
+                            [-input_ids_len INPUT_IDS_LENGTH]
+                            [-i INPUT_SHAPES] [-ncores NUM_CORES]
+                            [-s {async,sync,elastic}] [-t TIME]
+                            [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
+                            [-pin {none,core,numa}] [-e ENGINE] [-q]
                             [-x EXPORT_PATH]
                             model_path
 
 Benchmark ONNX models in the DeepSparse Engine
 
 positional arguments:
-  model_path            Path to an ONNX model file or SparseZoo model stub.
+  model_path            Path to an ONNX model file or SparseZoo model stub
 
 optional arguments:
-  -h, --help            show this help message and exit.
+  -h, --help            show this help message and exit
   -b BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for. Must be
-                        greater than 0.
-  -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
+                        greater than 0
+  -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
+                        The sequence length to run the KV cache supported
+                        model benchmarks for. Must be greater than 0, default
+                        is 2048
+  -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
+                        The input ids length to run the KV cache supported
+                        model benchmarks for. Must be greater than 0, default
+                        is 1
+  -i INPUT_SHAPES, -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
                         Override the shapes of the inputs, i.e. -shapes
                         "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
-                        input1=[4,5,6] input2=[7,8,9].
+                        input1=[4,5,6] input2=[7,8,9]
   -ncores NUM_CORES, --num_cores NUM_CORES
                         The number of physical cores to run the analysis on,
-                        defaults to all physical cores available on the system.
+                        defaults to all physical cores available on the system
   -s {async,sync,elastic}, --scenario {async,sync,elastic}
                         Choose between using the async, sync and elastic
                         scenarios. Sync and async are similar to the single-
@@ -62,13 +71,18 @@ optional arguments:
   -pin {none,core,numa}, --thread_pinning {none,core,numa}
                         Enable binding threads to cores ('core' the default),
                         threads to cores on sockets ('numa'), or disable
-                        ('none').
-  -e {deepsparse,onnxruntime}, --engine {deepsparse,onnxruntime}
+                        ('none')
+  -e ENGINE, --engine ENGINE
                         Inference engine backend to run eval on. Choices are
                         'deepsparse', 'onnxruntime'. Default is 'deepsparse'.
-  -q, --quiet           Lower logging verbosity.
+                        Can also specify a user defined engine class by giving
+                        the script and class name in the following format
+                        <path to python script>:<Engine Class name>. This
+                        engine class will be dynamically imported during
+                        runtime
+  -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
-                        Store results into a JSON file.
+                        Store results into a JSON file
 
 ##########
 Example on a BERT from SparseZoo:
@@ -153,25 +167,21 @@ def parse_args():
         default=1,
         help="The batch size to run the analysis for. Must be greater than 0",
     )
-
     parser.add_argument(
         "-seq_len",
         "--sequence_length",
         type=int,
-        default=2048,
-        help="The sequence length to run the "
-        "KV cache supported model benchmarks for. "
-        "Must be greater than 0, default is 2048",
+        default=512,
+        help="The sequence length to run the KV cache supported model "
+        "benchmarks for. Must be 1 <= seq_len, default is 512",
     )
-
     parser.add_argument(
         "-input_ids_len",
         "--input_ids_length",
         type=int,
         default=1,
-        help="The input ids length to run the "
-        "KV cache supported model benchmarks for. "
-        "Must be greater than 0, default is 1",
+        help="The input ids length to run the KV cache supported model "
+        "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
     )
     parser.add_argument(
         "-i",
