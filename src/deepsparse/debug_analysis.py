@@ -310,10 +310,6 @@ def main():
     print("Analyzing model: {}".format(orig_model_path))
 
     batch_size = args.batch_size
-    if args.disable_batch_override:
-        batch_size = None
-        os.environ["NM_DISABLE_BATCH_OVERRIDE"] = "1"
-        print("Disable batch override: ON")
 
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as tmp_path:
