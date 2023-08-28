@@ -24,7 +24,7 @@ usage: deepsparse.debug_analysis [-h] [-wi NUM_WARMUP_ITERATIONS]
                                  [--optimization OPTIMIZATION]
                                  [-seq_len SEQUENCE_LENGTH]
                                  [-input_ids_len INPUT_IDS_LENGTH]
-                                 [-i INPUT_SHAPES] [--use-kvcache]
+                                 [-i INPUT_SHAPES] [--use-internal-kvcache]
                                  [--kv-cache-prev-num-tokens KV_CACHE_PREV_NUM_TOKENS]
                                  [--kv-cache-num-frozen-tokens KV_CACHE_NUM_FROZEN_TOKENS]
                                  [-q] [-x EXPORT_PATH]
@@ -56,7 +56,7 @@ optional arguments:
                         To enable or disable optimizations (Tensor Columns)
   -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
                         The sequence length to run the KV cache supported
-                        model benchmarks for. Must be 1 <= seq_len, default is
+                        model benchmarks for. Must be seq_len >= 1, default is
                         512
   -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
                         The input ids length to run the KV cache supported
@@ -66,13 +66,15 @@ optional arguments:
                         Override the shapes of the inputs, i.e. -shapes
                         "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
                         input1=[4,5,6] input2=[7,8,9]
-  --use-kvcache         Enable internal KVCache
+  --use-internal-kvcache
+                        Enable internal KVCache
   --kv-cache-prev-num-tokens KV_CACHE_PREV_NUM_TOKENS
-                        KVCache: The amount of previous tokens that will be
-                        read from the external KV cache on the first inference
+                        Internal KVCache: The amount of previous tokens that
+                        will be read from the external KV cache on the first
+                        inference
   --kv-cache-num-frozen-tokens KV_CACHE_NUM_FROZEN_TOKENS
-                        KVCache: The amount of first tokens that we want to
-                        keep permanently in the KV cache
+                        Internal KVCache: The amount of first tokens that we
+                        want to keep permanently in the KV cache
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
                         Store results into a JSON file
@@ -160,7 +162,7 @@ def parse_args():
         type=int,
         default=512,
         help="The sequence length to run the KV cache supported model "
-        "benchmarks for. Must be 1 <= seq_len, default is 512",
+        "benchmarks for. Must be seq_len >= 1, default is 512",
     )
     parser.add_argument(
         "-input_ids_len",
@@ -181,24 +183,24 @@ def parse_args():
         default="",
     )
     parser.add_argument(
-        "--use-kvcache",
+        "--use-internal-kvcache",
         help="Enable internal KVCache",
         action="store_true",
         default=False,
     )
     parser.add_argument(
         "--kv-cache-prev-num-tokens",
-        help="KVCache: The amount of previous tokens that will be read"
+        help="Internal KVCache: The amount of previous tokens that will be read"
         " from the external KV cache on the first inference",
         type=int,
-        default=None,
+        default=0,
     )
     parser.add_argument(
         "--kv-cache-num-frozen-tokens",
-        help="KVCache: The amount of first tokens that we want to keep"
+        help="Internal KVCache: The amount of first tokens that we want to keep"
         " permanently in the KV cache",
         type=int,
-        default=None,
+        default=0,
     )
     parser.add_argument(
         "-q",
@@ -382,18 +384,10 @@ def main():
 
     kv_cache_params = None
     if args.use_kvcache:
-        kv_cache_prev_num_tokens = 0
-        if args.kv_cache_prev_num_tokens is not None:
-            kv_cache_prev_num_tokens = args.kv_cache_prev_num_tokens
-
-        kv_cache_num_frozen_tokens = 0
-        if args.kv_cache_num_frozen_tokens is not None:
-            kv_cache_num_frozen_tokens = args.kv_cache_num_frozen_tokens
-
         kv_cache_params = KVCacheParams(
             default_cached_outputs(model_path),
-            kv_cache_prev_num_tokens,
-            kv_cache_num_frozen_tokens,
+            args.kv_cache_prev_num_tokens,
+            args.kv_cache_num_frozen_tokens,
         )
 
         print(
