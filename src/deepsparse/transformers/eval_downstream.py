@@ -77,33 +77,24 @@ from datasets import load_dataset, load_metric  # isort: skip
 
 
 def perplexity_eval(args, dataset_name="openai_humaneval"):
-    accumulate = False
-
-    if dataset_name == "wikitext":
-        raw_dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
-        raw_text = "\n\n".join(raw_dataset["text"])
-    elif dataset_name == "c4":
-        raw_dataset = load_dataset(
-            "allenai/c4",
-            "allenai--c4",
-            data_files={"validation": "en/c4-validation.00000-of-00008.json.gz"},
-            split="validation",
-        )
-        raw_text = " ".join(raw_dataset[:1100]["text"])
-    else:
-        dataset = load_dataset(dataset_name, split="test")
 
     if dataset_name in ["wikitext", "c4"]:
-        # Dataset is split into sections that contain "max_sequence_length" tokens.
-        # To split the dataset, first tokenize text
-        tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-        dataset = _split_text_by_tokens(
-            raw_text, tokenizer, args.max_sequence_length,
+        if args.kwargs is None:
+            kwargs = {}
+        else:
+            kwargs = json.loads(args.kwargs)
+        dataset = _process_concatenated_datasets(
+            dataset_name,
+            args.model_path,
+            args.max_sequence_length,
+            kwargs,
         )
-
         # Set perplexity computation to accumulate negative log-likelihood across
         # sections
         accumulate = True
+    else:
+        dataset = load_dataset(dataset_name, split="test")
+        accumulate = False
 
     # We'll use the text generation pipeline to generate a single token.
     # Along with the token, it returns the logits for input sequence
@@ -157,8 +148,17 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
                 logits = prediction.logits[s]
                 attention_mask = prediction.input_tokens["attention_mask"][s].flatten()
 
+                effective_sequence_length = logits.shape[0]
+
+                input_ids = input_ids[-effective_sequence_length:]
+                attention_mask = attention_mask[-effective_sequence_length:]
+
                 logits = numpy.compress(attention_mask, logits, axis=0)[:-1, :]
                 input_ids = numpy.compress(attention_mask, input_ids)[1:]
+                #print(logits[:,0], flush=True)
+                #print(attention_mask)
+                #if idx == 1:
+                #    exit()
 
                 # Add predictions (logits) and targets (input_ids) to metric
                 perplexity_metrics.add_batch(logits, input_ids)
@@ -527,7 +527,46 @@ def _split_train_val(train_dataset, val_ratio, seed=42):
     return train_ds, val_ds
 
 
-def _split_text_by_tokens(text, tokenizer, sequence_length, max_token_length):
+def _process_concatenated_datasets(dataset_name, model_path, max_sequence_length, kwargs):
+    if dataset_name == "wikitext":
+        eos = kwargs.get("eos", "\n\n")
+        bos = kwargs.get("bos", "")
+
+        raw_dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+        raw_text = raw_dataset["text"]
+    elif dataset_name == "c4":
+        eos = kwargs.get("eos", "<|endoftext|>")
+        bos = kwargs.get("bos", "")
+        raw_samples = kwargs.get("raw_samples", None)
+        data_file = kwargs.get("data_file", 0)
+        if data_file is not None:
+            raw_dataset = load_dataset(
+                "allenai/c4",
+                "allenai--c4",
+                data_files={"validation": f"en/c4-validation.{data_file:05d}-of-00008.json.gz"},
+                split="validation",
+            )
+        else:
+            raw_dataset = load_dataset(
+                "allenai/c4",
+                "allenai--c4",
+                split="validation",
+            )
+        if raw_samples is not None:
+            raw_dataset = raw_dataset[:raw_samples]
+        raw_text = raw_dataset["text"]
+
+    # Dataset is split into sections that contain "max_sequence_length" tokens.
+    # To split the dataset, first tokenize text
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    return _split_text_by_tokens(
+        raw_text, eos, bos, tokenizer, max_sequence_length,
+    )
+
+
+def _split_text_by_tokens(text, eos, bos, tokenizer, sequence_length):
+    text = "".join([bos + sample + eos for sample in text])
+
     input_tokens = tokenizer(text, return_tensors="np",)[
         "input_ids"
     ][0]
@@ -723,6 +762,12 @@ def parse_args():
         help="Whether to allow for remote code execution in transformers.",
         type=bool,
         default=False,
+    )
+    parser.add_argument(
+        "--kwargs",
+        help="Additional arguments specific to each dataset",
+        type=str,
+        default=None,
     )
     return parser.parse_args()
 
