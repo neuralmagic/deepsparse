@@ -31,8 +31,9 @@ class DecoderKVCache:
         The goal this object is to handle the manipulation
         of the key value cache.
 
-        :param use_deepsparse_cache: If set to True, the `kv_cache` object
-            from the deepsparse.LIB will be loaded as an attribute.
+        :param use_deepsparse_cache: If set to True, the
+            `kv_cache` object from the deepsparse.LIB will
+            be loaded as an engine_internal_cache attribute.
             This object is used to handle the manipulation of the
             key/value buffers on the DeepSparse engine side.
         """
@@ -45,7 +46,7 @@ class DecoderKVCache:
         self._session_id = None
         self._freeze_first_position = None
         self._state = None
-        self._kv_cache = None
+        self.engine_internal_cache = None
 
     def setup(
         self,
@@ -82,7 +83,9 @@ class DecoderKVCache:
         if self._use_deepsparse_cache:
             prev_num_tokens = self.total_num_processed_tokens
             num_frozen_tokens = int(self._freeze_first_position)
-            self._kv_cache = LIB.kv_cache(prev_num_tokens, num_frozen_tokens)
+            self.engine_internal_cache = LIB.kv_cache(
+                prev_num_tokens, num_frozen_tokens
+            )
 
     def update(
         self,

@@ -141,3 +141,26 @@ class TestDebugAnalysisEngineParametrized:
             num_warmup_iterations=0,
         )
         assert "layer_info" in results
+
+
+@pytest.mark.smoke
+class TestBatchedEngine:
+    def test_batched(self):
+        model_stub = (
+            "zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/base-none"
+        )
+
+        # batch_size=None disable batch override
+        engine = Engine(model_stub, batch_size=None, input_shapes=[3, 3, 224, 224])
+        assert engine.input_shapes[0] == (3, 3, 224, 224)
+        assert engine.generate_random_inputs()[0].shape == (3, 3, 224, 224)
+
+        # Engine implicitly assumes batch size 1
+        engine = Engine(model_stub)
+        assert engine.input_shapes[0] == (1, 3, 224, 224)
+        assert engine.generate_random_inputs()[0].shape == (1, 3, 224, 224)
+
+        # Engine first applies input_shapes, then applies batch override to the model
+        engine = Engine(model_stub, batch_size=5, input_shapes=[1, 3, 224, 224])
+        assert engine.input_shapes[0] == (5, 3, 224, 224)
+        assert engine.generate_random_inputs()[0].shape == (5, 3, 224, 224)
