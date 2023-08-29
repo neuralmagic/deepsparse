@@ -286,6 +286,18 @@ class TextGenerationPipeline(TransformersPipeline):
             self.cache_support_enabled and self.enable_multitoken_prefill
         ) or not self.cache_support_enabled:
 
+            # input_ids_length for the multitoken engine is either:
+            # - the prompt_processing_sequence_length if the cache support is enabled
+            #   (the prompt is processed sequentially at predefined processing length)
+            # - the full sequence_length if the cache support is disabled
+            #   (the prompt is processed in a single pass, prompts length is fixed at
+            #   sequence_length)
+            input_ids_length = (
+                self.prompt_processing_sequence_length
+                if self.cache_support_enabled
+                else self.sequence_length,
+            )
+
             multitoken_engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
@@ -294,9 +306,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 sampling_temperature=self.sampling_temperature,
                 deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
-                input_ids_length=self.prompt_processing_sequence_length
-                if self.cache_support_enabled
-                else self.sequence_length,
+                input_ids_length=input_ids_length,
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=self.use_deepsparse_cache,
             )
