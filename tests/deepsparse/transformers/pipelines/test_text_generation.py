@@ -84,17 +84,18 @@ class TestTextGenerationPipeline:
     @pytest.fixture
     def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
 
-        self.max_generated_tokens = 32
+        self.max_generated_tokens = 16
         self.model = Model(model_stub)
         self.use_deepsparse_cache = use_deepsparse_cache
 
         pipeline = Pipeline.create(
             task="text_generation",
             model_path=model_stub,
-            sequence_length=64,
+            sequence_length=32,
             prompt_processing_sequence_length=4,
             max_generated_tokens=self.max_generated_tokens,
             use_deepsparse_cache=self.use_deepsparse_cache,
+            force_max_tokens=True,
         )
         short_prompt = "this"
         long_prompt = "this is a sample prompt that we will use to test the pipeline"
@@ -164,13 +165,14 @@ class TestTextGenerationPipeline:
         assert outs.logits.shape[1] == 3
 
     def test_model_session_storage(self, setup):
-        pipeline, _, _, _, _ = setup
+        pipeline, *_ = setup
 
         # test whether the session storage is working correctly,
         # i.e storage memory is composable and there is no leakage
         # between sessions
 
         short_prompt = "this"
+        short_prompt_ = "another short prompt"
         long_prompt = "this is a cool sample prompt"
 
         output = pipeline(sequences=short_prompt, session_ids="session_one")
@@ -179,13 +181,13 @@ class TestTextGenerationPipeline:
 
         output = pipeline(sequences=long_prompt, session_ids="session_two")
         intermediate_prompt_2 = output.sequences[0]
-        out_2 = pipeline(sequences=short_prompt, session_ids="session_two")
+        out_2 = pipeline(sequences=short_prompt_, session_ids="session_two")
 
         out_3 = pipeline(
             sequences=short_prompt + intermediate_prompt_1 + long_prompt,
         )
         out_4 = pipeline(
-            sequences=long_prompt + intermediate_prompt_2 + short_prompt,
+            sequences=long_prompt + intermediate_prompt_2 + short_prompt_,
         )
 
         assert out_1.sequences[0] == out_3.sequences[0]
@@ -249,7 +251,7 @@ class TestTextGenerationPipeline:
         for prompt in sequences:
             input_ids = tokenizer(prompt, return_tensors="pt").input_ids
             generated_ids = model.generate(
-                input_ids, max_new_tokens=self.max_generated_tokens + 1
+                input_ids, max_new_tokens=self.max_generated_tokens
             )
             hf_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
             hf_outputs.append(hf_output)

@@ -359,7 +359,9 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         return TextGenerationOutput
 
-    def process_inputs(self, inputs: TextGenerationInput) -> List[numpy.ndarray]:
+    def process_inputs(
+        self, inputs: TextGenerationInput
+    ) -> Tuple[List[numpy.ndarray], Dict[str, Any]]:
         """
         Convert the input schema for the pipeline to the inputs for the engine.
 
@@ -446,7 +448,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
-    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    ) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
         """
         Run the forward pass on the engine.
 
@@ -790,13 +792,10 @@ class TextGenerationPipeline(TransformersPipeline):
 
         if engine_session is None and multitoken_session:
             self.engine.transfer_cache_session(multitoken_session)
-            return
-
         elif engine_session and multitoken_session is None:
             self.multitoken_engine.transfer_cache_session(engine_session)
-            return
         else:
-            return
+            pass
 
     def is_cache_support_enabled(self) -> bool:
         """
@@ -907,7 +906,7 @@ class TextGenerationPipeline(TransformersPipeline):
         )
         return decoded_token in stop_tokens
 
-    def _remove_bos_token_if_applicable(self, tokens: List[int]):
+    def _remove_bos_token_if_applicable(self, tokens: List[int]) -> List[int]:
         if hasattr(self.tokenizer, "add_bos_token"):
             return tokens[1:]
         return tokens
