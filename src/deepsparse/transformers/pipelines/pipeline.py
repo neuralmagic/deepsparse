@@ -133,7 +133,11 @@ class TransformersPipeline(Pipeline, Bucketable):
         onnx_path = get_onnx_path(self.model_path)
 
         if not self.config or not self.tokenizer:
-            self.config, self.tokenizer = get_hugging_face_configs(self.model_path)
+            config_found, tokenizer_found = get_hugging_face_configs(self.model_path)
+            if config_found:
+                self.config = config_found
+            if tokenizer_found:
+                self.tokenizer = tokenizer_found
 
         if isinstance(self.config, dict):
             local_config_path = os.path.join(self.model_path, "config.json")
@@ -172,6 +176,12 @@ class TransformersPipeline(Pipeline, Bucketable):
                 onnx_path, max_length=self.sequence_length
             )
 
+        if not self.config or not self.tokenizer:
+            raise RuntimeError(
+                "Invalid config or tokenizer provided. Please provide "
+                "paths to the files or ensure they exist in the `model_path` provided. "
+                "See `tokenizer` and `config` arguments for details."
+            )
         return onnx_path
 
     def tokens_to_engine_input(

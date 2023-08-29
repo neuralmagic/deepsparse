@@ -19,6 +19,7 @@ Helper functions for working with ONNX exports of transformer models and deepspa
 
 import os
 import re
+import warnings
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
@@ -110,7 +111,10 @@ def get_hugging_face_configs(model_path: str) -> Tuple[str, str]:
         # prefer config and tokenizer files in same directory as model.onnx
         if _MODEL_DIR_CONFIG_NAME in model_files:
             config_path = model_path
-        if _MODEL_DIR_TOKENIZER_NAME or _MODEL_DIR_TOKENIZER_CONFIG_NAME in model_files:
+        if (
+            _MODEL_DIR_TOKENIZER_NAME in model_files
+            or _MODEL_DIR_TOKENIZER_CONFIG_NAME in model_files
+        ):
             tokenizer_path = model_path
 
     elif model_path.startswith("zoo:"):
@@ -132,11 +136,12 @@ def get_hugging_face_configs(model_path: str) -> Tuple[str, str]:
         )
 
     if config_path is None or tokenizer_path is None:
-        raise RuntimeError(
-            f"Unable to find model and tokenizer config for model_path {model_path}. "
-            f"model_path must be a directory containing config.json, and "
+        warnings.warn(
+            f"Unable to find model or tokenizer configs for model_path {model_path}. "
+            f"model_path must be a directory containing config.json, and/or "
             f"tokenizer.json files. Found config and tokenizer paths: {config_path}, "
-            f"{tokenizer_path}"
+            f"{tokenizer_path}. If not given, set the `tokenizer` and `config` args "
+            "for the Pipeline."
         )
 
     return config_path, tokenizer_path
