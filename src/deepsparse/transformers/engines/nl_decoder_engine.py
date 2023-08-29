@@ -64,7 +64,7 @@ class NLDecoderEngine:
         sampling_temperature: float = 1.0,
         deterministic: bool = True,
         engine_context: Optional[Context] = None,
-        use_deepsparse_cache=False,
+        use_deepsparse_cache: bool = False,
     ):
         # flag to indicate if the model is quantized or not
         self.kv_cache_data_type = None
@@ -93,11 +93,13 @@ class NLDecoderEngine:
             engine_args=engine_args,
             context=engine_context,
         )
+
         self.sequence_length = sequence_length
         self.sampling_temperature = sampling_temperature
         self.deterministic = deterministic
         self.use_deepsparse_cache = use_deepsparse_cache
         self.input_ids_length = input_ids_length
+        self.cache_length = sequence_length - input_ids_length
         self.kv_cache_enabled = kv_cache_enabled
         self.capacity = sequence_length - input_ids_length
         self.kv_cache_storage = SessionStorageKVCache() if kv_cache_enabled else None

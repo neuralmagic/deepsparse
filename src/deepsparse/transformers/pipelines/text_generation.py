@@ -164,6 +164,8 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens until the end of the sequence is reached.
         Otherwise, it will generate up to the maximum number of tokens or end of
         sequence is reached.
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        This controls the maximum context length of the pipeline. Default is 512
     :param prompt_processing_sequence_length: For large prompts, the prompt is
         processed in chunks of this length. This is to maximize the inference
         speed. By default, this is set to 64.
@@ -179,6 +181,7 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
+        sequence_length: int = 512,
         prompt_processing_sequence_length: int = 64,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = True,
@@ -197,7 +200,10 @@ class TextGenerationPipeline(TransformersPipeline):
                 use_deepsparse_cache = False
 
         super().__init__(
-            **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
+            **kwargs,
+            sequence_length=sequence_length,
+            _delay_engine_initialize=True,
+            _delay_overwriting_inputs=True,
         )
         self.enable_multitoken_prefill = self.causal_mask_input_present(
             model_path=self.onnx_file_path
