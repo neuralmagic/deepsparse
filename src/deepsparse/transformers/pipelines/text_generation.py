@@ -206,7 +206,7 @@ class TextGenerationPipeline(TransformersPipeline):
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
-        if not self.cache_support_enabled and self.max_generated_tokens > 1:
+        if not self.cache_support_enabled and max_generated_tokens > 1:
             raise ValueError(
                 "The model used for inference does not support kv cache. It is "
                 "assumed that it maps from the token sequence to predicted logits."
