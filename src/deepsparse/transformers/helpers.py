@@ -34,7 +34,7 @@ from sparsezoo.utils import save_onnx
 
 
 __all__ = [
-    "get_onnx_path_and_configs",
+    "get_hugging_face_configs",
     "get_onnx_path",
     "overwrite_transformer_onnx_model_inputs",
     "fix_numpy_types",
@@ -76,7 +76,7 @@ def get_onnx_path(model_path: str) -> str:
     return onnx_path
 
 
-def get_onnx_path_and_configs(model_path: str) -> Tuple[str, str]:
+def get_hugging_face_configs(model_path: str) -> Tuple[str, str]:
     """
     :param model_path: path to model directory, transformers sparsezoo stub,
         or directory containing `config.json`, and `tokenizer.json` files.

@@ -28,8 +28,8 @@ from transformers.models.auto import AutoConfig, AutoTokenizer
 
 from deepsparse import Bucketable, Pipeline
 from deepsparse.transformers.helpers import (
+    get_hugging_face_configs,
     get_onnx_path,
-    get_onnx_path_and_configs,
     overwrite_transformer_onnx_model_inputs,
 )
 
@@ -76,11 +76,12 @@ class TransformersPipeline(Pipeline, Bucketable):
         on your local machine. Default is False
     :param config: hugging face transformers model config. Can be a path to the config,
         a dictionary with the config values, a transformers.PretrainedConfig, or None.
+        If a directory is provided, it is assumed that the file is named config.json.
         If None, an attempt is made to read the config file from the the model_path
         directory provided. Default is None
     :param tokenizer: hugging face transfromers tokenizer. Can be a path to the
-        tokenizer json file, a dictionary with the config values,
-        a transformers.PreTrainedTokenizerBase, or None. If None, an attempt is made to
+        a directory with the relevant tokenizer files, a
+        transformers.PreTrainedTokenizerBase, or None. If None, an attempt is made to
         read the json file from the model_path directory provided. Default is None.
     """
 
@@ -90,7 +91,7 @@ class TransformersPipeline(Pipeline, Bucketable):
         sequence_length: Union[int, List[int]] = 128,
         trust_remote_code: bool = False,
         config: Union[str, Path, Dict, transformers.PretrainedConfig] = None,
-        tokenizer: Union[str, Path, Dict, transformers.PreTrainedTokenizerBase] = None,
+        tokenizer: Union[str, Path, transformers.PreTrainedTokenizerBase] = None,
         **kwargs,
     ):
 
@@ -99,6 +100,7 @@ class TransformersPipeline(Pipeline, Bucketable):
 
         self.config = config
         self.tokenizer = tokenizer
+
         self.config_path = None
         self.tokenizer_config_path = None  # path to 'tokenizer.json'
         self.onnx_input_names = None
@@ -131,25 +133,19 @@ class TransformersPipeline(Pipeline, Bucketable):
         onnx_path = get_onnx_path(self.model_path)
 
         if not self.config or not self.tokenizer:
-            self.config, self.tokenizer = get_onnx_path_and_configs(self.model_path)
-
-        if isinstance(self.tokenizer, dict):
-            local_tokenizer_path = str(self.model / "tokenizer.json")
-            with open(local_tokenizer_path, "w") as f:
-                json.dump(self.tokenizer, f)
-            self.tokenizer = local_tokenizer_path
+            self.config, self.tokenizer = get_hugging_face_configs(self.model_path)
 
         if isinstance(self.config, dict):
-            local_config_path = str(self.model / "config.json")
+            local_config_path = os.path.join(self.model_path, "config.json")
             with open(local_config_path, "w") as f:
                 json.dump(self.config, f)
             self.config = local_config_path
 
         if isinstance(self.config, (str, Path)):
-            #if str(self.config).endswith(".json"):
-            #    self.config_path = self.config
-            #else:
-            #    self.config_path = os.path.join(self.config, "config.json")
+            if str(self.config).endswith(".json"):
+                self.config_path = self.config
+            else:
+                self.config_path = os.path.join(self.config, "config.json")
 
             self.config = AutoConfig.from_pretrained(
                 self.config,
@@ -158,19 +154,14 @@ class TransformersPipeline(Pipeline, Bucketable):
             )
 
         if isinstance(self.tokenizer, (str, Path)):
-            '''
-            if str(self.tokenizer).endswith(".json"):
-                self.tokenizer_path = self.tokenizer
-            else:
-                self.tokenizer_path = os.path.join(self.tokenizer, "tokenizer.json")
-            '''
-            
+            self.tokenizer_config_path = os.path.join(self.tokenizer, "tokenizer.json")
+
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.tokenizer,
                 trust_remote_code=self._trust_remote_code,
                 model_max_length=self.sequence_length,
             )
-            
+
         if not self._delay_overwriting_inputs:
             # overwrite onnx graph to given required input shape
             (
