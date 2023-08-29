@@ -146,27 +146,31 @@ class TransformersPipeline(Pipeline, Bucketable):
             self.config = local_config_path
 
         if isinstance(self.config, (str, Path)):
+            #if str(self.config).endswith(".json"):
+            #    self.config_path = self.config
+            #else:
+            #    self.config_path = os.path.join(self.config, "config.json")
+
             self.config = AutoConfig.from_pretrained(
                 self.config,
                 trust_remote_code=self._trust_remote_code,
                 finetuning_task=self.task if hasattr(self, "task") else None,
             )
-            if str(self.config).endswith(".json"):
-                self.config_path = self.config
-            else:
-                self.config_path = os.path.join(self.config, "config.json")
 
         if isinstance(self.tokenizer, (str, Path)):
+            '''
+            if str(self.tokenizer).endswith(".json"):
+                self.tokenizer_path = self.tokenizer
+            else:
+                self.tokenizer_path = os.path.join(self.tokenizer, "tokenizer.json")
+            '''
+            
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.tokenizer,
                 trust_remote_code=self._trust_remote_code,
                 model_max_length=self.sequence_length,
             )
-            if str(self.tokenizer).endswith(".json"):
-                self.tokenizer_path = self.tokenizer
-            else:
-                self.tokenizer_path = os.path.join(self.tokenizer, "tokenizer.json")
-
+            
         if not self._delay_overwriting_inputs:
             # overwrite onnx graph to given required input shape
             (
