@@ -80,12 +80,13 @@ class NLDecoderEngine:
         )
 
         kv_cache_enabled = False
-        if sum(output_indices_to_be_cached):
+        if any(output_indices_to_be_cached):
             kv_cache_enabled = True
             self.kv_cache_data_type = kv_cache_data_type
             if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
                 engine_args["cached_outputs"] = output_indices_to_be_cached
+                # engine_args["batch_size"] = 0
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
@@ -165,7 +166,10 @@ class NLDecoderEngine:
         if self.internal_cache_active:
             # validate the inputs if needed
             if val_inp:
-                self.engine._validate_inputs(inputs)
+                # let's not validate the outputs,
+                # as we are passing empty kv cache
+                # that results in validation error
+                pass
             # run the engine with the LIB.kv_cache object
             return self.engine._eng_net.execute_list_out(
                 inputs, self.kv_cache.engine_internal_cache
@@ -275,7 +279,9 @@ class NLDecoderEngine:
         :return The input with the kv cache state added to it
         """
         if self.internal_cache_active:
-            kv_cache_state = self._initialize_kv_cache_state(self.cache_length)
+            kv_cache_state = self._initialize_kv_cache_state(
+                self.cache_length, empty=True
+            )
         else:
             kv_cache_state = self.kv_cache.cached_inputs
             if kv_cache_state is None:
@@ -321,7 +327,9 @@ class NLDecoderEngine:
             input_ids_len=input_ids_len,
         )
 
-    def _initialize_kv_cache_state(self, length: int) -> Dict[str, numpy.ndarray]:
+    def _initialize_kv_cache_state(
+        self, length: int, empty: bool = False
+    ) -> Dict[str, numpy.ndarray]:
         # initialize empty kv cache of size
         # (batch_size, num_attention_heads, length, hidden_dims)
 
@@ -335,7 +343,12 @@ class NLDecoderEngine:
         ]
 
         empty_kv_cache_tensor = numpy.zeros(
-            (0, num_attention_heads, length, hidden_dims),  # effective array size 0
+            (
+                batch_size if not empty else 0,
+                num_attention_heads,
+                length,
+                hidden_dims,
+            ),  # effective array size 0
             dtype=self.kv_cache_data_type,
         )
 
