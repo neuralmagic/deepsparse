@@ -22,16 +22,15 @@ from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import (
     generate_session_id,
-    overwrite_onnx_model_inputs,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
 )
 from deepsparse.utils.data import numpy_softmax
+from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["NLDecoderEngine"]
-
-_CACHE_INPUT_NAME = "past_key_values"
 
 
 class NLDecoderEngine:
@@ -65,21 +64,21 @@ class NLDecoderEngine:
         sampling_temperature: float = 1.0,
         deterministic: bool = True,
         engine_context: Optional[Context] = None,
-        use_deepsparse_cache=False,
+        use_deepsparse_cache: bool = False,
     ):
         # flag to indicate if the model is quantized or not
         self.kv_cache_data_type = None
-
         (
             onnx_file_path,
             output_indices_to_be_cached,
             kv_cache_data_type,
-        ) = overwrite_onnx_model_inputs(
+        ) = overwrite_onnx_model_inputs_for_kv_cache_models(
             onnx_file_path=onnx_file_path,
             batch_size=engine_args.get("batch_size", 1),
             sequence_length=sequence_length,
             input_ids_length=input_ids_length,
         )
+
         kv_cache_enabled = False
         if sum(output_indices_to_be_cached):
             kv_cache_enabled = True
@@ -94,6 +93,7 @@ class NLDecoderEngine:
             engine_args=engine_args,
             context=engine_context,
         )
+
         self.sequence_length = sequence_length
         self.sampling_temperature = sampling_temperature
         self.deterministic = deterministic
@@ -130,14 +130,14 @@ class NLDecoderEngine:
         return [
             name
             for name in self.engine.input_names
-            if not name.startswith(_CACHE_INPUT_NAME)
+            if not name.startswith(CACHE_INPUT_PREFIX)
         ]
 
     @property
     def num_non_blank_cache_entries(self) -> int:
         """
         :return A number of non-blank entries in the
-        kv cache
+            kv cache
         """
         return self.kv_cache.num_non_blank_entries
 
@@ -159,7 +159,6 @@ class NLDecoderEngine:
 
         :param inputs: The inputs to run the engine with
         :param val_inp: Whether the input is for validation or not
-
         :return: The output of the engine
         """
 
@@ -311,7 +310,7 @@ class NLDecoderEngine:
         cache_onnx_names = [
             name
             for name in self.engine.input_names
-            if name.startswith(_CACHE_INPUT_NAME)
+            if name.startswith(CACHE_INPUT_PREFIX)
         ]
         kv_cache_state = {
             name: array for name, array in zip(cache_onnx_names, kv_cache_state)
@@ -329,7 +328,7 @@ class NLDecoderEngine:
         cache_engine_input_index = next(
             i
             for i, name in enumerate(self.engine.input_names)
-            if _CACHE_INPUT_NAME in name
+            if CACHE_INPUT_PREFIX in name
         )
         batch_size, num_attention_heads, _, hidden_dims = self.engine.input_shapes[
             cache_engine_input_index
@@ -341,9 +340,9 @@ class NLDecoderEngine:
         )
 
         cache_keys = [
-            output_name.replace("present", _CACHE_INPUT_NAME)
+            output_name.replace(CACHE_OUTPUT_PREFIX, CACHE_INPUT_PREFIX)
             for output_name in self.engine.output_names
-            if output_name.startswith("present")
+            if output_name.startswith(CACHE_OUTPUT_PREFIX)
         ]
         return {key: empty_kv_cache_tensor for key in cache_keys}
 

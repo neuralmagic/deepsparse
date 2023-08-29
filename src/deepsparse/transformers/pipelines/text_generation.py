@@ -16,7 +16,18 @@ import logging
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+)
 
 import numpy
 import onnx
@@ -60,6 +71,14 @@ class TextGenerationInput(BaseModel):
         "the logits for the input text sequence and the "
         "generated text sequence. ",
     )
+    include_prompt_logits: bool = Field(
+        default=False,
+        description="A flag that indicates whether to return "
+        "the logits for the prompt. If set, prompt_logits are "
+        "`prepended` to the logits for the generated text sequence."
+        "Note: This flag is only applicable when return_logits "
+        "is `True`.",
+    )
     session_id: Optional[str] = Field(
         default=None,
         description="A user may set a string identifier "
@@ -82,6 +101,19 @@ class TextGenerationInput(BaseModel):
         "generated sequences. Generated tokens are passed through "
         "`streamer.put(token_ids)` and the streamer is responsible "
         "for any further processing.",
+    )
+    callback: Optional[Callable[[Any], Union[bool, Any]]] = Field(
+        default=None,
+        description="Callable that will be invoked "
+        "on each generated token. If the callable returns "
+        "`False`, the generation will stop. Default is `None`.",
+    )
+    stop: Union[None, str, Sequence[str]] = Field(
+        default=None,
+        description="A string or a list of strings that will be used as"
+        " stop tokens. (token generation will stop when any of the stop"
+        " tokens is generated). Set to `None` to ignore this parameter."
+        " Default is `None`.",
     )
 
 
@@ -111,9 +143,9 @@ class TextGenerationPipeline(TransformersPipeline):
     """
     Pipeline for text generation tasks.
 
-    :param deterministic: if True, the pipeline will sample from
+    :param deterministic: if False, the pipeline will sample from
         the probability distribution computed from the logits.
-        If False, the pipeline will get the next token by applying
+        If True, the pipeline will get the next token by applying
         an argmax function to the logits.
     :param sampling_temperature: the temperature to use when sampling
         from the probability distribution computed from the logits.
@@ -124,9 +156,11 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens until the end of the sequence is reached.
         Otherwise, it will generate up to the maximum number of tokens or end of
         sequence is reached.
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        This controls the maximum context length of the pipeline. Default is 512
     :param prompt_processing_sequence_length: For large prompts, the prompt is
         processed in chunks of this length. This is to maximize the inference
-        speed. By default, this is set to 128.
+        speed. By default, this is set to 64.
     :param force_max_tokens: if True, the pipeline will generate the maximum number
         of tokens supplied even if the stop token is reached.
     :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
@@ -139,6 +173,7 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
+        sequence_length: int = 512,
         prompt_processing_sequence_length: int = 64,
         force_max_tokens: bool = False,
         use_deepsparse_cache: bool = True,
@@ -157,7 +192,10 @@ class TextGenerationPipeline(TransformersPipeline):
                 use_deepsparse_cache = False
 
         super().__init__(
-            **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
+            **kwargs,
+            sequence_length=sequence_length,
+            _delay_engine_initialize=True,
+            _delay_overwriting_inputs=True,
         )
         self.enable_multitoken_prefill = self.causal_mask_input_present(
             model_path=self.onnx_file_path
@@ -214,6 +252,20 @@ class TextGenerationPipeline(TransformersPipeline):
         engine, multitoken_engine = None, None
 
         if self.cache_support_enabled:
+            if (
+                self.engine_type == DEEPSPARSE_ENGINE
+                and self.sequence_length <= self.prompt_processing_sequence_length
+                and self.enable_multitoken_prefill
+            ):
+                raise ValueError(
+                    "Attempting to initialize auxiliary DeepSparse engine to "
+                    "process a prompt with a larger processing length. "
+                    "However, it is assumed that `prompt_processing_sequence_length` "
+                    "is smaller than the `sequence_length`. "
+                    "Adjust the `prompt_processing_sequence_length` "
+                    "argument accordingly."
+                )
+
             # emit the appropriate user message depending whether we are
             # instantiation the multitoken engine or not
             if not self.enable_multitoken_prefill:
@@ -248,7 +300,6 @@ class TextGenerationPipeline(TransformersPipeline):
             )
 
         if self.cache_support_enabled:
-
             engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
@@ -308,7 +359,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the inputs for the engine
         """
 
-        if inputs.fixed_sequences_length:
+        if inputs.fixed_sequences_length or not self.cache_support_enabled:
             # to enforce a fixed sequence length, we need to
             # truncate the input to the maximum sequence length
             # or/and pad it to the maximum sequence length
@@ -353,7 +404,11 @@ class TextGenerationPipeline(TransformersPipeline):
             self.multitoken_engine.session_id = inputs.session_id
 
         postprocessing_kwargs = dict(
-            return_logits=inputs.return_logits, streamer=inputs.streamer
+            return_logits=inputs.return_logits,
+            streamer=inputs.streamer,
+            include_prompt_logits=inputs.include_prompt_logits,
+            callback=inputs.callback,
+            stop=inputs.stop,
         )
         return engine_input, postprocessing_kwargs
 
@@ -412,8 +467,16 @@ class TextGenerationPipeline(TransformersPipeline):
                 else 100 * self.sequence_length
             )  # set safety for absolute max generation
 
+            # last prompt token is the first generated token
+            # add it to generated tokens, and the logits
             generated_tokens = [tokens[-1]]
-            generated_logits = prompt_logits
+            generated_logits = (
+                prompt_logits
+                if context.get("include_prompt_logits")
+                else [prompt_logits[-1]]
+            )
+            callback = context.get("callback")
+            stop = context.get("stop")
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
@@ -430,6 +493,20 @@ class TextGenerationPipeline(TransformersPipeline):
                         token == self.tokenizer.eos_token_id
                         and not self.force_max_tokens
                     ):
+                        break
+
+                    if self._stop_token_generated(token, stop_tokens=stop):
+                        _LOGGER.debug(
+                            "Stop token %s generated. Stopping generation."
+                            % self.tokenizer.decode(token)
+                        )
+                        break
+
+                    if callback is not None and callback(token) is False:
+                        _LOGGER.debug(
+                            "callback %s returned False, stopping generation."
+                            % callback.__qualname__
+                        )
                         break
 
             if streamer is not None:
@@ -460,20 +537,17 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
-        # clean the state of engines' cache
-        # in the future, this will be paired with the session ids
-        # to refrain from resetting if session id is being passed
-        self._reset_engines_cache()
-
         if (
             len(tokens) > self.prompt_processing_sequence_length
             and self.enable_multitoken_prefill
         ):
+            self.multitoken_engine.reset_kv_cache()
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
                 num_tokens_processed += self.prompt_processing_sequence_length
                 prompt_logits.append(new_logits)
 
+        self.engine.reset_kv_cache()
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
             self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
@@ -702,6 +776,14 @@ class TextGenerationPipeline(TransformersPipeline):
             for inp in onnx.load(model_path, load_external_data=False).graph.input
         )
 
-    def _reset_engines_cache(self):
-        self.engine.reset_kv_cache()
-        self.multitoken_engine.reset_kv_cache() if self.multitoken_engine else None
+    def _stop_token_generated(
+        self, token, stop_tokens: Union[None, str, Sequence[str]]
+    ) -> bool:
+        if stop_tokens is None:
+            return False
+
+        decoded_token = self.tokenizer.decode(token)
+        decoded_token = (
+            decoded_token if decoded_token.isspace() else decoded_token.strip()
+        )
+        return decoded_token in stop_tokens

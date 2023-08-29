@@ -25,6 +25,7 @@ class DummyKVCacheDecoder:
         "past_key_values_1": np.array([10, 11, 12]),
         "past_key_values_2": np.array([13, 14, 15]),
     }
+    engine_internal_cache = None
 
 
 class DummyEngine:
@@ -62,6 +63,7 @@ def test_add_kv_cache_to_input():
         nl_decoder_engine = NLDecoderEngine(None, None)
         nl_decoder_engine.engine = DummyEngine()
         nl_decoder_engine.kv_cache = DummyKVCacheDecoder()
+        nl_decoder_engine.kv_cache_enabled = True
         result = nl_decoder_engine.add_kv_cache_to_input(inp)
 
     for (x, y) in zip(result, expected_result):
