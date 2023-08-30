@@ -22,9 +22,9 @@ from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import (
     generate_session_id,
+    generate_token,
     overwrite_onnx_model_inputs,
 )
-from deepsparse.utils.data import numpy_softmax
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -194,7 +194,7 @@ class NLDecoderEngine:
             logits = out[0]
 
         # select batch idx 0, batch is always 1
-        token = self.generate_token(logits=logits[0, -1, :])
+        token = generate_token(logits=logits[0, -1, :])
 
         return token, logits
 
@@ -219,22 +219,6 @@ class NLDecoderEngine:
         target_cache_capacity = self.sequence_length - self.input_ids_length
         cache.set_capacity(target_cache_capacity)
         self.kv_cache = cache
-
-    def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
-        """
-        Samples a token from the logits using the sampling temperature.
-
-        :param logits: the logits from the model with shape (vocab_size,)
-        :return: the sampled token
-        """
-        if self.deterministic:
-            return numpy.argmax(logits)
-
-        logits /= self.sampling_temperature
-
-        probs = numpy_softmax(logits)
-
-        return numpy.random.choice(len(probs), p=probs)
 
     def reset_kv_cache(self):
         """

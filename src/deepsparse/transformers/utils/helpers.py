@@ -19,6 +19,7 @@ from typing import List, Tuple, Union
 import numpy
 import onnx
 
+from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import translate_onnx_type_to_numpy
 from sparsezoo.utils import save_onnx
 
@@ -211,3 +212,91 @@ def create_causal_mask(
     causal_mask[:, :, :, :num_zeros] = 0
 
     return causal_mask
+
+
+def generate_token(
+    logits: numpy.ndarray,
+    sampling_temperature: float = 1.0,
+    top_k: int = 0,
+    top_p: float = 0.0,
+    frequency_penalty: float = 0.0,
+    presence_penalty: float = 0.0,
+    filter_value=-float("Inf"),
+    deterministic: bool = True,
+) -> numpy.ndarray:
+    """
+    Samples a token from the logits using the sampling temperature.
+
+    :param logits: the logits from the model with shape (vocab_size,
+
+    :return: the sampled token
+    """
+    if deterministic:
+        return numpy.argmax(logits)
+
+    logits /= sampling_temperature
+    probs = numpy_softmax(logits)
+
+    # if frequency_penalty:
+    #     frequency_count = [0] * len(logits)
+    #     # count the number of token occurances
+    #     logits -= (frequency_penalty * frequency_count)
+
+    # if presence_penalty:
+    #     frequency_count = [0] * len(logits)
+
+    #     logits -= (presence_penalty * (frequency_count > 0))
+
+    # probs = sorted(probs, reverse=True)
+
+    # # huggingface: from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
+    # if top_k > 0:
+    #     probs = probs[:top_k]
+    # if top_p > 0:
+    #     init_p = i = 0
+    #     probs_iter = iter(probs)
+    #     while init_p < top_p:
+    #         next_most_likely_prob = next(probs_iter)
+    #         init_p += next_most_likely_prob
+    #         i += 1
+    #     probs = probs[:i]
+
+    return numpy.random.choice(len(probs), p=probs)
+
+
+def apply_sampling_penalties(
+    token: numpy.ndarray, frequency_penalty: float, presence_penalty: float
+):
+    frequency = numpy.zeros(token.shape)
+    for tkn in token:
+        frequency[0][tkn] += 1
+
+    token -= frequency_penalty * frequency
+    token -= presence_penalty * frequency
+
+    return token
+
+
+# from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
+def apply_sampling_filters(
+    logits: numpy.ndarray, top_k: float, top_p: float, filter_value=-float("Inf")
+):
+
+    if top_k > 0:
+        indices_to_remove = (
+            logits < numpy.partition(logits, -top_k, axis=1)[:, -top_k][:, None]
+        )
+        logits[indices_to_remove] = filter_value
+
+    if top_p > 0:
+        sorted_indices = numpy.argsort(logits)
+        sorted_logits = logits[sorted_indices]
+        cumulative_probs = numpy_softmax(sorted_logits)
+        sorted_indices_to_remove = cumulative_probs <= (1 - top_p)
+
+        indices_to_remove = sorted_indices_to_remove.scatter(
+            1, sorted_indices, sorted_indices_to_remove
+        )
+        logits = numpy.where(indices_to_remove, filter_value, logits)
+
+    return logits

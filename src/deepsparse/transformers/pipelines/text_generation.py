@@ -139,7 +139,8 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
-        prompt_sequence_length: int = 64,
+        # prompt_sequence_length: int = 64,
+        prompt_sequence_length: int = 4,
         force_max_tokens: bool = False,
         internal_kv_cache: bool = True,
         **kwargs,
@@ -480,6 +481,18 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
+            frequency = numpy.zeros(token.shape)
+            for tkn in token:
+                frequency[0][tkn] += 1
+
+            token -= frequency_penalty * frequency
+            token -= presence_penalty * frequency
+
+            if top_k:
+                token = get_top_k_logits()
+            if top_p:
+                token = get_tok_p_logits()
+
             with self.timer_manager.current.time(
                 _TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
