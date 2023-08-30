@@ -12,71 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sparsezoo import Model
-import pytest
-import onnxruntime
 import numpy
-from typing import Dict, List, Tuple
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from abc import ABC, abstractmethod
 
-
-
-class GroundTruthSource(ABC):
-    def __init__(self, num_tokens_to_generate: int, model_name: str):
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        tokenizer.padding_side = "left"
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-
-        self.num_tokens_to_generate = num_tokens_to_generate
-        self.tokenizer = tokenizer
-
-    # make this an abstract method
-    @abstractmethod
-    def tokenize(self, prompt: str) -> Dict[str, numpy.ndarray]:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def __call__(self, prompt: str) -> numpy.ndarray:
-        raise NotImplementedError()
-
-
-class ORTGroundTruthSource(GroundTruthSource):
-    def __init__(self, model_stub: str, num_tokens_to_generate: int, model_name: str):
-        super().__init__(num_tokens_to_generate, model_name)
-
-        self.model_onnx_path = Model(model_stub).training.get_file("model.onnx").path
-        self.session = onnxruntime.InferenceSession(self.model_onnx_path)
-
-    def tokenize(self, prompt: str):
-        return self.tokenizer(prompt, return_tensors="np", padding="max_length", max_length=self.sequence_length)
-
-    def __call__(self, prompt: str) -> numpy.ndarray:
-        inputs = self.tokenize(prompt)
-        logits = self.session.run(None, inputs)
-        return logits
-
-
-class TorchGroundTruthSource(GroundTruthSource):
-    def __init__(self, num_tokens_to_generate: int, model_name: str):
-        super().__init__(num_tokens_to_generate, model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name)
-
-    def tokenize(self, prompt:str):
-        return self.tokenizer(prompt, return_tensors="pt")
-
-    def __call__(self, prompt: str) -> Tuple[numpy.ndarray, numpy.ndarray, List[numpy.ndarray]]:
-        # afaik it is not possible to get 'past_key_values' from the generate method, so we have to
-        # run the model twice
-        out = self.model.generate(self.tokenize(prompt).input_ids, max_new_tokens=self.num_tokens_to_generate, output_scores = True, return_dict_in_generate=True, use_cache=True)
-        generated_logits = numpy.concatenate([[score.numpy() for score in out.scores]]) # (1, num_tokens_to_generate, vocab_size)
-
-        out = self.model(**self.tokenize(prompt))
-        prompt_logits = out.logits.detach().numpy() # (1, prompt_length, vocab_size)
-        prompt_cache = [element.detach.numpy() for tupl in out.past_key_values for element in tupl] # List[(1, num_heads, past_length, head_dim)]
-
-        return generated_logits, prompt_logits, prompt_cache
+import pytest
+from tests.deepsparse.transformers.pipelines.helpers import (
+    ORTGroundTruthSource,
+    TorchGroundTruthSource,
+)
 
 
 @pytest.mark.parametrize(
@@ -93,11 +35,41 @@ class TorchGroundTruthSource(GroundTruthSource):
 )
 def test_ground_truth_sources(model_stub, model_name, uses_bos_token):
     num_tokens_generate = 256
-    prompt = "This is a test prompt, that is used to generate some text"
-    #ort_target_logits = ORTGroundTruthSource(model_stub=model_stub, num_tokens_to_generate=num_tokens_generate,model_name=model_name)(prompt)
-    torch_target_generated_logits, torch_target_prompt_logits, torch_target_prompt_cache = TorchGroundTruthSource(num_tokens_to_generate = num_tokens_generate, model_name = model_name)(prompt)
+    prompt = """
+    Didn't know what time it was, the lights were low
+    I leaned back on my radio
+    Some cat was layin' down some rock 'n' roll
+    "Lotta soul," he said
+    Then the loud sound did seem to fade
+    Came back like a slow voice on a wave of phase
+    That weren't no DJ, that was hazy cosmic jive
+    """
 
-    print(torch_target_logits)
+    torch_source = TorchGroundTruthSource(
+        num_tokens_to_generate=num_tokens_generate, model_name=model_name
+    )
+    ort_source = ORTGroundTruthSource(
+        num_tokens_to_generate=num_tokens_generate,
+        model_name=model_name,
+        model_stub=model_stub,
+    )
 
+    (
+        torch_target_generated_logits,
+        torch_target_prompt_logits,
+        torch_target_prompt_cache,
+    ) = torch_source(prompt)
+    (
+        ort_target_prompt_logits,
+        ort_target_prompt_cache,
+    ) = ort_source(prompt)
 
-
+    # check that the prompt logits are the same
+    assert numpy.allclose(
+        torch_target_prompt_logits, ort_target_prompt_logits, atol=1e-4
+    )
+    # check that the prompt cache is the same
+    for torch_cache, ort_cache in zip(
+        torch_target_prompt_cache, ort_target_prompt_cache
+    ):
+        assert numpy.allclose(torch_cache, ort_cache, atol=1e-5)
