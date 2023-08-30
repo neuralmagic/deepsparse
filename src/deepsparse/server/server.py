@@ -43,11 +43,11 @@ from deepsparse.server.system_logging import (
     log_system_information,
 )
 from fastapi import FastAPI, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-
 _LOGGER = logging.getLogger(__name__)
-
+RUN_OPENAI = True
 
 def start_server(
     config_path: str,
@@ -82,7 +82,11 @@ def start_server(
         _LOGGER.info(f"Watching {config_path} for changes.")
         _ = start_config_watcher(config_path, f"http://{host}:{port}/endpoints", 0.5)
 
-    app = _build_app(server_config)
+    if RUN_OPENAI:
+        from deepsparse.server.openai_server import build_openai_app
+        app = build_openai_app()
+    else:
+        app = _build_app(server_config)
 
     uvicorn.run(
         app,
