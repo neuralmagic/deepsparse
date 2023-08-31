@@ -121,7 +121,7 @@ class ORTGroundTruthSource(GroundTruthSource):
         prompt_logits = numpy.compress(
             onnxruntime_inputs["attention_mask"].flatten(), prompt_logits, axis=1
         )  # (1, prompt_length, vocab_size)
-        prompt_logits = prompt_logits[:, -1, :]
+        prompt_logits = prompt_logits[:, :-1, :]
         # remove cache that corresponds to padding tokens
         prompt_cache = [
             numpy.compress(
@@ -176,7 +176,7 @@ class TorchGroundTruthSource(GroundTruthSource):
 
     def __call__(
         self, prompt: str
-    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[numpy.ndarray]]:
+    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[numpy.ndarray], str]:
         # afaik it is not possible to get 'past_key_values' from
         # the generate method, so we have to run the model twice
         out = self.model.generate(
@@ -185,6 +185,9 @@ class TorchGroundTruthSource(GroundTruthSource):
             output_scores=True,
             return_dict_in_generate=True,
             use_cache=True,
+        )
+        generated_text = self.tokenizer.decode(
+            out.sequences[0], skip_special_tokens=True
         )
         generated_logits = numpy.concatenate(
             [[score.numpy() for score in out.scores]]
@@ -202,4 +205,4 @@ class TorchGroundTruthSource(GroundTruthSource):
             for entry in key_value_tuple
         ]  # List[(1, num_heads, past_length, head_dim)]
 
-        return generated_logits, prompt_logits, prompt_cache
+        return generated_logits, prompt_logits, prompt_cache, generated_text
