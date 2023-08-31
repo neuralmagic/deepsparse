@@ -28,12 +28,15 @@ model = models["data"][0]["id"]
 # Completion API
 stream = True
 completion = openai.Completion.create(
-    model=model, prompt="def fib():", stream=stream, max_tokens=16
+    model=model, prompt="def fib():", stream=stream, max_tokens=32
 )
 
 print("Completion results:")
 if stream:
+    text = ""
     for c in completion:
         print(c)
+        text += c["choices"][0]["text"]
+    print(text)
 else:
     print(completion)

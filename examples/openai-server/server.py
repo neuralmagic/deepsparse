@@ -117,14 +117,18 @@ class DeepSparseOpenAIEngine:
         thread.start()
 
         # stream out the text
+        concat_text = ""
+        concat_token_ids = []
         for new_text in streamer:
+            concat_text += new_text
+            concat_token_ids.append(self.tokenize(new_text))
             yield RequestOutput(
                 request_id=request_id,
                 prompt=prompt,
                 prompt_token_ids=prompt_token_ids,
                 outputs=[
                     CompletionOutput(
-                        index=0, text=new_text, token_ids=self.tokenize(new_text)
+                        index=0, text=concat_text, token_ids=concat_token_ids
                     )
                 ],
                 finished=False,
@@ -135,7 +139,7 @@ class DeepSparseOpenAIEngine:
             request_id=request_id,
             prompt=prompt,
             prompt_token_ids=prompt_token_ids,
-            outputs=[CompletionOutput(index=0, text="", token_ids=[0])],
+            outputs=[CompletionOutput(index=0, text="", token_ids=[0], finish_reason="stop")],
             finished=True,
         )
 
