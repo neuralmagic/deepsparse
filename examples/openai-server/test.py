@@ -14,9 +14,7 @@
 
 # Make sure to start the server first:
 """
-python examples/openai-server/server.py \
-    --model zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none \
-    --prompt-processing-sequence-length 1
+python examples/openai-server/server.py --model zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none
 """  # noqa: E501
 
 import unittest
@@ -41,11 +39,15 @@ class TestOpenAIApi(unittest.TestCase):
 
         for model in models:
             response = openai.Completion.create(
-                model=model, prompt="def fib():", max_tokens=16
+                model=model, prompt="def fib():", max_tokens=30
             )
             self.assertIsNotNone(response)
             self.assertIn("choices", response)
             self.assertTrue(len(response["choices"]) > 0)
+            self.assertTrue(
+                response["choices"][0]["text"]
+                == "\n    a, b = 0, 1\n    while True:\n        yield a\n        a, b = b, a + b"  # noqa: E501
+            )
             print(response["choices"])
 
     def test_streaming_output(self):
@@ -53,7 +55,7 @@ class TestOpenAIApi(unittest.TestCase):
 
         for model in models:
             responses = openai.Completion.create(
-                model=model, prompt="def fib():", max_tokens=16, stream=True
+                model=model, prompt="def fib():", max_tokens=30, stream=True
             )
             for response in responses:
                 self.assertIn("choices", response)
