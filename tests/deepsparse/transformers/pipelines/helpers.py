@@ -121,6 +121,7 @@ class ORTGroundTruthSource(GroundTruthSource):
         prompt_logits = numpy.compress(
             onnxruntime_inputs["attention_mask"].flatten(), prompt_logits, axis=1
         )  # (1, prompt_length, vocab_size)
+        prompt_logits = prompt_logits[:, -1, :]
         # remove cache that corresponds to padding tokens
         prompt_cache = [
             numpy.compress(
@@ -187,10 +188,14 @@ class TorchGroundTruthSource(GroundTruthSource):
         )
         generated_logits = numpy.concatenate(
             [[score.numpy() for score in out.scores]]
+        ).transpose(
+            1, 0, 2
         )  # (1, num_tokens_to_generate, vocab_size)
 
         out = self.model(**self.tokenize(prompt))
-        prompt_logits = out.logits.detach().numpy()  # (1, prompt_length, vocab_size)
+        prompt_logits = out.logits.detach().numpy()[
+            :, :-1, :
+        ]  # (1, prompt_length, vocab_size)
         prompt_cache = [
             entry.detach().numpy()
             for key_value_tuple in out.past_key_values
