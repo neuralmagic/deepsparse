@@ -197,9 +197,14 @@ class TextGenerationPipeline(TransformersPipeline):
             _delay_engine_initialize=True,
             _delay_overwriting_inputs=True,
         )
-        self.enable_multitoken_prefill = self.causal_mask_input_present(
-            model_path=self.onnx_file_path
+        # enable multitoken prefill if
+        # - the model graph is supporting it (causal_mask input is present)
+        # - prompt_processing_sequence_length != 1 (identical to single-token prefill)
+        self.enable_multitoken_prefill = (
+            self.causal_mask_input_present(model_path=self.onnx_file_path)
+            and prompt_processing_sequence_length > 1
         )
+
         self.cache_support_enabled = self.is_cache_support_enabled()
 
         if self.engine_type == DEEPSPARSE_ENGINE:
@@ -692,20 +697,14 @@ class TextGenerationPipeline(TransformersPipeline):
                     # delay creation of the causal mask
                     continue
                 elif name == "positions":
-                    if self.prompt_processing_sequence_length == 1:
-                        # we need to treat `positions` as if we were in
-                        # the autoregressive mode
-                        engine_input = numpy.array([[idx]], dtype=numpy.int64)
-                    else:
-                        engine_input = (
-                            numpy.arange(
-                                num_cached_entries,
-                                num_cached_entries
-                                + self.prompt_processing_sequence_length,
-                            )
-                            .reshape(1, -1)
-                            .astype(numpy.int64)
+                    engine_input = (
+                        numpy.arange(
+                            num_cached_entries,
+                            num_cached_entries + self.prompt_processing_sequence_length,
                         )
+                        .reshape(1, -1)
+                        .astype(numpy.int64)
+                    )
 
                 engine_inputs.append(engine_input)
 
