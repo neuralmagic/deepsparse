@@ -86,7 +86,6 @@ class NLDecoderEngine:
             if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
                 engine_args["cached_outputs"] = output_indices_to_be_cached
-                # engine_args["batch_size"] = 0
 
         self.engine = create_engine(
             onnx_file_path=onnx_file_path,
@@ -165,12 +164,6 @@ class NLDecoderEngine:
 
         if self.internal_cache_active:
             # validate the inputs if needed
-            if val_inp:
-                # let's not validate the outputs,
-                # as we are passing empty kv cache
-                # that results in validation error
-                pass
-            # run the engine with the LIB.kv_cache object
             return self.engine._eng_net.execute_list_out(
                 inputs, self.kv_cache.engine_internal_cache
             )
@@ -332,6 +325,8 @@ class NLDecoderEngine:
     ) -> Dict[str, numpy.ndarray]:
         # initialize empty kv cache of size
         # (batch_size, num_attention_heads, length, hidden_dims)
+        # if empty is True, we initialize empty kv_cache
+        # and set the batch_size to 0
 
         cache_engine_input_index = next(
             i
