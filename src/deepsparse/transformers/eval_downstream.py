@@ -107,6 +107,7 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         max_generated_tokens=1,
         trust_remote_code=args.trust_remote_code,
         batch_size=args.batch_size,
+        use_deepsparse_cache=True,
     )
 
     # Instantiate perplexity metric
@@ -155,10 +156,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
 
                 logits = numpy.compress(attention_mask, logits, axis=0)[:-1, :]
                 input_ids = numpy.compress(attention_mask, input_ids)[1:]
-                #print(logits[:,0], flush=True)
-                #print(attention_mask)
-                #if idx == 1:
-                #    exit()
 
                 # Add predictions (logits) and targets (input_ids) to metric
                 perplexity_metrics.add_batch(logits, input_ids)
