@@ -156,10 +156,9 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens until the end of the sequence is reached.
         Otherwise, it will generate up to the maximum number of tokens or end of
         sequence is reached.
-    :param prompt_sequence_length: For large prompts, the prompt is
     :param sequence_length: sequence length to compile model and tokenizer for.
         This controls the maximum context length of the pipeline. Default is 512
-    :param prompt_processing_sequence_length: For large prompts, the prompt is
+    :param prompt_sequence_length: For large prompts, the prompt is
         processed in chunks of this length. This is to maximize the inference
         speed. By default, this is set to 64.
     :param force_max_tokens: if True, the pipeline will generate the maximum number
@@ -200,10 +199,10 @@ class TextGenerationPipeline(TransformersPipeline):
         )
         # enable multitoken prefill if
         # - the model graph is supporting it (causal_mask input is present)
-        # - prompt_processing_sequence_length != 1 (identical to single-token prefill)
+        # - prompt_sequence_length != 1 (identical to single-token prefill)
         self.enable_multitoken_prefill = (
             self.causal_mask_input_present(model_path=self.onnx_file_path)
-            and prompt_processing_sequence_length > 1
+            and prompt_sequence_length > 1
         )
 
         self.cache_support_enabled = self.is_cache_support_enabled()
@@ -260,15 +259,15 @@ class TextGenerationPipeline(TransformersPipeline):
         if self.cache_support_enabled:
             if (
                 self.engine_type == DEEPSPARSE_ENGINE
-                and self.sequence_length <= self.prompt_processing_sequence_length
+                and self.sequence_length <= self.prompt_sequence_length
                 and self.enable_multitoken_prefill
             ):
                 raise ValueError(
                     "Attempting to initialize auxiliary DeepSparse engine to "
                     "process a prompt with a larger processing length. "
-                    "However, it is assumed that `prompt_processing_sequence_length` "
+                    "However, it is assumed that `prompt_sequence_length` "
                     "is smaller than the `sequence_length`. "
-                    "Adjust the `prompt_processing_sequence_length` "
+                    "Adjust the `prompt_sequence_length` "
                     "argument accordingly."
                 )
 
@@ -543,10 +542,7 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
-        if (
-            len(tokens) > self.prompt_processing_sequence_length
-            and self.enable_multitoken_prefill
-        ):
+        if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
             self.multitoken_engine.reset_kv_cache()
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
@@ -687,7 +683,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     engine_input = (
                         numpy.arange(
                             num_cached_entries,
-                            num_cached_entries + self.prompt_processing_length,
+                            num_cached_entries + self.prompt_sequence_length,
                         )
                         .reshape(1, -1)
                         .astype(numpy.int64)
