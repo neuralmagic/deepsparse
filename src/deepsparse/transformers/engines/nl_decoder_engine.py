@@ -176,6 +176,7 @@ class NLDecoderEngine:
     def __call__(
         self,
         inp: List[numpy.ndarray],
+        token_generator: TokenGenerator,
         val_inp: bool = True,
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
@@ -203,7 +204,8 @@ class NLDecoderEngine:
             logits = out[0]
 
         # select batch idx 0, batch is always 1
-        token = self.generate_token(logits=logits[0, -1, :])
+        # token = self.generate_token(logits=logits[0, -1, :])
+        token = token_generator.generate(logits=logits[0, -1, :])
 
         return token, logits
 
