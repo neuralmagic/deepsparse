@@ -22,7 +22,7 @@ import pytest
 from deepsparse import Pipeline
 from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
-    overwrite_onnx_model_inputs,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
 )
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX
 from sparsezoo import Model
@@ -50,6 +50,9 @@ def _initialize_kv_cache_state(model, length=0):
     }
 
     return kv_cache
+
+
+START = 0  # global variable for dummy_callback
 
 
 @pytest.mark.parametrize(
@@ -143,6 +146,23 @@ class TestTextGenerationPipeline:
         self._test_cache_state(short_prompt, pipeline, model_name)
         self._test_cache_state(long_prompt, pipeline, model_name)
 
+    def test_callback(self, setup):
+        pipeline, *_ = setup
+
+        def dummy_callback(token):
+            global START
+            START += 1
+            return START < 3
+
+        inputs = {
+            "sequences": "def fib(a, b, accumulator=0)",
+            "callback": dummy_callback,
+            "return_logits": True,
+        }
+
+        outs = pipeline(**inputs)
+        assert outs.logits.shape[1] == 3
+
     def _test_cache_state(self, prompt, pipeline, model_name):
         # make sure that the cache state after running a prompt
         # is correct
@@ -216,7 +236,7 @@ class TestTextGenerationPipeline:
 
         # setup model and session
         # (run full sequence inference)
-        overwrite_onnx_model_inputs(
+        overwrite_onnx_model_inputs_for_kv_cache_models(
             model_onnx_path, sequence_length=128, input_ids_length=128
         )
         sess = onnxruntime.InferenceSession(model_onnx_path)

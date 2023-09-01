@@ -124,6 +124,7 @@ _server_deps = [
     "python-multipart>=0.0.5",
     "prometheus-client>=0.14.1",
     "psutil>=5.9.4",
+    "anyio<4.0.0",
 ]
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
@@ -164,7 +165,7 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 _clip_deps = [
     "open_clip_torch==2.20.0",
-    "scipy==1.10.1",
+    "scipy<1.9.2,>=1.8",
     f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}",
 ]
 
