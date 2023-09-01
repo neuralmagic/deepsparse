@@ -573,7 +573,6 @@ class TextGenerationPipeline(TransformersPipeline):
                 num_tokens_processed += self.prompt_processing_sequence_length
                 prompt_logits.append(new_logits)
 
-        self.engine.reset_kv_cache()
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
             self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
