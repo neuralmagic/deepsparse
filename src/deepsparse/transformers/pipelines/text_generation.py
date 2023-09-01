@@ -482,11 +482,15 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             callback = context.get("callback")
             stop = context.get("stop")
+            
+            token_generator = TokenGenerator(**token_generator_kwargs)
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
                     with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
+                         
                         token, logits = self.autoregressive_inference(tokens)
+                        
                     tokens.append(token)
                     generated_tokens.append(token)
                     generated_logits.append(logits)
