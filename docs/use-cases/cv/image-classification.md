@@ -212,9 +212,9 @@ deepsparse.server \
   --task image_classification \
   --model_path zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
 ```
-<!-- markdown-link-check-disable -->
+
 You should see Uvicorn report that it is running on http://0.0.0.0:5543. Once launched, a /docs path is created with full endpoint descriptions and support for making sample requests.
-<!-- markdown-link-check-enable -->
+
 
 Here is an example client request, using the Python requests library for formatting the HTTP:
 
