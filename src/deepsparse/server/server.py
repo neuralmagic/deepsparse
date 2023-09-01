@@ -34,7 +34,10 @@ from deepsparse.server.config import (
     SystemLoggingConfig,
 )
 from deepsparse.server.config_hot_reloading import start_config_watcher
-from deepsparse.server.helpers import server_logger_from_config
+from deepsparse.server.helpers import (
+    prep_outputs_for_serialization,
+    server_logger_from_config,
+)
 from deepsparse.server.system_logging import (
     SystemLoggingMiddleware,
     log_system_information,
@@ -261,6 +264,7 @@ def _add_pipeline_endpoint(
                 server_logger=server_logger,
                 system_logging_config=system_logging_config,
             )
+        pipeline_outputs = prep_outputs_for_serialization(pipeline_outputs)
         return pipeline_outputs
 
     def _predict_from_files(request: List[UploadFile]):

@@ -76,7 +76,7 @@ An example `sentiment-inputs.csv` file in the `sample` directory is available to
 
 #### Fargate Compute Configuration
 
-To edit the hardware configuration of the Fargate container, you can edit the default values in the [template.yaml](https://github.com/neuralmagic/deepsparse/examples/aws-serverless/batch/template.yaml) file in the `batch` directory.
+To edit the hardware configuration of the Fargate container, you can edit the default values in the [template.yaml](https://github.com/neuralmagic/deepsparse/tree/main/examples/aws-serverless/batch/template.yaml) file in the `batch` directory.
 
 Fargate is currently configured to deploy with 4 vCPUs and 8GB of RAM.
 
@@ -90,7 +90,7 @@ python endpoint.py create-realtime
 
 #### Call Realtime Endpoint
 
-After the endpoint has been staged (~3 minute), AWS SAM will provide your API Gateway endpoint URL in CLI. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
+After the endpoint has been staged (~3 minutes), AWS SAM will provide your API Gateway endpoint URL in terminal. You can start making requests by passing this URL into the LambdaClient object. Afterwards, you can run inference by passing in your text input:
 
 ```python
 from client import LambdaClient

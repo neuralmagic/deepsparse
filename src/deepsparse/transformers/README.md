@@ -10,6 +10,7 @@ methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [q
 These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
 
 This integration currently supports several fundamental NLP tasks:
+- **Text Generation** - given the input prompt, generate an output text sequence (e.g. to fill in incomplete text, summarize or paraphrase a text paragraph)
 - **Question Answering** - posing questions about a document
 - **Sentiment Analysis** - assigning a sentiment to a piece of text
 - **Text Classification** - assigning a label or class to a piece of text (e.g duplicate question pairing)
@@ -24,7 +25,7 @@ compatible with our [hardware requirements](https://docs.neuralmagic.com/deepspa
 
 ### Installation
 
-```pip install deepsparse```
+```pip install deepsparse[transformers]```
 
 ### Model Format
 By default, to deploy the transformer using DeepSparse Engine it is required to supply the model in the ONNX format along with the HuggingFace supporting files. 
@@ -32,9 +33,9 @@ This grants the engine the flexibility to serve any model in a framework-agnosti
 
 The DeepSparse pipelines require the following files within a folder on the local server to properly load a Transformers model:
 - `model.onnx`: The exported Transformers model in the [ONNX format](https://github.com/onnx/onnx).
-- `tokenizer.json`: The [HuggingFace compatible tokenizer configuration](https://huggingface.co/docs/transformers/fast_tokenizers) used with the model.
 - `config.json`: The [HuggingFace compatible configuration file](https://huggingface.co/docs/transformers/main_classes/configuration) used with the model.
-
+- `tokenizer_config.json`: The [HuggingFace compatible tokenizer configuration](https://huggingface.co/docs/transformers/fast_tokenizers) used with the model.
+- `tokenizer.json`, `special_tokens_map.json`, `vocab.json`, `merges.txt` (optional): Other files that may be required by a tokenizer
 Below we describe two possibilities to obtain the required structure.
 
 #### SparseML Export 
@@ -48,7 +49,7 @@ sparseml.transformers.export_onnx --task question-answering --model_path model_p
 ```
 
 This creates `model.onnx` file, in the directory of your `model_path`(e.g. `/trained_model/model.onnx`). 
-The `tokenizer.json` and `config.json` are stored under the `model_path` folder as well, so a DeepSparse pipeline ca be directly instantiated by using that folder after export (e.g. `/trained_model/`).
+Any additional, required files, such as e.g.`tokenizer.json` or `config.json`, are stored under the `model_path` folder as well, so a DeepSparse pipeline can be directly instantiated by using that folder after export (e.g. `/trained_model/`).
 
 ####  SparseZoo Stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
@@ -88,7 +89,7 @@ The DeepSparse Server requirements can be installed by specifying the `server` e
 DeepSparse.
 
 ```bash
-pip install deepsparse[server]
+pip install deepsparse[server,transformers]
 ```
 
 ## Deployment Use Cases
@@ -100,7 +101,7 @@ for the `question` as a substring of the `context`.  The following examples use 
 question answering BERT model trained on the `SQuAD` dataset downloaded by default from the SparseZoo.
 
 [List of available SparseZoo Question Answering Models](
-https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=question_answering)
+https://sparsezoo.neuralmagic.com/?useCase=question_answering)
 
 #### Python Pipeline
 
@@ -138,13 +139,54 @@ response.text
 >> '{"score":0.9534820914268494,"start":8,"end":14,"answer":"batman"}'
 ```
 
+### Text Generation
+The text generation task generates a sequence of tokens given the prompt. Popular text generation LLMs (Large Language Models) are used
+for the chatbots (the instruction models), code generation, text summarization, or filling out the missing text. The following example uses a sparsified text classification
+OPT model to complete the prompt
+
+[List of available SparseZoo Text Generation Models](
+https://sparsezoo.neuralmagic.com/?useCase=text_generation)
+
+#### Python Pipeline
+```python
+from deepsparse import Pipeline
+
+opt_pipeline = Pipeline.create(task="opt")
+
+inference = opt_pipeline("Who is the president of the United States?")
+
+>> 'The president of the United States is the head of the executive branch of government...'
+```
+
+#### HTTP Server
+Spinning up:
+```bash
+deepsparse.server \
+    task text-generation \
+    --model_path # TODO: Pending until text generation models get uploaded to SparseZoo
+```
+
+Making a request:
+```python
+import requests
+
+url = "http://localhost:5543/predict" # Server's port default to 5543
+
+obj = {"sequence": "Who is the president of the United States?"}
+
+response = requests.post(url, json=obj)
+response.text
+
+>> 'The president of the United States is the head of the executive branch of government...'
+```
+
 ### Sentiment Analysis
 The sentiment analysis task takes in a sentence and classifies its sentiment. The following example
 uses a pruned and quantized text sentiment analysis BERT model trained on the `sst2` dataset downloaded
 from the SparseZoo. This `sst2` model classifies sentences as positive or negative.
 
 [List of available SparseZoo Sentiment Analysis Models](
-https://sparsezoo.neuralmagic.com/?domain=nlp&sub_domain=sentiment_analysis)
+https://sparsezoo.neuralmagic.com/?useCase=sentiment_analysis)
 
 #### Python Pipeline
 ```python
@@ -190,7 +232,7 @@ DistilBERT model trained on the `qqp` dataset downloaded from a SparseZoo stub.
 The `qqp` dataset takes pairs of questions and predicts if they are a duplicate or not.
 
 [List of available SparseZoo Text Classification Models](
-https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=text_classification)
+https://sparsezoo.neuralmagic.com/?useCase=text_classification)
 
 #### Python Pipeline
 ```python
@@ -249,7 +291,7 @@ The following example uses a pruned and quantized token classification NER BERT 
 trained on the `CoNLL` dataset downloaded from the SparseZoo.
 
 [List of available SparseZoo Token Classification Models](
-https://sparsezoo.neuralmagic.com/?page=1&domain=nlp&sub_domain=token_classification)
+https://sparsezoo.neuralmagic.com/?useCase=token_classification)
 
 #### Python Pipeline
 ```python

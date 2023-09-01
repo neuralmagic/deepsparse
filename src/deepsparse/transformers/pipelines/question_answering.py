@@ -250,6 +250,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         span_engine_inputs = []
         span_extra_info = []
         num_spans = len(tokenized_example["input_ids"])
+
         for span in range(num_spans):
             span_input = [
                 numpy.array(tokenized_example[key][span])
@@ -259,7 +260,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
             span_extra_info.append(
                 {
-                    key: numpy.array(tokenized_example[key][span])
+                    key: _convert_to_numpy_array(tokenized_example[key][span])
                     for key in tokenized_example.keys()
                     if key not in self.onnx_input_names
                 }
@@ -492,7 +493,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        tokenizer = pipelines[0].tokenizer
+        tokenizer = pipelines[-1].tokenizer
         tokens = tokenizer(
             " ".join((input_schema.context, input_schema.question)),
             add_special_tokens=True,
@@ -583,3 +584,18 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             mode = "a" if os.path.exists(null_odds_file) else "w"
             with open(null_odds_file, mode) as writer:
                 writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
+
+
+def _convert_to_numpy_array(array):
+    """
+    Convert a list to a numpy array. If the list contains non-numeric values,
+    convert to an array of objects.
+
+    :param array: The list to convert
+    :return: The converted numpy array
+    """
+    try:
+        return numpy.array(array)
+    except ValueError:
+        # If the array contains non-numeric values, convert to an array of objects
+        return numpy.array(array, dtype=object)

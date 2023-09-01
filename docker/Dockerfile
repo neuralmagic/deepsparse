@@ -1,6 +1,5 @@
-# Can be have the following values: all, server, transformers,
-#  ultralytics, base
 ARG VERSION
+# Can have the following values: all, base, dev
 ARG DEPS="all"
 ARG VENV="/venv"
 ARG BRANCH
@@ -64,26 +63,23 @@ ARG MODE=""
 RUN \
     if [ -n "$BRANCH" ] ; then \
       echo Installing from BRANCH && \
-      $VENV/bin/pip install --no-cache-dir "./deepsparse[server,yolo,onnxruntime,yolov8]"; \
+      $VENV/bin/pip install --no-cache-dir "./deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
     elif [ "$MODE" = "nightly" ] ; then \
       echo Installing nightlies ... && \
       if [ -z "$VERSION" ] ; then \
         echo Installing latest nightlies ...  && \
-        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8]"; \
+        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
       else \
         echo Installing nightlies ... with $VERSION && \
-        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8]==$VERSION"; \
+        $VENV/bin/pip install --no-cache-dir "deepsparse-nightly[server,yolo,onnxruntime,yolov8,transformers,image_classification]==$VERSION"; \
       fi; \
     elif [ -z "$VERSION" ] ; then \
       echo Installing latest deepsparse ... from pypi && \
-      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8]"; \
+      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]"; \
     else \
       echo Installing latest deepsparse version="$VERSION" from pypi && \
-      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8]==$VERSION"; \
+      $VENV/bin/pip install --no-cache-dir "deepsparse[server,yolo,onnxruntime,yolov8,transformers,image_classification]==$VERSION"; \
     fi;
-
-RUN deepsparse.transformers.run_inference --help \
-    && deepsparse.image_classification.annotate --help
 
 
 FROM base AS container_branch_dev
@@ -98,7 +94,7 @@ RUN \
       $VENV/bin/pip install -e  "./deepsparse[dev]"; \
     else \
       echo Installing from main  with editable mode && \
-      git clone https://github.com/neuralmagic/sparseml.git --depth 1 -b main && \
+      git clone https://github.com/neuralmagic/deepsparse.git --depth 1 -b main && \
       $VENV/bin/pip install -e "./deepsparse[dev]"; \
     fi;
 

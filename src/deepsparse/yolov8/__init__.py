@@ -16,6 +16,13 @@
 
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
+
+try:
+    import ultralytics as _ultralytics
+except ImportError:
+    raise ImportError("Please install deepsparse[yolov8] to use this pathway")
+
+
 from .annotate import *
 from .pipelines import *
 from .schemas import *

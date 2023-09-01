@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Contributing to the DeepSparse Engine
+# Contributing to DeepSparse
 
-If you’re reading this, hopefully we have piqued your interest to take the next step. Join us and help make the DeepSparse Engine even better! As a contributor, here are some community guidelines we would like you to follow:
+If you’re reading this, hopefully we have piqued your interest to take the next step. Join us and help make DeepSparse even better! As a contributor, here are some community guidelines we would like you to follow:
 
 - [Code of Conduct](#code-of-conduct)
 - [Ways to Contribute](#ways-to-contribute)
@@ -77,12 +77,12 @@ For documentation edits, include:
 
 ## Question or Problem
 
-- Sign up or log in to our [**Deep Sparse Community Slack**](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there. Post all other questions including support or how to contribute. Don’t forget to search through existing discussions to avoid duplication! Thanks!
+- Sign up or log in to our [**Neural Maggic Community Slack**](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there. Post all other questions including support or how to contribute. Don’t forget to search through existing discussions to avoid duplication! Thanks!
 
 Post all other questions including support or how to contribute. Don’t forget to search through existing discussions to avoid duplication! Thanks!
 
-## Developing the DeepSparse Engine
+## Developing DeepSparse
 
-Because the DeepSparse Engine algorithms are proprietary, code contributions cannot be made. However, there are other options to contribute to the engine's Python API wrapper code. Review [Developing the DeepSparse Engine](DEVELOPING.md) to get started.
+Because the DeepSparse engine algorithms are proprietary, code contributions cannot be made. However, there are other options to contribute to the engine's Python API wrapper code. Review [Developing DeepSparse](DEVELOPING.md) to get started.
 
 We also welcome community input to bugs, feature requests, questions and problems as mentioned above.

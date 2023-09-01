@@ -23,10 +23,9 @@ class DeepSparseDetectionValidator(DeepSparseValidator, DetectionValidator):
         dataloader=None,
         save_dir=None,
         pbar=None,
-        logger=None,
         args=None,
     ):
-        DetectionValidator.__init__(self, dataloader, save_dir, pbar, logger, args)
+        DetectionValidator.__init__(self, dataloader, save_dir, pbar, args)
         DeepSparseValidator.__init__(self, pipeline)
 
     # deepsparse edit: replaced argument `model` with `classes`
