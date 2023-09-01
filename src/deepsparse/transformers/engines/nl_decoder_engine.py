@@ -155,7 +155,10 @@ class NLDecoderEngine:
         If the self.internal_cache_active=True, the internal
         deepsparse kv cache management is enabled. In this case
         the LIB.kv_cache class object will be passed to the engine
-        call as well.
+        call as well. In this scenario also the inputs will not be
+        validated, even if the val_inp=True. This is because we
+        want to pass the empty kv cache inputs (batch_size=0) to
+        the engine.
 
         :param inputs: The inputs to run the engine with
         :param val_inp: Whether the input is for validation or not
@@ -163,7 +166,6 @@ class NLDecoderEngine:
         """
 
         if self.internal_cache_active:
-            # validate the inputs if needed
             return self.engine._eng_net.execute_list_out(
                 inputs, self.kv_cache.engine_internal_cache
             )
