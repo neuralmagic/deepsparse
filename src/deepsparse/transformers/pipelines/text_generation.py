@@ -577,6 +577,8 @@ class TextGenerationPipeline(TransformersPipeline):
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
             self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
+        else:
+            self.engine.reset_kv_cache()
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
