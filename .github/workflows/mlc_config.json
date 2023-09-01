@@ -1,13 +1,13 @@
 {
     "ignorePatterns": [
         {
-            "pattern": "^http://localhost.*"
+            "pattern": ".*localhost.*"
         },
         {
-            "pattern": "^http://127\\.0\\.0\\.1.*"
+            "pattern": ".*127\\.0\\.0\\.1.*"
         },
         {
-            "pattern": "^http://0\\.0\\.0\\.0.*"
+            "pattern": ".*0\\.0\\.0\\.0.*"
         }
     ]
 }
