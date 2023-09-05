@@ -1,0 +1,10 @@
+{
+    "data_type": "dummy",
+    "gen_sequence_length": 100,
+    "input_image_shape": [500,500,3],
+    "data_folder": "/home/sadkins/imagenette2-320/",
+    "recursive_search": true,
+    "max_string_length": -1,
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {}
+} 

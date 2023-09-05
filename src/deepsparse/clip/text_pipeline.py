@@ -30,7 +30,9 @@ class CLIPTextInput(BaseModel):
     Input for the CLIP Text Branch
     """
 
-    text: Union[str, List[str]] = Field(description="List of text to process")
+    text: Union[str, List[str], Any, List[Any]] = Field(
+        description="Either raw strings or an np.array with tokenized text"
+    )
 
 
 class CLIPTextOutput(BaseModel):
@@ -39,8 +41,10 @@ class CLIPTextOutput(BaseModel):
     """
 
     text_embeddings: List[Any] = Field(
-        description="Text embeddings for the single text or list of embeddings for "
-        "multiple."
+        description="np.array of text embeddings. For the caption "
+        "pipeline, a list of two embeddings is produced. For zero-shot "
+        "classifcation, one array is produced with the embeddings stacked along "
+        "batch axis."
     )
 
 
@@ -82,8 +86,12 @@ class CLIPTextPipeline(Pipeline):
         :param inputs: CLITextInput
         :return: list of preprocessed numpy arrays
         """
-        if isinstance(inputs.text, str):
+        if not isinstance(inputs.text, list):
             inputs.text = [inputs.text]
+
+        # If passing in an array, part of the captioning pipeline. No need to tokenize
+        if not isinstance(inputs.text[0], str):
+            return inputs.text
 
         tokens = self.tokenizer(inputs.text)
         tokens = [np.array(t).astype(np.int32) for t in tokens]

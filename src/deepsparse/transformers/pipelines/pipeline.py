@@ -66,16 +66,22 @@ class TransformersPipeline(Pipeline, Bucketable):
         If a list of lengths is provided, then for each length, a model and
         tokenizer will be compiled capable of handling that sequence length
         (also known as a bucket). Default is 128
+    :param trust_remote_code: if True, will trust remote code. This option
+        should only be set to `True` for repositories you trust and in which
+        you have read the code, as it will execute possibly unsafe code
+        on your local machine. Default is False
     """
 
     def __init__(
         self,
         *,
         sequence_length: Union[int, List[int]] = 128,
+        trust_remote_code: bool = False,
         **kwargs,
     ):
 
         self._sequence_length = sequence_length
+        self._trust_remote_code = trust_remote_code
 
         self.config = None
         self.tokenizer = None
@@ -111,10 +117,14 @@ class TransformersPipeline(Pipeline, Bucketable):
         )
 
         self.config = AutoConfig.from_pretrained(
-            config_path, finetuning_task=self.task if hasattr(self, "task") else None
+            config_path,
+            trust_remote_code=self._trust_remote_code,
+            finetuning_task=self.task if hasattr(self, "task") else None,
         )
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_path, model_max_length=self.sequence_length
+            tokenizer_path,
+            trust_remote_code=self._trust_remote_code,
+            model_max_length=self.sequence_length,
         )
         self.config_path = os.path.join(config_path, "config.json")
         self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")

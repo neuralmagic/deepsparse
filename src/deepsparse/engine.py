@@ -17,12 +17,12 @@ Code related to interfacing with a Neural Network in the DeepSparse Engine using
 """
 
 import logging
+import os
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
-import onnx
 from tqdm.auto import tqdm
 
 from deepsparse.analytics import deepsparse_analytics as _analytics
@@ -105,9 +105,11 @@ class Scheduler(Enum):
             raise ValueError(f"unsupported Scheduler: {key}")
 
 
-def _validate_batch_size(batch_size: int) -> int:
-    if batch_size < 1:
-        raise ValueError("batch_size must be greater than 0")
+def _validate_batch_size(batch_size: Optional[int]) -> Optional[int]:
+    if batch_size is None or batch_size < 1:
+        _LOGGER.warn("batch_size < 1 so disabling batch size override")
+        os.environ["NM_DISABLE_BATCH_OVERRIDE"] = "1"
+        return None
 
     return batch_size
 
@@ -225,12 +227,11 @@ class BaseEngine(object):
     def construct(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int = 1,
-        num_cores: int = None,
-        num_streams: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        disable_batch_override: bool = False,
+        batch_size: Optional[int] = 1,
+        num_cores: Optional[int] = None,
+        num_streams: Optional[int] = None,
+        scheduler: Optional[Scheduler] = None,
+        input_shapes: Optional[List[List[int]]] = None,
         kv_cache_params: Optional[KVCacheParams] = None,
     ):
         _analytics.send_event("python__engine__init")
@@ -240,7 +241,6 @@ class BaseEngine(object):
         self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = _validate_scheduler(scheduler)
         self._input_shapes = input_shapes
-        self._disable_batch_override = disable_batch_override
         self._kv_cache_params = kv_cache_params
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
@@ -248,10 +248,9 @@ class BaseEngine(object):
     def construct_with_context(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int,
+        batch_size: Optional[int],
         context: Context,
-        input_shapes: List[List[int]] = None,
-        disable_batch_override: bool = False,
+        input_shapes: Optional[List[List[int]]] = None,
         kv_cache_params: Optional[KVCacheParams] = None,
     ):
         _analytics.send_event("python__engine__init")
@@ -261,7 +260,6 @@ class BaseEngine(object):
         self._num_streams = context.num_streams
         self._scheduler = _validate_scheduler(context.scheduler)
         self._input_shapes = input_shapes
-        self._disable_batch_override = disable_batch_override
         self._kv_cache_params = kv_cache_params
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
@@ -290,20 +288,27 @@ class Engine(BaseEngine):
         concurrently.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cached_outputs: List of bools corresponding to which model outputs are
+        included in KV cache
     """
 
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int = 1,
+        batch_size: Optional[int] = 1,
         num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
+        input_shapes: Optional[List[List[int]]] = None,
+        cached_outputs: Optional[List[bool]] = None,
     ):
         BaseEngine.construct(
             self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
         )
+
+        # self._batch_size is allowed to be None to disable setting a batch size,
+        # but the engine needs to be passed an integer. The value is abitrary and ignored
+        engine_batch_size = self._batch_size if self._batch_size else 1
 
         if self._input_shapes:
             with override_onnx_input_shapes(
@@ -311,21 +316,26 @@ class Engine(BaseEngine):
             ) as model_path:
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
-                    self._batch_size,
+                    engine_batch_size,
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
                     None,
+                    cached_outputs,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
-                self._batch_size,
+                engine_batch_size,
                 self._num_cores,
                 self._num_streams,
                 self._scheduler.value,
                 None,
+                cached_outputs,
             )
+
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
 
     def __call__(
         self, inp: List[numpy.ndarray], val_inp: bool = True
@@ -699,14 +709,13 @@ class Engine(BaseEngine):
             raise ValueError("inp must be a list, given {}".format(type(inp)))
 
         for arr in inp:
-            if not self._disable_batch_override:
-                if arr.shape[0] != self._batch_size:
-                    raise ValueError(
-                        (
-                            "array batch size of {} must match the batch size "
-                            "the model was instantiated with {}"
-                        ).format(arr.shape[0], self._batch_size)
-                    )
+            if self._batch_size and arr.shape[0] != self._batch_size:
+                raise ValueError(
+                    (
+                        "array batch size of {} must match the batch size "
+                        "the model was instantiated with {}"
+                    ).format(arr.shape[0], self._batch_size)
+                )
 
             if not arr.flags["C_CONTIGUOUS"]:
                 raise ValueError(
@@ -762,14 +771,13 @@ class DebugAnalysisEngine(Engine):
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int = 1,
-        num_cores: int = None,
-        scheduler: Scheduler = None,
+        batch_size: Optional[int] = 1,
+        num_cores: Optional[int] = None,
+        scheduler: Optional[Scheduler] = None,
         input_shapes: List[List[int]] = None,
         num_iterations: int = 20,
         num_warmup_iterations: int = 5,
         optimization_level: int = 1,
-        disable_batch_override: bool = False,
         imposed_as: Optional[float] = None,
         imposed_ks: Optional[float] = None,
         kv_cache_params: Optional[KVCacheParams] = None,
@@ -782,12 +790,15 @@ class DebugAnalysisEngine(Engine):
             None,
             scheduler,
             input_shapes,
-            disable_batch_override,
             kv_cache_params,
         )
 
         # Helper
         def make_engine(self, model_path):
+            # self._batch_size is allowed to be None to disable setting a batch size,
+            # but the engine needs to be passed an integer. The value is abitrary and ignored
+            engine_batch_size = self._batch_size if self._batch_size else 1
+
             if self._kv_cache_params:
                 self._kv_cache = LIB.kv_cache(
                     self._kv_cache_params.prev_num_tokens,
@@ -796,7 +807,7 @@ class DebugAnalysisEngine(Engine):
 
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
-                    self._batch_size,
+                    engine_batch_size,
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
@@ -814,7 +825,7 @@ class DebugAnalysisEngine(Engine):
 
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
-                    self._batch_size,
+                    engine_batch_size,
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
@@ -834,6 +845,9 @@ class DebugAnalysisEngine(Engine):
                 make_engine(self, model_path)
         else:
             make_engine(self, self._model_path)
+
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
 
     def analyze(
         self, inp: List[numpy.ndarray], val_inp: bool = True
@@ -875,18 +889,25 @@ class MultiModelEngine(Engine):
     :param context: See above. This object should be constructed with the desired number of
         cores and passed into each instance of the MultiModelEngine.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cached_outputs: List of bools corresponding to which model outputs are
+        included in KV cache
     """
 
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int,
+        batch_size: Optional[int],
         context: Context,
-        input_shapes: List[List[int]] = None,
+        input_shapes: Optional[List[List[int]]] = None,
+        cached_outputs: Optional[List[bool]] = None,
     ):
         BaseEngine.construct_with_context(
             self, model, batch_size, context, input_shapes
         )
+
+        # self._batch_size is allowed to be None to disable setting a batch size,
+        # but the engine needs to be passed an integer. The value is abitrary and ignored
+        engine_batch_size = self._batch_size if self._batch_size else 1
 
         if self._input_shapes:
             with override_onnx_input_shapes(
@@ -894,30 +915,35 @@ class MultiModelEngine(Engine):
             ) as model_path:
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
-                    self._batch_size,
+                    engine_batch_size,
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
                     context.value,
+                    cached_outputs,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
-                self._batch_size,
+                engine_batch_size,
                 self._num_cores,
                 self._num_streams,
                 self._scheduler.value,
                 context.value,
+                cached_outputs,
             )
+
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
 
 
 def compile_model(
     model: Union[str, "Model", "File"],
-    batch_size: int = 1,
-    num_cores: int = None,
-    num_streams: int = None,
-    scheduler: Scheduler = None,
-    input_shapes: List[List[int]] = None,
+    batch_size: Optional[int] = 1,
+    num_cores: Optional[int] = None,
+    num_streams: Optional[int] = None,
+    scheduler: Optional[Scheduler] = None,
+    input_shapes: Optional[List[List[int]]] = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -952,16 +978,16 @@ def compile_model(
 def benchmark_model(
     model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
-    batch_size: int = 1,
-    num_cores: int = None,
-    num_streams: int = None,
+    batch_size: Optional[int] = 1,
+    num_cores: Optional[int] = None,
+    num_streams: Optional[int] = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     include_inputs: bool = False,
     include_outputs: bool = False,
     show_progress: bool = False,
-    scheduler: Scheduler = None,
-    input_shapes: List[List[int]] = None,
+    scheduler: Optional[Scheduler] = None,
+    input_shapes: Optional[List[List[int]]] = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -1019,16 +1045,15 @@ def benchmark_model(
 def model_debug_analysis(
     model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
-    batch_size: int = 1,
-    num_cores: int = None,
+    batch_size: Optional[int] = 1,
+    num_cores: Optional[int] = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     optimization_level: int = 1,
-    disable_batch_override: bool = False,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
-    scheduler: Scheduler = None,
-    input_shapes: List[List[int]] = None,
+    scheduler: Optional[Scheduler] = None,
+    input_shapes: Optional[List[List[int]]] = None,
     kv_cache_params: Optional[KVCacheParams] = None,
 ) -> dict:
     """
@@ -1044,7 +1069,8 @@ def model_debug_analysis(
         object that defines the neural network graph definition to analyze
     :param inp: The list of inputs to pass to the engine for analyzing inference.
         The expected order is the inputs order as defined in the ONNX graph.
-    :param batch_size: The batch size of the inputs to be used with the model
+    :param batch_size: The batch size of the inputs to be used with the model,
+        <1 disables it.
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         for the current machine; default None
@@ -1054,7 +1080,6 @@ def model_debug_analysis(
         before analyzing, default is 5
     :param optimization_level: The amount of graph optimizations to perform.
         The current choices are either 0 (minimal) or 1 (all), default is 1
-    :param disable_batch_override: Indicates whether disable_batch_override was used or not
     :param imposed_as: Imposed activation sparsity, defaults to None.
         Will force the activation sparsity from all ReLu layers in the graph
         to match this desired sparsity level (percentage of 0's in the tensor).
@@ -1077,7 +1102,6 @@ def model_debug_analysis(
         num_iterations=num_iterations,
         num_warmup_iterations=num_warmup_iterations,
         optimization_level=optimization_level,
-        disable_batch_override=disable_batch_override,
         imposed_as=imposed_as,
         imposed_ks=imposed_ks,
         kv_cache_params=kv_cache_params,
