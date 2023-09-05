@@ -197,9 +197,14 @@ class TextGenerationPipeline(TransformersPipeline):
             _delay_engine_initialize=True,
             _delay_overwriting_inputs=True,
         )
-        self.enable_multitoken_prefill = self.causal_mask_input_present(
-            model_path=self.onnx_file_path
+        # enable multitoken prefill if
+        # - the model graph is supporting it (causal_mask input is present)
+        # - prompt_processing_sequence_length != 1 (identical to single-token prefill)
+        self.enable_multitoken_prefill = (
+            self.causal_mask_input_present(model_path=self.onnx_file_path)
+            and prompt_processing_sequence_length > 1
         )
+
         self.cache_support_enabled = self.is_cache_support_enabled()
 
         if self.engine_type == DEEPSPARSE_ENGINE:
@@ -286,6 +291,18 @@ class TextGenerationPipeline(TransformersPipeline):
             self.cache_support_enabled and self.enable_multitoken_prefill
         ) or not self.cache_support_enabled:
 
+            # input_ids_length for the multitoken engine is either:
+            # - the prompt_processing_sequence_length if the cache support is enabled
+            #   (the prompt is processed sequentially at predefined processing length)
+            # - the full sequence_length if the cache support is disabled
+            #   (the prompt is processed in a single pass, prompts length is fixed at
+            #   sequence_length)
+            input_ids_length = (
+                self.prompt_processing_sequence_length
+                if self.cache_support_enabled
+                else self.sequence_length
+            )
+
             multitoken_engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
@@ -294,7 +311,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 sampling_temperature=self.sampling_temperature,
                 deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
-                input_ids_length=self.prompt_processing_sequence_length,
+                input_ids_length=input_ids_length,
                 tokenizer=self.tokenizer,
                 use_deepsparse_cache=self.use_deepsparse_cache,
             )
@@ -547,10 +564,11 @@ class TextGenerationPipeline(TransformersPipeline):
                 num_tokens_processed += self.prompt_processing_sequence_length
                 prompt_logits.append(new_logits)
 
-        self.engine.reset_kv_cache()
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
             self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
+        else:
+            self.engine.reset_kv_cache()
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
@@ -680,20 +698,14 @@ class TextGenerationPipeline(TransformersPipeline):
                     # delay creation of the causal mask
                     continue
                 elif name == "positions":
-                    if self.prompt_processing_sequence_length == 1:
-                        # we need to treat `positions` as if we were in
-                        # the autoregressive mode
-                        engine_input = numpy.array([[idx]], dtype=numpy.int64)
-                    else:
-                        engine_input = (
-                            numpy.arange(
-                                num_cached_entries,
-                                num_cached_entries
-                                + self.prompt_processing_sequence_length,
-                            )
-                            .reshape(1, -1)
-                            .astype(numpy.int64)
+                    engine_input = (
+                        numpy.arange(
+                            num_cached_entries,
+                            num_cached_entries + self.prompt_processing_sequence_length,
                         )
+                        .reshape(1, -1)
+                        .astype(numpy.int64)
+                    )
 
                 engine_inputs.append(engine_input)
 
