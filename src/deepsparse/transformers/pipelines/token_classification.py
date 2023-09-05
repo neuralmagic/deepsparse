@@ -525,7 +525,6 @@ class TokenClassificationPipeline(TransformersPipeline):
         return bi, tag
 
     def _group_entities(self, entities: List[dict]) -> List[dict]:
-
         entity_groups = []
         entity_group_disagg = []
 

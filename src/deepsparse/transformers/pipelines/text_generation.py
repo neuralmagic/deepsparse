@@ -42,6 +42,7 @@ from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     pad_to_fixed_length,
 )
+from deepsparse.transformers.utils.token_generator import TokenGenerator
 from deepsparse.utils.onnx import default_cached_outputs
 
 
@@ -114,6 +115,21 @@ class TextGenerationInput(BaseModel):
         " stop tokens. (token generation will stop when any of the stop"
         " tokens is generated). Set to `None` to ignore this parameter."
         " Default is `None`.",
+    )
+    top_p: Optional[float] = Field(
+        default=0,
+        description="Select the tokens with cumulative probability sum"
+        " higher than the given top_p",
+    )
+    top_k: Optional[int] = Field(
+        default=0.0,
+        description="Select the tokens with top_k values",
+    )
+    presence_penalty: Optional[float] = Field(
+        default=0.0,
+    )
+    frquency_peanlty: Optional[float] = Field(
+        default=0.0,
     )
 
 
@@ -290,7 +306,6 @@ class TextGenerationPipeline(TransformersPipeline):
         if (
             self.cache_support_enabled and self.enable_multitoken_prefill
         ) or not self.cache_support_enabled:
-
             multitoken_engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
@@ -450,6 +465,8 @@ class TextGenerationPipeline(TransformersPipeline):
         # as such, a new context needs to be created since we are no longer in the
         # main thread. That is why `engine_` is prepended to each of the timer phase
         # names in this context
+        token_generator = TokenGenerator(**context)
+        
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             streamer = context.get("streamer")
 
@@ -482,15 +499,14 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             callback = context.get("callback")
             stop = context.get("stop")
-            
-            token_generator = TokenGenerator(**token_generator_kwargs)
+
 
             with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
                     with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
-                         
-                        token, logits = self.autoregressive_inference(tokens)
-                        
+                        logits = self.autoregressive_inference(tokens=tokens)
+                        token = token_generator.generate(logits=logits[0, -1, :])
+
                     tokens.append(token)
                     generated_tokens.append(token)
                     generated_logits.append(logits)
@@ -572,7 +588,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 new_token, new_logits = self.autoregressive_inference(run_tokens)
 
             prompt_logits.append(new_logits)
-
+            
         tokens.append(new_token)
 
         return tokens, prompt_logits
@@ -612,9 +628,10 @@ class TextGenerationPipeline(TransformersPipeline):
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
 
-        generated_token, generated_logits = self.engine(engine_inputs)
+        # generated_token, generated_logits = self.engine(engine_inputs, token_generator=self.token_generator)
+        generated_logits = self.engine(engine_inputs)
 
-        return generated_token, generated_logits
+        return generated_logits
 
     def engine_inputs_for_prefill(
         self, tokens: List[int]

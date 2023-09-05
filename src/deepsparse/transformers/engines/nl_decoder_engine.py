@@ -24,6 +24,7 @@ from deepsparse.transformers.utils.helpers import (
     generate_session_id,
     overwrite_onnx_model_inputs_for_kv_cache_models,
 )
+from deepsparse.transformers.utils.token_generator import TokenGenerator
 from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
@@ -176,7 +177,6 @@ class NLDecoderEngine:
     def __call__(
         self,
         inp: List[numpy.ndarray],
-        token_generator: TokenGenerator,
         val_inp: bool = True,
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
@@ -203,11 +203,11 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
-        # select batch idx 0, batch is always 1
-        # token = self.generate_token(logits=logits[0, -1, :])
-        token = token_generator.generate(logits=logits[0, -1, :])
+        # # select batch idx 0, batch is always 1
+        # # token = self.generate_token(logits=logits[0, -1, :])
+        # token = token_generator.generate(logits=logits[0, -1, :])
 
-        return token, logits
+        return logits
 
     def __str__(self):
         return f"{self.__class__.__name__}: {self.engine}"
