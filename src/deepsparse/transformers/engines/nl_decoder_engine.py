@@ -50,7 +50,7 @@ class NLDecoderEngine:
     :param deterministic: Whether to use deterministic sampling
     :param tokenizer: The tokenizer to used for engine inputs
     :param engine_context: The context to run the engine in
-    :param use_deepsparse_cache: Whether to use the deepsparse
+    :param internal_kv_cache: Whether to use the deepsparse
         kv cache in the DecoderKVCache object or not
     """
 
@@ -65,7 +65,7 @@ class NLDecoderEngine:
         sampling_temperature: float = 1.0,
         deterministic: bool = True,
         engine_context: Optional[Context] = None,
-        use_deepsparse_cache: bool = False,
+        internal_kv_cache=False,
     ):
         # flag to indicate if the model is quantized or not
         self.kv_cache_data_type = None
@@ -84,7 +84,7 @@ class NLDecoderEngine:
         if sum(output_indices_to_be_cached):
             kv_cache_enabled = True
             self.kv_cache_data_type = kv_cache_data_type
-            if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
+            if internal_kv_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
                 engine_args["cached_outputs"] = output_indices_to_be_cached
 
@@ -101,9 +101,7 @@ class NLDecoderEngine:
         self.input_ids_length = input_ids_length
         self.cache_length = sequence_length - input_ids_length
         self.kv_cache_enabled = kv_cache_enabled
-        self.kv_cache = (
-            DecoderKVCache(use_deepsparse_cache) if kv_cache_enabled else None
-        )
+        self.kv_cache = DecoderKVCache(internal_kv_cache) if kv_cache_enabled else None
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
         self._engine_type = engine_type
