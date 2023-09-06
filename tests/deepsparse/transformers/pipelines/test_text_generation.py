@@ -12,47 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, Optional, Tuple
 
-import numpy as np
-import onnx
-import onnxruntime
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import numpy
 
 import pytest
 from deepsparse import Pipeline
-from deepsparse.transformers.utils.helpers import (
-    create_causal_mask,
-    overwrite_onnx_model_inputs_for_kv_cache_models,
+from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
+from tests.deepsparse.transformers.pipelines.helpers import (
+    ORTGroundTruthSource,
+    TorchGroundTruthSource,
 )
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX
-from sparsezoo import Model
-
-
-def _initialize_kv_cache_state(model, length=0):
-    # get one of the cache inputs
-    cache_input = next(
-        input
-        for input in model.graph.input
-        if input.name.startswith(CACHE_INPUT_PREFIX)
-    )
-    # read the shape of the cache input
-    batch_size = cache_input.type.tensor_type.shape.dim[0].dim_value
-    num_attention_heads = cache_input.type.tensor_type.shape.dim[1].dim_value
-    hidden_dims = cache_input.type.tensor_type.shape.dim[3].dim_value
-
-    # create a kv cache dictionary
-    kv_cache = {
-        input_.name: np.zeros(
-            (batch_size, num_attention_heads, length, hidden_dims), dtype=np.float32
-        )
-        for input_ in model.graph.input
-        if input_.name.startswith(CACHE_INPUT_PREFIX)
-    }
-
-    return kv_cache
-
-
-START = 0  # global variable for dummy_callback
 
 
 @pytest.mark.parametrize(
@@ -60,245 +30,378 @@ START = 0  # global variable for dummy_callback
     [True, False],
 )
 @pytest.mark.parametrize(
-    "model_stub, model_name, uses_bos_token",
+    "model_stub, model_name, uses_bos_token, logits_max_diff_kv_cache_has_been_filled",
     [
-        (
-            "zoo:nlg/text_generation/opt-1.3b/pytorch/"
-            "huggingface/opt_pretrain/base-none",
-            "facebook/opt-1.3b",
-            True,
-        ),
         (
             "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
             "huggingface/bigpython_bigquery_thepile/base-none",
             "salesforce/codegen-350m-mono",
             False,
+            15.5,
         ),
+        # TODO: Waiting for the model to be available
+        # ("zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/pruned50_quantW8A8-none",
+        #  "facebook/opt-1.3b",
+        #  True,
+        #  None),
     ],
     scope="class",
 )
-@pytest.mark.skip(
-    reason="Those tests are too heavy to " "run as a normal part of the CI."
-)
 class TestTextGenerationPipeline:
-    @pytest.fixture
-    def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
+    """
+    This test suite is meant to test the main scenarios of
+    the text generation pipeline.
+    """
 
-        self.max_generated_tokens = 16
-        self.model = Model(model_stub)
+    @pytest.fixture
+    def setup(
+        self,
+        model_stub,
+        model_name,
+        uses_bos_token,
+        logits_max_diff_kv_cache_has_been_filled,
+        use_deepsparse_cache,
+    ):
+        self.num_tokens_generate = 216
+        self.prompt = """
+           Didn't know what time it was, the lights were low
+           I leaned back on my radio
+           Some cat was layin' down some rock 'n' roll
+           "Lotta soul," he said
+           Then the loud sound did seem to fade
+           Came back like a slow voice on a wave of phase
+           That weren't no DJ, that was hazy cosmic jive
+           """
+        # create torch ground source
+        torch_source = TorchGroundTruthSource(
+            num_tokens_to_generate=self.num_tokens_generate, model_name=model_name
+        )
+        torch_ground_truth = torch_source(self.prompt)
+
+        # prompt length is expressed in number of prompt tokens
+        prompt_length = torch_ground_truth[1].shape[1]
+
+        # sequence_length that assures that the KV cache will not be filled up
+        self.sequence_length = 2 * prompt_length + self.num_tokens_generate
+        # sequence_length that assures that the KV cache will be filled up
+        self.sequence_length_short = self.num_tokens_generate
+
+        # prompt_processing_sequence_length used for the multitoken prefill scenario
+        self.prompt_processing_sequence_length = 16
+
+        # the maximum trheshold for the difference between the logits
+        # when running a scenario where KV Cache buffer has been filled
+        self.logits_max_diff_kv_cache_has_been_filled = (
+            logits_max_diff_kv_cache_has_been_filled
+        )
         self.use_deepsparse_cache = use_deepsparse_cache
 
+        assert self.prompt_processing_sequence_length < prompt_length, (
+            "The prompt processing sequence length "
+            "must be smaller than the prompt length"
+        )
+
+        yield model_stub, model_name, uses_bos_token, torch_ground_truth
+
+    def test_freeze_first_position(self, setup):
+        # Test whether we should be "freezing" the first token after
+        # the kv cache is full
+        model_stub, _, uses_bos_token, _ = setup
+        pipeline = Pipeline.create(task="text_generation", model_path=model_stub)
+        assert pipeline.engine._freeze_first_position == uses_bos_token
+
+    def test_ort_model(self, setup):
+        # Assert that the ONNX model with KV Cache support runs
+        # directly in ONNXRuntime and delivers correct results
+        model_stub, model_name, _, torch_ground_truth = setup
+
+        ort_source = ORTGroundTruthSource(
+            model_name=model_name,
+            model_stub=model_stub,
+        )
+        ort_prompt_logits, ort_prompt_kv_cache = ort_source(self.prompt)
+        _, torch_prompt_logits, torch_prompt_cache, _ = torch_ground_truth
+
+        # check that the prompt logits are the same
+        assert numpy.allclose(torch_prompt_logits, ort_prompt_logits, atol=1e-4)
+        # check that the prompt cache is the same
+        for torch_cache, ort_cache in zip(torch_prompt_cache, ort_prompt_kv_cache):
+            assert numpy.allclose(torch_cache, ort_cache, atol=1e-4)
+
+    def test_ort_single_token_prefill(self, setup):
+        # Test the pipeline that uses ORT engine. The test covers the
+        # following scenario:
+        # 1. Prompt preprocessing is performed by single-token engine
+        # 2. The KV Cache is never filled up
+        # 3. KV Cache managed externally
+
+        if self.use_deepsparse_cache:
+            pytest.skip(
+                "Cannot run ORT pipeline with the internal deepsparse cache enabled."
+            )
+        model_stub, _, _, torch_ground_truth = setup
         pipeline = Pipeline.create(
             task="text_generation",
             model_path=model_stub,
-            sequence_length=32,
-            prompt_processing_sequence_length=4,
-            max_generated_tokens=self.max_generated_tokens,
-            use_deepsparse_cache=self.use_deepsparse_cache,
+            sequence_length=self.sequence_length,
+            prompt_processing_sequence_length=1,
+            max_generated_tokens=self.num_tokens_generate,
             force_max_tokens=True,
+            engine_type="onnxruntime",
         )
-        short_prompt = "this"
-        long_prompt = "this is a sample prompt that we will use to test the pipeline"
-
-        # make sure that the short prompt will be only
-        # processed by a single token engine
-        # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
-        # assert (
-        #     len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
-        #     < pipeline.prompt_processing_sequence_length
-        # )
-        # make sure that the long prompt will be processed by
-        # single token and multiple token engines
-        # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
-        # assert (
-        #     len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
-        #     > pipeline.prompt_processing_sequence_length * 3
-        # )
-
-        yield pipeline, model_name, uses_bos_token, short_prompt, long_prompt
-
-    def test_freeze_first_position(self, setup):
-        # test whether we should be "freezing" the first token after
-        # the kv cache is full
-        pipeline, _, uses_bos_token, _, _ = setup
-        assert pipeline.engine._freeze_first_position == uses_bos_token
-
-    def test_model_output_sequences(self, setup):
-        # test model output against sources of truth
-        pipeline, model_name, _, short_prompt, long_prompt = setup
-
-        output_sequences = pipeline(sequences=[short_prompt, long_prompt])
-
-        # test against huggingface model
-        output_hugging_face = self._get_output_huggingface(
-            sequences=[short_prompt, long_prompt], model_name=model_name
+        output = pipeline(
+            sequences=self.prompt, return_logits=True, include_prompt_logits=True
         )
-        assert short_prompt + output_sequences.sequences[0] == output_hugging_face[0]
-        assert long_prompt + output_sequences.sequences[1] == output_hugging_face[1]
+        cache_session = pipeline.engine.kv_cache
+        assert cache_session.total_num_processed_tokens < self.sequence_length
+        self._test_output(
+            output=output,
+            cache_session=cache_session,
+            torch_ground_truth=torch_ground_truth,
+        )
 
-    def test_model_output_cache(self, setup):
-        pipeline, model_name, _, short_prompt, long_prompt = setup
+    def test_ort_multi_token_prefill(self, setup):
+        # Test the pipeline that uses ORT engine. The test covers the
+        # following scenario:
+        # 1. Prompt preprocessing is performed by multi-token engine
+        # 2. The KV Cache is never filled up
+        # 3. KV Cache managed externally
+
         if self.use_deepsparse_cache:
             pytest.skip(
-                "Running pipeline with internal "
-                "deepsparse cache will not result "
-                "in meaningful cache entries."
+                "Cannot run ORT pipeline with the internal deepsparse cache enabled."
             )
-        self._test_cache_state(short_prompt, pipeline, model_name)
-        self._test_cache_state(long_prompt, pipeline, model_name)
-
-    def test_callback(self, setup):
-        pipeline, *_ = setup
-
-        def dummy_callback(token):
-            global START
-            START += 1
-            return START < 3
-
-        inputs = {
-            "sequences": "def fib(a, b, accumulator=0)",
-            "callback": dummy_callback,
-            "return_logits": True,
-        }
-
-        outs = pipeline(**inputs)
-        assert outs.logits.shape[1] == 3
-
-    def test_model_session_storage(self, setup):
-        pipeline, *_ = setup
-
-        # test whether the session storage is working correctly,
-        # i.e storage memory is composable and there is no leakage
-        # between sessions
-
-        short_prompt = "this"
-        short_prompt_ = "another short prompt"
-        long_prompt = "this is a cool sample prompt"
-
-        output = pipeline(sequences=short_prompt, session_ids="session_one")
-        intermediate_prompt_1 = output.sequences[0]
-        out_1 = pipeline(sequences=long_prompt, session_ids="session_one")
-
-        output = pipeline(sequences=long_prompt, session_ids="session_two")
-        intermediate_prompt_2 = output.sequences[0]
-        out_2 = pipeline(sequences=short_prompt_, session_ids="session_two")
-
-        out_3 = pipeline(
-            sequences=short_prompt + intermediate_prompt_1 + long_prompt,
+        model_stub, _, _, torch_ground_truth = setup
+        pipeline = Pipeline.create(
+            task="text_generation",
+            model_path=model_stub,
+            sequence_length=self.sequence_length,
+            prompt_processing_sequence_length=self.prompt_processing_sequence_length,
+            max_generated_tokens=self.num_tokens_generate,
+            force_max_tokens=True,
+            engine_type="onnxruntime",
         )
-        out_4 = pipeline(
-            sequences=long_prompt + intermediate_prompt_2 + short_prompt_,
+        output = pipeline(
+            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+        )
+        cache_session = pipeline.engine.kv_cache
+        assert cache_session.total_num_processed_tokens < self.sequence_length
+        self._test_output(
+            output=output,
+            cache_session=cache_session,
+            torch_ground_truth=torch_ground_truth,
         )
 
-        assert out_1.sequences[0] == out_3.sequences[0]
-        assert out_2.sequences[0] == out_4.sequences[0]
+    def test_ort_generation_after_kv_cache_has_been_filled(self, setup):
+        # Test the pipeline that uses ORT engine. The test covers the
+        # following scenario:
+        # 1. Prompt preprocessing is performed by multi-token engine
+        # 2. The KV Cache is filled up (old entries are removed)
+        # 3. KV Cache managed externally
 
-    def _test_cache_state(self, prompt, pipeline, model_name):
-        # make sure that the cache state after running a prompt
-        # is correct
-        pipeline(sequences=prompt, session_ids="cache_state_test")
-        cache_state_dict = pipeline.engine.kv_cache_storage.get(
-            "cache_state_test"
-        ).cached_inputs
-        cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
-
-        # generate ground truth from ORT
-        target_cache_state = self._get_cache_state_ort_kv_cache(
-            model_onnx_path=self.model.deployment.get_file("model.onnx").path,
-            sequence=prompt,
-            model_name=model_name,
-        )
-        # get the number of processed prompt tokens
-        num_prompt_tokens = len(pipeline.tokenizer.tokenize(prompt)) + int(
-            pipeline.engine._freeze_first_position
-        )
-
-        for x, y in zip(cache_state_list, target_cache_state):
-            """
-            x will be a cache array
-            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ...,
-             gen_token_cache_1, gen_token_cache_2, ...]
-            we need to first remove blank entries and then keep the
-            remaining prompt_cache entries (remove gen_token_cache entries)
-            """
-            first_non_blank_cache_entry = min(
-                i for i in range(x.shape[2]) if np.count_nonzero(x[:, :, i, :])
+        if self.use_deepsparse_cache:
+            pytest.skip(
+                "Cannot run ORT pipeline with the internal deepsparse cache enabled."
             )
-            x = x[:, :, first_non_blank_cache_entry:, :]
-            x = x[:, :, :num_prompt_tokens, :]
+        model_stub, _, _, torch_ground_truth = setup
+        pipeline = Pipeline.create(
+            task="text_generation",
+            model_path=model_stub,
+            sequence_length=self.sequence_length_short,
+            prompt_processing_sequence_length=self.prompt_processing_sequence_length,
+            max_generated_tokens=self.num_tokens_generate,
+            force_max_tokens=True,
+            engine_type="onnxruntime",
+        )
+        output = pipeline(
+            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+        )
+        cache_session = pipeline.engine.kv_cache
+        assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
+            "for this scenario, the kv cache should be full: "
+            "the total number of processed tokens should be "
+            "greater than the sequence length"
+        )
 
-            """
-            y will be a cache array
-            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ...]
-            we need to keep the prompt_cache entries only
-            """
-            y = y[:, :, -num_prompt_tokens:, :]
+        self._test_output(
+            output=output,
+            cache_session=cache_session,
+            torch_ground_truth=torch_ground_truth,
+            max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
+        )
 
-            assert np.allclose(x, y, atol=1e-4)
+    def test_deepsparse_single_token_prefill(self, setup):
+        # Test the pipeline that uses deepsparse engine. The test covers the
+        # following scenario:
+        # 1. Prompt preprocessing is performed by single-token engine
+        # 2. The KV Cache is never filled up
+        # 3. KV Cache managed externally or internally
 
-    def _get_output_huggingface(self, sequences, model_name):
-        hf_outputs = []
-        # setup tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        tokenizer.padding_side = "left"
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+        model_stub, _, _, torch_ground_truth = setup
+        pipeline = Pipeline.create(
+            task="text_generation",
+            model_path=model_stub,
+            sequence_length=self.sequence_length,
+            prompt_processing_sequence_length=1,
+            max_generated_tokens=self.num_tokens_generate,
+            force_max_tokens=True,
+            use_deepsparse_cache=self.use_deepsparse_cache,
+        )
+        output = pipeline(
+            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+        )
+        cache_session = pipeline.engine.kv_cache
+        assert cache_session.total_num_processed_tokens < self.sequence_length
+        self._test_output(
+            output=output,
+            cache_session=cache_session,
+            torch_ground_truth=torch_ground_truth,
+            run_cache_validation=not self.use_deepsparse_cache,
+        )
 
-        # setup model
-        model = AutoModelForCausalLM.from_pretrained(model_name)
+    def test_deepsparse_multi_token_prefill(self, setup):
+        # Test the pipeline that uses deepsparse engine. The test covers the
+        # following scenario:
+        # 1. Prompt preprocessing is performed by multi-token engine
+        # 2. The KV Cache is never filled up
+        # 3. KV Cache managed externally or internally
 
-        # generate ground truth output
-        for prompt in sequences:
-            input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-            generated_ids = model.generate(
-                input_ids, max_new_tokens=self.max_generated_tokens
+        model_stub, _, _, torch_ground_truth = setup
+        pipeline = Pipeline.create(
+            task="text_generation",
+            model_path=model_stub,
+            sequence_length=self.sequence_length,
+            prompt_processing_sequence_length=self.prompt_processing_sequence_length,
+            max_generated_tokens=self.num_tokens_generate,
+            force_max_tokens=True,
+            use_deepsparse_cache=self.use_deepsparse_cache,
+        )
+        output = pipeline(
+            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+        )
+        cache_session = pipeline.engine.kv_cache
+        assert cache_session.total_num_processed_tokens < self.sequence_length
+        self._test_output(
+            output=output,
+            cache_session=cache_session,
+            torch_ground_truth=torch_ground_truth,
+            run_cache_validation=not self.use_deepsparse_cache,
+        )
+
+    def test_deepsparse_generation_after_kv_cache_has_been_filled(self, setup):
+        # Test the pipeline that uses deepsparse engine. The test covers the
+        # following scenario:
+        # 1. Prompt preprocessing is performed by multi-token engine
+        # 2. The KV Cache is filled up (old entries are removed)
+        # 3. KV Cache managed externally or internally
+
+        model_stub, _, _, torch_ground_truth = setup
+        pipeline = Pipeline.create(
+            task="text_generation",
+            model_path=model_stub,
+            sequence_length=self.sequence_length_short,
+            prompt_processing_sequence_length=self.prompt_processing_sequence_length,
+            max_generated_tokens=self.num_tokens_generate,
+            force_max_tokens=True,
+            use_deepsparse_cache=self.use_deepsparse_cache,
+        )
+        output = pipeline(
+            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+        )
+        cache_session = pipeline.engine.kv_cache
+        assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
+            "for this scenario, the kv cache should be full: "
+            "the total number of processed tokens should be "
+            "greater than the sequence length"
+        )
+
+        self._test_output(
+            output=output,
+            cache_session=cache_session,
+            torch_ground_truth=torch_ground_truth,
+            run_cache_validation=not self.use_deepsparse_cache,
+            max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
+        )
+
+    def test_run_same_prompt_multiple_times(self, setup):
+        # Test the scenario, where the same prompt is run multiple times
+        # Every run should produce the same output
+        model_stub, *_ = setup
+        pipeline = Pipeline.create(
+            task="text_generation",
+            model_path=model_stub,
+            use_deepsparse_cache=self.use_deepsparse_cache,
+        )
+        output_1 = pipeline(
+            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+        )
+        output_2 = pipeline(
+            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+        )
+        assert output_1.sequences[0] == output_2.sequences[0]
+        assert numpy.allclose(output_1.logits, output_2.logits, atol=1e-4)
+
+    def _test_output(
+        self,
+        output: "TextGenerationOutput",  # noqa F821
+        cache_session: DecoderKVCache,
+        torch_ground_truth: Tuple[numpy.ndarray, ...],
+        max_logits_difference_threshold: Optional[float] = None,
+        run_cache_validation: bool = True,
+    ):
+        # extract numpy arrays from cached_inputs
+        kv_cache_array = list(cache_session.cached_inputs.values())
+
+        (
+            generated_logits,
+            prompt_logits,
+            prompt_kv_cache,
+            generated_text,
+        ) = torch_ground_truth
+
+        # concatenate target prompt_logits and generated_logits and check
+        target_logits = numpy.concatenate([prompt_logits, generated_logits], axis=1)
+
+        if max_logits_difference_threshold:
+            # if comparing the output from the model where
+            # the kv cache has been filled, we expect the
+            # maximum absolute difference between the logits
+            # to be less than the threshold
+            # (the threshold is established by running the
+            # ONNX model in ONNXRuntime)
+            assert (
+                abs(output.logits - target_logits).max()
+                < max_logits_difference_threshold
             )
-            hf_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
-            hf_outputs.append(hf_output)
-        return hf_outputs
+        else:
+            # otherwise, we expect the logits to be exactly the same
+            # as the target logits; the generated sequence should
+            # also be the same as the target sequence, and finally
+            # (if applicable) the kv cache should be the same as the
+            # target kv cache
+            assert numpy.allclose(output.logits, target_logits, atol=1e-4)
+            assert self.prompt + output.sequences[0] == generated_text
+
+            if run_cache_validation:
+                self._test_kv_cache_state(
+                    expected_cache=kv_cache_array,
+                    target_cache=torch_ground_truth[2],
+                    total_num_processed_tokens=cache_session.total_num_processed_tokens,
+                )
 
     @staticmethod
-    def _get_cache_state_ort_kv_cache(model_onnx_path, sequence, model_name):
-        # setup tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        tokenizer.padding_side = "left"
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-
-        # setup model and session
-        # (run full sequence inference)
-        overwrite_onnx_model_inputs_for_kv_cache_models(
-            model_onnx_path, sequence_length=128, input_ids_length=128
-        )
-        sess = onnxruntime.InferenceSession(model_onnx_path)
-
-        # get model inputs
-        onnx_model = onnx.load(model_onnx_path, load_external_data=False)
-        model_inputs = [x.name for x in onnx_model.graph.input]
-        kv_cache = _initialize_kv_cache_state(model=onnx_model)
-
-        inputs = tokenizer(
-            sequence, return_tensors="np", padding="max_length", max_length=128
-        )
-        onnxruntime_inputs = dict(
-            attention_mask=inputs["attention_mask"],
-            input_ids=inputs["input_ids"],
-            **kv_cache,
-        )
-
-        if "positions" in model_inputs:
-            attention_mask = inputs["attention_mask"]
-            positions = attention_mask.cumsum(1) * attention_mask - 1
-            onnxruntime_inputs["positions"] = positions
-
-        if "causal_mask" in model_inputs:
-            causal_mask = create_causal_mask(
-                input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"]
-            )
-            onnxruntime_inputs["causal_mask"] = causal_mask
-
-        # run inference and return the cache state
-        outputs = sess.run(None, onnxruntime_inputs)
-        logits, *kv_cache = outputs
-
-        return kv_cache
+    def _test_kv_cache_state(
+        expected_cache: List[numpy.ndarray],
+        target_cache: List[numpy.ndarray],
+        total_num_processed_tokens: int,
+    ):
+        for x, y in zip(expected_cache, target_cache):
+            start_index = total_num_processed_tokens
+            end_index = total_num_processed_tokens - y.shape[2]
+            # x is (in general) composed of three arrays:
+            # - padding cache entries (from 0 to -start_index)
+            # - prompt cache entries (from -start_index to -end_index)
+            # - generated cache entries (from -end_index to -1)
+            # as target_cache only pertains to prompt cache entries, we need to
+            # compare only the prompt cache entries in x with y
+            assert numpy.allclose(x[:, :, -start_index:-end_index, :], y, atol=1e-4)
