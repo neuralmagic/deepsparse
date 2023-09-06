@@ -26,7 +26,7 @@ Set up the server:
 ```
 python examples/openai-server/server.py --model zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none
 None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
-2023-08-07 17:18:32 __main__     INFO     args: Namespace(model='zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none', max_model_len=512, prompt_sequence_length=1, internal_kv_cache=False, host='localhost', port=8000, allow_credentials=False, allowed_origins=['*'], allowed_methods=['*'], allowed_headers=['*'], served_model_name=None)
+2023-08-07 17:18:32 __main__     INFO     args: Namespace(model='zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none', max_model_len=512, prompt_sequence_length=16, host='localhost', port=8000, allow_credentials=False, allowed_origins=['*'], allowed_methods=['*'], allowed_headers=['*'], served_model_name=None)
 2023-08-07 17:18:32 deepsparse.transformers WARNING  The neuralmagic fork of transformers may not be installed. It can be installed via `pip install nm_transformers`
 Using pad_token, but it is not set yet.
 2023-08-07 17:18:34 deepsparse.transformers.engines.nl_decoder_engine INFO     Overwriting in-place the input shapes of the transformer model at /home/mgoin/.cache/sparsezoo/neuralmagic/codegen_mono-350m-bigpython_bigquery_thepile-base/model.onnx
