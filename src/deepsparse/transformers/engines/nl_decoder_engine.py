@@ -201,10 +201,6 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
-        # # select batch idx 0, batch is always 1
-        # # token = self.generate_token(logits=logits[0, -1, :])
-        # token = token_generator.generate(logits=logits[0, -1, :])
-
         return logits
 
     def __str__(self):
