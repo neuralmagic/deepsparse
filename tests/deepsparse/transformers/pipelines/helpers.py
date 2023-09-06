@@ -117,11 +117,13 @@ class ORTGroundTruthSource(GroundTruthSource):
         # run inference and return the cache state
         outputs = self.session.run(None, onnxruntime_inputs)
         prompt_logits, *prompt_cache = outputs
+
         # remove logits that correspond to padding tokens
         prompt_logits = numpy.compress(
             onnxruntime_inputs["attention_mask"].flatten(), prompt_logits, axis=1
         )  # (1, prompt_length, vocab_size)
-        prompt_logits = prompt_logits[:, :-1, :]
+        prompt_logits = prompt_logits[:, :-1, :]  # (1, prompt_length, vocab_size)
+
         # remove cache that corresponds to padding tokens
         prompt_cache = [
             numpy.compress(
@@ -162,8 +164,8 @@ class TorchGroundTruthSource(GroundTruthSource):
     An object that generates ground truth logits and
     cache states from a prompt. This object can
     generate tokens in an autoregressive manner, and thus
-    will output prompt logits, generated logits and prompt
-    cache state
+    will output prompt logits, generated logits, generated
+    sequence and prompt cache state
     """
 
     def __init__(self, num_tokens_to_generate: int, model_name: str):
