@@ -117,10 +117,13 @@ class ORTGroundTruthSource(GroundTruthSource):
         # run inference and return the cache state
         outputs = self.session.run(None, onnxruntime_inputs)
         prompt_logits, *prompt_cache = outputs
+
         # remove logits that correspond to padding tokens
         prompt_logits = numpy.compress(
             onnxruntime_inputs["attention_mask"].flatten(), prompt_logits, axis=1
         )  # (1, prompt_length, vocab_size)
+        prompt_logits = prompt_logits[:, :-1, :]  # (1, prompt_length, vocab_size)
+
         # remove cache that corresponds to padding tokens
         prompt_cache = [
             numpy.compress(
@@ -161,8 +164,8 @@ class TorchGroundTruthSource(GroundTruthSource):
     An object that generates ground truth logits and
     cache states from a prompt. This object can
     generate tokens in an autoregressive manner, and thus
-    will output prompt logits, generated logits and prompt
-    cache state
+    will output prompt logits, generated logits, generated
+    sequence and prompt cache state
     """
 
     def __init__(self, num_tokens_to_generate: int, model_name: str):
@@ -175,7 +178,7 @@ class TorchGroundTruthSource(GroundTruthSource):
 
     def __call__(
         self, prompt: str
-    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[numpy.ndarray]]:
+    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[numpy.ndarray], str]:
         # afaik it is not possible to get 'past_key_values' from
         # the generate method, so we have to run the model twice
         out = self.model.generate(
@@ -185,16 +188,23 @@ class TorchGroundTruthSource(GroundTruthSource):
             return_dict_in_generate=True,
             use_cache=True,
         )
+        generated_text = self.tokenizer.decode(
+            out.sequences[0], skip_special_tokens=True
+        )
         generated_logits = numpy.concatenate(
             [[score.numpy() for score in out.scores]]
+        ).transpose(
+            1, 0, 2
         )  # (1, num_tokens_to_generate, vocab_size)
 
         out = self.model(**self.tokenize(prompt))
-        prompt_logits = out.logits.detach().numpy()  # (1, prompt_length, vocab_size)
+        prompt_logits = out.logits.detach().numpy()[
+            :, :-1, :
+        ]  # (1, prompt_length, vocab_size)
         prompt_cache = [
             entry.detach().numpy()
             for key_value_tuple in out.past_key_values
             for entry in key_value_tuple
         ]  # List[(1, num_heads, past_length, head_dim)]
 
-        return generated_logits, prompt_logits, prompt_cache
+        return generated_logits, prompt_logits, prompt_cache, generated_text
