@@ -79,14 +79,12 @@ class DeepSparseOpenAIEngine:
         model: str,
         sequence_length: int = 512,
         prompt_sequence_length: int = 64,
-        internal_kv_cache: bool = False,
     ):
         self.engine = deepsparse.Pipeline.create(
             task="text-generation",
             model_path=model,
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,
-            internal_kv_cache=internal_kv_cache,
         )
 
     def tokenize(self, text: str) -> List[int]:
@@ -689,20 +687,12 @@ if __name__ == "__main__":
         help="maximum number of input+output tokens the model will use",
     )
     parser.add_argument(
-        "--prompt-processing-sequence-length",
+        "--prompt-sequence-length",
         type=int,
         default=16,
         help=(
             "For large prompts, the prompt is processed in chunks of this length. "
             "This is to maximize the inference speed. By default, this is set to 16."
-        ),
-    )
-    parser.add_argument(
-        "--use-deepsparse-cache",
-        action="store_true",
-        help=(
-            "If True, the pipeline will use the deepsparse kv cache for caching the "
-            "model outputs."
         ),
     )
 
@@ -752,7 +742,6 @@ if __name__ == "__main__":
         model=args.model,
         sequence_length=max_model_len,
         prompt_sequence_length=args.prompt_sequence_length,
-        internal_kv_cache=args.internal_kv_cache,
     )
     tokenizer = engine.engine.tokenizer
 
