@@ -57,9 +57,9 @@ Alternatively, you can run the two commands in a single line:
 ```bash 
 docker container run -p 5543:5543 deepsparse_docker deepsparse.server --task sentiment_analysis --model_path "zoo:nlp/sentiment_analysis/distilbert-none/pytorch/huggingface/sst2/pruned90-none"
 ```
-<!-- markdown-link-check-disable -->
+
 You should see Uvicorn report that it is running on http://0.0.0.0:5543. Once launched, a `/docs` path is created with full endpoint descriptions and support for making sample requests.
-<!-- markdown-link-check-enable -->
+
 
 Here is an example client request, using the Python requests library for formatting the HTTP:
 ```python
