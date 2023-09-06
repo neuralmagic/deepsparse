@@ -28,6 +28,7 @@ from deepsparse.pipeline import Pipeline
 from deepsparse.server.config import (
     INTEGRATION_LOCAL,
     INTEGRATION_SAGEMAKER,
+    INTEGRATION_OPENAI,
     INTEGRATIONS,
     EndpointConfig,
     ServerConfig,
@@ -42,12 +43,11 @@ from deepsparse.server.system_logging import (
     SystemLoggingMiddleware,
     log_system_information,
 )
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
 _LOGGER = logging.getLogger(__name__)
-RUN_OPENAI = True
 
 def start_server(
     config_path: str,
@@ -82,11 +82,15 @@ def start_server(
         _LOGGER.info(f"Watching {config_path} for changes.")
         _ = start_config_watcher(config_path, f"http://{host}:{port}/endpoints", 0.5)
 
-    if RUN_OPENAI:
-        from deepsparse.server.openai_server import build_openai_app
-        app = build_openai_app()
-    else:
-        app = _build_app(server_config)
+
+    if server_config.integration == INTEGRATION_OPENAI:
+        from deepsparse.server.openai_server import SUPPORTED_TASKS
+
+        for endpoint in server_config.endpoints:
+            if endpoint.task not in SUPPORTED_TASKS:
+                raise ValueError(f"The OpenAI server currently only supports {SUPPORTED_TASKS} tasks")
+
+    app = _build_app(server_config)
 
     uvicorn.run(
         app,
@@ -118,8 +122,8 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
             f"Expected one of {INTEGRATIONS}"
         )
 
-    _set_pytorch_num_threads(server_config)
-    _set_thread_pinning(server_config)
+    #_set_pytorch_num_threads(server_config)
+    #_set_thread_pinning(server_config)
 
     context = Context(
         num_cores=server_config.num_cores,
@@ -238,7 +242,11 @@ def _add_endpoint(
     pipeline_config.kwargs["executor"] = executor
 
     _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
-    pipeline = Pipeline.from_config(pipeline_config, context, server_logger)
+    if server_config.integration == INTEGRATION_OPENAI:
+        from deepsparse.server.openai_server import DeepSparseOpenAIEngine
+        pipeline = DeepSparseOpenAIEngine(pipeline_config=pipeline_config, context=context)
+    else:
+        pipeline = Pipeline.from_config(pipeline_config, context, server_logger)
 
     _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
     _add_pipeline_endpoint(
@@ -257,41 +265,55 @@ def _add_pipeline_endpoint(
     pipeline: Pipeline,
     integration: str = INTEGRATION_LOCAL,
 ):
-    input_schema = pipeline.input_schema
-    output_schema = pipeline.output_schema
-
-    def _predict(request: pipeline.input_schema):
-        pipeline_outputs = pipeline(request)
-        server_logger = pipeline.logger
-        if server_logger:
-            log_system_information(
-                server_logger=server_logger,
-                system_logging_config=system_logging_config,
-            )
-        pipeline_outputs = prep_outputs_for_serialization(pipeline_outputs)
-        return pipeline_outputs
-
-    def _predict_from_files(request: List[UploadFile]):
-        request = pipeline.input_schema.from_files(
-            (file.file for file in request), from_server=True
-        )
-        return _predict(request)
-
     routes_and_fns = []
-    if integration == INTEGRATION_LOCAL:
-        route = endpoint_config.route or "/predict"
-        if not route.startswith("/"):
-            route = "/" + route
 
-        routes_and_fns.append((route, _predict))
-        if hasattr(input_schema, "from_files"):
-            routes_and_fns.append((route + "/from_files", _predict_from_files))
-    elif integration == INTEGRATION_SAGEMAKER:
-        route = "/invocations"
-        if hasattr(input_schema, "from_files"):
-            routes_and_fns.append((route, _predict_from_files))
-        else:
+    if integration == INTEGRATION_OPENAI:
+        from deepsparse.server.openai_server import CompletionResponse, CompletionRequest, create_completion
+        input_schema = CompletionRequest
+        output_schema = CompletionResponse
+
+        def _completion(request: CompletionRequest):
+            create_completion(request, pipeline)
+
+        route = "/completions" + endpoint_config.route
+        routes_and_fns.append((route, _completion))
+
+    else:
+        input_schema = pipeline.input_schema
+        output_schema = pipeline.output_schema
+
+        def _predict(request: pipeline.input_schema):
+            pipeline_outputs = pipeline(request)
+            server_logger = pipeline.logger
+            if server_logger:
+                log_system_information(
+                    server_logger=server_logger,
+                    system_logging_config=system_logging_config,
+                )
+            pipeline_outputs = prep_outputs_for_serialization(pipeline_outputs)
+            return pipeline_outputs
+
+        def _predict_from_files(request: List[UploadFile]):
+            request = pipeline.input_schema.from_files(
+                (file.file for file in request), from_server=True
+            )
+            return _predict(request)
+
+    
+        if integration == INTEGRATION_LOCAL:
+            route = endpoint_config.route or "/predict"
+            if not route.startswith("/"):
+                route = "/" + route
+
             routes_and_fns.append((route, _predict))
+            if hasattr(input_schema, "from_files"):
+                routes_and_fns.append((route + "/from_files", _predict_from_files))
+        elif integration == INTEGRATION_SAGEMAKER:
+            route = "/invocations"
+            if hasattr(input_schema, "from_files"):
+                routes_and_fns.append((route, _predict_from_files))
+            else:
+                routes_and_fns.append((route, _predict))
 
     for route, endpoint_fn in routes_and_fns:
         app.add_api_route(

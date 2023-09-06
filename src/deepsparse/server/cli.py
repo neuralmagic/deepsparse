@@ -109,7 +109,7 @@ WORKERS_OPTION = click.option(
 
 INTEGRATION_OPTION = click.option(
     "--integration",
-    type=click.Choice(["local", "sagemaker"], case_sensitive=False),
+    type=click.Choice(["local", "sagemaker", "openai"], case_sensitive=False),
     default="local",
     help=(
         "Name of deployment integration that this server will be deployed to "

@@ -37,64 +37,44 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from deepsparse.server.outputs import CompletionOutput, RequestOutput
 from deepsparse.server.protocol import (
-    ChatCompletionRequest,
-    ChatCompletionResponse,
-    ChatCompletionResponseChoice,
-    ChatCompletionResponseStreamChoice,
-    ChatCompletionStreamResponse,
-    ChatMessage,
     CompletionRequest,
     CompletionResponse,
     CompletionResponseChoice,
     CompletionResponseStreamChoice,
     CompletionStreamResponse,
-    DeltaMessage,
     ErrorResponse,
     LogProbs,
     ModelCard,
     ModelList,
     ModelPermission,
     UsageInfo,
+    random_uuid
 )
-
-
-try:
-    import fastchat
-    from fastchat.conversation import Conversation, SeparatorStyle
-    from fastchat.model.model_adapter import get_conversation_template
-
-    _fastchat_available = True
-except ImportError:
-    _fastchat_available = False
+from deepsparse.engine import Context
+from deepsparse.server.config import ServerConfig
+from deepsparse.pipeline import Pipeline, PipelineConfig
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds
+SUPPORTED_TASKS = ["text_generation", "opt", "codegen", "bloom"]
 
-logger = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
-__all__ = ["DeepSparseOpenAIEngine", "build_openai_app"]
-
-app = FastAPI()
+__all__ = ["DeepSparseOpenAIEngine", "cre"]
 
 class DeepSparseOpenAIEngine:
     def __init__(
         self,
-        model: str,
-        sequence_length: int = 512,
-        prompt_processing_sequence_length: int = 64,
-        use_deepsparse_cache: bool = False,
+        context: Context,
+        pipeline_config: PipelineConfig
     ):
-        self.engine = deepsparse.Pipeline.create(
-            task="text-generation",
-            model_path=model,
-            sequence_length=sequence_length,
-            prompt_processing_sequence_length=prompt_processing_sequence_length,
-            use_deepsparse_cache=use_deepsparse_cache,
-        )
-
+        self.engine = Pipeline.from_config(pipeline_config, context)
+        self.model = self.engine.model_path
+        self.tokenizer = self.engine.tokenizer
+        
     def tokenize(self, text: str) -> List[int]:
         return self.engine.tokenizer(text)
 
-    async def generate(
+    def generate(
         self,
         prompt: str,
         request_id: str,
@@ -103,49 +83,80 @@ class DeepSparseOpenAIEngine:
         temperature: float = 0.80,
         frequency_penalty: float = 0.0,
         presence_penalty: float = 0.0,
+        stream: bool = True,
         **kwargs,
     ) -> AsyncGenerator[RequestOutput, None]:
         request_id = random_uuid()
 
         prompt_token_ids = self.tokenize(prompt)
 
-        streamer = TextIteratorStreamer(self.engine.tokenizer)
         self.engine.max_generated_tokens = max_tokens
         self.engine.sampling_temperature = temperature
 
-        generation_kwargs = dict(sequences=prompt, streamer=streamer)
+        stream = False
+        if not stream:
+            # Non-streaming response
+            output = self.engine(sequences=prompt)
+            new_text = output.sequences[0]
 
-        thread = Thread(target=self.engine, kwargs=generation_kwargs)
-        thread.start()
+            print("RETURNING")
+            return RequestOutput(
+                request_id=request_id,
+                prompt=prompt,
+                prompt_token_ids=prompt_token_ids,
+                outputs=[
+                    CompletionOutput(
+                        index=0,
+                        text=new_text,
+                        token_ids=self.tokenize(new_text),
+                        finish_reason="stop",
+                    )
+                ],
+                finished=True,
+            )
 
-        # stream out the text
-        for new_text in streamer:
+        else:
+            # Streaming response
+            streamer = TextIteratorStreamer(self.engine.tokenizer)
+
+            generation_kwargs = dict(sequences=prompt, streamer=streamer)
+
+            thread = Thread(target=self.engine, kwargs=generation_kwargs)
+            thread.start()
+
+            # stream out the text
+            concat_text = ""
+            concat_token_ids = []
+            for new_text in streamer:
+                concat_text += new_text
+                concat_token_ids.append(self.tokenize(new_text))
+                yield RequestOutput(
+                    request_id=request_id,
+                    prompt=prompt,
+                    prompt_token_ids=prompt_token_ids,
+                    outputs=[
+                        CompletionOutput(
+                            index=0, text=concat_text, token_ids=concat_token_ids
+                        )
+                    ],
+                    finished=False,
+                )
+
+            # finished
             yield RequestOutput(
                 request_id=request_id,
                 prompt=prompt,
                 prompt_token_ids=prompt_token_ids,
                 outputs=[
                     CompletionOutput(
-                        index=0, text=new_text, token_ids=self.tokenize(new_text)
+                        index=0, text="", token_ids=[0], finish_reason="stop"
                     )
                 ],
-                finished=False,
+                finished=True,
             )
 
-        # finished
-        yield RequestOutput(
-            request_id=request_id,
-            prompt=prompt,
-            prompt_token_ids=prompt_token_ids,
-            outputs=[CompletionOutput(index=0, text="", token_ids=[0])],
-            finished=True,
-        )
-
-    async def abort(self, session_id):
+    def abort(self, session_id):
         pass
-
-def random_uuid() -> str:
-    return str(uuid.uuid4().hex)
 
 
 def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse:
@@ -154,97 +165,17 @@ def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse
         status_code=status_code.value,
     )
 
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request, exc):  # pylint: disable=unused-argument
-    return create_error_response(HTTPStatus.BAD_REQUEST, str(exc))
-
-
-async def check_model(request) -> Optional[JSONResponse]:
-    if request.model == served_model:
-        return
-    ret = create_error_response(
-        HTTPStatus.NOT_FOUND,
-        f"The model `{request.model}` does not exist.",
-    )
-    return ret
-
-
-async def get_gen_prompt(request) -> str:
-    if not _fastchat_available:
-        raise ModuleNotFoundError(
-            "fastchat is not installed. Please install fastchat to use "
-            "the chat completion and conversation APIs: `$ pip install fschat`"
-        )
-    if version.parse(fastchat.__version__) < version.parse("0.2.23"):
-        raise ImportError(
-            f"fastchat version is low. Current version: {fastchat.__version__} "
-            "Please upgrade fastchat to use: `$ pip install -U fschat`"
-        )
-
-    conv = get_conversation_template(request.model)
-    conv = Conversation(
-        name=conv.name,
-        system_template=conv.system_template,
-        system_message=conv.system_message,
-        roles=conv.roles,
-        messages=list(conv.messages),  # prevent in-place modification
-        offset=conv.offset,
-        sep_style=SeparatorStyle(conv.sep_style),
-        sep=conv.sep,
-        sep2=conv.sep2,
-        stop_str=conv.stop_str,
-        stop_token_ids=conv.stop_token_ids,
-    )
-
-    if isinstance(request.messages, str):
-        prompt = request.messages
-    else:
-        for message in request.messages:
-            msg_role = message["role"]
-            if msg_role == "system":
-                conv.system_message = message["content"]
-            elif msg_role == "user":
-                conv.append_message(conv.roles[0], message["content"])
-            elif msg_role == "assistant":
-                conv.append_message(conv.roles[1], message["content"])
-            else:
-                raise ValueError(f"Unknown role: {msg_role}")
-
-        # Add a blank message for the assistant.
-        conv.append_message(conv.roles[1], None)
-        prompt = conv.get_prompt()
-
-    return prompt
-
-
-async def check_length(request, prompt):
-    input_ids = app.state.tokenizer(prompt).input_ids
-    token_num = len(input_ids)
-
-    if token_num + request.max_tokens > max_model_len:
-        return create_error_response(
-            HTTPStatus.BAD_REQUEST,
-            f"This model's maximum context length is {max_model_len} tokens. "
-            f"However, you requested {request.max_tokens + token_num} tokens "
-            f"({token_num} in the messages, "
-            f"{request.max_tokens} in the completion). "
-            f"Please reduce the length of the messages or completion.",
-        )
-    else:
-        return None
-
-
 def create_logprobs(
     token_ids: List[int],
     id_logprobs: List[Dict[int, float]],
     initial_text_offset: int = 0,
+    pipeline: DeepSparseOpenAIEngine = None,
 ) -> LogProbs:
     """Create OpenAI-style logprobs."""
     logprobs = LogProbs()
     last_token_len = 0
     for token_id, id_logprob in zip(token_ids, id_logprobs):
-        token = app.state.tokenizer.convert_ids_to_tokens(token_id)
+        token = pipeline.tokenizer.convert_ids_to_tokens(token_id)
         logprobs.tokens.append(token)
         logprobs.token_logprobs.append(id_logprob[token_id])
         if len(logprobs.text_offset) == 0:
@@ -254,192 +185,17 @@ def create_logprobs(
         last_token_len = len(token)
 
         logprobs.top_logprobs.append(
-            {app.state.tokenizer.convert_ids_to_tokens(i): p for i, p in id_logprob.items()}
+            {pipeline.tokenizer.convert_ids_to_tokens(i): p for i, p in id_logprob.items()}
         )
     return logprobs
 
-
-@app.post("/v1/chat/completions")
-async def create_chat_completion(raw_request: Request):
-    """Completion API similar to OpenAI's API.
-
-    See  https://platform.openai.com/docs/api-reference/chat/create
-    for the API specification. This API mimics the OpenAI ChatCompletion API.
-    """
-    request = ChatCompletionRequest(**await raw_request.json())
-    logger.info(f"Received chat completion request: {request}")
-
-    #error_check_ret = await check_model(request)
-    #if error_check_ret is not None:
-    #    return error_check_ret
-
-    if request.logit_bias is not None:
-        return create_error_response(
-            HTTPStatus.BAD_REQUEST, "logit_bias is not currently supported"
-        )
-
-    prompt = await get_gen_prompt(request)
-    error_check_ret = await check_length(request, prompt)
-    if error_check_ret is not None:
-        return error_check_ret
-
-    model_name = request.model
-    request_id = f"cmpl-{random_uuid()}"
-    created_time = int(time.time())
-    try:
-        sampling_params = dict(
-            n=request.n,
-            presence_penalty=request.presence_penalty,
-            frequency_penalty=request.frequency_penalty,
-            temperature=request.temperature,
-            top_p=request.top_p,
-            stop=request.stop,
-            max_tokens=request.max_tokens,
-            best_of=request.best_of,
-            top_k=request.top_k,
-            ignore_eos=request.ignore_eos,
-            use_beam_search=request.use_beam_search,
-        )
-    except ValueError as e:
-        return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
-
-    result_generator = app.state.engine.generate(prompt, request_id, **sampling_params)
-
-    async def abort_request() -> None:
-        await app.state.engine.abort(request_id)
-
-    def create_stream_response_json(
-        index: int,
-        text: str,
-        finish_reason: Optional[str] = None,
-    ) -> str:
-        choice_data = ChatCompletionResponseStreamChoice(
-            index=index,
-            delta=DeltaMessage(content=text),
-            finish_reason=finish_reason,
-        )
-        response = ChatCompletionStreamResponse(
-            id=request_id,
-            created=created_time,
-            model=model_name,
-            choices=[choice_data],
-        )
-        response_json = response.json(ensure_ascii=False)
-
-        return response_json
-
-    async def completion_stream_generator() -> AsyncGenerator[str, None]:
-        # First chunk with role
-        for i in range(request.n):
-            choice_data = ChatCompletionResponseStreamChoice(
-                index=i,
-                delta=DeltaMessage(role="assistant"),
-                finish_reason=None,
-            )
-            chunk = ChatCompletionStreamResponse(
-                id=request_id, choices=[choice_data], model=model_name
-            )
-            data = chunk.json(exclude_unset=True, ensure_ascii=False)
-            yield f"data: {data}\n\n"
-
-        previous_texts = [""] * request.n
-        previous_num_tokens = [0] * request.n
-        async for res in result_generator:
-            res: RequestOutput
-            for output in res.outputs:
-                i = output.index
-                delta_text = output.text[len(previous_texts[i]) :]
-                previous_texts[i] = output.text
-                previous_num_tokens[i] = len(output.token_ids)
-                response_json = create_stream_response_json(
-                    index=i,
-                    text=delta_text,
-                )
-                yield f"data: {response_json}\n\n"
-                if output.finish_reason is not None:
-                    response_json = create_stream_response_json(
-                        index=i,
-                        text="",
-                        finish_reason=output.finish_reason,
-                    )
-                    yield f"data: {response_json}\n\n"
-        yield "data: [DONE]\n\n"
-
-    # Streaming response
-    if request.stream:
-        background_tasks = BackgroundTasks()
-        # Abort the request if the client disconnects.
-        background_tasks.add_task(abort_request)
-        return StreamingResponse(
-            completion_stream_generator(),
-            media_type="text/event-stream",
-            background=background_tasks,
-        )
-
-    # Non-streaming response
-    final_res: RequestOutput = None
-    async for res in result_generator:
-        if await raw_request.is_disconnected():
-            # Abort the request if the client disconnects.
-            await abort_request()
-            return create_error_response(HTTPStatus.BAD_REQUEST, "Client disconnected")
-        final_res = res
-    assert final_res is not None
-    choices = []
-    for output in final_res.outputs:
-        choice_data = ChatCompletionResponseChoice(
-            index=output.index,
-            message=ChatMessage(role="assistant", content=output.text),
-            finish_reason=output.finish_reason,
-        )
-        choices.append(choice_data)
-
-    num_prompt_tokens = len(final_res.prompt_token_ids)
-    num_generated_tokens = sum(len(output.token_ids) for output in final_res.outputs)
-    usage = UsageInfo(
-        prompt_tokens=num_prompt_tokens,
-        completion_tokens=num_generated_tokens,
-        total_tokens=num_prompt_tokens + num_generated_tokens,
-    )
-    response = ChatCompletionResponse(
-        id=request_id,
-        created=created_time,
-        model=model_name,
-        choices=choices,
-        usage=usage,
-    )
-
-    if request.stream:
-        # When user requests streaming but we don't stream, we still need to
-        # return a streaming response with a single event.
-        response_json = response.json(ensure_ascii=False)
-
-        async def fake_stream_generator() -> AsyncGenerator[str, None]:
-            yield f"data: {response_json}\n\n"
-            yield "data: [DONE]\n\n"
-
-        return StreamingResponse(
-            fake_stream_generator(), media_type="text/event-stream"
-        )
-
-    return response
-
-
-@app.post("/v1/completions")
-async def create_completion(raw_request: Request):
+def create_completion(request: CompletionRequest, pipeline: DeepSparseOpenAIEngine):
     """Completion API similar to OpenAI's API.
 
     See https://platform.openai.com/docs/api-reference/completions/create
     for the API specification. This API mimics the OpenAI Completion API.
     """
-    request = CompletionRequest(**await raw_request.json())
-    logger.info(f"Received completion request: {request}")
-
-    '''
-    error_check_ret = await check_model(request)
-    if error_check_ret is not None:
-        return error_check_ret
-    '''
+    _LOGGER.info(f"Received completion request: {request}")
 
     if request.echo:
         # We do not support echo since we do not
@@ -460,7 +216,7 @@ async def create_completion(raw_request: Request):
             HTTPStatus.BAD_REQUEST, "logit_bias is not currently supported"
         )
 
-    model_name = request.model
+    model_name = pipeline.model
     request_id = f"cmpl-{random_uuid()}"
     if isinstance(request.prompt, list):
         if len(request.prompt) == 0:
@@ -490,11 +246,12 @@ async def create_completion(raw_request: Request):
             max_tokens=request.max_tokens,
             logprobs=request.logprobs,
             use_beam_search=request.use_beam_search,
+            stream=request.stream,
         )
     except ValueError as e:
         return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
 
-    result_generator = app.state.engine.generate(prompt, request_id, **sampling_params)
+    result_generator = pipeline.generate(prompt, request_id, **sampling_params)
 
     # Similar to the OpenAI API, when n != best_of, we do not stream the
     # results. In addition, we do not stream the results when use beam search.
@@ -504,8 +261,8 @@ async def create_completion(raw_request: Request):
         and not request.use_beam_search
     )
 
-    async def abort_request() -> None:
-        await app.state.engine.abort(request_id)
+    def abort_request() -> None:
+        pipeline.abort(request_id)
 
     def create_stream_response_json(
         index: int,
@@ -529,10 +286,10 @@ async def create_completion(raw_request: Request):
 
         return response_json
 
-    async def completion_stream_generator() -> AsyncGenerator[str, None]:
+    def completion_stream_generator() -> AsyncGenerator[str, None]:
         previous_texts = [""] * request.n
         previous_num_tokens = [0] * request.n
-        async for res in result_generator:
+        for res in result_generator:
             res: RequestOutput
             for output in res.outputs:
                 i = output.index
@@ -542,6 +299,7 @@ async def create_completion(raw_request: Request):
                         output.token_ids[previous_num_tokens[i] :],
                         output.logprobs[previous_num_tokens[i] :],
                         len(previous_texts[i]),
+                        pipeline=pipeline
                     )
                 else:
                     logprobs = None
@@ -577,17 +335,18 @@ async def create_completion(raw_request: Request):
 
     # Non-streaming response
     final_res: RequestOutput = None
-    async for res in result_generator:
-        if await raw_request.is_disconnected():
+    #for res in result_generator:
+        #if raw_request.is_disconnected():
             # Abort the request if the client disconnects.
-            await abort_request()
-            return create_error_response(HTTPStatus.BAD_REQUEST, "Client disconnected")
-        final_res = res
+        #    abort_request()
+        #    return create_error_response(HTTPStatus.BAD_REQUEST, "Client disconnected")
+        #final_res = res
+    final_res = result_generator
     assert final_res is not None
     choices = []
     for output in final_res.outputs:
         if request.logprobs is not None:
-            logprobs = create_logprobs(output.token_ids, output.logprobs)
+            logprobs = create_logprobs(output.token_ids, output.logprobs, pipeline=pipeline)
         else:
             logprobs = None
         choice_data = CompletionResponseChoice(
@@ -618,7 +377,7 @@ async def create_completion(raw_request: Request):
         # return a streaming response with a single event.
         response_json = response.json(ensure_ascii=False)
 
-        async def fake_stream_generator() -> AsyncGenerator[str, None]:
+        def fake_stream_generator() -> AsyncGenerator[str, None]:
             yield f"data: {response_json}\n\n"
             yield "data: [DONE]\n\n"
 
@@ -627,31 +386,3 @@ async def create_completion(raw_request: Request):
         )
 
     return response
-
-def build_openai_app():
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins="*",
-        allow_credentials=True,
-        allow_methods="*",
-        allow_headers="*",
-    )
-    served_model = "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none"
-
-    @app.get("/v1/models")
-    async def show_available_models():
-        """Show available models. Right now we only have one model."""
-        model_cards = [
-            ModelCard(id=served_model, root=served_model, permission=[ModelPermission()])
-        ]
-        return ModelList(data=model_cards)
-
-    app.state.engine = DeepSparseOpenAIEngine(
-        model=served_model,
-        sequence_length=512,
-        prompt_processing_sequence_length=64,
-        use_deepsparse_cache=True,
-    )
-    app.state.tokenizer = app.state.engine.engine.tokenizer
-
-    return app

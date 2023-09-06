@@ -28,25 +28,17 @@ __all__ = [
     "ModelCard",
     "ModelList",
     "UsageInfo",
-    "ChatCompletionRequest",
     "CompletionRequest",
     "LogProbs",
     "CompletionResponseChoice",
     "CompletionResponse",
     "CompletionResponseStreamChoice",
     "CompletionStreamResponse",
-    "ChatMessage",
-    "ChatCompletionResponseChoice",
-    "ChatCompletionResponse",
-    "DeltaMessage",
-    "ChatCompletionStreamResponse",
-    "ChatCompletionResponseStreamChoice"
 ]
 
 
 def random_uuid() -> str:
     return str(uuid.uuid4().hex)
-
 
 class ErrorResponse(BaseModel):
     object: str = "error"
@@ -91,29 +83,7 @@ class UsageInfo(BaseModel):
     total_tokens: int = 0
     completion_tokens: Optional[int] = 0
 
-
-class ChatCompletionRequest(BaseModel):
-    model: str
-    messages: Union[str, List[Dict[str, str]]]
-    temperature: Optional[float] = 0.7
-    top_p: Optional[float] = 1.0
-    n: Optional[int] = 1
-    max_tokens: Optional[int] = 16
-    stop: Optional[Union[str, List[str]]] = Field(default_factory=list)
-    stream: Optional[bool] = False
-    presence_penalty: Optional[float] = 0.0
-    frequency_penalty: Optional[float] = 0.0
-    logit_bias: Optional[Dict[str, float]] = None
-    user: Optional[str] = None
-    # Additional parameters
-    best_of: Optional[int] = None
-    top_k: Optional[int] = -1
-    ignore_eos: Optional[bool] = False
-    use_beam_search: Optional[bool] = False
-
-
 class CompletionRequest(BaseModel):
-    model: str
     prompt: Union[str, List[str]]
     suffix: Optional[str] = None
     max_tokens: Optional[int] = 16
@@ -171,42 +141,3 @@ class CompletionStreamResponse(BaseModel):
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
     choices: List[CompletionResponseStreamChoice]
-
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-
-class ChatCompletionResponseChoice(BaseModel):
-    index: int
-    message: ChatMessage
-    finish_reason: Optional[Literal["stop", "length"]] = None
-
-
-class ChatCompletionResponse(BaseModel):
-    id: str = Field(default_factory=lambda: f"chatcmpl-{random_uuid()}")
-    object: str = "chat.completion"
-    created: int = Field(default_factory=lambda: int(time.time()))
-    model: str
-    choices: List[ChatCompletionResponseChoice]
-    usage: UsageInfo
-
-
-class DeltaMessage(BaseModel):
-    role: Optional[str] = None
-    content: Optional[str] = None
-
-
-class ChatCompletionResponseStreamChoice(BaseModel):
-    index: int
-    delta: DeltaMessage
-    finish_reason: Optional[Literal["stop", "length"]] = None
-
-
-class ChatCompletionStreamResponse(BaseModel):
-    id: str = Field(default_factory=lambda: f"chatcmpl-{random_uuid()}")
-    object: str = "chat.completion.chunk"
-    created: int = Field(default_factory=lambda: int(time.time()))
-    model: str
-    choices: List[ChatCompletionResponseStreamChoice]
