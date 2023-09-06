@@ -74,7 +74,6 @@ python-multipart
 psutil
 pylint
 black[jupyter]
-pydoc-markdown==4.5.1
 mkdocs
 jupytercontrib
 watchdog
