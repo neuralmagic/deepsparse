@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List
+
 import numpy
 
 from deepsparse.utils.data import numpy_softmax
@@ -21,6 +23,7 @@ class TokenGenerator:
     def __init__(
         self,
         logits: numpy.ndarray,
+        tokens: List[int] = [],
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         top_k: int = 0,
@@ -37,10 +40,13 @@ class TokenGenerator:
         self.top_p = top_p
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
+        self.tokens = []
+        for token in tokens:
+            self.update_frequencies(token)
 
-    def update_frequences(self, token: numpy.ndarray):
-        for tk in token:
-            self.token_frequencies[tk] += 1
+    def update_frequencies(self, token: numpy.ndarray):
+        self.tokens.append(token)
+        self.token_frequencies[token] += 1
 
     def generate(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
@@ -50,7 +56,9 @@ class TokenGenerator:
         :return: the sampled token
         """
         if self.deterministic:
-            return numpy.argmax(logits)
+            token = numpy.argmax(logits)
+            self.tokens.append(token)
+            return token
 
         if self.sampling_temperature != 1.0:
             logits /= self.sampling_temperature
@@ -67,7 +75,6 @@ class TokenGenerator:
             logits = self.apply_presence_penalty(logits)
 
         probs = self.numpy_softmax(logits)
-
         token = numpy.random.choice(len(probs), p=probs)
         self.update_frequencies(token)
 
@@ -102,5 +109,3 @@ class TokenGenerator:
         )
         logits = numpy.where(indices_to_remove, filter_value, logits)
         return logits
-
-

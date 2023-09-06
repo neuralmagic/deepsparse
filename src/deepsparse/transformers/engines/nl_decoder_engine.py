@@ -24,8 +24,6 @@ from deepsparse.transformers.utils.helpers import (
     generate_session_id,
     overwrite_onnx_model_inputs_for_kv_cache_models,
 )
-from deepsparse.transformers.utils.token_generator import TokenGenerator
-from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
@@ -229,22 +227,6 @@ class NLDecoderEngine:
         """
         cache.set_capacity(self.cache_length)
         self.kv_cache = cache
-
-    def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
-        """
-        Samples a token from the logits using the sampling temperature.
-
-        :param logits: the logits from the model with shape (vocab_size,)
-        :return: the sampled token
-        """
-        if self.deterministic:
-            return numpy.argmax(logits)
-
-        logits /= self.sampling_temperature
-
-        probs = numpy_softmax(logits)
-
-        return numpy.random.choice(len(probs), p=probs)
 
     def reset_kv_cache(self):
         """
