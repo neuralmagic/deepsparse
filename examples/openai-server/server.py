@@ -78,15 +78,15 @@ class DeepSparseOpenAIEngine:
         self,
         model: str,
         sequence_length: int = 512,
-        prompt_processing_sequence_length: int = 64,
-        use_deepsparse_cache: bool = False,
+        prompt_sequence_length: int = 64,
+        internal_kv_cache: bool = False,
     ):
         self.engine = deepsparse.Pipeline.create(
             task="text-generation",
             model_path=model,
             sequence_length=sequence_length,
-            prompt_processing_sequence_length=prompt_processing_sequence_length,
-            use_deepsparse_cache=use_deepsparse_cache,
+            prompt_sequence_length=prompt_sequence_length,
+            internal_kv_cache=internal_kv_cache,
         )
 
     def tokenize(self, text: str) -> List[int]:
@@ -751,8 +751,8 @@ if __name__ == "__main__":
     engine = DeepSparseOpenAIEngine(
         model=args.model,
         sequence_length=max_model_len,
-        prompt_processing_sequence_length=args.prompt_processing_sequence_length,
-        use_deepsparse_cache=args.use_deepsparse_cache,
+        prompt_sequence_length=args.prompt_sequence_length,
+        internal_kv_cache=args.internal_kv_cache,
     )
     tokenizer = engine.engine.tokenizer
 
