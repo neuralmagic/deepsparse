@@ -173,7 +173,6 @@ class TextGenerationPipeline(TransformersPipeline):
         self,
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
-        max_generated_tokens: Optional[int] = 1024,
         prompt_sequence_length: int = 64,
         sequence_length: int = 512,
         force_max_tokens: bool = False,
@@ -214,7 +213,6 @@ class TextGenerationPipeline(TransformersPipeline):
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
-        self.max_generated_tokens = max_generated_tokens
         self.prompt_sequence_length = prompt_sequence_length
         self.force_max_tokens = force_max_tokens
         self.internal_kv_cache = internal_kv_cache
