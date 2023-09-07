@@ -20,12 +20,13 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import (
-    generate_session_id,
+from deepsparse.transformers.utils.helpers import generate_session_id
+from deepsparse.utils.data import numpy_softmax
+from deepsparse.utils.onnx import (
+    CACHE_INPUT_PREFIX,
+    CACHE_OUTPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
 )
-from deepsparse.utils.data import numpy_softmax
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
 _LOGGER = logging.getLogger(__name__)

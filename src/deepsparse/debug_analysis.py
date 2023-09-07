@@ -91,7 +91,7 @@ from deepsparse.utils import (
     has_model_kv_cache,
     model_to_path,
     override_onnx_input_shapes,
-    overwrite_cache_model_inputs,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
     parse_input_shapes,
 )
 
@@ -363,6 +363,12 @@ def main():
                 "Please set batch size to 1 and try again"
             )
 
+        if args.input_ids_length > args.sequence_length:
+            raise ValueError(
+                f"input_ids_length: {args.input_ids_length} "
+                f"must be less than sequence_length: {args.sequence_length}"
+            )
+
         print(
             "Found model with KV cache support. "
             "Benchmarking the autoregressive model with "
@@ -370,10 +376,11 @@ def main():
             f"sequence length: {args.sequence_length}."
         )
 
-        model_path, _, _ = overwrite_cache_model_inputs(
-            model_path=model_path,
+        model_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+            onnx_file_path=model_path,
             input_ids_length=args.input_ids_length,
             sequence_length=args.sequence_length,
+            batch_size=batch_size,
         )
 
     if input_shapes:

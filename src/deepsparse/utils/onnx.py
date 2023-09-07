@@ -50,9 +50,9 @@ __all__ = [
     "override_onnx_input_shapes",
     "truncate_onnx_model",
     "truncate_onnx_embedding_model",
+    "overwrite_onnx_model_inputs_for_kv_cache_models",
     "default_cached_outputs",
     "has_model_kv_cache",
-    "overwrite_cache_model_inputs",
     "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
 ]
@@ -495,6 +495,73 @@ def truncate_onnx_embedding_model(
     return output_filepath, tmp_file
 
 
+def overwrite_onnx_model_inputs_for_kv_cache_models(
+    onnx_file_path: str,
+    sequence_length: int,
+    input_ids_length: int,
+    batch_size: int = 1,
+) -> Tuple[str, List[int], Optional[int]]:
+    """
+    Enforces the appropriate input shapes for the onnx model, as well as
+    checks whether kv cache is enabled or not.
+
+    :param onnx_file_path: The path to the onnx model file that will be
+        overwritten with the new input shapes
+    :param batch_size: The batch size to use for the input
+    :param sequence_length: The sequence length to use for the input
+    :param input_ids_length: The length of input_ids
+    :return: A tuple that contains:
+        -   the path to the onnx model file that has been overwritten
+            with the new input shapes
+        -   boolean list, where elements are set to True if the
+            corresponding model output should be cached or False
+            if not.
+        -   the data type of the kv cache. If the model does not
+            use kv cache, then the data type is None
+    """
+    model = onnx.load(onnx_file_path, load_external_data=False)
+    initializer_input_names = set(node.name for node in model.graph.initializer)
+    external_inputs = [
+        inp for inp in model.graph.input if inp.name not in initializer_input_names
+    ]
+    for external_input in external_inputs:
+        # overwrite the batch size for all the inputs
+        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+
+        if external_input.name in ["input_ids", "positions"]:
+            external_input.type.tensor_type.shape.dim[1].dim_value = input_ids_length
+        elif external_input.name == "attention_mask":
+            external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
+        elif external_input.name.startswith("past_key_values"):
+            external_input.type.tensor_type.shape.dim[2].dim_value = (
+                sequence_length - input_ids_length
+            )
+        elif external_input.name.startswith("causal_mask"):
+            external_input.type.tensor_type.shape.dim[2].dim_value = input_ids_length
+            external_input.type.tensor_type.shape.dim[3].dim_value = sequence_length
+        else:
+            raise ValueError(f"Unexpected external input name: {external_input.name}")
+
+    _LOGGER.info(
+        "Overwriting in-place the input shapes "
+        f"of the transformer model at {onnx_file_path}"
+    )
+    save_onnx(model, onnx_file_path)
+
+    output_indices_to_be_cached = [
+        1 if inp.name.startswith("present") else 0 for inp in model.graph.output
+    ]
+
+    kv_cache_data_type = None
+    if any(output_indices_to_be_cached):
+        kv_cache_elem_type = next(
+            inp for inp in model.graph.input if inp.name.startswith("past_key_values")
+        ).type.tensor_type.elem_type
+        kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
+
+    return onnx_file_path, output_indices_to_be_cached, kv_cache_data_type
+
+
 def default_cached_outputs(model_path: str) -> List[bool]:
     """
     Get a list of bools that indicate which outputs should be cached.
@@ -519,46 +586,3 @@ def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
     :return True if the model has a KV cache support, False otherwise.
     """
     return bool(any(default_cached_outputs(model)))
-
-
-def overwrite_cache_model_inputs(
-    model_path: str,
-    input_ids_length: int,
-    sequence_length: int,
-) -> Tuple[str, List[int], Optional[int]]:
-    """
-    Takes a path to an onnx model and enforces that it has
-    static input dimensions.
-
-    :param model_path: Path to a model.
-    :param input_ids_length: The input_ids length to overwrite the model with.
-    :param sequence_length: The sequence length to overwrite the model with.
-    :return: A tuple that contains:
-        -   the path to the onnx model file that has been overwritten
-            with the new input shapes
-        -   boolean list, where elements are set to True if the
-            corresponding model output should be cached or False
-            if not.
-        -   the data type of the kv cache. If the model does not
-            use kv cache, then the data type is None
-    """
-    from deepsparse.transformers.utils.helpers import (
-        overwrite_onnx_model_inputs_for_kv_cache_models,
-    )
-
-    assert input_ids_length < sequence_length, (
-        f"input_ids_length {input_ids_length} "
-        f"must be less than sequence_length {sequence_length}"
-    )
-
-    (
-        onnx_file_path,
-        output_indices_to_be_cached,
-        kv_cache_data_type,
-    ) = overwrite_onnx_model_inputs_for_kv_cache_models(
-        onnx_file_path=model_path,
-        sequence_length=sequence_length,
-        input_ids_length=input_ids_length,
-    )
-
-    return onnx_file_path, output_indices_to_be_cached, kv_cache_data_type
