@@ -19,6 +19,7 @@ Helper functions for working with ONNX exports of transformer models and deepspa
 
 import os
 import re
+import warnings
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
@@ -116,8 +117,15 @@ def get_onnx_path_and_configs(
         )
         tokenizer_path = _get_file_parent(
             zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
-        ) or tokenizer_config_path
-        
+        )
+        if tokenizer_path is None:
+            warnings.warn(
+                "The file tokenizer.json has not been found. "
+                "Inferring the path to the tokenizer files from "
+                "the location of tokenizer_config.json instead."
+            )
+            tokenizer_path = tokenizer_config_path
+
         if tokenizer_config_path is not None:
             tokenizer_config_path.path  # trigger download of tokenizer_config
     elif require_configs and (config_path is None or tokenizer_path is None):
