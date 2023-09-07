@@ -111,12 +111,13 @@ def get_onnx_path_and_configs(
         config_path = _get_file_parent(
             zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
         )
-        tokenizer_path = _get_file_parent(
-            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
-        )
         tokenizer_config_path = zoo_model.deployment.default.get_file(
             _MODEL_DIR_TOKENIZER_CONFIG_NAME
         )
+        tokenizer_path = _get_file_parent(
+            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
+        ) or tokenizer_config_path
+        
         if tokenizer_config_path is not None:
             tokenizer_config_path.path  # trigger download of tokenizer_config
     elif require_configs and (config_path is None or tokenizer_path is None):
