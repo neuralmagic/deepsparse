@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import time
 import logging
 import os
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import List
+from typing import List, Optional, AsyncGenerator
 
 import yaml
 
@@ -43,9 +43,27 @@ from deepsparse.server.system_logging import (
     SystemLoggingMiddleware,
     log_system_information,
 )
-from fastapi import FastAPI, UploadFile, Request
+from fastapi import FastAPI, UploadFile, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.responses import RedirectResponse
+
+from deepsparse.server.outputs import CompletionOutput, RequestOutput
+from deepsparse.server.protocol import (
+    CompletionRequest,
+    CompletionResponse,
+    CompletionResponseChoice,
+    CompletionResponseStreamChoice,
+    CompletionStreamResponse,
+    ErrorResponse,
+    LogProbs,
+    ModelCard,
+    ModelList,
+    ModelPermission,
+    UsageInfo,
+    random_uuid
+)
+from deepsparse.server.openai_server import create_logprobs, create_error_response, HTTPStatus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -267,17 +285,212 @@ def _add_pipeline_endpoint(
 ):
     routes_and_fns = []
 
+    engine = pipeline
+    async def create_completion(raw_request: Request):
+        """Completion API similar to OpenAI's API.
+
+        See https://platform.openai.com/docs/api-reference/completions/create
+        for the API specification. This API mimics the OpenAI Completion API.
+        
+        """
+        request = CompletionRequest(**await raw_request.json())
+        _LOGGER.info(f"Received completion request: {request}")
+
+        if request.echo:
+            # We do not support echo since we do not
+            # currently support getting the logprobs of prompt tokens.
+            return create_error_response(
+                HTTPStatus.BAD_REQUEST, "echo is not currently supported"
+            )
+
+        if request.suffix is not None:
+            # The language models we currently support do not support suffix.
+            return create_error_response(
+                HTTPStatus.BAD_REQUEST, "suffix is not currently supported"
+            )
+
+        if request.logit_bias is not None:
+            # TODO: support logit_bias
+            return create_error_response(
+                HTTPStatus.BAD_REQUEST, "logit_bias is not currently supported"
+            )
+
+        model_name = engine.model
+        request_id = f"cmpl-{random_uuid()}"
+        if isinstance(request.prompt, list):
+            if len(request.prompt) == 0:
+                return create_error_response(
+                    HTTPStatus.BAD_REQUEST, "please provide at least one prompt"
+                )
+            if len(request.prompt) > 1:
+                return create_error_response(
+                    HTTPStatus.BAD_REQUEST,
+                    "multiple prompts in a batch is not currently supported",
+                )
+            prompt = request.prompt[0]
+        else:
+            prompt = request.prompt
+        created_time = int(time.time())
+        try:
+            sampling_params = dict(
+                n=request.n,
+                best_of=request.best_of,
+                presence_penalty=request.presence_penalty,
+                frequency_penalty=request.frequency_penalty,
+                temperature=request.temperature,
+                top_p=request.top_p,
+                top_k=request.top_k,
+                stop=request.stop,
+                ignore_eos=request.ignore_eos,
+                max_tokens=request.max_tokens,
+                logprobs=request.logprobs,
+                use_beam_search=request.use_beam_search,
+                stream=request.stream,
+            )
+        except ValueError as e:
+            return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
+
+        result_generator = engine.generate(prompt, request_id, **sampling_params)
+
+        # Similar to the OpenAI API, when n != best_of, we do not stream the
+        # results. In addition, we do not stream the results when use beam search.
+        stream = (
+            request.stream
+            and (request.best_of is None or request.n == request.best_of)
+            and not request.use_beam_search
+        )
+
+        async def abort_request() -> None:
+            await engine.abort(request_id)
+
+        def create_stream_response_json(
+            index: int,
+            text: str,
+            logprobs: Optional[LogProbs] = None,
+            finish_reason: Optional[str] = None,
+        ) -> str:
+            choice_data = CompletionResponseStreamChoice(
+                index=index,
+                text=text,
+                logprobs=logprobs,
+                finish_reason=finish_reason,
+            )
+            response = CompletionStreamResponse(
+                id=request_id,
+                created=created_time,
+                model=model_name,
+                choices=[choice_data],
+            )
+            response_json = response.json(ensure_ascii=False)
+
+            return response_json
+
+        async def completion_stream_generator() -> AsyncGenerator[str, None]:
+            previous_texts = [""] * request.n
+            previous_num_tokens = [0] * request.n
+            async for res in result_generator:
+                res: RequestOutput
+                for output in res.outputs:
+                    i = output.index
+                    delta_text = output.text[len(previous_texts[i]) :]
+                    if request.logprobs is not None:
+                        logprobs = create_logprobs(
+                            output.token_ids[previous_num_tokens[i] :],
+                            output.logprobs[previous_num_tokens[i] :],
+                            len(previous_texts[i]),
+                        )
+                    else:
+                        logprobs = None
+                    previous_texts[i] = output.text
+                    previous_num_tokens[i] = len(output.token_ids)
+                    response_json = create_stream_response_json(
+                        index=i,
+                        text=delta_text,
+                        logprobs=logprobs,
+                    )
+                    yield f"data: {response_json}\n\n"
+                    if output.finish_reason is not None:
+                        logprobs = LogProbs() if request.logprobs is not None else None
+                        response_json = create_stream_response_json(
+                            index=i,
+                            text="",
+                            logprobs=logprobs,
+                            finish_reason=output.finish_reason,
+                        )
+                        yield f"data: {response_json}\n\n"
+            yield "data: [DONE]\n\n"
+
+        # Streaming response
+        if stream:
+            background_tasks = BackgroundTasks()
+            # Abort the request if the client disconnects.
+            background_tasks.add_task(abort_request)
+            return StreamingResponse(
+                completion_stream_generator(),
+                media_type="text/event-stream",
+                background=background_tasks,
+            )
+
+        # Non-streaming response
+        final_res: RequestOutput = None
+        async for res in result_generator:
+            if await raw_request.is_disconnected():
+                # Abort the request if the client disconnects.
+                await abort_request()
+                return create_error_response(HTTPStatus.BAD_REQUEST, "Client disconnected")
+            final_res = res
+        assert final_res is not None
+        choices = []
+        for output in final_res.outputs:
+            if request.logprobs is not None:
+                logprobs = create_logprobs(output.token_ids, output.logprobs)
+            else:
+                logprobs = None
+            choice_data = CompletionResponseChoice(
+                index=output.index,
+                text=output.text,
+                logprobs=logprobs,
+                finish_reason=output.finish_reason,
+            )
+            choices.append(choice_data)
+
+        num_prompt_tokens = len(final_res.prompt_token_ids)
+        num_generated_tokens = sum(len(output.token_ids) for output in final_res.outputs)
+        usage = UsageInfo(
+            prompt_tokens=num_prompt_tokens,
+            completion_tokens=num_generated_tokens,
+            total_tokens=num_prompt_tokens + num_generated_tokens,
+        )
+        response = CompletionResponse(
+            id=request_id,
+            created=created_time,
+            model=model_name,
+            choices=choices,
+            usage=usage,
+        )
+
+        if request.stream:
+            # When user requests streaming but we don't stream, we still need to
+            # return a streaming response with a single event.
+            response_json = response.json(ensure_ascii=False)
+
+            async def fake_stream_generator() -> AsyncGenerator[str, None]:
+                yield f"data: {response_json}\n\n"
+                yield "data: [DONE]\n\n"
+
+            return StreamingResponse(
+                fake_stream_generator(), media_type="text/event-stream"
+            )
+
+        return response
+
     if integration == INTEGRATION_OPENAI:
-        from deepsparse.server.openai_server import CompletionResponse, CompletionRequest, create_completion
-        input_schema = CompletionRequest
+        from deepsparse.server.openai_server import CompletionResponse, CompletionRequest
         output_schema = CompletionResponse
 
-        def _completion(request: CompletionRequest):
-            create_completion(request, pipeline)
-
         route = "/completions" + endpoint_config.route
-        routes_and_fns.append((route, _completion))
-
+        routes_and_fns.append((route, create_completion))
+        
     else:
         input_schema = pipeline.input_schema
         output_schema = pipeline.output_schema
