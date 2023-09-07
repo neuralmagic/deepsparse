@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import warnings
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy
@@ -165,6 +166,15 @@ class NLDecoderEngine:
         """
 
         if self.internal_cache_active:
+            if val_inp:
+                warnings.warn(
+                    "Internal kv cache is active. "
+                    "To maximize inference efficiency, "
+                    "the engine inputs pertaining to "
+                    "the kv cache values are empty arrays. "
+                    "This is why, even though val_inp=True,"
+                    "the inputs will not be validated"
+                )
             return self.engine._eng_net.execute_list_out(
                 inputs, self.kv_cache.engine_internal_cache
             )
@@ -344,7 +354,7 @@ class NLDecoderEngine:
                 num_attention_heads,
                 length,
                 hidden_dims,
-            ),  # effective array size 0
+            ),
             dtype=self.kv_cache_data_type,
         )
 
