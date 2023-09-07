@@ -20,11 +20,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 import pytest
 from deepsparse import Pipeline
-from deepsparse.transformers.utils.helpers import (
-    create_causal_mask,
-    overwrite_onnx_model_inputs,
+from deepsparse.transformers.utils.helpers import create_causal_mask
+from deepsparse.utils.onnx import (
+    CACHE_INPUT_PREFIX,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
 )
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX
 from sparsezoo import Model
 
 
@@ -52,8 +52,11 @@ def _initialize_kv_cache_state(model, length=0):
     return kv_cache
 
 
+START = 0  # global variable for dummy_callback
+
+
 @pytest.mark.parametrize(
-    "use_deepsparse_cache",
+    "internal_kv_cache",
     [True, False],
 )
 @pytest.mark.parametrize(
@@ -79,19 +82,19 @@ def _initialize_kv_cache_state(model, length=0):
 )
 class TestTextGenerationPipeline:
     @pytest.fixture
-    def setup(self, model_stub, model_name, uses_bos_token, use_deepsparse_cache):
+    def setup(self, model_stub, model_name, uses_bos_token, internal_kv_cache):
 
         self.max_generated_tokens = 16
         self.model = Model(model_stub)
-        self.use_deepsparse_cache = use_deepsparse_cache
+        self.internal_kv_cache = internal_kv_cache
 
         pipeline = Pipeline.create(
             task="text_generation",
             model_path=model_stub,
             sequence_length=32,
-            prompt_processing_sequence_length=4,
+            prompt_sequence_length=4,
             max_generated_tokens=self.max_generated_tokens,
-            use_deepsparse_cache=self.use_deepsparse_cache,
+            internal_kv_cache=self.internal_kv_cache,
         )
         short_prompt = "this"
         long_prompt = "this is a sample prompt that we will use to test the pipeline"
@@ -101,14 +104,14 @@ class TestTextGenerationPipeline:
         # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
         # assert (
         #     len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
-        #     < pipeline.prompt_processing_sequence_length
+        #     < pipeline.prompt_sequence_length
         # )
         # make sure that the long prompt will be processed by
         # single token and multiple token engines
         # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
         # assert (
         #     len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
-        #     > pipeline.prompt_processing_sequence_length * 3
+        #     > pipeline.prompt_sequence_length * 3
         # )
 
         yield pipeline, model_name, uses_bos_token, short_prompt, long_prompt
@@ -134,7 +137,7 @@ class TestTextGenerationPipeline:
 
     def test_model_output_cache(self, setup):
         pipeline, model_name, _, short_prompt, long_prompt = setup
-        if self.use_deepsparse_cache:
+        if self.internal_kv_cache:
             pytest.skip(
                 "Running pipeline with internal "
                 "deepsparse cache will not result "
@@ -142,6 +145,23 @@ class TestTextGenerationPipeline:
             )
         self._test_cache_state(short_prompt, pipeline, model_name)
         self._test_cache_state(long_prompt, pipeline, model_name)
+
+    def test_callback(self, setup):
+        pipeline, *_ = setup
+
+        def dummy_callback(token):
+            global START
+            START += 1
+            return START < 3
+
+        inputs = {
+            "sequences": "def fib(a, b, accumulator=0)",
+            "callback": dummy_callback,
+            "return_logits": True,
+        }
+
+        outs = pipeline(**inputs)
+        assert outs.logits.shape[1] == 3
 
     def _test_cache_state(self, prompt, pipeline, model_name):
         # make sure that the cache state after running a prompt
@@ -216,7 +236,7 @@ class TestTextGenerationPipeline:
 
         # setup model and session
         # (run full sequence inference)
-        overwrite_onnx_model_inputs(
+        overwrite_onnx_model_inputs_for_kv_cache_models(
             model_onnx_path, sequence_length=128, input_ids_length=128
         )
         sess = onnxruntime.InferenceSession(model_onnx_path)

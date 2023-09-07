@@ -80,6 +80,7 @@ class _FakeDeepsparseLibEngine:
         num_streams: int,
         scheduler_value: Any,
         context_value: Any,
+        cached_outputs: List[bool],
         *,
         # NOTE: the following are not actual deepsparse engine arguments
         rng_seed: int,
