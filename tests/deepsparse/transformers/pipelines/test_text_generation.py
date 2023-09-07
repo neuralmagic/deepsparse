@@ -407,7 +407,7 @@ class TestTextGenerationPipeline:
             assert numpy.allclose(x[:, :, -start_index:-end_index, :], y, atol=1e-4)
 
     @staticmethod
-    def _get_last_cache_session(pipeline: Pipeline) -> "DecoderKVCache": # noqa F821
+    def _get_last_cache_session(pipeline: Pipeline) -> "DecoderKVCache":  # noqa F821
         memory = pipeline.engine.kv_cache_storage._memory
         assert len(memory) == 1
         # access the only element in the memory dict

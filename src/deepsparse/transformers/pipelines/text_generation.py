@@ -680,7 +680,7 @@ class TextGenerationPipeline(TransformersPipeline):
         ]
 
         generated_token, generated_logits = self.engine(engine_inputs, session_id)
-
+        print(f"position {positions}, token: {input_ids}")
         return generated_token, generated_logits
 
     def engine_inputs_for_prefill(
@@ -781,7 +781,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     input_ids=engine_inputs[0], attention_mask=engine_inputs[1]
                 )
                 engine_inputs.append(causal_mask)
-
+            print(f"position {engine_inputs[2]}, token: {engine_inputs[0]}")
             yield engine_inputs
 
     def synchronize_engines(self, session_id: str):
