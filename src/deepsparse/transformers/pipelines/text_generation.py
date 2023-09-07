@@ -376,6 +376,14 @@ class TextGenerationPipeline(TransformersPipeline):
                 "Set `max_tokens` to 1 to support that scenario."
             )
 
+        # If the num_generated_predictions > 1, check how many times each prompt given
+        # as an input was repeated. If just once, the number of generated predictions
+        # for that particular prompt is equal to num_generated_predictions. This is done
+        # by repeating the prompt num_generated_predictions times If that
+        # prompt was given as an input multiple times, ignore the value of
+        # num_generated_predictions and produce n predictions, where n is the number of
+        # times the prompt was given as an input. Also, update the engine so that
+        # deterministic is set to False.
         if inputs.num_generated_predictions > 1:
             counter = Counter(inputs.sequences)
             repeated_seq = []
