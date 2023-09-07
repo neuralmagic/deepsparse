@@ -115,17 +115,19 @@ class TransformersPipeline(Pipeline, Bucketable):
         onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
             self.model_path, require_configs=True
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_path,
-            trust_remote_code=self._trust_remote_code,
-            model_max_length=self.sequence_length,
-        )
         
         self.config = AutoConfig.from_pretrained(
             config_path,
             trust_remote_code=self._trust_remote_code,
             finetuning_task=self.task if hasattr(self, "task") else None,
-        ) or self.tokenizer 
+        ) 
+        
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_path,
+            trust_remote_code=self._trust_remote_code,
+            model_max_length=self.sequence_length,
+        ) or self.config
+        
 
         self.config_path = os.path.join(config_path, "config.json")
         self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
