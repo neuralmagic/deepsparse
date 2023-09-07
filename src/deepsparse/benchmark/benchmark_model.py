@@ -134,7 +134,7 @@ from deepsparse.utils import (
     has_model_kv_cache,
     model_to_path,
     override_onnx_input_shapes,
-    overwrite_cache_model_inputs,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
     parse_input_shapes,
 )
 
@@ -347,10 +347,11 @@ def benchmark_model(
             f"sequence length: {sequence_length}."
         )
 
-        model_path, _, _ = overwrite_cache_model_inputs(
-            model_path=model_path,
+        model_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+            onnx_file_path=model_path,
             input_ids_length=input_ids_length,
             sequence_length=sequence_length,
+            batch_size=batch_size,
         )
 
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
