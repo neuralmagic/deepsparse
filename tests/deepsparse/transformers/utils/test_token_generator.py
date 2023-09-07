@@ -1,0 +1,157 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from collections import defaultdict
+from typing import List, Tuple, Union
+
+import numpy
+
+import pytest
+from deepsparse.transformers.utils.token_generator import TokenGenerator
+
+
+@pytest.fixture(scope="function")
+def logits_fixture() -> numpy.array:
+    def get(shape: Tuple = (1, 1, 51200), token_max_thresh: int = 30, low: int = -30):
+        return numpy.random.uniform(low, token_max_thresh, size=shape)
+
+    return get
+
+
+@pytest.fixture(scope="function")
+def token_fixture() -> List[int]:
+    def get(shape: Union[int, Tuple] = 5, token_max_thresh: int = 51200):
+        return numpy.random.randint(0, token_max_thresh, size=shape).tolist()
+
+    return get
+
+
+class TestTokenGenerator:
+    def test_update_frequencies(
+        self, logits_fixture, token_fixture, token_max_thresh: int = 51200
+    ):
+        logits, tokens = logits_fixture(), token_fixture(
+            token_max_thresh=token_max_thresh
+        )
+        token_generator = TokenGenerator(logits=logits, tokens=tokens)
+
+        assert token_generator.tokens == tokens
+
+        freq = defaultdict(int)
+        for token in token_generator.tokens:
+            freq[token] += 1
+
+        for key, value in freq.items():
+            assert token_generator.token_frequencies[key] == value
+
+        # test TokenGenerator.update_frequencies
+        new_token = numpy.random.randint(0, token_max_thresh)
+        token_generator.update_frequencies(new_token)
+
+        assert token_generator.tokens == tokens + [new_token]
+        freq[new_token] += 1
+        for key, value in freq.items():
+            assert token_generator.token_frequencies[key] == value
+
+    def test_apply_frequency_penalty(
+        self,
+        logits_fixture,
+        token_fixture,
+    ):
+        logits, tokens = logits_fixture(), token_fixture()
+        frequency_penalty = 1.0
+        token_generator = TokenGenerator(
+            logits=logits, tokens=(tokens + tokens), frequency_penalty=frequency_penalty
+        )
+
+        test_logits = token_generator.token_frequencies
+        # numpy arrays by default are pass by ref
+        new_logits = token_generator.apply_frequency_penalty(test_logits.copy())
+        assert new_logits.shape == test_logits.shape
+        assert numpy.sum(new_logits) == 0
+
+    def test_apply_presence_penalty(
+        self,
+        logits_fixture,
+        token_fixture,
+    ):
+        logits, tokens = logits_fixture(), token_fixture()
+        presence_penalty = 1.0
+        token_generator = TokenGenerator(
+            logits=logits, tokens=(tokens + tokens), presence_penalty=presence_penalty
+        )
+        test_logits = token_generator.token_frequencies
+        # numpy arrays by default are pass by ref
+        new_logits = token_generator.apply_presence_penalty(test_logits.copy())
+        assert new_logits.shape == test_logits.shape
+        assert numpy.sum(new_logits) == 0.5 * numpy.sum(test_logits)
+
+    def test_apply_topk(
+        self,
+    ):
+        # logits for opt usually have shape (1,1,51200)
+        logits = numpy.linspace(0, 1, 11).reshape((1, 1, 11))
+
+        token_generator = TokenGenerator(
+            logits=logits,
+            top_k=3,
+        )
+
+        filter_value = -float("Inf")
+        new_logits = token_generator.apply_top_k(
+            logits.copy(), filter_value=filter_value
+        )
+
+        for _ in range(token_generator.top_k):
+            curr_max, idx = numpy.max(new_logits), numpy.argmax(new_logits)
+            assert curr_max > filter_value
+            new_logits = numpy.delete(new_logits, idx)
+
+        assert numpy.all(new_logits == filter_value)
+
+    def test_apply_top_p(
+        self,
+    ):
+        # logits for opt usually have shape (1,1,51200)
+        logits = 0.1 * numpy.ones(10).reshape((1, 1, 10))
+
+        token_generator = TokenGenerator(
+            logits=logits,
+            top_p=0.89,
+        )
+
+        filter_value = -float("Inf")
+        new_logits = token_generator.apply_top_p(
+            logits.copy(), filter_value=filter_value
+        )
+        for _ in range(1):
+            curr_min, idx = numpy.min(new_logits), numpy.argmin(new_logits)
+            assert curr_min == filter_value
+            new_logits = numpy.delete(new_logits, idx)
+
+        assert numpy.all(new_logits != filter_value)
+
+    def test_generate_token(
+        self,
+        logits_fixture,
+        token_fixture,
+    ):
+        logits, tokens = logits_fixture(), token_fixture()
+        token_generator = TokenGenerator(
+            logits=logits,
+            tokens=(tokens + tokens),
+        )
+        new_token = token_generator.generate(logits=logits)
+        assert new_token == token_generator.tokens[-1]
+        assert len(token_generator.tokens) == len(tokens + tokens) + 1

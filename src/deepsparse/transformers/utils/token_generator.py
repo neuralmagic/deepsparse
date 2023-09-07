@@ -85,27 +85,36 @@ class TokenGenerator:
         return logits
 
     def apply_presence_penalty(self, logits: numpy.ndarray):
-        logits -= self.presence_penalty * (self.frequency_penalty > 0)
+        logits -= self.presence_penalty * (self.token_frequencies > 0)
         return logits
 
     # from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
     def apply_top_k(self, logits: numpy.ndarray, filter_value=-float("Inf")):
-        indices_to_remove = (
-            logits
-            < numpy.partition(logits, -self.top_k, axis=1)[:, -self.top_k][:, None]
-        )
-        logits[indices_to_remove] = filter_value
-        return logits
+        logits_shape = logits.shape
+        logits = logits.reshape(logits.shape[-1])
+        top_k_indices = numpy.argpartition(logits, -self.top_k)[-self.top_k :]
+        logits[~numpy.isin(numpy.arange(len(logits)), top_k_indices)] = filter_value
+
+        return logits.reshape(logits_shape)
 
     # from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
-    def apply_top_p(self, logits: numpy.ndarray, filter_value=-float("Inf")):
+    def apply_top_p(
+        self, logits: numpy.ndarray, filter_value=-float("Inf"), min_tokens_to_keep=1
+    ):
+        logits_shape = logits.shape
+        logits = logits.reshape(logits.shape[-1])
+
         sorted_indices = numpy.argsort(logits)
         sorted_logits = logits[sorted_indices]
-        cumulative_probs = numpy_softmax(sorted_logits)
-        sorted_indices_to_remove = cumulative_probs <= (1 - self.top_p)
+        logit_cumulative_probs = numpy.cumsum(numpy_softmax(sorted_logits))
 
-        indices_to_remove = sorted_indices_to_remove.scatter(
-            1, sorted_indices, sorted_indices_to_remove
-        )
-        logits = numpy.where(indices_to_remove, filter_value, logits)
-        return logits
+        # Remove tokens with cumulative top_p above the threshold (token with 0 are kept)
+        sorted_indices_to_remove = logit_cumulative_probs > self.top_p
+        # Keep at least min_tokens_to_keep
+        sorted_indices_to_remove[..., -min_tokens_to_keep:] = 0
+
+        # scatter sorted tensors to original indexing
+        indices_to_remove = sorted_indices[sorted_indices_to_remove]
+        logits[indices_to_remove] = filter_value
+
+        return logits.reshape(logits_shape)
