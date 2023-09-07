@@ -93,7 +93,6 @@ class TestTextGenerationPipeline:
             model_path=model_stub,
             sequence_length=32,
             prompt_sequence_length=4,
-            max_generated_tokens=self.max_generated_tokens,
             internal_kv_cache=self.internal_kv_cache,
         )
         short_prompt = "this"
@@ -126,7 +125,9 @@ class TestTextGenerationPipeline:
         # test model output against sources of truth
         pipeline, model_name, _, short_prompt, long_prompt = setup
 
-        output_sequences = pipeline(sequences=[short_prompt, long_prompt])
+        output_sequences = pipeline(
+            sequences=[short_prompt, long_prompt], max_tokens=self.max_generated_tokens
+        )
 
         # test against huggingface model
         output_hugging_face = self._get_output_huggingface(
@@ -134,6 +135,16 @@ class TestTextGenerationPipeline:
         )
         assert short_prompt + output_sequences.sequences[0] == output_hugging_face[0]
         assert long_prompt + output_sequences.sequences[1] == output_hugging_face[1]
+
+    def test_num_generated_predictions(self, setup):
+        pipeline = setup[0]
+        short_prompt = setup[3]
+
+        output_sequences = pipeline(
+            sequences=[short_prompt], num_generated_predictions=2
+        )
+
+        assert len(output_sequences.sequences) == 2
 
     def test_model_output_cache(self, setup):
         pipeline, model_name, _, short_prompt, long_prompt = setup
@@ -158,6 +169,7 @@ class TestTextGenerationPipeline:
             "sequences": "def fib(a, b, accumulator=0)",
             "callback": dummy_callback,
             "return_logits": True,
+            "max_tokens": self.max_generated_tokens,
         }
 
         outs = pipeline(**inputs)
@@ -167,7 +179,7 @@ class TestTextGenerationPipeline:
         # make sure that the cache state after running a prompt
         # is correct
 
-        pipeline(sequences=prompt)
+        pipeline(sequences=prompt, max_tokens=self.max_generated_tokens)
         cache_state_dict = pipeline.engine.kv_cache.cached_inputs
         cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
 

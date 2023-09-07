@@ -385,6 +385,8 @@ class TextGenerationPipeline(TransformersPipeline):
         # times the prompt was given as an input. Also, update the engine so that
         # deterministic is set to False.
         if inputs.num_generated_predictions > 1:
+            if isinstance(inputs.sequences, str):
+                inputs.sequences = [inputs.sequences]
             counter = Counter(inputs.sequences)
             repeated_seq = []
             for seq in inputs.sequences:
