@@ -793,7 +793,10 @@ class TextGenerationPipeline(TransformersPipeline):
         :param session_id: the session id of the session to synchronize
         """
         engine_session = self.engine.kv_cache_storage.get(session_id)
-        multitoken_session = self.multitoken_engine.kv_cache_storage.get(session_id)
+        if self.multitoken_engine:
+            multitoken_session = self.multitoken_engine.kv_cache_storage.get(session_id)
+        else:
+            return
 
         if engine_session is None and multitoken_session:
             self.engine.transfer_cache_session(multitoken_session)

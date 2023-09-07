@@ -152,7 +152,7 @@ class TestTextGenerationPipeline:
         output = pipeline(
             sequences=self.prompt, return_logits=True, include_prompt_logits=True
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -184,7 +184,7 @@ class TestTextGenerationPipeline:
         output = pipeline(
             sequences=self.prompt, return_logits=True, include_prompt_logits=True
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -216,7 +216,7 @@ class TestTextGenerationPipeline:
         output = pipeline(
             sequences=self.prompt, return_logits=True, include_prompt_logits=True
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
@@ -250,7 +250,7 @@ class TestTextGenerationPipeline:
         output = pipeline(
             sequences=self.prompt, return_logits=True, include_prompt_logits=True
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -279,7 +279,7 @@ class TestTextGenerationPipeline:
         output = pipeline(
             sequences=self.prompt, return_logits=True, include_prompt_logits=True
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -308,7 +308,7 @@ class TestTextGenerationPipeline:
         output = pipeline(
             sequences=self.prompt, return_logits=True, include_prompt_logits=True
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
@@ -405,3 +405,13 @@ class TestTextGenerationPipeline:
             # as target_cache only pertains to prompt cache entries, we need to
             # compare only the prompt cache entries in x with y
             assert numpy.allclose(x[:, :, -start_index:-end_index, :], y, atol=1e-4)
+
+    @staticmethod
+    def _get_last_cache_session(pipeline: Pipeline) -> "DecoderKVCache": # noqa F821
+        memory = pipeline.engine.kv_cache_storage._memory
+        assert len(memory) == 1
+        # access the only element in the memory dict
+        session = list(memory.values())[0]
+        # remove the session from the memory dict to always have
+        pipeline.engine.kv_cache_storage.pop(session.id)
+        return session

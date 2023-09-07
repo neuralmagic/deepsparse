@@ -94,3 +94,16 @@ class SessionStorageKVCache:
         if session is None:
             _LOGGER.debug(f"No cache session found for session id: {session_id}")
         return session
+
+    def pop(self, session_id: str):
+        """
+        Remove the session from the storage.
+
+        :param session_id: The identifier of the cache session.
+        """
+        popped_element = self._memory.pop(session_id, None)
+        if popped_element is None:
+            raise ValueError(
+                f"Attempting to remove session: {session_id} from the storage. "
+                f"However, the session does not exist in the storage."
+            )
