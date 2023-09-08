@@ -105,7 +105,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
-        use_deepsparse_cache=True,
     )
 
     # Instantiate perplexity metric
