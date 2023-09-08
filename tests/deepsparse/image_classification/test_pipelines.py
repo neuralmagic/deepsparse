@@ -65,7 +65,7 @@ def test_image_classification_pipeline_preprocessing(
         data_originals_path = zoo_model.sample_inputs.path
     for idx, sample in enumerate(load_numpy_list(data_originals_path)):
         image_raw = list(sample.values())[0].astype(numpy.uint8)
-        image_raw = numpy.transpose(image_raw, axes=[1,2,0])
+        image_raw = numpy.transpose(image_raw, axes=[1, 2, 0])
         image_raw = Image.fromarray(image_raw)
 
         preprocessed_image_pipeline = ic_pipeline.process_inputs(
