@@ -78,7 +78,7 @@ from datasets import load_dataset, load_metric  # isort: skip
 
 def perplexity_eval(args, dataset_name="openai_humaneval"):
 
-    if dataset_name in ["wikitext", "c4"]:
+    if dataset_name in ["wikitext2", "c4"]:
         if args.kwargs is None:
             kwargs = {}
         else:
@@ -524,7 +524,7 @@ def _split_train_val(train_dataset, val_ratio, seed=42):
 
 
 def _process_concatenated_datasets(dataset_name, model_path, max_sequence_length, kwargs):
-    if dataset_name == "wikitext":
+    if dataset_name == "wikitext2":
         eos = kwargs.get("eos", "\n\n")
         bos = kwargs.get("bos", "")
 
@@ -609,9 +609,9 @@ SUPPORTED_DATASETS = {
         args,
         dataset_name="openai_humaneval",
     ),
-    "wikitext": lambda args: perplexity_eval(
+    "wikitext2": lambda args: perplexity_eval(
         args,
-        dataset_name="wikitext",
+        dataset_name="wikitext2",
     ),
     "c4": lambda args: perplexity_eval(
         args,
