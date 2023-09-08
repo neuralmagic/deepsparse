@@ -21,9 +21,9 @@ from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import generate_session_id
-from deepsparse.utils.data import numpy_softmax
 from deepsparse.transformers.utils.timings import TextGenerationTimings
 from deepsparse.utils import TimerManager
+from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     CACHE_OUTPUT_PREFIX,
