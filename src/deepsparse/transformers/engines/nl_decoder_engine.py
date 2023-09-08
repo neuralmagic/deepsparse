@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import warnings
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy
@@ -166,15 +165,12 @@ class NLDecoderEngine:
         """
 
         if self.internal_cache_active:
-            if val_inp:
-                warnings.warn(
-                    "Internal kv cache is active. "
-                    "To maximize inference efficiency, "
-                    "the engine inputs pertaining to "
-                    "the kv cache values are empty arrays. "
-                    "This is why, even though val_inp=True,"
-                    "the inputs will not be validated"
-                )
+            # conventionally, before dispatching
+            # inputs to the engine, we validate them
+            # if val_inp=True. However, in this case
+            # we want to pass the empty kv cache inputs
+            # (batch_size=0) to the engine. Therefore,
+            # we skip the validation
             return self.engine._eng_net.execute_list_out(
                 inputs, self.kv_cache.engine_internal_cache
             )
