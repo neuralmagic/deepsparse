@@ -38,52 +38,45 @@ def test_benchmark_help():
             "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none",
             ["-shapes", "[1,128],[1,128],[1,128]"],
         ),
-        # (
-        #     "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-        #     "pruned-aggressive_98",
-        #     ["-s", "sync"],
-        # ),
-        # (
-        #     "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-        #     "pruned_quant-aggressive_95",
-        #     ["-s", "async", "-nstreams", "4"],
-        # ),
-        # (
-        #     "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        #     "bookcorpus_wikitext/base-none",
-        #     ["-t", "20"],
-        # ),
-        # pytest.param(
-        #     "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        #     "bookcorpus_wikitext/12layer_pruned90-none",
-        #     [],
-        #     marks=pytest.mark.smoke,
-        # ),
         (
-            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/base-none",
+            "zoo:bert-base_cased-squad_wikipedia_bookcorpus-pruned90",
+            ["-s", "sync"],
+        ),
+        (
+            "zoo:bert-base_cased-squad_wikipedia_bookcorpus-pruned90",
+            ["-s", "async", "-nstreams", "4"],
+        ),
+        (
+            "zoo:bert-base-wikipedia_bookcorpus-pruned90",
+            ["-t", "20"],
+        ),
+        pytest.param(
+            "zoo:bert-base-wikipedia_bookcorpus-pruned90",
+            [],
+            marks=pytest.mark.smoke,
+        ),
+        (
+            "zoo:mobilenet_v1-1.0-imagenet-pruned.4block_quantized",
             ["-x", "results.json"],
         ),
-        # (
-        #     "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-        #     "pruned-moderate",
-        #     ["-ncores", "4"],
-        # ),
-        # (
-        #     "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-        #     "pruned_quant-moderate",
-        #     ["-pin", "none"],
-        # ),
         (
-            "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none",
+            "zoo:mobilenet_v1-1.0-imagenet-pruned.4block_quantized",
+            ["-ncores", "4"],
+        ),
+        (
+            "zoo:mobilenet_v1-1.0-imagenet-pruned.4block_quantized",
+            ["-pin", "none"],
+        ),
+        (
+            "zoo:yolo_v3-spp-coco-pruned",
             ["-pin", "numa", "-shapes", "[1,3,640,640]"],
         ),
         (
-            "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned-aggressive_96",
+            "zoo:yolo_v3-spp-coco-pruned",
             ["-q"],
         ),
         (
-            "zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/"
-            "pruned_quant-aggressive_94",
+            "zoo:yolo_v3-spp-coco-pruned",
             ["-b", "64"],
         ),
     ],
@@ -113,10 +106,9 @@ def test_benchmark(
 @pytest.mark.parametrize(
     ("model_stub"),
     [
-        # (
-        #     "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        #     "bookcorpus_wikitext/12layer_pruned90-none"
-        # ),
+        (
+            "zoo:nlp/masked_language_modeling/bert-large/pytorch/huggingface/wikipedia_bookcorpus/pruned90-none"
+        ),
     ],
 )
 def test_benchmark_local(model_stub: str):
