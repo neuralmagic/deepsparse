@@ -132,7 +132,6 @@ class TransformersPipeline(Pipeline, Bucketable):
         """
         onnx_path = get_onnx_path(self.model_path)
 
-        print(self.config)
         if not self.config or not self.tokenizer:
             config_found, tokenizer_found = get_hugging_face_configs(self.model_path)
             if config_found:
@@ -140,14 +139,12 @@ class TransformersPipeline(Pipeline, Bucketable):
             if tokenizer_found:
                 self.tokenizer = tokenizer_found
 
-        print(self.config)
         if isinstance(self.config, dict):
             local_config_path = os.path.join(self.model_path, "config.json")
             with open(local_config_path, "w") as f:
                 json.dump(self.config, f)
             self.config = local_config_path
 
-        print(self.config)
         if isinstance(self.config, (str, Path)):
             if str(self.config).endswith(".json"):
                 self.config_path = self.config
