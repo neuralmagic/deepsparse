@@ -20,11 +20,11 @@ import onnx
 import onnxruntime
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from deepsparse.transformers.utils.helpers import (
-    create_causal_mask,
+from deepsparse.transformers.utils.helpers import create_causal_mask
+from deepsparse.utils.onnx import (
+    CACHE_INPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
 )
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX
 from sparsezoo import Model
 
 
