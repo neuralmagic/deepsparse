@@ -59,12 +59,13 @@ def test_image_classification_pipeline_preprocessing(
     ic_pipeline = Pipeline.create("image_classification", model_path=zoo_stub)
     zoo_model = Model(zoo_stub)
     data_originals_path = None
-    if zoo_model.sample_originals is not None:
-        if not zoo_model.sample_originals.files:
-            zoo_model.sample_originals.unzip()
-        data_originals_path = zoo_model.sample_originals.path
+    if zoo_model.sample_inputs is not None:
+        if not zoo_model.sample_inputs.files:
+            zoo_model.sample_inputs.unzip()
+        data_originals_path = zoo_model.sample_inputs.path
     for idx, sample in enumerate(load_numpy_list(data_originals_path)):
-        image_raw = list(sample.values())[0]
+        image_raw = list(sample.values())[0].astype(numpy.uint8)
+        image_raw = numpy.transpose(image_raw, axes=[1,2,0])
         image_raw = Image.fromarray(image_raw)
 
         preprocessed_image_pipeline = ic_pipeline.process_inputs(
