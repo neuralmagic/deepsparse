@@ -105,7 +105,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
-        trust_remote_code=args.trust_remote_code,
         use_deepsparse_cache=True,
     )
 
@@ -752,12 +751,6 @@ def parse_args():
         help="Batch size with which to evaluate model. Default is 1",
         type=int,
         default=1,
-    )
-    parser.add_argument(
-        "--trust-remote-code",
-        help="Whether to allow for remote code execution in transformers.",
-        type=bool,
-        default=False,
     )
     parser.add_argument(
         "--kwargs",
