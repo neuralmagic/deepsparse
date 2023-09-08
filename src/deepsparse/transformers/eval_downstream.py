@@ -106,7 +106,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         sequence_length=args.max_sequence_length,
         max_generated_tokens=1,
         trust_remote_code=args.trust_remote_code,
-        batch_size=args.batch_size,
         use_deepsparse_cache=True,
     )
 
