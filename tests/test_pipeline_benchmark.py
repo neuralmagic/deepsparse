@@ -49,7 +49,7 @@ from tests.helpers import run_command
                 "-w",
                 "1",
             ],
-        ),
+        ), # need to land PR
         (
             "image_classification",
             "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
@@ -78,7 +78,7 @@ from tests.helpers import run_command
                 "-w",
                 "1",
             ],
-        ),
+        ), # needs to land pr
     ],
 )
 def test_pipeline_benchmark(
@@ -143,9 +143,9 @@ def test_generate_random_question_data():
     ("task_name", "input_schema"),
     [
         ("yolo", SchemaType.IMAGE),
-        ("text_classification", SchemaType.TEXT_SEQ),
-        ("transformers_embedding_extraction", SchemaType.TEXT_INPUT),
-        ("question_answering", SchemaType.QUESTION),
+        # ("text_classification", SchemaType.TEXT_SEQ), # Deprecated
+        # ("transformers_embedding_extraction", SchemaType.TEXT_INPUT), # deprecated
+        ("question_answering", SchemaType.QUESTION), # deprecated
     ],
 )
 def test_get_input_schema_type(task_name, input_schema):

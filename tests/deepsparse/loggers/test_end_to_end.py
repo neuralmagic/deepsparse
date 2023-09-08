@@ -42,11 +42,12 @@ LOGGER = logger_from_config(
 
 @pytest.mark.parametrize(
     "config",
-    [
-        YAML_CONFIG.format(possible_pipeline_name=""),
-        YAML_CONFIG.format(possible_pipeline_name="text_classification/"),
-        LOGGER,
-    ],
+    # deprecated nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni
+    # [
+    #     YAML_CONFIG.format(possible_pipeline_name=""),
+    #     YAML_CONFIG.format(possible_pipeline_name="text_classification/"),
+    #     LOGGER,
+    # ],
 )
 @mock_engine(rng_seed=0)
 def test_end_to_end(mock_engine, config):

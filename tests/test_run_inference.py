@@ -41,8 +41,8 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
         "--task",
         "ner",
         "--model-path",
-        "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/"
-        "12layer_pruned80_quant-none-vnni",
+        # "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/" # deprecated
+        # "12layer_pruned80_quant-none-vnni",
         "--data",
         "tests/test_data/bert-ner-test-input.json",
         "--output-file",
@@ -73,15 +73,15 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     [
         pytest.param(
             "csv",
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-            "pruned_6layers-aggressive_98",
+            # "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
+            # "pruned_6layers-aggressive_98", # deprecated
             True,
             marks=pytest.mark.smoke,
         ),
         (
             "json",
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-            "pruned_6layers-aggressive_98",
+            # "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
+            # "pruned_6layers-aggressive_98", # deprecated
             False,
         ),
     ],
@@ -129,37 +129,38 @@ def test_run_inference_qa(
 @pytest.mark.parametrize(
     ("input_format", "model_path", "local_model", "additional_opts"),
     [
-        (
-            "csv",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
-            False,
-            ["--batch-size", "1", "--engine-type", "onnxruntime"],
-        ),
-        (
-            "txt",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
-            True,
-            ["--num-cores", "4", "--engine-type", "onnxruntime"],
-        ),
-        pytest.param(
-            "csv",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
-            True,
-            [],
-            marks=pytest.mark.smoke,
-        ),
-        (
-            "json",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
-            True,
-            ["--batch-size", "5", "--engine-type", "deepsparse"],
-        ),
-        (
-            "txt",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
-            True,
-            ["--batch-size", "10", "--num-cores", "4"],
-        ),
+        # DEPRECATED
+        # (
+        #     "csv",
+        #     "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+        #     False,
+        #     ["--batch-size", "1", "--engine-type", "onnxruntime"],
+        # ),
+        # (
+        #     "txt",
+        #     "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+        #     True,
+        #     ["--num-cores", "4", "--engine-type", "onnxruntime"],
+        # ),
+        # pytest.param(
+        #     "csv",
+        #     "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+        #     True,
+        #     [],
+        #     marks=pytest.mark.smoke,
+        # ),
+        # (
+        #     "json",
+        #     "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+        #     True,
+        #     ["--batch-size", "5", "--engine-type", "deepsparse"],
+        # ),
+        # (
+        #     "txt",
+        #     "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+        #     True,
+        #     ["--batch-size", "10", "--num-cores", "4"],
+        # ),
     ],
 )
 def test_run_inference_sst(
