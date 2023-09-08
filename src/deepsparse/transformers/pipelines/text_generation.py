@@ -117,19 +117,27 @@ class TextGenerationInput(BaseModel):
         " Default is `None`.",
     )
     top_p: Optional[float] = Field(
-        default=0,
-        description="Select the tokens with cumulative probability sum"
-        " higher than the given top_p",
+        default=0.0,
+        description="Used for filtering generated tokens. Keep the"
+        " tokens where its cumulative probability is >= top_p"
+        " Default set to 0.0",
     )
     top_k: Optional[int] = Field(
-        default=0.0,
-        description="Select the tokens with top_k values",
+        default=0,
+        description="Used for filtering generated tokens. Keep"
+        " top_k generated tokens. Default set to 0",
     )
     presence_penalty: Optional[float] = Field(
         default=0.0,
+        description="Penalty applied for generating new token. Any existing"
+        " token results in the subtraction of its corresponding logit value."
+        " Default set to 0.0",
     )
     frquency_peanlty: Optional[float] = Field(
         default=0.0,
+        description="Penalty applied for generating new token. Existing"
+        " token frequencies summed to subtraction the logit of its"
+        " corresponding logit value. Default set to 0.0.",
     )
 
 
@@ -429,7 +437,12 @@ class TextGenerationPipeline(TransformersPipeline):
             include_prompt_logits=inputs.include_prompt_logits,
             callback=inputs.callback,
             stop=inputs.stop,
+            top_p=inputs.top_p,
+            top_k=inputs.top_k,
+            presence_penalty=inputs.presence_penalty,
+            frequency_penalty=inputs.presence_penalty,
         )
+
         return engine_input, postprocessing_kwargs
 
     def process_engine_outputs(
@@ -450,7 +463,9 @@ class TextGenerationPipeline(TransformersPipeline):
         return TextGenerationOutput(sequences=sequences, logits=logits)
 
     def engine_forward(
-        self, engine_inputs: List[numpy.ndarray], context: Dict
+        self,
+        engine_inputs: List[numpy.ndarray],
+        context: Dict,
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
         Run the forward pass on the engine.
@@ -471,9 +486,13 @@ class TextGenerationPipeline(TransformersPipeline):
 
             if not self.cache_support_enabled:
                 prompt_logits = self.multitoken_engine(engine_inputs)
-                token_generator = TokenGenerator(prompt_logits[0])
+                token_generator = TokenGenerator(
+                    logits_shape=prompt_logits[-1].shape[-1],
+                    deterministic=self.deterministic,
+                    **context,
+                )
                 for prompt_logit in prompt_logits:
-                    token = token_generator.generate(prompt_logit)
+                    token_generator.generate(prompt_logit)
                 return numpy.array([self.tokens]), prompt_logits
 
             else:
@@ -482,10 +501,14 @@ class TextGenerationPipeline(TransformersPipeline):
                     prompt_logits = self.prompt_inference(engine_inputs)
 
             tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
-            token_generator = TokenGenerator(logits=prompt_logits[-1], tokens=tokens)
-            token_generator.generate(prompt_logits[-1])
+            token_generator = TokenGenerator(
+                logits_shape=prompt_logits[-1].shape[-1],
+                tokens=tokens,
+                deterministic=self.deterministic,
+                **context,
+            )
+            token_generator.generate(prompt_logits[-1][0, -1, :])
 
-            tokens = []
             if streamer is not None:
                 streamer.put(numpy.array(token_generator.tokens))
 
@@ -514,7 +537,6 @@ class TextGenerationPipeline(TransformersPipeline):
                             tokens=token_generator.tokens
                         )
                         token = token_generator.generate(logits=logits[0, -1, :])
-
                     generated_tokens.append(token)
                     generated_logits.append(logits)
 

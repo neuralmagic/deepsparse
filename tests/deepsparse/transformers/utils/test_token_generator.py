@@ -44,7 +44,9 @@ class TestTokenGenerator:
         logits, tokens = logits_fixture(), token_fixture(
             token_max_thresh=token_max_thresh
         )
-        token_generator = TokenGenerator(logits=logits, tokens=tokens)
+        token_generator = TokenGenerator(
+            logits_shape=logits[-1].shape[-1], tokens=tokens.copy()
+        )
 
         assert token_generator.tokens == tokens
 
@@ -55,9 +57,10 @@ class TestTokenGenerator:
         for key, value in freq.items():
             assert token_generator.token_frequencies[key] == value
 
-        # test TokenGenerator.update_frequencies
-        new_token = numpy.random.randint(0, token_max_thresh)
-        token_generator.update_frequencies(new_token)
+        # test TokenGenerator._update_frequencies
+        new_token = token_fixture(shape=1)[0]
+        token_generator.tokens.append(new_token)
+        token_generator._update_frequencies(new_token)
 
         assert token_generator.tokens == tokens + [new_token]
         freq[new_token] += 1
@@ -72,7 +75,9 @@ class TestTokenGenerator:
         logits, tokens = logits_fixture(), token_fixture()
         frequency_penalty = 1.0
         token_generator = TokenGenerator(
-            logits=logits, tokens=(tokens + tokens), frequency_penalty=frequency_penalty
+            logits_shape=logits[-1].shape[-1],
+            tokens=(tokens + tokens),
+            frequency_penalty=frequency_penalty,
         )
 
         test_logits = token_generator.token_frequencies
@@ -89,7 +94,9 @@ class TestTokenGenerator:
         logits, tokens = logits_fixture(), token_fixture()
         presence_penalty = 1.0
         token_generator = TokenGenerator(
-            logits=logits, tokens=(tokens + tokens), presence_penalty=presence_penalty
+            logits_shape=logits[-1].shape[-1],
+            tokens=(tokens + tokens),
+            presence_penalty=presence_penalty,
         )
         test_logits = token_generator.token_frequencies
         # numpy arrays by default are pass by ref
@@ -104,7 +111,7 @@ class TestTokenGenerator:
         logits = numpy.linspace(0, 1, 11).reshape((1, 1, 11))
 
         token_generator = TokenGenerator(
-            logits=logits,
+            logits_shape=logits[-1].shape[-1],
             top_k=3,
         )
 
@@ -127,7 +134,7 @@ class TestTokenGenerator:
         logits = 0.1 * numpy.ones(10).reshape((1, 1, 10))
 
         token_generator = TokenGenerator(
-            logits=logits,
+            logits_shape=logits[-1].shape[-1],
             top_p=0.89,
         )
 
@@ -149,9 +156,10 @@ class TestTokenGenerator:
     ):
         logits, tokens = logits_fixture(), token_fixture()
         token_generator = TokenGenerator(
-            logits=logits,
+            logits_shape=logits[-1].shape[-1],
             tokens=(tokens + tokens),
+            deterministic=False,
         )
-        new_token = token_generator.generate(logits=logits)
+        new_token = token_generator.generate(logits=logits[0, -1, :])
         assert new_token == token_generator.tokens[-1]
         assert len(token_generator.tokens) == len(tokens + tokens) + 1

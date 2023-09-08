@@ -20,9 +20,15 @@ from deepsparse.utils.data import numpy_softmax
 
 
 class TokenGenerator:
+    """
+    Responsible for generating tokens, and contains functions that
+    token generation depends on including different sampling and
+    filtering methods
+    """
+
     def __init__(
         self,
-        logits: numpy.ndarray,
+        logits_shape: int,
         tokens: List[int] = [],
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
@@ -32,25 +38,38 @@ class TokenGenerator:
         presence_penalty: float = 0.0,
         **kwargs,
     ):
-        self.token_frequencies = numpy.zeros(logits.shape[-1])
+        """
+        :param logits_shape: int representing the size/length of the logit
+         to be used. Note that generated token will have the upper bound of
+         this value
+        :param tokens: Any previously generated tokens. Used to keep frequncy counts
+         to be used for penalty calculations
+        :param deterministic: set to  True will always return the same output with the
+         same inputs
+        :param sampling_temperature: used to add randomness to the generated token
+        :param top_k: select top_k logit values
+        :param top_p: select the cumulative sum of the logits values outside of top_p
+        :param frequency_penalty: subtract its value and its token frequency count
+         to thelogit
+        :param presence_penalty: subtract any corresponding logit with existing tokens
+        """
+        self.token_frequencies = numpy.zeros(logits_shape)
 
         self.deterministic = deterministic
-        self.sampling_termperature = sampling_temperature
+        self.sampling_temperature = sampling_temperature
         self.top_k = top_k
         self.top_p = top_p
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
-        self.tokens = []
+        self.tokens = tokens
         for token in tokens:
-            self.update_frequencies(token)
-
-    def update_frequencies(self, token: numpy.ndarray):
-        self.tokens.append(token)
-        self.token_frequencies[token] += 1
+            self._update_frequencies(token)
 
     def generate(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
-        Samples a token from the logits using the sampling temperature.
+        Samples a token from the logits. If non-deterministic, logits that tokens
+        get generated from will be a function of sampling_temperature, top_k, top_p,
+        frequency_penalty and presence_penalty.
 
         :param logits: the logits from the model with shape (vocab_size,)
         :return: the sampled token
@@ -74,22 +93,37 @@ class TokenGenerator:
         if self.presence_penalty != 0.0:
             logits = self.apply_presence_penalty(logits)
 
-        probs = self.numpy_softmax(logits)
+        probs = numpy_softmax(logits)
         token = numpy.random.choice(len(probs), p=probs)
-        self.update_frequencies(token)
+
+        self.tokens.append(token)
+        self._update_frequencies(token)
 
         return token
 
-    def apply_frequency_penalty(self, logits: numpy.ndarray):
+    def apply_frequency_penalty(self, logits: numpy.ndarray) -> numpy.ndarray:
+        """Apply frequency_penalty based on the token frequency count"""
         logits -= self.frequency_penalty * self.token_frequencies
         return logits
 
-    def apply_presence_penalty(self, logits: numpy.ndarray):
+    def apply_presence_penalty(self, logits: numpy.ndarray) -> numpy.ndarray:
+        """
+        Apply prensence_penaly to any logits where there exists
+        a token
+        """
         logits -= self.presence_penalty * (self.token_frequencies > 0)
         return logits
 
-    # from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
-    def apply_top_k(self, logits: numpy.ndarray, filter_value=-float("Inf")):
+    # from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf31
+    def apply_top_k(
+        self, logits: numpy.ndarray, filter_value=-float("Inf")
+    ) -> numpy.ndarray:
+        """
+        Keep top_k logits based on its value. All other values
+        will be overwritten to filter_value
+
+        :param filter_value: value to overwrite non-top_k values
+        """
         logits_shape = logits.shape
         logits = logits.reshape(logits.shape[-1])
         top_k_indices = numpy.argpartition(logits, -self.top_k)[-self.top_k :]
@@ -99,8 +133,19 @@ class TokenGenerator:
 
     # from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
     def apply_top_p(
-        self, logits: numpy.ndarray, filter_value=-float("Inf"), min_tokens_to_keep=1
-    ):
+        self,
+        logits: numpy.ndarray,
+        filter_value=-float("Inf"),
+        min_tokens_to_keep: int = 1,
+    ) -> numpy.ndarray:
+        """
+        Keep any logits' cumulative sum <= top_p. non top_p logits will be
+        overwritten to filter_value
+
+        :param filter_value: value to overwrite non-top_p values
+        :param min_tokens_to_keep: number of logit values to keep to avoid
+         zero valued logits
+        """
         logits_shape = logits.shape
         logits = logits.reshape(logits.shape[-1])
 
@@ -108,7 +153,8 @@ class TokenGenerator:
         sorted_logits = logits[sorted_indices]
         logit_cumulative_probs = numpy.cumsum(numpy_softmax(sorted_logits))
 
-        # Remove tokens with cumulative top_p above the threshold (token with 0 are kept)
+        # Remove tokens with cumulative top_p above the threshold
+        # (token with 0 are kept)
         sorted_indices_to_remove = logit_cumulative_probs > self.top_p
         # Keep at least min_tokens_to_keep
         sorted_indices_to_remove[..., -min_tokens_to_keep:] = 0
@@ -118,3 +164,6 @@ class TokenGenerator:
         logits[indices_to_remove] = filter_value
 
         return logits.reshape(logits_shape)
+
+    def _update_frequencies(self, token: numpy.ndarray):
+        self.token_frequencies[token] += 1

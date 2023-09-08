@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy
 from transformers import AutoTokenizer
@@ -176,7 +176,7 @@ class NLDecoderEngine:
         self,
         inp: List[numpy.ndarray],
         val_inp: bool = True,
-    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    ) -> numpy.ndarray:
         """
         The main entry point for running the engine.
 
@@ -192,7 +192,6 @@ class NLDecoderEngine:
             inp = self.add_kv_cache_to_input(inp)
 
         out = self.run(inp, val_inp)
-
         if self.kv_cache:
             logits, *kv_cache_state = out
             self.update_kv_cache(
