@@ -117,7 +117,7 @@ def get_onnx_path_and_configs(
         )
         tokenizer_path = _get_file_parent(
             zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
-        )
+        ) if zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME) is not None else None
         if tokenizer_path is None:
             warnings.warn(
                 "The file tokenizer.json has not been found. "
