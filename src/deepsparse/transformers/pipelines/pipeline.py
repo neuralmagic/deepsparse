@@ -70,10 +70,6 @@ class TransformersPipeline(Pipeline, Bucketable):
         If a list of lengths is provided, then for each length, a model and
         tokenizer will be compiled capable of handling that sequence length
         (also known as a bucket). Default is 128
-    :param trust_remote_code: if True, will trust remote code. This option
-        should only be set to `True` for repositories you trust and in which
-        you have read the code, as it will execute possibly unsafe code
-        on your local machine. Default is False
     :param config: hugging face transformers model config. Can be a path to the config,
         a dictionary with the config values, a transformers.PretrainedConfig, or None.
         If a directory is provided, it is assumed that the file is named config.json.
@@ -89,14 +85,12 @@ class TransformersPipeline(Pipeline, Bucketable):
         self,
         *,
         sequence_length: Union[int, List[int]] = 128,
-        trust_remote_code: bool = False,
         config: Union[str, Path, Dict, transformers.PretrainedConfig] = None,
         tokenizer: Union[str, Path, transformers.PreTrainedTokenizerBase] = None,
         **kwargs,
     ):
 
         self._sequence_length = sequence_length
-        self._trust_remote_code = trust_remote_code
 
         self.config = config
         self.tokenizer = tokenizer
