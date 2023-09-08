@@ -18,7 +18,8 @@ import onnx
 
 import pytest
 from deepsparse.transformers.helpers import (
-    get_onnx_path_and_configs,
+    get_hugging_face_configs,
+    get_onnx_path,
     get_transformer_layer_init_names,
     truncate_transformer_onnx_model,
 )
@@ -35,7 +36,8 @@ from sparsezoo import Model
     ],
 )
 def test_get_onnx_path_and_configs_from_stub(stub):
-    onnx_path, config_dir, tokenizer_dir = get_onnx_path_and_configs(stub)
+    onnx_path = get_onnx_path(stub)
+    config_dir, tokenizer_dir = get_hugging_face_configs(stub)
 
     assert onnx_path.endswith("model.onnx")
     assert os.path.exists(onnx_path)
