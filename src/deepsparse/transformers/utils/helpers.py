@@ -13,6 +13,7 @@
 # limitations under the License.
 import logging
 import uuid
+from collections import Counter
 from typing import List, Union
 
 import numpy
@@ -22,6 +23,7 @@ __all__ = [
     "generate_session_id",
     "pad_to_fixed_length",
     "create_causal_mask",
+    "repeat_inputs",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,6 +36,29 @@ def generate_session_id() -> str:
     """
     session_id = str(uuid.uuid4())
     return session_id
+
+
+def repeat_inputs(
+    input_sequences: List[str], num_generated_predictions: int
+) -> List[str]:
+    """
+    :param input_sequences: List of input sequences to repeat
+    :param num_generated_predictions: number of times to repeat each sequence
+
+    :return: a list of input sequences, where sequences have been repeated
+        num_generated_predictions times if the sequence appears in input_sequences just
+        once. If the sequence appears multiple times in input_sequences, the
+        num_generated_predictions for the sequence is ignored.
+    """
+    counter = Counter(input_sequences)
+    repeated_seq = []
+
+    for seq in input_sequences:
+        if counter[seq] == 1:
+            repeated_seq.extend(numpy.repeat([seq], num_generated_predictions))
+        else:
+            repeated_seq.append(seq)
+    return repeated_seq
 
 
 def pad_to_fixed_length(

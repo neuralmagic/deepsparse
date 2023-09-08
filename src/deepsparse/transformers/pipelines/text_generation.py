@@ -15,7 +15,6 @@
 import logging
 import os
 import warnings
-from collections import Counter
 from typing import (
     Any,
     Callable,
@@ -41,6 +40,7 @@ from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     pad_to_fixed_length,
+    repeat_inputs,
 )
 from deepsparse.transformers.utils.timings import TextGenerationTimings
 from deepsparse.utils.onnx import default_cached_outputs
@@ -378,7 +378,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # If the num_generated_predictions > 1, check how many times each prompt given
         # as an input was repeated. If just once, the number of generated predictions
         # for that particular prompt is equal to num_generated_predictions. This is done
-        # by repeating the prompt num_generated_predictions times If that
+        # by repeating the prompt num_generated_predictions times. If that
         # prompt was given as an input multiple times, ignore the value of
         # num_generated_predictions and produce n predictions, where n is the number of
         # times the prompt was given as an input. Also, update the engine so that
@@ -386,17 +386,9 @@ class TextGenerationPipeline(TransformersPipeline):
         if inputs.num_generated_predictions > 1:
             if isinstance(inputs.sequences, str):
                 inputs.sequences = [inputs.sequences]
-            counter = Counter(inputs.sequences)
-            repeated_seq = []
-            for seq in inputs.sequences:
-                if counter[seq] == 1:
-                    repeated_seq.extend(
-                        numpy.repeat([seq], inputs.num_generated_predictions)
-                    )
-                else:
-                    repeated_seq.append(seq)
-
-            inputs.sequences = repeated_seq
+            inputs.sequences = repeat_inputs(
+                inputs.sequences, inputs.num_generated_predictions
+            )
             if self.engine:
                 self.engine.deterministic = False
             if self.multitoken_engine:
