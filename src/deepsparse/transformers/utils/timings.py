@@ -13,7 +13,16 @@
 # limitations under the License.
 
 
-# flake8: noqa
-from .decoder_kv_cache import *
-from .helpers import *
-from .timings import *
+from dataclasses import dataclass
+
+
+__all__ = ["TextGenerationTimings"]
+
+
+@dataclass(frozen=True)
+class TextGenerationTimings:
+    PROMPT_PREFILL: str = "engine_prompt_prefill"
+    PROMPT_PREFILL_SINGLE: str = "engine_prompt_prefill_single"
+    TOKEN_GENERATION: str = "engine_token_generation"
+    TOKEN_GENERATION_SINGLE: str = "engine_token_generation_single"
+    KV_CACHE_UPDATE: str = "kv_cache_update"
