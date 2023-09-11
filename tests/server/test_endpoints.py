@@ -165,9 +165,7 @@ class TestMockEndpoints:
 class TestActualModelEndpoints:
     @pytest.fixture(scope="class")
     def client(self):
-        stub = (
-            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized"
-        )
+        stub = "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized"
         server_config = ServerConfig(
             num_cores=1,
             num_workers=1,
