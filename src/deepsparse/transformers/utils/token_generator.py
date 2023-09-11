@@ -62,8 +62,8 @@ class TokenGenerator:
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
         self.tokens = tokens
-        for token in tokens:
-            self._update_frequencies(token)
+
+        self._initialize_token_frequencies()
 
     def generate(self, logits: numpy.ndarray) -> numpy.ndarray:
         """
@@ -167,3 +167,8 @@ class TokenGenerator:
 
     def _update_frequencies(self, token: numpy.ndarray):
         self.token_frequencies[token] += 1
+
+    def _initialize_token_frequencies(self):
+        unique_tokens, frequencies = numpy.unique(self.tokens, return_counts=True)
+        for token, frequnecies in zip(unique_tokens, frequencies):
+            self.token_frequencies[token] += frequnecies

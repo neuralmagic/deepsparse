@@ -133,7 +133,7 @@ class TextGenerationInput(BaseModel):
         " token results in the subtraction of its corresponding logit value."
         " Default set to 0.0",
     )
-    frquency_peanlty: Optional[float] = Field(
+    frequency_penalty: Optional[float] = Field(
         default=0.0,
         description="Penalty applied for generating new token. Existing"
         " token frequencies summed to subtraction the logit of its"
@@ -440,7 +440,7 @@ class TextGenerationPipeline(TransformersPipeline):
             top_p=inputs.top_p,
             top_k=inputs.top_k,
             presence_penalty=inputs.presence_penalty,
-            frequency_penalty=inputs.presence_penalty,
+            frequency_penalty=inputs.frequency_penalty,
         )
 
         return engine_input, postprocessing_kwargs
