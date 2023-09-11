@@ -58,7 +58,7 @@ def test_image_classification_pipeline_preprocessing(
     ic_pipeline = Pipeline.create("image_classification", model_path=zoo_stub)
     zoo_model = Model(zoo_stub)
     data_originals_path = None
-    # note: sample_originals replace with sample-inputs?
+
     if zoo_model.sample_originals is not None:
         if not zoo_model.sample_originals.files:
             zoo_model.sample_originals.unzip()
