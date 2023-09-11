@@ -68,9 +68,9 @@ def predownload_stub(stub: str, copy_framework_files: bool = False) -> Model:
     model_path = model.path
     if copy_framework_files:
         # required for `deepsparse.transformers.run_inference` on local model files
-        config_path = model.deployment.default.get_file("deployment/config.json").path
+        config_path = model.deployment.default.get_file("config.json").path
         tokenizer_config_path = model.deployment.default.get_file(
-            "deployment/tokenizer.json"
+            "okenizer.json"
         ).path
         shutil.copy(config_path, model_path)
         shutil.copy(tokenizer_config_path, model_path)
