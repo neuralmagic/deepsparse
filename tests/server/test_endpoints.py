@@ -20,7 +20,7 @@ from pydantic import BaseModel
 import pytest
 from deepsparse.loggers import MultiLogger
 from deepsparse.server.config import EndpointConfig, ServerConfig, SystemLoggingConfig
-from deepsparse.server.server import _add_pipeline_endpoint, _build_app
+from deepsparse.server.server import _add_inference_endpoints, _build_app
 from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
 from tests.utils import mock_engine
@@ -57,11 +57,11 @@ class TestStatusEndpoints:
         loaded = ServerConfig(**response.json())
         assert loaded == server_config
 
-    @pytest.mark.parametrize("route", ["/ping", "/health", "/healthcheck", "/status"])
+    @pytest.mark.parametrize("route", ["/v2/health/ready", "/v2/health/live"])
     def test_pings_exist(self, client, route):
         response = client.get(route)
         assert response.status_code == 200
-        assert response.json() is True
+        assert response.json()["status"] == "OK"
 
     def test_docs_exist(self, client):
         assert client.get("/docs").status_code == 200
@@ -97,39 +97,39 @@ class TestMockEndpoints:
             output_schema=int,
             logger=MultiLogger([]),
         )
-        _add_pipeline_endpoint(
+        _add_inference_endpoints(
             app,
             system_logging_config=SystemLoggingConfig(),
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=mock_pipeline,
         )
-        assert app.routes[-1].path == "/predict/parse_int"
+        assert app.routes[-1].path == "/predict/parse_int/infer"
         assert app.routes[-1].response_model is int
         assert app.routes[-1].endpoint.__annotations__ == {"request": StrSchema}
         assert app.routes[-1].methods == {"POST"}
 
         for v in ["1234", "5678"]:
-            response = client.post("/predict/parse_int", json=dict(value=v))
+            response = client.post("/predict/parse_int/infer", json=dict(value=v))
             assert response.status_code == 200
             assert response.json() == int(v)
 
     def test_add_model_endpoint_with_from_files(self, app):
-        _add_pipeline_endpoint(
+        _add_inference_endpoints(
             app,
             system_logging_config=Mock(),
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
         )
-        assert app.routes[-2].path == "/predict/parse_int"
+        assert app.routes[-2].path == "/predict/parse_int/infer"
         assert app.routes[-2].endpoint.__annotations__ == {"request": FromFilesSchema}
-        assert app.routes[-1].path == "/predict/parse_int/from_files"
+        assert app.routes[-1].path == "/predict/parse_int/infer/from_files"
         assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
         assert app.routes[-1].response_model is int
         assert app.routes[-1].methods == {"POST"}
 
     def test_sagemaker_only_adds_one_endpoint(self, app):
         num_routes = len(app.routes)
-        _add_pipeline_endpoint(
+        _add_inference_endpoints(
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
             system_logging_config=Mock(),
@@ -137,11 +137,11 @@ class TestMockEndpoints:
             integration="sagemaker",
         )
         assert len(app.routes) == num_routes + 1
-        assert app.routes[-1].path == "/invocations"
+        assert app.routes[-1].path == "/invocations/infer"
         assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
 
         num_routes = len(app.routes)
-        _add_pipeline_endpoint(
+        _add_inference_endpoints(
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
             system_logging_config=Mock(),
@@ -149,17 +149,23 @@ class TestMockEndpoints:
             integration="sagemaker",
         )
         assert len(app.routes) == num_routes + 1
-        assert app.routes[-1].path == "/invocations"
+        assert app.routes[-1].path == "/invocations/infer"
         assert app.routes[-1].endpoint.__annotations__ == {"request": StrSchema}
 
     def test_add_endpoint_with_no_route_specified(self, app):
-        _add_pipeline_endpoint(
+        _add_inference_endpoints(
             app,
-            endpoint_config=Mock(route=None),
+            endpoint_config=EndpointConfig(
+                route=None,
+                name="test_name",
+                task="text-classification",
+                model="default",
+            ),
             system_logging_config=Mock(),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
         )
-        assert app.routes[-1].path == "/predict"
+
+        assert app.routes[-1].path == "/v2/models/test_name/infer"
 
 
 class TestActualModelEndpoints:
@@ -194,11 +200,11 @@ class TestActualModelEndpoints:
 
     def test_static_batch_errors_on_wrong_batch_size(self, client):
         # this is okay because we can pad batches now
-        client.post("/predict/static-batch", json={"sequences": "today is great"})
+        client.post("/predict/static-batch/infer", json={"sequences": "today is great"})
 
     def test_static_batch_good_request(self, client):
         response = client.post(
-            "/predict/static-batch",
+            "/predict/static-batch/infer",
             json={"sequences": ["today is great", "today is terrible"]},
         )
         assert response.status_code == 200
@@ -215,7 +221,7 @@ class TestActualModelEndpoints:
         ],
     )
     def test_dynamic_batch_any(self, client, seqs):
-        response = client.post("/predict/dynamic-batch", json={"sequences": seqs})
+        response = client.post("/predict/dynamic-batch/infer", json={"sequences": seqs})
         assert response.status_code == 200
         output = response.json()
         assert len(output["labels"]) == len(seqs)
@@ -245,17 +251,23 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     # add /predict
     response = client.post(
         "/endpoints",
-        json=EndpointConfig(task="text-classification", model="default").dict(),
+        json=EndpointConfig(
+            task="text-classification", model="default", name="test_model"
+        ).dict(),
     )
+
     assert response.status_code == 200
-    response = client.post("/predict", json=dict(sequences="asdf"))
+
+    response = client.post("/v2/models/test_model/infer", json=dict(sequences="asdf"))
     assert response.status_code == 200
 
     # remove /predict
     response = client.delete(
         "/endpoints",
         json=EndpointConfig(
-            route="/predict", task="text-classification", model="default"
+            route="/v2/models/test_model/infer",
+            task="text-classification",
+            model="default",
         ).dict(),
     )
     assert response.status_code == 200

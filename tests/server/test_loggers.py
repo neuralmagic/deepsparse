@@ -38,6 +38,7 @@ logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
 stub = "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"  # noqa E501
 task = "text-classification"
 name = "endpoint_name"
+endpoint_path = f"/v2/models/{name}/infer"
 
 
 def _test_logger_contents(leaf_logger, expected_logs):
@@ -61,7 +62,7 @@ def test_default_logger():
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
     assert isinstance(fetch_leaf_logger(server_logger), PythonLogger)
 
 
@@ -84,7 +85,7 @@ def test_data_logging_from_predefined():
         app = _build_app(server_config)
     client = TestClient(app)
     client.post(
-        "/predict",
+        "/v2/models/text_classification/infer",
         json={
             "sequences": [["Fun for adults and children.", "Fun for only children."]]
         },
@@ -114,7 +115,7 @@ def test_logging_only_system_info():
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
     _test_logger_contents(
         fetch_leaf_logger(server_logger),
         {"prediction_latency": 8},
@@ -143,7 +144,7 @@ def test_regex_target_logging():
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
     _test_logger_contents(
         fetch_leaf_logger(server_logger),
         {"pipeline_inputs__identity": 2, "pipeline_outputs__identity": 2},
@@ -175,7 +176,7 @@ def test_multiple_targets_logging():
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
     _test_logger_contents(
         fetch_leaf_logger(server_logger),
         {
@@ -217,7 +218,7 @@ def test_function_metric_with_target_loggers():
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
 
     _test_logger_contents(
         server_logger.logger.loggers[1].logger.loggers[0],
@@ -242,7 +243,11 @@ def test_instantiate_prometheus(mock_engine, tmp_path):
     client = TestClient(
         _build_app(
             ServerConfig(
-                endpoints=[EndpointConfig(task="text_classification", model="default")],
+                endpoints=[
+                    EndpointConfig(
+                        task="text_classification", model="default", name="test_name"
+                    )
+                ],
                 loggers=dict(
                     prometheus={
                         "port": find_free_port(),
@@ -253,7 +258,7 @@ def test_instantiate_prometheus(mock_engine, tmp_path):
             )
         )
     )
-    r = client.post("/predict", json=dict(sequences="asdf"))
+    r = client.post("/v2/models/test_name/infer", json=dict(sequences="asdf"))
     assert r.status_code == 200
     shutil.rmtree(tmp_path.name, ignore_errors=True)
 
@@ -293,9 +298,9 @@ def test_endpoint_system_logging(mock_engine):
     ), mock_engine:
         app = _build_app(server_config)
     client = TestClient(app)
-    client.post("/predict_text_classification", json=dict(sequences="asdf"))
+    client.post("/predict_text_classification/infer", json=dict(sequences="asdf"))
     client.post(
-        "/predict_text_classification", json=dict(question="asdf", context="asdf")
+        "/predict_text_classification/infer", json=dict(question="asdf", context="asdf")
     )
     calls = server_logger.logger.loggers[0].logger.loggers[0].calls
 

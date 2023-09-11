@@ -33,6 +33,7 @@ logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
 stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"  # noqa E501
 task = "text-classification"
 name = "endpoint_name"
+endpoint_path = f"/v2/models/{name}/infer"
 
 
 def _test_successful_requests(calls, successful_request):
@@ -92,7 +93,7 @@ def test_log_request_details(
     ), mock_engine(rng_seed=0):
         app = _build_app(server_config)
     client = TestClient(app)
-    client.post("/predict", json=json_payload)
+    client.post(endpoint_path, json=json_payload)
 
     calls = server_logger.logger.loggers[0].logger.loggers[0].calls
 
