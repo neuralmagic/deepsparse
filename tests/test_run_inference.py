@@ -41,7 +41,7 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
         "--task",
         "ner",
         "--model-path",
-        "zoo:nlp/token_classification/bert-base_cased/pytorch/huggingface/conll2003/pruned90-none",
+        "zoo:bert-large-conll2003_wikipedia_bookcorpus-pruned80.4block_quantized",
         "--data",
         "tests/test_data/bert-ner-test-input.json",
         "--output-file",
@@ -59,7 +59,7 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     assert "fail" not in res.stdout.lower()
 
     # light validation of output file
-    expected = "red"
+    expected = "canadian"
     assert os.path.exists("output.json")
     with open("output.json") as f:
         data = json.load(f)
