@@ -20,60 +20,80 @@ import pytest
 from deepsparse import Pipeline
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from tests.deepsparse.transformers.pipelines.helpers import (
+    CODE_LANGUAGE_PROMPT,
     ORTGroundTruthSource,
     TorchGroundTruthSource,
+    generate_pytest_params,
 )
 
 
-NATURAL_LANGUAGE_PROMPT = """
-Didn't know what time it was, the lights were low
-I leaned back on my radio
-Some cat was layin' down some rock 'n' roll
-"Lotta soul," he said
-Then the loud sound did seem to fade
-Came back like a slow voice on a wave of phase
-That weren't no DJ, that was hazy cosmic jive
-"""
+# ------ Tests configuration ------
+# The following parameters are used to configure the tests
 
-CODE_LANGUAGE_PROMPT = """
-def Fibonacci(n):
-    # Check if input is 0 then it will
-    # print incorrect input
-    if n < 0:
-        print("Incorrect input")
-    # Check if n is 0
-    # then it will return 0
-    elif n == 0:
-        return 0
-"""
+# STUBS_TO_TEST should be a list of tuples in the form:
+# [(model_stub, model_name, prompt), ...], where model_stub is
+# the stub of the sparsezoo model to be tested, model_name
+# is the name of the HuggingFace model that corresponds to the
+# sparsezoo model and prompt is the prompt that will be used
+# for the text generation pipeline. The prompt should be
+# representative of the domain that the model was trained on.
+
+# The overarching goal of this suite is to
+# benchmark the sparsezoo models against the HuggingFace models
+# and this is why we need to provide both sources of truth
+STUBS_TO_TEST = [
+    (
+        "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",  # noqa E501
+        "salesforce/codegen-350m-mono",
+        CODE_LANGUAGE_PROMPT,
+    ),
+    # TODO: Waiting for the model to become available
+    # ("zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
+    # "facebook/opt-1.3b",
+    # NATURAL_LANGUAGE_PROMPT),
+]
+
+# RUN_BASE_TESTS_ONLY is a boolean flag that is used to run only
+# the essential test that cover the hot path of the text generation pipeline.
+# If set to False, the test suite will run all the tests that are available.
+# Note, that if this parameter is set to True, there are some tests that will
+# be skipped if the cache (see the test suite for more details)
+RUN_BASE_TESTS_ONLY = False
+
+# CACHE_MANAGEMENT_TYPE should be a list of strings that can be either
+# "internal" or/and "external", but cannot be empty. This parameter
+# is used to test the different cache management strategies that
+# are available for the text generation pipeline. Note, that there
+# are some tests that will be skipped if the cache management type
+# is set to "internal" only (see the test suite for more details)
+CACHE_MANAGEMENT_TYPE = ["internal", "external"]
+
+# LOGITS_THRESHOLD is an optional config (could be set to an empty list),
+# that is used to test the difference between the actual and the expected
+# logits in the situations where we will not be able to match the ground
+# truth (e.g. when the DeepSparse pipeline is running after the KV cache
+# has been filled up). This value is established empirically for each
+# combination of prompt/pipeline/num_generated tokens. To enable full testing,
+# set this list so that it has the same length as the STUBS_TO_TEST list.
+# To disable it, set it to an empty list (e.g. LOGITS_THRESHOLDS = []).
+# The testing suite will notify the user about the tests that will be
+# skipped as a result
+LOGITS_THRESHOLDS = [13.0]
+# ----------------
+
+
+pytest_params = generate_pytest_params(
+    STUBS_TO_TEST, CACHE_MANAGEMENT_TYPE, LOGITS_THRESHOLDS
+)
 
 
 @pytest.mark.parametrize(
     "internal_kv_cache",
-    [True, False],
+    pytest_params[0],
 )
 @pytest.mark.parametrize(
-    "model_stub, "
-    "model_name, "
-    "uses_bos_token, "
-    "prompt, "
-    "logits_max_diff_kv_cache_has_been_filled",
-    [
-        (
-            "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
-            "huggingface/bigpython_bigquery_thepile/base-none",
-            "salesforce/codegen-350m-mono",
-            False,
-            CODE_LANGUAGE_PROMPT,
-            13,
-        ),
-        # TODO: Waiting for the model to be available
-        # ("zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/pruned50_quantW8A8-none",
-        #  "facebook/opt-1.3b",
-        #  True,
-        #  NATURAL_LANGUAGE_PROMPT,
-        #  None),
-    ],
+    "model_stub, model_name, prompt, uses_bos_token, logits_threshold",
+    pytest_params[1],
     scope="class",
 )
 class TestTextGenerationPipeline:
@@ -106,9 +126,9 @@ class TestTextGenerationPipeline:
         self,
         model_stub,
         model_name,
-        uses_bos_token,
         prompt,
-        logits_max_diff_kv_cache_has_been_filled,
+        uses_bos_token,
+        logits_threshold,
         internal_kv_cache,
     ):
         self.num_tokens_generate = 216
@@ -133,9 +153,8 @@ class TestTextGenerationPipeline:
 
         # the maximum threshold for the difference between the logits
         # when running a scenario where KV Cache buffer has been filled
-        self.logits_max_diff_kv_cache_has_been_filled = (
-            logits_max_diff_kv_cache_has_been_filled
-        )
+        self.logits_threshold = logits_threshold
+
         self.internal_kv_cache = internal_kv_cache
 
         self.default_pipeline = None
@@ -147,6 +166,10 @@ class TestTextGenerationPipeline:
 
         yield model_name, uses_bos_token, torch_ground_truth
 
+    @pytest.mark.skipif(
+        RUN_BASE_TESTS_ONLY,
+        reason="RUN_BASE_TESTS_ONLY = True, running only essential tests as a result",
+    )
     def test_freeze_first_position(self, setup):
         # Test whether we should be "freezing" the first token after
         # the kv cache is full
@@ -154,6 +177,10 @@ class TestTextGenerationPipeline:
         pipeline = self.get_pipeline()
         assert pipeline.engine._freeze_first_position == uses_bos_token
 
+    @pytest.mark.skipif(
+        RUN_BASE_TESTS_ONLY,
+        reason="RUN_BASE_TESTS_ONLY = True, running only essential tests as a result",
+    )
     def test_ort_model(self, setup):
         # Assert that the ONNX model with KV Cache support runs
         # directly in ONNXRuntime and delivers correct results
@@ -271,7 +298,8 @@ class TestTextGenerationPipeline:
             output=output,
             cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
-            max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
+            run_logits_difference_validation=True,
+            logits_threshold=self.logits_threshold,
         )
 
     def test_deepsparse_single_token_prefill(self, setup):
@@ -364,9 +392,14 @@ class TestTextGenerationPipeline:
             cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
             run_cache_validation=not self.internal_kv_cache,
-            max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
+            run_logits_difference_validation=True,
+            logits_threshold=self.logits_threshold,
         )
 
+    @pytest.mark.skipif(
+        RUN_BASE_TESTS_ONLY,
+        reason="RUN_BASE_TESTS_ONLY = True, running only essential tests as a result",
+    )
     def test_run_same_prompt_multiple_times(self, setup):
         # Test the scenario, where the same prompt is run multiple times
         # Every run should produce the same output
@@ -381,6 +414,10 @@ class TestTextGenerationPipeline:
         assert output_1.sequences[0] == output_2.sequences[0]
         assert numpy.allclose(output_1.logits, output_2.logits, atol=1e-4)
 
+    @pytest.mark.skipif(
+        RUN_BASE_TESTS_ONLY,
+        reason="RUN_BASE_TESTS_ONLY = True, running only essential tests as a result",
+    )
     def test_run_multiple_prompts_in_parallel(self, setup):
         # Test the scenario, where multiple prompts are run in parallel
         # Same two prompts should produce the same output
@@ -400,7 +437,8 @@ class TestTextGenerationPipeline:
         output: "TextGenerationOutput",  # noqa F821
         cache_session: DecoderKVCache,
         torch_ground_truth: Tuple[numpy.ndarray, ...],
-        max_logits_difference_threshold: Optional[float] = None,
+        logits_threshold: Optional[float] = None,
+        run_logits_difference_validation: bool = False,
         run_cache_validation: bool = True,
     ):
         # extract numpy arrays from cached_inputs
@@ -416,17 +454,19 @@ class TestTextGenerationPipeline:
         # concatenate target prompt_logits and generated_logits and check
         target_logits = numpy.concatenate([prompt_logits, generated_logits], axis=1)
 
-        if max_logits_difference_threshold:
+        if run_logits_difference_validation:
             # if comparing the output from the model where
             # the kv cache has been filled, we expect the
             # maximum absolute difference between the logits
             # to be less than the threshold
             # (the threshold is established by running the
             # ONNX model in ONNXRuntime)
-            assert (
-                abs(output.logits - target_logits).max()
-                < max_logits_difference_threshold
-            )
+            if logits_threshold is None:
+                pytest.skip(
+                    "Attempting to run logits difference "
+                    "validation, but logits_threshold is None"
+                )
+            assert abs(output.logits - target_logits).max() < logits_threshold
         else:
             # otherwise, we expect the logits to be exactly the same
             # as the target logits; the generated sequence should
