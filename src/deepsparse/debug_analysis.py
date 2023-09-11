@@ -18,12 +18,17 @@ Analysis script for ONNX models with the DeepSparse engine.
 ##########
 Command help:
 usage: deepsparse.debug_analysis [-h] [-wi NUM_WARMUP_ITERATIONS]
-                          [-bi NUM_ITERATIONS] [-ncores NUM_CORES]
-                          [-b BATCH_SIZE] [-ks KERNEL_SPARSITY]
-                          [-ksf KERNEL_SPARSITY_FILE]
-                          [--optimization OPTIMIZATION] [-i INPUT_SHAPES] [-q]
-                          [-x EXPORT_PATH]
-                          model_path
+                                 [-bi NUM_ITERATIONS] [-ncores NUM_CORES]
+                                 [-b BATCH_SIZE] [-ks KERNEL_SPARSITY]
+                                 [-ksf KERNEL_SPARSITY_FILE]
+                                 [--optimization OPTIMIZATION]
+                                 [-seq_len SEQUENCE_LENGTH]
+                                 [-input_ids_len INPUT_IDS_LENGTH]
+                                 [-i INPUT_SHAPES] [--use-internal-kvcache]
+                                 [--kv-cache-prev-num-tokens KV_CACHE_PREV_NUM_TOKENS]
+                                 [--kv-cache-num-frozen-tokens KV_CACHE_NUM_FROZEN_TOKENS]
+                                 [-q] [-x EXPORT_PATH]
+                                 model_path
 
 Analyze ONNX models in the DeepSparse Engine
 
@@ -49,24 +54,44 @@ optional arguments:
                         Filepath to per-layer kernel sparsities JSON
   --optimization OPTIMIZATION
                         To enable or disable optimizations (Tensor Columns)
-  -i INPUT_SHAPES, --input_shapes INPUT_SHAPES
+  -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
+                        The sequence length to run the KV cache supported
+                        model benchmarks for. Must be seq_len >= 1, default is
+                        512
+  -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
+                        The input ids length to run the KV cache supported
+                        model benchmarks for. Must be 1 <= input_ids_len <=
+                        seq_len, default is 1
+  -i INPUT_SHAPES, -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
                         Override the shapes of the inputs, i.e. -shapes
                         "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
                         input1=[4,5,6] input2=[7,8,9]
+  --use-internal-kvcache
+                        Enable internal KVCache
+  --kv-cache-prev-num-tokens KV_CACHE_PREV_NUM_TOKENS
+                        Internal KVCache: The amount of previous tokens that
+                        will be read from the external KV cache on the first
+                        inference
+  --kv-cache-num-frozen-tokens KV_CACHE_NUM_FROZEN_TOKENS
+                        Internal KVCache: The amount of first tokens that we
+                        want to keep permanently in the KV cache
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
                         Store results into a JSON file
-"""
+"""  # noqa E501
 
 import argparse
 import json
 import os
 
-from deepsparse import model_debug_analysis
+from deepsparse import KVCacheParams, model_debug_analysis
 from deepsparse.utils import (
+    default_cached_outputs,
     generate_random_inputs,
+    has_model_kv_cache,
     model_to_path,
     override_onnx_input_shapes,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
     parse_input_shapes,
 )
 
@@ -132,13 +157,50 @@ def parse_args():
         default=True,
     )
     parser.add_argument(
+        "-seq_len",
+        "--sequence_length",
+        type=int,
+        default=512,
+        help="The sequence length to run the KV cache supported model "
+        "benchmarks for. Must be seq_len >= 1, default is 512",
+    )
+    parser.add_argument(
+        "-input_ids_len",
+        "--input_ids_length",
+        type=int,
+        default=1,
+        help="The input ids length to run the KV cache supported model "
+        "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
+    )
+    parser.add_argument(
         "-i",
+        "-shapes",
         "--input_shapes",
         help="Override the shapes of the inputs, "
         'i.e. -shapes "[1,2,3],[4,5,6],[7,8,9]" results in '
         "input0=[1,2,3] input1=[4,5,6] input2=[7,8,9]",
         type=str,
         default="",
+    )
+    parser.add_argument(
+        "--use-internal-kvcache",
+        help="Enable internal KVCache",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--kv-cache-prev-num-tokens",
+        help="Internal KVCache: The amount of previous tokens that will be read"
+        " from the external KV cache on the first inference",
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
+        "--kv-cache-num-frozen-tokens",
+        help="Internal KVCache: The amount of first tokens that we want to keep"
+        " permanently in the KV cache",
+        type=int,
+        default=0,
     )
     parser.add_argument(
         "-q",
@@ -186,14 +248,10 @@ def construct_layer_table(result):
         "{: >#08.4f} | {: >#08.4f} | {: >#08.4f} | {:12}"
     )
     for li in result["layer_info"]:
-        table_str += layer_info_to_string(
-            li,
-            "{:28}| " + info_format_base + "\n",
-        )
+        table_str += layer_info_to_string(li, "{:28}| " + info_format_base + "\n")
         for sub_li in li["sub_layer_info"]:
             table_str += layer_info_to_string(
-                sub_li,
-                "  {:26}| " + info_format_base + "\n",
+                sub_li, "  {:26}| " + info_format_base + "\n"
             )
 
     table_str += "Total Time(MS): {:05f}\n".format(result["average_total_time"])
@@ -293,13 +351,56 @@ def main():
     orig_model_path = args.model_path
     model_path = model_to_path(args.model_path)
 
-    print("Analyzing model: {}".format(orig_model_path))
+    print(f"Analyzing model: {orig_model_path}")
+
+    batch_size = args.batch_size
+
+    if has_model_kv_cache(model_path):
+        if batch_size != 1:
+            raise ValueError(
+                "Unable to run models with KV cache support "
+                "for batch size different than one."
+                "Please set batch size to 1 and try again"
+            )
+
+        if args.input_ids_length > args.sequence_length:
+            raise ValueError(
+                f"input_ids_length: {args.input_ids_length} "
+                f"must be less than sequence_length: {args.sequence_length}"
+            )
+
+        print(
+            "Found model with KV cache support. "
+            "Benchmarking the autoregressive model with "
+            f"input_ids_length: {args.input_ids_length} and "
+            f"sequence length: {args.sequence_length}."
+        )
+
+        model_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+            onnx_file_path=model_path,
+            input_ids_length=args.input_ids_length,
+            sequence_length=args.sequence_length,
+            batch_size=batch_size,
+        )
 
     if input_shapes:
         with override_onnx_input_shapes(model_path, input_shapes) as tmp_path:
-            input_list = generate_random_inputs(tmp_path, args.batch_size)
+            input_list = generate_random_inputs(tmp_path, batch_size)
     else:
-        input_list = generate_random_inputs(model_path, args.batch_size)
+        input_list = generate_random_inputs(model_path, batch_size)
+
+    kv_cache_params = None
+    if args.use_internal_kvcache:
+        kv_cache_params = KVCacheParams(
+            default_cached_outputs(model_path),
+            args.kv_cache_prev_num_tokens,
+            args.kv_cache_num_frozen_tokens,
+        )
+
+        print(
+            f"Enable KVCache: prev_num_tokens = {kv_cache_params.prev_num_tokens}, "
+            f"num_frozen_tokens = {kv_cache_params.num_frozen_tokens}"
+        )
 
     result = model_debug_analysis(
         model_path,
@@ -308,9 +409,10 @@ def main():
         num_cores=args.num_cores,
         num_iterations=args.num_iterations,
         num_warmup_iterations=args.num_warmup_iterations,
-        optimization_level=args.optimization,
+        optimization_level=int(args.optimization),
         imposed_ks=imposed_kernel_sparsity,
         input_shapes=input_shapes,
+        kv_cache_params=kv_cache_params,
     )
 
     if not args.quiet:

@@ -61,10 +61,14 @@ class AliasedTask:
         """
         :param task: the name of the task to check whether the given instance matches.
             Checks the current name as well as any aliases.
-            Everything is compared at lower case and "-" are replaced with "_".
+            Everything is compared at lower case and "-" and whitespace
+            are replaced with "_".
         :return: True if task does match the current instance, False otherwise
         """
         task = task.lower().replace("-", "_")
+
+        # replace whitespace with "_"
+        task = "_".join(task.split())
 
         return task == self.name or task in self.aliases
 
@@ -95,7 +99,10 @@ class SupportedTasks:
         ),
     )
 
-    text_generation = namedtuple("text_generation", ["opt", "codegen", "bloom"])(
+    text_generation = namedtuple(
+        "text_generation", ["text_generation", "opt", "codegen", "bloom"]
+    )(
+        text_generation=AliasedTask("text_generation", []),
         codegen=AliasedTask("codegen", []),
         opt=AliasedTask("opt", []),
         bloom=AliasedTask("bloom", []),
@@ -141,6 +148,7 @@ class SupportedTasks:
         haystack,
         embedding_extraction,
         open_pif_paf,
+        text_generation,
     ]
 
     @classmethod

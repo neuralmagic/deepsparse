@@ -16,3 +16,4 @@
 # flake8: noqa
 from .decoder_kv_cache import *
 from .helpers import *
+from .timings import *

@@ -7,16 +7,10 @@ from typing import Dict
 
 from tqdm import tqdm
 
+import torch
 from deepsparse.yolov8.utils.validation.helpers import schema_to_tensor
 from ultralytics.yolo.data.utils import check_det_dataset
-from ultralytics.yolo.utils import (
-    DEFAULT_CFG,
-    LOGGER,
-    RANK,
-    SETTINGS,
-    TQDM_BAR_FORMAT,
-    callbacks,
-)
+from ultralytics.yolo.utils import LOGGER, TQDM_BAR_FORMAT, callbacks
 from ultralytics.yolo.utils.ops import Profile
 from ultralytics.yolo.utils.torch_utils import select_device, smart_inference_mode
 
@@ -41,8 +35,9 @@ class DeepSparseValidator:
         # for validation when self.training is True
         callbacks.add_integration_callbacks(self)
         self.run_callbacks("on_val_start")
+        if not torch.cuda.is_available():
+            self.args.device = "cpu"
         self.device = select_device(self.args.device, self.args.batch)
-        self.args.half &= self.device.type != "cpu"
         self.data = check_det_dataset(self.args.data)
         if isinstance(self.data["path"], str):
             self.data["path"] = Path(self.data["path"])
@@ -53,7 +48,7 @@ class DeepSparseValidator:
             )
 
         self.dataloader = self.dataloader or self.get_dataloader(
-            self.data.get("val") or self.data.set("test"), self.args.batch
+            self.data.get(self.args.split), self.args.batch
         )
 
         dt = Profile(), Profile(), Profile(), Profile()
@@ -93,18 +88,22 @@ class DeepSparseValidator:
         stats = self.get_stats()
         self.check_stats(stats)
         self.print_results()
-        self.speed = tuple(
-            x.t / len(self.dataloader.dataset) * 1e3 for x in dt
+        self.speed = dict(
+            zip(
+                self.speed.keys(),
+                (x.t / len(self.dataloader.dataset) * 1e3 for x in dt),
+            )
         )  # speeds per image
+        self.finalize_metrics()
         self.run_callbacks("on_val_end")
 
-        self.logger.info(
+        LOGGER.info(
             "Speed: %.1fms pre-process, %.1fms inference, %.1fms loss, %.1fms post-process per image"
-            % self.speed
+            % tuple(self.speed.values())
         )
         if self.args.save_json and self.jdict:
             with open(str(self.save_dir / "predictions.json"), "w") as f:
-                self.logger.info(f"Saving {f.name}...")
+                LOGGER.info(f"Saving {f.name}...")
                 json.dump(self.jdict, f)  # flatten and save
             stats = self.eval_json(stats)  # update stats
         return stats

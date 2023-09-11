@@ -285,3 +285,39 @@ print(labels)
 ### Cross Use Case Functionality
 
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring a Server.
+## Using a Custom ONNX File 
+Apart from using models from the SparseZoo, DeepSparse allows you to define custom ONNX files when deploying a model. 
+
+The first step is to obtain the YOLOv5 ONNX model. This could be a YOLOv5 model you have trained and converted to ONNX. 
+In this case, let's demonstrate by converting a YOLOv5 model to ONNX using the `ultralytics` package: 
+```python
+from ultralytics import YOLO
+
+# Load a model
+model = YOLO("yolov5nu.pt")  # load a pretrained model
+success = model.export(format="onnx")  # export the model to ONNX format
+```
+Download a sample image for detection: 
+```bash
+wget -O basilica.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/main/src/deepsparse/yolo/sample_images/basilica.jpg
+
+```
+Next, run the DeepSparse object detection pipeline with the custom ONNX file:
+
+```python
+from deepsparse import Pipeline
+
+# download onnx from sparsezoo and compile with batch size 1
+yolo_pipeline = Pipeline.create(
+  task="yolo",
+  model_path="yolov5nu.onnx",   # sparsezoo stub or path to local ONNX
+)
+images = ["basilica.jpg"]
+
+# run inference on image file
+pipeline_outputs = yolo_pipeline(images=images)
+print(pipeline_outputs.boxes)
+print(pipeline_outputs.labels)
+# [[[-0.8809833526611328, 5.1244752407073975, 27.885415077209473, 57.20366072654724], [-9.014896631240845, -2.4366320967674255, 21.488688468933105, 37.2245477437973], [14.241515636444092, 11.096746131777763, 30.164274215698242, 22.02291651070118], [7.107024908065796, 5.017698150128126, 15.09239387512207, 10.45704211294651]]]
+# [['8367.0', '1274.0', '8192.0', '6344.0']]
+```

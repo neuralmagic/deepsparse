@@ -16,7 +16,6 @@
 Image classification pipeline
 """
 import json
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import numpy
@@ -74,6 +73,7 @@ class ImageClassificationPipeline(Pipeline):
         self,
         *,
         class_names: Union[None, str, Dict[str, str]] = None,
+        image_size: Optional[Tuple[int]] = None,
         top_k: int = 1,
         **kwargs,
     ):
@@ -86,7 +86,7 @@ class ImageClassificationPipeline(Pipeline):
         else:
             self._class_names = None
 
-        self._image_size = self._infer_image_size()
+        self._image_size = image_size or self._infer_image_size()
         self.top_k = top_k
 
         # torchvision transforms for raw inputs
@@ -135,11 +135,6 @@ class ImageClassificationPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-
-        model_path_: Path = Path(self.model_path)
-        if model_path_.is_dir():
-            return model_to_path(str(model_path_ / "model.onnx"))
-
         return model_to_path(self.model_path)
 
     def process_inputs(self, inputs: ImageClassificationInput) -> List[numpy.ndarray]:

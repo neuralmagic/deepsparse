@@ -16,6 +16,8 @@ from typing import Any, Dict, List
 
 import numpy
 
+from deepsparse.engine import LIB
+
 
 __all__ = ["DecoderKVCache", "SEQUENCE_LENGTH_AXIS"]
 
@@ -24,27 +26,28 @@ SEQUENCE_LENGTH_AXIS = 2
 
 
 class DecoderKVCache:
-    def __init__(self, use_deepsparse_cache: bool = False):
+    def __init__(self, internal_kv_cache: bool = False):
         """
         The goal this object is to handle the manipulation
         of the key value cache.
 
-        :param use_deepsparse_cache: If set to True, the `kv_cache` object
+        :param internal_kv_cache: If set to True, the `kv_cache` object
             from the deepsparse.LIB will be loaded as an attribute.
             This object is used to handle the manipulation of the
             key/value buffers on the DeepSparse engine side.
         """
+        self.total_num_processed_tokens = None
+
         # assuming that kv cache arrays are of shape
         # [batch_size, num_heads, sequence_length, hidden_size]
         self._sequence_len_axis = SEQUENCE_LENGTH_AXIS
-        self._use_deepsparse_cache = use_deepsparse_cache
+        self._internal_kv_cache = internal_kv_cache
         self._session_id = None
         self._freeze_first_position = None
         self._state = None
-        self._total_num_processed_tokens = None
-        self._kv_cache = None
+        self.engine_internal_cache = None
 
-    def setup_session(
+    def setup(
         self,
         session_id: str,
         state: Dict[str, Any],
@@ -74,19 +77,23 @@ class DecoderKVCache:
         self._session_id = session_id
         self._state = state
         self._freeze_first_position = freeze_first_position
-        self._total_num_processed_tokens = num_processed_tokens
+        self.total_num_processed_tokens = num_processed_tokens
 
-        if self._use_deepsparse_cache:
-            raise NotImplementedError("DeepSparse cache is not supported yet.")
+        if self._internal_kv_cache:
+            prev_num_tokens = self.total_num_processed_tokens
+            num_frozen_tokens = int(self._freeze_first_position)
+            self.engine_internal_cache = LIB.kv_cache(
+                prev_num_tokens, num_frozen_tokens
+            )
 
-    def update_session(
+    def update(
         self,
         state: Dict[str, Any],
         input_ids_len: int,
     ):
         """
         Updating the session is identical with taking the kv cache
-        output of from the forward pass and restructuring it, so it
+        output from the forward pass and restructuring it, so it
         can be directly used as input for the next forward pass.
 
         :param state: The state of the cache. This is a dictionary
@@ -97,100 +104,160 @@ class DecoderKVCache:
             input batch: (batch_size, length).
             Corresponds to `input_ids.shape[1]`
         """
-        self._total_num_processed_tokens += input_ids_len
-        total_cache_capacity = state[list(state.keys())[0]].shape[
+        self.total_num_processed_tokens += input_ids_len
+
+        input_state_capacity = state[list(state.keys())[0]].shape[
             self._sequence_len_axis
         ]
-        # total_capacity = num_tokens (num of non-blank tokens) +
-        # + num_padded_entries (num of blank tokens)
+        num_entries_to_delete = input_ids_len
+
+        # compute the number of blank (padded) entries in the cache
         num_padded_entries = max(
-            0, total_cache_capacity - self._total_num_processed_tokens
+            0, input_state_capacity - self.total_num_processed_tokens
         )
-        # we want to remove input_ids_len entries from the cache
-        # because len_input_ids + inp_cache_len = out_cache_len
-        # TODO: Make it more general once
-        # multitoken regression is supported
-        num_entries_to_delete = 1  # input_ids_len
+        # compute how many of those entries need to be deleted
+        num_padded_entries_to_delete = min(num_padded_entries, num_entries_to_delete)
 
-        if num_padded_entries:
-            """
-            Transforms input KV cache that contains blank entries.
-            It removes the rightmost blank entries from the cache.
-            Example 1:
-            (entries in the cache denote the order in which they were
-            added to the cache, zero is to denote a blank entry)
-            ```
-            state["state_name"]: (1, 1, 5, 1) = array([[[[0], [0], [1], [2], [3]]]])
-            -> num_padded_entries = 2
-            -> num_entries_to_delete = 1
-            -> num_padded_entries > num_entries_to_delete
-            # there are more blank entries than entries to delete
-            results in:
-            state["state_name"]: (1, 1, 4, 1) = array([[[[0], [1], [2], [3]]]])
-            ```
-            Example 2:
-            ```
-            state["state_name"]: (1, 1, 6, 1) = array([[[[0], [0], [0], [1], [2], [3]]]]) # noqa: E501
-            -> num_padded_entries = 3
-            -> num_entries_to_delete = 5
-            -> num_padded_entries < num_entries_to_delete
-            # there are less blank entries than entries to delete
-            results in:
-            state["state_name"]: (1, 1, 3, 1) = array([[[[1], [2], [3]]]])
-            ```
-            """
-            num_padded_entries_to_delete = min(
-                num_padded_entries, num_entries_to_delete
-            )
-            idxs_to_remove = [
-                num_padded_entries - i - 1 for i in range(num_padded_entries_to_delete)
-            ]
-            # if we had fewer blank entries than entries to delete,
-            # we updated the number of entries to delete to a non-zero value
-            num_entries_to_delete = max(0, num_entries_to_delete - num_padded_entries)
-            # update the state of the cache
-            state = self._delete_entries(state, idxs_to_remove)
+        # if we had fewer padded entries than num_entries_to_delete,
+        # we additionally are forced to delete some non-padded entries (the oldest ones)
+        num_non_padded_entries_to_delete = max(
+            0, num_entries_to_delete - num_padded_entries
+        )
 
-        if num_entries_to_delete:
-            """
-            Transforms the input KV cache that has been totally
-            filled with non-blank entries.
-            Example:
-            ```
-            state["state_name"]: (1, 1, 5, 1) = array([[[[1], [2], [3], [4], [5]]]])
-            num_entries_to_delete = 2
-            if self.freeze_first_position == False:
-                state["state_name"]: (1, 1, 3, 1) = array([[[[3], [4], [5]]]])
-            else:
-
-                state["state_name"]: (1, 1, 3, 1) = array([[[[1], [4], [5]]]])
-            ```
-            """
-            idxs_to_remove = [
-                i + int(self._freeze_first_position)
-                for i in range(num_entries_to_delete)
-            ]
-
-            state = self._delete_entries(state, idxs_to_remove)
+        for name, cache_array in state.items():
+            if num_padded_entries_to_delete:
+                cache_array = self.remove_padded_entries(
+                    cache_array, num_padded_entries_to_delete
+                )
+            if num_non_padded_entries_to_delete:
+                cache_array = self.remove_non_padded_entries(
+                    cache_array, num_entries_to_delete
+                )
+            state[name] = numpy.ascontiguousarray(cache_array)
 
         self._state = state
 
-    def _delete_entries(
-        self, state: Dict[str, Any], indices: List[int]
+    def remove_padded_entries(
+        self, cache_array: numpy.ndarray, num_padded_entries_to_delete: int
+    ):
+        """
+        Remove the num_padded_entries_to_delete entries from the cache array.
+        This function assumes that the cache_array has the number
+        of padded (blank) entries that is equal/larger than
+        num_padded_entries_to_delete.
+
+        :param cache_array: The cache array to be modified.
+        :param num_padded_entries_to_delete: The number of padded entries to delete.
+        """
+        return cache_array[:, :, num_padded_entries_to_delete:, :]
+
+    def remove_non_padded_entries(
+        self, cache_array: numpy.ndarray, num_non_padded_entries_to_delete: int
+    ):
+        """
+        Remove the num_non_padded_entries_to_delete entries from the cache array.
+        This function assumes that the cache_array has no padded (blank) entries and
+        thus we are forced to delete the oldest entries from the cache.
+
+        If self._freeze_first_position is set to True, that means that the oldest
+        entry in the cache_array is the one that corresponds to the BOS token. Because
+        we want to keep that entry in the cache, we will delete the oldest entry
+        starting from the second oldest entry.
+        """
+        new_cache_array = cache_array[
+            :,
+            :,
+            bool(self._freeze_first_position) + num_non_padded_entries_to_delete :,
+            :,
+        ]
+        if self._freeze_first_position:
+            bos_entries = cache_array[:, :, :1, :]
+            new_cache_array = numpy.concatenate(
+                [bos_entries, new_cache_array], axis=self._sequence_len_axis
+            )
+        return new_cache_array
+
+    def set_capacity(self, capacity: int):
+        """
+        Enforce a new total capacity for the state
+        of cached inputs.
+
+        This means popping the old entries if the new
+        total capacity should lesser than the current one
+
+        or
+
+        Padding the state blank entries if the new
+        total capacity should be greater than the current one
+
+        :param capacity: The new length of the
+            self._state in the
+            `self._sequence_length_axis` dimension
+        """
+        capacity_difference = self.capacity - capacity
+        state = self.cached_inputs
+
+        if capacity_difference > 0:
+            raise NotImplementedError(
+                "The scenario when capacity"
+                "needs to be expanded is not yet"
+                "supported."
+            )
+
+        elif capacity_difference < 0:
+            indices = [0] * abs(capacity_difference)
+            state = self._add_entries(state, indices=indices)
+
+        else:
+            return
+
+        self._state = state
+
+    def _add_entries(
+        self, state: Dict[str, Any], indices: List[int], padding_value: int = 0
     ) -> Dict[str, Any]:
         for key, value in state.items():
-            state[key] = numpy.delete(value, indices, axis=self._sequence_len_axis)
-            state[key] = numpy.ascontiguousarray(state[key])
+            # required to make sure that both
+            # quantized and non quantized caches
+            # are supported
+            state_dtype = value.dtype
+            # change padding_value dtype to match the state dtype
+            padding_value = numpy.array(padding_value, dtype=state_dtype)
+
+            state[key] = numpy.insert(
+                value, indices, padding_value, axis=self._sequence_len_axis
+            )
         return state
 
     @property
-    def session_id(self):
+    def id(self):
         if self._session_id is None:
             raise ValueError("Attempted to access session_id before setting up session")
         return self._session_id
 
-    @session_id.setter
-    def session_id(self, session_id: str):
+    @property
+    def num_non_blank_entries(self):
+        """
+        :return: the number of non-blank entries in the kv cache
+        """
+        return min(self.capacity, self.total_num_processed_tokens)
+
+    @property
+    def capacity(self) -> int:
+        """
+        Return the maximum number of kv cache entries
+        that the decoder can hold, until the old entries
+        start to get erased to make place for new entries
+
+        :return: the maximum number of kv cache entries
+            that the decoder can hold
+        """
+        return self.cached_inputs[list(self.cached_inputs.keys())[0]].shape[
+            self._sequence_len_axis
+        ]
+
+    @id.setter
+    def id(self, session_id: str):
         self._session_id = session_id
 
     @property

@@ -249,6 +249,39 @@ print(resp.text)
 # {"sequences":["The Boston Red Sox are my favorite baseball team!"],"labels":[["sports","politics","public health"]],"scores":[[0.7818478941917419,0.17189143598079681,0.04626065865159035]]}
 
 ```
+
 ### Cross Use Case Functionality
 
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
+## Using a Custom ONNX File 
+Apart from using models from the SparseZoo, DeepSparse allows you to deploy zero-shot text classification pipelines with custom ONNX files. 
+
+The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
+ 
+Download the [BERT base uncased](https://sparsezoo.neuralmagic.com/models/nlp%2Ftext_classification%2Fbert-base%2Fpytorch%2Fhuggingface%2Fsst2%2Fbase-none) 
+ONNX model for demonstration:
+```bash 
+sparsezoo.download zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none --save-dir ./text-classification
+```
+The `deployment` folder contains the following required files: 
+- `config.json`
+- `tokenizer.json`
+- `model.onnx`
+
+Use the folder as the model path to the zero-shot text classification pipeline:
+```python
+from deepsparse import Pipeline
+
+# download onnx from sparsezoo and compile with batch size 1
+pipeline = Pipeline.create(
+  task="zero_shot_text_classification",
+  model_path="text-classification/deployment",   # sparsezoo stub or path to local ONNX
+  batch_size=1,                # default batch size is 1
+  labels=["poltics", "public health", "sports"]
+)
+
+# run inference
+prediction = pipeline("Who are you voting for in the upcoming election")
+print(prediction)
+# sequences='Who are you voting for in the upcoming election' labels=['sports', 'poltics', 'public health'] scores=[0.35093653202056885, 0.3335352838039398, 0.31552815437316895]
+```

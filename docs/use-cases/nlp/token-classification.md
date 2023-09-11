@@ -219,9 +219,9 @@ deepsparse.server \
   --task token_classification \
   --model_path "zoo:nlp/token_classification/obert-base/pytorch/huggingface/conll2003/pruned90_quant-none" # or path/to/onnx
 ```
-<!-- markdown-link-check-disable -->
+
 You should see Uvicorn report that it is running on http://0.0.0.0:5543. Once launched, a /docs path is created with full endpoint descriptions and support for making sample requests.
-<!-- markdown-link-check-enable -->
+
 
 Here is an example client request, using the Python requests library for formatting the HTTP:
 ```python
@@ -275,3 +275,32 @@ print(resp.text)
 ### Cross Use Case Functionality
 
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
+
+## Using a Custom ONNX File 
+Apart from using models from the SparseZoo, DeepSparse allows you to deploy token classification pipelines with custom ONNX files. 
+
+The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
+ 
+Download the [oBERT](https://sparsezoo.neuralmagic.com/models/nlp%2Ftoken_classification%2Fobert-base%2Fpytorch%2Fhuggingface%2Fconll2003%2Fpruned90_quant-none) 
+ ONNX model for demonstration:
+
+```bash 
+sparsezoo.download zoo:nlp/token_classification/obert-base/pytorch/huggingface/conll2003/pruned90_quant-none --save-dir ./token_classification
+```
+
+The `deployment` folder contains the following required files: 
+- `config.json`
+- `tokenizer.json`
+- `model.onnx`
+
+Use the folder as the model path to the token classification pipeline:
+```python
+from deepsparse import Pipeline
+pipeline = Pipeline.create(
+        task="token_classification",
+        model_path="token_classification/deployment",
+    )
+output = pipeline("Mary is flying from Nairobi to New York")
+print(output.predictions)
+# [[TokenClassificationResult(entity='B-PER', score=0.9971914291381836, word='mary', start=0, end=4, index=1, is_grouped=False), TokenClassificationResult(entity='B-LOC', score=0.9993892312049866, word='nairobi', start=20, end=27, index=5, is_grouped=False), TokenClassificationResult(entity='B-LOC', score=0.9993736147880554, word='new', start=31, end=34, index=7, is_grouped=False), TokenClassificationResult(entity='I-LOC', score=0.997299075126648, word='york', start=35, end=39, index=8, is_grouped=False)]]
+```

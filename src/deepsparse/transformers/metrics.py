@@ -17,12 +17,12 @@ Utilities for evaluation metric computation
 """
 
 
+from itertools import compress
 from typing import Any, Dict, List, Optional
 
 import numpy
 from tqdm import tqdm
 
-import torch
 from deepsparse import Pipeline
 from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from deepsparse.transformers.utils.helpers import pad_to_fixed_length
@@ -48,6 +48,7 @@ class Perplexity:
         :param batch_size: The batch size to split the input text into
          non-overlapping batches
         """
+        torch = _import_torch()
         if not isinstance(pipeline, TextGenerationPipeline):
             raise ValueError(
                 "Perplexity can only be computed for text generation pipelines"
@@ -66,6 +67,7 @@ class Perplexity:
 
         :param predictions: The predictions to compute perplexity on
         """
+        torch = _import_torch()
         # tokenize the input text
         encodings = self._pipeline.tokenizer(
             predictions,
@@ -89,10 +91,10 @@ class Perplexity:
             # with <PAD> tokens from the left side. We need to remove
             # them and zero-pad from the right side up to the length
             # of the longest sequence in the batch
-            encoded_batch = numpy.array(encoded_batch) * numpy.array(attention_mask)
+
             encoded_batch = [
-                list(filter(lambda num: num != 0, sequence))
-                for sequence in encoded_batch
+                list(compress(sequence, attn_mask))
+                for (sequence, attn_mask) in zip(encoded_batch, attention_mask)
             ]
             max_sequence_len = max([len(sequence) for sequence in encoded_batch])
 
@@ -116,12 +118,15 @@ class Perplexity:
             labels = encoded_batch
 
             out = self._pipeline(
-                sequences=predictions, return_logits=True, fixed_sequences_length=True
+                sequences=predictions,
+                return_logits=True,
+                fixed_sequences_length=True,
+                include_prompt_logits=True,
             )
 
             logits = out.logits
 
-            if not self._pipeline.has_cache:
+            if not self._pipeline.cache_support_enabled:
                 # when running inference without cache, we need to apply
                 # analogous transformations to the logits as we did to the labels
                 # and attention mask
@@ -224,3 +229,21 @@ class PrecisionRecallF1:
         results["f1_std"] = f1.std()
 
         return results
+
+
+def _import_torch():
+    """
+    Import and return the required torch module. Raises an ImportError if torch is not
+    installed.
+
+    :raises ImportError: if torch is not installed
+    :return: torch module
+    """
+    try:
+        import torch
+
+        return torch
+    except ImportError as import_error:
+        raise ImportError(
+            "Please install `deepsparse[torch]` to use this pathway"
+        ) from import_error

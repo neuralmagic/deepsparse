@@ -13,18 +13,36 @@
 # limitations under the License.
 
 import logging
+import os
 import warnings
-from typing import List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+)
 
 import numpy
+import onnx
 from pydantic import BaseModel, Field
+from transformers import TextStreamer
 
 from deepsparse import Pipeline
-from deepsparse.cpu import cpu_avx512_compatible
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
-from deepsparse.transformers.utils.helpers import pad_to_fixed_length
+from deepsparse.transformers.utils.helpers import (
+    create_causal_mask,
+    pad_to_fixed_length,
+)
+from deepsparse.transformers.utils.timings import TextGenerationTimings
+from deepsparse.utils.onnx import default_cached_outputs
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +51,9 @@ __all__ = ["TextGenerationPipeline"]
 
 
 class TextGenerationInput(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
     sequences: Union[str, List[str]] = Field(
         description="The input sequences to generate the text from.",
     )
@@ -41,6 +62,14 @@ class TextGenerationInput(BaseModel):
         description="A flag that indicates whether to return "
         "the logits for the input text sequence and the "
         "generated text sequence. ",
+    )
+    include_prompt_logits: bool = Field(
+        default=False,
+        description="A flag that indicates whether to return "
+        "the logits for the prompt. If set, prompt_logits are "
+        "`prepended` to the logits for the generated text sequence."
+        "Note: This flag is only applicable when return_logits "
+        "is `True`.",
     )
     session_id: Optional[str] = Field(
         default=None,
@@ -58,13 +87,33 @@ class TextGenerationInput(BaseModel):
         "to have consistent length so one "
         "can compute metric in a batched fashion. ",
     )
+    streamer: Optional[TextStreamer] = Field(
+        default=None,
+        description="Streamer object that will be used to stream the "
+        "generated sequences. Generated tokens are passed through "
+        "`streamer.put(token_ids)` and the streamer is responsible "
+        "for any further processing.",
+    )
+    callback: Optional[Callable[[Any], Union[bool, Any]]] = Field(
+        default=None,
+        description="Callable that will be invoked "
+        "on each generated token. If the callable returns "
+        "`False`, the generation will stop. Default is `None`.",
+    )
+    stop: Union[None, str, Sequence[str]] = Field(
+        default=None,
+        description="A string or a list of strings that will be used as"
+        " stop tokens. (token generation will stop when any of the stop"
+        " tokens is generated). Set to `None` to ignore this parameter."
+        " Default is `None`.",
+    )
 
 
 class TextGenerationOutput(BaseModel):
     sequences: Union[str, List[str]] = Field(
         description="The generated text sequences.",
     )
-    logits: Optional[numpy.ndarray] = Field(
+    logits: Optional[Any] = Field(  # numpy array, set to Any for FastAPI compatibility
         default=None,
         description="The logits for the generated text sequence."
         "The logits have dimensions "
@@ -86,9 +135,9 @@ class TextGenerationPipeline(TransformersPipeline):
     """
     Pipeline for text generation tasks.
 
-    :param deterministic: if True, the pipeline will sample from
+    :param deterministic: if False, the pipeline will sample from
         the probability distribution computed from the logits.
-        If False, the pipeline will get the next token by applying
+        If True, the pipeline will get the next token by applying
         an argmax function to the logits.
     :param sampling_temperature: the temperature to use when sampling
         from the probability distribution computed from the logits.
@@ -99,12 +148,14 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens until the end of the sequence is reached.
         Otherwise, it will generate up to the maximum number of tokens or end of
         sequence is reached.
-    :param prompt_processing_sequence_length: For large prompts, the prompt is
+    :param sequence_length: sequence length to compile model and tokenizer for.
+        This controls the maximum context length of the pipeline. Default is 512
+    :param prompt_sequence_length: For large prompts, the prompt is
         processed in chunks of this length. This is to maximize the inference
-        speed. By default, this is set to 128.
+        speed. By default, this is set to 64.
     :param force_max_tokens: if True, the pipeline will generate the maximum number
         of tokens supplied even if the stop token is reached.
-    :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
+    :param internal_kv_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
@@ -114,71 +165,152 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
-        # TODO: Set this to 64 once we modify the OPT injection logic
-        prompt_processing_sequence_length: int = 128,
+        prompt_sequence_length: int = 64,
+        sequence_length: int = 512,
         force_max_tokens: bool = False,
-        use_deepsparse_cache: bool = True,
+        internal_kv_cache: bool = True,
         **kwargs,
     ):
-        if not cpu_avx512_compatible() and kwargs["engine_type"] == DEEPSPARSE_ENGINE:
-            warnings.warn(
-                "AVX512 support not detected, disabling internal management "
-                "of KV cache which may affect performance. To enable full "
-                "performance, deploy on an AVX512-compatible system."
-            )
-            use_deepsparse_cache = False
+        kwargs_engine_type = kwargs.get("engine_type", DEEPSPARSE_ENGINE)
 
-        if use_deepsparse_cache:
-            if kwargs["engine_type"] != DEEPSPARSE_ENGINE:
-                raise ValueError(
-                    "`use_deepsparse_cache` is set to True "
+        if internal_kv_cache:
+            if kwargs_engine_type != DEEPSPARSE_ENGINE:
+                _LOGGER.warning(
+                    "`internal_kv_cache` is set to True "
                     "but the chosen `engine_type` "
-                    f"is {kwargs['engine_type']}. "
-                    f"Make sure to set `engine_type` to {DEEPSPARSE_ENGINE}"
+                    f"is {kwargs_engine_type}. "
+                    f"The optimized kv cache management is disabled."
                 )
+                internal_kv_cache = False
 
         super().__init__(
-            **kwargs, _delay_engine_initialize=True, _delay_overwriting_inputs=True
+            **kwargs,
+            sequence_length=sequence_length,
+            _delay_engine_initialize=True,
+            _delay_overwriting_inputs=True,
+        )
+        # enable multitoken prefill if
+        # - the model graph is supporting it (causal_mask input is present)
+        # - prompt_sequence_length != 1 (identical to single-token prefill)
+        self.enable_multitoken_prefill = (
+            self.causal_mask_input_present(model_path=self.onnx_file_path)
+            and prompt_sequence_length > 1
         )
 
+        self.cache_support_enabled = self.is_cache_support_enabled()
+
         if self.engine_type == DEEPSPARSE_ENGINE:
-            _LOGGER.warning(
-                "The support for deepsparse engine is limited "
-                f"for {self.__class__.__name__}. "
-                "The multi-token engine will not be "
-                "used for prompt processing."
+            if "WAND_OPT_FLAGS" not in os.environ:
+                os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
+
+        if not self.cache_support_enabled and max_generated_tokens > 1:
+            raise ValueError(
+                "The model used for inference does not support kv cache. It is "
+                "assumed that it maps from the token sequence to predicted logits."
+                "Set `max_generated_tokens` to 1 to support that scenario."
             )
 
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
         self.max_generated_tokens = max_generated_tokens
-        self.prompt_processing_sequence_length = prompt_processing_sequence_length
+        self.prompt_sequence_length = prompt_sequence_length
         self.force_max_tokens = force_max_tokens
+        self.internal_kv_cache = internal_kv_cache
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
         if not self.tokenizer.pad_token:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        self.engine = None
+        self.engine, self.multitoken_engine = self.initialize_engines()
 
-        self.multitoken_engine = NLDecoderEngine(
-            onnx_file_path=self.onnx_file_path,
-            engine_type=self.engine_type,
-            engine_args=self.engine_args,
-            engine_context=self.context,
-            sampling_temperature=self.sampling_temperature,
-            deterministic=self.deterministic,
-            sequence_length=self.sequence_length,
-            input_ids_length=prompt_processing_sequence_length,
-            tokenizer=self.tokenizer,
-            use_deepsparse_cache=use_deepsparse_cache,
-        )
+    def initialize_engines(
+        self,
+    ) -> Tuple[Optional[NLDecoderEngine], Optional[NLDecoderEngine]]:
+        """
+        Inititalizes a pair of engines for the pipeline.
+        The first engine (`engine`) is used for processing the tokens token-by-token
+        (in the autoregressive fashion).
+        The second engine (`multitoken_engine`) is used for processing the tokens
+        in a single pass (in the multitoken fashion).
 
-        if self.multitoken_engine.kv_cache_enabled:
-            # unless kv cache is enabled, we don't
-            # need to initialize the single token engine
-            self.engine = NLDecoderEngine(
+        There are several cases of how the engines are initialized:
+        - if the model does not support kv cache, then only the
+            `multitoken_engine` is initialized. The `engine` is set to None.
+        - if the model supports kv cache but does not support
+            multitoken prefill scenario (i.e. self.enable_multitoken_prefill = False),
+            then only the `engine` is initialized. The `multitoken_engine`
+            is set to None.
+
+        :return: a pair of engines (`engine`, `multitoken_engine`)
+            Note: that depending on the scenario one of the engines may be None
+        """
+
+        engine, multitoken_engine = None, None
+
+        if self.cache_support_enabled:
+            if (
+                self.engine_type == DEEPSPARSE_ENGINE
+                and self.sequence_length <= self.prompt_sequence_length
+                and self.enable_multitoken_prefill
+            ):
+                raise ValueError(
+                    "Attempting to initialize auxiliary DeepSparse engine to "
+                    "process a prompt with a larger processing length. "
+                    "However, it is assumed that `prompt_sequence_length` "
+                    "is smaller than the `sequence_length`. "
+                    "Adjust the `prompt_sequence_length` "
+                    "argument accordingly."
+                )
+
+            # emit the appropriate user message depending whether we are
+            # instantiation the multitoken engine or not
+            if not self.enable_multitoken_prefill:
+                warnings.warn(
+                    "This ONNX graph does not support processing the prompt in "
+                    "with processing length > 1. Creation of an auxiliary engine for "
+                    "processing the prompt at a larger processing length is disabled. "
+                    "The prompt will be processed in with processing length 1."
+                )
+            else:
+                _LOGGER.info(
+                    "Compiling an auxiliary engine to process a prompt with a "
+                    "larger processing length. This improves performance, but "
+                    "may result in additional memory consumption."
+                )
+
+        if (
+            self.cache_support_enabled and self.enable_multitoken_prefill
+        ) or not self.cache_support_enabled:
+
+            # input_ids_length for the multitoken engine is either:
+            # - the prompt_sequence_length if the cache support is enabled
+            #   (the prompt is processed sequentially at predefined processing length)
+            # - the full sequence_length if the cache support is disabled
+            #   (the prompt is processed in a single pass, prompts length is fixed at
+            #   sequence_length)
+            input_ids_length = (
+                self.prompt_sequence_length
+                if self.cache_support_enabled
+                else self.sequence_length
+            )
+
+            multitoken_engine = NLDecoderEngine(
+                onnx_file_path=self.onnx_file_path,
+                engine_type=self.engine_type,
+                engine_args=self.engine_args,
+                engine_context=self.context,
+                sampling_temperature=self.sampling_temperature,
+                deterministic=self.deterministic,
+                sequence_length=self.sequence_length,
+                input_ids_length=input_ids_length,
+                tokenizer=self.tokenizer,
+                internal_kv_cache=self.internal_kv_cache,
+                timer_manager=self.timer_manager,
+            )
+
+        if self.cache_support_enabled:
+            engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
                 engine_args=self.engine_args,
@@ -188,17 +320,14 @@ class TextGenerationPipeline(TransformersPipeline):
                 sequence_length=self.sequence_length,
                 input_ids_length=1,
                 tokenizer=self.tokenizer,
-                use_deepsparse_cache=use_deepsparse_cache,
+                internal_kv_cache=self.internal_kv_cache,
+                timer_manager=self.timer_manager,
             )
-        if (
-            not self.multitoken_engine.kv_cache_enabled
-            and self.max_generated_tokens > 1
-        ):
-            raise ValueError(
-                "The model used for inference does not support kv cache. It is "
-                "assumed that it maps from the token sequence to predicted logits."
-                "Set `max_generated_tokens` to 1 to support that scenario."
-            )
+
+        assert (engine is not None) or (
+            multitoken_engine is not None
+        ), "At least one of the engines must be initialized for the pipeline!"
+        return engine, multitoken_engine
 
     @staticmethod
     def route_input_to_bucket(
@@ -241,7 +370,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the inputs for the engine
         """
 
-        if inputs.fixed_sequences_length:
+        if inputs.fixed_sequences_length or not self.cache_support_enabled:
             # to enforce a fixed sequence length, we need to
             # truncate the input to the maximum sequence length
             # or/and pad it to the maximum sequence length
@@ -263,14 +392,21 @@ class TextGenerationPipeline(TransformersPipeline):
 
         attention_mask = input_tokens["attention_mask"]
 
-        # TODO: Positions input is not required by BLOOM
-        # let's make it optional in the future
         positions = attention_mask.cumsum(1) * attention_mask
         positions -= 1  # assert that positions start at 0
-        positions_input = dict(positions=positions)
 
-        input_tokens = {**input_tokens, **positions_input}
-        onnx_input_names = self.multitoken_engine.onnx_input_names_no_cache
+        causal_mask = create_causal_mask(
+            input_tokens["input_ids"], input_tokens["attention_mask"]
+        )
+
+        input_tokens = dict(
+            **input_tokens, positions=positions, causal_mask=causal_mask
+        )
+        onnx_input_names = (
+            self.multitoken_engine.onnx_input_names_no_cache
+            if self.multitoken_engine
+            else self.engine.onnx_input_names_no_cache
+        )
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
         if inputs.session_id is not None:
@@ -278,7 +414,13 @@ class TextGenerationPipeline(TransformersPipeline):
             self.engine.session_id = inputs.session_id
             self.multitoken_engine.session_id = inputs.session_id
 
-        postprocessing_kwargs = dict(return_logits=inputs.return_logits)
+        postprocessing_kwargs = dict(
+            return_logits=inputs.return_logits,
+            streamer=inputs.streamer,
+            include_prompt_logits=inputs.include_prompt_logits,
+            callback=inputs.callback,
+            stop=inputs.stop,
+        )
         return engine_input, postprocessing_kwargs
 
     def process_engine_outputs(
@@ -299,7 +441,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return TextGenerationOutput(sequences=sequences, logits=logits)
 
     def engine_forward(
-        self, engine_inputs: List[numpy.ndarray], **kwargs
+        self, engine_inputs: List[numpy.ndarray], context: Dict
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
         Run the forward pass on the engine.
@@ -310,35 +452,76 @@ class TextGenerationPipeline(TransformersPipeline):
             sequence of generated tokens and a sequence
             of logits for each generated token
         """
-        if not self.multitoken_engine.kv_cache_enabled:
-            tokens, prompt_logits = self.multitoken_engine(engine_inputs)
-            return numpy.array([tokens]), prompt_logits
+        # engine_forward is always called in a threadpool due to batch splitting
+        # as such, a new context needs to be created since we are no longer in the
+        # main thread. That is why `engine_` is prepended to each of the timer phase
+        # names in this context
+        with self.timer_manager.new_timer_context(total_inference=False) as timer:
+            streamer = context.get("streamer")
 
-        else:
-            # run the prompt through
-            tokens, prompt_logits = self.prompt_inference(engine_inputs)
+            if not self.cache_support_enabled:
+                tokens, prompt_logits = self.multitoken_engine(engine_inputs)
+                return numpy.array([tokens]), prompt_logits
 
-        # create the generated output
-        max_tokens = (
-            self.max_generated_tokens
-            if self.max_generated_tokens and self.max_generated_tokens > 0
-            else 100 * self.sequence_length
-        )  # set safety for absolute max generation
+            else:
+                # run the prompt through
+                with timer.time(TextGenerationTimings.PROMPT_PREFILL):
+                    tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
-        generated_tokens = [tokens[-1]]
-        generated_logits = prompt_logits
+            if streamer is not None:
+                streamer.put(numpy.array(tokens))
 
-        while len(generated_tokens) < max_tokens:
-            (
-                token,
-                logits,
-            ) = self.autoregressive_inference(tokens)
-            tokens.append(token)
-            generated_tokens.append(token)
-            generated_logits.append(logits)
+            # create the generated output
+            max_tokens = (
+                self.max_generated_tokens
+                if self.max_generated_tokens and self.max_generated_tokens > 0
+                else 100 * self.sequence_length
+            )  # set safety for absolute max generation
 
-            if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
-                break
+            # last prompt token is the first generated token
+            # add it to generated tokens, and the logits
+            generated_tokens = [tokens[-1]]
+            generated_logits = (
+                prompt_logits
+                if context.get("include_prompt_logits")
+                else [prompt_logits[-1]]
+            )
+            callback = context.get("callback")
+            stop = context.get("stop")
+
+            with timer.time(TextGenerationTimings.TOKEN_GENERATION):
+                while len(generated_tokens) < max_tokens:
+                    with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
+                        token, logits = self.autoregressive_inference(tokens)
+                    tokens.append(token)
+                    generated_tokens.append(token)
+                    generated_logits.append(logits)
+
+                    if streamer is not None:
+                        streamer.put(numpy.array([token]))
+
+                    if (
+                        token == self.tokenizer.eos_token_id
+                        and not self.force_max_tokens
+                    ):
+                        break
+
+                    if self._stop_token_generated(token, stop_tokens=stop):
+                        _LOGGER.debug(
+                            "Stop token %s generated. Stopping generation."
+                            % self.tokenizer.decode(token)
+                        )
+                        break
+
+                    if callback is not None and callback(token) is False:
+                        _LOGGER.debug(
+                            "callback %s returned False, stopping generation."
+                            % callback.__qualname__
+                        )
+                        break
+
+            if streamer is not None:
+                streamer.end()
 
         return numpy.array([generated_tokens]), numpy.concatenate(
             generated_logits, axis=1
@@ -365,38 +548,29 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
-        # clean the state of engines' cache
-        # in the future, this will be paired with the session ids
-        # to refrain from resetting if session id is being passed
-        self._reset_engines_cache()
-
-        # TODO: Multiple passes through the multitoken
-        # engine once the OPT injection is fixed
-        if (
-            len(tokens) > self.prompt_processing_sequence_length
-            and self.engine_type != DEEPSPARSE_ENGINE
-        ):
-            # trim the input to the prompt size
-            engine_inputs = [
-                input[:, : self.prompt_processing_sequence_length]
-                for input in engine_inputs
-            ]
-            new_token, new_logits = self.multitoken_engine(engine_inputs)
-            num_tokens_processed = self.prompt_processing_sequence_length
-            prompt_logits.append(new_logits)
+        if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
+            self.multitoken_engine.reset_kv_cache()
+            for engine_inputs in self.engine_inputs_for_prefill(tokens):
+                new_token, new_logits = self.multitoken_engine(engine_inputs)
+                num_tokens_processed += self.prompt_sequence_length
+                prompt_logits.append(new_logits)
 
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
             self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
+        else:
+            self.engine.reset_kv_cache()
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
 
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
-            new_token, new_logits = self.autoregressive_inference(
-                run_tokens, shift_positions_by_one=not bool(num_tokens_processed)
-            )
+            with self.timer_manager.current.time(
+                TextGenerationTimings.PROMPT_PREFILL_SINGLE
+            ):
+                new_token, new_logits = self.autoregressive_inference(run_tokens)
+
             prompt_logits.append(new_logits)
 
         tokens.append(new_token)
@@ -406,19 +580,16 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
-        shift_positions_by_one: bool = False,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
         a new token and new logits.
 
         :param tokens: The current context (prompt + generated tokens so far)
-        :param shift_positions_by_one: Whether to shift the positions
-            by one. Used if we are processing the prompt from the scratch
-            (i.e. not using the multitoken engine)
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
+
         new_token = tokens[-1]
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
@@ -426,27 +597,126 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
         attention_mask[:, -num_tokens_processed:] = 1
         positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
-        if shift_positions_by_one:
-            positions -= 1
+        positions -= 1
         input_ids = numpy.array([[new_token]])
-        engine_inputs = [input_ids, attention_mask, positions]
+        causal_mask = create_causal_mask(input_ids, attention_mask)
+
+        # filter out the inputs that are not needed by the engine
+        engine_inputs_map = dict(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            causal_mask=causal_mask,
+            positions=positions,
+        )
+        engine_inputs = [
+            engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
+        ]
 
         generated_token, generated_logits = self.engine(engine_inputs)
 
         return generated_token, generated_logits
 
-    @property
-    def has_cache(self) -> bool:
+    def engine_inputs_for_prefill(
+        self, tokens: List[int]
+    ) -> Generator[List[numpy.ndarray], None, None]:
+        """
+        Takes a list of tokens and creates a generator
+        of engine_inputs for the multitoken engine.
+
+        1. The input tokens first get batched into chunks of
+        size self.prompt_sequence_length. This is to
+        ensure that they match the expected input size by the
+        multitoken engine. Any remaining tokens are discarded.
+
+        2. Every created engine_inputs batch is then created:
+
+            - input_ids: by taking a batch of tokens
+
+            - attention_mask: by creating an appropriate mask,
+            that will have the amount of unmasked entries equal to
+            the sum of:
+                a) the number of tokens in the batch
+                (self.prompt_sequence_length)
+                b) the number of non-blank cache entries
+                (num_non_blank_cache_entries)
+            so that the attention_mask properly attends to the
+            current input tokens, as well as the previous cache
+            entries.
+
+            - positions: derived directly from the input_ids
+
+            - causal_mask: derived from the input_ids and attention_mask
+
+        :param tokens: the list of tokens to process
+        :return: a generator of engine inputs
+        """
+
+        num_batches = len(tokens) // self.prompt_sequence_length
+
+        token_batches = [
+            tokens[
+                i * self.prompt_sequence_length : (i + 1) * self.prompt_sequence_length
+            ]
+            for i in range(0, num_batches)
+        ]
+
+        for idx, token_batch in enumerate(token_batches):
+            engine_inputs = []
+            num_cached_entries = self.multitoken_engine.num_non_blank_cache_entries
+            for name in self.multitoken_engine.onnx_input_names_no_cache:
+                if name == "input_ids":
+                    engine_input = numpy.array([token_batch])
+
+                elif name == "attention_mask":
+                    # create an empty attention mask
+                    engine_input = numpy.zeros(
+                        (1, self.sequence_length), dtype=numpy.int64
+                    )
+                    # fill it out with 1s (from the right), so that the number
+                    # of unmasked entries is equal to the sum of:
+                    engine_input[
+                        :,
+                        -(
+                            # ...the number of current input tokens...
+                            self.prompt_sequence_length
+                            # ...and the number of the previous cache entries
+                            + num_cached_entries
+                        ) :,
+                    ] = 1
+                elif name == "causal_mask":
+                    # delay creation of the causal mask
+                    continue
+                elif name == "positions":
+                    engine_input = (
+                        numpy.arange(
+                            num_cached_entries,
+                            num_cached_entries + self.prompt_sequence_length,
+                        )
+                        .reshape(1, -1)
+                        .astype(numpy.int64)
+                    )
+
+                engine_inputs.append(engine_input)
+
+            # create the causal mask once we have the input_ids and attention_mask
+            if "causal_mask" in self.multitoken_engine.onnx_input_names_no_cache:
+                causal_mask = create_causal_mask(
+                    input_ids=engine_inputs[0], attention_mask=engine_inputs[1]
+                )
+                engine_inputs.append(causal_mask)
+
+            yield engine_inputs
+
+    def is_cache_support_enabled(self) -> bool:
         """
         Returns whether the ran model has kv cache or not
 
         :return: True if the model has kv cache, False otherwise
         """
-        return self.multitoken_engine.kv_cache_enabled
+        return any(default_cached_outputs(self.onnx_file_path))
 
-    @staticmethod
     def join_engine_outputs(
-        batch_outputs: List[List[numpy.ndarray]],
+        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
     ) -> List[numpy.ndarray]:
         """
         Takes a list of outputs (batches) from the engine
@@ -455,20 +725,66 @@ class TextGenerationPipeline(TransformersPipeline):
         they can be concatenated.
 
         :param batch_outputs: A list of outputs from the engine
+        :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
         tokens, logits = zip(*batch_outputs)
+        if self.cache_support_enabled:
+            # if the model has kv cache, we need to account for
+            # the fact that the predicted outputs may have
+            # different lengths
+
+            # find the longest sequence in the batch of tokens
+            max_len = max([token.shape[1] for token in tokens])
+
+            # pad all tokens to the same length
+            tokens = [
+                pad_to_fixed_length(
+                    array=prediction,
+                    max_len=max_len,
+                    value=self.tokenizer.pad_token_id,
+                    axis=1,
+                )
+                for prediction in tokens
+            ]
+
+            # find the longest sequence in the batch of logits
+            max_len = max([logits.shape[1] for logits in logits])
+
+            # pad all logits to the same length
+            logits = [
+                pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
+                for single_logits in logits
+            ]
+
         tokens = numpy.concatenate(tokens, axis=0)
-        # find the longest sequence in the batch of logits
-        max_len = max([logits.shape[1] for logits in logits])
-        # pad all logits to the same length
-        logits = [
-            pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
-            for single_logits in logits
-        ]
         logits = numpy.concatenate(logits, axis=0)
+
         return [tokens, logits]
 
-    def _reset_engines_cache(self):
-        self.engine.reset_kv_cache()
-        self.multitoken_engine.reset_kv_cache()
+    @staticmethod
+    def causal_mask_input_present(model_path: str) -> bool:
+        """
+        Check whether the model has causal_mask input present or not.
+        In general, the absence of causal_mask input means that the model
+        cannot be run through the multitoken engine.
+
+        :param model_path: path to the model
+        :return: True if causal_mask input is present, False otherwise
+        """
+        return any(
+            inp.name == "causal_mask"
+            for inp in onnx.load(model_path, load_external_data=False).graph.input
+        )
+
+    def _stop_token_generated(
+        self, token, stop_tokens: Union[None, str, Sequence[str]]
+    ) -> bool:
+        if stop_tokens is None:
+            return False
+
+        decoded_token = self.tokenizer.decode(token)
+        decoded_token = (
+            decoded_token if decoded_token.isspace() else decoded_token.strip()
+        )
+        return decoded_token in stop_tokens

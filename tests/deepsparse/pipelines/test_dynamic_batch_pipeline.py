@@ -35,7 +35,7 @@ _BATCH_SIZES = [2, 4, 8]
 
 
 def compare(expected, actual):
-    assert type(expected) == type(actual)
+    assert type(expected) is type(actual)
 
     if isinstance(expected, (list, float, numpy.ndarray)):
         expected_np = numpy.asarray(expected, dtype=float)
