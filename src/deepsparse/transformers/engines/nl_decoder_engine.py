@@ -20,12 +20,15 @@ from transformers import AutoTokenizer
 from deepsparse.engine import Context
 from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from deepsparse.transformers.utils.helpers import (
-    generate_session_id,
+from deepsparse.transformers.utils.helpers import generate_session_id
+from deepsparse.transformers.utils.timings import TextGenerationTimings
+from deepsparse.utils import TimerManager
+from deepsparse.utils.data import numpy_softmax
+from deepsparse.utils.onnx import (
+    CACHE_INPUT_PREFIX,
+    CACHE_OUTPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
 )
-from deepsparse.utils.data import numpy_softmax
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,7 +52,7 @@ class NLDecoderEngine:
     :param deterministic: Whether to use deterministic sampling
     :param tokenizer: The tokenizer to used for engine inputs
     :param engine_context: The context to run the engine in
-    :param use_deepsparse_cache: Whether to use the deepsparse
+    :param internal_kv_cache: Whether to use the deepsparse
         kv cache in the DecoderKVCache object or not
     """
 
@@ -64,7 +67,8 @@ class NLDecoderEngine:
         sampling_temperature: float = 1.0,
         deterministic: bool = True,
         engine_context: Optional[Context] = None,
-        use_deepsparse_cache: bool = False,
+        internal_kv_cache=False,
+        timer_manager: TimerManager = None,
     ):
         # flag to indicate if the model is quantized or not
         self.kv_cache_data_type = None
@@ -83,7 +87,7 @@ class NLDecoderEngine:
         if sum(output_indices_to_be_cached):
             kv_cache_enabled = True
             self.kv_cache_data_type = kv_cache_data_type
-            if use_deepsparse_cache and engine_type == DEEPSPARSE_ENGINE:
+            if internal_kv_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
                 engine_args["cached_outputs"] = output_indices_to_be_cached
 
@@ -93,16 +97,14 @@ class NLDecoderEngine:
             engine_args=engine_args,
             context=engine_context,
         )
-
+        self.timer_manager = timer_manager or TimerManager()
         self.sequence_length = sequence_length
         self.sampling_temperature = sampling_temperature
         self.deterministic = deterministic
         self.input_ids_length = input_ids_length
         self.cache_length = sequence_length - input_ids_length
         self.kv_cache_enabled = kv_cache_enabled
-        self.kv_cache = (
-            DecoderKVCache(use_deepsparse_cache) if kv_cache_enabled else None
-        )
+        self.kv_cache = DecoderKVCache(internal_kv_cache) if kv_cache_enabled else None
         self._freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
         self._engine_type = engine_type
@@ -187,18 +189,21 @@ class NLDecoderEngine:
         :param val_inp: Whether the input is for validation or not
         :return: The generated token and corresponding logits
         """
+        timer = self.timer_manager.current
         if self.kv_cache:
             # if model has kv cache enabled, we need
             # to add the kv cache state to the input
             inp = self.add_kv_cache_to_input(inp)
 
-        out = self.run(inp, val_inp)
+        with timer.time(f"EXECUTE_ENGINE_SEQ_LEN_{self.sequence_length}"):
+            out = self.run(inp, val_inp)
 
         if self.kv_cache:
-            logits, *kv_cache_state = out
-            self.update_kv_cache(
-                kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
-            )
+            with timer.time(TextGenerationTimings.KV_CACHE_UPDATE):
+                logits, *kv_cache_state = out
+                self.update_kv_cache(
+                    kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
+                )
         else:
             logits = out[0]
 

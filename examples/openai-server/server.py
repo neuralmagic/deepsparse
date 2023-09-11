@@ -78,15 +78,13 @@ class DeepSparseOpenAIEngine:
         self,
         model: str,
         sequence_length: int = 512,
-        prompt_processing_sequence_length: int = 64,
-        use_deepsparse_cache: bool = False,
+        prompt_sequence_length: int = 64,
     ):
         self.engine = deepsparse.Pipeline.create(
             task="text-generation",
             model_path=model,
             sequence_length=sequence_length,
-            prompt_processing_sequence_length=prompt_processing_sequence_length,
-            use_deepsparse_cache=use_deepsparse_cache,
+            prompt_sequence_length=prompt_sequence_length,
         )
 
     def tokenize(self, text: str) -> List[int]:
@@ -101,43 +99,76 @@ class DeepSparseOpenAIEngine:
         temperature: float = 0.80,
         frequency_penalty: float = 0.0,
         presence_penalty: float = 0.0,
+        stream: bool = True,
         **kwargs,
     ) -> AsyncGenerator[RequestOutput, None]:
         request_id = random_uuid()
 
         prompt_token_ids = self.tokenize(prompt)
 
-        streamer = TextIteratorStreamer(self.engine.tokenizer)
         self.engine.max_generated_tokens = max_tokens
         self.engine.sampling_temperature = temperature
 
-        generation_kwargs = dict(sequences=prompt, streamer=streamer)
+        if not stream:
+            # Non-streaming response
+            output = self.engine(sequences=prompt)
 
-        thread = Thread(target=self.engine, kwargs=generation_kwargs)
-        thread.start()
+            new_text = output.sequences[0]
 
-        # stream out the text
-        for new_text in streamer:
             yield RequestOutput(
                 request_id=request_id,
                 prompt=prompt,
                 prompt_token_ids=prompt_token_ids,
                 outputs=[
                     CompletionOutput(
-                        index=0, text=new_text, token_ids=self.tokenize(new_text)
+                        index=0,
+                        text=new_text,
+                        token_ids=self.tokenize(new_text),
+                        finish_reason="stop",
                     )
                 ],
-                finished=False,
+                finished=True,
             )
 
-        # finished
-        yield RequestOutput(
-            request_id=request_id,
-            prompt=prompt,
-            prompt_token_ids=prompt_token_ids,
-            outputs=[CompletionOutput(index=0, text="", token_ids=[0])],
-            finished=True,
-        )
+        else:
+            # Streaming response
+            streamer = TextIteratorStreamer(self.engine.tokenizer)
+
+            generation_kwargs = dict(sequences=prompt, streamer=streamer)
+
+            thread = Thread(target=self.engine, kwargs=generation_kwargs)
+            thread.start()
+
+            # stream out the text
+            concat_text = ""
+            concat_token_ids = []
+            for new_text in streamer:
+                concat_text += new_text
+                concat_token_ids.append(self.tokenize(new_text))
+                yield RequestOutput(
+                    request_id=request_id,
+                    prompt=prompt,
+                    prompt_token_ids=prompt_token_ids,
+                    outputs=[
+                        CompletionOutput(
+                            index=0, text=concat_text, token_ids=concat_token_ids
+                        )
+                    ],
+                    finished=False,
+                )
+
+            # finished
+            yield RequestOutput(
+                request_id=request_id,
+                prompt=prompt,
+                prompt_token_ids=prompt_token_ids,
+                outputs=[
+                    CompletionOutput(
+                        index=0, text="", token_ids=[0], finish_reason="stop"
+                    )
+                ],
+                finished=True,
+            )
 
     async def abort(self, session_id):
         pass
@@ -496,6 +527,7 @@ async def create_completion(raw_request: Request):
             max_tokens=request.max_tokens,
             logprobs=request.logprobs,
             use_beam_search=request.use_beam_search,
+            stream=request.stream,
         )
     except ValueError as e:
         return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
@@ -655,20 +687,12 @@ if __name__ == "__main__":
         help="maximum number of input+output tokens the model will use",
     )
     parser.add_argument(
-        "--prompt-processing-sequence-length",
+        "--prompt-sequence-length",
         type=int,
-        default=64,
+        default=16,
         help=(
             "For large prompts, the prompt is processed in chunks of this length. "
-            "This is to maximize the inference speed. By default, this is set to 64."
-        ),
-    )
-    parser.add_argument(
-        "--use-deepsparse-cache",
-        action="store_true",
-        help=(
-            "If True, the pipeline will use the deepsparse kv cache for caching the "
-            "model outputs."
+            "This is to maximize the inference speed. By default, this is set to 16."
         ),
     )
 
@@ -717,8 +741,7 @@ if __name__ == "__main__":
     engine = DeepSparseOpenAIEngine(
         model=args.model,
         sequence_length=max_model_len,
-        prompt_processing_sequence_length=args.prompt_processing_sequence_length,
-        use_deepsparse_cache=args.use_deepsparse_cache,
+        prompt_sequence_length=args.prompt_sequence_length,
     )
     tokenizer = engine.engine.tokenizer
 

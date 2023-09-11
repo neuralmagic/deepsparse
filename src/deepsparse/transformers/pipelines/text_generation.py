@@ -15,7 +15,6 @@
 import logging
 import os
 import warnings
-from dataclasses import dataclass
 from typing import (
     Any,
     Callable,
@@ -42,20 +41,13 @@ from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     pad_to_fixed_length,
 )
+from deepsparse.transformers.utils.timings import TextGenerationTimings
 from deepsparse.utils.onnx import default_cached_outputs
 
 
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["TextGenerationPipeline"]
-
-
-@dataclass(frozen=True)
-class _TextGenerationTimings:
-    PROMPT_PREFILL: str = "engine_prompt_prefill"
-    PROMPT_PREFILL_SINGLE: str = "engine_prompt_prefill_single"
-    TOKEN_GENERATION: str = "engine_token_generation"
-    TOKEN_GENERATION_SINGLE: str = "engine_token_generation_single"
 
 
 class TextGenerationInput(BaseModel):
@@ -158,12 +150,12 @@ class TextGenerationPipeline(TransformersPipeline):
         sequence is reached.
     :param sequence_length: sequence length to compile model and tokenizer for.
         This controls the maximum context length of the pipeline. Default is 512
-    :param prompt_processing_sequence_length: For large prompts, the prompt is
+    :param prompt_sequence_length: For large prompts, the prompt is
         processed in chunks of this length. This is to maximize the inference
         speed. By default, this is set to 64.
     :param force_max_tokens: if True, the pipeline will generate the maximum number
         of tokens supplied even if the stop token is reached.
-    :param use_deepsparse_cache: if True, the pipeline will use the deepsparse kv cache
+    :param internal_kv_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
@@ -173,23 +165,23 @@ class TextGenerationPipeline(TransformersPipeline):
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         max_generated_tokens: Optional[int] = 1024,
+        prompt_sequence_length: int = 64,
         sequence_length: int = 512,
-        prompt_processing_sequence_length: int = 64,
         force_max_tokens: bool = False,
-        use_deepsparse_cache: bool = True,
+        internal_kv_cache: bool = True,
         **kwargs,
     ):
         kwargs_engine_type = kwargs.get("engine_type", DEEPSPARSE_ENGINE)
 
-        if use_deepsparse_cache:
+        if internal_kv_cache:
             if kwargs_engine_type != DEEPSPARSE_ENGINE:
                 _LOGGER.warning(
-                    "`use_deepsparse_cache` is set to True "
+                    "`internal_kv_cache` is set to True "
                     "but the chosen `engine_type` "
                     f"is {kwargs_engine_type}. "
                     f"The optimized kv cache management is disabled."
                 )
-                use_deepsparse_cache = False
+                internal_kv_cache = False
 
         super().__init__(
             **kwargs,
@@ -199,10 +191,10 @@ class TextGenerationPipeline(TransformersPipeline):
         )
         # enable multitoken prefill if
         # - the model graph is supporting it (causal_mask input is present)
-        # - prompt_processing_sequence_length != 1 (identical to single-token prefill)
+        # - prompt_sequence_length != 1 (identical to single-token prefill)
         self.enable_multitoken_prefill = (
             self.causal_mask_input_present(model_path=self.onnx_file_path)
-            and prompt_processing_sequence_length > 1
+            and prompt_sequence_length > 1
         )
 
         self.cache_support_enabled = self.is_cache_support_enabled()
@@ -221,9 +213,9 @@ class TextGenerationPipeline(TransformersPipeline):
         self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
         self.max_generated_tokens = max_generated_tokens
-        self.prompt_processing_sequence_length = prompt_processing_sequence_length
+        self.prompt_sequence_length = prompt_sequence_length
         self.force_max_tokens = force_max_tokens
-        self.use_deepsparse_cache = use_deepsparse_cache
+        self.internal_kv_cache = internal_kv_cache
 
         # override tokenizer to pad to left
         self.tokenizer.padding_side = "left"
@@ -259,15 +251,15 @@ class TextGenerationPipeline(TransformersPipeline):
         if self.cache_support_enabled:
             if (
                 self.engine_type == DEEPSPARSE_ENGINE
-                and self.sequence_length <= self.prompt_processing_sequence_length
+                and self.sequence_length <= self.prompt_sequence_length
                 and self.enable_multitoken_prefill
             ):
                 raise ValueError(
                     "Attempting to initialize auxiliary DeepSparse engine to "
                     "process a prompt with a larger processing length. "
-                    "However, it is assumed that `prompt_processing_sequence_length` "
+                    "However, it is assumed that `prompt_sequence_length` "
                     "is smaller than the `sequence_length`. "
-                    "Adjust the `prompt_processing_sequence_length` "
+                    "Adjust the `prompt_sequence_length` "
                     "argument accordingly."
                 )
 
@@ -291,6 +283,18 @@ class TextGenerationPipeline(TransformersPipeline):
             self.cache_support_enabled and self.enable_multitoken_prefill
         ) or not self.cache_support_enabled:
 
+            # input_ids_length for the multitoken engine is either:
+            # - the prompt_sequence_length if the cache support is enabled
+            #   (the prompt is processed sequentially at predefined processing length)
+            # - the full sequence_length if the cache support is disabled
+            #   (the prompt is processed in a single pass, prompts length is fixed at
+            #   sequence_length)
+            input_ids_length = (
+                self.prompt_sequence_length
+                if self.cache_support_enabled
+                else self.sequence_length
+            )
+
             multitoken_engine = NLDecoderEngine(
                 onnx_file_path=self.onnx_file_path,
                 engine_type=self.engine_type,
@@ -299,9 +303,10 @@ class TextGenerationPipeline(TransformersPipeline):
                 sampling_temperature=self.sampling_temperature,
                 deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
-                input_ids_length=self.prompt_processing_sequence_length,
+                input_ids_length=input_ids_length,
                 tokenizer=self.tokenizer,
-                use_deepsparse_cache=self.use_deepsparse_cache,
+                internal_kv_cache=self.internal_kv_cache,
+                timer_manager=self.timer_manager,
             )
 
         if self.cache_support_enabled:
@@ -315,7 +320,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 sequence_length=self.sequence_length,
                 input_ids_length=1,
                 tokenizer=self.tokenizer,
-                use_deepsparse_cache=self.use_deepsparse_cache,
+                internal_kv_cache=self.internal_kv_cache,
+                timer_manager=self.timer_manager,
             )
 
         assert (engine is not None) or (
@@ -459,7 +465,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
             else:
                 # run the prompt through
-                with timer.time(_TextGenerationTimings.PROMPT_PREFILL):
+                with timer.time(TextGenerationTimings.PROMPT_PREFILL):
                     tokens, prompt_logits = self.prompt_inference(engine_inputs)
 
             if streamer is not None:
@@ -483,9 +489,9 @@ class TextGenerationPipeline(TransformersPipeline):
             callback = context.get("callback")
             stop = context.get("stop")
 
-            with timer.time(_TextGenerationTimings.TOKEN_GENERATION):
+            with timer.time(TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
-                    with timer.time(_TextGenerationTimings.TOKEN_GENERATION_SINGLE):
+                    with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                         token, logits = self.autoregressive_inference(tokens)
                     tokens.append(token)
                     generated_tokens.append(token)
@@ -542,20 +548,18 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
-        if (
-            len(tokens) > self.prompt_processing_sequence_length
-            and self.enable_multitoken_prefill
-        ):
+        if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
             self.multitoken_engine.reset_kv_cache()
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_token, new_logits = self.multitoken_engine(engine_inputs)
-                num_tokens_processed += self.prompt_processing_sequence_length
+                num_tokens_processed += self.prompt_sequence_length
                 prompt_logits.append(new_logits)
 
-        self.engine.reset_kv_cache()
         if num_tokens_processed:
             # transfer the cache state from the multi-token engine to the main engine
             self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
+        else:
+            self.engine.reset_kv_cache()
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
@@ -563,7 +567,7 @@ class TextGenerationPipeline(TransformersPipeline):
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             with self.timer_manager.current.time(
-                _TextGenerationTimings.PROMPT_PREFILL_SINGLE
+                TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
                 new_token, new_logits = self.autoregressive_inference(run_tokens)
 
@@ -620,7 +624,7 @@ class TextGenerationPipeline(TransformersPipeline):
         of engine_inputs for the multitoken engine.
 
         1. The input tokens first get batched into chunks of
-        size self.prompt_processing_sequence_length. This is to
+        size self.prompt_sequence_length. This is to
         ensure that they match the expected input size by the
         multitoken engine. Any remaining tokens are discarded.
 
@@ -632,7 +636,7 @@ class TextGenerationPipeline(TransformersPipeline):
             that will have the amount of unmasked entries equal to
             the sum of:
                 a) the number of tokens in the batch
-                (self.prompt_processing_sequence_length)
+                (self.prompt_sequence_length)
                 b) the number of non-blank cache entries
                 (num_non_blank_cache_entries)
             so that the attention_mask properly attends to the
@@ -647,13 +651,11 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: a generator of engine inputs
         """
 
-        num_batches = len(tokens) // self.prompt_processing_sequence_length
+        num_batches = len(tokens) // self.prompt_sequence_length
 
         token_batches = [
             tokens[
-                i
-                * self.prompt_processing_sequence_length : (i + 1)
-                * self.prompt_processing_sequence_length
+                i * self.prompt_sequence_length : (i + 1) * self.prompt_sequence_length
             ]
             for i in range(0, num_batches)
         ]
@@ -676,7 +678,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         :,
                         -(
                             # ...the number of current input tokens...
-                            self.prompt_processing_sequence_length
+                            self.prompt_sequence_length
                             # ...and the number of the previous cache entries
                             + num_cached_entries
                         ) :,
@@ -688,7 +690,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     engine_input = (
                         numpy.arange(
                             num_cached_entries,
-                            num_cached_entries + self.prompt_processing_sequence_length,
+                            num_cached_entries + self.prompt_sequence_length,
                         )
                         .reshape(1, -1)
                         .astype(numpy.int64)
