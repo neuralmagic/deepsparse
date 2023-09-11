@@ -137,9 +137,7 @@ class TokenClassificationOutput(BaseModel):
 @Pipeline.register(
     task="token_classification",
     task_aliases=["ner"],
-    default_model_path=(
-        "zoo:distilbert-conll2003_wikipedia_bookcorpus-pruned90"
-    ),
+    default_model_path=("zoo:distilbert-conll2003_wikipedia_bookcorpus-pruned90"),
 )
 class TokenClassificationPipeline(TransformersPipeline):
     """
