@@ -20,11 +20,11 @@ from tests.utils import mock_engine
 
 @pytest.mark.parametrize(
     "pipeline_name",
-    # [
-    #     ("python_logger"),
-    #     (None),
-    # ], 
-) # nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni
+    [
+        ("python_logger"),
+        (None),
+    ],
+)
 @mock_engine(rng_seed=0)
 def test_python_logger(engine, pipeline_name, capsys):
     if pipeline_name:
