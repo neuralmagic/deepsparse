@@ -107,7 +107,8 @@ def test_benchmark(
     ("model_stub"),
     [
         (
-            "zoo:nlp/masked_language_modeling/bert-large/pytorch/huggingface/wikipedia_bookcorpus/pruned90-none"
+            "zoo:nlp/masked_language_modeling/bert-large/pytorch/"
+            "huggingface/wikipedia_bookcorpus/pruned90-none"
         ),
     ],
 )

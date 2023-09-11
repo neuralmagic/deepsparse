@@ -29,23 +29,22 @@ def _return_number(x):
 @pytest.mark.parametrize(
     "identifier, function_name, frequency, function, num_iterations, expected_log_content",  # noqa E501
     [
-        # deprecated lp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni
-        # (
-        #     "token_classification/pipeline_inputs.inputs",
-        #     "identity",
-        #     2,
-        #     _identity,
-        #     5,
-        #     "all_your_base_are_belong_to_us",
-        # ),
-        # ( # deprecated nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni
-        #     "token_classification/engine_inputs",
-        #     "return_one",
-        #     1,
-        #     _return_number,
-        #     5,
-        #     "1234",
-        # ),
+        (
+            "token_classification/pipeline_inputs.inputs",
+            "identity",
+            2,
+            _identity,
+            5,
+            "all_your_base_are_belong_to_us",
+        ),
+        (
+            "token_classification/engine_inputs",
+            "return_one",
+            1,
+            _return_number,
+            5,
+            "1234",
+        ),
     ],
 )
 @mock_engine(rng_seed=0)
