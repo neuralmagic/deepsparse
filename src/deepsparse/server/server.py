@@ -20,6 +20,7 @@ from copy import deepcopy
 from typing import List
 
 import yaml
+from pydantic import BaseModel
 
 import uvicorn
 from deepsparse.engine import Context
@@ -43,10 +44,19 @@ from deepsparse.server.system_logging import (
     log_system_information,
 )
 from fastapi import FastAPI, UploadFile
+from fastapi.exceptions import HTTPException
 from starlette.responses import RedirectResponse
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class CheckReady(BaseModel):
+    status: str = "OK"
+
+
+class ModelMetaData(BaseModel):
+    model_path: str
 
 
 def start_server(
@@ -142,12 +152,14 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     def _info():
         return server_config
 
-    @app.get("/ping", tags=["general"], response_model=bool)
-    @app.get("/health", tags=["general"], response_model=bool)
-    @app.get("/healthcheck", tags=["general"], response_model=bool)
-    @app.get("/status", tags=["general"], response_model=bool)
-    def _health():
-        return True
+    @app.get("/v2/health/ready", tags=["health"], response_model=CheckReady)
+    @app.get("/v2/health/live", tags=["health"], response_model=CheckReady)
+    def _check_health():
+        return CheckReady(status="OK")
+
+    @app.get("/v2", tags=["metadata", "server"], response_model=str)
+    def _get_server_info():
+        return "This is the deepsparse server. Hello!"
 
     @app.post("/endpoints", tags=["endpoints"], response_model=bool)
     def _add_endpoint_endpoint(cfg: EndpointConfig):
@@ -237,16 +249,76 @@ def _add_endpoint(
     pipeline = Pipeline.from_config(pipeline_config, context, server_logger)
 
     _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
-    _add_pipeline_endpoint(
+    _add_inference_endpoints(
         app,
         endpoint_config,
         server_config.system_logging,
         pipeline,
         server_config.integration,
     )
+    _add_status_and_metadata_endpoints(
+        app, endpoint_config, pipeline, server_config.integration
+    )
 
 
-def _add_pipeline_endpoint(
+def _add_endpoint_to_app(app, routes_and_fns, response_model, methods, tags):
+    for route, endpoint_fn in routes_and_fns:
+        app.add_api_route(
+            route,
+            endpoint_fn,
+            response_model=response_model,
+            methods=methods,
+            tags=tags,
+        )
+        _LOGGER.info(f"Added '{route}' endpoint")
+
+
+def clean_up_route(route):
+    if not route.startswith("/"):
+        route = "/" + route
+    return route
+
+
+def _add_status_and_metadata_endpoints(
+    app: FastAPI,
+    endpoint_config: EndpointConfig,
+    pipeline: Pipeline,
+    integration: str = INTEGRATION_LOCAL,
+):
+    def _pipeline_ready():
+        return CheckReady(status="OK")
+
+    def _model_metadata():
+        if not pipeline or not pipeline.model_path:
+            HTTPException(status_code=404, detail="Model path not found")
+        return ModelMetaData(model_path=pipeline.model_path)
+
+    routes_and_fns = []
+    meta_and_fns = []
+
+    if integration == INTEGRATION_LOCAL:
+        if endpoint_config.route:
+            endpoint_config.route = clean_up_route(endpoint_config.route)
+            route_ready = f"{endpoint_config.route}/ready"
+            route_meta = endpoint_config.route
+        else:
+            route_ready = f"/v2/models/{endpoint_config.name}/ready"
+            route_meta = f"/v2/models/{endpoint_config.name}"
+
+    elif integration == INTEGRATION_SAGEMAKER:
+        route_ready = "/invocations/ready"
+        route_meta = "/invocations"
+
+    routes_and_fns.append((route_ready, _pipeline_ready))
+    meta_and_fns.append((route_meta, _model_metadata))
+
+    _add_endpoint_to_app(
+        app, meta_and_fns, ModelMetaData, ["GET"], ["model", "metadata"]
+    )
+    _add_endpoint_to_app(app, routes_and_fns, CheckReady, ["GET"], ["model", "health"])
+
+
+def _add_inference_endpoints(
     app: FastAPI,
     endpoint_config: EndpointConfig,
     system_logging_config: SystemLoggingConfig,
@@ -275,26 +347,24 @@ def _add_pipeline_endpoint(
 
     routes_and_fns = []
     if integration == INTEGRATION_LOCAL:
-        route = endpoint_config.route or "/predict"
-        if not route.startswith("/"):
-            route = "/" + route
+        route = (
+            f"{endpoint_config.route}/infer"
+            if endpoint_config.route
+            else f"/v2/models/{endpoint_config.name}/infer"
+        )
+        route = clean_up_route(route)
 
         routes_and_fns.append((route, _predict))
         if hasattr(input_schema, "from_files"):
             routes_and_fns.append((route + "/from_files", _predict_from_files))
+
     elif integration == INTEGRATION_SAGEMAKER:
-        route = "/invocations"
+        route = "/invocations/infer"
         if hasattr(input_schema, "from_files"):
             routes_and_fns.append((route, _predict_from_files))
         else:
             routes_and_fns.append((route, _predict))
 
-    for route, endpoint_fn in routes_and_fns:
-        app.add_api_route(
-            route,
-            endpoint_fn,
-            response_model=output_schema,
-            methods=["POST"],
-            tags=["predict"],
-        )
-        _LOGGER.info(f"Added '{route}' endpoint")
+    _add_endpoint_to_app(
+        app, routes_and_fns, output_schema, ["POST"], ["model", "inference"]
+    )
