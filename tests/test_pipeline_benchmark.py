@@ -143,8 +143,8 @@ def test_generate_random_question_data():
     ("task_name", "input_schema"),
     [
         ("yolo", SchemaType.IMAGE),
-        ("text_classification", SchemaType.TEXT_SEQ), 
-        ("transformers_embedding_extraction", SchemaType.TEXT_INPUT), 
+        ("text_classification", SchemaType.TEXT_SEQ),
+        ("transformers_embedding_extraction", SchemaType.TEXT_INPUT),
         ("question_answering", SchemaType.QUESTION),
     ],
 )
