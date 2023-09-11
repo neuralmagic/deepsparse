@@ -64,7 +64,6 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     with open("output.json") as f:
         data = json.load(f)
     assert len(data) == 1
-    # breakpoint()
     assert data["predictions"][0][0]["word"] == expected
 
 
@@ -73,16 +72,12 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     [
         pytest.param(
             "csv",
-            # "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-            # "pruned_6layers-aggressive_98", # deprecated
             "zoo:bert-base-squad_wikipedia_bookcorpus-pruned90",
             True,
             marks=pytest.mark.smoke,
         ),
         (
             "json",
-            # "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-            # "pruned_6layers-aggressive_98", # deprecated
             "zoo:bert-base-squad_wikipedia_bookcorpus-pruned90",
             False,
         ),
@@ -128,81 +123,81 @@ def test_run_inference_qa(
         assert actual["answer"] == expected_answer
 
 
-# @pytest.mark.parametrize(
-#     ("input_format", "model_path", "local_model", "additional_opts"),
-#     [
-#         (
-#             "csv",
-#             "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
-#             False,
-#             ["--batch-size", "1", "--engine-type", "onnxruntime"],
-#         ),
-#         (
-#             "txt",
-#             "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
-#             True,
-#             ["--num-cores", "4", "--engine-type", "onnxruntime"],
-#         ),
-#         pytest.param(
-#             "csv",
-#             "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
-#             True,
-#             [],
-#             marks=pytest.mark.smoke,
-#         ),
-#         (
-#             "json",
-#             "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
-#             True,
-#             ["--batch-size", "5", "--engine-type", "deepsparse"],
-#         ),
-#         (
-#             "txt",
-#             "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
-#             True,
-#             ["--batch-size", "10", "--num-cores", "4"],
-#         ),
-#     ],
-# )
-# def test_run_inference_sst(
-#     input_format: str,
-#     model_path: str,
-#     local_model: bool,
-#     additional_opts: List[str],
-#     cleanup: Dict[str, List],
-# ):
-#     if local_model:
-#         model = predownload_stub(model_path, copy_framework_files=True)
-#         model_path = model.path
+@pytest.mark.parametrize(
+    ("input_format", "model_path", "local_model", "additional_opts"),
+    [
+        (
+            "csv",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
+            False,
+            ["--batch-size", "1", "--engine-type", "onnxruntime"],
+        ),
+        (
+            "txt",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
+            True,
+            ["--num-cores", "4", "--engine-type", "onnxruntime"],
+        ),
+        pytest.param(
+            "csv",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
+            True,
+            [],
+            marks=pytest.mark.smoke,
+        ),
+        (
+            "json",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
+            True,
+            ["--batch-size", "5", "--engine-type", "deepsparse"],
+        ),
+        (
+            "txt",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
+            True,
+            ["--batch-size", "10", "--num-cores", "4"],
+        ),
+    ],
+)
+def test_run_inference_sst(
+    input_format: str,
+    model_path: str,
+    local_model: bool,
+    additional_opts: List[str],
+    cleanup: Dict[str, List],
+):
+    if local_model:
+        model = predownload_stub(model_path, copy_framework_files=True)
+        model_path = model.path
 
-#     cmd = [
-#         "deepsparse.transformers.run_inference",
-#         "--task",
-#         "text_classification",
-#         "--model-path",
-#         model_path,
-#         "--data",
-#         f"tests/test_data/bert-sst-test-input.{input_format}",
-#         "--output-file",
-#         "output.json",
-#         *additional_opts,
-#     ]
-#     cleanup["files"].append("output.json")
-#     print(f"\n==== test_run_inference_sst command ====\n{' '.join(cmd)}")
-#     res = run_command(cmd)
-#     if res.stdout is not None:
-#         print(f"\n==== test_run_inference_sst output ====\n{res.stdout}")
-#     assert res.returncode == 0
-#     assert "error" not in res.stdout.lower()
-#     assert "fail" not in res.stdout.lower()
+    cmd = [
+        "deepsparse.transformers.run_inference",
+        "--task",
+        "text_classification",
+        "--model-path",
+        model_path,
+        "--data",
+        f"tests/test_data/bert-sst-test-input.{input_format}",
+        "--output-file",
+        "output.json",
+        *additional_opts,
+    ]
+    cleanup["files"].append("output.json")
+    print(f"\n==== test_run_inference_sst command ====\n{' '.join(cmd)}")
+    res = run_command(cmd)
+    if res.stdout is not None:
+        print(f"\n==== test_run_inference_sst output ====\n{res.stdout}")
+    assert res.returncode == 0
+    assert "error" not in res.stdout.lower()
+    assert "fail" not in res.stdout.lower()
 
-#     # light validation of output file
-#     # TODO: condition output validation on batch-size due to padding strategy (final
-#     #       input is repeated to fill in remaining batches)
-#     # expected = ["LABEL_1", "LABEL_0"]
-#     assert os.path.exists("output.json")
-#     # with open("output.json") as f:
-#     #     for idx, item in enumerate(json_lines.reader(f)):
-#     #         assert item[0]["label"] == expected[idx]
-#     # assert len(data) == 1
-#     # assert data[0]["label"] == expected
+    # light validation of output file
+    # TODO: condition output validation on batch-size due to padding strategy (final
+    #       input is repeated to fill in remaining batches)
+    # expected = ["LABEL_1", "LABEL_0"]
+    assert os.path.exists("output.json")
+    # with open("output.json") as f:
+    #     for idx, item in enumerate(json_lines.reader(f)):
+    #         assert item[0]["label"] == expected[idx]
+    # assert len(data) == 1
+    # assert data[0]["label"] == expected
