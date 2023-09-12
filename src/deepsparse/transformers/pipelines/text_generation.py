@@ -55,7 +55,7 @@ class TextGenerationInput(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    sequences: Union[str, List[str], List[List[str]]] = Field(
+    sequences: Union[str, List[str]] = Field(
         description="The input sequences to generate the text from.",
     )
     num_generated_predictions: int = Field(
@@ -123,7 +123,7 @@ class TextGenerationInput(BaseModel):
 
 
 class TextGenerationOutput(BaseModel):
-    sequences: Union[str, List[str]] = Field(
+    sequences: Union[str, List[str], List[List[str]]] = Field(
         description="The generated text sequences.",
     )
     logits: Optional[Any] = Field(  # numpy array, set to Any for FastAPI compatibility
