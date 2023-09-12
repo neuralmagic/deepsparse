@@ -55,7 +55,7 @@ class TextGenerationInput(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    sequences: Union[str, List[str]] = Field(
+    sequences: Union[str, List[str], List[List[str]]] = Field(
         description="The input sequences to generate the text from.",
     )
     num_generated_predictions: int = Field(
@@ -439,6 +439,7 @@ class TextGenerationPipeline(TransformersPipeline):
             self.multitoken_engine.session_id = inputs.session_id
 
         context = dict(
+            num_generated_predictions=inputs.num_generated_predictions,
             return_logits=inputs.return_logits,
             streamer=inputs.streamer,
             include_prompt_logits=inputs.include_prompt_logits,
@@ -461,6 +462,18 @@ class TextGenerationPipeline(TransformersPipeline):
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
+        num_preds = kwargs.get("num_generated_predictions", 1)
+        # If the num_generated_predictions > 1, group the generated sequences and return
+        # the sequences as a list of lists where each list consists of the generated
+        # predictions for a given prompt, and all the lists are in the order matching
+        # the order that the prompts were given as inputs.
+        if num_preds > 1:
+            grouped_seq = [
+                sequences[n : n + num_preds]
+                for n in range(0, len(sequences), num_preds)
+            ]
+            sequences = grouped_seq
+
         logits = generated_logits if kwargs.get("return_logits") else None
 
         return TextGenerationOutput(sequences=sequences, logits=logits)
