@@ -29,9 +29,6 @@ from tests.deepsparse.transformers.pipelines.helpers import (
 
 _PRECISION = 1e-3
 
-# ------ Tests configuration ------
-# The following parameters are used to configure the tests
-
 # STUBS_TO_TEST should be a list of tuples in the form:
 # [(model_stub, model_name, prompt), ...], where model_stub is
 # the stub of the sparsezoo model to be tested, model_name
@@ -49,11 +46,10 @@ STUBS_TO_TEST = [
         "salesforce/codegen-350m-mono",
         CODE_LANGUAGE_PROMPT,
     ),
-    (
-        "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
-        "facebook/opt-1.3b",
-        NATURAL_LANGUAGE_PROMPT,
-    ),
+
+    ("zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
+    "facebook/opt-1.3b",
+    NATURAL_LANGUAGE_PROMPT),
 ]
 
 # RUN_BASE_TESTS_ONLY is a boolean flag that is used to run only
@@ -88,7 +84,6 @@ LOGITS_THRESHOLDS = [13.0, 3.9]
 pytest_params = generate_pytest_params(
     STUBS_TO_TEST, CACHE_MANAGEMENT_TYPE, LOGITS_THRESHOLDS
 )
-
 
 @pytest.mark.parametrize(
     "internal_kv_cache",
@@ -479,6 +474,4 @@ class TestTextGenerationPipeline:
             # - generated cache entries (from -end_index to -1)
             # as target_cache only pertains to prompt cache entries, we need to
             # compare only the prompt cache entries in x with y
-            assert numpy.allclose(
-                x[:, :, -start_index:-end_index, :], y, atol=_PRECISION
-            )
+            assert numpy.allclose(x[:, :, -start_index:-end_index, :], y, atol=_PRECISION)
