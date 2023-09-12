@@ -144,7 +144,14 @@ class TestTextGenerationPipeline:
             sequences=[short_prompt], num_generated_predictions=2
         )
 
+        assert len(output_sequences.sequences[0]) == 2
+
+        output_sequences = pipeline(
+            sequences=[short_prompt, short_prompt], num_generated_predictions=2
+        )
         assert len(output_sequences.sequences) == 2
+        for sequences in output_sequences.sequences:
+            assert len(sequences) == 2
 
     def test_model_output_cache(self, setup):
         pipeline, model_name, _, short_prompt, long_prompt = setup
