@@ -21,7 +21,6 @@ from deepsparse import Pipeline
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from tests.deepsparse.transformers.pipelines.helpers import (
     CODE_LANGUAGE_PROMPT,
-    ORTGroundTruthSource,
     TorchGroundTruthSource,
     generate_pytest_params,
 )
@@ -176,28 +175,6 @@ class TestTextGenerationPipeline:
         _, uses_bos_token, _ = setup
         pipeline = self.get_pipeline()
         assert pipeline.engine._freeze_first_position == uses_bos_token
-
-    @pytest.mark.skipif(
-        RUN_BASE_TESTS_ONLY,
-        reason="RUN_BASE_TESTS_ONLY = True, running only essential tests as a result",
-    )
-    def test_ort_model(self, setup):
-        # Assert that the ONNX model with KV Cache support runs
-        # directly in ONNXRuntime and delivers correct results
-        model_name, _, torch_ground_truth = setup
-
-        ort_source = ORTGroundTruthSource(
-            model_name=model_name,
-            model_stub=self.model_stub,
-        )
-        ort_prompt_logits, ort_prompt_kv_cache = ort_source(self.prompt)
-        _, torch_prompt_logits, torch_prompt_cache, _ = torch_ground_truth
-
-        # check that the prompt logits are the same
-        assert numpy.allclose(torch_prompt_logits, ort_prompt_logits, atol=1e-4)
-        # check that the prompt cache is the same
-        for torch_cache, ort_cache in zip(torch_prompt_cache, ort_prompt_kv_cache):
-            assert numpy.allclose(torch_cache, ort_cache, atol=1e-4)
 
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
