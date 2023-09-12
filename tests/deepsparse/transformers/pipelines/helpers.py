@@ -18,6 +18,68 @@ import numpy
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
+NATURAL_LANGUAGE_PROMPT = """
+Didn't know what time it was, the lights were low
+I leaned back on my radio
+Some cat was layin' down some rock 'n' roll
+"Lotta soul," he said
+Then the loud sound did seem to fade
+Came back like a slow voice on a wave of phase
+That weren't no DJ, that was hazy cosmic jive
+"""
+
+CODE_LANGUAGE_PROMPT = """
+def Fibonacci(n):
+    # Check if input is 0 then it will
+    # print incorrect input
+    if n < 0:
+        print("Incorrect input")
+    # Check if n is 0
+    # then it will return 0
+    elif n == 0:
+        return 0
+"""
+
+
+def uses_bos_token(model_name):
+    return "opt" in model_name
+
+
+def generate_pytest_params(stubs_to_test, cache_management_type, logits_thresholds):
+    # process cache_management_type
+    assert isinstance(
+        cache_management_type, list
+    ), "cache_management_type should be a list"
+    assert len(cache_management_type) > 0, "cache_management_type should not be empty"
+    assert all(
+        [cache_type in ["internal", "external"] for cache_type in cache_management_type]
+    ), (
+        "cache_management_type should be a list "
+        "of strings that are either 'internal' or 'external'"
+    )
+    cache_to_test = [cache_type == "internal" for cache_type in cache_management_type]
+
+    # process stubs_to_test
+    assert all([len(param) == 3 for param in stubs_to_test]), (
+        "stubs_to_test should be a list of tuples in the form: "
+        "[(model_stub, model_name, prompt), ...]"
+    )
+
+    # process logits_thresholds
+    if logits_thresholds is None:
+        logits_thresholds = [None] * len(stubs_to_test)
+    else:
+        assert len(logits_thresholds) == len(
+            stubs_to_test
+        ), "logits_thresholds should have the same length as stubs_to_test"
+
+    for i, (param, threshold) in enumerate(zip(stubs_to_test, logits_thresholds)):
+        model_name = param[1]
+        stubs_to_test[i] = tuple(list(param) + [uses_bos_token(model_name), threshold])
+
+    return cache_to_test, stubs_to_test
+
+
 class TorchGroundTruthSource:
     """
     An object that generates ground truth logits and
