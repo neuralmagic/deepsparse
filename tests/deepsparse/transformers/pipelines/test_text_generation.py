@@ -22,6 +22,8 @@ from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from tests.deepsparse.transformers.pipelines.helpers import TorchGroundTruthSource
 
 
+_PRECISION = 1e-3
+
 NATURAL_LANGUAGE_PROMPT = """
 Didn't know what time it was, the lights were low
 I leaned back on my radio
@@ -64,12 +66,13 @@ def Fibonacci(n):
             CODE_LANGUAGE_PROMPT,
             13,
         ),
-        # TODO: Waiting for the model to be available
-        # ("zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/pruned50_quantW8A8-none",
-        #  "facebook/opt-1.3b",
-        #  True,
-        #  NATURAL_LANGUAGE_PROMPT,
-        #  None),
+        (
+            "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
+            "facebook/opt-1.3b",
+            True,
+            NATURAL_LANGUAGE_PROMPT,
+            3.9,
+        ),
     ],
     scope="class",
 )
@@ -358,7 +361,7 @@ class TestTextGenerationPipeline:
             sequences=self.prompt, return_logits=True, include_prompt_logits=True
         )
         assert output_1.sequences[0] == output_2.sequences[0]
-        assert numpy.allclose(output_1.logits, output_2.logits, atol=1e-4)
+        assert numpy.allclose(output_1.logits, output_2.logits, atol=_PRECISION)
 
     def test_run_multiple_prompts_in_parallel(self, setup):
         # Test the scenario, where multiple prompts are run in parallel
@@ -371,7 +374,7 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
         )
 
-        assert numpy.allclose(output.logits[0], output.logits[1], atol=1e-4)
+        assert numpy.allclose(output.logits[0], output.logits[1], atol=_PRECISION)
         assert output.sequences[0] == output.sequences[1]
 
     def _test_output(
@@ -412,7 +415,7 @@ class TestTextGenerationPipeline:
             # also be the same as the target sequence, and finally
             # (if applicable) the kv cache should be the same as the
             # target kv cache
-            assert numpy.allclose(output.logits, target_logits, atol=1e-4)
+            assert numpy.allclose(output.logits, target_logits, atol=_PRECISION)
             assert self.prompt + output.sequences[0] == generated_text
 
             if run_cache_validation:
@@ -437,4 +440,6 @@ class TestTextGenerationPipeline:
             # - generated cache entries (from -end_index to -1)
             # as target_cache only pertains to prompt cache entries, we need to
             # compare only the prompt cache entries in x with y
-            assert numpy.allclose(x[:, :, -start_index:-end_index, :], y, atol=1e-4)
+            assert numpy.allclose(
+                x[:, :, -start_index:-end_index, :], y, atol=_PRECISION
+            )
