@@ -35,7 +35,7 @@ from tests.utils import mock_engine
 
 
 logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
-stub = "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"  # noqa E501
+stub = "zoo:distilbert-sst2_wikipedia_bookcorpus-pruned90"  # noqa E501
 task = "text-classification"
 name = "endpoint_name"
 endpoint_path = f"/v2/models/{name}/infer"
