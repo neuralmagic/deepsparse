@@ -22,7 +22,6 @@ usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES]
                             [-t TIME] [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
                             [-seq_len SEQUENCE_LENGTH]
                             [-input_ids_len INPUT_IDS_LENGTH]
-                            [--internal-kv-cache INTERNAL_KV_CACHE]
                             [-pin {none,core,numa}] [-e ENGINE] [-q]
                             [-x EXPORT_PATH]
                             model_path
@@ -69,8 +68,6 @@ optional arguments:
                         The input ids length to run the KV cache supported
                         model benchmarks for. Must be 1 <= input_ids_len <=
                         seq_len, default is 1
-  --internal-kv-cache, --internal_kv_cache
-                        Control enabling internal KVCache
   -pin {none,core,numa}, --thread_pinning {none,core,numa}
                         Enable binding threads to cores ('core' the default),
                         threads to cores on sockets ('numa'), or disable
@@ -248,13 +245,6 @@ def parse_args():
         "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
     )
     parser.add_argument(
-        "--internal-kv-cache",
-        "--internal_kv_cache",
-        help="Control enabling internal KVCache",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
         "-pin",
         "--thread_pinning",
         type=str,
@@ -323,7 +313,6 @@ def benchmark_model(
     num_streams: Optional[int] = None,
     sequence_length: Optional[int] = None,
     input_ids_length: Optional[int] = 1,
-    internal_kv_cache: bool = True,
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
     quiet: bool = False,
@@ -368,11 +357,6 @@ def benchmark_model(
         input_ids_length = None
         sequence_length = None
 
-    cached_outputs = None
-    if internal_kv_cache and engine == DEEPSPARSE_ENGINE:
-        cached_outputs = default_cached_outputs(model_path)
-        print("Enabled internal KVCache")
-
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     # Compile the ONNX into a runnable model
@@ -384,7 +368,6 @@ def benchmark_model(
             num_streams=num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
-            cached_outputs=cached_outputs,
         )
     elif engine == ORT_ENGINE:
         model = ORTEngine(
@@ -463,8 +446,6 @@ def main():
 
     result = benchmark_model(
         model_path=args.model_path,
-        sequence_length=args.sequence_length,
-        input_ids_length=args.input_ids_length,
         batch_size=args.batch_size,
         input_shapes=args.input_shapes,
         num_cores=args.num_cores,
@@ -472,6 +453,8 @@ def main():
         time=args.time,
         warmup_time=args.warmup_time,
         num_streams=args.num_streams,
+        sequence_length=args.sequence_length,
+        input_ids_length=args.input_ids_length,
         thread_pinning=args.thread_pinning,
         engine=args.engine,
         quiet=args.quiet,
