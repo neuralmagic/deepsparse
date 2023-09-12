@@ -61,7 +61,7 @@ optional arguments:
                         To enable or disable optimizations (Tensor Columns)
   -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
                         The sequence length to run the KV cache supported
-                        model benchmarks for. Must be 1 <= seq_len, default is
+                        model benchmarks for. Must be seq_len >= 1, default is
                         None
   -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
                         The input ids length to run the KV cache supported
@@ -173,7 +173,7 @@ def parse_args():
         type=int,
         default=None,
         help="The sequence length to run the KV cache supported model "
-        "benchmarks for. Must be 1 <= seq_len, default is None",
+        "benchmarks for. Must be seq_len >= 1, default is None",
     )
     parser.add_argument(
         "-input_ids_len",
