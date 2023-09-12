@@ -13,7 +13,6 @@
 # limitations under the License.
 import logging
 import uuid
-from collections import Counter
 from typing import List, Union
 
 import numpy
@@ -50,14 +49,10 @@ def repeat_inputs(
         once. If the sequence appears multiple times in input_sequences, the
         num_generated_predictions for the sequence is ignored.
     """
-    counter = Counter(input_sequences)
     repeated_seq = []
 
     for seq in input_sequences:
-        if counter[seq] == 1:
-            repeated_seq.extend(numpy.repeat([seq], num_generated_predictions))
-        else:
-            repeated_seq.append(seq)
+        repeated_seq.extend(numpy.repeat([seq], num_generated_predictions))
     return repeated_seq
 
 
