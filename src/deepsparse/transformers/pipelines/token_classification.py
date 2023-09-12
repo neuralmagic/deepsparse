@@ -137,10 +137,7 @@ class TokenClassificationOutput(BaseModel):
 @Pipeline.register(
     task="token_classification",
     task_aliases=["ner"],
-    default_model_path=(
-        "zoo:nlp/token_classification/bert-base/pytorch/huggingface/"
-        "conll2003/12layer_pruned80_quant-none-vnni"
-    ),
+    default_model_path=("zoo:distilbert-conll2003_wikipedia_bookcorpus-pruned90"),
 )
 class TokenClassificationPipeline(TransformersPipeline):
     """
