@@ -34,8 +34,7 @@ from torchvision import transforms  # isort:skip
     "zoo_stub,image_size,num_samples",
     [
         (
-            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-            "pruned85_quant-none-vnni",
+            "zoo:mobilenet_v1-1.0-imagenet-pruned.4block_quantized",
             224,
             5,
         )
@@ -59,10 +58,12 @@ def test_image_classification_pipeline_preprocessing(
     ic_pipeline = Pipeline.create("image_classification", model_path=zoo_stub)
     zoo_model = Model(zoo_stub)
     data_originals_path = None
+
     if zoo_model.sample_inputs is not None:
         if not zoo_model.sample_inputs.files:
             zoo_model.sample_inputs.unzip()
         data_originals_path = zoo_model.sample_inputs.path
+
     for idx, sample in enumerate(load_numpy_list(data_originals_path)):
         image_raw = list(sample.values())[0].astype(numpy.uint8)
         image_raw = numpy.transpose(image_raw, axes=[1, 2, 0])
