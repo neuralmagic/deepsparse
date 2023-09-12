@@ -69,7 +69,7 @@ optional arguments:
                         The input ids length to run the KV cache supported
                         model benchmarks for. Must be 1 <= input_ids_len <=
                         seq_len, default is 1
-  --internal-kv-cache INTERNAL_KV_CACHE, --internal_kv_cache INTERNAL_KV_CACHE
+  --internal-kv-cache, --internal_kv_cache
                         Control enabling internal KVCache
   -pin {none,core,numa}, --thread_pinning {none,core,numa}
                         Enable binding threads to cores ('core' the default),
@@ -251,8 +251,8 @@ def parse_args():
         "--internal-kv-cache",
         "--internal_kv_cache",
         help="Control enabling internal KVCache",
-        type=bool,
-        default=True,
+        action="store_true",
+        default=False,
     )
     parser.add_argument(
         "-pin",
