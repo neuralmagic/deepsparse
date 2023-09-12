@@ -121,7 +121,7 @@ import json
 import logging
 from typing import Dict, Optional
 
-from deepsparse import __version__, Engine, KVCacheParams
+from deepsparse import Engine, __version__
 from deepsparse.benchmark.helpers import (
     decide_thread_pinning,
     parse_num_streams,
