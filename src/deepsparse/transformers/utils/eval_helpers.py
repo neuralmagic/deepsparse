@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer
 from datasets import load_dataset
+import numpy
 
 
 def process_concatenated_datasets(dataset_name, model_path, max_sequence_length, kwargs):
@@ -35,16 +36,36 @@ def process_concatenated_datasets(dataset_name, model_path, max_sequence_length,
     # To split the dataset, first tokenize text
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     return _split_text_by_tokens(
-        raw_text, eos, bos, tokenizer, max_sequence_length,
+        raw_text, eos, bos, tokenizer, max_sequence_length, kwargs.get("max_text_length", None)
     )
 
 
-def _split_text_by_tokens(text, eos, bos, tokenizer, sequence_length):
-    text = "".join([bos + sample + eos for sample in text])
+def _split_text_by_tokens(text, eos, bos, tokenizer, sequence_length, max_text_length):
+    text = [bos + sample + eos for sample in text]
 
-    input_tokens = tokenizer(text, return_tensors="np",)[
-        "input_ids"
-    ][0]
+    if max_text_length is None:
+        text = "".join(text)
+        input_tokens = tokenizer(text, return_tensors="np")[
+            "input_ids"
+        ][0]
+    elif max_text_length == -1: #per sample tokenization
+        input_tokens = []
+        for slice in text:
+            input_tokens.append(tokenizer(slice, return_tensors="np")[
+                "input_ids"
+            ][0])
+        input_tokens = numpy.concatenate(input_tokens)
+    else:
+        text = "".join(text)
+        text_slices = len(text) // max_text_length
+        sliced_text = [text[i*max_text_length:(i+1)*max_text_length] for i in range(text_slices)]
+        sliced_text.append(text[text_slices*max_text_length:])
+        input_tokens = []
+        for slice in sliced_text:
+            input_tokens.append(tokenizer(slice, return_tensors="np")[
+                "input_ids"
+            ][0])
+        input_tokens = numpy.concatenate(input_tokens)
 
     # Then split the tokenized text into sections of size "max_sequence_length" and
     # decode each section back into text format
