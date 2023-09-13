@@ -630,7 +630,7 @@ class TextGenerationPipeline(TransformersPipeline):
             self.multitoken_engine.reset_kv_cache()
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
                 new_logits = self.multitoken_engine(engine_inputs)
-                num_tokens_processed += self.prompt_processing_sequence_length
+                num_tokens_processed += self.prompt_sequence_length
                 prompt_logits.append(new_logits)
 
         if num_tokens_processed:
