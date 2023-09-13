@@ -77,9 +77,7 @@ def Fibonacci(n):
     ],
     scope="class",
 )
-@pytest.mark.skip(
-    reason="Those tests are too heavy to " "run as a normal part of the CI."
-)
+@pytest.mark.skip(reason="Those tests are too heavy to run as a normal part of the CI.")
 class TestTextGenerationPipeline:
     """
     This test suite is meant to test the main scenarios of
