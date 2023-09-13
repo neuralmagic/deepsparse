@@ -77,10 +77,14 @@ def main():
         streamer = TextStreamer(ds_pipe.tokenizer)
 
         print("\n<DeepSparse output>\n")
-        _ = ds_pipe(sequences=user_input, max_tokens=args.max_new_tokens, streamer=streamer)
+        _ = ds_pipe(
+            sequences=user_input, max_tokens=args.max_new_tokens, streamer=streamer
+        )
 
         print("\n<ORT output>\n")
-        _ = ort_pipe(sequences=user_input, max_tokens=args.max_new_tokens, streamer=streamer)
+        _ = ort_pipe(
+            sequences=user_input, max_tokens=args.max_new_tokens, streamer=streamer
+        )
 
 
 if __name__ == "__main__":
