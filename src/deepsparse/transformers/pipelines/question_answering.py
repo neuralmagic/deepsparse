@@ -80,10 +80,7 @@ class QuestionAnsweringOutput(BaseModel):
 @Pipeline.register(
     task="question_answering",
     task_aliases=["qa"],
-    default_model_path=(
-        "zoo:nlp/question_answering/bert-base/pytorch/huggingface/"
-        "squad/12layer_pruned80_quant-none-vnni"
-    ),
+    default_model_path=("zoo:bert-large-squad_wikipedia_bookcorpus-pruned90_quantized"),
 )
 class QuestionAnsweringPipeline(TransformersPipeline):
     """
