@@ -136,7 +136,7 @@ class DecoderKVCache:
                 )
             if num_non_padded_entries_to_delete:
                 cache_array = self.remove_non_padded_entries(
-                    cache_array, num_entries_to_delete
+                    cache_array, num_non_padded_entries_to_delete
                 )
             state[name] = numpy.ascontiguousarray(cache_array)
 
@@ -172,7 +172,7 @@ class DecoderKVCache:
         new_cache_array = cache_array[
             :,
             :,
-            bool(self._freeze_first_position) + num_non_padded_entries_to_delete :,
+            int(self._freeze_first_position) + num_non_padded_entries_to_delete :,
             :,
         ]
         if self._freeze_first_position:
