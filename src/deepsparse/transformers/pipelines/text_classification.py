@@ -81,8 +81,7 @@ class TextClassificationOutput(BaseModel):
     task="text_classification",
     task_aliases=["glue", "sentiment_analysis"],
     default_model_path=(
-        "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/"
-        "sst2/12layer_pruned80_quant-none-vnni"
+        "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized"
     ),
 )
 class TextClassificationPipeline(TransformersPipeline):
