@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import logging
 import os
 import warnings
@@ -146,15 +147,31 @@ class TextGenerationInput(BaseModel):
     )
 
 
-class TextGenerationOutput(BaseModel):
-    sequences: Union[str, List[str], List[List[str]]] = Field(
-        description="The generated text sequences.",
+class GeneratedText(BaseModel):
+    text: str = Field(
+        description="The generated sequence for a given prompt. If "
+        "streaming is enabled, this will be the next generated token."
     )
-    logits: Optional[Any] = Field(  # numpy array, set to Any for FastAPI compatibility
-        default=None,
-        description="The logits for the generated text sequence."
-        "The logits have dimensions "
-        "[batch_size, sequence_length, vocab_size]",
+    score: Optional[Any] = Field(
+        description="The score for the generated token or sequence. "
+        "The scores have the shape [batch_size, sequence_length, vocab_size]"
+    )
+    finished: bool = Field(description="Whether generation has stopped.")
+    finished_reason: str = Field(description="The reason for generation to stop.")
+
+
+class TextGenerationOutput(BaseModel):
+    created: datetime.datetime = Field(description="Time of inference creation.")
+    prompt: Union[str, List[str]] = Field(
+        description="Prompts used for the sequence generation. For multiple input "
+        "prompts, a list of prompts is returned",
+    )
+    generation: Union[List[GeneratedText], List[List[GeneratedText]]] = Field(
+        description="For a single prompt, a single list of GeneratedText for the "
+        "specific prompt is returned. If multiple prompts are given, a list of "
+        "GeneratedText is returned for each prompt provided. If streamng is enabled, "
+        "the next generated token is returned. Otherwise, the full generated sequence "
+        "is returned."
     )
     session_id: Optional[str] = Field(
         default=None, description="A string identifier for the kv cache session."
@@ -401,6 +418,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # If the num_generated_predictions > 1, repeat the prompt
         # num_generated_predictions times. Also, update the engine so that deterministic
         # is set to False.
+        original_inputs = inputs.num_generated_predictions
         if inputs.num_generated_predictions > 1:
             if isinstance(inputs.sequences, str):
                 inputs.sequences = [inputs.sequences]
@@ -457,6 +475,7 @@ class TextGenerationPipeline(TransformersPipeline):
             self.multitoken_engine.session_id = inputs.session_id
 
         context = dict(
+            prompts=original_inputs,
             num_generated_predictions=inputs.num_generated_predictions,
             return_logits=inputs.return_logits,
             streamer=inputs.streamer,
@@ -486,20 +505,41 @@ class TextGenerationPipeline(TransformersPipeline):
             generated_tokens, skip_special_tokens=True
         )
         num_preds = kwargs.get("num_generated_predictions", 1)
-        # If the num_generated_predictions > 1, group the generated sequences and return
-        # the sequences as a list of lists where each list consists of the generated
-        # predictions for a given prompt, and all the lists are in the order matching
-        # the order that the prompts were given as inputs.
-        if num_preds > 1:
-            grouped_seq = [
-                sequences[n : n + num_preds]
-                for n in range(0, len(sequences), num_preds)
-            ]
-            sequences = grouped_seq
+        prompts = kwargs.get("prompts")
+
+        def _create_generated_text_output(
+            sequence: str,
+            logits: Optional[numpy.array] = None,
+        ):
+            return GeneratedText(
+                text=sequence, score=logits, finished=True, finished_reason="stop"
+            )
 
         logits = generated_logits if kwargs.get("return_logits") else None
 
-        return TextGenerationOutput(sequences=sequences, logits=logits)
+        if logits:
+            generations = list(
+                self.executor.map(_create_generated_text_output, sequences, logits)
+            )
+        else:
+            generations = list(
+                self.executor.map(_create_generated_text_output, sequences)
+            )
+
+        # If the num_generated_predictions > 1, group the generations and return
+        # them as a list of lists where each list consists of the generated
+        # predictions for a given prompt, and all the lists are in the order matching
+        # the order that the prompts were given as inputs.
+        if num_preds > 1:
+            grouped_generations = [
+                generations[n : n + num_preds]
+                for n in range(0, len(generations), num_preds)
+            ]
+            generations = grouped_generations
+
+        return TextGenerationOutput(
+            created=datetime.datetime.now(), prompt=prompts, generation=generations
+        )
 
     def engine_forward(
         self,
