@@ -84,7 +84,7 @@ class NLDecoderEngine:
         )
 
         kv_cache_enabled = False
-        if sum(output_indices_to_be_cached):
+        if any(output_indices_to_be_cached):
             kv_cache_enabled = True
             self.kv_cache_data_type = kv_cache_data_type
             if internal_kv_cache and engine_type == DEEPSPARSE_ENGINE:
@@ -157,7 +157,10 @@ class NLDecoderEngine:
         If the self.internal_cache_active=True, the internal
         deepsparse kv cache management is enabled. In this case
         the LIB.kv_cache class object will be passed to the engine
-        call as well.
+        call as well. In this scenario also the inputs will not be
+        validated, even if the val_inp=True. This is because we
+        want to pass the empty kv cache inputs (batch_size=0) to
+        the engine.
 
         :param inputs: The inputs to run the engine with
         :param val_inp: Whether the input is for validation or not
@@ -165,10 +168,12 @@ class NLDecoderEngine:
         """
 
         if self.internal_cache_active:
-            # validate the inputs if needed
-            if val_inp:
-                self.engine._validate_inputs(inputs)
-            # run the engine with the LIB.kv_cache object
+            # conventionally, before dispatching
+            # inputs to the engine, we validate them
+            # if val_inp=True. However, in this case
+            # we want to pass the empty kv cache inputs
+            # (batch_size=0) to the engine. Therefore,
+            # we skip the validation
             return self.engine._eng_net.execute_list_out(
                 inputs, self.kv_cache.engine_internal_cache
             )
@@ -266,7 +271,7 @@ class NLDecoderEngine:
         Takes the input and adds the past kv cache state to it.
 
         If the internal kv cache is enabled, the kv cache state
-        will always be reinitialized to zeros. This is just to make sure
+        will always be an empty array. This is just to make sure
         that the input shapes of the kv cache arrays to the
         model are correct, the actual values are
         being tracked internally inside the engine.
@@ -280,7 +285,9 @@ class NLDecoderEngine:
         :return The input with the kv cache state added to it
         """
         if self.internal_cache_active:
-            kv_cache_state = self._initialize_kv_cache_state(self.cache_length)
+            kv_cache_state = self._initialize_kv_cache_state(
+                self.cache_length, empty=True
+            )
         else:
             kv_cache_state = self.kv_cache.cached_inputs
             if kv_cache_state is None:
@@ -326,9 +333,13 @@ class NLDecoderEngine:
             input_ids_len=input_ids_len,
         )
 
-    def _initialize_kv_cache_state(self, length: int) -> Dict[str, numpy.ndarray]:
+    def _initialize_kv_cache_state(
+        self, length: int, empty: bool = False
+    ) -> Dict[str, numpy.ndarray]:
         # initialize empty kv cache of size
         # (batch_size, num_attention_heads, length, hidden_dims)
+        # if empty is True, we initialize empty kv_cache
+        # and set the batch_size to 0
 
         cache_engine_input_index = next(
             i
@@ -340,7 +351,12 @@ class NLDecoderEngine:
         ]
 
         empty_kv_cache_tensor = numpy.zeros(
-            (batch_size, num_attention_heads, length, hidden_dims),
+            (
+                batch_size if not empty else 0,
+                num_attention_heads,
+                length,
+                hidden_dims,
+            ),
             dtype=self.kv_cache_data_type,
         )
 
