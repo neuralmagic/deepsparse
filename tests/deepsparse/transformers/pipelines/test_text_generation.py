@@ -19,10 +19,6 @@ import numpy
 import pytest
 from deepsparse import Pipeline
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
-from tests.deepsparse.transformers.pipelines.helpers import (
-    TorchGroundTruthSource,
-)
-from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from tests.deepsparse.transformers.pipelines.helpers import TorchGroundTruthSource
 
 
@@ -185,7 +181,7 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -219,7 +215,7 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -253,7 +249,7 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
@@ -289,7 +285,7 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -320,7 +316,7 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -351,7 +347,7 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = self._get_last_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
@@ -385,24 +381,11 @@ class TestTextGenerationPipeline:
         )
         assert output_1.sequences[0] == output_2.sequences[0]
         assert numpy.allclose(output_1.logits, output_2.logits, atol=_PRECISION)
-    def test_run_with_same_session_ids(self, setup):
-        # Test the scenario where the same session ids are used for multiple
-        # inference runs. There are two conditions that must be fulfilled:
-        # 1. The information regarding the prompt does not leak between sessions
-        # 2. Running two prompts one after another is identical to running
-        #    a composition of those prompts i.e.
-        #     generated_text = pipeline(prompt_1)
-        #     generated_text_2 = pipeline(prompt_2)
-        #     generated_text_2 == pipeline(prompt_1 + generated_text + prompt_2)
 
     def test_run_multiple_prompts_in_parallel(self, setup):
         # Test the scenario, where multiple prompts are run in parallel
         # Same two prompts should produce the same output
         pipeline = self.get_pipeline()
-        prompt_1 = "This prompt is used for testing purposes. To this to make sure that"
-        prompt_2 = " still this prompt should not"
-        num_generated_tokens = 64
-        model_stub, _, uses_bos_token, _ = setup
 
         output = pipeline(
             sequences=[self.prompt, self.prompt],
@@ -431,28 +414,22 @@ class TestTextGenerationPipeline:
         for sequences in output_sequences.sequences:
             assert len(sequences) == 2
 
-    def _test_output(
-        self,
-        output: "TextGenerationOutput",  # noqa F821
-        cache_session: DecoderKVCache,
-        torch_ground_truth: Tuple[numpy.ndarray, ...],
-        max_logits_difference_threshold: Optional[float] = None,
-        run_cache_validation: bool = True,
-    ):
-        # extract numpy arrays from cached_inputs
-        kv_cache_array = list(cache_session.cached_inputs.values())
+    def test_run_with_same_session_ids(self, setup):
+        # Test the scenario where the same session ids are used for multiple
+        # inference runs. There are two conditions that must be fulfilled:
+        # 1. The information regarding the prompt does not leak between sessions
+        # 2. Running two prompts one after another is identical to running
+        #    a composition of those prompts i.e.
+        #     generated_text = pipeline(prompt_1)
+        #     generated_text_2 = pipeline(prompt_2)
+        #     generated_text_2 == pipeline(prompt_1 + generated_text + prompt_2)
 
-        (
-            generated_logits,
-            prompt_logits,
-            prompt_kv_cache,
-            generated_text,
-        ) = torch_ground_truth
+        prompt_1 = "This prompt is used for testing purposes. To this to make sure that"
+        prompt_2 = "still this prompt should not"
+        num_generated_tokens = 64
+        uses_bos_token = setup[1]
 
-        # concatenate target prompt_logits and generated_logits and check
-        target_logits = numpy.concatenate([prompt_logits, generated_logits], axis=1)
         self._test_run_with_same_session_ids(
-            model_stub,
             prompt_1,
             prompt_2,
             num_generated_tokens,
@@ -460,7 +437,6 @@ class TestTextGenerationPipeline:
             multi_token_prefill=False,
         )
         self._test_run_with_same_session_ids(
-            model_stub,
             prompt_1,
             prompt_2,
             num_generated_tokens,
@@ -470,28 +446,27 @@ class TestTextGenerationPipeline:
 
     def _test_run_with_same_session_ids(
         self,
-        model_stub,
         prompt_1,
         prompt_2,
         num_generated_tokens,
         uses_bos_token,
         multi_token_prefill,
     ):
-        pipeline = Pipeline.create(
+        pipeline = self.get_pipeline(
             task="text_generation",
-            model_path=model_stub,
-            prompt_processing_sequence_length=self.prompt_processing_sequence_length
+            model_path=self.model_stub,
+            prompt_sequence_length=self.prompt_sequence_length
             if multi_token_prefill
             else 1,
-            max_generated_tokens=num_generated_tokens,
             force_max_tokens=True,
-            use_deepsparse_cache=self.use_deepsparse_cache,
+            internal_kv_cache=self.internal_kv_cache,
         )
 
         # make sure information does not leak between sessions
         self._test_composition_same_session_ids(
             prompt_1,
             prompt_2,
+            num_generated_tokens,
             pipeline,
             uses_bos_token,
             session_id_1="test_1",
@@ -500,6 +475,7 @@ class TestTextGenerationPipeline:
         self._test_composition_same_session_ids(
             prompt_1,
             prompt_2,
+            num_generated_tokens,
             pipeline,
             uses_bos_token,
             session_id_1="test_3",
@@ -507,24 +483,14 @@ class TestTextGenerationPipeline:
         )
 
     @staticmethod
-    def _test_kv_cache_state(
-        expected_cache: List[numpy.ndarray],
-        target_cache: List[numpy.ndarray],
-        total_num_processed_tokens: int,
-    ):
-        for x, y in zip(expected_cache, target_cache):
-            start_index = total_num_processed_tokens
-            end_index = total_num_processed_tokens - y.shape[2]
-            # x is (in general) composed of three arrays:
-            # - padding cache entries (from 0 to -start_index)
-            # - prompt cache entries (from -start_index to -end_index)
-            # - generated cache entries (from -end_index to -1)
-            # as target_cache only pertains to prompt cache entries, we need to
-            # compare only the prompt cache entries in x with y
-            assert numpy.allclose(
-                x[:, :, -start_index:-end_index, :], y, atol=_PRECISION
     def _test_composition_same_session_ids(
-        prompt_1, prompt_2, pipeline, uses_bos_token, session_id_1, session_id_2
+        prompt_1,
+        prompt_2,
+        num_generated_tokens,
+        pipeline,
+        uses_bos_token,
+        session_id_1,
+        session_id_2,
     ):
 
         tokenizer = pipeline.tokenizer
@@ -534,6 +500,7 @@ class TestTextGenerationPipeline:
         out_1_ = pipeline(
             sequences=prompt_1,
             session_ids=session_id_1,
+            max_tokens=num_generated_tokens,
             return_logits=True,
             include_prompt_logits=True,
         )
@@ -542,6 +509,7 @@ class TestTextGenerationPipeline:
             sequences=prompt_2,
             session_ids=session_id_1,
             return_logits=True,
+            max_tokens=num_generated_tokens,
             include_prompt_logits=True,
         )
         if uses_bos_token:
@@ -563,6 +531,7 @@ class TestTextGenerationPipeline:
             session_ids=session_id_2,
             return_logits=True,
             include_prompt_logits=True,
+            max_tokens=num_generated_tokens,
         )
 
         assert out_1.sequences[0] == out_2.sequences[0]
@@ -599,6 +568,40 @@ class TestTextGenerationPipeline:
                 abs(output.logits - target_logits).max()
                 < max_logits_difference_threshold
             )
+        else:
+            # otherwise, we expect the logits to be exactly the same
+            # as the target logits; the generated sequence should
+            # also be the same as the target sequence, and finally
+            # (if applicable) the kv cache should be the same as the
+            # target kv cache
+            assert numpy.allclose(output.logits, target_logits, atol=_PRECISION)
+            assert self.prompt + output.sequences[0] == generated_text
+
+            if run_cache_validation:
+                self._test_kv_cache_state(
+                    expected_cache=kv_cache_array,
+                    target_cache=torch_ground_truth[2],
+                    total_num_processed_tokens=cache_session.total_num_processed_tokens,
+                )
+
+    @staticmethod
+    def _test_kv_cache_state(
+        expected_cache: List[numpy.ndarray],
+        target_cache: List[numpy.ndarray],
+        total_num_processed_tokens: int,
+    ):
+        for x, y in zip(expected_cache, target_cache):
+            start_index = total_num_processed_tokens
+            end_index = total_num_processed_tokens - y.shape[2]
+            # x is (in general) composed of three arrays:
+            # - padding cache entries (from 0 to -start_index)
+            # - prompt cache entries (from -start_index to -end_index)
+            # - generated cache entries (from -end_index to -1)
+            # as target_cache only pertains to prompt cache entries, we need to
+            # compare only the prompt cache entries in x with y
+            assert numpy.allclose(
+                x[:, :, -start_index:-end_index, :], y, atol=_PRECISION
+            )
 
     @staticmethod
     def _get_last_cache_session(pipeline: Pipeline) -> "DecoderKVCache":  # noqa F821
@@ -609,4 +612,3 @@ class TestTextGenerationPipeline:
         # remove the session from the memory dict to always have
         pipeline.engine.kv_cache_storage.pop(session.id)
         return session
-

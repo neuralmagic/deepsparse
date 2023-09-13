@@ -13,7 +13,7 @@
 # limitations under the License.
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy
 

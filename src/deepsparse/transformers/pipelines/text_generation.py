@@ -41,8 +41,8 @@ from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     generate_session_id,
     pad_to_fixed_length,
-    validate_session_ids,
     repeat_inputs,
+    validate_session_ids,
 )
 from deepsparse.transformers.utils.timings import TextGenerationTimings
 from deepsparse.utils.data import split_engine_inputs
@@ -473,7 +473,7 @@ class TextGenerationPipeline(TransformersPipeline):
             generated_tokens, skip_special_tokens=True
         )
         logits = generated_logits if context.get("return_logits") else None
-        num_preds = kwargs.get("num_generated_predictions", 1)
+        num_preds = context.get("num_generated_predictions", 1)
         # If the num_generated_predictions > 1, group the generated sequences and return
         # the sequences as a list of lists where each list consists of the generated
         # predictions for a given prompt, and all the lists are in the order matching
@@ -485,7 +485,7 @@ class TextGenerationPipeline(TransformersPipeline):
             ]
             sequences = grouped_seq
 
-        logits = generated_logits if kwargs.get("return_logits") else None
+        logits = generated_logits if context.get("return_logits") else None
 
         return TextGenerationOutput(
             sequences=sequences, logits=logits, session_ids=session_ids.tolist()
@@ -630,10 +630,7 @@ class TextGenerationPipeline(TransformersPipeline):
         new_token = None
         num_tokens_processed = 0
 
-        if (
-            len(tokens) > self.prompt_processing_sequence_length
-            and self.enable_multitoken_prefill
-        ):
+        if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
 
             self.synchronize_engines(session_id)
             tokens = (
@@ -646,7 +643,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 new_token, new_logits = self.multitoken_engine(
                     engine_inputs, session_id
                 )
-                num_tokens_processed += self.prompt_processing_sequence_length
+                num_tokens_processed += self.prompt_sequence_length
                 prompt_logits.append(new_logits)
 
         # prompt size is small, run autoregressive inference to populate kv cache
@@ -739,12 +736,9 @@ class TextGenerationPipeline(TransformersPipeline):
             that will have the amount of unmasked entries equal to
             the sum of:
                 a) the number of tokens in the batch
-                (self.prompt_processing_sequence_length)
+                (self.prompt_sequence_length)
                 b) the number of processed tokens so far
                 (num_total_processed_tokens)
-                (self.prompt_sequence_length)
-                b) the number of non-blank cache entries
-                (num_non_blank_cache_entries)
             so that the attention_mask properly attends to the
             current input tokens, as well as the previous cache
             entries.
@@ -783,8 +777,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         (1, self.sequence_length), dtype=numpy.int64
                     )
                     num_attention_entries_to_unmask = min(
-                        num_total_processed_tokens
-                        + self.prompt_processing_sequence_length,
+                        num_total_processed_tokens + self.prompt_sequence_length,
                         self.sequence_length,
                     )
                     engine_input[:, -num_attention_entries_to_unmask:] = 1
@@ -793,7 +786,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     # delay creation of the causal mask
                     continue
                 elif name == "positions":
-                    if self.prompt_processing_sequence_length == 1:
+                    if self.prompt_sequence_length == 1:
                         # we need to treat `positions` as if we were in
                         # the autoregressive mode
                         engine_input = numpy.array(
@@ -804,7 +797,7 @@ class TextGenerationPipeline(TransformersPipeline):
                             numpy.arange(
                                 num_total_processed_tokens,
                                 num_total_processed_tokens
-                                + self.prompt_processing_sequence_length,
+                                + self.prompt_sequence_length,
                             )
                             .reshape(1, -1)
                             .astype(numpy.int64)
