@@ -130,7 +130,6 @@ from deepsparse.benchmark.stream_benchmark import model_stream_benchmark
 from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
 from deepsparse.utils import (
-    default_cached_outputs,
     generate_random_inputs,
     has_model_kv_cache,
     model_to_path,
