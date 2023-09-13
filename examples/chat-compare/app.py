@@ -36,13 +36,13 @@ def main():
     parser.add_argument(
         "--max_new_tokens",
         type=int,
-        default=64,
+        default=128,
         help="Maximum number of new tokens to generate",
     )
     parser.add_argument(
         "--sequence_length",
         type=int,
-        default=128,
+        default=512,
         help="Total sequence and context length",
     )
     args = parser.parse_args()
@@ -52,8 +52,6 @@ def main():
         task="text-generation",
         model_path=args.model_path,
         sequence_length=args.sequence_length,
-        max_generated_tokens=args.max_new_tokens,
-        prompt_processing_sequence_length=1,
         engine_type="deepsparse",
         trust_remote_code=True,
     )
@@ -61,8 +59,7 @@ def main():
         task="text-generation",
         model_path=args.model_path,
         sequence_length=args.sequence_length,
-        max_generated_tokens=args.max_new_tokens,
-        prompt_processing_sequence_length=1,
+        prompt_sequence_length=1,
         engine_type="onnxruntime",
         trust_remote_code=True,
     )
@@ -80,10 +77,10 @@ def main():
         streamer = TextStreamer(ds_pipe.tokenizer)
 
         print("\n<DeepSparse output>\n")
-        _ = ds_pipe(sequences=user_input, streamer=streamer)
+        _ = ds_pipe(sequences=user_input, max_tokens=args.max_new_tokens, streamer=streamer)
 
         print("\n<ORT output>\n")
-        _ = ort_pipe(sequences=user_input, streamer=streamer)
+        _ = ort_pipe(sequences=user_input, max_tokens=args.max_new_tokens, streamer=streamer)
 
 
 if __name__ == "__main__":
