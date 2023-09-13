@@ -67,7 +67,8 @@ def Fibonacci(n):
             13,
         ),
         (
-            "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
+            "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/"
+            "opt_pretrain/base-none",
             "facebook/opt-1.3b",
             True,
             NATURAL_LANGUAGE_PROMPT,
@@ -75,6 +76,9 @@ def Fibonacci(n):
         ),
     ],
     scope="class",
+)
+@pytest.mark.skip(
+    reason="Those tests are too heavy to " "run as a normal part of the CI."
 )
 class TestTextGenerationPipeline:
     """
@@ -94,7 +98,6 @@ class TestTextGenerationPipeline:
                     internal_kv_cache=self.internal_kv_cache,
                     prompt_sequence_length=self.prompt_sequence_length,
                     sequence_length=self.sequence_length,
-                    max_generated_tokens=self.num_tokens_generate,
                     force_max_tokens=True,
                 )
                 return self.default_pipeline
@@ -171,12 +174,14 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=1,
-            max_generated_tokens=self.num_tokens_generate,
             force_max_tokens=True,
             engine_type="onnxruntime",
         )
         output = pipeline(
-            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+            sequences=self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
         cache_session = pipeline.engine.kv_cache
         assert cache_session.total_num_processed_tokens < self.sequence_length
@@ -203,12 +208,14 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
-            max_generated_tokens=self.num_tokens_generate,
             force_max_tokens=True,
             engine_type="onnxruntime",
         )
         output = pipeline(
-            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+            sequences=self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
         cache_session = pipeline.engine.kv_cache
         assert cache_session.total_num_processed_tokens < self.sequence_length
@@ -235,12 +242,14 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length_short,
             prompt_sequence_length=self.prompt_sequence_length,
-            max_generated_tokens=self.num_tokens_generate,
             force_max_tokens=True,
             engine_type="onnxruntime",
         )
         output = pipeline(
-            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+            sequences=self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
         cache_session = pipeline.engine.kv_cache
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
@@ -269,12 +278,14 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=1,
-            max_generated_tokens=self.num_tokens_generate,
             force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
         output = pipeline(
-            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+            sequences=self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
         cache_session = pipeline.engine.kv_cache
         assert cache_session.total_num_processed_tokens < self.sequence_length
@@ -298,12 +309,14 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
-            max_generated_tokens=self.num_tokens_generate,
             force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
         output = pipeline(
-            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+            sequences=self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
         cache_session = pipeline.engine.kv_cache
         assert cache_session.total_num_processed_tokens < self.sequence_length
@@ -327,12 +340,14 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length_short,
             prompt_sequence_length=self.prompt_sequence_length,
-            max_generated_tokens=self.num_tokens_generate,
             force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
         output = pipeline(
-            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+            sequences=self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
         cache_session = pipeline.engine.kv_cache
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
@@ -355,10 +370,16 @@ class TestTextGenerationPipeline:
         pipeline = self.get_pipeline()
 
         output_1 = pipeline(
-            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+            sequences=self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
         output_2 = pipeline(
-            sequences=self.prompt, return_logits=True, include_prompt_logits=True
+            sequences=self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
         assert output_1.sequences[0] == output_2.sequences[0]
         assert numpy.allclose(output_1.logits, output_2.logits, atol=_PRECISION)
@@ -372,10 +393,28 @@ class TestTextGenerationPipeline:
             sequences=[self.prompt, self.prompt],
             return_logits=True,
             include_prompt_logits=True,
+            max_tokens=self.num_tokens_generate,
         )
 
         assert numpy.allclose(output.logits[0], output.logits[1], atol=_PRECISION)
         assert output.sequences[0] == output.sequences[1]
+
+    def test_num_generated_predictions(self, setup):
+        # Test the scenario, where multiple predictions are generated
+        # from the same prompt
+        pipeline = self.get_pipeline()
+
+        output_sequences = pipeline(
+            sequences=[self.prompt], num_generated_predictions=2
+        )
+        assert len(output_sequences.sequences[0]) == 2
+
+        output_sequences = pipeline(
+            sequences=[self.prompt, self.prompt], num_generated_predictions=2
+        )
+        assert len(output_sequences.sequences) == 2
+        for sequences in output_sequences.sequences:
+            assert len(sequences) == 2
 
     def _test_output(
         self,
