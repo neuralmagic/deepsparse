@@ -15,7 +15,9 @@
 import logging
 import os
 import warnings
+from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import partial
 from typing import (
     Any,
     Callable,
@@ -680,7 +682,7 @@ class TextGenerationPipeline(TransformersPipeline):
         ]
 
         generated_token, generated_logits = self.engine(engine_inputs, session_id)
-        print(f"position {positions}, token: {input_ids}")
+        _LOGGER.debug(f"position {positions}, token: {input_ids}")
         return generated_token, generated_logits
 
     def engine_inputs_for_prefill(
@@ -901,6 +903,19 @@ class TextGenerationPipeline(TransformersPipeline):
             inp.name == "causal_mask"
             for inp in onnx.load(model_path, load_external_data=False).graph.input
         )
+
+    @contextmanager
+    def session(self, session_id: Optional[str] = None) -> Callable[[Any, Any], Any]:
+        """
+        A context manager that returns existing pipeline instance
+        with the session_id already set.
+        """
+
+        if session_id is None:
+            session_id = generate_session_id()
+
+        # session_id is always populated here
+        yield partial(self, session_id=session_id)
 
     def _stop_token_generated(
         self, token, stop_tokens: Union[None, str, Sequence[str]]

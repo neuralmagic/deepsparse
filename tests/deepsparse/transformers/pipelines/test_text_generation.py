@@ -375,6 +375,14 @@ class TestTextGenerationPipeline:
             multi_token_prefill=True,
         )
 
+        pipeline = Pipeline.create(
+            task="text_generation",
+            use_deepsparse_cache=self.use_deepsparse_cache,
+        )
+        assert hasattr(
+            pipeline, "session"
+        ), "Pipeline does not have session context manager"
+
     def _test_run_with_same_session_ids(
         self,
         model_stub,
