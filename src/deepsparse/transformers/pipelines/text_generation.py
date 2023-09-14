@@ -970,9 +970,8 @@ class TextGenerationPipeline(TransformersPipeline):
 )
 class ChatPipeline(TextGenerationPipeline):
     """
-    A ``Pipeline`` that performs multi-turn conversation with a chatbot.
-    This pipeline is uses the ``TextGenerationPipeline`` under the hood,
-    and provides a `session` context manager to maintains the chatbot's
+    This pipeline uses the `TextGenerationPipeline` under the hood,
+    and provides a `session` context manager to maintains the
     kv cache state across multiple calls to the pipeline.
     """
 
