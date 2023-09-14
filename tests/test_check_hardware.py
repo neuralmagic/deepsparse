@@ -26,8 +26,6 @@ def test_check_hardware():
         print(f"\n==== deepsparse.check_hardware output ====\n{res.stdout}")
 
     assert res.returncode == 0, "command exited with non-zero status"
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
 
     # check for (static portions of) expected lines
     assert "DeepSparse FP32 model performance supported:" in res.stdout

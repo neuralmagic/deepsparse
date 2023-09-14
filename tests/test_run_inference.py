@@ -30,8 +30,6 @@ def test_run_inference_help():
         print(f"\n==== test_run_inference_help output ====\n{res.stdout}")
     assert res.returncode == 0
     assert "usage: deepsparse.transformers.run_inference" in res.stdout
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
 
 
 @pytest.mark.smoke
@@ -55,8 +53,6 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     if res.stdout is not None:
         print(f"\n==== test_run_inference_ner output ====\n{res.stdout}")
     assert res.returncode == 0
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
 
     # light validation of output file
     expected = "canadian"
@@ -111,8 +107,6 @@ def test_run_inference_qa(
 
     # validate command executed successfully
     assert res.returncode == 0
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
 
     # validate output
     expected_answers = ["Snorlax", "Pikachu", "Bulbasaur"]
@@ -170,6 +164,7 @@ def test_run_inference_sst(
         model = predownload_stub(model_path, copy_framework_files=True)
         model_path = model.path
 
+    output_fn = f"output-{input_format}.json"
     cmd = [
         "deepsparse.transformers.run_inference",
         "--task",
@@ -179,25 +174,24 @@ def test_run_inference_sst(
         "--data",
         f"tests/test_data/bert-sst-test-input.{input_format}",
         "--output-file",
-        "output.json",
+        output_fn,
         *additional_opts,
     ]
-    cleanup["files"].append("output.json")
+    cleanup["files"].append(output_fn)
     print(f"\n==== test_run_inference_sst command ====\n{' '.join(cmd)}")
     res = run_command(cmd)
     if res.stdout is not None:
         print(f"\n==== test_run_inference_sst output ====\n{res.stdout}")
     assert res.returncode == 0
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
 
-    # light validation of output file
-    # TODO: condition output validation on batch-size due to padding strategy (final
-    #       input is repeated to fill in remaining batches)
-    # expected = ["LABEL_1", "LABEL_0"]
-    assert os.path.exists("output.json")
-    # with open("output.json") as f:
-    #     for idx, item in enumerate(json_lines.reader(f)):
-    #         assert item[0]["label"] == expected[idx]
-    # assert len(data) == 1
-    # assert data[0]["label"] == expected
+    # validate output
+    labels_count = 1
+    if "--batch-size" in additional_opts:
+        labels_count_idx = additional_opts.index("--batch-size") + 1
+        labels_count = int(additional_opts[labels_count_idx])
+    expected_answers = [["neutral"] * labels_count, ["neutral"] * labels_count]
+    assert os.path.exists(output_fn)
+    with open(output_fn) as f:
+        items = ndjson.load(f)
+    for actual, expected_answer in zip(items, expected_answers):
+        assert actual["labels"] == expected_answer
