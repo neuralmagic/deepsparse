@@ -67,8 +67,8 @@ class Perplexity:
         """
 
         if self._accumulate:
-            # If accumulate is True, every token from the batch contributes equally to the
-            # negative log-likelihood.
+            # If accumulate is True, every token from the batch contributes
+            # equally to the negative log-likelihood.
             # Thus, merge batch and sequence length dimensions and compute negative
             # log-likelihood for all tokens, and accumulate to total
             predictions = numpy.reshape(predictions, (-1, predictions.shape[-1]))
@@ -83,8 +83,8 @@ class Perplexity:
             self._number_tokens += predictions.shape[0]
         else:
             # If accumulate is False, compute perplexity for each sample individually.
-            # We assume that sequence length is uniform within a batch, but may vary from batch
-            # to batch.
+            # We assume that sequence length is uniform within a batch, but may
+            # vary from batch to batch.
 
             # Create batch dimension if it doesn't exist
             if targets.ndim == 1:

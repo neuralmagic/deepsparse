@@ -1,8 +1,25 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from transformers import AutoTokenizer
+
 from datasets import load_dataset
 
 
-def process_concatenated_datasets(dataset_name, model_path, max_sequence_length, kwargs):
+def process_concatenated_datasets(
+    dataset_name, model_path, max_sequence_length, kwargs
+):
     if dataset_name == "wikitext2":
         eos = kwargs.get("eos", "\n\n")
         bos = kwargs.get("bos", "")
@@ -18,7 +35,9 @@ def process_concatenated_datasets(dataset_name, model_path, max_sequence_length,
             raw_dataset = load_dataset(
                 "allenai/c4",
                 "allenai--c4",
-                data_files={"validation": f"en/c4-validation.{data_file:05d}-of-00008.json.gz"},
+                data_files={
+                    "validation": f"en/c4-validation.{data_file:05d}-of-00008.json.gz"
+                },
                 split="validation",
             )
         else:
@@ -35,7 +54,11 @@ def process_concatenated_datasets(dataset_name, model_path, max_sequence_length,
     # To split the dataset, first tokenize text
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     return _split_text_by_tokens(
-        raw_text, eos, bos, tokenizer, max_sequence_length,
+        raw_text,
+        eos,
+        bos,
+        tokenizer,
+        max_sequence_length,
     )
 
 
