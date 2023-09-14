@@ -199,7 +199,6 @@ class TextGenerationPipeline(TransformersPipeline):
         # enable multitoken prefill if
         # - the model graph is supporting it (causal_mask input is present)
         # - prompt_sequence_length != 1 (identical to single-token prefill)
-        
         self.enable_multitoken_prefill = (
             self.causal_mask_input_present(model_path=self.onnx_file_path)
             and prompt_sequence_length > 1
