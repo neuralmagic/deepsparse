@@ -57,7 +57,7 @@ class Evaluator(ABC):
         raise NotImplementedError
 
 
-class LMEvaluator(Evaluator):
+class TransformersEvaluator(Evaluator):
     """
     Evaluator specific to transformers.
 
