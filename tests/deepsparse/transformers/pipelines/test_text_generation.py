@@ -443,28 +443,32 @@ class TestTextGenerationPipeline:
             uses_bos_token,
             multi_token_prefill=True,
         )
-    
+
     def test_session_context_manager(self, setup):
         pipeline = self.get_pipeline()
-        
+
         # test session() context manager exists
         assert hasattr(
             pipeline, "session"
         ), "Pipeline does not have session context manager"
-        
-        inp = {"sequences" : "def fib("}
-        with pipeline.session():   
+
+        inp = {"sequences": "def fib("}
+        with pipeline.session():
             for _ in range(2):
                 pipeline(**inp)
-        
-        # pipeline should only have one session id at this level   
-        assert len(pipeline.engine.kv_cache_storage._memory) == 1, "Pipeline created more than one session ids"
+
+        # pipeline should only have one session id at this level
+        assert (
+            len(pipeline.engine.kv_cache_storage._memory) == 1
+        ), "Pipeline created more than one session ids"
 
         # invoke pipeline again outside session context manager
         pipeline(**inp)
 
         # pipeline should have two session ids at this level
-        assert len(pipeline.engine.kv_cache_storage._memory) == 2, "Pipeline should have 2 session ids at this level"
+        assert (
+            len(pipeline.engine.kv_cache_storage._memory) == 2
+        ), "Pipeline should have 2 session ids at this level"
 
     def _test_run_with_same_session_ids(
         self,
