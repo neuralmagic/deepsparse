@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import numpy
 
@@ -90,6 +90,7 @@ class DecoderKVCache:
         self,
         state: Dict[str, Any],
         input_ids_len: int,
+        increment_total_num_processed_tokens: int = True,
     ):
         """
         Updating the session is identical with taking the kv cache
@@ -103,8 +104,12 @@ class DecoderKVCache:
         :param input_ids_len: The number of input ids in the current
             input batch: (batch_size, length).
             Corresponds to `input_ids.shape[1]`
+        :param increment_total_num_processed_tokens: If set to True,
+            the total number of processed tokens will be incremented
+            by the input_ids_len.
         """
-        self.total_num_processed_tokens += input_ids_len
+        if increment_total_num_processed_tokens:
+            self.total_num_processed_tokens += input_ids_len
 
         input_state_capacity = state[list(state.keys())[0]].shape[
             self._sequence_len_axis
@@ -131,7 +136,7 @@ class DecoderKVCache:
                 )
             if num_non_padded_entries_to_delete:
                 cache_array = self.remove_non_padded_entries(
-                    cache_array, num_entries_to_delete
+                    cache_array, num_non_padded_entries_to_delete
                 )
             state[name] = numpy.ascontiguousarray(cache_array)
 
@@ -167,7 +172,7 @@ class DecoderKVCache:
         new_cache_array = cache_array[
             :,
             :,
-            bool(self._freeze_first_position) + num_non_padded_entries_to_delete :,
+            int(self._freeze_first_position) + num_non_padded_entries_to_delete :,
             :,
         ]
         if self._freeze_first_position:
@@ -198,35 +203,30 @@ class DecoderKVCache:
         state = self.cached_inputs
 
         if capacity_difference > 0:
-            raise NotImplementedError(
-                "The scenario when capacity"
-                "needs to be expanded is not yet"
-                "supported."
+            self.update(
+                state,
+                input_ids_len=capacity_difference,
+                increment_total_num_processed_tokens=False,
             )
 
         elif capacity_difference < 0:
-            indices = [0] * abs(capacity_difference)
-            state = self._add_entries(state, indices=indices)
-
+            state = self._expand_capacity(
+                state, num_additional_entries=abs(capacity_difference)
+            )
+            self._state = state
         else:
-            return
+            pass
 
-        self._state = state
+        return
 
-    def _add_entries(
-        self, state: Dict[str, Any], indices: List[int], padding_value: int = 0
+    def _expand_capacity(
+        self, state: Dict[str, Any], num_additional_entries: int, padding_value: int = 0
     ) -> Dict[str, Any]:
         for key, value in state.items():
-            # required to make sure that both
-            # quantized and non quantized caches
-            # are supported
-            state_dtype = value.dtype
-            # change padding_value dtype to match the state dtype
-            padding_value = numpy.array(padding_value, dtype=state_dtype)
-
-            state[key] = numpy.insert(
-                value, indices, padding_value, axis=self._sequence_len_axis
+            zeros = numpy.zeros_like(
+                (value[:, :, :num_additional_entries, :]), dtype=value.dtype
             )
+            state[key] = numpy.concatenate([zeros, value], axis=self._sequence_len_axis)
         return state
 
     @property
@@ -234,13 +234,6 @@ class DecoderKVCache:
         if self._session_id is None:
             raise ValueError("Attempted to access session_id before setting up session")
         return self._session_id
-
-    @property
-    def num_non_blank_entries(self):
-        """
-        :return: the number of non-blank entries in the kv cache
-        """
-        return min(self.capacity, self.total_num_processed_tokens)
 
     @property
     def capacity(self) -> int:

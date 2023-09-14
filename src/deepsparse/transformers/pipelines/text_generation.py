@@ -30,7 +30,7 @@ from typing import (
 
 import numpy
 import onnx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from transformers import TextStreamer
 
 from deepsparse import Pipeline
@@ -39,10 +39,13 @@ from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
+    generate_session_id,
     pad_to_fixed_length,
     repeat_inputs,
+    validate_session_ids,
 )
 from deepsparse.transformers.utils.timings import TextGenerationTimings
+from deepsparse.utils.data import split_engine_inputs
 from deepsparse.utils.onnx import default_cached_outputs
 
 
@@ -84,11 +87,11 @@ class TextGenerationInput(BaseModel):
         "Note: This flag is only applicable when return_logits "
         "is `True`.",
     )
-    session_id: Optional[str] = Field(
+    session_ids: Union[None, List[str], str] = Field(
         default=None,
-        description="A user may set a string identifier "
-        "for the kv cache session. If None, "
-        "and the model is using kv cache, it "
+        description="A user may set a string identifier(s) "
+        "for the kv cache session(s). If None, "
+        "and the model is using kv cache, session_id "
         "will be set to a random uuid.",
     )
     fixed_sequences_length: bool = Field(
@@ -121,6 +124,11 @@ class TextGenerationInput(BaseModel):
         " Default is `None`.",
     )
 
+    @validator("session_ids")
+    def validate_session_ids(cls, value, values) -> Union[None, List[str]]:
+        session_ids = validate_session_ids(session_ids=value, other_attributes=values)
+        return session_ids
+
 
 class TextGenerationOutput(BaseModel):
     sequences: Union[str, List[str], List[List[str]]] = Field(
@@ -132,8 +140,8 @@ class TextGenerationOutput(BaseModel):
         "The logits have dimensions "
         "[batch_size, sequence_length, vocab_size]",
     )
-    session_id: Optional[str] = Field(
-        default=None, description="A string identifier for the kv cache session."
+    session_ids: Union[None, str, List[str]] = Field(
+        default=None, description="A string identifier(s) for the kv cache session."
     )
 
     class Config:
@@ -361,7 +369,9 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         return TextGenerationOutput
 
-    def process_inputs(self, inputs: TextGenerationInput) -> List[numpy.ndarray]:
+    def process_inputs(
+        self, inputs: TextGenerationInput
+    ) -> Tuple[List[numpy.ndarray], Dict[str, Any]]:
         """
         Convert the input schema for the pipeline to the inputs for the engine.
 
@@ -428,10 +438,15 @@ class TextGenerationPipeline(TransformersPipeline):
         )
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
-        if inputs.session_id is not None:
-            # if session_id is provided, we need to set it in engines
-            self.engine.session_id = inputs.session_id
-            self.multitoken_engine.session_id = inputs.session_id
+        session_ids = inputs.session_ids
+        if session_ids is None:
+            # session_ids is None, so we need to generate
+            # a session id for each input sequence
+            num_input_sequences = (
+                len(inputs.sequences) if isinstance(inputs.sequences, list) else 1
+            )
+            session_ids = [generate_session_id() for _ in range(num_input_sequences)]
+        engine_input.append(session_ids)
 
         context = dict(
             num_generated_predictions=inputs.num_generated_predictions,
@@ -445,7 +460,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return engine_input, context
 
     def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], **kwargs
+        self, engine_outputs: List[numpy.ndarray], **context
     ) -> TextGenerationOutput:
         """
         Convert the engine outputs to the output schema for the pipeline.
@@ -453,11 +468,12 @@ class TextGenerationPipeline(TransformersPipeline):
         :param engine_outputs: the outputs from the engine
         :return: the output schema for the pipeline
         """
-        generated_tokens, generated_logits = engine_outputs
+        generated_tokens, generated_logits, session_ids = engine_outputs
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
-        num_preds = kwargs.get("num_generated_predictions", 1)
+        logits = generated_logits if context.get("return_logits") else None
+        num_preds = context.get("num_generated_predictions", 1)
         # If the num_generated_predictions > 1, group the generated sequences and return
         # the sequences as a list of lists where each list consists of the generated
         # predictions for a given prompt, and all the lists are in the order matching
@@ -469,17 +485,19 @@ class TextGenerationPipeline(TransformersPipeline):
             ]
             sequences = grouped_seq
 
-        logits = generated_logits if kwargs.get("return_logits") else None
+        logits = generated_logits if context.get("return_logits") else None
 
-        return TextGenerationOutput(sequences=sequences, logits=logits)
+        return TextGenerationOutput(
+            sequences=sequences, logits=logits, session_ids=session_ids.tolist()
+        )
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
-    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    ) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
         """
         Run the forward pass on the engine.
 
-        :param engine_inputs: list of numpy inputs to
+        :param engine_inputs: List of numpy inputs to
             Pipeline engine forward pass
         :return: A tuple of numpy array that contains the
             sequence of generated tokens and a sequence
@@ -492,14 +510,40 @@ class TextGenerationPipeline(TransformersPipeline):
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             streamer = context.get("streamer")
 
+            # engine_inputs is a list of numpy arrays plus additional
+            # session_id string. We need to pop the session_id string
+            # and from the engine_inputs. The session_id will be used
+            # seperately to keep track of the appropriate kv cache session
+            # (if kv cache is enabled)
+            session_id = engine_inputs.pop(
+                next(
+                    idx
+                    for idx, item in enumerate(engine_inputs)
+                    if isinstance(item, str)
+                )
+            )
+
+            assert isinstance(
+                session_id, str
+            ), "Session id must be a string not {}".format(type(session_id))
+
             if not self.cache_support_enabled:
-                tokens, prompt_logits = self.multitoken_engine(engine_inputs)
-                return numpy.array([tokens]), prompt_logits
+                session_id = None
+                tokens, prompt_logits = self.multitoken_engine(
+                    engine_inputs, session_id
+                )
+                return (
+                    numpy.array([tokens]),
+                    prompt_logits,
+                    numpy.array([session_id]),
+                )
 
             else:
                 # run the prompt through
                 with timer.time(TextGenerationTimings.PROMPT_PREFILL):
-                    tokens, prompt_logits = self.prompt_inference(engine_inputs)
+                    tokens, prompt_logits = self.prompt_inference(
+                        engine_inputs, session_id
+                    )
 
             if streamer is not None:
                 streamer.put(numpy.array(tokens))
@@ -522,7 +566,9 @@ class TextGenerationPipeline(TransformersPipeline):
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
                     with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
-                        token, logits = self.autoregressive_inference(tokens)
+                        token, logits = self.autoregressive_inference(
+                            tokens, session_id
+                        )
                     tokens.append(token)
                     generated_tokens.append(token)
                     generated_logits.append(logits)
@@ -549,23 +595,29 @@ class TextGenerationPipeline(TransformersPipeline):
                             % callback.__qualname__
                         )
                         break
-
+            # Run the autoregressive inference only to put the
+            # kv cache entry for the last generated token into the
+            # kv cache
+            self.autoregressive_inference(tokens, session_id)
             if streamer is not None:
                 streamer.end()
 
-        return numpy.array([generated_tokens]), numpy.concatenate(
-            generated_logits, axis=1
+        return (
+            numpy.array([generated_tokens]),
+            numpy.concatenate(generated_logits, axis=1),
+            numpy.array([session_id]),
         )
 
     def prompt_inference(
-        self, engine_inputs: List[numpy.ndarray]
+        self, engine_inputs: List[numpy.ndarray], session_id: str
     ) -> Tuple[List[int], List[numpy.ndarray]]:
         """
         An inference run that processes the prompt through the
         model to generate the new token and logits
 
-        :param engine_inputs: the prompt (context) represented by a
+        :param engine_inputs: The prompt (context) represented by a
             list of numpy inputs to the engine
+        :param session_id: The session id to run the inference under
         :return: A tuple of:
             - The list of prompt tokens plus the new, generated token
             - The logits generated from the prompt (with dimensions
@@ -579,27 +631,40 @@ class TextGenerationPipeline(TransformersPipeline):
         num_tokens_processed = 0
 
         if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
-            self.multitoken_engine.reset_kv_cache()
-            for engine_inputs in self.engine_inputs_for_prefill(tokens):
-                new_token, new_logits = self.multitoken_engine(engine_inputs)
+
+            self.synchronize_engines(session_id)
+            tokens = (
+                self._remove_bos_token_if_applicable(tokens)
+                if self.multitoken_engine.kv_cache_storage.has_session(session_id)
+                else tokens
+            )
+
+            for engine_inputs in self.engine_inputs_for_prefill(tokens, session_id):
+                new_token, new_logits = self.multitoken_engine(
+                    engine_inputs, session_id
+                )
                 num_tokens_processed += self.prompt_sequence_length
                 prompt_logits.append(new_logits)
 
-        if num_tokens_processed:
-            # transfer the cache state from the multi-token engine to the main engine
-            self.engine.transfer_cache_state(cache=self.multitoken_engine.kv_cache)
-        else:
-            self.engine.reset_kv_cache()
-
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
+
+        self.synchronize_engines(session_id)
+        tokens = (
+            self._remove_bos_token_if_applicable(tokens)
+            if self.engine.kv_cache_storage.has_session(session_id)
+            and not num_tokens_processed
+            else tokens
+        )
 
         for token in tokens[num_tokens_processed:]:
             run_tokens.append(token)
             with self.timer_manager.current.time(
                 TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
-                new_token, new_logits = self.autoregressive_inference(run_tokens)
+                new_token, new_logits = self.autoregressive_inference(
+                    run_tokens, session_id
+                )
 
             prompt_logits.append(new_logits)
 
@@ -610,24 +675,30 @@ class TextGenerationPipeline(TransformersPipeline):
     def autoregressive_inference(
         self,
         tokens: List[int],
+        session_id: str,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
         a new token and new logits.
 
         :param tokens: The current context (prompt + generated tokens so far)
+        :param session_id: The session id to run the inference under
         :return: The new, generated token and the logits for the new token
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
+        num_total_processed_tokens = self.engine.total_num_processed_tokens(session_id)
 
         new_token = tokens[-1]
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
-        attention_mask[:, -num_tokens_processed:] = 1
-        positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
-        positions -= 1
+
+        num_attention_entries_to_unmask = min(
+            num_total_processed_tokens + 1, self.sequence_length
+        )  # cap by seq len
+        attention_mask[:, -num_attention_entries_to_unmask:] = 1
+
+        positions = numpy.array([[num_total_processed_tokens]], dtype=numpy.int64)
         input_ids = numpy.array([[new_token]])
         causal_mask = create_causal_mask(input_ids, attention_mask)
 
@@ -642,12 +713,11 @@ class TextGenerationPipeline(TransformersPipeline):
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
 
-        generated_token, generated_logits = self.engine(engine_inputs)
-
+        generated_token, generated_logits = self.engine(engine_inputs, session_id)
         return generated_token, generated_logits
 
     def engine_inputs_for_prefill(
-        self, tokens: List[int]
+        self, tokens: List[int], session_id: str
     ) -> Generator[List[numpy.ndarray], None, None]:
         """
         Takes a list of tokens and creates a generator
@@ -667,8 +737,8 @@ class TextGenerationPipeline(TransformersPipeline):
             the sum of:
                 a) the number of tokens in the batch
                 (self.prompt_sequence_length)
-                b) the number of non-blank cache entries
-                (num_non_blank_cache_entries)
+                b) the number of processed tokens so far
+                (num_total_processed_tokens)
             so that the attention_mask properly attends to the
             current input tokens, as well as the previous cache
             entries.
@@ -678,6 +748,7 @@ class TextGenerationPipeline(TransformersPipeline):
             - causal_mask: derived from the input_ids and attention_mask
 
         :param tokens: the list of tokens to process
+        :param session_id: the session id to run the inference under
         :return: a generator of engine inputs
         """
 
@@ -692,7 +763,10 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for idx, token_batch in enumerate(token_batches):
             engine_inputs = []
-            num_cached_entries = self.multitoken_engine.num_non_blank_cache_entries
+            num_total_processed_tokens = (
+                self.multitoken_engine.total_num_processed_tokens(session_id)
+            )
+
             for name in self.multitoken_engine.onnx_input_names_no_cache:
                 if name == "input_ids":
                     engine_input = numpy.array([token_batch])
@@ -702,29 +776,32 @@ class TextGenerationPipeline(TransformersPipeline):
                     engine_input = numpy.zeros(
                         (1, self.sequence_length), dtype=numpy.int64
                     )
-                    # fill it out with 1s (from the right), so that the number
-                    # of unmasked entries is equal to the sum of:
-                    engine_input[
-                        :,
-                        -(
-                            # ...the number of current input tokens...
-                            self.prompt_sequence_length
-                            # ...and the number of the previous cache entries
-                            + num_cached_entries
-                        ) :,
-                    ] = 1
+                    num_attention_entries_to_unmask = min(
+                        num_total_processed_tokens + self.prompt_sequence_length,
+                        self.sequence_length,
+                    )
+                    engine_input[:, -num_attention_entries_to_unmask:] = 1
+
                 elif name == "causal_mask":
                     # delay creation of the causal mask
                     continue
                 elif name == "positions":
-                    engine_input = (
-                        numpy.arange(
-                            num_cached_entries,
-                            num_cached_entries + self.prompt_sequence_length,
+                    if self.prompt_sequence_length == 1:
+                        # we need to treat `positions` as if we were in
+                        # the autoregressive mode
+                        engine_input = numpy.array(
+                            [[num_total_processed_tokens]], dtype=numpy.int64
                         )
-                        .reshape(1, -1)
-                        .astype(numpy.int64)
-                    )
+                    else:
+                        engine_input = (
+                            numpy.arange(
+                                num_total_processed_tokens,
+                                num_total_processed_tokens
+                                + self.prompt_sequence_length,
+                            )
+                            .reshape(1, -1)
+                            .astype(numpy.int64)
+                        )
 
                 engine_inputs.append(engine_input)
 
@@ -737,6 +814,27 @@ class TextGenerationPipeline(TransformersPipeline):
 
             yield engine_inputs
 
+    def synchronize_engines(self, session_id: str):
+        """
+        Make sure that the existing engines are in sync i.e.
+        they contain the newest version of kv cache session with
+        the given session id.
+
+        :param session_id: the session id of the session to synchronize
+        """
+        engine_session = self.engine.kv_cache_storage.get(session_id)
+        if self.multitoken_engine:
+            multitoken_session = self.multitoken_engine.kv_cache_storage.get(session_id)
+        else:
+            return
+
+        if engine_session is None and multitoken_session:
+            self.engine.transfer_cache_session(multitoken_session)
+        elif engine_session and multitoken_session is None:
+            self.multitoken_engine.transfer_cache_session(engine_session)
+        else:
+            pass
+
     def is_cache_support_enabled(self) -> bool:
         """
         Returns whether the ran model has kv cache or not
@@ -744,6 +842,32 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: True if the model has kv cache, False otherwise
         """
         return any(default_cached_outputs(self.onnx_file_path))
+
+    def split_engine_inputs(
+        self, items: List[Union[numpy.ndarray, List[str]]], batch_size: int
+    ) -> Tuple[List[List[numpy.ndarray]], int]:
+        """
+        Custom implementation of splitting the engine inputs that takes into
+        account the fact that the `items` contain additionally a list of
+        session_ids, that need to be distributed across the batches.
+
+        :param items: list of numpy arrays to split (plus list of session_ids)
+        :param batch_size: size of each batch to split into
+        :return: list of batches, where each batch is a list of numpy arrays
+            (plus session_ids), as well as the total batch size
+        """
+        # extract the session_ids from the items
+        session_ids = next((item for item in items if isinstance(item, list)), None)
+        items = [item for item in items if not isinstance(item, list)]
+
+        batches, orig_batch_size = split_engine_inputs(items, batch_size)
+
+        # distribute session_ids across batches
+        batches_w_session_ids = [
+            batch + [session_ids[i]] for i, batch in enumerate(batches)
+        ]
+
+        return batches_w_session_ids, orig_batch_size
 
     def join_engine_outputs(
         self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
@@ -758,7 +882,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
-        tokens, logits = zip(*batch_outputs)
+        tokens, logits, session_ids = zip(*batch_outputs)
         if self.cache_support_enabled:
             # if the model has kv cache, we need to account for
             # the fact that the predicted outputs may have
@@ -789,8 +913,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
         tokens = numpy.concatenate(tokens, axis=0)
         logits = numpy.concatenate(logits, axis=0)
+        session_ids = numpy.concatenate(session_ids, axis=0)
 
-        return [tokens, logits]
+        return [tokens, logits, session_ids]
 
     @staticmethod
     def causal_mask_input_present(model_path: str) -> bool:
@@ -818,3 +943,8 @@ class TextGenerationPipeline(TransformersPipeline):
             decoded_token if decoded_token.isspace() else decoded_token.strip()
         )
         return decoded_token in stop_tokens
+
+    def _remove_bos_token_if_applicable(self, tokens: List[int]) -> List[int]:
+        if hasattr(self.tokenizer, "add_bos_token"):
+            return tokens[1:]
+        return tokens

@@ -15,7 +15,37 @@
 import numpy
 
 import pytest
-from deepsparse.transformers.utils.helpers import create_causal_mask
+from deepsparse.transformers.utils.helpers import (
+    create_causal_mask,
+    validate_session_ids,
+)
+
+
+@pytest.mark.parametrize(
+    "sequences, session_ids, result, should_raise_error",
+    [
+        ("sequence", None, None, False),
+        (["sequence"], None, None, False),
+        (["sequence_1", "sequence_2"], None, None, False),
+        ("sequence", "session_id", ["session_id"], False),
+        (["sequence"], "session_id", ["session_id"], False),
+        (["sequence"], ["session_id"], ["session_id"], False),
+        (["sequence_1", "sequence_2"], "session_id", None, True),
+        (
+            ["sequence_1", "sequence_2"],
+            ["session_id_1", "session_id_2", "session_id_3"],
+            None,
+            True,
+        ),
+        (["sequence_1", "sequence_2"], ["session_id_1", "session_id_1"], None, True),
+    ],
+)
+def test_validate_session_ids(sequences, session_ids, result, should_raise_error):
+    if should_raise_error:
+        with pytest.raises(ValueError):
+            validate_session_ids(session_ids, dict(sequences=sequences))
+    else:
+        assert result == validate_session_ids(session_ids, dict(sequences=sequences))
 
 
 @pytest.mark.parametrize(

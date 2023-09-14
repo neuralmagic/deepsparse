@@ -13,7 +13,7 @@
 # limitations under the License.
 import logging
 import uuid
-from typing import List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy
 
@@ -22,6 +22,7 @@ __all__ = [
     "generate_session_id",
     "pad_to_fixed_length",
     "create_causal_mask",
+    "validate_session_ids",
     "repeat_inputs",
 ]
 
@@ -54,6 +55,44 @@ def repeat_inputs(
     for seq in input_sequences:
         repeated_seq.extend(numpy.repeat([seq], num_generated_predictions))
     return repeated_seq
+
+
+def validate_session_ids(
+    session_ids: Optional[str], other_attributes: Dict[str, Any]
+) -> Optional[List[str]]:
+    """
+    Helper function to validate the session ids for TextGenerationInput schema
+
+    :param session_ids: The session ids to validate
+    :param other_attributes: The other attributes of the input schema
+    :return: The session ids if they were not None in the
+        first place, otherwise None
+    """
+    if session_ids is None:
+        return None
+
+    if not isinstance(session_ids, list):
+        session_ids = [session_ids]
+
+    if isinstance(other_attributes["sequences"], str) and len(session_ids) != 1:
+        raise ValueError(
+            f"Only one session id is allowed for a single input sequence. "
+            f"Detected 1 input sequence and {len(session_ids)} session ids"
+        )
+    if isinstance(other_attributes["sequences"], list) and len(session_ids) != len(
+        other_attributes["sequences"]
+    ):
+        raise ValueError(
+            f"Number of session ids must match the number of input sequences. "
+            f"Detected {len(other_attributes['sequences'])} "
+            f"input sequences and {len(session_ids)} session ids"
+        )
+    if len(session_ids) != len(set(session_ids)):
+        raise ValueError(
+            f"Session ids must be unique. Detected session_ids: {session_ids}"
+        )
+
+    return session_ids
 
 
 def pad_to_fixed_length(
