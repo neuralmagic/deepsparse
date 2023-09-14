@@ -57,9 +57,9 @@ class Evaluator(ABC):
         raise NotImplementedError
 
 
-class LMEvaluator(Evaluator):
+class LLMPerplexityEvaluator(Evaluator):
     """
-    Evaluator specific to transformers.
+    Evaluator for Perplexity calculation with LLM(s).
 
     :param model: The path to the model to evaluate. Must be a directory
         containing `model.onnx` with configuration files, or a SparseZoo stub.
