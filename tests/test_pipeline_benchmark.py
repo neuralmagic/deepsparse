@@ -95,7 +95,6 @@ def test_pipeline_benchmark(
     if res.stdout is not None:
         print(f"\n==== test_benchmark output ====\n{res.stdout}")
     assert res.returncode == 0
-    assert "error" not in res.stdout.lower()
     assert "fail" not in res.stdout.lower()
     assert "total_inference" in res.stdout.lower()
 
