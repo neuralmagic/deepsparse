@@ -170,6 +170,7 @@ class GeneratedText(BaseModel):
     )
 
 
+# TODO: Pydantic aliases allow assignment but not reference. Still need to update.
 class TextGenerationOutput(BaseModel):
     created: datetime.datetime = Field(description="Time of inference creation.")
     prompts: Union[str, List[str]] = Field(
@@ -655,6 +656,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         finished_reason.append(FinishReason.STOP)
                         break
 
+                    # TODO: Add any generic callback reason?
                     if callback is not None and callback(token) is False:
                         _LOGGER.debug(
                             "callback %s returned False, stopping generation."
