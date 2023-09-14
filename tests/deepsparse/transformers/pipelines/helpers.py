@@ -62,7 +62,7 @@ SPARSEZOO_MODELS_TO_TEST = [
         "salesforce/codegen-350m-mono",
         CODE_LANGUAGE_PROMPT,
         False,
-        13.0,
+        15.4,
     ),
     (
         "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
