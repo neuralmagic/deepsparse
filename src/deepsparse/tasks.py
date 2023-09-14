@@ -108,6 +108,11 @@ class SupportedTasks:
         bloom=AliasedTask("bloom", []),
     )
 
+    chat = namedtuple("chat", ["chat", "chatbot"])(
+        chat=AliasedTask("chat", []),
+        chatbot=AliasedTask("chatbot", []),
+    )
+
     image_classification = namedtuple("image_classification", ["image_classification"])(
         image_classification=AliasedTask(
             "image_classification",
@@ -149,6 +154,7 @@ class SupportedTasks:
         embedding_extraction,
         open_pif_paf,
         text_generation,
+        chat,
     ]
 
     @classmethod
@@ -165,6 +171,8 @@ class SupportedTasks:
             import deepsparse.pipelines.custom_pipeline  # noqa: F401
 
         elif cls.is_text_generation(task):
+            import deepsparse.transformers.pipelines.text_generation  # noqa: F401
+        elif cls.is_chat(task):
             import deepsparse.transformers.pipelines.text_generation  # noqa: F401
 
         elif cls.is_nlp(task):
@@ -221,6 +229,15 @@ class SupportedTasks:
             text_generation_task.matches(task)
             for text_generation_task in cls.text_generation
         )
+
+    @classmethod
+    def is_chat(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a chat task,
+        such as chatbot
+        :return: True if it is a chat task, False otherwise
+        """
+        return any(chat_task.matches(task) for chat_task in cls.chat)
 
     @classmethod
     def is_nlp(cls, task: str) -> bool:

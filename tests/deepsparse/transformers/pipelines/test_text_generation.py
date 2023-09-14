@@ -444,32 +444,6 @@ class TestTextGenerationPipeline:
             multi_token_prefill=True,
         )
 
-    def test_session_context_manager(self, setup):
-        pipeline = self.get_pipeline()
-
-        # test session() context manager exists
-        assert hasattr(
-            pipeline, "session"
-        ), "Pipeline does not have session context manager"
-
-        inp = {"sequences": "def fib("}
-        with pipeline.session():
-            for _ in range(2):
-                pipeline(**inp)
-
-        # pipeline should only have one session id at this level
-        assert (
-            len(pipeline.engine.kv_cache_storage._memory) == 1
-        ), "Pipeline created more than one session ids"
-
-        # invoke pipeline again outside session context manager
-        pipeline(**inp)
-
-        # pipeline should have two session ids at this level
-        assert (
-            len(pipeline.engine.kv_cache_storage._memory) == 2
-        ), "Pipeline should have 2 session ids at this level"
-
     def _test_run_with_same_session_ids(
         self,
         prompt_1,
@@ -638,3 +612,40 @@ class TestTextGenerationPipeline:
         # remove the session from the memory dict to always have
         pipeline.engine.kv_cache_storage.pop(session.id)
         return session
+
+
+@pytest.mark.parametrize(
+    "pipeline_kwargs",
+    [
+        dict(
+            model_path="zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
+            "huggingface/bigpython_bigquery_thepile/base-none",
+        ),
+    ],
+)
+@pytest.mark.skip(reason="Those tests are too heavy to run as a normal part of the CI.")
+def test_chat_pipeline_session(pipeline_kwargs):
+    pipeline = Pipeline.create(task="chat", **pipeline_kwargs)
+
+    # test session() context manager exists
+    assert hasattr(
+        pipeline, "session"
+    ), "Pipeline does not have session context manager"
+
+    inp = {"sequences": "def fib("}
+    with pipeline.session():
+        for _ in range(2):
+            pipeline(**inp)
+
+    # pipeline should only have one session id at this level
+    assert (
+        len(pipeline.engine.kv_cache_storage._memory) == 1
+    ), "Pipeline created more than one session ids"
+
+    # invoke pipeline again outside session context manager
+    pipeline(**inp)
+
+    # pipeline should have two session ids at this level
+    assert (
+        len(pipeline.engine.kv_cache_storage._memory) == 2
+    ), "Pipeline should have 2 session ids at this level"

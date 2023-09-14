@@ -53,7 +53,7 @@ from deepsparse.utils.onnx import default_cached_outputs
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["TextGenerationPipeline"]
+__all__ = ["TextGenerationPipeline", "ChatPipeline"]
 
 _SESSION_ID = contextvars.ContextVar("_SESSION_ID", default=None)
 
@@ -946,22 +946,6 @@ class TextGenerationPipeline(TransformersPipeline):
             for inp in onnx.load(model_path, load_external_data=False).graph.input
         )
 
-    @contextmanager
-    def session(self, session_id: Optional[str] = None) -> Callable[[Any, Any], Any]:
-        """
-        A context manager that returns existing pipeline instance
-        with the session_id already set.
-        """
-
-        if session_id is None:
-            session_id = generate_session_id()
-
-        # set session_id contextvar
-        token = _SESSION_ID.set([session_id])
-        yield
-        # reset session_id contextvar
-        _SESSION_ID.reset(token)
-
     def _stop_token_generated(
         self, token, stop_tokens: Union[None, str, Sequence[str]]
     ) -> bool:
@@ -978,3 +962,32 @@ class TextGenerationPipeline(TransformersPipeline):
         if hasattr(self.tokenizer, "add_bos_token"):
             return tokens[1:]
         return tokens
+
+
+@Pipeline.register(
+    task="chat",
+    task_aliases=["chatbot"],
+)
+class ChatPipeline(TextGenerationPipeline):
+    """
+    A ``Pipeline`` that performs multi-turn conversation with a chatbot.
+    This pipeline is uses the ``TextGenerationPipeline`` under the hood,
+    and provides a `session` context manager to maintains the chatbot's
+    kv cache state across multiple calls to the pipeline.
+    """
+
+    @contextmanager
+    def session(self, session_id: Optional[str] = None) -> Callable[[Any, Any], Any]:
+        """
+        A context manager that returns existing pipeline instance
+        with the session_id already set.
+        """
+
+        if session_id is None:
+            session_id = generate_session_id()
+
+        # set session_id contextvar
+        token = _SESSION_ID.set([session_id])
+        yield
+        # reset session_id contextvar
+        _SESSION_ID.reset(token)
