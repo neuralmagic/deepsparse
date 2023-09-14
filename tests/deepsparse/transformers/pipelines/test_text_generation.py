@@ -623,7 +623,7 @@ class TestTextGenerationPipeline:
         ),
     ],
 )
-@pytest.mark.skip(reason="Those tests are too heavy to run as a normal part of the CI.")
+@pytest.mark.skip(reason="These tests are too heavy to run as a normal part of the CI.")
 def test_chat_pipeline_session(pipeline_kwargs):
     pipeline = Pipeline.create(task="chat", **pipeline_kwargs)
 
