@@ -17,6 +17,8 @@ from typing import List, Tuple
 import numpy
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from huggingface_hub import snapshot_download
+
 
 NATURAL_LANGUAGE_PROMPT = """
 Didn't know what time it was, the lights were low
@@ -40,12 +42,53 @@ def Fibonacci(n):
         return 0
 """
 
+# SPARSEZOO_MODELS_TO_TEST should be a list of tuples in the form:
+# [(model_stub, model_name, prompt, uses_bos_token, logits_treshold), ...],
+# where
+# - model_stub is the stub of the sparsezoo model to be tested
+# - model_name is the name of the HuggingFace model that corresponds
+#   to the sparsezoo model (required for ground truth generation)
+# - prompt is the prompt to be used for testing
+# - uses_bos_token is a boolean that indicates whether the tokenizer
+#   prepends a bos token to the prompt during tokenization
+# - logits_threshold is the treshold for the max difference between the
+#   actual and the expected logits in the situations where they will not be
+#   able to match the ground truth (e.g. when the DeepSparse pipeline is
+#   running after the KV cache has been filled up). This value is established
+#   empirically for each combination of prompt/pipeline/num_generated tokens.
+SPARSEZOO_MODELS_TO_TEST = [
+    (
+        "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",  # noqa: E501
+        "salesforce/codegen-350m-mono",
+        CODE_LANGUAGE_PROMPT,
+        False,
+        13.0,
+    ),
+    (
+        "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
+        "facebook/opt-1.3b",
+        NATURAL_LANGUAGE_PROMPT,
+        True,
+        3.9,
+    ),
+]
+# TINYSTORIES_MODELS_TO_TEST works analogously to SPARSEZOO_MODELS_TO_TEST
+# but it contains a lightweight model that can be used for testing without
+# the need to download a large model from SparseZoo
+TINYSTORIES_MODELS_TO_TEST = [
+    (
+        snapshot_download(repo_id="mgoin/TinyStories-1M-deepsparse"),
+        "roneneldan/TinyStories-1M",
+        NATURAL_LANGUAGE_PROMPT,
+        False,
+        29.6,
+    )
+]
 
-def uses_bos_token(model_name):
-    return "opt" in model_name
 
-
-def generate_pytest_params(stubs_to_test, cache_management_type, logits_thresholds):
+def generate_pytest_params(
+    use_sparsezoo_models: bool, cache_management_type: List[str]
+):
     # process cache_management_type
     assert isinstance(
         cache_management_type, list
@@ -58,24 +101,10 @@ def generate_pytest_params(stubs_to_test, cache_management_type, logits_threshol
         "of strings that are either 'internal' or 'external'"
     )
     cache_to_test = [cache_type == "internal" for cache_type in cache_management_type]
-
     # process stubs_to_test
-    assert all([len(param) == 3 for param in stubs_to_test]), (
-        "stubs_to_test should be a list of tuples in the form: "
-        "[(model_stub, model_name, prompt), ...]"
+    stubs_to_test = (
+        SPARSEZOO_MODELS_TO_TEST if use_sparsezoo_models else TINYSTORIES_MODELS_TO_TEST
     )
-
-    # process logits_thresholds
-    if logits_thresholds is None:
-        logits_thresholds = [None] * len(stubs_to_test)
-    else:
-        assert len(logits_thresholds) == len(
-            stubs_to_test
-        ), "logits_thresholds should have the same length as stubs_to_test"
-
-    for i, (param, threshold) in enumerate(zip(stubs_to_test, logits_thresholds)):
-        model_name = param[1]
-        stubs_to_test[i] = tuple(list(param) + [uses_bos_token(model_name), threshold])
 
     return cache_to_test, stubs_to_test
 

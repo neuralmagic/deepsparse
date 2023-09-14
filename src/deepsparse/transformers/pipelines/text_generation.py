@@ -945,6 +945,8 @@ class TextGenerationPipeline(TransformersPipeline):
         return decoded_token in stop_tokens
 
     def _remove_bos_token_if_applicable(self, tokens: List[int]) -> List[int]:
-        if hasattr(self.tokenizer, "add_bos_token"):
+        engine = self.engine or self.multitoken_engine
+        if engine.freeze_first_position:
             return tokens[1:]
-        return tokens
+        else:
+            return tokens

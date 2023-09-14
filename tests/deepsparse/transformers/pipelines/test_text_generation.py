@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, Tuple
+import os
+from typing import List, Optional, Tuple, Union
 
 import numpy
 
@@ -20,70 +21,33 @@ import pytest
 from deepsparse import Pipeline
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from tests.deepsparse.transformers.pipelines.helpers import (
-    CODE_LANGUAGE_PROMPT,
-    NATURAL_LANGUAGE_PROMPT,
     TorchGroundTruthSource,
     generate_pytest_params,
 )
 
 
-_PRECISION = 1e-3
+# --------- CONFIG ---------
+# The following constants are used to configure the test suite
 
-# STUBS_TO_TEST should be a list of tuples in the form:
-# [(model_stub, model_name, prompt), ...], where model_stub is
-# the stub of the sparsezoo model to be tested, model_name
-# is the name of the HuggingFace model that corresponds to the
-# sparsezoo model and prompt is the prompt that will be used
-# for the text generation pipeline. The prompt should be
-# representative of the domain that the model was trained on.
-
-# The overarching goal of this suite is to
-# benchmark the sparsezoo models against the HuggingFace models
-# and this is why we need to provide both sources of truth
-STUBS_TO_TEST = [
-    (
-        "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",  # noqa E501
-        "salesforce/codegen-350m-mono",
-        CODE_LANGUAGE_PROMPT,
-    ),
-
-    ("zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
-    "facebook/opt-1.3b",
-    NATURAL_LANGUAGE_PROMPT),
-]
-
-# RUN_BASE_TESTS_ONLY is a boolean flag that is used to run only
-# the essential test that cover the hot path of the text generation pipeline.
-# If set to False, the test suite will run all the tests that are available.
-# Note, that if this parameter is set to True, there are some tests that will
-# be skipped if the cache (see the test suite for more details)
-RUN_BASE_TESTS_ONLY = False
-
-# CACHE_MANAGEMENT_TYPE should be a list of strings that can be either
-# "internal" or/and "external", but cannot be empty. This parameter
-# is used to test the different cache management strategies that
-# are available for the text generation pipeline. Note, that there
-# are some tests that will be skipped if the cache management type
-# is set to "internal" only (see the test suite for more details)
-CACHE_MANAGEMENT_TYPE = ["internal", "external"]
-
-# LOGITS_THRESHOLD is an optional config (could be set to an empty list),
-# that is used to test the difference between the actual and the expected
-# logits in the situations where we will not be able to match the ground
-# truth (e.g. when the DeepSparse pipeline is running after the KV cache
-# has been filled up). This value is established empirically for each
-# combination of prompt/pipeline/num_generated tokens. To enable full testing,
-# set this list so that it has the same length as the STUBS_TO_TEST list.
-# To disable it, set it to an empty list (e.g. LOGITS_THRESHOLDS = []).
-# The testing suite will notify the user about the tests that will be
-# skipped as a result
-LOGITS_THRESHOLDS = [13.0, 3.9]
+# PRECISION defines the threshold for comparing ground truth
+# and pipeline output values
+PRECISION: float = 1e-3
+# RUN_TEST_ON_SPARSEZOO_MODELS defines whether the test suite
+# should run on all the models available in SparseZoo or only
+# a lightweight model that tests the overall functionality of
+# the pipeline
+RUN_TEST_ON_SPARSEZOO_MODELS: bool = os.environ.get("FULL_LLM_TESTING", False)
+# CACHE_MANAGEMENT_TYPE defines the type of cache management
+# that should be used by the pipeline. The following options
+# are available: "external" and "internal"
+CACHE_MANAGEMENT_TYPE: List[str] = ["internal", "external"]
 # ----------------
 
 
 pytest_params = generate_pytest_params(
-    STUBS_TO_TEST, CACHE_MANAGEMENT_TYPE, LOGITS_THRESHOLDS
+    RUN_TEST_ON_SPARSEZOO_MODELS, CACHE_MANAGEMENT_TYPE
 )
+
 
 @pytest.mark.parametrize(
     "internal_kv_cache",
@@ -92,38 +56,8 @@ pytest_params = generate_pytest_params(
 @pytest.mark.parametrize(
     "model_stub, model_name, prompt, uses_bos_token, logits_threshold",
     pytest_params[1],
-
-@pytest.mark.parametrize(
-    "internal_kv_cache",
-    [True, False],
-)
-@pytest.mark.parametrize(
-    "model_stub, "
-    "model_name, "
-    "uses_bos_token, "
-    "prompt, "
-    "logits_max_diff_kv_cache_has_been_filled",
-    [
-        (
-            "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
-            "huggingface/bigpython_bigquery_thepile/base-none",
-            "salesforce/codegen-350m-mono",
-            False,
-            CODE_LANGUAGE_PROMPT,
-            13,
-        ),
-        (
-            "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/"
-            "opt_pretrain/base-none",
-            "facebook/opt-1.3b",
-            True,
-            NATURAL_LANGUAGE_PROMPT,
-            3.9,
-        ),
-    ],
     scope="class",
 )
-@pytest.mark.skip(reason="Those tests are too heavy to run as a normal part of the CI.")
 class TestTextGenerationPipeline:
     """
     This test suite is meant to test the main scenarios of
@@ -131,22 +65,37 @@ class TestTextGenerationPipeline:
     """
 
     def get_pipeline(self, **kwargs):
+        # if no kwargs provided, returns the cached "default"
+        # pipeline that is used for most of the tests.
+        # Otherwise, returns a pipeline with the given kwargs
+        # (the default pipeline kwargs are updated with the
+        # user-provided kwargs)
         if not kwargs:
             # return the default pipeline
-            if self.default_pipeline:
-                return self.default_pipeline
-            else:
-                self.default_pipeline = Pipeline.create(
-                    task="text_generation",
-                    model_path=self.model_stub,
-                    internal_kv_cache=self.internal_kv_cache,
-                    prompt_sequence_length=self.prompt_sequence_length,
-                    sequence_length=self.sequence_length,
-                    force_max_tokens=True,
-                )
-                return self.default_pipeline
+            if self.default_pipeline is None:
+                self.default_pipeline = Pipeline.create(**self.default_pipeline_kwargs)
+            return self.default_pipeline
         # return a pipeline with the given kwargs
-        return Pipeline.create(**kwargs)
+        # update the default pipeline kwargs
+        updated_kwargs = self.default_pipeline_kwargs.copy()
+        updated_kwargs.update(kwargs)
+        return Pipeline.create(**updated_kwargs)
+
+    def run_pipeline(
+        self,
+        pipeline,
+        sequences: Union[None, str, List[str]] = None,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ):
+        # helper function that runs the pipeline
+        return pipeline(
+            sequences=sequences or self.prompt,
+            return_logits=True,
+            include_prompt_logits=True,
+            max_tokens=max_tokens or self.num_tokens_generate,
+            **kwargs,
+        )
 
     @pytest.fixture
     def setup(
@@ -158,32 +107,41 @@ class TestTextGenerationPipeline:
         logits_threshold,
         internal_kv_cache,
     ):
-        self.num_tokens_generate = 216
+        self.num_tokens_generate = 128
         self.model_stub = model_stub
         self.prompt = prompt
+        self.uses_bos_token = uses_bos_token
+        self.model_name = model_name
+
         # create torch ground source
         torch_source = TorchGroundTruthSource(
             num_tokens_to_generate=self.num_tokens_generate, model_name=model_name
         )
-        torch_ground_truth = torch_source(self.prompt)
+        self.torch_ground_truth = torch_source(self.prompt)
 
         # prompt length is expressed in number of prompt tokens
-        prompt_length = torch_ground_truth[1].shape[1]
+        prompt_length = self.torch_ground_truth[1].shape[1]
 
         # sequence_length that assures that the KV cache will not be filled up
         self.sequence_length = 2 * prompt_length + self.num_tokens_generate
         # sequence_length that assures that the KV cache will be filled up
         self.sequence_length_short = self.num_tokens_generate
 
-        # prompt_sequence_length used for the multitoken prefill scenario
+        # prompt_sequence_length used for the multitoken prefill scenario,
         self.prompt_sequence_length = prompt_length // 2
 
         # the maximum threshold for the difference between the logits
         # when running a scenario where KV Cache buffer has been filled
         self.logits_threshold = logits_threshold
-
         self.internal_kv_cache = internal_kv_cache
-
+        self.default_pipeline_kwargs = dict(
+            task="text_generation",
+            model_path=self.model_stub,
+            internal_kv_cache=self.internal_kv_cache,
+            prompt_sequence_length=self.prompt_sequence_length,
+            sequence_length=self.sequence_length,
+            force_max_tokens=True,
+        )
         self.default_pipeline = None
 
         assert self.prompt_sequence_length < prompt_length, (
@@ -191,51 +149,31 @@ class TestTextGenerationPipeline:
             "must be smaller than the prompt length"
         )
 
-        yield model_name, uses_bos_token, torch_ground_truth
-
-    @pytest.mark.skipif(
-        RUN_BASE_TESTS_ONLY,
-        reason="RUN_BASE_TESTS_ONLY = True, running only essential tests as a result",
-    )
     def test_freeze_first_position(self, setup):
         # Test whether we should be "freezing" the first token after
         # the kv cache is full
-        _, uses_bos_token, _ = setup
         pipeline = self.get_pipeline()
-        assert pipeline.engine._freeze_first_position == uses_bos_token
+        assert pipeline.engine.freeze_first_position == self.uses_bos_token
 
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
         # following scenario:
         # 1. Prompt preprocessing is performed by single-token engine
         # 2. The KV Cache is never filled up
-        # 3. KV Cache managed externally
-
         if self.internal_kv_cache:
             pytest.skip(
                 "Cannot run ORT pipeline with the internal deepsparse cache enabled."
             )
-        _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
-            model_path=self.model_stub,
-            sequence_length=self.sequence_length,
-            prompt_sequence_length=1,
-            force_max_tokens=True,
-            engine_type="onnxruntime",
+            prompt_sequence_length=1, engine_type="onnxruntime"
         )
-        output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
-        cache_session = self._get_last_cache_session(pipeline)
+        output = self.run_pipeline(pipeline)
+        cache_session = self._pop_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
             cache_session=cache_session,
-            torch_ground_truth=torch_ground_truth,
+            torch_ground_truth=self.torch_ground_truth,
         )
 
     def test_ort_multi_token_prefill(self, setup):
@@ -243,33 +181,21 @@ class TestTextGenerationPipeline:
         # following scenario:
         # 1. Prompt preprocessing is performed by multi-token engine
         # 2. The KV Cache is never filled up
-        # 3. KV Cache managed externally
-
         if self.internal_kv_cache:
             pytest.skip(
                 "Cannot run ORT pipeline with the internal deepsparse cache enabled."
             )
-        _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
-            model_path=self.model_stub,
-            sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
             engine_type="onnxruntime",
         )
-        output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
-        cache_session = self._get_last_cache_session(pipeline)
+        output = self.run_pipeline(pipeline)
+        cache_session = self._pop_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
             cache_session=cache_session,
-            torch_ground_truth=torch_ground_truth,
+            torch_ground_truth=self.torch_ground_truth,
         )
 
     def test_ort_generation_after_kv_cache_has_been_filled(self, setup):
@@ -277,39 +203,25 @@ class TestTextGenerationPipeline:
         # following scenario:
         # 1. Prompt preprocessing is performed by multi-token engine
         # 2. The KV Cache is filled up (old entries are removed)
-        # 3. KV Cache managed externally
 
         if self.internal_kv_cache:
             pytest.skip(
                 "Cannot run ORT pipeline with the internal deepsparse cache enabled."
             )
-        _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
-            model_path=self.model_stub,
-            sequence_length=self.sequence_length_short,
-            prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
-            engine_type="onnxruntime",
+            sequence_length=self.sequence_length_short, engine_type="onnxruntime"
         )
-        output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
-        cache_session = self._get_last_cache_session(pipeline)
+        output = self.run_pipeline(pipeline)
+        cache_session = self._pop_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
             "greater than the sequence length"
         )
-
         self._test_output(
             output=output,
             cache_session=cache_session,
-            torch_ground_truth=torch_ground_truth,
-            run_logits_difference_validation=True,
+            torch_ground_truth=self.torch_ground_truth,
             logits_threshold=self.logits_threshold,
         )
 
@@ -318,29 +230,18 @@ class TestTextGenerationPipeline:
         # following scenario:
         # 1. Prompt preprocessing is performed by single-token engine
         # 2. The KV Cache is never filled up
-        # 3. KV Cache managed externally or internally
 
-        _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
-            model_path=self.model_stub,
-            sequence_length=self.sequence_length,
             prompt_sequence_length=1,
-            force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
-        output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
-        cache_session = self._get_last_cache_session(pipeline)
+        output = self.run_pipeline(pipeline)
+        cache_session = self._pop_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
             cache_session=cache_session,
-            torch_ground_truth=torch_ground_truth,
+            torch_ground_truth=self.torch_ground_truth,
             run_cache_validation=not self.internal_kv_cache,
         )
 
@@ -349,29 +250,14 @@ class TestTextGenerationPipeline:
         # following scenario:
         # 1. Prompt preprocessing is performed by multi-token engine
         # 2. The KV Cache is never filled up
-        # 3. KV Cache managed externally or internally
-
-        _, _, torch_ground_truth = setup
-        pipeline = self.get_pipeline(
-            task="text_generation",
-            model_path=self.model_stub,
-            sequence_length=self.sequence_length,
-            prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
-            internal_kv_cache=self.internal_kv_cache,
-        )
-        output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
-        cache_session = self._get_last_cache_session(pipeline)
+        pipeline = self.get_pipeline()
+        output = self.run_pipeline(pipeline)
+        cache_session = self._pop_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
             cache_session=cache_session,
-            torch_ground_truth=torch_ground_truth,
+            torch_ground_truth=self.torch_ground_truth,
             run_cache_validation=not self.internal_kv_cache,
         )
 
@@ -382,22 +268,11 @@ class TestTextGenerationPipeline:
         # 2. The KV Cache is filled up (old entries are removed)
         # 3. KV Cache managed externally or internally
 
-        _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
-            model_path=self.model_stub,
             sequence_length=self.sequence_length_short,
-            prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
-            internal_kv_cache=self.internal_kv_cache,
         )
-        output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
-        cache_session = self._get_last_cache_session(pipeline)
+        output = self.run_pipeline(pipeline)
+        cache_session = self._pop_cache_session(pipeline)
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
@@ -407,53 +282,30 @@ class TestTextGenerationPipeline:
         self._test_output(
             output=output,
             cache_session=cache_session,
-            torch_ground_truth=torch_ground_truth,
+            torch_ground_truth=self.torch_ground_truth,
             run_cache_validation=not self.internal_kv_cache,
-            run_logits_difference_validation=True,
             logits_threshold=self.logits_threshold,
         )
 
-    @pytest.mark.skipif(
-        RUN_BASE_TESTS_ONLY,
-        reason="RUN_BASE_TESTS_ONLY = True, running only essential tests as a result",
-    )
     def test_run_same_prompt_multiple_times(self, setup):
         # Test the scenario, where the same prompt is run multiple times
         # Every run should produce the same output
         pipeline = self.get_pipeline()
 
-        output_1 = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
-        output_2 = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
-        assert output_1.sequences[0] == output_2.sequences[0]
-        assert numpy.allclose(output_1.logits, output_2.logits, atol=_PRECISION)
+        output_1 = self.run_pipeline(pipeline)
+        output_2 = self.run_pipeline(pipeline)
 
-    @pytest.mark.skipif(
-        RUN_BASE_TESTS_ONLY,
-        reason="RUN_BASE_TESTS_ONLY = True, running only essential tests as a result",
-    )
+        assert output_1.sequences[0] == output_2.sequences[0]
+        assert numpy.allclose(output_1.logits, output_2.logits, atol=PRECISION)
+
     def test_run_multiple_prompts_in_parallel(self, setup):
         # Test the scenario, where multiple prompts are run in parallel
         # Same two prompts should produce the same output
         pipeline = self.get_pipeline()
 
-        output = pipeline(
-            sequences=[self.prompt, self.prompt],
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
-        )
+        output = self.run_pipeline(pipeline, sequences=[self.prompt, self.prompt])
 
-        assert numpy.allclose(output.logits[0], output.logits[1], atol=_PRECISION)
+        assert numpy.allclose(output.logits[0], output.logits[1], atol=PRECISION)
         assert output.sequences[0] == output.sequences[1]
 
     def test_num_generated_predictions(self, setup):
@@ -461,13 +313,10 @@ class TestTextGenerationPipeline:
         # from the same prompt
         pipeline = self.get_pipeline()
 
-        output_sequences = pipeline(
-            sequences=[self.prompt], num_generated_predictions=2
-        )
+        output_sequences = self.run_pipeline(pipeline, num_generated_predictions=2)
         assert len(output_sequences.sequences[0]) == 2
-
-        output_sequences = pipeline(
-            sequences=[self.prompt, self.prompt], num_generated_predictions=2
+        output_sequences = self.run_pipeline(
+            pipeline, sequences=[self.prompt, self.prompt], num_generated_predictions=2
         )
         assert len(output_sequences.sequences) == 2
         for sequences in output_sequences.sequences:
@@ -484,70 +333,45 @@ class TestTextGenerationPipeline:
         #     generated_text_2 == pipeline(prompt_1 + generated_text + prompt_2)
 
         prompt_1 = "This prompt is used for testing purposes. To this to make sure that"
-        prompt_2 = "still this prompt should not"
-        num_generated_tokens = 64
-        uses_bos_token = setup[1]
-
-        self._test_run_with_same_session_ids(
-            prompt_1,
-            prompt_2,
-            num_generated_tokens,
-            uses_bos_token,
-            multi_token_prefill=False,
-        )
-        self._test_run_with_same_session_ids(
-            prompt_1,
-            prompt_2,
-            num_generated_tokens,
-            uses_bos_token,
-            multi_token_prefill=True,
-        )
+        prompt_2 = " still this prompt should not"
+        num_generated_tokens = 32
+        for multi_token_prefill in [True, False]:
+            self._test_run_with_same_session_ids(
+                prompt_1, prompt_2, num_generated_tokens, multi_token_prefill
+            )
 
     def _test_run_with_same_session_ids(
         self,
         prompt_1,
         prompt_2,
         num_generated_tokens,
-        uses_bos_token,
         multi_token_prefill,
     ):
         pipeline = self.get_pipeline(
-            task="text_generation",
-            model_path=self.model_stub,
             prompt_sequence_length=self.prompt_sequence_length
             if multi_token_prefill
             else 1,
-            force_max_tokens=True,
-            internal_kv_cache=self.internal_kv_cache,
         )
+        for session_id_pair in [
+            ("session_id_1", "session_id_2"),
+            ("session_id_3", "session_id_4"),
+        ]:
+            # make sure information does not leak between sessions
+            self._test_composition_same_session_ids(
+                prompt_1,
+                prompt_2,
+                num_generated_tokens,
+                pipeline,
+                session_id_1=session_id_pair[0],
+                session_id_2=session_id_pair[1],
+            )
 
-        # make sure information does not leak between sessions
-        self._test_composition_same_session_ids(
-            prompt_1,
-            prompt_2,
-            num_generated_tokens,
-            pipeline,
-            uses_bos_token,
-            session_id_1="test_1",
-            session_id_2="test_2",
-        )
-        self._test_composition_same_session_ids(
-            prompt_1,
-            prompt_2,
-            num_generated_tokens,
-            pipeline,
-            uses_bos_token,
-            session_id_1="test_3",
-            session_id_2="test_4",
-        )
-
-    @staticmethod
     def _test_composition_same_session_ids(
+        self,
         prompt_1,
         prompt_2,
         num_generated_tokens,
         pipeline,
-        uses_bos_token,
         session_id_1,
         session_id_2,
     ):
@@ -556,43 +380,44 @@ class TestTextGenerationPipeline:
 
         # make sure that running two prompts one after another
         # is identical to running a composition of those prompts
-        out_1_ = pipeline(
+        out_1_ = self.run_pipeline(
+            pipeline,
             sequences=prompt_1,
             session_ids=session_id_1,
             max_tokens=num_generated_tokens,
-            return_logits=True,
-            include_prompt_logits=True,
         )
+
         prompt_1_ = out_1_.sequences[0]
-        out_1 = pipeline(
+
+        out_1 = self.run_pipeline(
+            pipeline,
             sequences=prompt_2,
             session_ids=session_id_1,
-            return_logits=True,
-            max_tokens=num_generated_tokens,
-            include_prompt_logits=True,
-        )
-        if uses_bos_token:
-            prompt_composition = tokenizer.decode(
-                tokenizer(prompt_1).input_ids
-                + tokenizer(prompt_1_).input_ids[1:]
-                + tokenizer(prompt_2).input_ids[1:],
-                skip_special_tokens=True,
-            )
-        else:
-            prompt_composition = tokenizer.decode(
-                tokenizer(prompt_1).input_ids
-                + tokenizer(prompt_1_).input_ids
-                + tokenizer(prompt_2).input_ids,
-                skip_special_tokens=True,
-            )
-        out_2 = pipeline(
-            sequences=prompt_composition,
-            session_ids=session_id_2,
-            return_logits=True,
-            include_prompt_logits=True,
             max_tokens=num_generated_tokens,
         )
 
+        prompt_composition = tokenizer.decode(
+            tokenizer(prompt_1).input_ids
+            + tokenizer(prompt_1_).input_ids
+            + tokenizer(prompt_2).input_ids,
+            skip_special_tokens=True,
+        )
+        out_2 = self.run_pipeline(
+            pipeline,
+            sequences=prompt_composition,
+            session_ids=session_id_2,
+            max_tokens=num_generated_tokens,
+        )
+
+        kv_cache_1 = pipeline.engine.kv_cache_storage.get(session_id_1)
+        cache_array_1 = kv_cache_1.cached_inputs["past_key_values.0.key"][
+            :, :, -kv_cache_1.total_num_processed_tokens :
+        ]
+        kv_cache_2 = pipeline.engine.kv_cache_storage.get(session_id_2)
+        cache_array_2 = kv_cache_2.cached_inputs["past_key_values.0.key"][
+            :, :, -kv_cache_2.total_num_processed_tokens :
+        ]
+        assert numpy.allclose(cache_array_1, cache_array_2, atol=PRECISION)
         assert out_1.sequences[0] == out_2.sequences[0]
 
     def _test_output(
@@ -601,7 +426,6 @@ class TestTextGenerationPipeline:
         cache_session: DecoderKVCache,
         torch_ground_truth: Tuple[numpy.ndarray, ...],
         logits_threshold: Optional[float] = None,
-        run_logits_difference_validation: bool = False,
         run_cache_validation: bool = True,
     ):
         # extract numpy arrays from cached_inputs
@@ -617,18 +441,13 @@ class TestTextGenerationPipeline:
         # concatenate target prompt_logits and generated_logits and check
         target_logits = numpy.concatenate([prompt_logits, generated_logits], axis=1)
 
-        if run_logits_difference_validation:
+        if logits_threshold:
             # if comparing the output from the model where
             # the kv cache has been filled, we expect the
             # maximum absolute difference between the logits
             # to be less than the threshold
             # (the threshold is established by running the
             # ONNX model in ONNXRuntime)
-            if logits_threshold is None:
-                pytest.skip(
-                    "Attempting to run logits difference "
-                    "validation, but logits_threshold is None"
-                )
             assert abs(output.logits - target_logits).max() < logits_threshold
         else:
             # otherwise, we expect the logits to be exactly the same
@@ -636,7 +455,7 @@ class TestTextGenerationPipeline:
             # also be the same as the target sequence, and finally
             # (if applicable) the kv cache should be the same as the
             # target kv cache
-            assert numpy.allclose(output.logits, target_logits, atol=_PRECISION)
+            assert numpy.allclose(output.logits, target_logits, atol=PRECISION)
             assert self.prompt + output.sequences[0] == generated_text
 
             if run_cache_validation:
@@ -661,10 +480,15 @@ class TestTextGenerationPipeline:
             # - generated cache entries (from -end_index to -1)
             # as target_cache only pertains to prompt cache entries, we need to
             # compare only the prompt cache entries in x with y
-            assert numpy.allclose(x[:, :, -start_index:-end_index, :], y, atol=_PRECISION)
+            assert numpy.allclose(
+                x[:, :, -start_index:-end_index, :], y, atol=PRECISION
+            )
 
     @staticmethod
-    def _get_last_cache_session(pipeline: Pipeline) -> "DecoderKVCache":  # noqa F821
+    def _pop_cache_session(pipeline: Pipeline) -> "DecoderKVCache":  # noqa F821
+        # pop the last cache session from the kv cache storage
+        # (this makes sure that we are only keeping the most
+        # recent cache session in the storage, useful for testing)
         memory = pipeline.engine.kv_cache_storage._memory
         assert len(memory) == 1
         # access the only element in the memory dict

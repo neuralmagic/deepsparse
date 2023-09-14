@@ -106,7 +106,7 @@ class NLDecoderEngine:
         self.kv_cache_enabled = kv_cache_enabled
         self.internal_kv_cache = internal_kv_cache
         self.kv_cache_storage = SessionStorageKVCache() if kv_cache_enabled else None
-        self._freeze_first_position = self._should_freeze_first_position(tokenizer)
+        self.freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._engine_type = engine_type
 
     @property
@@ -242,7 +242,7 @@ class NLDecoderEngine:
             session_id=session_id,
             state=kv_cache_state,
             num_processed_tokens=0,
-            freeze_first_position=self._freeze_first_position,
+            freeze_first_position=self.freeze_first_position,
         )
 
         self.kv_cache_storage.put(session)
@@ -385,9 +385,9 @@ class NLDecoderEngine:
     @staticmethod
     def _should_freeze_first_position(tokenizer) -> bool:
         # use tokenizer to find out whether we should freeze the first position
-        # (True if tokenizer has a prefix for a BOS token)
+        # (True if tokenizer has a adds a BOS token)
         if tokenizer is None:
             return False
         if hasattr(tokenizer, "add_bos_token"):
-            return True
+            return bool(tokenizer.add_bos_token)
         return False
