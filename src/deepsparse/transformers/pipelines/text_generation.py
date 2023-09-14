@@ -78,7 +78,7 @@ class TextGenerationInput(BaseModel):
         "the sequence is repeated.",
     )
     max_tokens: int = Field(
-        default=1024,
+        default=100,
         description="Maximum number of tokens to generate per output sequence. If no "
         "value is provided, will default to 1024.",
     )
