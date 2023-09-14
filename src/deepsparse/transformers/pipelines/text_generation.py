@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextvars
 import logging
 import os
 import warnings
 from contextlib import contextmanager
-from functools import partial
 from typing import (
     Any,
     Callable,
@@ -54,6 +54,8 @@ from deepsparse.utils.onnx import default_cached_outputs
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["TextGenerationPipeline"]
+
+_SESSION_ID = contextvars.ContextVar("_SESSION_ID", default=None)
 
 
 class TextGenerationInput(BaseModel):
@@ -444,10 +446,19 @@ class TextGenerationPipeline(TransformersPipeline):
         if session_ids is None:
             # session_ids is None, so we need to generate
             # a session id for each input sequence
-            num_input_sequences = (
-                len(inputs.sequences) if isinstance(inputs.sequences, list) else 1
-            )
-            session_ids = [generate_session_id() for _ in range(num_input_sequences)]
+
+            # check if _SESSION_ID context is set
+            # if it is, use that as the session id
+
+            if _SESSION_ID.get() is not None:
+                session_ids = _SESSION_ID.get()
+            else:
+                num_input_sequences = (
+                    len(inputs.sequences) if isinstance(inputs.sequences, list) else 1
+                )
+                session_ids = [
+                    generate_session_id() for _ in range(num_input_sequences)
+                ]
         engine_input.append(session_ids)
 
         context = dict(
@@ -945,8 +956,11 @@ class TextGenerationPipeline(TransformersPipeline):
         if session_id is None:
             session_id = generate_session_id()
 
-        # session_id is always populated here
-        yield partial(self, session_id=session_id)
+        # set session_id contextvar
+        token = _SESSION_ID.set([session_id])
+        yield
+        # reset session_id contextvar
+        _SESSION_ID.reset(token)
 
     def _stop_token_generated(
         self, token, stop_tokens: Union[None, str, Sequence[str]]
