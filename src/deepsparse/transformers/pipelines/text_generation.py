@@ -161,7 +161,7 @@ class GeneratedText(BaseModel):
     )
     score: Optional[Any] = Field(
         description="The score for the generated token or sequence. "
-        "The scores have the shape [batch_size, sequence_length, vocab_size]"
+        "The scores have the shape [sequence_length, vocab_size]"
     )
     finished: bool = Field(description="Whether generation has stopped.")
     finished_reason: str = Field(
@@ -172,16 +172,15 @@ class GeneratedText(BaseModel):
 
 class TextGenerationOutput(BaseModel):
     created: datetime.datetime = Field(description="Time of inference creation.")
-    prompt: Union[str, List[str]] = Field(
+    prompts: Union[str, List[str]] = Field(
         description="Prompts used for the sequence generation. For multiple input "
-        "prompts, a list of prompts is returned",
+        "prompts, a list of prompts is returned"
     )
-    generation: Union[List[GeneratedText], List[List[GeneratedText]]] = Field(
-        description="For a single prompt, a single list of GeneratedText for the "
-        "specific prompt is returned. If multiple prompts are given, a list of "
-        "GeneratedText is returned for each prompt provided. If streamng is enabled, "
-        "the next generated token is returned. Otherwise, the full generated sequence "
-        "is returned."
+    generations: Union[List[GeneratedText], List[List[GeneratedText]]] = Field(
+        description="For a single prompt, a single list of GeneratedText is returned. "
+        "If multiple prompts are given, a list of GeneratedText is returned for each "
+        "prompt provided. If streamng is enabled, the next generated token is returned."
+        "Otherwise, the full generated sequence is returned."
     )
     session_id: Optional[str] = Field(
         default=None, description="A string identifier for the kv cache session."
@@ -428,7 +427,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # If the num_generated_predictions > 1, repeat the prompt
         # num_generated_predictions times. Also, update the engine so that deterministic
         # is set to False.
-        original_inputs = inputs.num_generated_predictions
+        original_inputs = inputs.sequences
         if inputs.num_generated_predictions > 1:
             if isinstance(inputs.sequences, str):
                 inputs.sequences = [inputs.sequences]
@@ -511,7 +510,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
         generated_tokens, generated_logits, finished_reason = engine_outputs
-        finished_reason = finished_reason[0]
+        finished_reason = [f[0] for f in finished_reason]
 
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
@@ -561,7 +560,7 @@ class TextGenerationPipeline(TransformersPipeline):
             generations = grouped_generations
 
         return TextGenerationOutput(
-            created=datetime.datetime.now(), prompt=prompts, generation=generations
+            created=datetime.datetime.now(), prompts=prompts, generations=generations
         )
 
     def engine_forward(
