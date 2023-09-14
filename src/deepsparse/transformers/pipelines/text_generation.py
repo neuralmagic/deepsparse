@@ -199,6 +199,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # enable multitoken prefill if
         # - the model graph is supporting it (causal_mask input is present)
         # - prompt_sequence_length != 1 (identical to single-token prefill)
+        
         self.enable_multitoken_prefill = (
             self.causal_mask_input_present(model_path=self.onnx_file_path)
             and prompt_sequence_length > 1
@@ -265,9 +266,7 @@ class TextGenerationPipeline(TransformersPipeline):
             # emit the appropriate user message depending whether we are
             # instantiation the multitoken engine or not
             if not self.enable_multitoken_prefill:
-                warnings.warn(
-                    "This ONNX graph does not support processing the prompt in "
-                    "with processing length > 1. Creation of an auxiliary engine for "
+                warnings.warn("Creation of an auxiliary engine for "
                     "processing the prompt at a larger processing length is disabled. "
                     "The prompt will be processed in with processing length 1."
                 )
@@ -802,10 +801,14 @@ class TextGenerationPipeline(TransformersPipeline):
         :param model_path: path to the model
         :return: True if causal_mask input is present, False otherwise
         """
-        return any(
+        if any(
             inp.name == "causal_mask"
-            for inp in onnx.load(model_path, load_external_data=False).graph.input
-        )
+            for inp in onnx.load(model_path, load_external_data=False).graph.input):
+            return True
+        else:
+            _LOGGER.warning("This ONNX graph does not support processing the prompt in "
+                    "with processing length > 1"):
+            return False
 
     def _stop_token_generated(
         self, token, stop_tokens: Union[None, str, Sequence[str]]
