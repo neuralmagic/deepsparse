@@ -111,6 +111,11 @@ class LMEvaluator(Evaluator):
     def _calc_perplexity(self, **kwargs):
         """
         Calculate the perplexity of the model.
+        
+        Note: Right now, this function relies on the `perplexity_eval`
+        function from `deepsparse.transformers.eval_downstream` to calculate
+        perplexity. This is subject to change in the future.
+        
 
         :param kwargs: Additional arguments to pass to the
             perplexity function.
