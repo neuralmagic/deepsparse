@@ -471,6 +471,8 @@ class TextGenerationPipeline(TransformersPipeline):
             max_tokens=inputs.max_tokens,
         )
 
+        return engine_input, context
+
     def process_engine_outputs(
         self, engine_outputs: List[numpy.ndarray], **kwargs
     ) -> TextGenerationOutput:
