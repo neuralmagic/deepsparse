@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 
 import numpy
 import transformers
-from transformers.models.auto import AutoConfig, AutoTokenizer
+from transformers.models.auto import AutoTokenizer
 
 from deepsparse import Bucketable, Pipeline
 from deepsparse.transformers.helpers import (
@@ -151,9 +151,8 @@ class TransformersPipeline(Pipeline, Bucketable):
             else:
                 self.config_path = os.path.join(self.config, "config.json")
 
-            self.config = AutoConfig.from_pretrained(
+            self.config = transformers.PretrainedConfig.from_pretrained(
                 self.config,
-                trust_remote_code=self._trust_remote_code,
                 finetuning_task=self.task if hasattr(self, "task") else None,
             )
 
