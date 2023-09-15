@@ -266,8 +266,7 @@ class TextGenerationPipeline(TransformersPipeline):
             # instantiation the multitoken engine or not
             if not self.enable_multitoken_prefill:
                 warnings.warn(
-                    "This ONNX graph does not support processing the prompt in "
-                    "with processing length > 1. Creation of an auxiliary engine for "
+                    "Creation of an auxiliary engine for "
                     "processing the prompt at a larger processing length is disabled. "
                     "The prompt will be processed in with processing length 1."
                 )
@@ -802,10 +801,17 @@ class TextGenerationPipeline(TransformersPipeline):
         :param model_path: path to the model
         :return: True if causal_mask input is present, False otherwise
         """
-        return any(
+        is_causal_mask_input = any(
             inp.name == "causal_mask"
             for inp in onnx.load(model_path, load_external_data=False).graph.input
         )
+        if not is_causal_mask_input:
+            _LOGGER.warning(
+                "This ONNX graph does not support processing the prompt"
+                "with processing length > 1"
+            )
+
+        return is_causal_mask_input
 
     def _stop_token_generated(
         self, token, stop_tokens: Union[None, str, Sequence[str]]
