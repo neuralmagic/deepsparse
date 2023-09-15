@@ -533,7 +533,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         logits = generated_logits if kwargs.get("return_logits") else None
 
-        if logits:
+        if logits is not None:
             generations = list(
                 self.executor.map(
                     _create_generated_text_output,
