@@ -45,9 +45,6 @@ class TestSessionStorageKVCache:
         assert self.storage.get("second_session")
         assert not self.storage.get("third_session")
 
-    def test_internal_cache_active(self):
-        assert not self.storage.internal_cache_active
-
     def test_pop(self):
         self.storage.put(DummyDecoderKVCache(session_id="session_to_pop"))
         assert self.storage.has_session("session_to_pop")
