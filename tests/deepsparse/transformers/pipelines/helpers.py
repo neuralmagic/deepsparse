@@ -12,84 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import List, Tuple
 
 import numpy
+import yaml
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from huggingface_hub import snapshot_download
 
 
-NATURAL_LANGUAGE_PROMPT = """
-Didn't know what time it was, the lights were low
-I leaned back on my radio
-Some cat was layin' down some rock 'n' roll
-"Lotta soul," he said
-Then the loud sound did seem to fade
-Came back like a slow voice on a wave of phase
-That weren't no DJ, that was hazy cosmic jive
-"""
+def generate_pytest_params(config_files_dir: str, cadence_to_enable=["commit"]):
+    assert os.path.isdir(config_files_dir)
+    test_params = []
+    run_main_tests_only = []
+    for file in os.listdir(config_files_dir):
+        with open(os.path.join(config_files_dir, file), "r") as f:
+            config = yaml.safe_load(f)
+            if config["cadence"] in cadence_to_enable:
+                test_params.append(_process_main_test_params(config))
+                run_main_tests_only.append(config["run_main_tests_only"])
+    return (test_params, run_main_tests_only)
 
-CODE_LANGUAGE_PROMPT = """
-def Fibonacci(n):
-    # Check if input is 0 then it will
-    # print incorrect input
-    if n < 0:
-        print("Incorrect input")
-    # Check if n is 0
-    # then it will return 0
-    elif n == 0:
-        return 0
-"""
 
-# SPARSEZOO_MODELS_TO_TEST should be a list of tuples in the form:
-# [(model_stub, model_name, prompt, uses_bos_token, logits_treshold), ...],
-# where
-# - model_stub is the stub of the sparsezoo model to be tested
-# - model_name is the name of the HuggingFace model that corresponds
-#   to the sparsezoo model (required for ground truth generation)
-# - prompt is the prompt to be used for testing
-# - uses_bos_token is a boolean that indicates whether the tokenizer
-#   prepends a bos token to the prompt during tokenization
-# - logits_threshold is the treshold for the max difference between the
-#   actual and the expected logits in the situations where they will not be
-#   able to match the ground truth (e.g. when the DeepSparse pipeline is
-#   running after the KV cache has been filled up). This value is established
-#   empirically for each combination of prompt/pipeline/num_generated tokens.
-SPARSEZOO_MODELS_TO_TEST = [
-    (
-        "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none",  # noqa: E501
-        "salesforce/codegen-350m-mono",
-        CODE_LANGUAGE_PROMPT,
-        False,
-        15.4,
-    ),
-    (
-        "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none",
-        "facebook/opt-1.3b",
-        NATURAL_LANGUAGE_PROMPT,
-        True,
-        3.9,
-    ),
-]
-# TINYSTORIES_MODELS_TO_TEST works analogously to SPARSEZOO_MODELS_TO_TEST
-# but it contains a lightweight model that can be used for testing without
-# the need to download a large model from SparseZoo
-TINYSTORIES_MODELS_TO_TEST = [
-    (
-        snapshot_download(repo_id="mgoin/TinyStories-1M-deepsparse"),
-        "roneneldan/TinyStories-1M",
-        NATURAL_LANGUAGE_PROMPT,
-        False,
-        29.6,
+def _process_main_test_params(config):
+    model_path = config["model_path"]
+    if not model_path.startswith("zoo:"):
+        model_path = snapshot_download(repo_id=model_path)
+    return (
+        model_path,
+        config["model_name"],
+        config["num_tokens_generate"],
+        config["prompt"],
+        config["has_bos_token"],
+        config["logits_threshold"],
+        config["precision"],
+        _validate_cache_management_type(config["cache_management_type"]),
     )
-]
 
 
-def generate_pytest_params(
-    use_sparsezoo_models: bool, cache_management_type: List[str]
-):
-    # process cache_management_type
+def _validate_cache_management_type(cache_management_type):
     assert isinstance(
         cache_management_type, list
     ), "cache_management_type should be a list"
@@ -100,13 +62,7 @@ def generate_pytest_params(
         "cache_management_type should be a list "
         "of strings that are either 'internal' or 'external'"
     )
-    cache_to_test = [cache_type == "internal" for cache_type in cache_management_type]
-    # process stubs_to_test
-    stubs_to_test = (
-        SPARSEZOO_MODELS_TO_TEST if use_sparsezoo_models else TINYSTORIES_MODELS_TO_TEST
-    )
-
-    return cache_to_test, stubs_to_test
+    return cache_management_type
 
 
 class TorchGroundTruthSource:
