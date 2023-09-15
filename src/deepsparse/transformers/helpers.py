@@ -17,7 +17,6 @@ Helper functions for working with ONNX exports of transformer models and deepspa
 """
 
 
-import logging
 import os
 import re
 import warnings
@@ -42,7 +41,6 @@ __all__ = [
     "fix_numpy_types",
     "get_transformer_layer_init_names",
     "truncate_transformer_onnx_model",
-    "TemporaryLoggingLevel",
 ]
 
 _LOGGER = get_main_logger()
@@ -352,21 +350,3 @@ def truncate_transformer_onnx_model(
     )
 
     return output_filepath, [output_name], tmp_file_or_none
-
-
-class TemporaryLoggingLevel:
-    """
-    Sets the logging level of a logger
-    to a specific level for the duration of the context.
-    """
-
-    def __init__(self, logger: logging.Logger, level: int = logging.ERROR):
-        self.logger = logger
-        self.temporary_level = level
-        self.original_level = self.logger.level
-
-    def __enter__(self):
-        self.logger.setLevel(self.temporary_level)
-
-    def __exit__(self, exit_type, exit_value, exit_traceback):
-        self.logger.setLevel(self.original_level)

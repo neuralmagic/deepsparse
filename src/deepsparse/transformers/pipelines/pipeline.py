@@ -29,7 +29,6 @@ from transformers.models.auto import AutoTokenizer
 
 from deepsparse import Bucketable, Pipeline
 from deepsparse.transformers.helpers import (
-    TemporaryLoggingLevel,
     get_hugging_face_configs,
     get_onnx_path,
     overwrite_transformer_onnx_model_inputs,
@@ -153,14 +152,14 @@ class TransformersPipeline(Pipeline, Bucketable):
             else:
                 self.config_path = os.path.join(self.config, "config.json")
 
-            with TemporaryLoggingLevel(logger=logging.getLogger("transformers")):
-                # temporarily suppress logging from transformers to avoid
-                # printing the potentially confusing warning message to the
-                # user
-                self.config = transformers.PretrainedConfig.from_pretrained(
-                    self.config,
-                    finetuning_task=self.task if hasattr(self, "task") else None,
-                )
+            hf_logger = logging.getLogger("transformers")
+            hf_logger_level = hf_logger.level
+            hf_logger.setLevel(logging.ERROR)
+            self.config = transformers.PretrainedConfig.from_pretrained(
+                self.config,
+                finetuning_task=self.task if hasattr(self, "task") else None,
+            )
+            hf_logger.setLevel(hf_logger_level)
 
         if isinstance(self.tokenizer, (str, Path)):
             self.tokenizer_config_path = os.path.join(self.tokenizer, "tokenizer.json")
