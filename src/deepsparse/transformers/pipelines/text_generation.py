@@ -55,9 +55,9 @@ __all__ = ["TextGenerationPipeline"]
 
 
 class FinishReason(Enum):
-    STOP = "stop token generated."
-    LENGTH = "max token generation reached."
-    TIME = "max time reached."
+    STOP = "stop"
+    LENGTH = "length"
+    TIME = "time"
 
 
 class TextGenerationInput(BaseModel):
