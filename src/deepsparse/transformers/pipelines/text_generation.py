@@ -528,7 +528,6 @@ class TextGenerationPipeline(TransformersPipeline):
                     finished_reason[0],
                     logits,
                 )
-                print(generation)
                 generations.append(generation)
 
             return TextGenerationOutput(
@@ -676,7 +675,6 @@ class TextGenerationPipeline(TransformersPipeline):
                         finished_reason.append(FinishReason.STOP)
                         break
 
-                    # TODO: Add any generic callback reason?
                     if callback is not None and callback(token) is False:
                         _LOGGER.debug(
                             "callback %s returned False, stopping generation."
