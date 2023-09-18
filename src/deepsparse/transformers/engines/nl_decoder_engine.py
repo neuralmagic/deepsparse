@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy
 from transformers import AutoTokenizer
@@ -23,7 +23,6 @@ from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.storage_kv_cache import SessionStorageKVCache
 from deepsparse.transformers.utils.timings import TextGenerationTimings
 from deepsparse.utils import TimerManager
-from deepsparse.utils.data import numpy_softmax
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     CACHE_OUTPUT_PREFIX,
@@ -185,7 +184,7 @@ class NLDecoderEngine:
         inp: List[numpy.ndarray],
         session_id: str,
         val_inp: bool = True,
-    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
+    ) -> numpy.ndarray:
         """
         The main entry point for running the engine.
 
@@ -216,10 +215,7 @@ class NLDecoderEngine:
         else:
             logits = out[0]
 
-        # select batch idx 0, batch is always 1
-        token = self.generate_token(logits=logits[0, -1, :])
-
-        return token, logits
+        return logits
 
     def __str__(self):
         return f"{self.__class__.__name__}: {self.engine}"
@@ -256,22 +252,6 @@ class NLDecoderEngine:
         :param session: The external DecoderKVCache object
         """
         self.kv_cache_storage.put(session)
-
-    def generate_token(self, logits: numpy.ndarray) -> numpy.ndarray:
-        """
-        Samples a token from the logits using the sampling temperature.
-
-        :param logits: the logits from the model with shape (vocab_size,)
-        :return: the sampled token
-        """
-        if self.deterministic:
-            return numpy.argmax(logits)
-
-        logits /= self.sampling_temperature
-
-        probs = numpy_softmax(logits)
-
-        return numpy.random.choice(len(probs), p=probs)
 
     def add_kv_cache_to_input(
         self, inp: List[numpy.ndarray], session_id: str
