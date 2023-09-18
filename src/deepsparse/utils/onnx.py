@@ -128,7 +128,8 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     if Model is not object and isinstance(model, Model):
         # default to the main onnx file for the model
-        model = model.deployment.get_file(_MODEL_DIR_ONNX_NAME)
+        model = model.deployment.get_file(_MODEL_DIR_ONNX_NAME).path
+
     elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
         model = model.path
