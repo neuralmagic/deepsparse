@@ -45,8 +45,8 @@ from deepsparse.transformers.utils.helpers import (
     validate_session_ids,
 )
 from deepsparse.transformers.utils.timings import TextGenerationTimings
-from deepsparse.utils.data import split_engine_inputs
 from deepsparse.transformers.utils.token_generator import TokenGenerator
+from deepsparse.utils.data import split_engine_inputs
 from deepsparse.utils.onnx import default_cached_outputs
 
 
@@ -568,7 +568,11 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
                 for prompt_logit in prompt_logits:
                     token_generator.generate(prompt_logit)
-                return numpy.array([self.tokens]), prompt_logits, numpy.array([session_id])
+                return (
+                    numpy.array([self.tokens]),
+                    prompt_logits,
+                    numpy.array([session_id]),
+                )
 
             else:
                 # run the prompt through
@@ -605,9 +609,7 @@ class TextGenerationPipeline(TransformersPipeline):
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
                     with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
-                        logits = self.autoregressive_inference(
-                            tokens, session_id
-                        )
+                        logits = self.autoregressive_inference(tokens, session_id)
                         token = token_generator.generate(logits=logits[0, -1, :])
                     generated_tokens.append(token)
                     generated_logits.append(logits)
@@ -678,9 +680,7 @@ class TextGenerationPipeline(TransformersPipeline):
             )
 
             for engine_inputs in self.engine_inputs_for_prefill(tokens, session_id):
-                new_logits = self.multitoken_engine(
-                    engine_inputs, session_id
-                )
+                new_logits = self.multitoken_engine(engine_inputs, session_id)
                 num_tokens_processed += self.prompt_sequence_length
                 prompt_logits.append(new_logits)
 
