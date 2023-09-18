@@ -118,18 +118,16 @@ class TransformersPipeline(Pipeline, Bucketable):
 
     def setup_onnx_file_path(self) -> str:
         """
-        Parses ONNX model from the `model_path` provided.
-        For tokenizers and model configs, supports paths, dictionaries,
-        or transformers.PretrainedConfig/transformes.PreTrainedTokenizerBase types. Also
-        supports the default None, in which case the config and tokenizer are read from
-        the provided `model_path`.
-
-        Supports sparsezoo stubs
+        Parses ONNX model from the `model_path` provided. It additionally
+        creates config and tokenizer objects from the `deployment path`,
+        derived from the `model_path` provided.
 
         :return: file path to the processed ONNX file for the engine to compile
         """
         deployment_path, onnx_path = get_deployment_path(self.model_path)
 
+        # temporarily set transformers logger to ERROR to avoid
+        # printing misleading warnings
         hf_logger = logging.getLogger("transformers")
         hf_logger_level = hf_logger.level
         hf_logger.setLevel(logging.ERROR)
@@ -138,6 +136,7 @@ class TransformersPipeline(Pipeline, Bucketable):
             finetuning_task=self.task if hasattr(self, "task") else None,
         )
         hf_logger.setLevel(hf_logger_level)
+
         self.tokenizer = AutoTokenizer.from_pretrained(
             deployment_path,
             trust_remote_code=self._trust_remote_code,

@@ -28,7 +28,7 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import truncate_onnx_model
+from deepsparse.utils.onnx import _MODEL_DIR_ONNX_NAME, truncate_onnx_model
 from sparsezoo import Model
 from sparsezoo.utils import save_onnx
 
@@ -43,15 +43,14 @@ __all__ = [
 
 _LOGGER = get_main_logger()
 
-_MODEL_DIR_ONNX_NAME = "model.onnx"
-
 
 def get_deployment_path(model_path: str) -> Tuple[str, str]:
     """
     Returns the path to the deployment directory
-    for the given model path. The deployment directory
-    contains all the necessary files for running the model
-    in the deepsparse pipeline
+    for the given model path and the path to the mandatory
+    ONNX model that should reside in the deployment directory.
+    The deployment directory contains all the necessary files
+    for running the transformers model in the deepsparse pipeline
 
     :param model_path: path to model directory, sparsezoo stub, or ONNX file
     :return: path to the deployment directory and path to the ONNX file inside
