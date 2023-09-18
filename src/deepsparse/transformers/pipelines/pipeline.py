@@ -16,6 +16,7 @@
 Base Pipeline class for transformers inference pipeline
 """
 
+import logging
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
@@ -129,15 +130,20 @@ class TransformersPipeline(Pipeline, Bucketable):
         """
         deployment_path, onnx_path = get_deployment_path(self.model_path)
 
+        hf_logger = logging.getLogger("transformers")
+        hf_logger_level = hf_logger.level
+        hf_logger.setLevel(logging.ERROR)
         self.config = transformers.PretrainedConfig.from_pretrained(
             deployment_path,
             finetuning_task=self.task if hasattr(self, "task") else None,
         )
+        hf_logger.setLevel(hf_logger_level)
         self.tokenizer = AutoTokenizer.from_pretrained(
             deployment_path,
             trust_remote_code=self._trust_remote_code,
             model_max_length=self.sequence_length,
         )
+
         if not self._delay_overwriting_inputs:
             # overwrite onnx graph to given required input shape
             (

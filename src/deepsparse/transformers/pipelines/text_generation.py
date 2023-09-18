@@ -43,6 +43,7 @@ from deepsparse.transformers.utils.helpers import (
     repeat_inputs,
 )
 from deepsparse.transformers.utils.timings import TextGenerationTimings
+from deepsparse.transformers.utils.token_generator import TokenGenerator
 from deepsparse.utils.onnx import default_cached_outputs
 
 
@@ -119,6 +120,29 @@ class TextGenerationInput(BaseModel):
         " stop tokens. (token generation will stop when any of the stop"
         " tokens is generated). Set to `None` to ignore this parameter."
         " Default is `None`.",
+    )
+    top_p: Optional[float] = Field(
+        default=0.0,
+        description="Used for filtering generated tokens. Keep the"
+        " tokens where its cumulative probability is >= top_p"
+        " Default set to 0.0",
+    )
+    top_k: Optional[int] = Field(
+        default=0,
+        description="Used for filtering generated tokens. Keep"
+        " top_k generated tokens. Default set to 0",
+    )
+    presence_penalty: Optional[float] = Field(
+        default=0.0,
+        description="Penalty applied for generating new token. Any existing"
+        " token results in the subtraction of its corresponding logit value."
+        " Default set to 0.0",
+    )
+    frequency_penalty: Optional[float] = Field(
+        default=0.0,
+        description="Penalty applied for generating new token. Existing"
+        " token frequencies summed to subtraction the logit of its"
+        " corresponding logit value. Default set to 0.0.",
     )
 
 
@@ -439,8 +463,13 @@ class TextGenerationPipeline(TransformersPipeline):
             include_prompt_logits=inputs.include_prompt_logits,
             callback=inputs.callback,
             stop=inputs.stop,
+            top_p=inputs.top_p,
+            top_k=inputs.top_k,
+            presence_penalty=inputs.presence_penalty,
+            frequency_penalty=inputs.frequency_penalty,
             max_tokens=inputs.max_tokens,
         )
+
         return engine_input, context
 
     def process_engine_outputs(
@@ -473,7 +502,9 @@ class TextGenerationPipeline(TransformersPipeline):
         return TextGenerationOutput(sequences=sequences, logits=logits)
 
     def engine_forward(
-        self, engine_inputs: List[numpy.ndarray], context: Dict
+        self,
+        engine_inputs: List[numpy.ndarray],
+        context: Dict,
     ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         """
         Run the forward pass on the engine.
@@ -488,20 +519,37 @@ class TextGenerationPipeline(TransformersPipeline):
         # as such, a new context needs to be created since we are no longer in the
         # main thread. That is why `engine_` is prepended to each of the timer phase
         # names in this context
+
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             streamer = context.get("streamer")
 
             if not self.cache_support_enabled:
-                tokens, prompt_logits = self.multitoken_engine(engine_inputs)
-                return numpy.array([tokens]), prompt_logits
+                prompt_logits = self.multitoken_engine(engine_inputs)
+                token_generator = TokenGenerator(
+                    logits_shape=prompt_logits[-1].shape[-1],
+                    deterministic=self.deterministic,
+                    **context,
+                )
+                for prompt_logit in prompt_logits:
+                    token_generator.generate(prompt_logit)
+                return numpy.array([self.tokens]), prompt_logits
 
             else:
                 # run the prompt through
                 with timer.time(TextGenerationTimings.PROMPT_PREFILL):
-                    tokens, prompt_logits = self.prompt_inference(engine_inputs)
+                    prompt_logits = self.prompt_inference(engine_inputs)
+
+            tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
+            token_generator = TokenGenerator(
+                logits_shape=prompt_logits[-1].shape[-1],
+                tokens=tokens,
+                deterministic=self.deterministic,
+                **context,
+            )
+            token_generator.generate(prompt_logits[-1][0, -1, :])
 
             if streamer is not None:
-                streamer.put(numpy.array(tokens))
+                streamer.put(numpy.array(token_generator.tokens))
 
             # create the generated output
             max_tokens = context.get("max_tokens", 0)
@@ -509,7 +557,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
             # last prompt token is the first generated token
             # add it to generated tokens, and the logits
-            generated_tokens = [tokens[-1]]
+            generated_tokens = [token_generator.tokens[-1]]
             generated_logits = (
                 prompt_logits
                 if context.get("include_prompt_logits")
@@ -521,8 +569,10 @@ class TextGenerationPipeline(TransformersPipeline):
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
                     with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
-                        token, logits = self.autoregressive_inference(tokens)
-                    tokens.append(token)
+                        logits = self.autoregressive_inference(
+                            tokens=token_generator.tokens
+                        )
+                        token = token_generator.generate(logits=logits[0, -1, :])
                     generated_tokens.append(token)
                     generated_logits.append(logits)
 
@@ -557,7 +607,8 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
     def prompt_inference(
-        self, engine_inputs: List[numpy.ndarray]
+        self,
+        engine_inputs: List[numpy.ndarray],
     ) -> Tuple[List[int], List[numpy.ndarray]]:
         """
         An inference run that processes the prompt through the
@@ -574,13 +625,12 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
 
         prompt_logits = []
-        new_token = None
         num_tokens_processed = 0
 
         if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
             self.multitoken_engine.reset_kv_cache()
             for engine_inputs in self.engine_inputs_for_prefill(tokens):
-                new_token, new_logits = self.multitoken_engine(engine_inputs)
+                new_logits = self.multitoken_engine(engine_inputs)
                 num_tokens_processed += self.prompt_sequence_length
                 prompt_logits.append(new_logits)
 
@@ -598,13 +648,11 @@ class TextGenerationPipeline(TransformersPipeline):
             with self.timer_manager.current.time(
                 TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
-                new_token, new_logits = self.autoregressive_inference(run_tokens)
+                new_logits = self.autoregressive_inference(run_tokens)
 
             prompt_logits.append(new_logits)
 
-        tokens.append(new_token)
-
-        return tokens, prompt_logits
+        return prompt_logits
 
     def autoregressive_inference(
         self,
@@ -641,9 +689,9 @@ class TextGenerationPipeline(TransformersPipeline):
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
 
-        generated_token, generated_logits = self.engine(engine_inputs)
+        generated_logits = self.engine(engine_inputs)
 
-        return generated_token, generated_logits
+        return generated_logits
 
     def engine_inputs_for_prefill(
         self, tokens: List[int]
