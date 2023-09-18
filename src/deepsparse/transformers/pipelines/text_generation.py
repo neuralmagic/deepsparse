@@ -59,6 +59,16 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["TextGenerationPipeline"]
 
 
+class GenerationDefaults:
+    num_return_sequences = 1
+    max_length = 1024
+    max_new_tokens = None
+    output_scores = False
+    top_k = 0
+    top_p = 0.0
+    repetition_penalty = 0.0
+
+
 class FinishReason(Enum):
     STOP = "stop"
     LENGTH = "length"
@@ -78,7 +88,7 @@ class TextGenerationInput(BaseModel):
         description="A flag that indicates whether to return "
         "the logits for the prompt. If set, prompt_logits are "
         "`prepended` to the logits for the generated text sequence."
-        "Note: This flag is only applicable when return_logits "
+        "Note: This flag is only applicable when output_scores "
         "is `True`.",
     )
     fixed_sequences_length: bool = Field(
@@ -110,35 +120,22 @@ class TextGenerationInput(BaseModel):
         " tokens is generated). Set to `None` to ignore this parameter."
         " Default is `None`.",
     )
-    top_p: Optional[float] = Field(
-        default=0.0,
-        description="Used for filtering generated tokens. Keep the"
-        " tokens where its cumulative probability is >= top_p"
-        " Default set to 0.0",
-    )
-    top_k: Optional[int] = Field(
-        default=0,
-        description="Used for filtering generated tokens. Keep"
-        " top_k generated tokens. Default set to 0",
-    )
+
     presence_penalty: Optional[float] = Field(
         default=0.0,
         description="Penalty applied for generating new token. Any existing"
         " token results in the subtraction of its corresponding logit value."
         " Default set to 0.0",
     )
-    frequency_penalty: Optional[float] = Field(
-        default=0.0,
-        description="Penalty applied for generating new token. Existing"
-        " token frequencies summed to subtraction the logit of its"
-        " corresponding logit value. Default set to 0.0.",
+
     # TODO: what about the other parameters? Such as special tokens, which are just
     # taken from the tokenizer?
     generation_config: Union[None, str, pathlib.Path, Dict, GenerationConfig] = Field(
         default=None,
         description="GenerationConfig file consisting of parameters used to control "
         " sequences generated for each prompt. The current supported parameters are: "
-        " max_length, num_return_sequences, output_scores, ",
+        " max_length, max_new_tokens, num_return_sequences, output_scores, top_p, "
+        " top_k, repetition_penalty.",
     )
 
 
@@ -403,13 +400,27 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def _process_generation_config(
         self, generation_config: [None, str, pathlib.Path, Dict, GenerationConfig]
-    ):
+    ) -> GenerationConfig:
+        """
+        Process and return a GenerationConfig. The function can take in a filepath
+        pointing to a json consisting of the config values, a dictionary with the config
+        values, or a loaded GenerationConfig object. If None is given, the defaults are,
+        the pipeline GenerationConfig is used, if provided. If both are None, default
+        are used for generation.
+
+        :param generation_config: either a json filepath, dictionary or loaded
+        GenerationConfig object
+
+        :return: GenerationConfig object or None
+
+        """
         if isinstance(generation_config, GenerationConfig):
             return generation_config
 
         if not generation_config:
             return None
 
+        # TODO: move to tmp folder
         if isinstance(generation_config, dict):
             config_dir = os.getcwd()
             config_name = "generation_config.json"
@@ -446,35 +457,31 @@ class TextGenerationPipeline(TransformersPipeline):
                 " config provided during pipeline creation for this input."
             )
 
-        if generation_config:
-            num_generated_predictions = generation_config.num_return_sequences
-            max_tokens = generation_config.max_length
-            return_logits = generation_config.output_scores
+        if not generation_config:
+            _LOGGER.info(
+                " No GenerationConfig detected. Using default generation values"
+            )
+            generation_config = GenerationDefaults()
 
-        else:
-            # TODO: maybe just define defaults at the top
-            num_generated_predictions = 1
-            max_tokens = 1024
-            return_logits = False
+        num_return_sequences = generation_config.num_return_sequences
+        max_length = generation_config.max_length
 
         self.streaming = inputs.streaming
-        if not self.cache_support_enabled and max_tokens > 1:
+        if not self.cache_support_enabled and max_length > 1:
             raise ValueError(
                 "The model used for inference does not support kv cache. It is "
                 "assumed that it maps from the token sequence to predicted logits."
-                "Set `max_tokens` to 1 to support that scenario."
+                "Set `max_length` to 1 to support that scenario."
             )
 
-        # If the num_generated_predictions > 1, repeat the prompt
-        # num_generated_predictions times. Also, update the engine so that deterministic
+        # If the num_return_sequences > 1, repeat the prompt
+        # num_return_sequences times. Also, update the engine so that deterministic
         # is set to False.
         original_inputs = inputs.sequences
-        if num_generated_predictions > 1:
+        if num_return_sequences > 1:
             if isinstance(inputs.sequences, str):
                 inputs.sequences = [inputs.sequences]
-            inputs.sequences = repeat_inputs(
-                inputs.sequences, num_generated_predictions
-            )
+            inputs.sequences = repeat_inputs(inputs.sequences, num_return_sequences)
             if self.engine:
                 self.engine.deterministic = False
             if self.multitoken_engine:
@@ -522,16 +529,17 @@ class TextGenerationPipeline(TransformersPipeline):
         context = dict(
             prompts=original_inputs,
             streaming=inputs.streaming,
-            num_generated_predictions=num_generated_predictions,
-            return_logits=return_logits,
+            num_return_sequences=num_return_sequences,
+            return_logits=generation_config.output_scores,
             include_prompt_logits=inputs.include_prompt_logits,
             callback=inputs.callback,
             stop=inputs.stop,
-            top_p=inputs.top_p,
-            top_k=inputs.top_k,
+            top_p=generation_config.top_p,
+            top_k=generation_config.top_k,
             presence_penalty=inputs.presence_penalty,
-            frequency_penalty=inputs.frequency_penalty,
-            max_tokens=max_tokens,
+            frequency_penalty=generation_config.repetition_penalty,
+            max_tokens=max_length,
+            max_new_tokens=generation_config.max_new_tokens,
         )
 
         return engine_input, context
@@ -595,7 +603,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         logits = generated_logits if kwargs.get("return_logits") else None
 
-        num_preds = kwargs.get("num_generated_predictions", 1)
+        num_preds = kwargs.get("num_return_sequences", 1)
         finished_reason = [f[0] for f in finished_reason]
 
         if logits is not None:
@@ -614,7 +622,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
             )
 
-        # If the num_generated_predictions > 1, group the generations and return
+        # If the num_return_sequences > 1, group the generations and return
         # them as a list of lists where each list consists of the generated
         # predictions for a given prompt, and all the lists are in the order matching
         # the order that the prompts were given as inputs.
@@ -688,10 +696,6 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             token_generator.generate(prompt_logits[-1][0, -1, :])
 
-            # create the generated output
-            max_tokens = context.get("max_tokens", 0)
-            max_tokens = max_tokens if max_tokens > 0 else (100 * self.sequence_length)
-
             # last prompt token is the first generated token
             # add it to generated tokens, and the logits
             generated_tokens = [token_generator.tokens[-1]]
@@ -702,6 +706,15 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             callback = context.get("callback")
             stop = context.get("stop")
+
+            max_new_tokens = context.get("max_new_tokens")
+            if max_new_tokens:
+                max_tokens = max_new_tokens + len(generated_tokens)
+            else:
+                max_tokens = context.get("max_tokens", 0)
+                max_tokens = (
+                    max_tokens if max_tokens > 0 else (100 * self.sequence_length)
+                )
 
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
