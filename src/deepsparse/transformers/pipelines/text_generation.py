@@ -60,6 +60,7 @@ class FinishReason(Enum):
     STOP = "stop"
     LENGTH = "length"
     TIME = "time"
+    CALLBACK = "callback"
 
 
 class TextGenerationInput(BaseModel):
