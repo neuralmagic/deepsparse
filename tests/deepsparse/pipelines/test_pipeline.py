@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
 import numpy
+
 import pytest
 from deepsparse.base_pipeline import BasePipeline
 from deepsparse.pipeline import (
