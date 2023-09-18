@@ -61,7 +61,6 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
         return os.path.dirname(model_path), model_path
 
     if os.path.isdir(model_path):
-        #
         model_files = os.listdir(model_path)
 
         if _MODEL_DIR_ONNX_NAME not in model_files:
