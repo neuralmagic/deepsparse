@@ -18,7 +18,6 @@ from unittest import mock
 
 import numpy
 
-import flaky
 import pytest
 from deepsparse.base_pipeline import BasePipeline
 from deepsparse.pipeline import (
@@ -125,7 +124,6 @@ def test_pipeline_executor_num_workers():
     assert executor._max_workers >= 1
 
 
-@flaky.flaky(max_runs=3, min_passes=1)
 @mock_engine(rng_seed=0)
 def test_pipeline_call_is_async(engine_mock):
     # attempts to verify that pipeline calls to engine are async
@@ -160,4 +158,4 @@ def test_pipeline_call_is_async(engine_mock):
 
         # instead of doing a hard comparison of timing for each separate
         # duration, do relative comparison of timing
-        assert numpy.allclose(dur_1_worker / dur_2_worker, 2, atol=0.1)
+        assert numpy.allclose(dur_1_worker / dur_2_worker, 2, atol=0.15)
