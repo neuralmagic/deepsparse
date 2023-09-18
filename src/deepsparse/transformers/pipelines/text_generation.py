@@ -529,13 +529,12 @@ class TextGenerationPipeline(TransformersPipeline):
                     finished_reason[0],
                     logits,
                 )
-                generations.append(generation)
-
-            return TextGenerationOutput(
-                created=datetime.datetime.now(),
-                prompts=prompts,
-                generations=generations,
-            )
+                yield TextGenerationOutput(
+                    created=datetime.datetime.now(),
+                    prompts=prompts,
+                    generations=[generation],
+                )
+            return
 
         generated_tokens, generated_logits, finished_reason, *debug = list(*engine_outputs)
         sequences = self.tokenizer.batch_decode(
@@ -547,7 +546,7 @@ class TextGenerationPipeline(TransformersPipeline):
         num_preds = kwargs.get("num_generated_predictions", 1)
         finished_reason = [f[0] for f in finished_reason]
 
-        if logits:
+        if logits is not None:
             generations = list(
                 self.executor.map(
                     _create_generated_text_output,
@@ -586,7 +585,7 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             outputs.update(debug_params)
 
-        return TextGenerationOutput(**outputs)
+        yield TextGenerationOutput(**outputs)
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
