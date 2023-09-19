@@ -128,8 +128,6 @@ class TextGenerationInput(BaseModel):
         " Default set to 0.0",
     )
 
-    # TODO: what about the other parameters? Such as special tokens, which are just
-    # taken from the tokenizer?
     generation_config: Union[None, str, pathlib.Path, Dict, GenerationConfig] = Field(
         default=None,
         description="GenerationConfig file consisting of parameters used to control "
