@@ -1,0 +1,12 @@
+model_path: "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none"
+model_name: "salesforce/codegen-350m-mono"
+num_tokens_generate: 128
+prompt: "\ndef Fibonacci(n):\n    # Check if input is 0 then it will\n    # print incorrect input\n    if n < 0:\n        print('Incorrect input')\n    # Check if n is 0\n    # then it will return 0\n    elif n == 0:\n        return 0\n"
+has_bos_token: False
+logits_threshold: 15.4
+precision: 1e-4
+cache_management_type:
+    - "internal"
+    - "external"
+run_helper_tests: True
+cadence: "nightly"

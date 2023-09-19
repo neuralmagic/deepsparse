@@ -12,10 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import os
 from typing import List, Tuple
 
 import numpy
+import yaml
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+import pytest
+from huggingface_hub import snapshot_download
+
+
+def parse_params(config_path: str, cadence_to_enable=["commit"]):
+    assert os.path.isfile(config_path), f"config_path {config_path} is not a file"
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    if config["cadence"] in cadence_to_enable:
+        model_path = config["model_path"]
+        config["precision"] = float(config["precision"])
+        if not model_path.startswith("zoo:"):
+            # if not a zoo model, assume it's a hugging face space
+            # that contains same files as a zoo stub would
+            config["model_path"] = snapshot_download(repo_id=model_path)
+        return config, None
+    return None, "Skipping test for cadence: {}".format(config["cadence"])
+
+
+def helper_test(test_method):
+    @functools.wraps(test_method)
+    def wrapper(self, setup):
+        if not self.run_helper_tests:
+            raise pytest.skip(
+                "Skipping the helper test. Set run_helper_tests to True to run it."
+            )
+
+        return test_method(self)
+
+    return wrapper
 
 
 class TorchGroundTruthSource:

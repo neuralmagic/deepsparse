@@ -104,7 +104,7 @@ class NLDecoderEngine:
         self.cache_length = sequence_length - input_ids_length
         self.kv_cache_enabled = kv_cache_enabled
         self.kv_cache = DecoderKVCache(internal_kv_cache) if kv_cache_enabled else None
-        self._freeze_first_position = self._should_freeze_first_position(tokenizer)
+        self.freeze_first_position = self._should_freeze_first_position(tokenizer)
         self._session_id = generate_session_id()
         self._engine_type = engine_type
 
@@ -243,7 +243,7 @@ class NLDecoderEngine:
             session_id=self._session_id,
             state=kv_cache_state,
             num_processed_tokens=0,
-            freeze_first_position=self._freeze_first_position,
+            freeze_first_position=self.freeze_first_position,
         )
 
     def add_kv_cache_to_input(self, inp: List[numpy.ndarray]) -> List[numpy.ndarray]:
@@ -354,5 +354,5 @@ class NLDecoderEngine:
         if tokenizer is None:
             return False
         if hasattr(tokenizer, "add_bos_token"):
-            return True
+            return bool(tokenizer.add_bos_token)
         return False
