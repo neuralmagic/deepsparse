@@ -183,6 +183,7 @@ class NLDecoderEngine:
         self,
         inp: List[numpy.ndarray],
         val_inp: bool = True,
+        decoder=DecoderKVCache,
     ) -> numpy.ndarray:
         """
         The main entry point for running the engine.
@@ -197,7 +198,7 @@ class NLDecoderEngine:
         if self.kv_cache:
             # if model has kv cache enabled, we need
             # to add the kv cache state to the input
-            inp = self.add_kv_cache_to_input(inp)
+            inp = self.add_kv_cache_to_input(inp, decoder)
 
         with timer.time(f"EXECUTE_ENGINE_SEQ_LEN_{self.sequence_length}"):
             out = self.run(inp, val_inp)
@@ -206,12 +207,14 @@ class NLDecoderEngine:
             with timer.time(TextGenerationTimings.KV_CACHE_UPDATE):
                 logits, *kv_cache_state = out
                 self.update_kv_cache(
-                    kv_cache_state=kv_cache_state, input_ids_len=self.input_ids_length
+                    kv_cache_state=kv_cache_state,
+                    input_ids_len=self.input_ids_length,
+                    decoder=decoder,
                 )
         else:
             logits = out[0]
 
-        return logits
+        return logits, decoder
 
     def __str__(self):
         return f"{self.__class__.__name__}: {self.engine}"
