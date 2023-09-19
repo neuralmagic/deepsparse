@@ -312,8 +312,12 @@ class TestTextGenerationPipeline:
         output_1 = self.run_pipeline(pipeline)
         output_2 = self.run_pipeline(pipeline)
 
-        assert output_1.sequences[0] == output_2.sequences[0]
-        assert numpy.allclose(output_1.logits, output_2.logits, atol=self.precision)
+        assert output_1.generations[0].text == output_2.generations[0].text
+        assert numpy.allclose(
+            output_1.generations[0].score,
+            output_2.generations[0].score,
+            atol=self.precision,
+        )
 
     @helper_test
     def test_run_multiple_prompts_in_parallel(self, setup):
@@ -323,8 +327,14 @@ class TestTextGenerationPipeline:
 
         output = self.run_pipeline(pipeline, sequences=[self.prompt, self.prompt])
 
-        assert numpy.allclose(output.logits[0], output.logits[1], atol=self.precision)
-        assert output.sequences[0] == output.sequences[1]
+        logits_0 = output.generations[0].score
+        sequence_0 = output.generations[0].text
+
+        logits_1 = output.generations[1].score
+        sequence_1 = output.generations[1].text
+
+        assert numpy.allclose(logits_0, logits_1, atol=self.precision)
+        assert sequence_0 == sequence_1
 
     @helper_test
     def test_num_generated_predictions(self, setup):
@@ -333,13 +343,15 @@ class TestTextGenerationPipeline:
         pipeline = self.get_pipeline()
 
         output_sequences = self.run_pipeline(pipeline, num_generated_predictions=2)
-        assert len(output_sequences.sequences[0]) == 2
+        assert len(output_sequences.generations) == 1
+        assert len(output_sequences.generations[0]) == 2
         output_sequences = self.run_pipeline(
             pipeline, sequences=[self.prompt, self.prompt], num_generated_predictions=2
         )
-        assert len(output_sequences.sequences) == 2
-        for sequences in output_sequences.sequences:
-            assert len(sequences) == 2
+        assert len(output_sequences.generations) == 2
+
+        for generation in output_sequences.generations:
+            assert len(generation) == 2
 
     @helper_test
     def test_freeze_first_position(self, setup):
@@ -368,6 +380,7 @@ class TestTextGenerationPipeline:
 
         # concatenate target prompt_logits and generated_logits and check
         target_logits = numpy.concatenate([prompt_logits, generated_logits], axis=1)
+        score = output.generations[0].score
 
         if logits_threshold:
             # if comparing the output from the model where
@@ -376,18 +389,18 @@ class TestTextGenerationPipeline:
             # to be less than the threshold
             # (the threshold is established by running the
             # ONNX model in ONNXRuntime)
-
-            if target_logits.shape[1] < output.logits.shape[1]:
-                output.logits = output.logits[:, : target_logits.shape[1]]
-            assert abs(output.logits - target_logits).max() < logits_threshold
+            target_logits = target_logits[0]
+            if target_logits.shape[0] < score.shape[0]:
+                score = score[: target_logits.shape[0], :]
+            assert abs(score - target_logits).max() < logits_threshold
         else:
             # otherwise, we expect the logits to be exactly the same
             # as the target logits; the generated sequence should
             # also be the same as the target sequence, and finally
             # (if applicable) the kv cache should be the same as the
             # target kv cache
-            assert numpy.allclose(output.logits, target_logits, atol=self.precision)
-            assert self.prompt + output.sequences[0] == generated_text
+            assert numpy.allclose(score, target_logits[0], atol=self.precision)
+            assert self.prompt + output.generations[0].text == generated_text
 
             if run_cache_validation:
                 self._test_kv_cache_state(
