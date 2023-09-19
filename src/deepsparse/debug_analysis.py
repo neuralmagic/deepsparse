@@ -211,11 +211,18 @@ def parse_args():
         action="store_true",
         default=False,
     )
+
+    def valid_export_filepath(param):
+        _, ext = os.path.splitext(param)
+        if ext.lower() not in (".csv", ".json"):
+            raise argparse.ArgumentTypeError("File must have a json or csv extension")
+        return param
+
     parser.add_argument(
         "-x",
         "--export_path",
-        help="Store results into a JSON file",
-        type=str,
+        help="Store results into a JSON or CSV file",
+        type=valid_export_filepath,
         default=None,
     )
 
@@ -419,10 +426,44 @@ def main():
     print(construct_layer_statistics(result))
 
     if args.export_path:
-        # Export results
-        print("Saving analysis results to JSON file at {}".format(args.export_path))
-        with open(args.export_path, "w") as out:
-            json.dump(result, out, indent=2)
+        if ".json" in args.export_path:
+            # Export results
+            print("Saving analysis results to JSON file at {}".format(args.export_path))
+            with open(args.export_path, "w") as out:
+                json.dump(result, out, indent=2)
+        elif ".csv" in args.export_path:
+            top_level_items_skip = ["iteration_times", "layer_info"]
+            top_level_items_dict = {
+                k: v for k, v in result.items() if k not in top_level_items_skip
+            }
+
+            def construct_csv_layer_info(li):
+                flatten = lambda p_k, sub_d: {f"{p_k}_{k}": v for k, v in sub_d.items()}
+                csv_li = {}
+                for k, v in li.items():
+                    if k not in ["sub_layer_info"]:
+                        csv_li.update({k: v} if type(v) is not dict else flatten(k, v))
+                return csv_li
+
+            csv_layer_infos = [
+                {
+                    **top_level_items_dict,
+                    **construct_csv_layer_info(li),
+                }
+                for li in result["layer_info"]
+            ]
+
+            # Export results
+            import csv
+
+            print("Saving analysis results to CSV file at {}".format(args.export_path))
+            with open(args.export_path, "w") as out:
+                writer = csv.DictWriter(
+                    out, fieldnames=csv_layer_infos[0].keys(), extrasaction="ignore"
+                )
+                writer.writeheader()
+                for data in csv_layer_infos:
+                    writer.writerow(data)
 
 
 if __name__ == "__main__":
