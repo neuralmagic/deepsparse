@@ -438,7 +438,9 @@ def main():
             }
 
             def construct_csv_layer_info(li):
-                flatten = lambda p_k, sub_d: {f"{p_k}_{k}": v for k, v in sub_d.items()}
+                def flatten(parent_k, sub_d):
+                    return {f"{parent_k}_{k}": v for k, v in sub_d.items()}
+
                 csv_li = {}
                 for k, v in li.items():
                     if k not in ["sub_layer_info"]:
