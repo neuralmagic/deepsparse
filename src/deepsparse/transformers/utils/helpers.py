@@ -13,9 +13,12 @@
 # limitations under the License.
 import logging
 import uuid
-from typing import List, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy
+from transformers import AutoTokenizer
+
+from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
 __all__ = [
@@ -23,9 +26,64 @@ __all__ = [
     "pad_to_fixed_length",
     "create_causal_mask",
     "repeat_inputs",
+    "initialize_kv_cache_state",
+    "prepends_bos_token",
 ]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def prepends_bos_token(tokenizer: AutoTokenizer) -> bool:
+    """
+    Check whether the tokenizer prepends a BOS token to the input sequence.
+
+    :param tokenizer: tokenizer to check
+    :return: True if the tokenizer prepends a BOS token to the input sequence,
+        False otherwise
+    """
+    if hasattr(tokenizer, "add_bos_token"):
+        return bool(tokenizer.add_bos_token)
+    return False
+
+
+def initialize_kv_cache_state(
+    cache_shape: Tuple[int, int, int, int],
+    kv_cache_data_type: Any,  # TODO: add type
+    output_names: List[str],
+    length: Optional[int] = None,
+    empty: bool = False,
+) -> Dict[str, numpy.ndarray]:
+    """
+    Initialize the kv cache state for the given set of arguments.
+
+    :param cache_shape: shape of the kv cache tensor. Should be
+        (batch_size, num_attention_heads, length, hidden_dims)
+    :param kv_cache_data_type: data type of the kv cache tensor
+    :param output_names: list of output names from the engine
+    :param length: length of the input sequence. If None, the length
+        is taken from the cache_shape
+    :param empty: if True, initialize an empty kv cache tensor
+        with batch_size set to 0. Otherwise, initialize a kv cache
+        tensor with zeros
+    """
+    batch_size, num_attention_heads, length_, hidden_dims = cache_shape
+
+    empty_kv_cache_tensor = numpy.zeros(
+        (
+            batch_size if not empty else 0,
+            num_attention_heads,
+            length if length is not None else length_,
+            hidden_dims,
+        ),
+        dtype=kv_cache_data_type,
+    )
+
+    cache_keys = [
+        output_name.replace(CACHE_OUTPUT_PREFIX, CACHE_INPUT_PREFIX)
+        for output_name in output_names
+        if output_name.startswith(CACHE_OUTPUT_PREFIX)
+    ]
+    return {key: empty_kv_cache_tensor for key in cache_keys}
 
 
 def generate_session_id() -> str:

@@ -40,7 +40,9 @@ from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.utils import DecoderKVCache
 from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
+    initialize_kv_cache_state,
     pad_to_fixed_length,
+    prepends_bos_token,
     repeat_inputs,
 )
 from deepsparse.transformers.utils.timings import TextGenerationTimings
@@ -314,11 +316,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 engine_type=self.engine_type,
                 engine_args=self.engine_args,
                 engine_context=self.context,
-                sampling_temperature=self.sampling_temperature,
-                deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
                 input_ids_length=input_ids_length,
-                tokenizer=self.tokenizer,
                 internal_kv_cache=self.internal_kv_cache,
                 timer_manager=self.timer_manager,
             )
@@ -329,11 +328,8 @@ class TextGenerationPipeline(TransformersPipeline):
                 engine_type=self.engine_type,
                 engine_args=self.engine_args,
                 engine_context=self.context,
-                sampling_temperature=self.sampling_temperature,
-                deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
                 input_ids_length=1,
-                tokenizer=self.tokenizer,
                 internal_kv_cache=self.internal_kv_cache,
                 timer_manager=self.timer_manager,
             )
@@ -524,7 +520,7 @@ class TextGenerationPipeline(TransformersPipeline):
             else:
                 # run the prompt through
                 with timer.time(TextGenerationTimings.PROMPT_PREFILL):
-                    prompt_logits, decoder = self.prompt_inference(engine_inputs)
+                    prompt_logits, session = self.prompt_inference(engine_inputs)
 
             tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
             token_generator = TokenGenerator(
@@ -556,8 +552,8 @@ class TextGenerationPipeline(TransformersPipeline):
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
                 while len(generated_tokens) < max_tokens:
                     with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
-                        logits, decoder = self.autoregressive_inference(
-                            tokens=token_generator.tokens, decoder
+                        logits = self.autoregressive_inference(
+                            tokens=token_generator.tokens, kv_cache=session
                         )
                         token = token_generator.generate(logits=logits[0, -1, :])
                     generated_tokens.append(token)
@@ -613,15 +609,17 @@ class TextGenerationPipeline(TransformersPipeline):
         prompt_logits = []
         num_tokens_processed = 0
 
+        session = self.get_kv_cache_decoder()
+
         if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
-            decoder = get_decoder_kv_cache(...)
-            for engine_inputs in self.engine_inputs_for_prefill(tokens):
-                new_logits, decoder = self.multitoken_engine(engine_inputs, decoder)
+            for engine_inputs in self.engine_inputs_for_prefill(
+                tokens, num_total_processed_tokens=session.total_num_processed_tokens
+            ):
+                new_logits = self.multitoken_engine(engine_inputs, kv_cache=session)
                 num_tokens_processed += self.prompt_sequence_length
                 prompt_logits.append(new_logits)
 
-        if not num_tokens_processed:
-            decoder = get_decoder_kv_cache(...)
+        session.set_capacity(self.sequence_length - 1)
 
         # prompt size is small, run autoregressive inference to populate kv cache
         run_tokens = [] if num_tokens_processed == 0 else tokens[:num_tokens_processed]
@@ -631,16 +629,16 @@ class TextGenerationPipeline(TransformersPipeline):
             with self.timer_manager.current.time(
                 TextGenerationTimings.PROMPT_PREFILL_SINGLE
             ):
-                new_logits, decoder = self.autoregressive_inference(run_tokens, decoder)
+                new_logits = self.autoregressive_inference(run_tokens, session)
 
             prompt_logits.append(new_logits)
 
-        return prompt_logits, decoder
+        return prompt_logits, session
 
     def autoregressive_inference(
         self,
         tokens: List[int],
-        decoder: DecoderKVCache,
+        kv_cache: DecoderKVCache,
     ) -> Tuple[int, numpy.ndarray]:
         """
         An inference run that processes the last token to generate
@@ -673,12 +671,12 @@ class TextGenerationPipeline(TransformersPipeline):
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
 
-        generated_logits, decoder = self.engine(engine_inputs, decoder)
+        generated_logits = self.engine(engine_inputs, kv_cache)
 
-        return generated_logits, decoder
+        return generated_logits
 
     def engine_inputs_for_prefill(
-        self, tokens: List[int]
+        self, tokens: List[int], num_total_processed_tokens: int
     ) -> Generator[List[numpy.ndarray], None, None]:
         """
         Takes a list of tokens and creates a generator
@@ -698,8 +696,8 @@ class TextGenerationPipeline(TransformersPipeline):
             the sum of:
                 a) the number of tokens in the batch
                 (self.prompt_sequence_length)
-                b) the number of non-blank cache entries
-                (num_non_blank_cache_entries)
+                b) the number of processed tokens so far
+                (num_total_processed_tokens)
             so that the attention_mask properly attends to the
             current input tokens, as well as the previous cache
             entries.
@@ -723,7 +721,6 @@ class TextGenerationPipeline(TransformersPipeline):
 
         for idx, token_batch in enumerate(token_batches):
             engine_inputs = []
-            num_cached_entries = self.multitoken_engine.num_non_blank_cache_entries
             for name in self.multitoken_engine.onnx_input_names_no_cache:
                 if name == "input_ids":
                     engine_input = numpy.array([token_batch])
@@ -733,25 +730,19 @@ class TextGenerationPipeline(TransformersPipeline):
                     engine_input = numpy.zeros(
                         (1, self.sequence_length), dtype=numpy.int64
                     )
-                    # fill it out with 1s (from the right), so that the number
-                    # of unmasked entries is equal to the sum of:
-                    engine_input[
-                        :,
-                        -(
-                            # ...the number of current input tokens...
-                            self.prompt_sequence_length
-                            # ...and the number of the previous cache entries
-                            + num_cached_entries
-                        ) :,
-                    ] = 1
+                    num_attention_entries_to_unmask = min(
+                        num_total_processed_tokens + self.prompt_sequence_length,
+                        self.sequence_length,
+                    )
+                    engine_input[:, -num_attention_entries_to_unmask:] = 1
                 elif name == "causal_mask":
                     # delay creation of the causal mask
                     continue
                 elif name == "positions":
                     engine_input = (
                         numpy.arange(
-                            num_cached_entries,
-                            num_cached_entries + self.prompt_sequence_length,
+                            num_total_processed_tokens,
+                            num_total_processed_tokens + self.prompt_sequence_length,
                         )
                         .reshape(1, -1)
                         .astype(numpy.int64)
@@ -845,11 +836,23 @@ class TextGenerationPipeline(TransformersPipeline):
 
         return is_causal_mask_input
 
-    def get_decoder_kv_cache(self) -> DecoderKVCache:
-        return self._create_decoder()
+    def get_kv_cache_decoder(self) -> DecoderKVCache:
+        engine = self.multitoken_engine or self.engine
 
-    def _create_decoder(self, context) -> Optional[DecoderKVCache]:
-        pass
+        kv_cache_state = initialize_kv_cache_state(
+            cache_shape=engine.cache_shape,
+            kv_cache_data_type=engine.kv_cache_data_type,
+            output_names=engine.output_names,
+            length=self.sequence_length - self.prompt_sequence_length,
+            empty=bool(self.internal_kv_cache),
+        )
+
+        kv_cache = DecoderKVCache(self.internal_kv_cache)
+        kv_cache.setup(
+            state=kv_cache_state,
+            freeze_first_position=prepends_bos_token(self.tokenizer),
+        )
+        return kv_cache
 
     def _stop_token_generated(
         self, token, stop_tokens: Union[None, str, Sequence[str]]

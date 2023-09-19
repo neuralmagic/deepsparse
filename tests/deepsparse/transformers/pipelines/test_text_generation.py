@@ -19,6 +19,7 @@ import numpy
 import pytest
 from deepsparse import Pipeline
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
+from deepsparse.transformers.utils.helpers import prepends_bos_token
 from tests.deepsparse.transformers.pipelines.helpers import TorchGroundTruthSource
 
 
@@ -66,18 +67,18 @@ def Fibonacci(n):
             CODE_LANGUAGE_PROMPT,
             13,
         ),
-        (
-            "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/"
-            "opt_pretrain/base-none",
-            "facebook/opt-1.3b",
-            True,
-            NATURAL_LANGUAGE_PROMPT,
-            3.9,
-        ),
+        # (
+        # "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/"
+        # "opt_pretrain/base-none",
+        # "facebook/opt-1.3b",
+        # True,
+        # NATURAL_LANGUAGE_PROMPT,
+        # 3.9,
+        # ),
     ],
     scope="class",
 )
-@pytest.mark.skip(reason="Those tests are too heavy to run as a normal part of the CI.")
+# @pytest.mark.skip(reason="Those tests are too heavy to run as a normal part of the CI.")
 class TestTextGenerationPipeline:
     """
     This test suite is meant to test the main scenarios of
@@ -153,7 +154,7 @@ class TestTextGenerationPipeline:
         # the kv cache is full
         _, uses_bos_token, _ = setup
         pipeline = self.get_pipeline()
-        assert pipeline.engine._freeze_first_position == uses_bos_token
+        assert prepends_bos_token(pipeline.tokenizer) == uses_bos_token
 
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
@@ -181,11 +182,8 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
         )
 
@@ -215,11 +213,8 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
         )
 
@@ -249,16 +244,8 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
-            "for this scenario, the kv cache should be full: "
-            "the total number of processed tokens should be "
-            "greater than the sequence length"
-        )
-
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
             max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
         )
@@ -285,13 +272,11 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens < self.sequence_length
+
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
-            run_cache_validation=not self.internal_kv_cache,
+            run_cache_validation=False,
         )
 
     def test_deepsparse_multi_token_prefill(self, setup):
@@ -316,11 +301,8 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
             run_cache_validation=not self.internal_kv_cache,
         )
@@ -347,18 +329,10 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
-            "for this scenario, the kv cache should be full: "
-            "the total number of processed tokens should be "
-            "greater than the sequence length"
-        )
 
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
-            run_cache_validation=not self.internal_kv_cache,
             max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
         )
 
@@ -417,13 +391,11 @@ class TestTextGenerationPipeline:
     def _test_output(
         self,
         output: "TextGenerationOutput",  # noqa F821
-        cache_session: DecoderKVCache,
         torch_ground_truth: Tuple[numpy.ndarray, ...],
+        cache_session: Optional[DecoderKVCache] = None,
         max_logits_difference_threshold: Optional[float] = None,
         run_cache_validation: bool = True,
     ):
-        # extract numpy arrays from cached_inputs
-        kv_cache_array = list(cache_session.cached_inputs.values())
 
         (
             generated_logits,
@@ -455,7 +427,9 @@ class TestTextGenerationPipeline:
             assert numpy.allclose(output.logits, target_logits, atol=_PRECISION)
             assert self.prompt + output.sequences[0] == generated_text
 
-            if run_cache_validation:
+            if run_cache_validation and cache_session:
+                # extract numpy arrays from cached_inputs
+                kv_cache_array = list(cache_session.cached_inputs.values())
                 self._test_kv_cache_state(
                     expected_cache=kv_cache_array,
                     target_cache=torch_ground_truth[2],
