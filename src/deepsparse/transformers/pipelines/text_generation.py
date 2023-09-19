@@ -349,8 +349,6 @@ class TextGenerationPipeline(TransformersPipeline):
                 engine_type=self.engine_type,
                 engine_args=self.engine_args,
                 engine_context=self.context,
-                sampling_temperature=self.sampling_temperature,
-                deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
                 input_ids_length=input_ids_length,
                 tokenizer=self.tokenizer,
@@ -364,8 +362,6 @@ class TextGenerationPipeline(TransformersPipeline):
                 engine_type=self.engine_type,
                 engine_args=self.engine_args,
                 engine_context=self.context,
-                sampling_temperature=self.sampling_temperature,
-                deterministic=self.deterministic,
                 sequence_length=self.sequence_length,
                 input_ids_length=1,
                 tokenizer=self.tokenizer,
@@ -435,10 +431,6 @@ class TextGenerationPipeline(TransformersPipeline):
             inputs.sequences = repeat_inputs(
                 inputs.sequences, inputs.num_generated_predictions
             )
-            if self.engine:
-                self.engine.deterministic = False
-            if self.multitoken_engine:
-                self.multitoken_engine.deterministic = False
 
         if inputs.fixed_sequences_length or not self.cache_support_enabled:
             # to enforce a fixed sequence length, we need to

@@ -63,8 +63,6 @@ class NLDecoderEngine:
         sequence_length: int,
         input_ids_length: int,
         tokenizer: AutoTokenizer,
-        sampling_temperature: float = 1.0,
-        deterministic: bool = True,
         engine_context: Optional[Context] = None,
         internal_kv_cache=False,
         timer_manager: TimerManager = None,
@@ -98,8 +96,6 @@ class NLDecoderEngine:
         )
         self.timer_manager = timer_manager or TimerManager()
         self.sequence_length = sequence_length
-        self.sampling_temperature = sampling_temperature
-        self.deterministic = deterministic
         self.input_ids_length = input_ids_length
         self.cache_length = sequence_length - input_ids_length
         self.kv_cache_enabled = kv_cache_enabled
