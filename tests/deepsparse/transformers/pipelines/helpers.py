@@ -47,7 +47,7 @@ def helper_test(test_method):
                 "Skipping the helper test. Set run_helper_tests to True to run it."
             )
 
-        return test_method(self)
+        return test_method(self, setup)
 
     return wrapper
 

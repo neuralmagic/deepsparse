@@ -8,5 +8,5 @@ precision: 1e-3
 cache_management_type:
     - "internal"
     - "external"
-run_helper_tests: False
+run_helper_tests: True
 cadence: "commit"
