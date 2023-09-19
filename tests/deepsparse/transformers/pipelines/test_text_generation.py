@@ -57,7 +57,7 @@ from tests.deepsparse.transformers.pipelines.helpers import (
 AVAILABLE_CONFIGS = [
     "tests/deepsparse/transformers/pipelines/configs/text_generation_gpt_neo.yaml",
     "tests/deepsparse/transformers/pipelines/configs/text_generation_opt.yaml",
-    "tests/deepsparse/transformers/pipelines/configs/text_generation_opt_ort.yaml",
+    "tests/deepsparse/transformers/pipelines/configs/text_generation_codegen.yaml",
 ]
 
 
