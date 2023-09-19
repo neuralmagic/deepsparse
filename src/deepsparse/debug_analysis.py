@@ -211,18 +211,11 @@ def parse_args():
         action="store_true",
         default=False,
     )
-
-    def valid_export_filepath(param):
-        _, ext = os.path.splitext(param)
-        if ext.lower() not in (".csv", ".json"):
-            raise argparse.ArgumentTypeError("File must have a json or csv extension")
-        return param
-
     parser.add_argument(
         "-x",
         "--export_path",
         help="Store results into a JSON or CSV file",
-        type=valid_export_filepath,
+        type=str,
         default=None,
     )
 
@@ -426,12 +419,7 @@ def main():
     print(construct_layer_statistics(result))
 
     if args.export_path:
-        if ".json" in args.export_path:
-            # Export results
-            print("Saving analysis results to JSON file at {}".format(args.export_path))
-            with open(args.export_path, "w") as out:
-                json.dump(result, out, indent=2)
-        elif ".csv" in args.export_path:
+        if ".csv" in args.export_path:
             top_level_items_skip = ["iteration_times", "layer_info"]
             top_level_items_dict = {
                 k: v for k, v in result.items() if k not in top_level_items_skip
@@ -466,6 +454,11 @@ def main():
                 writer.writeheader()
                 for data in csv_layer_infos:
                     writer.writerow(data)
+        else:
+            # Export results
+            print("Saving analysis results to JSON file at {}".format(args.export_path))
+            with open(args.export_path, "w") as out:
+                json.dump(result, out, indent=2)
 
 
 if __name__ == "__main__":
