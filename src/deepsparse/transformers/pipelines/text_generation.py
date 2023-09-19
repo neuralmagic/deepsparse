@@ -16,7 +16,7 @@ import datetime
 import json
 import logging
 import os
-import pathlib.Path
+import pathlib
 import warnings
 from enum import Enum
 from typing import (
@@ -262,7 +262,7 @@ class TextGenerationPipeline(TransformersPipeline):
         if self.generation_config:
             _LOGGER.info(
                 "Generation config provided for pipline. This will be used "
-                "for all inputs unless and input-specific config is provided. "
+                "for all inputs unless an input-specific config is provided. "
             )
 
     def initialize_engines(
@@ -451,13 +451,13 @@ class TextGenerationPipeline(TransformersPipeline):
                 generation_config = self.generation_config
         else:
             _LOGGER.info(
-                "Input generation config detection. This will override any "
-                " config provided during pipeline creation for this input."
+                "Input generation config detected. This will override any"
+                " config provided during pipeline creation."
             )
 
         if not generation_config:
             _LOGGER.info(
-                " No GenerationConfig detected. Using default generation values"
+                " No GenerationConfig detected. Using GenerationDefaults values"
             )
             generation_config = GenerationDefaults()
 
