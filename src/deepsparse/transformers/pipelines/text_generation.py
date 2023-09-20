@@ -552,7 +552,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
-    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[FinishReason], DecoderKVCache]:
+    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[FinishReason]]:
         """
         Run the forward pass on the engine.
 
