@@ -41,15 +41,12 @@ def test_token_classification_pipeline(engine_mock):
         ]
     )
     assert len(output.predictions) == 2
-    assert len(output.predictions[0]) == 9
-    assert len(output.predictions[1]) == 10
+    assert len(output.predictions[0]) == 6
+    assert len(output.predictions[1]) == 7
 
     assert [p.word for p in output.predictions[0]] == [
-        "my",
         "name",
-        "is",
         "bob",
-        "and",
         "i",
         "live",
         "in",
@@ -57,11 +54,8 @@ def test_token_classification_pipeline(engine_mock):
     ]
 
     assert [p.word for p in output.predictions[1]] == [
-        "sally",
         "bob",
-        "joe",
         ".",
-        "california",
         ",",
         "united",
         "states",

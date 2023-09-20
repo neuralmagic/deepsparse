@@ -944,6 +944,7 @@ def compile_model(
     num_streams: Optional[int] = None,
     scheduler: Optional[Scheduler] = None,
     input_shapes: Optional[List[List[int]]] = None,
+    cached_outputs: Optional[List[bool]] = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -963,6 +964,7 @@ def compile_model(
         default None
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cached_outputs: List of bools corresponding to which model outputs are
     :return: The created Engine after compiling the model
     """
     return Engine(
@@ -972,6 +974,7 @@ def compile_model(
         num_streams=num_streams,
         scheduler=scheduler,
         input_shapes=input_shapes,
+        cached_outputs=cached_outputs,
     )
 
 

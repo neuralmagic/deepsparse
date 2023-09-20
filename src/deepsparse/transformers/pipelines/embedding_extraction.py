@@ -100,10 +100,7 @@ class ExtractionStrategy(str, Enum):
 @Pipeline.register(
     task="transformers_embedding_extraction",
     task_aliases=[],
-    default_model_path=(
-        "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        "wikipedia_bookcorpus/pruned80_quant-none-vnni"
-    ),
+    default_model_path=("zoo:bert-large-wikipedia_bookcorpus-pruned90"),
 )
 class TransformersEmbeddingExtractionPipeline(TransformersPipeline):
     """
