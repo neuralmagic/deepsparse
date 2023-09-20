@@ -107,7 +107,23 @@ class NLDecoderEngine:
         ]
 
     @property
+    def onnx_input_names_cache(self) -> List[str]:
+        """
+        :return: The cached input names for the onnx model
+        """
+        return [
+            name
+            for name in self.engine.input_names
+            if name.startswith(CACHE_INPUT_PREFIX)
+        ]
+
+    @property
     def cache_shape(self) -> Tuple[int, int, int, int]:
+        """
+        :return: The shape of the kv cache inputs
+            for the onnx model. The shape is
+            (batch_size, num_heads, sequence_length, hidden_size)
+        """
         cache_engine_input_index = next(
             i
             for i, name in enumerate(self.engine.input_names)
@@ -125,7 +141,22 @@ class NLDecoderEngine:
     def run(
         self, inputs: List[numpy.ndarray], val_inp: bool, kv_cache: DecoderKVCache
     ) -> List[numpy.ndarray]:
-        """ """
+        """
+        Run the engine with the given inputs.
+        If the kv_cache.engine_internal_cache=True, the internal
+        deepsparse kv cache management is enabled. In this case
+        the LIB.kv_cache class object will be passed to the engine
+        call as well. In this scenario also the inputs will not be
+        validated, even if the val_inp=True. This is because we
+        want to pass the empty kv cache inputs (batch_size=0) to
+        the engine.
+
+        :param inputs: The inputs to run the engine with
+        :param val_inp: Whether the input is for validation or not
+        :param kv_cache: The kv cache object to use for the inference
+
+        :return: The output of the engine
+        """
         if bool(kv_cache.engine_internal_cache):
             # conventionally, before dispatching
             # inputs to the engine, we validate them
@@ -236,13 +267,9 @@ class NLDecoderEngine:
             kv_cache.total_num_processed_tokens += input_ids_len
             return
 
-        cache_onnx_names = [
-            name
-            for name in self.engine.input_names
-            if name.startswith(CACHE_INPUT_PREFIX)
-        ]
         kv_cache_state = {
-            name: array for name, array in zip(cache_onnx_names, kv_cache_state)
+            name: array
+            for name, array in zip(self.onnx_input_names_cache, kv_cache_state)
         }
 
         kv_cache.update(

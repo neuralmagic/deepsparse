@@ -742,7 +742,6 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs = [
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
-        print(f"Token: {new_token} positions: {positions}")
         generated_logits = self.engine(engine_inputs, kv_cache)
 
         return generated_logits
@@ -828,7 +827,6 @@ class TextGenerationPipeline(TransformersPipeline):
                     input_ids=engine_inputs[0], attention_mask=engine_inputs[1]
                 )
                 engine_inputs.append(causal_mask)
-            print(f"Token: {engine_inputs[0]} positions: {engine_inputs[2]}")
 
             yield engine_inputs
 
@@ -912,6 +910,11 @@ class TextGenerationPipeline(TransformersPipeline):
         return is_causal_mask_input
 
     def get_kv_cache_decoder(self) -> DecoderKVCache:
+        """
+        Initialize the kv cache decoder for the inference
+
+        :return: the initialized kv cache decoder
+        """
         engine = self.multitoken_engine or self.engine
 
         kv_cache_state = initialize_kv_cache_state(
