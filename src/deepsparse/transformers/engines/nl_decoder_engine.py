@@ -47,8 +47,6 @@ class NLDecoderEngine:
     :param sequence_length: The maximum sequence length to run the engine for
     :param input_ids_length: The maximum input ids length to run the engine for
     :param engine_context: The context to run the engine in
-    :param sampling_temperature: The temperature to use for sampling
-    :param deterministic: Whether to use deterministic sampling
     :param tokenizer: The tokenizer to used for engine inputs
     :param engine_context: The context to run the engine in
     :param internal_kv_cache: Whether to use the deepsparse

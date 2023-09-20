@@ -425,6 +425,37 @@ class TestTextGenerationPipeline:
         for generation in output_sequences.generations:
             assert len(generation) == 2
 
+    def test_deterministic_token_generation__non_unique(self, setup):
+        """Deterministic token output check"""
+        pipeline_kwargs = {
+            "task": "text_generation",
+            "model_path": self.model_stub,
+            "deterministic": True,
+        }
+        pipeline = self.get_pipeline(**pipeline_kwargs)
+        inference = pipeline(
+            sequences=["hello?"], num_generated_predictions=3, max_tokens=100
+        )
+        sequences = inference.sequences[0]
+        assert all(sequence == sequences[0] for sequence in sequences)
+
+    def test_deterministic_token_generation__unique(self, setup):
+        """Deterministic token output check"""
+        pipeline_kwargs = {
+            "task": "text_generation",
+            "model_path": self.model_stub,
+            "deterministic": False,
+        }
+        pipeline = self.get_pipeline(**pipeline_kwargs)
+        num_generated_predictions = 3
+        inference = pipeline(
+            sequences=["hello?"],
+            num_generated_predictions=num_generated_predictions,
+            max_tokens=100,
+        )
+        sequences = inference.sequences[0]
+        assert len(set(sequences)) == num_generated_predictions
+
     def _test_output(
         self,
         output: "TextGenerationOutput",  # noqa F821
