@@ -374,8 +374,6 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        output_1 = next(output_1)
-        output_2 = next(output_2)
 
         assert output_1.generations[0].text == output_2.generations[0].text
         assert numpy.allclose(
@@ -395,7 +393,6 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        output = next(output)
 
         logits_0 = output.generations[0].score
         sequence_0 = output.generations[0].text
@@ -414,14 +411,14 @@ class TestTextGenerationPipeline:
         output_sequences = pipeline(
             sequences=[self.prompt], num_generated_predictions=2
         )
-        output_sequences = next(output_sequences)
+
         assert len(output_sequences.generations) == 1
         assert len(output_sequences.generations[0]) == 2
 
         output_sequences = pipeline(
             sequences=[self.prompt, self.prompt], num_generated_predictions=2
         )
-        output_sequences = next(output_sequences)
+
         assert len(output_sequences.generations) == 2
 
         for generation in output_sequences.generations:
@@ -436,7 +433,6 @@ class TestTextGenerationPipeline:
     ):
         # extract numpy arrays from cached_inputs
         kv_cache_array = list(cache_session.cached_inputs.values())
-
 
         (
             generated_logits,
