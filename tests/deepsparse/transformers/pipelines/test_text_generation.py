@@ -425,8 +425,8 @@ class TestTextGenerationPipeline:
         for generation in output_sequences.generations:
             assert len(generation) == 2
 
-    def test_deterministic_token_generation__not_unique(self, setup):
-        """Deterministic token output check"""
+    def test_token_generation__deterministic(self, setup):
+        """Test output tokens are unique"""
         pipeline_kwargs = {
             "task": "text_generation",
             "model_path": self.model_stub,
@@ -440,8 +440,8 @@ class TestTextGenerationPipeline:
         # Check that all outputs are the same
         assert all(sequence == sequences[0] for sequence in sequences)
 
-    def test_deterministic_token_generation__unique(self, setup):
-        """Non deterministic token output check"""
+    def test_token_generation__non_deterministic(self, setup):
+        """Non output tokens are not unique"""
         pipeline_kwargs = {
             "task": "text_generation",
             "model_path": self.model_stub,
