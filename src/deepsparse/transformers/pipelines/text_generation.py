@@ -489,6 +489,40 @@ class TextGenerationPipeline(TransformersPipeline):
 
         return engine_input, context
 
+    def _create_generated_text_output(
+        self,
+        sequence: str,
+        finish_reason: FinishReason = None,
+        logits: Optional[numpy.array] = None,
+    ):
+        if finish_reason:
+            return GeneratedText(
+                text=sequence,
+                score=logits,
+                finished=True,
+                finished_reason=finish_reason.value,
+            )
+        return GeneratedText(
+            text=sequence,
+            score=logits,
+            finished=False,
+        )
+
+    def _stream_engine_outputs(self, engine_outputs, prompts, kwargs):
+        for output in engine_outputs:
+            generated_tokens, generated_logits, finished_reason = output
+            logits = generated_logits if kwargs.get("return_logits") else None
+            generation = self._create_generated_text_output(
+                self.tokenizer.batch_decode(generated_tokens)[0],
+                finished_reason[0],
+                logits,
+            )
+            yield TextGenerationOutput(
+                created=datetime.datetime.now(),
+                prompts=prompts,
+                generations=[generation],
+            )
+
     def process_engine_outputs(
         self, engine_outputs: List[Union[numpy.ndarray, FinishReason]], **kwargs
     ) -> TextGenerationOutput:
@@ -499,42 +533,10 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
 
-        def _create_generated_text_output(
-            sequence: str,
-            finish_reason: FinishReason = None,
-            logits: Optional[numpy.array] = None,
-        ):
-            if finish_reason:
-                return GeneratedText(
-                    text=sequence,
-                    score=logits,
-                    finished=True,
-                    finished_reason=finish_reason.value,
-                )
-            return GeneratedText(
-                text=sequence,
-                score=logits,
-                finished=False,
-            )
-
         prompts = kwargs.get("prompts")
 
         if self.streaming:
-            generations = []
-            for output in engine_outputs:
-                generated_tokens, generated_logits, finished_reason, _ = output
-                logits = generated_logits if kwargs.get("return_logits") else None
-                generation = _create_generated_text_output(
-                    self.tokenizer.batch_decode(generated_tokens)[0],
-                    finished_reason[0],
-                    logits,
-                )
-                yield TextGenerationOutput(
-                    created=datetime.datetime.now(),
-                    prompts=prompts,
-                    generations=[generation],
-                )
-            return
+            return self._stream_engine_outputs(engine_outputs, prompts, kwargs)
 
         generated_tokens, generated_logits, finished_reason, *debug = list(*engine_outputs)
         sequences = self.tokenizer.batch_decode(
@@ -549,7 +551,7 @@ class TextGenerationPipeline(TransformersPipeline):
         if logits is not None:
             generations = list(
                 self.executor.map(
-                    _create_generated_text_output,
+                    self._create_generated_text_output,
                     sequences,
                     finished_reason,
                     logits,
@@ -558,7 +560,7 @@ class TextGenerationPipeline(TransformersPipeline):
         else:
             generations = list(
                 self.executor.map(
-                    _create_generated_text_output, sequences, finished_reason
+                    self._create_generated_text_output, sequences, finished_reason
                 )
             )
 
