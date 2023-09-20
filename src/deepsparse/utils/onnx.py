@@ -142,7 +142,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     model_path = Path(model)
     if model_path.is_dir():
-        return str(model_path / "model.onnx")
+        return str(model_path / _MODEL_DIR_ONNX_NAME)
 
     return model
 
