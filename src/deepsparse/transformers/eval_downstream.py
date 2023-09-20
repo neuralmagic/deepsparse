@@ -104,7 +104,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         engine_type=args.engine,
         num_cores=args.num_cores,
         sequence_length=args.max_sequence_length,
-        max_generated_tokens=1,
         trust_remote_code=args.trust_remote_code,
     )
 
@@ -138,6 +137,7 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
                 return_input_tokens=True,
                 fixed_sequences_length=True,
                 include_prompt_logits=True,
+                max_tokes=1,
             )
 
             # Handle one sample at a time to make it simpler for masking
