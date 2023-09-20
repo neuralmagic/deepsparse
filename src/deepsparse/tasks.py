@@ -99,6 +99,9 @@ class SupportedTasks:
         ),
     )
 
+    chat = namedtuple("chat", ["chatbot", "chat"])(
+        chatbot=AliasedTask("chatbot", []), chat=AliasedTask("chat", [])
+    )
     text_generation = namedtuple(
         "text_generation", ["text_generation", "opt", "codegen", "bloom"]
     )(
@@ -149,6 +152,7 @@ class SupportedTasks:
         embedding_extraction,
         open_pif_paf,
         text_generation,
+        chat,
     ]
 
     @classmethod
@@ -166,6 +170,9 @@ class SupportedTasks:
 
         elif cls.is_text_generation(task):
             import deepsparse.transformers.pipelines.text_generation  # noqa: F401
+
+        elif cls.is_chat(task):
+            import deepsparse.transformers.pipelines.chat  # noqa: F401
 
         elif cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register
@@ -209,6 +216,14 @@ class SupportedTasks:
                 f"Unknown Pipeline task {task}. Currently supported tasks are "
                 f"{list(all_tasks)}"
             )
+
+    @classmethod
+    def is_chat(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a chat task
+        :return: True if it is a chat task, False otherwise
+        """
+        return any([chat_task.matches(task) for chat_task in cls.chat])
 
     @classmethod
     def is_text_generation(cls, task: str) -> bool:

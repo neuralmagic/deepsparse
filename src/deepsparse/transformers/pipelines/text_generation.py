@@ -400,7 +400,9 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         return TextGenerationOutput
 
-    def process_inputs(self, inputs: TextGenerationInput) -> List[numpy.ndarray]:
+    def process_inputs(
+        self, inputs: TextGenerationInput
+    ) -> Tuple[List[numpy.ndarray], Dict[str, Any]]:
         """
         Convert the input schema for the pipeline to the inputs for the engine.
 
@@ -550,15 +552,17 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
-    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[FinishReason]]:
+    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[FinishReason], DecoderKVCache]:
         """
         Run the forward pass on the engine.
 
         :param engine_inputs: list of numpy inputs to
             Pipeline engine forward pass
-        :return: A tuple of numpy array that contains the
-            sequence of generated tokens and a sequence
-            of logits for each generated token
+        :return: A tuple of:
+            - numpy array that contains the sequence
+                of generated tokens
+            - numpy array that cointains the sequence of
+                logits for each generated token
         """
         # engine_forward is always called in a threadpool due to batch splitting
         # as such, a new context needs to be created since we are no longer in the
@@ -683,7 +687,7 @@ class TextGenerationPipeline(TransformersPipeline):
         prompt_logits = []
         num_tokens_processed = 0
 
-        session = self.get_kv_cache_decoder()
+        session = self.get_kv_cache_decoder(engine_inputs)
 
         if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
             for engine_inputs in self.engine_inputs_for_prefill(
@@ -913,7 +917,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         return is_causal_mask_input
 
-    def get_kv_cache_decoder(self) -> DecoderKVCache:
+    def get_kv_cache_decoder(self, engine_inputs: List[Any]) -> DecoderKVCache:
         """
         Initialize the kv cache decoder for the inference
 
