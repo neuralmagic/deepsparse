@@ -75,6 +75,18 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
         zoo_model = Model(model_path)
         deployment_path = zoo_model.deployment.path
         return deployment_path, os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+    elif model_path.startswith("hf:"):
+        from huggingface_hub import snapshot_download
+
+        deployment_path = snapshot_download(repo_id=model_path.replace("hf:", "", 1))
+        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        if not os.path.isfile(onnx_path):
+            raise ValueError(
+                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{deployment_path}. Be sure that an export of the model is written to "
+                f"{onnx_path}"
+            )
+        return deployment_path, onnx_path
     else:
         raise ValueError(
             f"model_path {model_path} is not a valid file, directory, or zoo stub"
