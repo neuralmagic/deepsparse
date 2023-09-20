@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import logging
 import os
 import warnings
+from enum import Enum
 from typing import (
     Any,
     Callable,
@@ -53,6 +55,12 @@ from deepsparse.utils.onnx import default_cached_outputs
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["TextGenerationPipeline"]
+
+
+class FinishReason(Enum):
+    STOP = "stop"
+    LENGTH = "length"
+    TIME = "time"
 
 
 class TextGenerationInput(BaseModel):
@@ -143,15 +151,34 @@ class TextGenerationInput(BaseModel):
     )
 
 
-class TextGenerationOutput(BaseModel):
-    sequences: Union[str, List[str], List[List[str]]] = Field(
-        description="The generated text sequences.",
+class GeneratedText(BaseModel):
+    text: str = Field(
+        description="The generated sequence for a given prompt. If "
+        "streaming is enabled, this will be the next generated token."
     )
-    logits: Optional[Any] = Field(  # numpy array, set to Any for FastAPI compatibility
-        default=None,
-        description="The logits for the generated text sequence."
-        "The logits have dimensions "
-        "[batch_size, sequence_length, vocab_size]",
+    score: Optional[Any] = Field(
+        description="The score for the generated token or sequence. "
+        "The scores have the shape [sequence_length, vocab_size]"
+    )
+    finished: bool = Field(description="Whether generation has stopped.")
+    finished_reason: str = Field(
+        description="The reason for generation to stop. "
+        "Defined by FinishReason. One of stop, length, or time."
+    )
+
+
+# TODO: Pydantic aliases allow assignment but not reference. Still need to update.
+class TextGenerationOutput(BaseModel):
+    created: datetime.datetime = Field(description="Time of inference creation.")
+    prompts: Union[str, List[str]] = Field(
+        description="Prompts used for the sequence generation. For multiple input "
+        "prompts, a list of prompts is returned"
+    )
+    generations: Union[List[GeneratedText], List[List[GeneratedText]]] = Field(
+        description="For a single prompt, a single list of GeneratedText is returned. "
+        "If multiple prompts are given, a list of GeneratedText is returned for each "
+        "prompt provided. If streamng is enabled, the next generated token is returned."
+        "Otherwise, the full generated sequence is returned."
     )
 
     class Config:
@@ -389,6 +416,7 @@ class TextGenerationPipeline(TransformersPipeline):
         # If the num_generated_predictions > 1, repeat the prompt
         # num_generated_predictions times. Also, update the engine so that deterministic
         # is set to False.
+        original_inputs = inputs.sequences
         if inputs.num_generated_predictions > 1:
             if isinstance(inputs.sequences, str):
                 inputs.sequences = [inputs.sequences]
@@ -440,6 +468,7 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_input = self.tokens_to_engine_input(input_tokens, onnx_input_names)
 
         context = dict(
+            prompts=original_inputs,
             num_generated_predictions=inputs.num_generated_predictions,
             return_logits=inputs.return_logits,
             streamer=inputs.streamer,
@@ -456,7 +485,7 @@ class TextGenerationPipeline(TransformersPipeline):
         return engine_input, context
 
     def process_engine_outputs(
-        self, engine_outputs: List[numpy.ndarray], **kwargs
+        self, engine_outputs: List[Union[numpy.ndarray, FinishReason]], **kwargs
     ) -> TextGenerationOutput:
         """
         Convert the engine outputs to the output schema for the pipeline.
@@ -464,31 +493,63 @@ class TextGenerationPipeline(TransformersPipeline):
         :param engine_outputs: the outputs from the engine
         :return: the output schema for the pipeline
         """
-        generated_tokens, generated_logits = engine_outputs
+        generated_tokens, generated_logits, finished_reason = engine_outputs
+        finished_reason = [f[0] for f in finished_reason]
+
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
         num_preds = kwargs.get("num_generated_predictions", 1)
-        # If the num_generated_predictions > 1, group the generated sequences and return
-        # the sequences as a list of lists where each list consists of the generated
-        # predictions for a given prompt, and all the lists are in the order matching
-        # the order that the prompts were given as inputs.
-        if num_preds > 1:
-            grouped_seq = [
-                sequences[n : n + num_preds]
-                for n in range(0, len(sequences), num_preds)
-            ]
-            sequences = grouped_seq
+        prompts = kwargs.get("prompts")
+
+        def _create_generated_text_output(
+            sequence: str,
+            finish_reason: FinishReason,
+            logits: Optional[numpy.array] = None,
+        ):
+            return GeneratedText(
+                text=sequence,
+                score=logits,
+                finished=True,
+                finished_reason=finish_reason.value,
+            )
 
         logits = generated_logits if kwargs.get("return_logits") else None
 
-        return TextGenerationOutput(sequences=sequences, logits=logits)
+        if logits is not None:
+            generations = list(
+                self.executor.map(
+                    _create_generated_text_output,
+                    sequences,
+                    finished_reason,
+                    logits,
+                )
+            )
+        else:
+            generations = list(
+                self.executor.map(
+                    _create_generated_text_output, sequences, finished_reason
+                )
+            )
+
+        # If the num_generated_predictions > 1, group the generations and return
+        # them as a list of lists where each list consists of the generated
+        # predictions for a given prompt, and all the lists are in the order matching
+        # the order that the prompts were given as inputs.
+        if num_preds > 1:
+            grouped_generations = [
+                generations[n : n + num_preds]
+                for n in range(0, len(generations), num_preds)
+            ]
+            generations = grouped_generations
+
+        return TextGenerationOutput(
+            created=datetime.datetime.now(), prompts=prompts, generations=generations
+        )
 
     def engine_forward(
-        self,
-        engine_inputs: List[numpy.ndarray],
-        context: Dict,
-    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
+        self, engine_inputs: List[numpy.ndarray], context: Dict
+    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[FinishReason]]:
         """
         Run the forward pass on the engine.
 
@@ -505,6 +566,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             streamer = context.get("streamer")
+            finished_reason = []
 
             if not self.cache_support_enabled:
                 prompt_logits = self.multitoken_engine(engine_inputs)
@@ -566,6 +628,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         token == self.tokenizer.eos_token_id
                         and not self.force_max_tokens
                     ):
+                        finished_reason.append(FinishReason.STOP)
                         break
 
                     if self._stop_token_generated(token, stop_tokens=stop):
@@ -573,8 +636,10 @@ class TextGenerationPipeline(TransformersPipeline):
                             "Stop token %s generated. Stopping generation."
                             % self.tokenizer.decode(token)
                         )
+                        finished_reason.append(FinishReason.STOP)
                         break
 
+                    # TODO: Add any generic callback reason?
                     if callback is not None and callback(token) is False:
                         _LOGGER.debug(
                             "callback %s returned False, stopping generation."
@@ -582,11 +647,16 @@ class TextGenerationPipeline(TransformersPipeline):
                         )
                         break
 
+                    if len(generated_tokens) == max_tokens:
+                        finished_reason.append(FinishReason.LENGTH)
+
             if streamer is not None:
                 streamer.end()
 
-        return numpy.array([generated_tokens]), numpy.concatenate(
-            generated_logits, axis=1
+        return (
+            numpy.array([generated_tokens]),
+            numpy.concatenate(generated_logits, axis=1),
+            finished_reason,
         )
 
     def prompt_inference(
@@ -771,8 +841,10 @@ class TextGenerationPipeline(TransformersPipeline):
         return any(default_cached_outputs(self.onnx_file_path))
 
     def join_engine_outputs(
-        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
-    ) -> List[numpy.ndarray]:
+        self,
+        batch_outputs: List[List[Union[numpy.ndarray, FinishReason]]],
+        orig_batch_size: int,
+    ) -> List[Union[numpy.ndarray, FinishReason]]:
         """
         Takes a list of outputs (batches) from the engine
         and joins them into a single output. Asserts that
@@ -783,7 +855,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
-        tokens, logits = zip(*batch_outputs)
+        tokens, logits, finish_reason = zip(*batch_outputs)
         if self.cache_support_enabled:
             # if the model has kv cache, we need to account for
             # the fact that the predicted outputs may have
@@ -815,7 +887,7 @@ class TextGenerationPipeline(TransformersPipeline):
         tokens = numpy.concatenate(tokens, axis=0)
         logits = numpy.concatenate(logits, axis=0)
 
-        return [tokens, logits]
+        return [tokens, logits, finish_reason]
 
     @staticmethod
     def causal_mask_input_present(model_path: str) -> bool:
