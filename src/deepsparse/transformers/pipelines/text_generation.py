@@ -582,6 +582,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 token_generator = TokenGenerator(
                     logits_shape=prompt_logits[-1].shape[-1],
                     deterministic=self.deterministic,
+                    sampling_temperature=self.sampling_temperature,
                     **context,
                 )
                 for prompt_logit in prompt_logits:
@@ -598,6 +599,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 logits_shape=prompt_logits[-1].shape[-1],
                 tokens=tokens,
                 deterministic=self.deterministic,
+                sampling_temperature=self.sampling_temperature,
                 **context,
             )
             token_generator.generate(prompt_logits[-1][0, -1, :])
