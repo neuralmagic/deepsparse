@@ -20,6 +20,7 @@ import pytest
 from deepsparse import Pipeline
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.helpers import prepends_bos_token
+from huggingface_hub import snapshot_download
 from tests.deepsparse.transformers.pipelines.helpers import TorchGroundTruthSource
 
 
@@ -28,11 +29,7 @@ _PRECISION = 1e-3
 NATURAL_LANGUAGE_PROMPT = """
 Didn't know what time it was, the lights were low
 I leaned back on my radio
-Some cat was layin' down some rock 'n' roll
-"Lotta soul," he said
-Then the loud sound did seem to fade
-Came back like a slow voice on a wave of phase
-That weren't no DJ, that was hazy cosmic jive
+
 """
 
 CODE_LANGUAGE_PROMPT = """
@@ -59,14 +56,14 @@ def Fibonacci(n):
     "prompt, "
     "logits_max_diff_kv_cache_has_been_filled",
     [
-        (
-            "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
-            "huggingface/bigpython_bigquery_thepile/base-none",
-            "salesforce/codegen-350m-mono",
-            False,
-            CODE_LANGUAGE_PROMPT,
-            13,
-        ),
+        # (
+        #     "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
+        #     "huggingface/bigpython_bigquery_thepile/base-none",
+        #     "salesforce/codegen-350m-mono",
+        #     False,
+        #     CODE_LANGUAGE_PROMPT,
+        #     13,
+        # ),
         # (
         # "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/"
         # "opt_pretrain/base-none",
@@ -75,6 +72,13 @@ def Fibonacci(n):
         # NATURAL_LANGUAGE_PROMPT,
         # 3.9,
         # ),
+        (
+            snapshot_download("mgoin/TinyStories-33M-deepsparse"),
+            "roneneldan/TinyStories-33M",
+            False,
+            NATURAL_LANGUAGE_PROMPT,
+            13,
+        ),
     ],
     scope="class",
 )

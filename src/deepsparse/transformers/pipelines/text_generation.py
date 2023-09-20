@@ -613,7 +613,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         if len(tokens) > self.prompt_sequence_length and self.enable_multitoken_prefill:
             for engine_inputs in self.engine_inputs_for_prefill(
-                tokens, num_total_processed_tokens=session.total_num_processed_tokens
+                tokens, kv_cache=session
             ):
                 new_logits = self.multitoken_engine(engine_inputs, kv_cache=session)
                 num_tokens_processed += self.prompt_sequence_length
@@ -649,14 +649,16 @@ class TextGenerationPipeline(TransformersPipeline):
             (with dimensions ['batch_size', 'num_tokens', 'vocab_size'])
         """
 
+        num_total_processed_tokens = kv_cache.total_num_processed_tokens
         new_token = tokens[-1]
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        num_tokens_processed = min(len(tokens), self.sequence_length)  # cap by seq len
-        attention_mask[:, -num_tokens_processed:] = 1
-        positions = numpy.array([[len(tokens)]], dtype=numpy.int64)
-        positions -= 1
+        num_attention_entries_to_unmask = min(
+            num_total_processed_tokens + 1, self.sequence_length
+        )  # cap by seq len
+        attention_mask[:, -num_attention_entries_to_unmask:] = 1
+        positions = numpy.array([[num_total_processed_tokens]], dtype=numpy.int64)
         input_ids = numpy.array([[new_token]])
         causal_mask = create_causal_mask(input_ids, attention_mask)
 
@@ -670,13 +672,13 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_inputs = [
             engine_inputs_map[name] for name in self.engine.onnx_input_names_no_cache
         ]
-
+        print(f"Token: {new_token} positions: {positions}")
         generated_logits = self.engine(engine_inputs, kv_cache)
 
         return generated_logits
 
     def engine_inputs_for_prefill(
-        self, tokens: List[int], num_total_processed_tokens: int
+        self, tokens: List[int], kv_cache: DecoderKVCache
     ) -> Generator[List[numpy.ndarray], None, None]:
         """
         Takes a list of tokens and creates a generator
@@ -709,7 +711,6 @@ class TextGenerationPipeline(TransformersPipeline):
         :param tokens: the list of tokens to process
         :return: a generator of engine inputs
         """
-
         num_batches = len(tokens) // self.prompt_sequence_length
 
         token_batches = [
@@ -720,6 +721,7 @@ class TextGenerationPipeline(TransformersPipeline):
         ]
 
         for idx, token_batch in enumerate(token_batches):
+            num_total_processed_tokens = kv_cache.total_num_processed_tokens
             engine_inputs = []
             for name in self.multitoken_engine.onnx_input_names_no_cache:
                 if name == "input_ids":
@@ -756,6 +758,7 @@ class TextGenerationPipeline(TransformersPipeline):
                     input_ids=engine_inputs[0], attention_mask=engine_inputs[1]
                 )
                 engine_inputs.append(causal_mask)
+            print(f"Token: {engine_inputs[0]} positions: {engine_inputs[2]}")
 
             yield engine_inputs
 
