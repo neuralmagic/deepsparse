@@ -354,6 +354,58 @@ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/sq
 To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
 
+## Text Generation GenerationConfig Features Supported
+
+### Parameters controlling the output length:
+
+| Feature | Description | Deepsparse Default | HuggingFace Default | Supported |
+| :---    |      :----: |         :----:     |        :----:       |       ---:|
+| max_length | Maximum length of generated tokens. Equal to input_prompt + max_new_tokens. Overridden by max_new_tokens | 1024 | 20 | Yes|
+| max_new_tokens | Maximum number of tokens to generate, ignoring prompt tokens. | None | None | Yes |
+| min_length | Minimum length of generated tokens. Equal to input_prompt + min_new_tokens. Overridden by min_new_tokens | - | 0 | No
+| min_new_tokens | Minomum number of tokens to generate, ignoring prompt tokens. | - | None | No |
+| max_time | - | - | - | No |
+
+
+### Parameters for manipulation of the model output logits
+
+| Feature | Description | Deepsparse Default | HuggingFace Default | Supported |
+| :---    |      :----: |         :----:     |        :----:       |       ---:|
+| top_k | The number of highest probability vocabulary tokens to keep for top-k-filtering | 0 | 50 | Yes
+| top_p | Keep the generated tokens where its cumulative probability is >= top_p | 0.0 | 1.0 | Yes
+| repetition_penalty | Penalty applied for generating new token. Existing token frequencies summed to subtraction the logit of its corresponding logit value | 0.0 | 1.0 | Yes |
+| temperature | - | - | - | No |
+| typical_p | - | - | - | No |
+| epsilon_cutoff | - | - | - | No |
+| eta_cutoff | - | - | - | No |
+| diversity_penalty | - | - | - | No |
+| length_penalty | - | - | - | No |
+| bad_words_ids | - | - | - | No |
+| force_words_ids | - | - | - | No |
+| renormalize_logits | - | - | - | No |
+| constraints | - | - | - | No |
+| forced_bos_token_id | - | - | - | No |
+| forced_eos_token_id | - | - | - | No |
+| remove_invalid_values | - | - | - | No |
+| exponential_decay_length_penalty | - | - | - | No |
+| suppress_tokens | - | - | - | No |
+| begin_suppress_tokens | - | - | - | No |
+| forced_decoder_ids | - | - | - | No |
+
+### Parameters for output variables: 
+| Feature | Description | Deepsparse Default | HuggingFace Default | Supported |
+| :---    |      :----: |         :----:     |        :----:       |       ---:|
+| num_return_sequences | The number of sequences generated for each prompt | 1 | 1 | Yes |
+| output_scores | Whether to return the generated logits | False | False | Yes |
+| return_dict_generate | - | - | - | No |
+
+### Special Tokens: 
+| Feature | Description | Deepsparse Default | HuggingFace Default | Supported |
+| :---    |      :----: |         :----:     |        :----:       |       ---:|
+| pad_token_id | - | - | - | No |
+| bos_token_id | - | - | - | No |
+| eos_token_id | - | - | - | No |
+
 ## Tutorials:
 For a deeper dive into using transformers within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/):
 - [Token Classification: Named Entity Recognition](https://neuralmagic.com/use-cases/sparse-named-entity-recognition/)
