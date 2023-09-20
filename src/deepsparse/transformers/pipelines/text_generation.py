@@ -267,6 +267,7 @@ class TextGenerationPipeline(TransformersPipeline):
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.engine, self.multitoken_engine = self.initialize_engines()
+        self._debug = False
 
     def initialize_engines(
         self,
@@ -652,6 +653,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
             if streamer is not None:
                 streamer.end()
+
+        if self._debug:
+            self._debug = dict(kv_cache=session)
 
         return (
             numpy.array([generated_tokens]),

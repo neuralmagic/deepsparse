@@ -19,6 +19,7 @@ import numpy
 import pytest
 from deepsparse import Pipeline
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
+from deepsparse.transformers.utils.helpers import prepends_bos_token
 from tests.deepsparse.transformers.pipelines.helpers import TorchGroundTruthSource
 
 
@@ -153,7 +154,7 @@ class TestTextGenerationPipeline:
         # the kv cache is full
         _, uses_bos_token, _ = setup
         pipeline = self.get_pipeline()
-        assert pipeline.engine._freeze_first_position == uses_bos_token
+        assert prepends_bos_token(pipeline.tokenizer) == uses_bos_token
 
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
@@ -172,16 +173,16 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=1,
-            force_max_tokens=True,
             engine_type="onnxruntime",
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = pipeline._debug.get("kv_cache")
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -206,16 +207,16 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
             engine_type="onnxruntime",
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = pipeline._debug.get("kv_cache")
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -243,13 +244,14 @@ class TestTextGenerationPipeline:
             force_max_tokens=True,
             engine_type="onnxruntime",
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = pipeline._debug.get("kv_cache")
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
@@ -276,16 +278,16 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=1,
-            force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = pipeline._debug.get("kv_cache")
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -307,16 +309,16 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = pipeline._debug.get("kv_cache")
         assert cache_session.total_num_processed_tokens < self.sequence_length
         self._test_output(
             output=output,
@@ -338,16 +340,16 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length_short,
             prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
+        cache_session = pipeline._debug.get("kv_cache")
         assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
@@ -433,8 +435,6 @@ class TestTextGenerationPipeline:
         max_logits_difference_threshold: Optional[float] = None,
         run_cache_validation: bool = True,
     ):
-        # extract numpy arrays from cached_inputs
-        kv_cache_array = list(cache_session.cached_inputs.values())
 
         (
             generated_logits,
@@ -466,6 +466,8 @@ class TestTextGenerationPipeline:
             assert self.prompt + output.generations[0].text == generated_text
 
             if run_cache_validation:
+                # extract numpy arrays from cached_inputs
+                kv_cache_array = list(cache_session.cached_inputs.values())
                 self._test_kv_cache_state(
                     expected_cache=kv_cache_array,
                     target_cache=torch_ground_truth[2],

@@ -13,7 +13,7 @@
 # limitations under the License.
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 from transformers import AutoTokenizer
@@ -48,7 +48,7 @@ def prepends_bos_token(tokenizer: AutoTokenizer) -> bool:
 
 def initialize_kv_cache_state(
     cache_shape: Tuple[int, int, int, int],
-    kv_cache_data_type: Any,  # TODO: add type
+    kv_cache_data_type: numpy.dtype,
     output_names: List[str],
     length: Optional[int] = None,
     empty: bool = False,
@@ -68,7 +68,7 @@ def initialize_kv_cache_state(
     """
     batch_size, num_attention_heads, length_, hidden_dims = cache_shape
 
-    empty_kv_cache_tensor = numpy.zeros(
+    kv_cache_tensor = numpy.zeros(
         (
             batch_size if not empty else 0,
             num_attention_heads,
@@ -83,7 +83,7 @@ def initialize_kv_cache_state(
         for output_name in output_names
         if output_name.startswith(CACHE_OUTPUT_PREFIX)
     ]
-    return {key: empty_kv_cache_tensor for key in cache_keys}
+    return {key: kv_cache_tensor for key in cache_keys}
 
 
 def generate_session_id() -> str:

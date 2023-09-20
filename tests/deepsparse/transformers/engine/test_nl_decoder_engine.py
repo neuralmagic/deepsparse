@@ -47,9 +47,10 @@ def test_add_kv_cache_to_input():
     with patch.object(NLDecoderEngine, "__init__", lambda x, y, z: None):
         nl_decoder_engine = NLDecoderEngine(None, None)
         nl_decoder_engine.engine = DummyEngine()
-        nl_decoder_engine.kv_cache = DummyKVCacheDecoder()
         nl_decoder_engine.kv_cache_enabled = True
-        result = nl_decoder_engine.add_kv_cache_to_input(inp)
+        result = nl_decoder_engine.add_kv_cache_to_input(
+            inp, kv_cache=DummyKVCacheDecoder
+        )
 
     for (x, y) in zip(result, expected_result):
         assert np.array_equal(x, y)

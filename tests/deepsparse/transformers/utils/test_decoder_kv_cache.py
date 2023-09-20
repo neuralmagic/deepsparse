@@ -81,7 +81,6 @@ class TestDecoderKVCache:
 
         # initialize a session
         session.setup(
-            session_id="dummy_id",
             state=state,
             num_processed_tokens=num_processed_tokens,
             freeze_first_position=freeze_first_position,
@@ -93,11 +92,10 @@ class TestDecoderKVCache:
 
         # check if the session attributes are set correctly
         state = session.cached_inputs
-        assert session.num_non_blank_entries == np.count_nonzero(
+        assert session.total_num_processed_tokens == np.count_nonzero(
             state["dummy_cache_name"].flatten()
         )
         assert session.capacity == state["dummy_cache_name"].shape[2]
-        assert session.id == "dummy_id"
 
     def test_set_capacity(self, setup):
         session, _, _ = setup
@@ -134,7 +132,19 @@ class TestDecoderKVCache:
 
     @staticmethod
     def _test_decrease_capacity(session_):
-        pass
+        session = copy.deepcopy(session_)
+        capacity = session.capacity
+        # decrease capacity by 3
+        session.set_capacity(capacity - 3)
+        kv_cache_state = session.cached_inputs
+        # check if the capacity has been decreased by 3
+        if session_._freeze_first_position:
+            bos_token = session_.cached_inputs["dummy_cache_name"][:, :, :1, :]
+            new_array = session_.cached_inputs["dummy_cache_name"][:, :, 4:, :]
+            target_array = np.concatenate([bos_token, new_array], axis=2)
+        else:
+            target_array = session_.cached_inputs["dummy_cache_name"][:, :, 3:, :]
+        assert np.array_equal(target_array, kv_cache_state["dummy_cache_name"])
 
     @staticmethod
     def _test_constant_capacity(session_):

@@ -107,7 +107,7 @@ class NLDecoderEngine:
         ]
 
     @property
-    def onnx_input_names_cache(self) -> List[str]:
+    def onnx_input_names_cached(self) -> List[str]:
         """
         :return: The cached input names for the onnx model
         """
@@ -269,7 +269,7 @@ class NLDecoderEngine:
 
         kv_cache_state = {
             name: array
-            for name, array in zip(self.onnx_input_names_cache, kv_cache_state)
+            for name, array in zip(self.onnx_input_names_cached, kv_cache_state)
         }
 
         kv_cache.update(
