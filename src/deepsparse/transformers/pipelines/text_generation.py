@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-import json
 import logging
 import os
 import pathlib
@@ -43,10 +42,13 @@ from deepsparse.transformers.engines import NLDecoderEngine
 from deepsparse.transformers.pipelines import TransformersPipeline
 from deepsparse.transformers.utils import DecoderKVCache
 from deepsparse.transformers.utils.helpers import (
+    check_and_return_generation_config,
     create_causal_mask,
     initialize_kv_cache_state,
     pad_to_fixed_length,
     prepends_bos_token,
+    override_config,
+    process_generation_config,
     repeat_inputs,
 )
 from deepsparse.transformers.utils.timings import TextGenerationTimings
@@ -134,6 +136,13 @@ class TextGenerationInput(BaseModel):
         "sequences generated for each prompt. The current supported parameters are: "
         "max_length, max_new_tokens, num_return_sequences, output_scores, top_p, "
         "top_k, repetition_penalty.",
+    )
+
+    kwargs: Optional[Dict] = Field(
+        default=None,
+        description="Any arguments to override generation_config arguments. Refer to "
+        "the generation_config argument for a full list of supported variables. Only "
+        "valid when generation_config is not None.",
     )
 
 
@@ -258,7 +267,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         # auxiliary flag for devs to enable debug mode for the pipeline
         self._debug = False
-        self.generation_config = self._process_generation_config(generation_config)
+        self.generation_config = process_generation_config(generation_config)
         if self.generation_config:
             _LOGGER.info(
                 "Generation config provided for pipline. This will be used "
@@ -396,68 +405,6 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         return TextGenerationOutput
 
-    def _process_generation_config(
-        self, generation_config: [None, str, pathlib.Path, Dict, GenerationConfig]
-    ) -> Union[GenerationConfig, None]:
-        """
-        Process and return a GenerationConfig. The function can take in a filepath
-        pointing to a json consisting of the config values, a dictionary with the config
-        values, or a loaded GenerationConfig object. If None is given, the defaults are,
-        the pipeline GenerationConfig is used, if provided. If both are None, default
-        are used for generation.
-
-        :param generation_config: either a json filepath, dictionary or loaded
-        GenerationConfig object
-
-        :return: GenerationConfig object or None
-
-        """
-        if isinstance(generation_config, GenerationConfig):
-            return generation_config
-
-        if not generation_config:
-            return None
-
-        # TODO: move to tmp folder
-        if isinstance(generation_config, dict):
-            config_dir = os.getcwd()
-            config_name = "generation_config.json"
-            local_config_path = os.path.join(config_dir, config_name)
-            _LOGGER.info(
-                "Dictionary provided for the generation config. Creating temporary "
-                " generation_config.json"
-            )
-            with open(local_config_path, "w") as f:
-                json.dump(generation_config, f)
-
-        if isinstance(generation_config, (str, pathlib.Path)):
-            generation_config = pathlib.Path(generation_config)
-            config_dir = generation_config.parent.absolute()
-            config_name = generation_config.name
-
-        generation_config = GenerationConfig.from_pretrained(config_dir, config_name)
-        return generation_config
-
-    def _check_and_return_generation_config(
-        self, input_generation_config: [None, str, pathlib.Path, Dict, GenerationConfig]
-    ) -> Union[GenerationConfig, None]:
-        generation_config = self._process_generation_config(input_generation_config)
-        if generation_config is None:
-            if self.generation_config:
-                generation_config = self.generation_config
-        else:
-            _LOGGER.info(
-                "Input generation config detected. This will override any"
-                " config provided during pipeline creation."
-            )
-
-        if not generation_config:
-            _LOGGER.info(
-                " No GenerationConfig detected. Using GenerationDefaults values"
-            )
-            generation_config = GenerationDefaults()
-        return generation_config
-
     def process_inputs(self, inputs: TextGenerationInput) -> List[numpy.ndarray]:
         """
         Convert the input schema for the pipeline to the inputs for the engine.
@@ -465,9 +412,11 @@ class TextGenerationPipeline(TransformersPipeline):
         :param inputs: the input schema for the pipeline
         :return: the inputs for the engine
         """
-        generation_config = self._check_and_return_generation_config(
-            inputs.generation_config
+        generation_config = check_and_return_generation_config(
+            self.generation_config, inputs.generation_config, GenerationDefaults()
         )
+
+        generation_config = override_config(inputs.kwargs, generation_config)
 
         self.streaming = inputs.streaming
         if not self.cache_support_enabled and generation_config.max_length > 1:
@@ -733,7 +682,7 @@ class TextGenerationPipeline(TransformersPipeline):
             if max_new_tokens:
                 max_tokens = max_new_tokens + len(generated_tokens)
             else:
-                max_tokens = generation_config.max_tokens
+                max_tokens = generation_config.max_length
                 max_tokens = (
                     max_tokens if max_tokens > 0 else (100 * self.sequence_length)
                 )
