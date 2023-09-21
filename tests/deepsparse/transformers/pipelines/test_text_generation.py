@@ -432,8 +432,6 @@ class TestTextGenerationPipeline:
         run_cache_validation: bool = True,
     ):
         # extract numpy arrays from cached_inputs
-        kv_cache_array = list(cache_session.cached_inputs.values())
-
         (
             generated_logits,
             prompt_logits,

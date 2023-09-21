@@ -538,7 +538,9 @@ class TextGenerationPipeline(TransformersPipeline):
         if streaming:
             return self._stream_engine_outputs(engine_outputs, prompts, kwargs)
 
-        generated_tokens, generated_logits, finished_reason, *debug = list(*engine_outputs)
+        generated_tokens, generated_logits, finished_reason, *debug = list(
+            *engine_outputs
+        )
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
@@ -587,7 +589,7 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             outputs.update(debug_params)
 
-        yield TextGenerationOutput(**outputs)
+        return TextGenerationOutput(**outputs)
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
@@ -699,7 +701,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         [finished_reason[-1]],
                     )
 
-        if not self.streaming:
+        if not streaming:
             returns = (
                 numpy.array([generated_tokens]),
                 numpy.concatenate(generated_logits, axis=1),
@@ -953,12 +955,20 @@ class TextGenerationPipeline(TransformersPipeline):
 
             if debug:
                 sessions = debug[0]
-                kv_cache_state = numpy.stack(session.cached_inputs for session in sessions)
+                kv_cache_state = numpy.stack(
+                    session.cached_inputs for session in sessions
+                )
                 num_processed_tokens = numpy.stack(
                     session.total_num_processed_tokens for session in sessions
                 )
 
-                yield [tokens, logits, finish_reason, kv_cache_state, num_processed_tokens]
+                yield [
+                    tokens,
+                    logits,
+                    finish_reason,
+                    kv_cache_state,
+                    num_processed_tokens,
+                ]
 
             yield [tokens, logits, finish_reason]
 
