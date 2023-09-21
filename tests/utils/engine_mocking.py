@@ -100,7 +100,9 @@ class _FakeDeepsparseLibEngine:
         # However in general we cannot assume that all outputs have
         # a batch dimension, that's why we need onnxruntime here.
         with override_onnx_batch_size(model_path, batch_size) as batched_model_path:
-            session = ort.InferenceSession(batched_model_path)
+            session = ort.InferenceSession(
+                batched_model_path, providers=["CPUExecutionProvider"]
+            )
             self.input_descriptors = list(map(_to_descriptor, session.get_inputs()))
             self.output_descriptors = list(map(_to_descriptor, session.get_outputs()))
 
