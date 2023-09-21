@@ -28,7 +28,9 @@ from deepsparse.transformers.pipelines.text_generation import (
 from deepsparse.transformers.utils import (
     DecoderKVCache,
     SessionStorageKVCache,
+    create_causal_mask,
     generate_session_id,
+    prepends_bos_token,
     validate_session_ids,
 )
 from deepsparse.utils.data import split_engine_inputs
@@ -69,6 +71,28 @@ class ChatOutput(TextGenerationOutput):
 class ChatPipeline(TextGenerationPipeline):
     """
     Pipeline for chat applications using transformers models.
+
+    The chat pipeline keeps a persistent kv cache sessions that
+    can be used to store information between inference calls.
+    This to enable the chatbot to "recollect" information
+    from previous conversations. The kv cache sessions are
+    stored in the SessionStorageKVCache.
+
+    This pipeline is a subclass of the TextGenerationPipeline
+    and adds the following functionality:
+
+    - on `process_engine_outputs(..)` it adds the session ids
+      to the engine inputs
+    - on `split_engine_inputs(..)` it distributes the session id
+        to the appropriate batch
+    - on `engine_forward(..)` it enables to fetch the existing session
+        from the StorageKVCache (if the appropriate session for the
+        session id exists, else create new session). It also adds the
+        session id to the engine outputs.
+    - on `join_engine_outputs(..)` it adds the session ids to the
+        aggregated engine outputs
+    - on `process_engine_outputs(..)` it adds the session ids to the
+        output schema
     """
 
     def __init__(self, **kwargs):
@@ -135,6 +159,13 @@ class ChatPipeline(TextGenerationPipeline):
         :return: the outputs from the engine
         """
         session_id = engine_inputs[-1]
+        if session_id in self.storage_kv_cache and prepends_bos_token(self.tokenizer):
+            # if the session exists and the model prepends bos token
+            # we need to remove the bos token from the engine inputs
+            # to make sure that kv cache session is continuous
+            # between inference calls
+            engine_inputs = self.undo_bos_token(engine_inputs)
+
         return *super().engine_forward(engine_inputs, context), session_id
 
     def get_kv_cache_decoder(self, engine_inputs: List[Any]) -> DecoderKVCache:
@@ -149,10 +180,45 @@ class ChatPipeline(TextGenerationPipeline):
         session_id = engine_inputs[-1]
         kv_cache = self.storage_kv_cache.get(session_id)
         if kv_cache is None:
-            kv_cache = super().get_kv_cache_decoder(engine_inputs)
+            # use the super class to initialize the kv cache decoder
+            kv_cache: DecoderKVCache = super().get_kv_cache_decoder(engine_inputs)
             self.storage_kv_cache[session_id] = kv_cache
 
         return kv_cache
+
+    def undo_bos_token(self, engine_inputs: List[numpy.ndarray]) -> List[numpy.ndarray]:
+        """
+        Undo the prepending of the bos token to the input sequence
+        by the TextGenerationPipeline.
+
+        :param engine_inputs: the inputs for the engine
+        :return: the inputs for the engine without the bos token
+        """
+        engine = self.engine or self.multitoken_engine
+
+        engine_inputs_no_bos = []
+
+        for idx, name in enumerate(engine.onnx_input_names_no_cache):
+            if name == "input_ids" or "attention_mask":
+                # remove first (bos) token/entry from input_ids
+                engine_input = engine_inputs[idx][:, 1:]
+            elif name == "positions":
+                # remove the last position
+                # e.g. positions = [[0,1,2,3]]
+                # ->   positions = [[0,1,2]]
+                engine_input = engine_inputs[idx][:, :-1]
+            elif name == "causal_mask":
+                # recompute the causal mask
+                input_ids = engine_inputs_no_bos[0]
+                attention_mask = engine_inputs_no_bos[1]
+                engine_input = create_causal_mask(
+                    input_ids=input_ids, attention_mask=attention_mask
+                )
+
+            engine_inputs_no_bos.append(engine_input)
+        # finally add the session id
+        engine_inputs_no_bos.append(engine_inputs[-1])
+        return engine_inputs_no_bos
 
     def add_session_ids_to_engine_input(
         self, engine_input: List[numpy.ndarray], inputs: ChatInput
