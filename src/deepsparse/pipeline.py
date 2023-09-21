@@ -259,7 +259,9 @@ class Pipeline(BasePipeline):
             )
 
             # join together the batches of size `self._batch_size`
-            engine_outputs = self.join_engine_outputs(batch_outputs, orig_batch_size)
+            engine_outputs = self.join_engine_outputs(
+                batch_outputs, orig_batch_size, **context
+            )
             timer.stop(InferenceStages.ENGINE_FORWARD)
 
             self.log(
@@ -470,7 +472,7 @@ class Pipeline(BasePipeline):
         )
 
     def join_engine_outputs(
-        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
+        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int, **kwargs
     ) -> List[numpy.ndarray]:
         """
         Joins list of engine outputs together into one list.

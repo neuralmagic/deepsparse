@@ -268,7 +268,6 @@ class TextGenerationPipeline(TransformersPipeline):
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.engine, self.multitoken_engine = self.initialize_engines()
-        self.streaming = False
 
         # auxiliary flag for devs to enable debug mode for the pipeline
         self._debug = False
@@ -411,7 +410,6 @@ class TextGenerationPipeline(TransformersPipeline):
         :param inputs: the input schema for the pipeline
         :return: the inputs for the engine
         """
-        self.streaming = inputs.streaming
         if not self.cache_support_enabled and inputs.max_tokens > 1:
             raise ValueError(
                 "The model used for inference does not support kv cache. It is "
@@ -475,6 +473,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         context = dict(
             prompts=original_inputs,
+            streaming=inputs.streaming,
             num_generated_predictions=inputs.num_generated_predictions,
             return_logits=inputs.return_logits,
             include_prompt_logits=inputs.include_prompt_logits,
@@ -534,8 +533,9 @@ class TextGenerationPipeline(TransformersPipeline):
         """
 
         prompts = kwargs.get("prompts")
+        streaming = kwargs.get("streaming")
 
-        if self.streaming:
+        if streaming:
             return self._stream_engine_outputs(engine_outputs, prompts, kwargs)
 
         generated_tokens, generated_logits, finished_reason, *debug = list(*engine_outputs)
@@ -611,6 +611,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             finished_reason = []
+            streaming = context.get("streaming")
 
             if not self.cache_support_enabled:
                 prompt_logits = self.multitoken_engine(engine_inputs)
@@ -688,10 +689,10 @@ class TextGenerationPipeline(TransformersPipeline):
                     if len(generated_tokens) == max_tokens:
                         finished_reason.append(FinishReason.LENGTH)
 
-                    if self.streaming:
+                    if streaming:
                         yield (numpy.array([token]), numpy.array([logits]), [None])
 
-                if self.streaming:
+                if streaming:
                     yield (
                         numpy.array([token]),
                         numpy.array([logits]),
@@ -899,6 +900,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self,
         batch_outputs: List[List[Union[numpy.ndarray, FinishReason]]],
         orig_batch_size: int,
+        **kwargs,
     ) -> List[Union[numpy.ndarray, FinishReason]]:
         """
         Takes a list of outputs (batches) from the engine
@@ -910,7 +912,8 @@ class TextGenerationPipeline(TransformersPipeline):
         :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
-        if self.streaming:
+        streaming = kwargs.get("streaming")
+        if streaming:
             for batch in batch_outputs:
                 for outputs in batch:
                     yield outputs
