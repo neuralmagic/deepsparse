@@ -491,7 +491,7 @@ class TextGenerationPipeline(TransformersPipeline):
     def _create_generated_text_output(
         self,
         sequence: str,
-        finish_reason: FinishReason = None,
+        finish_reason: Optional[FinishReason] = None,
         logits: Optional[numpy.array] = None,
     ):
         if finish_reason:
