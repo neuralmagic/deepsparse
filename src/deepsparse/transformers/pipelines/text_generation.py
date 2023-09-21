@@ -45,9 +45,9 @@ from deepsparse.transformers.utils.helpers import (
     check_and_return_generation_config,
     create_causal_mask,
     initialize_kv_cache_state,
+    override_config,
     pad_to_fixed_length,
     prepends_bos_token,
-    override_config,
     process_generation_config,
     repeat_inputs,
 )
@@ -564,9 +564,16 @@ class TextGenerationPipeline(TransformersPipeline):
         if streaming:
             return self._stream_engine_outputs(engine_outputs, prompts, kwargs)
 
-        generated_tokens, generated_logits, finished_reason, *debug = list(
-            *engine_outputs
-        )
+        if self._debug:
+            (
+                generated_tokens,
+                generated_logits,
+                finished_reason,
+                kv_cache_state,
+                total_num_processed_tokens,
+            ) = list(*engine_outputs)
+        else:
+            generated_tokens, generated_logits, finished_reason = list(*engine_outputs)
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
@@ -607,8 +614,7 @@ class TextGenerationPipeline(TransformersPipeline):
             created=datetime.datetime.now(), prompts=prompts, generations=generations
         )
 
-        if debug:
-            kv_cache_state, total_num_processed_tokens = debug
+        if self._debug:
             debug_params = dict(
                 kv_cache_state=kv_cache_state,
                 total_num_processed_tokens=total_num_processed_tokens,
@@ -734,14 +740,19 @@ class TextGenerationPipeline(TransformersPipeline):
                     )
 
         if not streaming:
-            returns = (
-                numpy.array([generated_tokens]),
-                numpy.concatenate(generated_logits, axis=1),
-                finished_reason,
-            )
-
-            if self._debug is True:
-                yield *returns, session
+            if self._debug:
+                returns = (
+                    numpy.array([generated_tokens]),
+                    numpy.concatenate(generated_logits, axis=1),
+                    finished_reason,
+                    [session],
+                )
+            else:
+                returns = (
+                    numpy.array([generated_tokens]),
+                    numpy.concatenate(generated_logits, axis=1),
+                    finished_reason,
+                )
 
             yield returns
 
@@ -953,7 +964,12 @@ class TextGenerationPipeline(TransformersPipeline):
                     yield outputs
         else:
             batch_outputs = [list(*b) for b in batch_outputs]
-            tokens, logits, finish_reason, *debug = zip(*batch_outputs)
+            if self._debug:
+                tokens, logits, finish_reason, debug = zip(*batch_outputs)
+            else:
+                tokens, logits, finish_reason = zip(*batch_outputs)
+                debug = None
+
             if self.cache_support_enabled:
                 # if the model has kv cache, we need to account for
                 # the fact that the predicted outputs may have
@@ -1001,8 +1017,8 @@ class TextGenerationPipeline(TransformersPipeline):
                     kv_cache_state,
                     num_processed_tokens,
                 ]
-
-            yield [tokens, logits, finish_reason]
+            else:
+                yield [tokens, logits, finish_reason]
 
     @staticmethod
     def causal_mask_input_present(model_path: str) -> bool:

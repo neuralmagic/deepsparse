@@ -19,12 +19,9 @@ import uuid
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, GenerationConfig
 
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
-
-import numpy
-from transformers import GenerationConfig
 
 
 __all__ = [
