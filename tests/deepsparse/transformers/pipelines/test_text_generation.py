@@ -426,7 +426,7 @@ class TestTextGenerationPipeline:
             assert len(generation) == 2
 
     def test_token_generation__deterministic(self, setup):
-        """Output tokens should be unique"""
+        """Should generate the same tokens"""
         pipeline_kwargs = {
             "task": "text_generation",
             "model_path": self.model_stub,
@@ -437,11 +437,11 @@ class TestTextGenerationPipeline:
             sequences=["hello?"], num_generated_predictions=3, max_tokens=100
         )
         sequences = inference.sequences[0]
-        # Check that all outputs are the same
+        # Output should be the same from one another
         assert all(sequence == sequences[0] for sequence in sequences)
 
     def test_token_generation__non_deterministic(self, setup):
-        """Output tokens should not be unique"""
+        """Should generate non-unique tokens"""
         pipeline_kwargs = {
             "task": "text_generation",
             "model_path": self.model_stub,
@@ -455,7 +455,7 @@ class TestTextGenerationPipeline:
             max_tokens=100,
         )
         sequences = inference.sequences[0]
-        # Check all outputs are unique
+        # Outputs should be unique from one another
         assert len(set(sequences)) == num_generated_predictions
 
     def _test_output(
