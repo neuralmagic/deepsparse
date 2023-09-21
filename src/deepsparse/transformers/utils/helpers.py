@@ -104,9 +104,22 @@ def initialize_kv_cache_state(
     :param empty: if True, initialize an empty kv cache tensor
         with batch_size set to 0. Otherwise, initialize a kv cache
         tensor with zeros
+
+    :return: dictionary of kv cache tensors, where the keys are the
+        output names of the kv cache tensors and the values are the
+        kv cache tensors of shape
+        (batch_size, num_attention_heads, length, hidden_dims)
     """
     batch_size, num_attention_heads, length_, hidden_dims = cache_shape
 
+    # new kv cache tensor is either
+    # - non-empty tensor of zeros with shape
+    #   (batch_size, num_attention_heads, length, hidden_dims),
+    #   required for the external kv cache management
+    # or
+    # - empty tensor with shape
+    #   (0, num_attention_heads, length, hidden_dims)
+    #   required for the internal kv cache management
     kv_cache_tensor = numpy.zeros(
         (
             batch_size if not empty else 0,

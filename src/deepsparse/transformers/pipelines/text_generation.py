@@ -183,6 +183,7 @@ class TextGenerationOutput(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+        extra = "allow"
 
 
 @Pipeline.register(
@@ -267,6 +268,8 @@ class TextGenerationPipeline(TransformersPipeline):
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.engine, self.multitoken_engine = self.initialize_engines()
+
+        # auxiliary flag for devs to enable debug mode for the pipeline
         self._debug = False
 
     def initialize_engines(
@@ -496,7 +499,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :param engine_outputs: the outputs from the engine
         :return: the output schema for the pipeline
         """
-        generated_tokens, generated_logits, finished_reason = engine_outputs
+        generated_tokens, generated_logits, finished_reason, *debug = engine_outputs
         finished_reason = [f[0] for f in finished_reason]
 
         sequences = self.tokenizer.batch_decode(
@@ -546,13 +549,26 @@ class TextGenerationPipeline(TransformersPipeline):
             ]
             generations = grouped_generations
 
-        return TextGenerationOutput(
+        outputs = dict(
             created=datetime.datetime.now(), prompts=prompts, generations=generations
         )
 
+        if debug:
+            kv_cache_state, total_num_processed_tokens = debug
+            debug_params = dict(
+                kv_cache_state=kv_cache_state,
+                total_num_processed_tokens=total_num_processed_tokens,
+            )
+            outputs.update(debug_params)
+
+        return TextGenerationOutput(**outputs)
+
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
-    ) -> Tuple[numpy.ndarray, numpy.ndarray, List[FinishReason]]:
+    ) -> Union[
+        Tuple[numpy.ndarray, numpy.ndarray, List[FinishReason]],
+        Tuple[numpy.ndarray, numpy.ndarray, List[FinishReason], DecoderKVCache],
+    ]:
         """
         Run the forward pass on the engine.
 
@@ -658,14 +674,16 @@ class TextGenerationPipeline(TransformersPipeline):
             if streamer is not None:
                 streamer.end()
 
-        if self._debug:
-            self._debug = dict(kv_cache=session)
-
-        return (
+        returns = (
             numpy.array([generated_tokens]),
             numpy.concatenate(generated_logits, axis=1),
             finished_reason,
         )
+
+        if self._debug is True:
+            return *returns, session
+
+        return returns
 
     def prompt_inference(
         self,
@@ -680,6 +698,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: A tuple of:
             - The logits generated from the prompt (with dimensions
             ['batch_size', 'num_tokens', 'vocab_size'])
+            - The kv cache session for this inference run
         """
         # get tokens by attention mask
         tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
@@ -780,6 +799,9 @@ class TextGenerationPipeline(TransformersPipeline):
             so that the attention_mask properly attends to the
             current input tokens, as well as the previous cache
             entries.
+            Note: the aformentioned sum must be capped
+            by the sequence length, as the maximum shape of the
+            attention mask is [batch_size, sequence_length].
 
             - positions: derived directly from the input_ids
 
@@ -809,6 +831,8 @@ class TextGenerationPipeline(TransformersPipeline):
                     engine_input = numpy.zeros(
                         (1, self.sequence_length), dtype=numpy.int64
                     )
+                    # calculate the number of entries in attention mask
+                    # that should be set to 1
                     num_attention_entries_to_unmask = min(
                         num_total_processed_tokens + self.prompt_sequence_length,
                         self.sequence_length,
@@ -861,7 +885,7 @@ class TextGenerationPipeline(TransformersPipeline):
         :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
-        tokens, logits, finish_reason = zip(*batch_outputs)
+        tokens, logits, finish_reason, *debug = zip(*batch_outputs)
         if self.cache_support_enabled:
             # if the model has kv cache, we need to account for
             # the fact that the predicted outputs may have
@@ -892,6 +916,15 @@ class TextGenerationPipeline(TransformersPipeline):
 
         tokens = numpy.concatenate(tokens, axis=0)
         logits = numpy.concatenate(logits, axis=0)
+
+        if debug:
+            sessions = debug[0]
+            kv_cache_state = numpy.stack(session.cached_inputs for session in sessions)
+            num_processed_tokens = numpy.stack(
+                session.total_num_processed_tokens for session in sessions
+            )
+
+            return [tokens, logits, finish_reason, kv_cache_state, num_processed_tokens]
 
         return [tokens, logits, finish_reason]
 

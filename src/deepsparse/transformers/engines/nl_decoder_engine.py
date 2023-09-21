@@ -73,9 +73,7 @@ class NLDecoderEngine:
             input_ids_length=input_ids_length,
         )
 
-        kv_cache_enabled = False
         if any(output_indices_to_be_cached):
-            kv_cache_enabled = True
             self.kv_cache_data_type = kv_cache_data_type
             if internal_kv_cache and engine_type == DEEPSPARSE_ENGINE:
                 # inform the engine, that are using the kv cache
@@ -91,7 +89,6 @@ class NLDecoderEngine:
         self.sequence_length = sequence_length
         self.input_ids_length = input_ids_length
         self.cache_length = sequence_length - input_ids_length
-        self.kv_cache_enabled = kv_cache_enabled
         self._engine_type = engine_type
 
     @property
@@ -189,7 +186,7 @@ class NLDecoderEngine:
         :return: The generated token and corresponding logits
         """
         timer = self.timer_manager.current
-        if self.kv_cache_enabled:
+        if kv_cache:
             # if model has kv cache enabled, we need
             # to add the kv cache state to the input
             inp = self.add_kv_cache_to_input(inp, kv_cache)
@@ -197,7 +194,7 @@ class NLDecoderEngine:
         with timer.time(f"EXECUTE_ENGINE_SEQ_LEN_{self.sequence_length}"):
             out = self.run(inp, val_inp, kv_cache)
 
-        if self.kv_cache_enabled:
+        if kv_cache:
             with timer.time(TextGenerationTimings.KV_CACHE_UPDATE):
                 logits, *kv_cache_state = out
                 self.update_kv_cache(
