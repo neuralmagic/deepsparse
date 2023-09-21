@@ -283,7 +283,7 @@ class Pipeline(BasePipeline):
             timer.start(InferenceStages.POST_PROCESS)
             pipeline_outputs = self.process_engine_outputs(engine_outputs, **context)
             if not (
-                isinstance(pipeline_outputs, self.output_schema)
+                isinstance(pipeline_outputs, (self.output_schema, Generator))
                 or isinstance(pipeline_outputs, Generator)
             ):
                 raise ValueError(
