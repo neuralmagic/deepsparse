@@ -214,7 +214,7 @@ def parse_args():
     parser.add_argument(
         "-x",
         "--export_path",
-        help="Store results into a JSON file",
+        help="Store results into a JSON or CSV file",
         type=str,
         default=None,
     )
@@ -419,10 +419,46 @@ def main():
     print(construct_layer_statistics(result))
 
     if args.export_path:
-        # Export results
-        print("Saving analysis results to JSON file at {}".format(args.export_path))
-        with open(args.export_path, "w") as out:
-            json.dump(result, out, indent=2)
+        if ".csv" in args.export_path:
+            top_level_items_skip = ["iteration_times", "layer_info"]
+            top_level_items_dict = {
+                k: v for k, v in result.items() if k not in top_level_items_skip
+            }
+
+            def construct_csv_layer_info(li):
+                def flatten(parent_k, sub_d):
+                    return {f"{parent_k}_{k}": v for k, v in sub_d.items()}
+
+                csv_li = {}
+                for k, v in li.items():
+                    if k not in ["sub_layer_info"]:
+                        csv_li.update({k: v} if type(v) is not dict else flatten(k, v))
+                return csv_li
+
+            csv_layer_infos = [
+                {
+                    **top_level_items_dict,
+                    **construct_csv_layer_info(li),
+                }
+                for li in result["layer_info"]
+            ]
+
+            # Export results
+            import csv
+
+            print("Saving analysis results to CSV file at {}".format(args.export_path))
+            with open(args.export_path, "w") as out:
+                writer = csv.DictWriter(
+                    out, fieldnames=csv_layer_infos[0].keys(), extrasaction="ignore"
+                )
+                writer.writeheader()
+                for data in csv_layer_infos:
+                    writer.writerow(data)
+        else:
+            # Export results
+            print("Saving analysis results to JSON file at {}".format(args.export_path))
+            with open(args.export_path, "w") as out:
+                json.dump(result, out, indent=2)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ import numpy
 
 import pytest
 from deepsparse import Pipeline
-from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
+from deepsparse.transformers.utils.helpers import prepends_bos_token
 from tests.deepsparse.transformers.pipelines.helpers import TorchGroundTruthSource
 
 
@@ -153,7 +153,7 @@ class TestTextGenerationPipeline:
         # the kv cache is full
         _, uses_bos_token, _ = setup
         pipeline = self.get_pipeline()
-        assert pipeline.engine._freeze_first_position == uses_bos_token
+        assert prepends_bos_token(pipeline.tokenizer) == uses_bos_token
 
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
@@ -172,20 +172,18 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=1,
-            force_max_tokens=True,
             engine_type="onnxruntime",
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens < self.sequence_length
+        assert output.total_num_processed_tokens[0] < self.sequence_length
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
         )
 
@@ -206,20 +204,19 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
             engine_type="onnxruntime",
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens < self.sequence_length
+
+        assert output.total_num_processed_tokens[0] < self.sequence_length
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
         )
 
@@ -243,14 +240,15 @@ class TestTextGenerationPipeline:
             force_max_tokens=True,
             engine_type="onnxruntime",
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
+
+        assert output.total_num_processed_tokens[0] > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
             "greater than the sequence length"
@@ -258,7 +256,6 @@ class TestTextGenerationPipeline:
 
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
             max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
         )
@@ -276,20 +273,19 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=1,
-            force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens < self.sequence_length
+
+        assert output.total_num_processed_tokens[0] < self.sequence_length
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
             run_cache_validation=not self.internal_kv_cache,
         )
@@ -307,20 +303,20 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
+        pipeline._debug = True
+
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens < self.sequence_length
+
+        assert output.total_num_processed_tokens[0] < self.sequence_length
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
             run_cache_validation=not self.internal_kv_cache,
         )
@@ -338,17 +334,17 @@ class TestTextGenerationPipeline:
             model_path=self.model_stub,
             sequence_length=self.sequence_length_short,
             prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
             internal_kv_cache=self.internal_kv_cache,
         )
+        pipeline._debug = True
         output = pipeline(
             sequences=self.prompt,
             return_logits=True,
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        cache_session = pipeline.engine.kv_cache
-        assert cache_session.total_num_processed_tokens > self.sequence_length_short, (
+
+        assert output.total_num_processed_tokens[0] > self.sequence_length_short, (
             "for this scenario, the kv cache should be full: "
             "the total number of processed tokens should be "
             "greater than the sequence length"
@@ -356,7 +352,6 @@ class TestTextGenerationPipeline:
 
         self._test_output(
             output=output,
-            cache_session=cache_session,
             torch_ground_truth=torch_ground_truth,
             run_cache_validation=not self.internal_kv_cache,
             max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
@@ -379,8 +374,13 @@ class TestTextGenerationPipeline:
             include_prompt_logits=True,
             max_tokens=self.num_tokens_generate,
         )
-        assert output_1.sequences[0] == output_2.sequences[0]
-        assert numpy.allclose(output_1.logits, output_2.logits, atol=_PRECISION)
+
+        assert output_1.generations[0].text == output_2.generations[0].text
+        assert numpy.allclose(
+            output_1.generations[0].score,
+            output_2.generations[0].score,
+            atol=_PRECISION,
+        )
 
     def test_run_multiple_prompts_in_parallel(self, setup):
         # Test the scenario, where multiple prompts are run in parallel
@@ -394,8 +394,14 @@ class TestTextGenerationPipeline:
             max_tokens=self.num_tokens_generate,
         )
 
-        assert numpy.allclose(output.logits[0], output.logits[1], atol=_PRECISION)
-        assert output.sequences[0] == output.sequences[1]
+        logits_0 = output.generations[0].score
+        sequence_0 = output.generations[0].text
+
+        logits_1 = output.generations[1].score
+        sequence_1 = output.generations[1].text
+
+        assert numpy.allclose(logits_0, logits_1, atol=_PRECISION)
+        assert sequence_0 == sequence_1
 
     def test_num_generated_predictions(self, setup):
         # Test the scenario, where multiple predictions are generated
@@ -405,26 +411,27 @@ class TestTextGenerationPipeline:
         output_sequences = pipeline(
             sequences=[self.prompt], num_generated_predictions=2
         )
-        assert len(output_sequences.sequences[0]) == 2
+
+        assert len(output_sequences.generations) == 1
+        assert len(output_sequences.generations[0]) == 2
 
         output_sequences = pipeline(
             sequences=[self.prompt, self.prompt], num_generated_predictions=2
         )
-        assert len(output_sequences.sequences) == 2
-        for sequences in output_sequences.sequences:
-            assert len(sequences) == 2
+
+        assert len(output_sequences.generations) == 2
+
+        for generation in output_sequences.generations:
+            assert len(generation) == 2
 
     def _test_output(
         self,
         output: "TextGenerationOutput",  # noqa F821
-        cache_session: DecoderKVCache,
         torch_ground_truth: Tuple[numpy.ndarray, ...],
         max_logits_difference_threshold: Optional[float] = None,
         run_cache_validation: bool = True,
     ):
         # extract numpy arrays from cached_inputs
-        kv_cache_array = list(cache_session.cached_inputs.values())
-
         (
             generated_logits,
             prompt_logits,
@@ -434,6 +441,7 @@ class TestTextGenerationPipeline:
 
         # concatenate target prompt_logits and generated_logits and check
         target_logits = numpy.concatenate([prompt_logits, generated_logits], axis=1)
+        score = output.generations[0].score
 
         if max_logits_difference_threshold:
             # if comparing the output from the model where
@@ -442,24 +450,25 @@ class TestTextGenerationPipeline:
             # to be less than the threshold
             # (the threshold is established by running the
             # ONNX model in ONNXRuntime)
-            assert (
-                abs(output.logits - target_logits).max()
-                < max_logits_difference_threshold
-            )
+            assert abs(score - target_logits[0]).max() < max_logits_difference_threshold
         else:
             # otherwise, we expect the logits to be exactly the same
             # as the target logits; the generated sequence should
             # also be the same as the target sequence, and finally
             # (if applicable) the kv cache should be the same as the
             # target kv cache
-            assert numpy.allclose(output.logits, target_logits, atol=_PRECISION)
-            assert self.prompt + output.sequences[0] == generated_text
+
+            assert numpy.allclose(score, target_logits[0], atol=_PRECISION)
+            assert self.prompt + output.generations[0].text == generated_text
 
             if run_cache_validation:
+                # extract numpy arrays from cached_inputs
+                kv_cache_array = list(output.kv_cache_state[0].values())
+                total_num_processed_tokens = output.total_num_processed_tokens[0]
                 self._test_kv_cache_state(
                     expected_cache=kv_cache_array,
                     target_cache=torch_ground_truth[2],
-                    total_num_processed_tokens=cache_session.total_num_processed_tokens,
+                    total_num_processed_tokens=total_num_processed_tokens,
                 )
 
     @staticmethod

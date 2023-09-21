@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-# isort: skip_file
+import os
+import re
+from typing import Optional
 
-from .pipeline import *
-from .question_answering import *
-from .text_classification import *
-from .token_classification import *
-from .text_generation import *
-from .zero_shot_text_classification import *
-from .embedding_extraction import *
+
+def find_file_with_pattern(folder_path: str, pattern: str) -> Optional[str]:
+    folder_path = os.path.expanduser(folder_path)
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if re.match(pattern, file):
+                return os.path.join(root, file)
