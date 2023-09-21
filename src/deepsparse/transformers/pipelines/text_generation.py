@@ -131,9 +131,9 @@ class TextGenerationInput(BaseModel):
     generation_config: Union[None, str, pathlib.Path, Dict, GenerationConfig] = Field(
         default=None,
         description="GenerationConfig file consisting of parameters used to control "
-        " sequences generated for each prompt. The current supported parameters are: "
-        " max_length, max_new_tokens, num_return_sequences, output_scores, top_p, "
-        " top_k, repetition_penalty.",
+        "sequences generated for each prompt. The current supported parameters are: "
+        "max_length, max_new_tokens, num_return_sequences, output_scores, top_p, "
+        "top_k, repetition_penalty.",
     )
 
 
@@ -398,7 +398,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def _process_generation_config(
         self, generation_config: [None, str, pathlib.Path, Dict, GenerationConfig]
-    ) -> GenerationConfig:
+    ) -> Union[GenerationConfig, None]:
         """
         Process and return a GenerationConfig. The function can take in a filepath
         pointing to a json consisting of the config values, a dictionary with the config
@@ -438,14 +438,10 @@ class TextGenerationPipeline(TransformersPipeline):
         generation_config = GenerationConfig.from_pretrained(config_dir, config_name)
         return generation_config
 
-    def process_inputs(self, inputs: TextGenerationInput) -> List[numpy.ndarray]:
-        """
-        Convert the input schema for the pipeline to the inputs for the engine.
-
-        :param inputs: the input schema for the pipeline
-        :return: the inputs for the engine
-        """
-        generation_config = self._process_generation_config(inputs.generation_config)
+    def _check_and_return_generation_config(
+        self, input_generation_config: [None, str, pathlib.Path, Dict, GenerationConfig]
+    ) -> Union[GenerationConfig, None]:
+        generation_config = self._process_generation_config(input_generation_config)
         if generation_config is None:
             if self.generation_config:
                 generation_config = self.generation_config
@@ -460,12 +456,21 @@ class TextGenerationPipeline(TransformersPipeline):
                 " No GenerationConfig detected. Using GenerationDefaults values"
             )
             generation_config = GenerationDefaults()
+        return generation_config
 
-        num_return_sequences = generation_config.num_return_sequences
-        max_length = generation_config.max_length
+    def process_inputs(self, inputs: TextGenerationInput) -> List[numpy.ndarray]:
+        """
+        Convert the input schema for the pipeline to the inputs for the engine.
+
+        :param inputs: the input schema for the pipeline
+        :return: the inputs for the engine
+        """
+        generation_config = self._check_and_return_generation_config(
+            inputs.generation_config
+        )
 
         self.streaming = inputs.streaming
-        if not self.cache_support_enabled and max_length > 1:
+        if not self.cache_support_enabled and generation_config.max_length > 1:
             raise ValueError(
                 "The model used for inference does not support kv cache. It is "
                 "assumed that it maps from the token sequence to predicted logits."
@@ -476,10 +481,12 @@ class TextGenerationPipeline(TransformersPipeline):
         # num_return_sequences times. Also, update the engine so that deterministic
         # is set to False.
         original_inputs = inputs.sequences
-        if num_return_sequences > 1:
+        if generation_config.num_return_sequences > 1:
             if isinstance(inputs.sequences, str):
                 inputs.sequences = [inputs.sequences]
-            inputs.sequences = repeat_inputs(inputs.sequences, num_return_sequences)
+            inputs.sequences = repeat_inputs(
+                inputs.sequences, generation_config.num_return_sequences
+            )
             if self.engine:
                 self.engine.deterministic = False
             if self.multitoken_engine:
@@ -527,8 +534,7 @@ class TextGenerationPipeline(TransformersPipeline):
         context = dict(
             prompts=original_inputs,
             streaming=inputs.streaming,
-            num_return_sequences=num_return_sequences,
-            return_logits=generation_config.output_scores,
+            generation_config=generation_config,
             include_prompt_logits=inputs.include_prompt_logits,
             callback=inputs.callback,
             stop=inputs.stop,
@@ -536,8 +542,6 @@ class TextGenerationPipeline(TransformersPipeline):
             top_k=generation_config.top_k,
             presence_penalty=inputs.presence_penalty,
             frequency_penalty=generation_config.repetition_penalty,
-            max_tokens=max_length,
-            max_new_tokens=generation_config.max_new_tokens,
         )
 
         return engine_input, context
@@ -586,6 +590,25 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
 
+        def _create_generated_text_output(
+            sequence: str,
+            finish_reason: FinishReason = None,
+            logits: Optional[numpy.array] = None,
+        ):
+            if finish_reason:
+                return GeneratedText(
+                    text=sequence,
+                    score=logits,
+                    finished=True,
+                    finished_reason=finish_reason.value,
+                )
+            return GeneratedText(
+                text=sequence,
+                score=logits,
+                finished=False,
+            )
+
+        generation_config = kwargs.get("generation_config")
         prompts = kwargs.get("prompts")
         streaming = kwargs.get("streaming")
 
@@ -599,9 +622,9 @@ class TextGenerationPipeline(TransformersPipeline):
             generated_tokens, skip_special_tokens=True
         )
 
-        logits = generated_logits if kwargs.get("return_logits") else None
+        logits = generated_logits if generation_config.output_scores else None
 
-        num_preds = kwargs.get("num_return_sequences", 1)
+        num_preds = generation_config.num_return_sequences
         finished_reason = [f[0] for f in finished_reason]
 
         if logits is not None:
@@ -668,6 +691,7 @@ class TextGenerationPipeline(TransformersPipeline):
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
             finished_reason = []
             streaming = context.get("streaming")
+            generation_config = context.get("generation_config")
 
             if not self.cache_support_enabled:
                 prompt_logits = self.multitoken_engine(engine_inputs)
@@ -705,11 +729,11 @@ class TextGenerationPipeline(TransformersPipeline):
             callback = context.get("callback")
             stop = context.get("stop")
 
-            max_new_tokens = context.get("max_new_tokens")
+            max_new_tokens = generation_config.max_new_tokens
             if max_new_tokens:
                 max_tokens = max_new_tokens + len(generated_tokens)
             else:
-                max_tokens = context.get("max_tokens", 0)
+                max_tokens = generation_config.max_tokens
                 max_tokens = (
                     max_tokens if max_tokens > 0 else (100 * self.sequence_length)
                 )
