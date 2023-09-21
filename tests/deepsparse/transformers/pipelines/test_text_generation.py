@@ -411,20 +411,12 @@ class TestTextGenerationPipeline:
         output_sequences = pipeline(
             sequences=[self.prompt], num_generated_predictions=2
         )
-<<<<<<< HEAD
-=======
-
->>>>>>> fix tests
         assert len(output_sequences.generations) == 1
         assert len(output_sequences.generations[0]) == 2
 
         output_sequences = pipeline(
             sequences=[self.prompt, self.prompt], num_generated_predictions=2
         )
-<<<<<<< HEAD
-=======
-
->>>>>>> fix tests
         assert len(output_sequences.generations) == 2
 
         for generation in output_sequences.generations:
