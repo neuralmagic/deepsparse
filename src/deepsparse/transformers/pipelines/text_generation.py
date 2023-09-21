@@ -33,7 +33,6 @@ from typing import (
 import numpy
 import onnx
 from pydantic import BaseModel, Field
-from transformers import TextStreamer
 
 from deepsparse import Pipeline
 from deepsparse.pipeline import DEEPSPARSE_ENGINE
@@ -61,6 +60,7 @@ class FinishReason(Enum):
     STOP = "stop"
     LENGTH = "length"
     TIME = "time"
+    CALLBACK = "callback"
 
 
 class TextGenerationInput(BaseModel):
@@ -106,12 +106,12 @@ class TextGenerationInput(BaseModel):
         "to have consistent length so one "
         "can compute metric in a batched fashion. ",
     )
-    streamer: Optional[TextStreamer] = Field(
-        default=None,
-        description="Streamer object that will be used to stream the "
-        "generated sequences. Generated tokens are passed through "
-        "`streamer.put(token_ids)` and the streamer is responsible "
-        "for any further processing.",
+    streaming: bool = Field(
+        default=False,
+        description="Whether to stream the results back as they are generated. If "
+        "True, then the results are returned as a generator object which yields "
+        "the results as they are generated. If False, then the results are returned "
+        "as a list after it has completed.",
     )
     callback: Optional[Callable[[Any], Union[bool, Any]]] = Field(
         default=None,
@@ -161,7 +161,7 @@ class GeneratedText(BaseModel):
         "The scores have the shape [sequence_length, vocab_size]"
     )
     finished: bool = Field(description="Whether generation has stopped.")
-    finished_reason: str = Field(
+    finished_reason: Optional[str] = Field(
         description="The reason for generation to stop. "
         "Defined by FinishReason. One of stop, length, or time."
     )
@@ -473,9 +473,9 @@ class TextGenerationPipeline(TransformersPipeline):
 
         context = dict(
             prompts=original_inputs,
+            streaming=inputs.streaming,
             num_generated_predictions=inputs.num_generated_predictions,
             return_logits=inputs.return_logits,
-            streamer=inputs.streamer,
             include_prompt_logits=inputs.include_prompt_logits,
             callback=inputs.callback,
             stop=inputs.stop,
@@ -488,6 +488,40 @@ class TextGenerationPipeline(TransformersPipeline):
 
         return engine_input, context
 
+    def _create_generated_text_output(
+        self,
+        sequence: str,
+        finish_reason: Optional[FinishReason] = None,
+        logits: Optional[numpy.array] = None,
+    ):
+        if finish_reason:
+            return GeneratedText(
+                text=sequence,
+                score=logits,
+                finished=True,
+                finished_reason=finish_reason.value,
+            )
+        return GeneratedText(
+            text=sequence,
+            score=logits,
+            finished=False,
+        )
+
+    def _stream_engine_outputs(self, engine_outputs, prompts, kwargs):
+        for output in engine_outputs:
+            generated_tokens, generated_logits, finished_reason = output
+            logits = generated_logits if kwargs.get("return_logits") else None
+            generation = self._create_generated_text_output(
+                self.tokenizer.batch_decode(generated_tokens)[0],
+                finished_reason[0],
+                logits,
+            )
+            yield TextGenerationOutput(
+                created=datetime.datetime.now(),
+                prompts=prompts,
+                generations=[generation],
+            )
+
     def process_engine_outputs(
         self, engine_outputs: List[Union[numpy.ndarray, FinishReason]], **kwargs
     ) -> TextGenerationOutput:
@@ -497,33 +531,29 @@ class TextGenerationPipeline(TransformersPipeline):
         :param engine_outputs: the outputs from the engine
         :return: the output schema for the pipeline
         """
-        generated_tokens, generated_logits, finished_reason, *debug = engine_outputs
-        finished_reason = [f[0] for f in finished_reason]
 
+        prompts = kwargs.get("prompts")
+        streaming = kwargs.get("streaming")
+
+        if streaming:
+            return self._stream_engine_outputs(engine_outputs, prompts, kwargs)
+
+        generated_tokens, generated_logits, finished_reason, *debug = list(
+            *engine_outputs
+        )
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
-        num_preds = kwargs.get("num_generated_predictions", 1)
-        prompts = kwargs.get("prompts")
-
-        def _create_generated_text_output(
-            sequence: str,
-            finish_reason: FinishReason,
-            logits: Optional[numpy.array] = None,
-        ):
-            return GeneratedText(
-                text=sequence,
-                score=logits,
-                finished=True,
-                finished_reason=finish_reason.value,
-            )
 
         logits = generated_logits if kwargs.get("return_logits") else None
+
+        num_preds = kwargs.get("num_generated_predictions", 1)
+        finished_reason = [f[0] for f in finished_reason]
 
         if logits is not None:
             generations = list(
                 self.executor.map(
-                    _create_generated_text_output,
+                    self._create_generated_text_output,
                     sequences,
                     finished_reason,
                     logits,
@@ -532,7 +562,7 @@ class TextGenerationPipeline(TransformersPipeline):
         else:
             generations = list(
                 self.executor.map(
-                    _create_generated_text_output, sequences, finished_reason
+                    self._create_generated_text_output, sequences, finished_reason
                 )
             )
 
@@ -582,8 +612,8 @@ class TextGenerationPipeline(TransformersPipeline):
         # names in this context
 
         with self.timer_manager.new_timer_context(total_inference=False) as timer:
-            streamer = context.get("streamer")
             finished_reason = []
+            streaming = context.get("streaming")
 
             if not self.cache_support_enabled:
                 prompt_logits = self.multitoken_engine(engine_inputs)
@@ -610,9 +640,6 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             token_generator.generate(prompt_logits[-1][0, -1, :])
 
-            if streamer is not None:
-                streamer.put(numpy.array(token_generator.tokens))
-
             # create the generated output
             max_tokens = context.get("max_tokens", 0)
             max_tokens = max_tokens if max_tokens > 0 else (100 * self.sequence_length)
@@ -638,9 +665,6 @@ class TextGenerationPipeline(TransformersPipeline):
                     generated_tokens.append(token)
                     generated_logits.append(logits)
 
-                    if streamer is not None:
-                        streamer.put(numpy.array([token]))
-
                     if (
                         token == self.tokenizer.eos_token_id
                         and not self.force_max_tokens
@@ -656,30 +680,38 @@ class TextGenerationPipeline(TransformersPipeline):
                         finished_reason.append(FinishReason.STOP)
                         break
 
-                    # TODO: Add any generic callback reason?
                     if callback is not None and callback(token) is False:
                         _LOGGER.debug(
                             "callback %s returned False, stopping generation."
                             % callback.__qualname__
                         )
+                        finished_reason.append(FinishReason.CALLBACK)
                         break
 
                     if len(generated_tokens) == max_tokens:
                         finished_reason.append(FinishReason.LENGTH)
 
-            if streamer is not None:
-                streamer.end()
+                    if streaming:
+                        yield (numpy.array([token]), numpy.array([logits]), [None])
 
-        returns = (
-            numpy.array([generated_tokens]),
-            numpy.concatenate(generated_logits, axis=1),
-            finished_reason,
-        )
+                if streaming:
+                    yield (
+                        numpy.array([token]),
+                        numpy.array([logits]),
+                        [finished_reason[-1]],
+                    )
 
-        if self._debug is True:
-            return *returns, session
+        if not streaming:
+            returns = (
+                numpy.array([generated_tokens]),
+                numpy.concatenate(generated_logits, axis=1),
+                finished_reason,
+            )
 
-        return returns
+            if self._debug is True:
+                yield *returns, session
+
+            yield returns
 
     def prompt_inference(
         self,
@@ -870,6 +902,7 @@ class TextGenerationPipeline(TransformersPipeline):
         self,
         batch_outputs: List[List[Union[numpy.ndarray, FinishReason]]],
         orig_batch_size: int,
+        **kwargs,
     ) -> List[Union[numpy.ndarray, FinishReason]]:
         """
         Takes a list of outputs (batches) from the engine
@@ -881,48 +914,63 @@ class TextGenerationPipeline(TransformersPipeline):
         :param orig_batch_size: The original batch size
         :return: A list of joined outputs
         """
-        tokens, logits, finish_reason, *debug = zip(*batch_outputs)
-        if self.cache_support_enabled:
-            # if the model has kv cache, we need to account for
-            # the fact that the predicted outputs may have
-            # different lengths
+        streaming = kwargs.get("streaming")
+        if streaming:
+            for batch in batch_outputs:
+                for outputs in batch:
+                    yield outputs
+        else:
+            batch_outputs = [list(*b) for b in batch_outputs]
+            tokens, logits, finish_reason, *debug = zip(*batch_outputs)
+            if self.cache_support_enabled:
+                # if the model has kv cache, we need to account for
+                # the fact that the predicted outputs may have
+                # different lengths
 
-            # find the longest sequence in the batch of tokens
-            max_len = max([token.shape[1] for token in tokens])
+                # find the longest sequence in the batch of tokens
+                max_len = max([token.shape[1] for token in tokens])
 
-            # pad all tokens to the same length
-            tokens = [
-                pad_to_fixed_length(
-                    array=prediction,
-                    max_len=max_len,
-                    value=self.tokenizer.pad_token_id,
-                    axis=1,
+                # pad all tokens to the same length
+                tokens = [
+                    pad_to_fixed_length(
+                        array=prediction,
+                        max_len=max_len,
+                        value=self.tokenizer.pad_token_id,
+                        axis=1,
+                    )
+                    for prediction in tokens
+                ]
+
+                # find the longest sequence in the batch of logits
+                max_len = max([logits.shape[1] for logits in logits])
+
+                # pad all logits to the same length
+                logits = [
+                    pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
+                    for single_logits in logits
+                ]
+
+            tokens = numpy.concatenate(tokens, axis=0)
+            logits = numpy.concatenate(logits, axis=0)
+
+            if debug:
+                sessions = debug[0]
+                kv_cache_state = numpy.stack(
+                    session.cached_inputs for session in sessions
                 )
-                for prediction in tokens
-            ]
+                num_processed_tokens = numpy.stack(
+                    session.total_num_processed_tokens for session in sessions
+                )
 
-            # find the longest sequence in the batch of logits
-            max_len = max([logits.shape[1] for logits in logits])
+                yield [
+                    tokens,
+                    logits,
+                    finish_reason,
+                    kv_cache_state,
+                    num_processed_tokens,
+                ]
 
-            # pad all logits to the same length
-            logits = [
-                pad_to_fixed_length(array=single_logits, max_len=max_len, axis=1)
-                for single_logits in logits
-            ]
-
-        tokens = numpy.concatenate(tokens, axis=0)
-        logits = numpy.concatenate(logits, axis=0)
-
-        if debug:
-            sessions = debug[0]
-            kv_cache_state = numpy.stack(session.cached_inputs for session in sessions)
-            num_processed_tokens = numpy.stack(
-                session.total_num_processed_tokens for session in sessions
-            )
-
-            return [tokens, logits, finish_reason, kv_cache_state, num_processed_tokens]
-
-        return [tokens, logits, finish_reason]
+            yield [tokens, logits, finish_reason]
 
     @staticmethod
     def causal_mask_input_present(model_path: str) -> bool:
