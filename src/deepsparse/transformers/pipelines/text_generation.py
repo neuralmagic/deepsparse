@@ -268,7 +268,6 @@ class TextGenerationPipeline(TransformersPipeline):
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.engine, self.multitoken_engine = self.initialize_engines()
-        self.streaming = False
 
         # auxiliary flag for devs to enable debug mode for the pipeline
         self._debug = False
@@ -411,7 +410,6 @@ class TextGenerationPipeline(TransformersPipeline):
         :param inputs: the input schema for the pipeline
         :return: the inputs for the engine
         """
-        self.streaming = inputs.streaming
         if not self.cache_support_enabled and inputs.max_tokens > 1:
             raise ValueError(
                 "The model used for inference does not support kv cache. It is "
