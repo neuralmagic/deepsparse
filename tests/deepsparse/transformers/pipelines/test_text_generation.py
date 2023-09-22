@@ -183,7 +183,7 @@ class TestTextGenerationPipeline:
         pipeline._debug = True
 
         config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
         )
 
         output = pipeline(
@@ -216,7 +216,7 @@ class TestTextGenerationPipeline:
         )
         pipeline._debug = True
         config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
         )
         output = pipeline(
             sequences=self.prompt, include_prompt_logits=True, generation_config=config
@@ -250,7 +250,7 @@ class TestTextGenerationPipeline:
         pipeline._debug = True
 
         config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
         )
         output = pipeline(
             sequences=self.prompt, include_prompt_logits=True, generation_config=config
@@ -285,7 +285,7 @@ class TestTextGenerationPipeline:
         )
         pipeline._debug = True
         config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
         )
         output = pipeline(
             sequences=self.prompt, include_prompt_logits=True, generation_config=config
@@ -316,7 +316,7 @@ class TestTextGenerationPipeline:
         pipeline._debug = True
 
         config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
         )
         output = pipeline(
             sequences=self.prompt, include_prompt_logits=True, generation_config=config
@@ -346,7 +346,7 @@ class TestTextGenerationPipeline:
         )
         pipeline._debug = True
         config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
         )
         output = pipeline(
             sequences=self.prompt, include_prompt_logits=True, generation_config=config
@@ -370,7 +370,7 @@ class TestTextGenerationPipeline:
         # Every run should produce the same output
         pipeline = self.get_pipeline()
         config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
         )
 
         output_1 = pipeline(
@@ -394,7 +394,7 @@ class TestTextGenerationPipeline:
         pipeline = self.get_pipeline()
 
         config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
         )
         output = pipeline(
             sequences=[self.prompt, self.prompt],
@@ -417,7 +417,10 @@ class TestTextGenerationPipeline:
         pipeline = self.get_pipeline()
 
         config = GenerationConfig(
-            num_return_sequences=2, max_length=self.num_tokens_generate
+            num_return_sequences=2,
+            max_length=self.num_tokens_generate,
+            top_k=0,
+            top_p=0.0,
         )
 
         output_sequences = pipeline(sequences=[self.prompt], generation_config=config)

@@ -139,7 +139,8 @@ class ChatPipeline(TextGenerationPipeline):
         :param kwargs: additional keyword arguments
         :return: the output schema for the pipeline
         """
-        session_ids = engine_outputs.pop(-1)
+
+        engine_outputs, session_ids = list(*engine_outputs)
         # process the engine outputs within the context of TextGenerationPipeline
         text_generation_output = super().process_engine_outputs(
             engine_outputs, **kwargs
@@ -250,6 +251,7 @@ class ChatPipeline(TextGenerationPipeline):
         self,
         batch_outputs: List[List[Union[numpy.ndarray, FinishReason, str]]],
         orig_batch_size: int,
+        **context,
     ) -> List[Union[numpy.ndarray, FinishReason, str]]:
         """
         Wrapper around the join_engine_outputs function that handles
@@ -263,10 +265,11 @@ class ChatPipeline(TextGenerationPipeline):
         *batch_outputs, session_ids = list(zip(*batch_outputs))
         # unzip batch_outputs and feed them back to super class
         batch_outputs = list(zip(*batch_outputs))
-        batch_outputs = super().join_engine_outputs(batch_outputs, orig_batch_size)
+        batch_outputs = super().join_engine_outputs(
+            batch_outputs, orig_batch_size, **context
+        )
         # add the session_ids to the batch_outputs
-        batch_outputs.append(session_ids)
-        return batch_outputs
+        yield batch_outputs, session_ids
 
     def split_engine_inputs(
         self, items: List[Union[numpy.ndarray, List[str]]], batch_size: int

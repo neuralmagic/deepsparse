@@ -738,7 +738,9 @@ class TextGenerationPipeline(TransformersPipeline):
                 # Run the autoregressive inference only to put the
                 # kv cache entry for the last generated token into the
                 # kv cache
-                self.autoregressive_inference(tokens=token_generator.tokens, kv_cache=session)
+                self.autoregressive_inference(
+                    tokens=token_generator.tokens, kv_cache=session
+                )
                 if streaming:
                     yield (
                         numpy.array([token]),
