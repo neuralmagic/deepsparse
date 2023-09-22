@@ -34,14 +34,14 @@ class PipelineBenchmarkConfig(BaseModel):
     )
 
     gen_sequence_length: Optional[int] = Field(
-        default=None,
+        default=512,
         description=(
             "Number of characters to generate for pipelines that take text input."
         ),
     )
 
     input_image_shape: Optional[List[int]] = Field(
-        default=None,
+        default=[224, 224, 3],
         description=(
             "Image size for pipelines that take image input, 3-dim with channel as the "
             "last dimmension"

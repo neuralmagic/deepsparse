@@ -237,7 +237,7 @@ def create_input_schema(
 def benchmark_pipeline(
     model_path: str,
     task: str,
-    config: PipelineBenchmarkConfig,
+    config: PipelineBenchmarkConfig = None,
     batch_size: int = 1,
     num_cores: int = None,
     scenario: str = "sync",
@@ -273,6 +273,10 @@ def benchmark_pipeline(
 
     if num_cores is None:
         num_cores = cpu_architecture().num_available_physical_cores
+
+    if config is None:
+        _LOGGER.warning("No input configuration provided, falling back to default.")
+        config = PipelineBenchmarkConfig()
 
     decide_thread_pinning(thread_pinning)
     scenario = parse_scenario(scenario.lower())
@@ -364,7 +368,7 @@ def calculate_section_stats(
     "-c",
     "--input_config",
     type=str,
-    default="config.json",
+    default=None,
     help="JSON file containing schema for input data",
 )
 @click.option(
