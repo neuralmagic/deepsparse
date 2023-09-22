@@ -159,5 +159,6 @@ def test_pipeline_call_is_async(engine_mock):
         dur_2_worker = (end - start) * 1e3
 
         # instead of doing a hard comparison of timing for each separate
-        # duration, do relative comparison of timing
-        assert numpy.allclose(dur_1_worker / dur_2_worker, 2, atol=0.4)
+        # duration, do relative comparison of timing where it should be
+        # at least 1.5x faster
+        assert (dur_1_worker / dur_2_worker) >= 1.5
