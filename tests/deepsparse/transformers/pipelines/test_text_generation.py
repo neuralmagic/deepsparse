@@ -483,6 +483,7 @@ class TestTextGenerationPipeline:
         )
 
         # make sure information does not leak between sessions
+
         self._test_composition_same_session_ids(
             prompt_1,
             prompt_2,
@@ -491,6 +492,7 @@ class TestTextGenerationPipeline:
             session_id_1="test_1",
             session_id_2="test_2",
         )
+
         self._test_composition_same_session_ids(
             prompt_1,
             prompt_2,
@@ -511,22 +513,23 @@ class TestTextGenerationPipeline:
     ):
 
         tokenizer = pipeline.tokenizer
+        config = GenerationConfig(
+            output_scores=True, max_length=num_generated_tokens, top_k=0, top_p=0.0
+        )
 
         # make sure that running two prompts one after another
         # is identical to running a composition of those prompts
         out_1_ = pipeline(
             sequences=prompt_1,
             session_ids=session_id_1,
-            max_tokens=num_generated_tokens,
-            return_logits=True,
+            generation_config=config,
             include_prompt_logits=True,
         )
         prompt_1_ = out_1_.generations[0].text
         out_1 = pipeline(
             sequences=prompt_2,
             session_ids=session_id_1,
-            return_logits=True,
-            max_tokens=num_generated_tokens,
+            generation_config=config,
             include_prompt_logits=True,
         )
         cache_state_1 = pipeline.storage_kv_cache.get(session_id_1).cached_inputs[
@@ -542,9 +545,8 @@ class TestTextGenerationPipeline:
         out_2 = pipeline(
             sequences=prompt_composition,
             session_ids=session_id_2,
-            return_logits=True,
+            generation_config=config,
             include_prompt_logits=True,
-            max_tokens=num_generated_tokens,
         )
         cache_state_2 = pipeline.storage_kv_cache.get(session_id_2).cached_inputs[
             "past_key_values.0.key"
