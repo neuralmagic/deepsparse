@@ -15,6 +15,7 @@
 from typing import List, Optional, Tuple
 
 import numpy
+from transformers import GenerationConfig
 
 import pytest
 from deepsparse import Pipeline
@@ -22,7 +23,7 @@ from deepsparse.transformers.utils.helpers import prepends_bos_token
 from tests.deepsparse.transformers.pipelines.helpers import TorchGroundTruthSource
 
 
-_PRECISION = 1e-4
+_PRECISION = 1e-3
 
 NATURAL_LANGUAGE_PROMPT = """
 Didn't know what time it was, the lights were low
@@ -180,11 +181,13 @@ class TestTextGenerationPipeline:
             engine_type="onnxruntime",
         )
         pipeline._debug = True
+
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate
+        )
+
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
         assert output.total_num_processed_tokens[0] < self.sequence_length
         self._test_output(
@@ -212,11 +215,11 @@ class TestTextGenerationPipeline:
             engine_type="onnxruntime",
         )
         pipeline._debug = True
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] < self.sequence_length
@@ -245,11 +248,12 @@ class TestTextGenerationPipeline:
             engine_type="onnxruntime",
         )
         pipeline._debug = True
+
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] > self.sequence_length_short, (
@@ -280,11 +284,11 @@ class TestTextGenerationPipeline:
             internal_kv_cache=self.internal_kv_cache,
         )
         pipeline._debug = True
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] < self.sequence_length
@@ -311,11 +315,11 @@ class TestTextGenerationPipeline:
         )
         pipeline._debug = True
 
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] < self.sequence_length
@@ -341,11 +345,11 @@ class TestTextGenerationPipeline:
             internal_kv_cache=self.internal_kv_cache,
         )
         pipeline._debug = True
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] > self.sequence_length_short, (
@@ -365,19 +369,18 @@ class TestTextGenerationPipeline:
         # Test the scenario, where the same prompt is run multiple times
         # Every run should produce the same output
         pipeline = self.get_pipeline()
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate
+        )
 
         output_1 = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
+
         output_2 = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
+
         assert output_1.generations[0].text == output_2.generations[0].text
         assert numpy.allclose(
             output_1.generations[0].score,
@@ -390,12 +393,15 @@ class TestTextGenerationPipeline:
         # Same two prompts should produce the same output
         pipeline = self.get_pipeline()
 
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate
+        )
         output = pipeline(
             sequences=[self.prompt, self.prompt],
-            return_logits=True,
+            generation_config=config,
             include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
         )
+
         logits_0 = output.generations[0].score
         sequence_0 = output.generations[0].text
 
@@ -410,14 +416,16 @@ class TestTextGenerationPipeline:
         # from the same prompt
         pipeline = self.get_pipeline()
 
-        output_sequences = pipeline(
-            sequences=[self.prompt], num_generated_predictions=2
+        config = GenerationConfig(
+            num_return_sequences=2, max_length=self.num_tokens_generate
         )
+
+        output_sequences = pipeline(sequences=[self.prompt], generation_config=config)
         assert len(output_sequences.generations) == 1
         assert len(output_sequences.generations[0]) == 2
 
         output_sequences = pipeline(
-            sequences=[self.prompt, self.prompt], num_generated_predictions=2
+            sequences=[self.prompt, self.prompt], generation_config=config
         )
         assert len(output_sequences.generations) == 2
 

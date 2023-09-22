@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import logging
+import os
+import pathlib
 import uuid
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, GenerationConfig
 
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
@@ -28,6 +31,9 @@ __all__ = [
     "repeat_inputs",
     "initialize_kv_cache_state",
     "prepends_bos_token",
+    "check_and_return_generation_config",
+    "override_config",
+    "process_generation_config",
     "validate_session_ids",
 ]
 
@@ -145,6 +151,120 @@ def generate_session_id() -> str:
     """
     session_id = str(uuid.uuid4())
     return session_id
+
+
+def process_generation_config(
+    generation_config: Union[None, str, pathlib.Path, Dict, GenerationConfig]
+) -> Union[GenerationConfig, None]:
+    """
+    Process and return a GenerationConfig. The function can take in a filepath
+    pointing to a json consisting of the config values, a dictionary with the config
+    values, or a loaded GenerationConfig object. If None is given, the defaults are,
+    the pipeline GenerationConfig is used, if provided. If both are None, default
+    are used for generation.
+
+    :param generation_config: either a json filepath, dictionary or loaded
+    GenerationConfig object
+
+    :return: GenerationConfig object or None
+
+    """
+    if isinstance(generation_config, GenerationConfig):
+        return generation_config
+
+    if not generation_config:
+        return None
+
+    # TODO: move to tmp folder
+    if isinstance(generation_config, dict):
+        config_dir = os.getcwd()
+        config_name = "generation_config.json"
+        local_config_path = os.path.join(config_dir, config_name)
+        _LOGGER.info(
+            "Dictionary provided for the generation config. Creating temporary "
+            " generation_config.json"
+        )
+        with open(local_config_path, "w") as f:
+            json.dump(generation_config, f)
+
+    if isinstance(generation_config, (str, pathlib.Path)):
+        generation_config = pathlib.Path(generation_config)
+        config_dir = generation_config.parent.absolute()
+        config_name = generation_config.name
+
+    generation_config = GenerationConfig.from_pretrained(config_dir, config_name)
+    return generation_config
+
+
+def check_and_return_generation_config(
+    pipeline_generation_config: [None, str, pathlib.Path, Dict, GenerationConfig],
+    input_generation_config: [None, str, pathlib.Path, Dict, GenerationConfig],
+    defaults: "GenerationDefaults",  # noqa F821
+) -> Union[GenerationConfig, None]:
+    """
+    Check if an input generation config is provided. If not, check if a pipeline
+    generation config exists. If neither exists, use the defualt generation configs,
+    either deespsparse defaults or hugging face defaults. If a pipeline config exists
+    and an input config exists, use the input config.
+
+    :param pipeline_generation_config: either a json filepath, dictionary or loaded
+    GenerationConfig object provided by the user during pipeline creation
+    :param input_generation_config: either a json filepath, dictionary or loaded
+    GenerationConfig object provided by the user during inference
+    :param defaults: defaults to use for the GenerationConfig if a config is not
+    provided during inference or pipeline creation.
+
+    :return: GenerationConfig object or None
+
+    """
+    generation_config = process_generation_config(input_generation_config)
+    if generation_config is None:
+        if pipeline_generation_config:
+            generation_config = pipeline_generation_config
+    else:
+        _LOGGER.info(
+            "Input generation config detected. This will override any"
+            " config provided during pipeline creation."
+        )
+
+    if not generation_config:
+        _LOGGER.info(" No GenerationConfig detected. Using GenerationDefaults values")
+        generation_config = defaults
+    return generation_config
+
+
+def override_config(
+    overrides: Optional[Dict], generation_config: GenerationConfig
+) -> GenerationConfig:
+    """
+    Override any generation config properties using the `kwargs` argument in
+    TextGenerationInput. If None, the generation config is returned unchanged.
+    If provided, update all attribute stored in the dictionary. An errror will be
+    raised if the dictionary contains an key which is not a GenerationConfig
+    attribute.
+
+    :param overrides: dictionary containing GenerationConfig attributes to update
+    :param generation_config: GenerationConfig to update
+
+    :return: GenerationConfig object
+
+
+    """
+    if overrides is None:
+        return generation_config
+
+    for k, v in overrides.items():
+        try:
+            if getattr(generation_config, k):
+                setattr(generation_config, k, v)
+                _LOGGER.info(f"Overriding attribute {k} in the generation config")
+        except AttributeError as exception:
+            raise AttributeError(
+                "Argument provided for GenerationConfig is not "
+                "valid. Refer to the TextGenerationInput for supported attributes. "
+            ) from exception
+
+    return generation_config
 
 
 def repeat_inputs(

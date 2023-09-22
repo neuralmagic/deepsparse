@@ -282,10 +282,7 @@ class Pipeline(BasePipeline):
             # ------ POSTPROCESSING ------
             timer.start(InferenceStages.POST_PROCESS)
             pipeline_outputs = self.process_engine_outputs(engine_outputs, **context)
-            if not (
-                isinstance(pipeline_outputs, (self.output_schema, Generator))
-                or isinstance(pipeline_outputs, Generator)
-            ):
+            if not isinstance(pipeline_outputs, (self.output_schema, Generator)):
                 raise ValueError(
                     f"Outputs of {self.__class__} must be instances of "
                     f"{self.output_schema} found output of type "
