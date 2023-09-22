@@ -15,43 +15,64 @@
 
 from typing import Optional
 
+from deepsparse.benchmark.api.errors import UnclearBenchmarkerModeException
 from deepsparse.benchmark.benchmark_model import benchmark_model
 from deepsparse.benchmark.benchmark_pipeline import benchmark_pipeline
 
 
 class Benchmarker:
-    def __init__(self, model, pipeline, url):
+    """
+    Benchmark API
+
+    Input arg to `model`, `pipeline` should be one of:
+     - SparseZoo stub
+     - path to a model.onnx
+     - path to a local folder containing a model.onnx
+     - path to onnx.ModelProto
+
+    Provide the stub/path to one of
+     - model to run deesparse.benchmark
+     - pipeline to run deepsparse.benchmark_pipeline
+    """
+
+    def __init__(
+        self,
+        model: Optional[str] = None,
+        pipeline: Optional[str] = None,
+    ):
+        self._validate_exactly_one_mode_selected(model, pipeline)
         self.model = model
         self.pipeline = pipeline
-        self.url = url
 
     def __call__(self, **kwargs):
-
         if self.model:
-            benchmark_model(model_path=self.model, **kwargs)
+            return benchmark_model(model_path=self.model, **kwargs)
 
         if self.pipeline:
-            benchmark_pipeline(model_path=self.pipeline, **kwargs)
-
-        if self.url:
-            # benchmark with url here
-            pass
+            return benchmark_pipeline(model_path=self.pipeline, **kwargs)
 
     @staticmethod
     def benchmark(
         model: Optional[str] = None,
         pipeline: Optional[str] = None,
-        url: Optional[str] = None,
         **kwargs,
     ):
-        if len((model, pipeline, url)) != 1:
-            return ValueError("[api.benchmark] Only one input arg required")
-
         if model:
             benchmarker = Benchmarker(model=model)
         elif pipeline:
             benchmarker = Benchmarker(pipeline=pipeline)
-        elif url:
-            benchmarker = Benchmarker(url=url)
 
         return benchmarker(**kwargs)
+
+    def _validate_exactly_one_mode_selected(
+        self,
+        *args,
+    ):
+        selections = sum(1 for mode in args if mode is not None)
+        if selections != 1:
+            raise UnclearBenchmarkerModeException(
+                "Benchmarker only accepts"
+                "one input arg for "
+                "'model' to run deepsparse.benchmark"
+                "'pipeline' to run deepsparse.benchmark_pipeline"
+            )
