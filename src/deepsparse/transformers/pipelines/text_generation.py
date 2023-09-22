@@ -436,6 +436,7 @@ class TextGenerationPipeline(TransformersPipeline):
             inputs.sequences = repeat_inputs(
                 inputs.sequences, generation_config.num_return_sequences
             )
+            self.deterministic = True
 
         if inputs.fixed_sequences_length or not self.cache_support_enabled:
             # to enforce a fixed sequence length, we need to
