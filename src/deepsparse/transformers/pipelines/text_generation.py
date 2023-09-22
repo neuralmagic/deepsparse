@@ -928,7 +928,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 # different lengths
 
                 # find the longest sequence in the batch of tokens
-                max_len = max([token.shape[1] for token in tokens])
+                max_len = max(token.shape[1] for token in tokens)
 
                 # pad all tokens to the same length
                 tokens = [
@@ -942,7 +942,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 ]
 
                 # find the longest sequence in the batch of logits
-                max_len = max([logits.shape[1] for logits in logits])
+                max_len = max(logits.shape[1] for logits in logits)
 
                 # pad all logits to the same length
                 logits = [
