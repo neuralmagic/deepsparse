@@ -128,7 +128,11 @@ def initialize_kv_cache_state(
     #   required for the internal kv cache management
     kv_cache_tensor = numpy.zeros(
         (
-            batch_size if not empty else 0,
+            # TODO: @tlrmchlsmth @bfineran: uncomment line below,
+            # temporarily ignoring `empty` as passing the empty
+            # kv cache array is currently causing a segfault in the
+            # internal kv-cache runtime
+            batch_size,  # if not empty else 0,
             num_attention_heads,
             length if length is not None else length_,
             hidden_dims,

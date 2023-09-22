@@ -113,8 +113,8 @@ def test_create_causal_mask(input_ids, attention_mask, expected_causal_mask):
             10,
             True,
             {
-                "past_key_values.1": numpy.zeros((0, 6, 10, 8), dtype=numpy.int8),
-                "past_key_values.2": numpy.zeros((0, 6, 10, 8), dtype=numpy.int8),
+                "past_key_values.1": numpy.zeros((5, 6, 10, 8), dtype=numpy.int8),
+                "past_key_values.2": numpy.zeros((5, 6, 10, 8), dtype=numpy.int8),
             },
         ),
     ],
