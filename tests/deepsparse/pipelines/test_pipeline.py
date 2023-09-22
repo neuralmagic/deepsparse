@@ -16,8 +16,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
-import numpy
-
 import flaky
 import pytest
 from deepsparse.base_pipeline import BasePipeline
