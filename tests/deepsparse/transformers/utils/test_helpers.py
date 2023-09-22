@@ -15,7 +15,10 @@
 import numpy
 
 import pytest
-from deepsparse.transformers.utils.helpers import create_causal_mask
+from deepsparse.transformers.utils.helpers import (
+    create_causal_mask,
+    initialize_kv_cache_state,
+)
 
 
 @pytest.mark.parametrize(
@@ -85,3 +88,44 @@ from deepsparse.transformers.utils.helpers import create_causal_mask
 def test_create_causal_mask(input_ids, attention_mask, expected_causal_mask):
     causal_mask = create_causal_mask(input_ids, attention_mask)
     assert numpy.array_equal(causal_mask, expected_causal_mask[None, None, ...])
+
+
+@pytest.mark.parametrize(
+    "cache_shape, kv_cache_data_type, output_names, length, empty, expected_result",
+    [
+        (
+            (1, 2, 3, 4),
+            numpy.float32,
+            ["present.1", "present.2", "present.3"],
+            None,
+            False,
+            {
+                "past_key_values.1": numpy.zeros((1, 2, 3, 4)),
+                "past_key_values.2": numpy.zeros((1, 2, 3, 4)),
+                "past_key_values.3": numpy.zeros((1, 2, 3, 4)),
+            },
+        ),
+        (
+            (5, 6, 7, 8),
+            numpy.int8,
+            ["present.1", "present.2"],
+            10,
+            True,
+            {
+                "past_key_values.1": numpy.zeros((0, 6, 10, 8), dtype=numpy.int8),
+                "past_key_values.2": numpy.zeros((0, 6, 10, 8), dtype=numpy.int8),
+            },
+        ),
+    ],
+)
+def test_initialize_kv_cache_state(
+    cache_shape, kv_cache_data_type, output_names, length, empty, expected_result
+):
+    # make sure that resulting Dict[str, numpy.ndarray] is the same
+    # as the expected_result
+    result = initialize_kv_cache_state(
+        cache_shape, kv_cache_data_type, output_names, length, empty
+    )
+    assert result.keys() == expected_result.keys()
+    for key in result.keys():
+        assert numpy.array_equal(result[key], expected_result[key])
