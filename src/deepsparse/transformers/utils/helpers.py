@@ -181,15 +181,7 @@ def process_generation_config(
 
     # TODO: move to tmp folder
     if isinstance(generation_config, dict):
-        config_dir = os.getcwd()
-        config_name = "generation_config.json"
-        local_config_path = os.path.join(config_dir, config_name)
-        _LOGGER.info(
-            "Dictionary provided for the generation config. Creating temporary "
-            " generation_config.json"
-        )
-        with open(local_config_path, "w") as f:
-            json.dump(generation_config, f)
+        return GenerationConfig.from_dict(generation_config)
 
     if isinstance(generation_config, (str, pathlib.Path)):
         generation_config = pathlib.Path(generation_config)
@@ -226,13 +218,13 @@ def check_and_return_generation_config(
         if pipeline_generation_config:
             generation_config = pipeline_generation_config
     else:
-        _LOGGER.info(
+        _LOGGER.debug(
             "Input generation config detected. This will override any"
             " config provided during pipeline creation."
         )
 
     if not generation_config:
-        _LOGGER.info(" No GenerationConfig detected. Using GenerationDefaults values")
+        _LOGGER.debug("No GenerationConfig detected. Using GenerationDefaults values")
         generation_config = defaults
     return generation_config
 
@@ -252,7 +244,6 @@ def override_config(
 
     :return: GenerationConfig object
 
-
     """
     if overrides is None:
         return generation_config
@@ -261,7 +252,7 @@ def override_config(
         try:
             if getattr(generation_config, k):
                 setattr(generation_config, k, v)
-                _LOGGER.info(f"Overriding attribute {k} in the generation config")
+                _LOGGER.debug(f"Overriding attribute {k} in the generation config")
         except AttributeError as exception:
             raise AttributeError(
                 "Argument provided for GenerationConfig is not "
