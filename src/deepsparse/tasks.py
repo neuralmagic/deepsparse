@@ -230,7 +230,7 @@ class SupportedTasks:
         :param task: the name of the task to check whether it is a chat task
         :return: True if it is a chat task, False otherwise
         """
-        return any([chat_task.matches(task) for chat_task in cls.chat])
+        return any(chat_task.matches(task) for chat_task in cls.chat)
 
     @classmethod
     def is_text_generation(cls, task: str) -> bool:
