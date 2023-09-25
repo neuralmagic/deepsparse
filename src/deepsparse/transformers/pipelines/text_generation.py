@@ -141,11 +141,10 @@ class TextGenerationInput(BaseModel):
         "top_k, repetition_penalty, do_sample, temperature",
     )
 
-    kwargs: Optional[Dict] = Field(
+    generation_kwargs: Optional[Dict] = Field(
         default=None,
         description="Any arguments to override generation_config arguments. Refer to "
-        "the generation_config argument for a full list of supported variables. Only "
-        "valid when generation_config is not None.",
+        "the generation_config argument for a full list of supported variables."
     )
 
 
@@ -434,7 +433,7 @@ class TextGenerationPipeline(TransformersPipeline):
             self.generation_config, inputs.generation_config, GenerationDefaults()
         )
 
-        generation_config = override_config(inputs.kwargs, generation_config)
+        generation_config = override_config(inputs.generation_kwargs, generation_config)
 
         self.streaming = inputs.streaming
         if not self.cache_support_enabled and generation_config.max_length > 1:
