@@ -83,6 +83,7 @@ class TextGenerationInput(BaseModel):
         arbitrary_types_allowed = True
 
     sequences: Union[str, List[str]] = Field(
+        alias="prompt",
         description="The input sequences to generate the text from.",
     )
     include_prompt_logits: bool = Field(
@@ -404,6 +405,28 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
         return TextGenerationOutput
+
+    def parse_inputs(self, *args, **kwargs) -> TextGenerationInput:
+        """
+
+        :param args: in line argument can only have 1, must either be
+            a complete TextGenerationInput object or `sequences` for
+            a TextGenerationInput
+        :param kwargs: if a TextGenerationInput is not provided, then
+            these kwargs will be used to instantiate one
+        :return: parsed TextGenerationInput object
+        """
+        if (
+            args
+            and not isinstance(args[0], TextGenerationInput)
+            and "prompt" not in kwargs
+            and "sequences" not in kwargs
+        ):
+            # assume first argument is "sequences" (prompt) by default
+            kwargs["sequences"] = args[0]
+            args = args[1:]
+
+        return super().parse_inputs(*args, **kwargs)
 
     def process_inputs(
         self, inputs: TextGenerationInput
