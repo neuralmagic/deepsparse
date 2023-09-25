@@ -31,8 +31,8 @@ class Benchmarker:
      - path to onnx.ModelProto
 
     Provide the stub/path to one of
-     - model to run deesparse.benchmark
-     - pipeline to run deepsparse.benchmark_pipeline
+     - onnx model to run deesparse.benchmark
+     - deployment directory to run deepsparse deepsparse.benchmark_pipeline
     """
 
     def __init__(
