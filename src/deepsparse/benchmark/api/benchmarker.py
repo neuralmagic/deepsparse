@@ -20,6 +20,19 @@ from deepsparse.benchmark.benchmark_model import benchmark_model
 from deepsparse.benchmark.benchmark_pipeline import benchmark_pipeline
 
 
+def run_benchmarker(
+    model: Optional[str] = None,
+    pipeline: Optional[str] = None,
+    **kwargs,
+):
+    if model:
+        benchmarker = Benchmarker(model=model)
+    elif pipeline:
+        benchmarker = Benchmarker(pipeline=pipeline)
+
+    return benchmarker(**kwargs)
+
+
 class Benchmarker:
     """
     Benchmark API
@@ -50,19 +63,6 @@ class Benchmarker:
 
         if self.pipeline:
             return benchmark_pipeline(model_path=self.pipeline, **kwargs)
-
-    @staticmethod
-    def benchmark(
-        model: Optional[str] = None,
-        pipeline: Optional[str] = None,
-        **kwargs,
-    ):
-        if model:
-            benchmarker = Benchmarker(model=model)
-        elif pipeline:
-            benchmarker = Benchmarker(pipeline=pipeline)
-
-        return benchmarker(**kwargs)
 
     def _validate_exactly_one_mode_selected(
         self,

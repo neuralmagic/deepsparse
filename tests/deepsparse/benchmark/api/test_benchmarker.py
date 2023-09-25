@@ -15,12 +15,35 @@
 import os
 import shutil
 from typing import Any, Dict, Optional
+from unittest import mock
 
 import pytest
-from deepsparse.benchmark.api.benchmarker import Benchmarker
+from deepsparse.benchmark.api.benchmarker import Benchmarker, run_benchmarker
 from deepsparse.benchmark.api.errors import UnclearBenchmarkerModeException
 from deepsparse.benchmark.config import PipelineBenchmarkConfig
 from sparsezoo import Model
+
+
+# from types import MethodType
+
+
+IC = "image_classification"
+TEXT_GEN = "text_generation"
+
+BENCHMARK_PIPELINE_IC_CONFIG = {
+    "data_type": "dummy",
+    "gen_sequence_length": 100,
+    "input_image_shape": [500, 500, 3],
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {},
+}
+
+BENCHMARK_PIPELINE_TEXT_GEN_CONFIG = {
+    "data_type": "dummy",
+    "gen_sequence_length": 100,
+    "pipeline_kwargs": {},
+    "input_schema_kwargs": {},
+}
 
 
 @pytest.fixture(scope="function")
@@ -66,6 +89,25 @@ def benchmarker_fixture(get_model_path):
     return get
 
 
+class MockBenchmarker(Benchmarker):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, **kwargs):
+        if self.model:
+            return "foo"
+
+        if self.pipeline:
+            pipeline_kwargs = kwargs["config"].__dict__
+            if kwargs["task"] == IC:
+                assert set(BENCHMARK_PIPELINE_IC_CONFIG).issubset(set(pipeline_kwargs))
+            else:
+                assert set(BENCHMARK_PIPELINE_TEXT_GEN_CONFIG).issubset(
+                    set(pipeline_kwargs)
+                )
+            return "bar"
+
+
 def test_validate_exactly_one_mode_selected():
     args = {
         "model": "foo",
@@ -97,27 +139,16 @@ def test_benchmark_model_from_benchmarker(benchmarker_fixture, stub):
     [
         (
             "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
-            "image_classification",
-            {
-                "data_type": "dummy",
-                "gen_sequence_length": 100,
-                "input_image_shape": [500, 500, 3],
-                "pipeline_kwargs": {},
-                "input_schema_kwargs": {},
-            },
+            IC,
+            BENCHMARK_PIPELINE_IC_CONFIG,
         ),
         (
             (
                 "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/"
                 "bigpython_bigquery_thepile/base_quant-none"
             ),
-            "text_generation",
-            {
-                "data_type": "dummy",
-                "gen_sequence_length": 100,
-                "pipeline_kwargs": {},
-                "input_schema_kwargs": {},
-            },
+            TEXT_GEN,
+            BENCHMARK_PIPELINE_TEXT_GEN_CONFIG,
         ),
     ],
 )
@@ -136,3 +167,41 @@ def test_benchmark_pipeline_from_benchmarker(
     assert batch_times is not None
     assert total_run_time is not None
     assert num_streams is not None
+
+
+@pytest.mark.parametrize(
+    "stub,task,config_dict",
+    [
+        (
+            "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
+            IC,
+            BENCHMARK_PIPELINE_IC_CONFIG,
+        ),
+        (
+            "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/"
+            "bigpython_bigquery_thepile/base_quant-none",
+            TEXT_GEN,
+            BENCHMARK_PIPELINE_TEXT_GEN_CONFIG,
+        ),
+    ],
+)
+def test_run_benchmarker(
+    benchmarker_fixture,
+    stub,
+    task,
+    config_dict,
+):
+
+    path, model_args, pipeline_args = benchmarker_fixture(
+        stub=stub, task=task, config_dict=config_dict
+    )
+
+    with mock.patch(
+        "deepsparse.benchmark.api.benchmarker.Benchmarker",
+        side_effect=MockBenchmarker,
+    ):
+        response_model = run_benchmarker(model=path, **model_args)
+        assert response_model == "foo"
+
+        response_pipeline = run_benchmarker(pipeline=stub, **pipeline_args)
+        assert response_pipeline == "bar"
