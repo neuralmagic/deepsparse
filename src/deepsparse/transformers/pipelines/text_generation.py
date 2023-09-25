@@ -144,7 +144,7 @@ class TextGenerationInput(BaseModel):
     generation_kwargs: Optional[Dict] = Field(
         default=None,
         description="Any arguments to override generation_config arguments. Refer to "
-        "the generation_config argument for a full list of supported variables."
+        "the generation_config argument for a full list of supported variables.",
     )
 
 
@@ -408,6 +408,7 @@ class TextGenerationPipeline(TransformersPipeline):
         if "sequences" in kwargs and "prompt" not in kwargs:
             # support prompt and sequences interchangeably
             kwargs["prompt"] = kwargs["sequences"]
+
         if (
             args
             and not isinstance(args[0], TextGenerationInput)
@@ -418,6 +419,22 @@ class TextGenerationPipeline(TransformersPipeline):
             kwargs["prompt"] = args[0]
             args = args[1:]
 
+        if kwargs:
+            if kwargs.get("generation_kwargs"):
+                generation_kwargs = kwargs.get("generation_kwargs")
+            else:
+                generation_kwargs = {}
+
+            for k, v in kwargs.items():
+                try:
+                    if getattr(GenerationDefaults, k) and not generation_kwargs.get(k):
+                        generation_kwargs[k] = v
+                except AttributeError:
+                    continue
+
+            kwargs["generation_kwargs"] = generation_kwargs
+
+        print(args, kwargs)
         return super().parse_inputs(*args, **kwargs)
 
     def process_inputs(
