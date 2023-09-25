@@ -18,6 +18,7 @@ import pytest
 from deepsparse.transformers.utils.helpers import (
     create_causal_mask,
     initialize_kv_cache_state,
+    validate_session_ids,
 )
 
 
@@ -112,8 +113,8 @@ def test_create_causal_mask(input_ids, attention_mask, expected_causal_mask):
             10,
             True,
             {
-                "past_key_values.1": numpy.zeros((0, 6, 10, 8), dtype=numpy.int8),
-                "past_key_values.2": numpy.zeros((0, 6, 10, 8), dtype=numpy.int8),
+                "past_key_values.1": numpy.zeros((5, 6, 10, 8), dtype=numpy.int8),
+                "past_key_values.2": numpy.zeros((5, 6, 10, 8), dtype=numpy.int8),
             },
         ),
     ],
@@ -129,3 +130,30 @@ def test_initialize_kv_cache_state(
     assert result.keys() == expected_result.keys()
     for key in result.keys():
         assert numpy.array_equal(result[key], expected_result[key])
+
+
+@pytest.mark.parametrize(
+    "sequences, session_ids, result, should_raise_error",
+    [
+        ("sequence", None, None, False),
+        (["sequence"], None, None, False),
+        (["sequence_1", "sequence_2"], None, None, False),
+        ("sequence", "session_id", ["session_id"], False),
+        (["sequence"], "session_id", ["session_id"], False),
+        (["sequence"], ["session_id"], ["session_id"], False),
+        (["sequence_1", "sequence_2"], "session_id", None, True),
+        (
+            ["sequence_1", "sequence_2"],
+            ["session_id_1", "session_id_2", "session_id_3"],
+            None,
+            True,
+        ),
+        (["sequence_1", "sequence_2"], ["session_id_1", "session_id_1"], None, True),
+    ],
+)
+def test_validate_session_ids(sequences, session_ids, result, should_raise_error):
+    if should_raise_error:
+        with pytest.raises(ValueError):
+            validate_session_ids(session_ids, dict(sequences=sequences))
+    else:
+        assert result == validate_session_ids(session_ids, dict(sequences=sequences))

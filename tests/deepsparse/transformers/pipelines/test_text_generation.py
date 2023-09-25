@@ -15,6 +15,7 @@
 from typing import List, Optional, Tuple
 
 import numpy
+from transformers import GenerationConfig
 
 import pytest
 from deepsparse import Pipeline
@@ -50,6 +51,10 @@ def Fibonacci(n):
 @pytest.mark.parametrize(
     "internal_kv_cache",
     [True, False],
+)
+@pytest.mark.parametrize(
+    "pipeline_type",
+    ["text_generation", "chat"],
 )
 @pytest.mark.parametrize(
     "model_stub, "
@@ -91,12 +96,11 @@ class TestTextGenerationPipeline:
                 return self.default_pipeline
             else:
                 self.default_pipeline = Pipeline.create(
-                    task="text_generation",
+                    task=self.pipeline_type,
                     model_path=self.model_stub,
                     internal_kv_cache=self.internal_kv_cache,
                     prompt_sequence_length=self.prompt_sequence_length,
                     sequence_length=self.sequence_length,
-                    force_max_tokens=True,
                 )
                 return self.default_pipeline
         # return a pipeline with the given kwargs
@@ -111,10 +115,12 @@ class TestTextGenerationPipeline:
         prompt,
         logits_max_diff_kv_cache_has_been_filled,
         internal_kv_cache,
+        pipeline_type,
     ):
         self.num_tokens_generate = 216
         self.model_stub = model_stub
         self.prompt = prompt
+        self.pipeline_type = pipeline_type
         # create torch ground source
         torch_source = TorchGroundTruthSource(
             num_tokens_to_generate=self.num_tokens_generate, model_name=model_name
@@ -168,18 +174,20 @@ class TestTextGenerationPipeline:
             )
         _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
+            task=self.pipeline_type,
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=1,
             engine_type="onnxruntime",
         )
         pipeline._debug = True
+
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+        )
+
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
         assert output.total_num_processed_tokens[0] < self.sequence_length
         self._test_output(
@@ -200,18 +208,18 @@ class TestTextGenerationPipeline:
             )
         _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
+            task=self.pipeline_type,
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
             engine_type="onnxruntime",
         )
         pipeline._debug = True
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] < self.sequence_length
@@ -233,19 +241,19 @@ class TestTextGenerationPipeline:
             )
         _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
+            task=self.pipeline_type,
             model_path=self.model_stub,
             sequence_length=self.sequence_length_short,
             prompt_sequence_length=self.prompt_sequence_length,
-            force_max_tokens=True,
             engine_type="onnxruntime",
         )
         pipeline._debug = True
+
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] > self.sequence_length_short, (
@@ -269,18 +277,18 @@ class TestTextGenerationPipeline:
 
         _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
+            task=self.pipeline_type,
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=1,
             internal_kv_cache=self.internal_kv_cache,
         )
         pipeline._debug = True
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] < self.sequence_length
@@ -299,7 +307,7 @@ class TestTextGenerationPipeline:
 
         _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
+            task=self.pipeline_type,
             model_path=self.model_stub,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
@@ -307,11 +315,11 @@ class TestTextGenerationPipeline:
         )
         pipeline._debug = True
 
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] < self.sequence_length
@@ -330,18 +338,18 @@ class TestTextGenerationPipeline:
 
         _, _, torch_ground_truth = setup
         pipeline = self.get_pipeline(
-            task="text_generation",
+            task=self.pipeline_type,
             model_path=self.model_stub,
             sequence_length=self.sequence_length_short,
             prompt_sequence_length=self.prompt_sequence_length,
             internal_kv_cache=self.internal_kv_cache,
         )
         pipeline._debug = True
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+        )
         output = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output.total_num_processed_tokens[0] > self.sequence_length_short, (
@@ -361,18 +369,16 @@ class TestTextGenerationPipeline:
         # Test the scenario, where the same prompt is run multiple times
         # Every run should produce the same output
         pipeline = self.get_pipeline()
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+        )
 
         output_1 = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
+
         output_2 = pipeline(
-            sequences=self.prompt,
-            return_logits=True,
-            include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
+            sequences=self.prompt, include_prompt_logits=True, generation_config=config
         )
 
         assert output_1.generations[0].text == output_2.generations[0].text
@@ -387,11 +393,13 @@ class TestTextGenerationPipeline:
         # Same two prompts should produce the same output
         pipeline = self.get_pipeline()
 
+        config = GenerationConfig(
+            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+        )
         output = pipeline(
             sequences=[self.prompt, self.prompt],
-            return_logits=True,
+            generation_config=config,
             include_prompt_logits=True,
-            max_tokens=self.num_tokens_generate,
         )
 
         logits_0 = output.generations[0].score
@@ -408,21 +416,146 @@ class TestTextGenerationPipeline:
         # from the same prompt
         pipeline = self.get_pipeline()
 
-        output_sequences = pipeline(
-            sequences=[self.prompt], num_generated_predictions=2
+        config = GenerationConfig(
+            num_return_sequences=2,
+            max_length=self.num_tokens_generate,
+            top_k=0,
+            top_p=0.0,
         )
 
+        output_sequences = pipeline(sequences=[self.prompt], generation_config=config)
         assert len(output_sequences.generations) == 1
         assert len(output_sequences.generations[0]) == 2
 
         output_sequences = pipeline(
-            sequences=[self.prompt, self.prompt], num_generated_predictions=2
+            sequences=[self.prompt, self.prompt], generation_config=config
         )
-
         assert len(output_sequences.generations) == 2
 
         for generation in output_sequences.generations:
             assert len(generation) == 2
+
+    def test_run_with_same_session_ids(self, setup):
+        # Test the scenario where the same session ids are used for multiple
+        # inference runs. There are two conditions that must be fulfilled:
+        # 1. The information regarding the prompt does not leak between sessions
+        # 2. Running two prompts one after another is identical to running
+        #    a composition of those prompts i.e.
+        #     generated_text = pipeline(prompt_1)
+        #     generated_text_2 = pipeline(prompt_2)
+        #     generated_text_2 == pipeline(prompt_1 + generated_text + prompt_2)
+
+        if self.pipeline_type not in ["chatbot", "chat"]:
+            pytest.skip("This test is only applicable to chatbot pipeline")
+
+        prompt_1 = "This prompt is used for testing purposes. To this to make sure that"
+        prompt_2 = "still this prompt should not"
+        num_generated_tokens = 32
+
+        self._test_run_with_same_session_ids(
+            prompt_1,
+            prompt_2,
+            num_generated_tokens,
+            multi_token_prefill=False,
+        )
+        self._test_run_with_same_session_ids(
+            prompt_1,
+            prompt_2,
+            num_generated_tokens,
+            multi_token_prefill=True,
+        )
+
+    def _test_run_with_same_session_ids(
+        self,
+        prompt_1,
+        prompt_2,
+        num_generated_tokens,
+        multi_token_prefill,
+    ):
+        pipeline = self.get_pipeline(
+            task=self.pipeline_type,
+            model_path=self.model_stub,
+            prompt_sequence_length=self.prompt_sequence_length
+            if multi_token_prefill
+            else 1,
+            force_max_tokens=True,
+            internal_kv_cache=self.internal_kv_cache,
+        )
+
+        # make sure information does not leak between sessions
+
+        self._test_composition_same_session_ids(
+            prompt_1,
+            prompt_2,
+            num_generated_tokens,
+            pipeline,
+            session_id_1="test_1",
+            session_id_2="test_2",
+        )
+
+        self._test_composition_same_session_ids(
+            prompt_1,
+            prompt_2,
+            num_generated_tokens,
+            pipeline,
+            session_id_1="test_3",
+            session_id_2="test_4",
+        )
+
+    @staticmethod
+    def _test_composition_same_session_ids(
+        prompt_1,
+        prompt_2,
+        num_generated_tokens,
+        pipeline,
+        session_id_1,
+        session_id_2,
+    ):
+
+        tokenizer = pipeline.tokenizer
+        config = GenerationConfig(
+            output_scores=True, max_length=num_generated_tokens, top_k=0, top_p=0.0
+        )
+
+        # make sure that running two prompts one after another
+        # is identical to running a composition of those prompts
+        out_1_ = pipeline(
+            sequences=prompt_1,
+            session_ids=session_id_1,
+            generation_config=config,
+            include_prompt_logits=True,
+        )
+        prompt_1_ = out_1_.generations[0].text
+        out_1 = pipeline(
+            sequences=prompt_2,
+            session_ids=session_id_1,
+            generation_config=config,
+            include_prompt_logits=True,
+        )
+        cache_state_1 = pipeline.storage_kv_cache.get(session_id_1).cached_inputs[
+            "past_key_values.0.key"
+        ]
+
+        prompt_composition = tokenizer.decode(
+            tokenizer(prompt_1).input_ids
+            + tokenizer(prompt_1_).input_ids
+            + tokenizer(prompt_2).input_ids,
+            skip_special_tokens=True,
+        )
+        out_2 = pipeline(
+            sequences=prompt_composition,
+            session_ids=session_id_2,
+            generation_config=config,
+            include_prompt_logits=True,
+        )
+        cache_state_2 = pipeline.storage_kv_cache.get(session_id_2).cached_inputs[
+            "past_key_values.0.key"
+        ]
+        if cache_state_1.shape[0]:
+            # if cache state is not empty, i.e. we are managing kv cache
+            # externally, make sure that the cache state is the same
+            numpy.allclose(cache_state_1, cache_state_2, atol=_PRECISION)
+        assert out_1.generations[0].text == out_2.generations[0].text
 
     def _test_output(
         self,
@@ -431,7 +564,7 @@ class TestTextGenerationPipeline:
         max_logits_difference_threshold: Optional[float] = None,
         run_cache_validation: bool = True,
     ):
-        # extract numpy arrays from cached_inputs
+
         (
             generated_logits,
             prompt_logits,

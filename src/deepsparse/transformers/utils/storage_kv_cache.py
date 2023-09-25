@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-# isort: skip_file
+import logging
 
-from .pipeline import *
-from .question_answering import *
-from .text_classification import *
-from .token_classification import *
-from .text_generation import *
-from .zero_shot_text_classification import *
-from .embedding_extraction import *
-from .chat import *
+
+_LOGGER = logging.getLogger(__name__)
+
+__all__ = ["SessionStorageKVCache"]
+
+
+class SessionStorageKVCache(dict):
+    """
+    A storage that stores the kv cache sessions.
+    Each session is a DecoderKVCache object that
+    stores the state of the kv cache.
+    The storage is a dictionary that where keys are session_ids
+    and values are of all the active sessions.
+    """
