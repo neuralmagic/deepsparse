@@ -161,7 +161,7 @@ def test_benchmark_pipeline_from_benchmarker(
     )
     # [TODO]: downstream benchmark_pipeline to accept path for text_gen.
     #  Passes for ic
-    benchmarker = Benchmarker(pipeline=stub)  # TODO:
+    benchmarker = Benchmarker(pipeline=stub)
 
     batch_times, total_run_time, num_streams = benchmarker(**pipeline_args)
     assert batch_times is not None
