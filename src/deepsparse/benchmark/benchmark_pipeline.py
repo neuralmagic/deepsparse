@@ -87,7 +87,7 @@ import json
 import logging
 import threading
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import click
 import numpy
@@ -237,7 +237,7 @@ def create_input_schema(
 def benchmark_pipeline(
     model_path: str,
     task: str,
-    config: PipelineBenchmarkConfig = None,
+    config: Optional[PipelineBenchmarkConfig] = None,
     batch_size: int = 1,
     num_cores: int = None,
     scenario: str = "sync",
