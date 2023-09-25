@@ -136,7 +136,7 @@ class TextGenerationInput(BaseModel):
         description="GenerationConfig file consisting of parameters used to control "
         "sequences generated for each prompt. The current supported parameters are: "
         "max_length, max_new_tokens, num_return_sequences, output_scores, top_p, "
-        "top_k, repetition_penalty.",
+        "top_k, repetition_penalty, do_sample",
     )
 
     kwargs: Optional[Dict] = Field(
@@ -190,10 +190,6 @@ class TextGenerationPipeline(TransformersPipeline):
     """
     Pipeline for text generation tasks.
 
-    :param deterministic: if False, the pipeline will sample from
-        the probability distribution computed from the logits.
-        If True, the pipeline will get the next token by applying
-        an argmax function to the logits.
     :param sampling_temperature: the temperature to use when sampling
         from the probability distribution computed from the logits.
         Higher values will result in more random samples. Should
@@ -212,7 +208,6 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def __init__(
         self,
-        deterministic: bool = True,
         sampling_temperature: float = 1.0,
         prompt_sequence_length: int = 64,
         sequence_length: int = 1024,
@@ -253,7 +248,6 @@ class TextGenerationPipeline(TransformersPipeline):
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
-        self.deterministic = deterministic
         self.sampling_temperature = sampling_temperature
         self.prompt_sequence_length = prompt_sequence_length
         self.force_max_tokens = force_max_tokens
@@ -452,8 +446,7 @@ class TextGenerationPipeline(TransformersPipeline):
             )
 
         # If the num_return_sequences > 1, repeat the prompt
-        # num_return_sequences times. Also, update the engine so that deterministic
-        # is set to False.
+        # num_return_sequences times.
         original_inputs = inputs.sequences
         if generation_config.num_return_sequences > 1:
             if isinstance(inputs.sequences, str):
@@ -461,7 +454,6 @@ class TextGenerationPipeline(TransformersPipeline):
             inputs.sequences = repeat_inputs(
                 inputs.sequences, generation_config.num_return_sequences
             )
-            self.deterministic = False
 
         if inputs.fixed_sequences_length or not self.cache_support_enabled:
             # to enforce a fixed sequence length, we need to
@@ -676,7 +668,7 @@ class TextGenerationPipeline(TransformersPipeline):
                 prompt_logits = self.multitoken_engine(engine_inputs)
                 token_generator = TokenGenerator(
                     logits_shape=prompt_logits[-1].shape[-1],
-                    deterministic=self.deterministic,
+                    deterministic=generation_config.do_sample,
                     sampling_temperature=self.sampling_temperature,
                     **context,
                 )
@@ -693,7 +685,7 @@ class TextGenerationPipeline(TransformersPipeline):
             token_generator = TokenGenerator(
                 logits_shape=prompt_logits[-1].shape[-1],
                 tokens=tokens,
-                deterministic=self.deterministic,
+                deterministic=generation_config.do_sample,
                 sampling_temperature=self.sampling_temperature,
                 **context,
             )
