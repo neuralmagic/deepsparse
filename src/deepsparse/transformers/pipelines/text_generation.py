@@ -406,6 +406,9 @@ class TextGenerationPipeline(TransformersPipeline):
             these kwargs will be used to instantiate one
         :return: parsed TextGenerationInput object
         """
+        if "sequences" in kwargs and "prompt" not in kwargs:
+            # support prompt and sequences interchangeably
+            kwargs["prompt"] = kwargs["sequences"]
         if (
             args
             and not isinstance(args[0], TextGenerationInput)
@@ -413,7 +416,7 @@ class TextGenerationPipeline(TransformersPipeline):
             and "sequences" not in kwargs
         ):
             # assume first argument is "sequences" (prompt) by default
-            kwargs["sequences"] = args[0]
+            kwargs["prompt"] = args[0]
             args = args[1:]
 
         return super().parse_inputs(*args, **kwargs)
