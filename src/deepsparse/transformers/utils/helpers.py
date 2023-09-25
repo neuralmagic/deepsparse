@@ -179,7 +179,6 @@ def process_generation_config(
     if not generation_config:
         return None
 
-    # TODO: move to tmp folder
     if isinstance(generation_config, dict):
         return GenerationConfig.from_dict(generation_config)
 
