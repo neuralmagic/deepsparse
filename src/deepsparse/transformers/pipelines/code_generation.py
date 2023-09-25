@@ -12,15 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
-# isort: skip_file
 
-from .pipeline import *
-from .question_answering import *
-from .text_classification import *
-from .token_classification import *
-from .text_generation import *
-from .zero_shot_text_classification import *
-from .embedding_extraction import *
-from .chat import *
-from .code_generation import *
+from deepsparse import Pipeline
+from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
+
+
+__all__ = ["CodeGenerationPipeline"]
+
+
+@Pipeline.register(
+    task="code_generation",
+    task_aliases=["codegen"],
+)
+class CodeGenerationPipeline(TextGenerationPipeline):
+    """
+    Subclass of text generation pipeline to support any defaults or
+    overrides needed for code generation
+    """
+
+    pass
