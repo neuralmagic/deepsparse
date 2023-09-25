@@ -435,38 +435,44 @@ class TestTextGenerationPipeline:
         for generation in output_sequences.generations:
             assert len(generation) == 2
 
-    def test_token_generation__deterministic(self, setup):
-        """Should generate the same tokens"""
+    def test_token_generation_deterministic(self, setup):
         pipeline_kwargs = {
             "task": "text_generation",
             "model_path": self.model_stub,
-            "deterministic": True,
         }
-        pipeline = self.get_pipeline(**pipeline_kwargs)
-        inference = pipeline(
-            sequences=["hello?"], num_generated_predictions=3, max_tokens=100
+        config = GenerationConfig(
+            output_scores=True,
+            max_length=self.num_tokens_generate,
+            top_k=0,
+            top_p=0.0,
+            num_return_sequences=3,
+            do_sample=False,
         )
-        sequences = inference.sequences[0]
-        # Output should be the same from one another
-        assert all(sequence == sequences[0] for sequence in sequences)
+        pipeline = self.get_pipeline(**pipeline_kwargs)
+        inference = pipeline(sequences=["hello?"], generation_config=config)
+        generations = inference.generations
+        text_outputs = [x.text for x in generations[0]]
+        assert len(set(text_outputs)) == 1
 
-    def test_token_generation__non_deterministic(self, setup):
-        """Should generate non-unique tokens"""
+    def test_token_generation_non_deterministic(self, setup):
         pipeline_kwargs = {
             "task": "text_generation",
             "model_path": self.model_stub,
-            "deterministic": False,
         }
         pipeline = self.get_pipeline(**pipeline_kwargs)
-        num_generated_predictions = 3
-        inference = pipeline(
-            sequences=["hello?"],
-            num_generated_predictions=num_generated_predictions,
-            max_tokens=100,
+        config = GenerationConfig(
+            output_scores=True,
+            max_length=self.num_tokens_generate,
+            top_k=0,
+            top_p=0.0,
+            num_return_sequences=3,
+            do_sample=True,
         )
-        sequences = inference.sequences[0]
-        # Outputs should be unique from one another
-        assert len(set(sequences)) == num_generated_predictions
+        inference = pipeline(sequences=["hello?"], generation_config=config)
+        generations = inference.generations
+        # Output should be the same from one another
+        text_outputs = [x.text for x in generations[0]]
+        assert len(set(text_outputs)) == 3
 
     def test_run_with_same_session_ids(self, setup):
         # Test the scenario where the same session ids are used for multiple
