@@ -186,7 +186,7 @@ class TextGenerationOutput(BaseModel):
 
 @Pipeline.register(
     task="text_generation",
-    task_aliases=["codegen", "opt", "bloom"],
+    task_aliases=["opt", "bloom"],
 )
 class TextGenerationPipeline(TransformersPipeline):
     """

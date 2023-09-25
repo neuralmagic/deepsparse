@@ -60,6 +60,9 @@ __all__ = [
     "Bucketable",
     "BucketingPipeline",
     "create_engine",
+    "TextGeneration",
+    "CodeGeneration",
+    "Chat",
 ]
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -772,6 +775,55 @@ def _initialize_executor_and_workers(
         )
 
     return executor, num_async_workers
+
+
+def text_generation_pipeline(
+    *args, model: Optional[str] = None, **kwargs
+) -> "Pipeline":
+    """
+    :return: text generation pipeline with the given args and
+        kwargs passed to Pipeline.create
+    """
+    kwargs = _parse_model_arg(model, **kwargs)
+    return Pipeline.create("text_generation", *args, **kwargs)
+
+
+def code_generation_pipeline(
+    *args, model: Optional[str] = None, **kwargs
+) -> "Pipeline":
+    """
+    :return: text generation pipeline with the given args and
+        kwargs passed to Pipeline.create
+    """
+    kwargs = _parse_model_arg(model, **kwargs)
+    return Pipeline.create("code_generation", *args, **kwargs)
+
+
+def chat_pipeline(*args, model: Optional[str] = None, **kwargs) -> "Pipeline":
+    """
+    :return: text generation pipeline with the given args and
+        kwargs passed to Pipeline.create
+    """
+    kwargs = _parse_model_arg(model, **kwargs)
+    return Pipeline.create("chat", *args, **kwargs)
+
+
+def _parse_model_arg(model: Optional[str], **kwargs) -> dict:
+    if model is not None:
+        model_path = kwargs.get("model_path")
+        if model_path is not None:
+            raise ValueError(
+                f"Only one of model and model_path may be supplied, found {model} "
+                f"and {model_path} respectively"
+            )
+        kwargs["model_path"] = model
+    return kwargs
+
+
+# aliases for top level import
+TextGeneration = text_generation_pipeline
+CodeGeneration = code_generation_pipeline
+Chat = chat_pipeline
 
 
 def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
