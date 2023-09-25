@@ -141,7 +141,6 @@ def main(
         task=task,  # let pipeline determine if task is supported
         model_path=model_path,
         sequence_length=sequence_length,
-        sampling_temperature=sampling_temperature,
         prompt_sequence_length=prompt_sequence_length,
     )
 
@@ -153,8 +152,11 @@ def main(
 
     # continue prompts until a keyboard interrupt
     while data is None:  # always True in interactive Mode
-        input_text = input(">>> ")
-        pipeline_inputs = {"prompt": [input_text]}
+        prompt_input = input(">>> ")
+        pipeline_inputs = dict(
+            prompt=[prompt_input],
+            sampling_temperature=sampling_temperature,
+        )
 
         if SupportedTasks.is_chat(task):
             pipeline_inputs["session_ids"] = session_ids
