@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional
 import pytest
 from deepsparse.benchmark.api.benchmarker import Benchmarker
 from deepsparse.benchmark.api.errors import UnclearBenchmarkerModeException
+from deepsparse.benchmark.config import PipelineBenchmarkConfig
 from sparsezoo import Model
 
 
@@ -26,20 +27,13 @@ from sparsezoo import Model
 def get_model_path():
     """download model, return its path and delete at the end"""
 
-    text_gen_stub = "zoo:opt-1.3b-opt_pretrain-quantW8A8"
-    default_download_path = os.path.expanduser(
-        os.path.join("~/.cache/nm_tests", "deepsparse")
-    )
+    def download_model_and_return_path(stub: str, download_path: Optional[str] = None):
+        model = Model(stub, download_path)
+        path = model.path
+        yield path
 
-    def download_model_and_return_path(
-        stub: Optional[str] = None, download_path: Optional[str] = None
-    ):
-        model = Model(stub or text_gen_stub, download_path or default_download_path)
-        yield model.path
-
-        # yield model.path()
-        # shutil.rmtree(path)
-        # assert os.path.exists(path) is False
+        shutil.rmtree(path)
+        assert os.path.exists(path) is False
 
     return download_model_and_return_path
 
@@ -47,18 +41,20 @@ def get_model_path():
 @pytest.fixture
 def benchmarker_fixture(get_model_path):
     def get(
-        source: Optional[str] = None,
-        path: Optional[str] = None,
+        stub: str,
+        task: Optional[str] = None,
+        config_dict: Optional[str] = None,
+        model_path: Optional[str] = None,
         model_args: Optional[Dict[str, Any]] = None,
         pipeline_args: Dict[str, Any] = None,
     ):
-        model_path = path or next(get_model_path(stub=source))
+        model_path = model_path or next(get_model_path(stub=stub))
 
         required_benchmark_model_args = model_args or {}
 
         required_benchmark_pipeline_args = pipeline_args or {
-            "task": "text_generation",
-            "config": "",
+            "task": task,
+            "config": PipelineBenchmarkConfig(**config_dict) if config_dict else None,
         }
 
         return (
@@ -69,32 +65,73 @@ def benchmarker_fixture(get_model_path):
 
     return get
 
-    # required_benchmark_pipeline_args = {
-    #     "task": "text_generation",
-    # }
 
-    # return model_path, required_benchmark_pipeline_args
-
-
-# def test_validate_exactly_one_arg_provided():
-#     args = {
-#         "model": "foo",
-#         "pipeline": "bar",
-#     }
-#     with pytest.raises(UnclearBenchmarkerModeException):
-#         Benchmarker(**args)
+def test_validate_exactly_one_mode_selected():
+    args = {
+        "model": "foo",
+        "pipeline": "bar",
+    }
+    with pytest.raises(UnclearBenchmarkerModeException):
+        Benchmarker(**args)
 
 
-# def test_benchmark_model_from_benchmarker(benchmarker_fixture):
-#     path, model_args, _ = benchmarker_fixture()
-#     benchmarker = Benchmarker(model=path)
-#     export_dict = benchmarker(**model_args)
-# assert export_dict is not None
+@pytest.mark.parametrize(
+    "stub",
+    [
+        "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
+        (
+            "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/"
+            "bigpython_bigquery_thepile/base_quant-none"
+        ),
+    ],
+)
+def test_benchmark_model_from_benchmarker(benchmarker_fixture, stub):
+    path, model_args, _ = benchmarker_fixture(stub=stub)
+    benchmarker = Benchmarker(model=path)
+    export_dict = benchmarker(**model_args)
+    assert export_dict is not None
 
 
-def test_benchmark_pipeline_from_benchmarker(benchmarker_fixture):
-    path, _, pipeline_args = benchmarker_fixture()
-    benchmarker = Benchmarker(pipeline=path)
+@pytest.mark.parametrize(
+    "stub,task,config_dict",
+    [
+        (
+            "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
+            "image_classification",
+            {
+                "data_type": "dummy",
+                "gen_sequence_length": 100,
+                "input_image_shape": [500, 500, 3],
+                "pipeline_kwargs": {},
+                "input_schema_kwargs": {},
+            },
+        ),
+        (
+            (
+                "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/"
+                "bigpython_bigquery_thepile/base_quant-none"
+            ),
+            "text_generation",
+            {
+                "data_type": "dummy",
+                "gen_sequence_length": 100,
+                "pipeline_kwargs": {},
+                "input_schema_kwargs": {},
+            },
+        ),
+    ],
+)
+def test_benchmark_pipeline_from_benchmarker(
+    benchmarker_fixture, stub, task, config_dict
+):
+
+    path, _, pipeline_args = benchmarker_fixture(
+        stub=stub, task=task, config_dict=config_dict
+    )
+    # [TODO]: downstream benchmark_pipeline to accept path for text_gen.
+    #  Passes for ic
+    benchmarker = Benchmarker(pipeline=stub)  # TODO:
+
     batch_times, total_run_time, num_streams = benchmarker(**pipeline_args)
     assert batch_times is not None
     assert total_run_time is not None
