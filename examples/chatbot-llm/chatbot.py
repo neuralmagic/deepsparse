@@ -40,10 +40,10 @@ Options:
                                   Whether to display the token generation
                                   speed or not  [default:
                                   no_show_tokens_per_sec]
-  --history / --no_history        Whether to include history during prompt
-                                  generation or not  [default: history]
+  --task TEXT                     The task to use for the pipeline. Choose any
+                                  of `chat`, `codegen`, `text-generation`
+                                  [default: chat]
   --help                          Show this message and exit.
-
 
 Installation: pip install deepsparse[transformers]
 Examples:
@@ -61,11 +61,12 @@ python chatbot.py models/llama/deployment \
 
 4) Disable history
 python chatbot.py models/llama/deployment \
-    --no_history
+    --task text-generation
 """
 import click
 
 from deepsparse import Pipeline
+from deepsparse.tasks import SupportedTasks
 
 
 @click.command(
@@ -103,10 +104,11 @@ from deepsparse import Pipeline
     help="Whether to display the token generation speed or not",
 )
 @click.option(
-    "--history/--no_history",
-    is_flag=True,
-    default=True,
-    help="Whether to include history during prompt generation or not",
+    "--task",
+    default="chat",
+    type=str,
+    help="The task to use for the pipeline. Choose any of "
+    "`chat`, `codegen`, `text-generation`",
 )
 def main(
     model_path: str,
@@ -114,7 +116,7 @@ def main(
     sampling_temperature: float,
     prompt_sequence_length: int,
     show_tokens_per_sec: bool,
-    history: bool,
+    task: str,
 ):
     """
     Command Line utility to interact with a text genration LLM in a chatbot style
@@ -123,21 +125,25 @@ def main(
 
     python chatbot.py [OPTIONS] <MODEL_PATH>
     """
-    # chat pipeline, automatically adds history
-    task = "chat" if history else "text-generation"
-    
+    session_ids = "chatbot_cli_session"
+
     pipeline = Pipeline.create(
-        task=task,
+        task=task,  # let pipeline determine if task is supported
         model_path=model_path,
         sequence_length=sequence_length,
         sampling_temperature=sampling_temperature,
         prompt_sequence_length=prompt_sequence_length,
     )
-    
+
     # continue prompts until a keyboard interrupt
     while True:
         input_text = input("User: ")
-        response = pipeline(**{"sequences": [input_text]})
+        pipeline_inputs = {"prompt": [input_text]}
+
+        if SupportedTasks.is_chat(task):
+            pipeline_inputs["session_ids"] = session_ids
+
+        response = pipeline(**pipeline_inputs)
         print("Bot: ", response.generations[0].text)
         if show_tokens_per_sec:
             times = pipeline.timer_manager.times
