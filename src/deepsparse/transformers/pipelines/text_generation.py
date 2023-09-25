@@ -564,24 +564,6 @@ class TextGenerationPipeline(TransformersPipeline):
         :return: the output schema for the pipeline
         """
 
-        def _create_generated_text_output(
-            sequence: str,
-            finish_reason: FinishReason = None,
-            logits: Optional[numpy.array] = None,
-        ):
-            if finish_reason:
-                return GeneratedText(
-                    text=sequence,
-                    score=logits,
-                    finished=True,
-                    finished_reason=finish_reason.value,
-                )
-            return GeneratedText(
-                text=sequence,
-                score=logits,
-                finished=False,
-            )
-
         generation_config = kwargs.get("generation_config")
         prompts = kwargs.get("prompts")
         streaming = kwargs.get("streaming")
