@@ -406,6 +406,28 @@ class TextGenerationPipeline(TransformersPipeline):
         """
         return TextGenerationOutput
 
+    def parse_inputs(self, *args, **kwargs) -> TextGenerationInput:
+        """
+
+        :param args: in line argument can only have 1, must either be
+            a complete TextGenerationInput object or `sequences` for
+            a TextGenerationInput
+        :param kwargs: if a TextGenerationInput is not provided, then
+            these kwargs will be used to instantiate one
+        :return: parsed TextGenerationInput object
+        """
+        if (
+            args
+            and not isinstance(args[0], TextGenerationInput)
+            and "prompt" not in kwargs
+            and "sequences" not in kwargs
+        ):
+            # assume first argument is "sequences" (prompt) by default
+            kwargs["sequences"] = args[0]
+            args = args[1:]
+
+        return super().parse_inputs(*args, **kwargs)
+
     def process_inputs(
         self, inputs: TextGenerationInput
     ) -> Tuple[List[numpy.ndarray], Dict[str, Any]]:
