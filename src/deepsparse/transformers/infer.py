@@ -64,6 +64,7 @@ deepsparse.infer models/llama/deployment \
     --task text-generation
 """
 import click
+from typing import Optional
 
 from deepsparse import Pipeline
 from deepsparse.tasks import SupportedTasks
@@ -75,6 +76,14 @@ from deepsparse.tasks import SupportedTasks
     )
 )
 @click.argument("model_path", type=str)
+@click.option(
+    "--data",
+    type=Optional[str],
+    default=None,
+    help="Path to .txt, .csv, .json, or .jsonl file to load data from"
+    "If provided, runs inference over the entire dataset. If not provided "
+    "runs an interactive inference session in the console. Default None.",
+)
 @click.option(
     "--sequence_length",
     type=int,
@@ -112,6 +121,7 @@ from deepsparse.tasks import SupportedTasks
 )
 def main(
     model_path: str,
+    data: Optional[str],
     sequence_length: int,
     sampling_temperature: float,
     prompt_sequence_length: int,
@@ -135,16 +145,23 @@ def main(
         prompt_sequence_length=prompt_sequence_length,
     )
 
+    if data is not None:
+        for prompt in _iter_prompt_from_file(data):
+            # TODO: George run inference
+            pass
+        return
+
     # continue prompts until a keyboard interrupt
-    while True:
-        input_text = input("User: ")
+    while data is None:  # always True in interactive Mode
+        input_text = input(">>> ")
         pipeline_inputs = {"prompt": [input_text]}
 
         if SupportedTasks.is_chat(task):
             pipeline_inputs["session_ids"] = session_ids
 
         response = pipeline(**pipeline_inputs)
-        print("Bot: ", response.generations[0].text)
+        print("\n", response.generations[0].text)
+
         if show_tokens_per_sec:
             times = pipeline.timer_manager.times
             prefill_speed = (
@@ -156,6 +173,32 @@ def main(
                 f"[decode: {generation_speed:.2f} tokens/sec]",
                 sep="\n",
             )
+
+
+def _iter_prompt_from_file(data: str):
+    """
+    TODO: George
+    .txt - each line is a single prompt
+    .csv - match first column with name in [text, prompt, sequence, sentence, sentence1], only look at values in that column, can treat other columns as kwargs
+            i.e.
+            prompt,sampling_temperature
+            prompt 1,0.9
+
+            this would make pipeline(prompt="prompt 1", temperature=0.9)
+
+    .json - expect json file to be a single list of objects where each obj can be passed directly as kwarg inputs
+
+            [
+                {},
+                {},
+            ]
+    .jsonl - load as a text file and then each line is a json object (use json.loads) treated the same as the objects above
+            {}
+            {}
+            {}
+            {}
+    """
+    pass
 
 
 if __name__ == "__main__":
