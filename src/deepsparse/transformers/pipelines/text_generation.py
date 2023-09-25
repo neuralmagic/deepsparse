@@ -427,14 +427,14 @@ class TextGenerationPipeline(TransformersPipeline):
 
             for k, v in kwargs.items():
                 try:
-                    if getattr(GenerationDefaults, k) and not generation_kwargs.get(k):
+                    if not generation_kwargs.get(k):
+                        getattr(GenerationDefaults, k)
                         generation_kwargs[k] = v
                 except AttributeError:
                     continue
 
             kwargs["generation_kwargs"] = generation_kwargs
 
-        print(args, kwargs)
         return super().parse_inputs(*args, **kwargs)
 
     def process_inputs(

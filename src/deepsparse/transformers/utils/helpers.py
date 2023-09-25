@@ -247,9 +247,9 @@ def override_config(
 
     for k, v in overrides.items():
         try:
-            if getattr(generation_config, k):
-                setattr(generation_config, k, v)
-                _LOGGER.debug(f"Overriding attribute {k} in the generation config")
+            getattr(generation_config, k)
+            setattr(generation_config, k, v)
+            _LOGGER.debug(f"Overriding attribute {k} in the generation config")
         except AttributeError as exception:
             raise AttributeError(
                 "Argument provided for GenerationConfig is not "
