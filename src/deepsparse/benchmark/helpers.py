@@ -123,6 +123,10 @@ def parse_num_streams(num_streams: int, num_cores: int, scenario: str):
 
 
 def parse_input_config(input_config_file: str) -> Dict[str, any]:
+    if input_config_file is None:
+        _LOGGER.warning("No input configuration file provided, using default.")
+        return PipelineBenchmarkConfig()
+
     config_file = open(input_config_file)
     config = json.load(config_file)
     config_file.close()
