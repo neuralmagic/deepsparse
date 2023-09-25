@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextvars
 import logging
-from typing import Any, Dict, List, Tuple, Type, Union
+from contextlib import contextmanager
+from typing import Any, Callable, Dict, List, Tuple, Type, Union
 
 import numpy
 from pydantic import Field, validator
@@ -37,6 +39,7 @@ from deepsparse.utils.data import split_engine_inputs
 
 
 _LOGGER = logging.getLogger(__name__)
+_SESSION_IDS_CONTEXT = contextvars.ContextVar("_SESSION_ID", default=None)
 
 __all__ = ["ChatPipeline"]
 
@@ -116,6 +119,41 @@ class ChatPipeline(TextGenerationPipeline):
         :return: the output schema for the pipeline
         """
         return ChatOutput
+
+    @contextmanager
+    def session(
+        self,
+        session_ids: Union[None, List[str], str] = None,
+        inference_batch_size: int = 1,
+    ) -> Callable[[Any, Any], Any]:
+        """
+        Context manager that sets and keeps a default session id(s) within
+        the context
+
+        example:
+        In the following - both responses in the context will share the same
+        session id
+        ```
+        with chat_pipeline.session():
+            first_response = chat_pipeline("first prompt")
+            second_response = chat_pipeline("second prompt")
+        ```
+
+        :param session_ids: actual value to set session ids to in context
+            must match the inference batch size. If not supplied, will
+            create default values. Default None
+        :param inference_batch_size: if generating default session ids, number
+            of session ids to create. default 1
+        """
+
+        if session_ids is None:
+            session_ids = [generate_session_id() for _ in range(inference_batch_size)]
+
+        # set session_ids contextvar
+        token = _SESSION_IDS_CONTEXT.set(session_ids)
+        yield
+        # reset session_ids contextvar
+        _SESSION_IDS_CONTEXT.reset(token)
 
     def process_inputs(
         self, inputs: ChatInput
@@ -234,7 +272,11 @@ class ChatPipeline(TextGenerationPipeline):
         :return: the engine input with the session ids
         """
         session_ids = inputs.session_ids
-        if session_ids is None:
+        if session_ids is None and _SESSION_IDS_CONTEXT.get() is not None:
+            # respect directly setting session IDs first, then try to pull
+            # from context
+            session_ids = _SESSION_IDS_CONTEXT.get()
+        elif session_ids is None:
             # session_ids is None, so we need to generate
             # a session id for each input sequence
             # TODO: Talk to Dipika whether this aligns with the
