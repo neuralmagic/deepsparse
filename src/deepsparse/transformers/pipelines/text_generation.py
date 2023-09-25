@@ -83,6 +83,7 @@ class TextGenerationInput(BaseModel):
         arbitrary_types_allowed = True
 
     sequences: Union[str, List[str]] = Field(
+        alias="prompt",
         description="The input sequences to generate the text from.",
     )
     include_prompt_logits: bool = Field(
