@@ -645,12 +645,13 @@ class TextGenerationPipeline(TransformersPipeline):
             finished_reason = []
             streaming = context.get("streaming")
             generation_config = context.get("generation_config")
+            deterministic = not generation_config.do_sample
 
             if not self.cache_support_enabled:
                 prompt_logits = self.multitoken_engine(engine_inputs)
                 token_generator = TokenGenerator(
                     logits_shape=prompt_logits[-1].shape[-1],
-                    deterministic=generation_config.do_sample,
+                    deterministic=deterministic,
                     sampling_temperature=self.sampling_temperature,
                     **context,
                 )
@@ -667,7 +668,7 @@ class TextGenerationPipeline(TransformersPipeline):
             token_generator = TokenGenerator(
                 logits_shape=prompt_logits[-1].shape[-1],
                 tokens=tokens,
-                deterministic=generation_config.do_sample,
+                deterministic=deterministic,
                 sampling_temperature=self.sampling_temperature,
                 **context,
             )
