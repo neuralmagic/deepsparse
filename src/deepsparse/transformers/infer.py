@@ -13,14 +13,14 @@
 # limitations under the License.
 
 """
-Usage: chatbot.py [OPTIONS] MODEL_PATH
+Usage: deepsparse.infer [OPTIONS] MODEL_PATH
 
   Command Line utility to interact with a text genration LLM in a chatbot
   style
 
   Example usage:
 
-  python chatbot.py [OPTIONS] <MODEL_PATH>
+  deepsparse.infer [OPTIONS] <MODEL_PATH>
 
 Options:
   --sequence_length INTEGER       Sequence length to compile model and
@@ -49,18 +49,18 @@ Installation: pip install deepsparse[transformers]
 Examples:
 
 1) Use a local deployment directory
-python chatbot.py models/llama/deployment
+deepsparse.infer models/llama/deployment
 
 2) Use a SparseZoo stub
-python chatbot.py \
+deepsparse.infer \
     zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none # noqa: E501
 
 3) Display token generation speed
-python chatbot.py models/llama/deployment \
+deepsparse.infer models/llama/deployment \
     --show_tokens_per_sec
 
 4) Disable history
-python chatbot.py models/llama/deployment \
+deepsparse.infer models/llama/deployment \
     --task text-generation
 """
 import click
@@ -123,7 +123,7 @@ def main(
 
     Example usage:
 
-    python chatbot.py [OPTIONS] <MODEL_PATH>
+    deepsparse.infer [OPTIONS] <MODEL_PATH>
     """
     session_ids = "chatbot_cli_session"
 
