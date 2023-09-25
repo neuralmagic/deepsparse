@@ -168,7 +168,7 @@ def numpy_softmax(x: numpy.ndarray, axis: int = 0):
 
 def split_engine_inputs(
     items: List[numpy.ndarray], batch_size: int
-) -> List[List[numpy.ndarray]]:
+) -> Tuple[List[List[numpy.ndarray]], int]:
     """
     Splits each item into numpy arrays with the first dimension == `batch_size`.
 
@@ -204,7 +204,8 @@ def split_engine_inputs(
     :param items: list of numpy arrays to split
     :param batch_size: size of each batch to split into
 
-    :return: list of batches, where each batch is a list of numpy arrays
+    :return: list of batches, where each batch is a list of numpy arrays,
+        as well as the total batch size
     """
     # The engine expects to recieve data in numpy format, so at this point it should be
     assert all(isinstance(item, numpy.ndarray) for item in items)
