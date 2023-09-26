@@ -64,7 +64,7 @@ class MockBenchmarker(Benchmarker):
             return "bar"
 
 
-# @pytest.mark.skip(reason="Heavy load -- download text-gen models -- for GHA machine")
+@pytest.mark.skip(reason="Heavy load -- download text-gen models -- for GHA machine")
 class TestBenchmarker:
     @pytest.fixture
     def get_model_path(self):
