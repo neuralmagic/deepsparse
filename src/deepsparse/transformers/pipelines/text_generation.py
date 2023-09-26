@@ -138,7 +138,9 @@ class TextGenerationInput(BaseModel):
         description="GenerationConfig file consisting of parameters used to control "
         "sequences generated for each prompt. The current supported parameters are: "
         "max_length, max_new_tokens, num_return_sequences, output_scores, top_p, "
-        "top_k, repetition_penalty, do_sample, temperature",
+        "top_k, repetition_penalty, do_sample, temperature. If None is provided, "
+        "deepsparse defaults will be used. For all other input types, HuggingFace "
+        "defaults for GenerationConfig will be used. ",
     )
 
     generation_kwargs: Optional[Dict] = Field(
@@ -200,6 +202,12 @@ class TextGenerationPipeline(TransformersPipeline):
         of tokens supplied even if the stop token is reached.
     :param internal_kv_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
+    :param generation_config: config file consisting of parameters used to control
+        sequences generated for each prompt. The current supported parameters are:
+        max_length, max_new_tokens, num_return_sequences, output_scores, top_p,
+        top_k, repetition_penalty, do_sample, temperature. If None is provided,
+        deepsparse defaults will be used. For all other input types, HuggingFace
+        defaults for GenerationConfig will be used.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
