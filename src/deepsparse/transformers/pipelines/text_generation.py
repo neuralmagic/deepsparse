@@ -536,10 +536,18 @@ class TextGenerationPipeline(TransformersPipeline):
                 finished_reason[0],
                 logits,
             )
-            yield TextGenerationOutput(
+            # Add session_id to schema if it exists
+            #  more relevant for `ChatPipeline`
+            schema_kwargs = (
+                {"session_ids": session_ids} 
+                if (session_ids:=kwargs.get("session_ids")) 
+                else {}
+                )
+            yield self.output_schema(
                 created=datetime.datetime.now(),
                 prompts=prompts,
                 generations=[generation],
+                **schema_kwargs,
             )
 
     def process_engine_outputs(
@@ -616,7 +624,7 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             outputs.update(debug_params)
 
-        return TextGenerationOutput(**outputs)
+        return self.output_schema(**outputs)
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
