@@ -152,6 +152,7 @@ def _build_app(server_config: ServerConfig) -> FastAPI:
     def _info():
         return server_config
 
+    @app.get("/ping", tags=["health"], response_model=CheckReady)
     @app.get("/v2/health/ready", tags=["health"], response_model=CheckReady)
     @app.get("/v2/health/live", tags=["health"], response_model=CheckReady)
     def _check_health():
