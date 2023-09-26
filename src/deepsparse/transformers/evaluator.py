@@ -22,6 +22,12 @@ from deepsparse.pipeline import DEEPSPARSE_ENGINE
 from deepsparse.transformers.eval_downstream import perplexity_eval
 
 
+__all__ = [
+    "Evaluator",
+    "TransformersEvaluator",
+    "evaluate",
+]
+
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.INFO)
 
@@ -111,11 +117,11 @@ class TransformersEvaluator(Evaluator):
     def _calc_perplexity(self, **kwargs):
         """
         Calculate the perplexity of the model.
-        
+
         Note: Right now, this function relies on the `perplexity_eval`
         function from `deepsparse.transformers.eval_downstream` to calculate
         perplexity. This is subject to change in the future.
-        
+
 
         :param kwargs: Additional arguments to pass to the
             perplexity function.
@@ -145,3 +151,26 @@ class TransformersEvaluator(Evaluator):
         perplexity_kwargs = dict(dataset_name=self.dataset_name_)
 
         return perplexity_eval(perplexity_args, **perplexity_kwargs)
+
+
+def evaluate(model: str, dataset: str, eval: Optional[List[str]] = None, **kwargs):
+    """
+    Utility method to evaluate language models. Uses the TransformersEvaluator
+    class to run the evaluation.
+
+    :param model: The path to the model to evaluate. Must be a directory
+        containing `model.onnx` with configuration files, or a SparseZoo stub.
+    :param dataset: The name of the dataset to evaluate on. Supported datasets
+        for Language Models are `openai_humaneval`, `wikitext2` and `c4`.
+    :param eval: The list of evaluation metrics to run. Supported metrics for
+        Language Models are `perplexity`.
+    :param kwargs: Additional arguments to pass to the evaluation function.
+        see src/deepsparse/transformers/eval_downstream.py for
+        full list of arguments, the default values can be overridden
+        by passing them as keyword arguments to this function
+    :return: The results of the evaluation.
+    """
+
+    evaluator = TransformersEvaluator(model=model, dataset=dataset, eval=eval)
+    evaluator.evaluate(**kwargs)
+    return evaluator.get_results()
