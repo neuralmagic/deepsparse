@@ -435,6 +435,45 @@ class TestTextGenerationPipeline:
         for generation in output_sequences.generations:
             assert len(generation) == 2
 
+    def test_token_generation_deterministic(self, setup):
+        pipeline_kwargs = {
+            "task": "text_generation",
+            "model_path": self.model_stub,
+        }
+        config = GenerationConfig(
+            output_scores=True,
+            max_length=self.num_tokens_generate,
+            top_k=0,
+            top_p=0.0,
+            num_return_sequences=3,
+            do_sample=False,
+        )
+        pipeline = self.get_pipeline(**pipeline_kwargs)
+        inference = pipeline(sequences=["hello?"], generation_config=config)
+        generations = inference.generations
+        text_outputs = [x.text for x in generations[0]]
+        assert len(set(text_outputs)) == 1
+
+    def test_token_generation_non_deterministic(self, setup):
+        pipeline_kwargs = {
+            "task": "text_generation",
+            "model_path": self.model_stub,
+        }
+        pipeline = self.get_pipeline(**pipeline_kwargs)
+        config = GenerationConfig(
+            output_scores=True,
+            max_length=self.num_tokens_generate,
+            top_k=0,
+            top_p=0.0,
+            num_return_sequences=3,
+            do_sample=True,
+        )
+        inference = pipeline(sequences=["hello?"], generation_config=config)
+        generations = inference.generations
+        # Output should be the same from one another
+        text_outputs = [x.text for x in generations[0]]
+        assert len(set(text_outputs)) == 3
+
     def test_run_with_same_session_ids(self, setup):
         # Test the scenario where the same session ids are used for multiple
         # inference runs. There are two conditions that must be fulfilled:
