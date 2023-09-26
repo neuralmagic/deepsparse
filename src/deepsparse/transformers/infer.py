@@ -231,8 +231,28 @@ def main(
     if data is not None:
         for prompt in _iter_prompt_from_file(data):
             # TODO: George run inference
-            pass
-        return
+            pipeline_inputs = dict(
+                prompt=[prompt],
+                sampling_temperature=sampling_temperature,
+            )
+            if SupportedTasks.is_chat(task):
+                pipeline_inputs["session_ids"] = session_ids
+
+            response = pipeline(**pipeline_inputs)
+            print("\n", response.generations[0].text)
+
+            if show_tokens_per_sec:
+                times = pipeline.timer_manager.times
+                prefill_speed = (
+                    1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
+                )
+                generation_speed = 1.0 / times["engine_token_generation_single"]
+                print(
+                    f"[prefill: {prefill_speed:.2f} tokens/sec]",
+                    f"[decode: {generation_speed:.2f} tokens/sec]",
+                    sep="\n",
+                )
+            return
 
     # continue prompts until a keyboard interrupt
     while data is None:  # always True in interactive Mode
