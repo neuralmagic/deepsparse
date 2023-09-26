@@ -1,4 +1,4 @@
-# Hugging Face Transformer Inference Pipelines
+x# Hugging Face Transformer Inference Pipelines
 
 
 DeepSparse allows accelerated inference, serving, and benchmarking of sparsified [Hugging Face Transformer](https://github.com/huggingface/transformers) models.  
@@ -208,7 +208,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     task sentiment-analysis \
-    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/pruned80_quant-none-vnni"
 ```
 
 Making a request:
@@ -314,7 +314,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     task token-classification \
-    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
+    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/pruned90-none"
 ```
 
 Making a request:
