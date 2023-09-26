@@ -17,7 +17,6 @@ import csv
 import json
 import os
 from enum import Enum
-from typing import Iterator, Optional
 
 
 class InvalidPromptSourceDirectoryException(Exception):
@@ -32,7 +31,7 @@ class PromptParser:
         JSONL = ".jsonl"
 
     def __init__(self, filename: str):
-        self.extention = self._validate_and_return_extention(filename)
+        self.extention: self.Extentions = self._validate_and_return_extention(filename)
         self.filename: str = filename
 
     def parse_as_iterable(self):
@@ -49,24 +48,25 @@ class PromptParser:
     def _parse_text(self):
         with open(self.filename, "r") as file:
             for line in file:
-                yield line.strip()
+                yield line.strip(), {}
 
-    def _parse_csv(self, column_name: str = "prompt"):
+    def _parse_csv(self):
         with open(self.filename, "r", newline="", encoding="utf-8-sig") as file:
             reader = csv.DictReader(file)
             for row in reader:
-                yield row
+                yield row.get("prompt"), row
 
     def _parse_json_list(self):
         with open(self.filename, "r") as file:
             json_list = json.load(file)
             for json_object in json_list:
-                yield json_object
+                yield json_object.get("prompt"), json_object
 
     def _parse_jsonl(self):
         with open(self.filename, "r") as file:
             for jsonl in file:
-                yield json.loads(jsonl)
+                jsonl_object = json.loads(jsonl)
+                yield jsonl_object.get("prompt"), jsonl_object
 
     def _validate_and_return_extention(self, filename: str):
         if os.path.exists(filename):

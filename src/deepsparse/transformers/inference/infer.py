@@ -63,9 +63,7 @@ deepsparse.infer models/llama/deployment \
 deepsparse.infer models/llama/deployment \
     --task text-generation
 """
-import csv
-import json
-from enum import Enum
+
 from typing import Iterator, Optional
 
 import click
@@ -83,7 +81,7 @@ from deepsparse.transformers.inference.prompt_parser import PromptParser
 @click.argument("model_path", type=str)
 @click.option(
     "--data",
-    type=Optional[str],
+    type=str,
     default=None,
     help="Path to .txt, .csv, .json, or .jsonl file to load data from"
     "If provided, runs inference over the entire dataset. If not provided "
@@ -149,84 +147,72 @@ def main(
         prompt_sequence_length=prompt_sequence_length,
     )
 
-    if data is not None:
-        for prompt in _iter_prompt_from_file(data):
-            # TODO: George run inference
-            pipeline_inputs = dict(
-                prompt=[prompt],
-                sampling_temperature=sampling_temperature,
+    if data:
+        for prompt, prompt_kwargs in _iter_prompt_from_file(data):
+            prompt_kwargs = {}
+            _run_inference(
+                pipeline,
+                sampling_temperature,
+                task,
+                session_ids,
+                show_tokens_per_sec,
+                prompt_sequence_length,
+                prompt,
+                **prompt_kwargs,
             )
-            if SupportedTasks.is_chat(task):
-                pipeline_inputs["session_ids"] = session_ids
-
-            response = pipeline(**pipeline_inputs)
-            print("\n", response.generations[0].text)
-
-            if show_tokens_per_sec:
-                times = pipeline.timer_manager.times
-                prefill_speed = (
-                    1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
-                )
-                generation_speed = 1.0 / times["engine_token_generation_single"]
-                print(
-                    f"[prefill: {prefill_speed:.2f} tokens/sec]",
-                    f"[decode: {generation_speed:.2f} tokens/sec]",
-                    sep="\n",
-                )
-            return
+        return
 
     # continue prompts until a keyboard interrupt
     while data is None:  # always True in interactive Mode
         prompt_input = input(">>> ")
-        pipeline_inputs = dict(
-            prompt=[prompt_input],
-            sampling_temperature=sampling_temperature,
+        _run_inference(
+            pipeline,
+            sampling_temperature,
+            task,
+            session_ids,
+            show_tokens_per_sec,
+            prompt_sequence_length,
+            prompt_input,
         )
-
-        if SupportedTasks.is_chat(task):
-            pipeline_inputs["session_ids"] = session_ids
-
-        response = pipeline(**pipeline_inputs)
-        print("\n", response.generations[0].text)
-
-        if show_tokens_per_sec:
-            times = pipeline.timer_manager.times
-            prefill_speed = (
-                1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
-            )
-            generation_speed = 1.0 / times["engine_token_generation_single"]
-            print(
-                f"[prefill: {prefill_speed:.2f} tokens/sec]",
-                f"[decode: {generation_speed:.2f} tokens/sec]",
-                sep="\n",
-            )
 
 
 def _iter_prompt_from_file(data: str) -> Iterator:
-    """
-    TODO: George
-    .txt - each line is a single prompt
-    .csv - match first column with name in [text, prompt, sequence, sentence, sentence1], only look at values in that column, can treat other columns as kwargs
-            i.e.
-            prompt,sampling_temperature
-            prompt 1,0.9
-
-            this would make pipeline(prompt="prompt 1", temperature=0.9)
-
-    .json - expect json file to be a single list of objects where each obj can be passed directly as kwarg inputs
-
-            [
-                {},
-                {},
-            ]
-    .jsonl - load as a text file and then each line is a json object (use json.loads) treated the same as the objects above
-            {}
-            {}
-            {}
-            {}
-    """
     parser = PromptParser(data)
     return parser.parse_as_iterable()
+
+
+def _run_inference(
+    pipeline,
+    sampling_temperature,
+    task,
+    session_ids,
+    show_tokens_per_sec,
+    prompt_sequence_length,
+    prompt,
+    **kwargs,
+):
+    pipeline_inputs = dict(
+        prompt=[prompt],
+        sampling_temperature=sampling_temperature,
+        # **kwargs,
+    )
+    if SupportedTasks.is_chat(task):
+        pipeline_inputs["session_ids"] = session_ids
+
+    response = pipeline(**pipeline_inputs)
+    print("\n", response.generations[0].text)
+
+    if show_tokens_per_sec:
+        times = pipeline.timer_manager.times
+        prefill_speed = (
+            1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
+        )
+        generation_speed = 1.0 / times["engine_token_generation_single"]
+        print(
+            f"[prefill: {prefill_speed:.2f} tokens/sec]",
+            f"[decode: {generation_speed:.2f} tokens/sec]",
+            sep="\n",
+        )
 
 
 if __name__ == "__main__":
