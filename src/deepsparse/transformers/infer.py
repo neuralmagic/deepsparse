@@ -63,11 +63,95 @@ deepsparse.infer models/llama/deployment \
 deepsparse.infer models/llama/deployment \
     --task text-generation
 """
-import click
+import csv
+import json
+from enum import Enum
 from typing import Optional
 
+import click
+
+import Exception
 from deepsparse import Pipeline
 from deepsparse.tasks import SupportedTasks
+from typing import Iterator
+
+
+
+class InvalidPromptSourceDirectoryException(Exception):
+    pass
+
+
+class PromptParser:
+    class Extentions(Enum):
+        TEXT = ".txt"
+        CSV = ".csv"
+        JSON = ".json"
+        JSONL = ".jsonl"
+
+    def __init__(self, filename: str):
+        self.extention = self._validate_and_return_extention(filename)
+        self.filename: str = filename
+
+    def parse(self):
+
+        if self.extention == self.Extentions.TEXT:
+            return self._parse_text()
+        if self.extention == self.Extentions.CSV:
+            return self._parse_csv()
+        if self.extention == self.Extentions.JSON or self.extention == self.Extentions.JSONL:
+            return self._parse_json_list()
+
+
+    def _parse_text(self):
+        try:
+            with open(self.filename, "r") as file:
+                for line in file:
+                    yield line.strip()
+        except FileNotFoundError:
+            raise
+            # print(f"The file '{self.filename}' not found.")
+
+    def _parse_csv(self, column_name: str = "prompt"):
+        try:
+            with open(self.filename, "r", newline="") as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    yield row[column_name]
+        except FileNotFoundError:
+            raise
+            # print(f"The file '{self.filename}' was not found.")
+        except KeyError:
+            raise
+            # print(f"Column '{column_name}' not found in the CSV.")
+
+    def _parse_json(self, prompt_key: str = "prompt"):
+        try:
+            # with open(self.filename, "w") as file:
+            #     json_list = json.dump(self.filename, file)
+            #     for json_obj in json_list:
+            #         yield json_obj[prompt_key]
+            with open(self.filename, 'r') as file:
+                json_list = json.load(file)
+                for json_object in json_list:
+                    yield json_object[prompt_key]
+        except FileNotFoundError:
+            raise
+            # print(f"The file '{self.filename}' was not found.")
+        except KeyError:
+            raise
+            # print(f"Column '{column_name}' not found in the CSV.")
+
+    def _validate_and_return_extention(self, data: str):
+        for extention in self.Extentions:
+            if self.data.endswith(extention.value):
+                return extention.value
+
+        raise InvalidPromptSourceDirectoryException(
+            f"{data} is not a valid source extract batched prompts"
+        )
+
+        # if not data.endswith(tuple(extension.value for extension in self.Extensions)):
+        #
 
 
 @click.command(
@@ -177,7 +261,7 @@ def main(
             )
 
 
-def _iter_prompt_from_file(data: str):
+def _iter_prompt_from_file(data: str) -> Iterator:
     """
     TODO: George
     .txt - each line is a single prompt
@@ -200,7 +284,8 @@ def _iter_prompt_from_file(data: str):
             {}
             {}
     """
-    pass
+    parser = PromptParser(data)
+    return parser.parse_as_iterable()
 
 
 if __name__ == "__main__":
