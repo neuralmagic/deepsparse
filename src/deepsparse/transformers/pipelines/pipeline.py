@@ -17,6 +17,7 @@ Base Pipeline class for transformers inference pipeline
 """
 
 import json
+import logging
 import os
 import warnings
 from pathlib import Path
@@ -24,7 +25,7 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 
 import numpy
 import transformers
-from transformers.models.auto import AutoConfig, AutoTokenizer
+from transformers.models.auto import AutoTokenizer
 
 from deepsparse import Bucketable, Pipeline
 from deepsparse.transformers.helpers import (
@@ -151,11 +152,14 @@ class TransformersPipeline(Pipeline, Bucketable):
             else:
                 self.config_path = os.path.join(self.config, "config.json")
 
-            self.config = AutoConfig.from_pretrained(
+            hf_logger = logging.getLogger("transformers")
+            hf_logger_level = hf_logger.level
+            hf_logger.setLevel(logging.ERROR)
+            self.config = transformers.PretrainedConfig.from_pretrained(
                 self.config,
-                trust_remote_code=self._trust_remote_code,
                 finetuning_task=self.task if hasattr(self, "task") else None,
             )
+            hf_logger.setLevel(hf_logger_level)
 
         if isinstance(self.tokenizer, (str, Path)):
             self.tokenizer_config_path = os.path.join(self.tokenizer, "tokenizer.json")

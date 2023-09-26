@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -232,7 +232,7 @@ class Pipeline(BasePipeline):
                     f"Inputs parsed to {type(pipeline_inputs)}"
                 )
             # batch size of the inputs may be `> self._batch_size` at this point
-            engine_inputs: List[numpy.ndarray] = self.process_inputs(pipeline_inputs)
+            engine_inputs = self.process_inputs(pipeline_inputs)
             if isinstance(engine_inputs, tuple):
                 engine_inputs, context = engine_inputs
             else:
@@ -259,7 +259,9 @@ class Pipeline(BasePipeline):
             )
 
             # join together the batches of size `self._batch_size`
-            engine_outputs = self.join_engine_outputs(batch_outputs, orig_batch_size)
+            engine_outputs = self.join_engine_outputs(
+                batch_outputs, orig_batch_size, **context
+            )
             timer.stop(InferenceStages.ENGINE_FORWARD)
 
             self.log(
@@ -280,7 +282,7 @@ class Pipeline(BasePipeline):
             # ------ POSTPROCESSING ------
             timer.start(InferenceStages.POST_PROCESS)
             pipeline_outputs = self.process_engine_outputs(engine_outputs, **context)
-            if not isinstance(pipeline_outputs, self.output_schema):
+            if not isinstance(pipeline_outputs, (self.output_schema, Generator)):
                 raise ValueError(
                     f"Outputs of {self.__class__} must be instances of "
                     f"{self.output_schema} found output of type "
@@ -467,7 +469,7 @@ class Pipeline(BasePipeline):
         )
 
     def join_engine_outputs(
-        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
+        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int, **kwargs
     ) -> List[numpy.ndarray]:
         """
         Joins list of engine outputs together into one list.
@@ -494,7 +496,9 @@ class Pipeline(BasePipeline):
         return split_engine_inputs(items, batch_size)
 
     def engine_forward(
-        self, engine_inputs: List[numpy.ndarray], context: Dict = {}
+        self,
+        engine_inputs: List[numpy.ndarray],
+        context: Dict = {},
     ) -> List[numpy.ndarray]:
         """
         :param engine_inputs: list of numpy inputs to Pipeline engine forward
