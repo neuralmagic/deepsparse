@@ -133,18 +133,18 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
             # Perform single token generation
             prediction = text_generation(
                 sequences=batch_samples,
-                return_logits=True,
+                output_scores=True,
                 return_input_tokens=True,
                 fixed_sequences_length=True,
                 include_prompt_logits=True,
-                max_tokens=1,
+                max_new_tokens=1,
             )
 
             # Handle one sample at a time to make it simpler for masking
             for s in range(len(batch_samples)):
                 # Need to remove tokens that were masked
                 input_ids = prediction.input_tokens["input_ids"][s].flatten()
-                logits = prediction.generations.score[s]
+                logits = prediction.generations[s].score
                 attention_mask = prediction.input_tokens["attention_mask"][s].flatten()
 
                 effective_sequence_length = logits.shape[0]
