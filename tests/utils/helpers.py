@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
+from typing import Optional
 
-# flake8: noqa
-from .decoder_kv_cache import *
-from .helpers import *
-from .storage_kv_cache import *
-from .timings import *
+
+def find_file_with_pattern(folder_path: str, pattern: str) -> Optional[str]:
+    folder_path = os.path.expanduser(folder_path)
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if re.match(pattern, file):
+                return os.path.join(root, file)

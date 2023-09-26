@@ -19,5 +19,8 @@ from .pipeline import *
 from .question_answering import *
 from .text_classification import *
 from .token_classification import *
+from .text_generation import *
 from .zero_shot_text_classification import *
 from .embedding_extraction import *
+from .chat import *
+from .code_generation import *

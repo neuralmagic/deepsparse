@@ -13,8 +13,21 @@
 # limitations under the License.
 
 
-# flake8: noqa
-from .decoder_kv_cache import *
-from .helpers import *
-from .storage_kv_cache import *
-from .timings import *
+from deepsparse import Pipeline
+from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
+
+
+__all__ = ["CodeGenerationPipeline"]
+
+
+@Pipeline.register(
+    task="code_generation",
+    task_aliases=["codegen"],
+)
+class CodeGenerationPipeline(TextGenerationPipeline):
+    """
+    Subclass of text generation pipeline to support any defaults or
+    overrides needed for code generation
+    """
+
+    pass

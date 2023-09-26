@@ -99,13 +99,19 @@ class SupportedTasks:
         ),
     )
 
+    chat = namedtuple("chat", ["chatbot", "chat"])(
+        chatbot=AliasedTask("chatbot", []), chat=AliasedTask("chat", [])
+    )
     text_generation = namedtuple(
-        "text_generation", ["text_generation", "opt", "codegen", "bloom"]
+        "text_generation", ["text_generation", "opt", "bloom"]
     )(
         text_generation=AliasedTask("text_generation", []),
-        codegen=AliasedTask("codegen", []),
         opt=AliasedTask("opt", []),
         bloom=AliasedTask("bloom", []),
+    )
+    code_generation = namedtuple("code_generation", ["code_generation", "codegen"])(
+        code_generation=AliasedTask("code_generation", []),
+        codegen=AliasedTask("codegen", []),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(
@@ -149,6 +155,8 @@ class SupportedTasks:
         embedding_extraction,
         open_pif_paf,
         text_generation,
+        chat,
+        code_generation,
     ]
 
     @classmethod
@@ -166,6 +174,12 @@ class SupportedTasks:
 
         elif cls.is_text_generation(task):
             import deepsparse.transformers.pipelines.text_generation  # noqa: F401
+
+        elif cls.is_chat(task):
+            import deepsparse.transformers.pipelines.chat  # noqa: F401
+
+        elif cls.is_code_generation(task):
+            import deepsparse.transformers.pipelines.code_generation  # noqa: F401
 
         elif cls.is_nlp(task):
             # trigger transformers pipelines to register with Pipeline.register
@@ -211,6 +225,14 @@ class SupportedTasks:
             )
 
     @classmethod
+    def is_chat(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a chat task
+        :return: True if it is a chat task, False otherwise
+        """
+        return any(chat_task.matches(task) for chat_task in cls.chat)
+
+    @classmethod
     def is_text_generation(cls, task: str) -> bool:
         """
         :param task: the name of the task to check whether it is a text generation task
@@ -220,6 +242,18 @@ class SupportedTasks:
         return any(
             text_generation_task.matches(task)
             for text_generation_task in cls.text_generation
+        )
+
+    @classmethod
+    def is_code_generation(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a text generation task
+            such as codegen
+        :return: True if it is a text generation task, False otherwise
+        """
+        return any(
+            code_generation_task.matches(task)
+            for code_generation_task in cls.code_generation
         )
 
     @classmethod

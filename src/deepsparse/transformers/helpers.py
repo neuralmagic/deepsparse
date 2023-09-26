@@ -49,6 +49,7 @@ _MODEL_DIR_ONNX_NAME = "model.onnx"
 _MODEL_DIR_CONFIG_NAME = "config.json"
 _MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
 _MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
+_OPT_TOKENIZER_FILES = ["special_tokens_map.json", "vocab.json", "merges.txt"]
 
 
 def get_onnx_path(model_path: str) -> str:
@@ -122,14 +123,29 @@ def get_hugging_face_configs(model_path: str) -> Tuple[str, str]:
         config_path = _get_file_parent(
             zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
         )
-        tokenizer_path = _get_file_parent(
-            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
+        tokenizer_file = zoo_model.deployment.default.get_file(
+            _MODEL_DIR_TOKENIZER_NAME
         )
-        tokenizer_config_path = zoo_model.deployment.default.get_file(
+
+        tokenizer_config_file = zoo_model.deployment.default.get_file(
             _MODEL_DIR_TOKENIZER_CONFIG_NAME
         )
-        if tokenizer_config_path is not None:
-            tokenizer_config_path.path  # trigger download of tokenizer_config
+
+        if tokenizer_config_file is not None:
+            tokenizer_config_path = _get_file_parent(
+                tokenizer_config_file.path
+            )  # trigger download of tokenizer_config
+
+        if tokenizer_file is not None:
+            tokenizer_path = _get_file_parent(tokenizer_file.path)
+        else:
+            # if tokenizer_file is not present, we assume it's the OPT model
+            # this means that we use tokenizer_config_path instead of tokenizer_path
+            # and need to download the additional tokenizer files
+            tokenizer_path = tokenizer_config_path
+            for file in _OPT_TOKENIZER_FILES:
+                zoo_model.deployment.default.get_file(file).path
+
     else:
         raise ValueError(
             f"model_path {model_path} is not a valid directory or zoo stub"

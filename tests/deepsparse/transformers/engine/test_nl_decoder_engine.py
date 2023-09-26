@@ -17,7 +17,6 @@ from unittest.mock import patch
 import numpy as np
 
 from deepsparse.transformers.engines import NLDecoderEngine
-from flaky import flaky
 
 
 class DummyKVCacheDecoder:
@@ -30,20 +29,6 @@ class DummyKVCacheDecoder:
 
 class DummyEngine:
     input_names = ["input_1", "input_2", "past_key_values_1", "past_key_values_2"]
-
-
-@flaky(max_runs=10, min_passes=1)
-def test_generate_token():
-    logits = np.array([1.0, 11, 0.9, 0.8])
-    expected_token = 1
-
-    with patch.object(NLDecoderEngine, "__init__", lambda x, y, z: None):
-        engine = NLDecoderEngine(None, None)
-        engine.deterministic = False
-        engine.sampling_temperature = 1.0
-        token = engine.generate_token(logits)
-
-    assert expected_token == token
 
 
 def test_add_kv_cache_to_input():
@@ -62,9 +47,10 @@ def test_add_kv_cache_to_input():
     with patch.object(NLDecoderEngine, "__init__", lambda x, y, z: None):
         nl_decoder_engine = NLDecoderEngine(None, None)
         nl_decoder_engine.engine = DummyEngine()
-        nl_decoder_engine.kv_cache = DummyKVCacheDecoder()
         nl_decoder_engine.kv_cache_enabled = True
-        result = nl_decoder_engine.add_kv_cache_to_input(inp)
+        result = nl_decoder_engine.add_kv_cache_to_input(
+            inp, kv_cache=DummyKVCacheDecoder
+        )
 
     for (x, y) in zip(result, expected_result):
         assert np.array_equal(x, y)

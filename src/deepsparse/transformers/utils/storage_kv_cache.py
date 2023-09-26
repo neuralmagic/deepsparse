@@ -12,9 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 
-# flake8: noqa
-from .decoder_kv_cache import *
-from .helpers import *
-from .storage_kv_cache import *
-from .timings import *
+
+_LOGGER = logging.getLogger(__name__)
+
+__all__ = ["SessionStorageKVCache"]
+
+
+class SessionStorageKVCache(dict):
+    """
+    A storage that stores the kv cache sessions.
+    Each session is a DecoderKVCache object that
+    stores the state of the kv cache.
+    The storage is a dictionary that where keys are session_ids
+    and values are of all the active sessions.
+    """
