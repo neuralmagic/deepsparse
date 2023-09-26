@@ -179,12 +179,10 @@ class ChatPipeline(TextGenerationPipeline):
         """
 
         engine_outputs, session_ids = list(*engine_outputs)
-        
+
         kwargs["session_ids"] = session_ids
         # process the engine outputs within the context of TextGenerationPipeline
-        return super().process_engine_outputs(
-            engine_outputs, **kwargs
-        )
+        return super().process_engine_outputs(engine_outputs, **kwargs)
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
