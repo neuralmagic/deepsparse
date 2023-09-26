@@ -746,6 +746,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
                     if len(generated_tokens) == max_tokens:
                         finished_reason.append(FinishReason.LENGTH)
+                        break
 
                     if streaming:
                         yield (numpy.array([token]), numpy.array([logits]), [None])
@@ -756,13 +757,24 @@ class TextGenerationPipeline(TransformersPipeline):
                     tokens=token_generator.tokens, kv_cache=session
                 )
                 if streaming:
-                    yield (
-                        numpy.array([token]),
-                        numpy.array([logits]),
-                        [finished_reason[-1]],
-                    )
+                    if max_tokens == 1:
+                        yield (
+                            numpy.array([generated_tokens]),
+                            numpy.concatenate(generated_logits, axis=1),
+                            [FinishReason.LENGTH],
+                        )
+                    else:
+                        yield (
+                            numpy.array([token]),
+                            numpy.array([logits]),
+                            [finished_reason[-1]],
+                        )
 
         if not streaming:
+            # when no new tokens are generated
+            if len(finished_reason) == 0:
+                finished_reason.append(FinishReason.LENGTH)
+
             if self._debug:
                 returns = (
                     numpy.array([generated_tokens]),
