@@ -123,7 +123,7 @@ def main():
     results = benchmark_model(
         (
             "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-            "pruned-conservative"
+            "pruned80_quant-none-vnni"
         ),
         sample_inputs,
         batch_size=batch_size,
@@ -131,20 +131,7 @@ def main():
         num_iterations=num_iterations,
         num_warmup_iterations=num_warmup_iterations,
     )
-    print(f"ResNet-50 v1 Pruned Conservative FP32 {results}")
-
-    results = benchmark_model(
-        (
-            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-            "pruned-moderate"
-        ),
-        sample_inputs,
-        batch_size=batch_size,
-        num_cores=num_cores,
-        num_iterations=num_iterations,
-        num_warmup_iterations=num_warmup_iterations,
-    )
-    print(f"ResNet-50 v1 Pruned Moderate FP32 {results}")
+    print(f"ResNet-50 v1 Pruned 80 INT8 {results}")
 
     if not VNNI:
         print(
@@ -155,7 +142,7 @@ def main():
     results = benchmark_model(
         (
             "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-            "pruned_quant-moderate"
+            "pruned90-none"
         ),
         sample_inputs,
         batch_size=batch_size,
@@ -163,12 +150,26 @@ def main():
         num_iterations=num_iterations,
         num_warmup_iterations=num_warmup_iterations,
     )
-    print(f"ResNet-50 v1 Pruned Moderate INT8 {results}")
+    print(f"ResNet-50 v1 Pruned 90 FP32 {results}")
+
 
     results = benchmark_model(
         (
             "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
-            "pruned95_quant-none"
+            "pruned90_quant-none"
+        ),
+        sample_inputs,
+        batch_size=batch_size,
+        num_cores=num_cores,
+        num_iterations=num_iterations,
+        num_warmup_iterations=num_warmup_iterations,
+    )
+    print(f"ResNet-50 v1 Pruned 90 INT8 {results}")
+
+    results = benchmark_model(
+        (
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
+            "pruned95_uniform_quant-none"
         ),
         sample_inputs,
         batch_size=batch_size,
