@@ -25,12 +25,32 @@ def run_benchmarker(
     pipeline: Optional[str] = None,
     **kwargs,
 ):
-    if model:
-        benchmarker = Benchmarker(model=model)
-    elif pipeline:
-        benchmarker = Benchmarker(pipeline=pipeline)
+    if bool(model) ^ bool(pipeline):
+        if model:
+            benchmarker = Benchmarker(model=model)
+        elif pipeline:
+            benchmarker = Benchmarker(pipeline=pipeline)
 
-    return benchmarker(**kwargs)
+        return benchmarker(**kwargs)
+    raise UnclearBenchmarkerModeException(
+        "Benchmarker only accepts"
+        "one input arg for "
+        "'model' to run deepsparse.benchmark"
+        "'pipeline' to run deepsparse.benchmark_pipeline"
+    )
+
+
+def _validate_exactly_one_mode_selected(
+    *args,
+):
+    selections = sum(1 for mode in args if mode is not None)
+    if selections != 1:
+        raise UnclearBenchmarkerModeException(
+            "Benchmarker only accepts"
+            "one input arg for "
+            "'model' to run deepsparse.benchmark"
+            "'pipeline' to run deepsparse.benchmark_pipeline"
+        )
 
 
 class Benchmarker:
@@ -53,7 +73,7 @@ class Benchmarker:
         model: Optional[str] = None,
         pipeline: Optional[str] = None,
     ):
-        self._validate_exactly_one_mode_selected(model, pipeline)
+        _validate_exactly_one_mode_selected(model, pipeline)
         self.model = model
         self.pipeline = pipeline
 
@@ -63,16 +83,3 @@ class Benchmarker:
 
         if self.pipeline:
             return benchmark_pipeline(model_path=self.pipeline, **kwargs)
-
-    def _validate_exactly_one_mode_selected(
-        self,
-        *args,
-    ):
-        selections = sum(1 for mode in args if mode is not None)
-        if selections != 1:
-            raise UnclearBenchmarkerModeException(
-                "Benchmarker only accepts"
-                "one input arg for "
-                "'model' to run deepsparse.benchmark"
-                "'pipeline' to run deepsparse.benchmark_pipeline"
-            )

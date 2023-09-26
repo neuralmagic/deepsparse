@@ -24,10 +24,10 @@ from deepsparse.benchmark.config import PipelineBenchmarkConfig
 from sparsezoo import Model
 
 
-IC = "image_classification"
-TEXT_GEN = "text_generation"
+IC_STRING = "image_classification"
+TEXT_GEN_STRING = "text_generation"
 
-BENCHMARK_PIPELINE_IC_CONFIG = {
+BENCHMARK_PIPELINE_IC_CONFIG_DICT = {
     "data_type": "dummy",
     "gen_sequence_length": 100,
     "input_image_shape": [500, 500, 3],
@@ -35,7 +35,7 @@ BENCHMARK_PIPELINE_IC_CONFIG = {
     "input_schema_kwargs": {},
 }
 
-BENCHMARK_PIPELINE_TEXT_GEN_CONFIG = {
+BENCHMARK_PIPELINE_TEXT_GEN_CONFIG_DICT = {
     "data_type": "dummy",
     "gen_sequence_length": 100,
     "pipeline_kwargs": {},
@@ -53,16 +53,18 @@ class MockBenchmarker(Benchmarker):
 
         if self.pipeline:
             pipeline_kwargs = kwargs["config"].__dict__
-            if kwargs["task"] == IC:
-                assert set(BENCHMARK_PIPELINE_IC_CONFIG).issubset(set(pipeline_kwargs))
-            else:
-                assert set(BENCHMARK_PIPELINE_TEXT_GEN_CONFIG).issubset(
+            if kwargs["task"] == IC_STRING:
+                assert set(BENCHMARK_PIPELINE_IC_CONFIG_DICT).issubset(
+                    set(pipeline_kwargs)
+                )
+            elif kwargs["task"] == TEXT_GEN_STRING:
+                assert set(BENCHMARK_PIPELINE_TEXT_GEN_CONFIG_DICT).issubset(
                     set(pipeline_kwargs)
                 )
             return "bar"
 
 
-@pytest.mark.skip(reason="Heavy load -- download text-gen models -- for GHA machine")
+# @pytest.mark.skip(reason="Heavy load -- download text-gen models -- for GHA machine")
 class TestBenchmarker:
     @pytest.fixture
     def get_model_path(self):
@@ -88,7 +90,7 @@ class TestBenchmarker:
             config_dict: Optional[str] = None,
             model_path: Optional[str] = None,
             model_args: Optional[Dict[str, Any]] = None,
-            pipeline_args: Dict[str, Any] = None,
+            pipeline_args: Optional[Dict[str, Any]] = None,
         ):
             model_path = model_path or next(get_model_path(stub=stub))
 
@@ -110,12 +112,12 @@ class TestBenchmarker:
         return get
 
     def test_validate_exactly_one_mode_selected(self):
-        args = {
+        kwargs = {
             "model": "foo",
             "pipeline": "bar",
         }
         with pytest.raises(UnclearBenchmarkerModeException):
-            Benchmarker(**args)
+            Benchmarker(**kwargs)
 
     @pytest.mark.parametrize(
         "stub",
@@ -141,16 +143,16 @@ class TestBenchmarker:
                     "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/"
                     "imagenet/base-none"
                 ),
-                IC,
-                BENCHMARK_PIPELINE_IC_CONFIG,
+                IC_STRING,
+                BENCHMARK_PIPELINE_IC_CONFIG_DICT,
             ),
             (
                 (
                     "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/"
                     "bigpython_bigquery_thepile/base_quant-none"
                 ),
-                TEXT_GEN,
-                BENCHMARK_PIPELINE_TEXT_GEN_CONFIG,
+                TEXT_GEN_STRING,
+                BENCHMARK_PIPELINE_TEXT_GEN_CONFIG_DICT,
             ),
         ],
     )
@@ -178,18 +180,18 @@ class TestBenchmarker:
                     "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/"
                     "imagenet/base-none"
                 ),
-                IC,
-                BENCHMARK_PIPELINE_IC_CONFIG,
+                IC_STRING,
+                BENCHMARK_PIPELINE_IC_CONFIG_DICT,
             ),
             (
                 "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/"
                 "bigpython_bigquery_thepile/base_quant-none",
-                TEXT_GEN,
-                BENCHMARK_PIPELINE_TEXT_GEN_CONFIG,
+                TEXT_GEN_STRING,
+                BENCHMARK_PIPELINE_TEXT_GEN_CONFIG_DICT,
             ),
         ],
     )
-    def test_run_benchmarker(
+    def test_run_benchmarker__success(
         self,
         benchmarker_fixture,
         stub,
@@ -209,3 +211,13 @@ class TestBenchmarker:
 
             response_pipeline = run_benchmarker(pipeline=stub, **pipeline_args)
             assert response_pipeline == "bar"
+
+    def test_run_benchmarker__failure(
+        self,
+    ):
+        kwargs = {
+            "model": "foo",
+            "pipeline": "bar",
+        }
+        with pytest.raises(UnclearBenchmarkerModeException):
+            run_benchmarker(**kwargs)
