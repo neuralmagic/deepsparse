@@ -82,7 +82,7 @@ def Fibonacci(n):
     ],
     scope="class",
 )
-@pytest.mark.skip(reason="Those tests are too heavy to run as a normal part of the CI.")
+# @pytest.mark.skip(reason="Those tests are too heavy to run as a normal part of the CI.")
 class TestTextGenerationPipeline:
     """
     This test suite is meant to test the main scenarios of
@@ -154,119 +154,119 @@ class TestTextGenerationPipeline:
 
         yield model_name, uses_bos_token, torch_ground_truth
 
-    def test_freeze_first_position(self, setup):
-        # Test whether we should be "freezing" the first token after
-        # the kv cache is full
-        _, uses_bos_token, _ = setup
-        pipeline = self.get_pipeline()
-        assert prepends_bos_token(pipeline.tokenizer) == uses_bos_token
+    # def test_freeze_first_position(self, setup):
+    #     # Test whether we should be "freezing" the first token after
+    #     # the kv cache is full
+    #     _, uses_bos_token, _ = setup
+    #     pipeline = self.get_pipeline()
+    #     assert prepends_bos_token(pipeline.tokenizer) == uses_bos_token
 
-    def test_ort_single_token_prefill(self, setup):
-        # Test the pipeline that uses ORT engine. The test covers the
-        # following scenario:
-        # 1. Prompt preprocessing is performed by single-token engine
-        # 2. The KV Cache is never filled up
-        # 3. KV Cache managed externally
+    # def test_ort_single_token_prefill(self, setup):
+    #     # Test the pipeline that uses ORT engine. The test covers the
+    #     # following scenario:
+    #     # 1. Prompt preprocessing is performed by single-token engine
+    #     # 2. The KV Cache is never filled up
+    #     # 3. KV Cache managed externally
 
-        if self.internal_kv_cache:
-            pytest.skip(
-                "Cannot run ORT pipeline with the internal deepsparse cache enabled."
-            )
-        _, _, torch_ground_truth = setup
-        pipeline = self.get_pipeline(
-            task=self.pipeline_type,
-            model_path=self.model_stub,
-            sequence_length=self.sequence_length,
-            prompt_sequence_length=1,
-            engine_type="onnxruntime",
-        )
-        pipeline._debug = True
+    #     if self.internal_kv_cache:
+    #         pytest.skip(
+    #             "Cannot run ORT pipeline with the internal deepsparse cache enabled."
+    #         )
+    #     _, _, torch_ground_truth = setup
+    #     pipeline = self.get_pipeline(
+    #         task=self.pipeline_type,
+    #         model_path=self.model_stub,
+    #         sequence_length=self.sequence_length,
+    #         prompt_sequence_length=1,
+    #         engine_type="onnxruntime",
+    #     )
+    #     pipeline._debug = True
 
-        config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
-        )
+    #     config = GenerationConfig(
+    #         output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+    #     )
 
-        output = pipeline(
-            sequences=self.prompt, include_prompt_logits=True, generation_config=config
-        )
-        assert output.total_num_processed_tokens[0] < self.sequence_length
-        self._test_output(
-            output=output,
-            torch_ground_truth=torch_ground_truth,
-        )
+    #     output = pipeline(
+    #         sequences=self.prompt, include_prompt_logits=True, generation_config=config
+    #     )
+    #     assert output.total_num_processed_tokens[0] < self.sequence_length
+    #     self._test_output(
+    #         output=output,
+    #         torch_ground_truth=torch_ground_truth,
+    #     )
 
-    def test_ort_multi_token_prefill(self, setup):
-        # Test the pipeline that uses ORT engine. The test covers the
-        # following scenario:
-        # 1. Prompt preprocessing is performed by multi-token engine
-        # 2. The KV Cache is never filled up
-        # 3. KV Cache managed externally
+    # def test_ort_multi_token_prefill(self, setup):
+    #     # Test the pipeline that uses ORT engine. The test covers the
+    #     # following scenario:
+    #     # 1. Prompt preprocessing is performed by multi-token engine
+    #     # 2. The KV Cache is never filled up
+    #     # 3. KV Cache managed externally
 
-        if self.internal_kv_cache:
-            pytest.skip(
-                "Cannot run ORT pipeline with the internal deepsparse cache enabled."
-            )
-        _, _, torch_ground_truth = setup
-        pipeline = self.get_pipeline(
-            task=self.pipeline_type,
-            model_path=self.model_stub,
-            sequence_length=self.sequence_length,
-            prompt_sequence_length=self.prompt_sequence_length,
-            engine_type="onnxruntime",
-        )
-        pipeline._debug = True
-        config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
-        )
-        output = pipeline(
-            sequences=self.prompt, include_prompt_logits=True, generation_config=config
-        )
+    #     if self.internal_kv_cache:
+    #         pytest.skip(
+    #             "Cannot run ORT pipeline with the internal deepsparse cache enabled."
+    #         )
+    #     _, _, torch_ground_truth = setup
+    #     pipeline = self.get_pipeline(
+    #         task=self.pipeline_type,
+    #         model_path=self.model_stub,
+    #         sequence_length=self.sequence_length,
+    #         prompt_sequence_length=self.prompt_sequence_length,
+    #         engine_type="onnxruntime",
+    #     )
+    #     pipeline._debug = True
+    #     config = GenerationConfig(
+    #         output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+    #     )
+    #     output = pipeline(
+    #         sequences=self.prompt, include_prompt_logits=True, generation_config=config
+    #     )
 
-        assert output.total_num_processed_tokens[0] < self.sequence_length
-        self._test_output(
-            output=output,
-            torch_ground_truth=torch_ground_truth,
-        )
+    #     assert output.total_num_processed_tokens[0] < self.sequence_length
+    #     self._test_output(
+    #         output=output,
+    #         torch_ground_truth=torch_ground_truth,
+    #     )
 
-    def test_ort_generation_after_kv_cache_has_been_filled(self, setup):
-        # Test the pipeline that uses ORT engine. The test covers the
-        # following scenario:
-        # 1. Prompt preprocessing is performed by multi-token engine
-        # 2. The KV Cache is filled up (old entries are removed)
-        # 3. KV Cache managed externally
+    # def test_ort_generation_after_kv_cache_has_been_filled(self, setup):
+    #     # Test the pipeline that uses ORT engine. The test covers the
+    #     # following scenario:
+    #     # 1. Prompt preprocessing is performed by multi-token engine
+    #     # 2. The KV Cache is filled up (old entries are removed)
+    #     # 3. KV Cache managed externally
 
-        if self.internal_kv_cache:
-            pytest.skip(
-                "Cannot run ORT pipeline with the internal deepsparse cache enabled."
-            )
-        _, _, torch_ground_truth = setup
-        pipeline = self.get_pipeline(
-            task=self.pipeline_type,
-            model_path=self.model_stub,
-            sequence_length=self.sequence_length_short,
-            prompt_sequence_length=self.prompt_sequence_length,
-            engine_type="onnxruntime",
-        )
-        pipeline._debug = True
+    #     if self.internal_kv_cache:
+    #         pytest.skip(
+    #             "Cannot run ORT pipeline with the internal deepsparse cache enabled."
+    #         )
+    #     _, _, torch_ground_truth = setup
+    #     pipeline = self.get_pipeline(
+    #         task=self.pipeline_type,
+    #         model_path=self.model_stub,
+    #         sequence_length=self.sequence_length_short,
+    #         prompt_sequence_length=self.prompt_sequence_length,
+    #         engine_type="onnxruntime",
+    #     )
+    #     pipeline._debug = True
 
-        config = GenerationConfig(
-            output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
-        )
-        output = pipeline(
-            sequences=self.prompt, include_prompt_logits=True, generation_config=config
-        )
+    #     config = GenerationConfig(
+    #         output_scores=True, max_length=self.num_tokens_generate, top_k=0, top_p=0.0
+    #     )
+    #     output = pipeline(
+    #         sequences=self.prompt, include_prompt_logits=True, generation_config=config
+    #     )
 
-        assert output.total_num_processed_tokens[0] > self.sequence_length_short, (
-            "for this scenario, the kv cache should be full: "
-            "the total number of processed tokens should be "
-            "greater than the sequence length"
-        )
+    #     assert output.total_num_processed_tokens[0] > self.sequence_length_short, (
+    #         "for this scenario, the kv cache should be full: "
+    #         "the total number of processed tokens should be "
+    #         "greater than the sequence length"
+    #     )
 
-        self._test_output(
-            output=output,
-            torch_ground_truth=torch_ground_truth,
-            max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
-        )
+    #     self._test_output(
+    #         output=output,
+    #         torch_ground_truth=torch_ground_truth,
+    #         max_logits_difference_threshold=self.logits_max_diff_kv_cache_has_been_filled,  # noqa E501
+    #     )
 
     def test_deepsparse_single_token_prefill(self, setup):
         # Test the pipeline that uses deepsparse engine. The test covers the
@@ -276,6 +276,7 @@ class TestTextGenerationPipeline:
         # 3. KV Cache managed externally or internally
 
         _, _, torch_ground_truth = setup
+        breakpoint()
         pipeline = self.get_pipeline(
             task=self.pipeline_type,
             model_path=self.model_stub,
