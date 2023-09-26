@@ -137,7 +137,7 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
                 return_input_tokens=True,
                 fixed_sequences_length=True,
                 include_prompt_logits=True,
-                max_new_tokens=1,
+                max_length=1,
             )
 
             # Handle one sample at a time to make it simpler for masking
