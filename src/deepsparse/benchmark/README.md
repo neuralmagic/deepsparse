@@ -20,10 +20,10 @@ limitations under the License.
 
 ### Quickstart
 
-After `pip install deepsparse`, the benchmark tool is available on your CLI. For example, to benchmark a dense BERT ONNX model fine-tuned on the SST2 dataset where the model path is the minimum input required to get started, run:
+After `pip install deepsparse`, the benchmark tool is available on your CLI. For example, to benchmark a dense BERT ONNX model fine-tuned on the MNLI dataset where the model path is the minimum input required to get started, run:
 
 ```
-deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none
+deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/mnli/base-none
 ```
 __ __
 ### Usage
@@ -94,7 +94,7 @@ optional arguments:
 Example CLI command for benchmarking an ONNX model from the SparseZoo and saving the results to a `benchmark.json` file:
 
 ```
-deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none -x benchmark.json
+deepsparse.benchmark zoo:nlp/text_classification/bert-base/pytorch/huggingface/mnli/base-none -x benchmark.json
 ```
 Output of the JSON file:
 
@@ -108,10 +108,10 @@ To run a sparse FP32 MobileNetV1 at batch size 16 for 10 seconds for throughput 
 deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned-moderate --batch_size 16 --time 10 --scenario async --num_streams 8
 ```
 
-To run a sparse quantized INT8 6-layer BERT at batch size 1 for latency:
+To run a sparse quantized INT8 BERT at batch size 1 for latency:
 
 ```
-deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/pruned_quant_6layers-aggressive_96 --batch_size 1 --scenario sync
+deepsparse.benchmark zoo:nlp/question_answering/bert-large/pytorch/huggingface/squad/pruned90_quant-none --batch_size 1 --scenario sync
 ```
 __ __
 ### ⚡ Inference Scenarios
