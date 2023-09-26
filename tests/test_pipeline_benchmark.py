@@ -65,6 +65,11 @@ from tests.helpers import run_command
             ],
         ),
         (
+            "image_classification",
+            "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
+            [],
+        ),
+        (
             "token_classification",
             "zoo:nlp/token_classification/distilbert-none/pytorch/huggingface/"
             "conll2003/pruned90-none",
