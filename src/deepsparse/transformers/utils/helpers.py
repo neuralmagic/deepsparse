@@ -251,7 +251,7 @@ def override_config(
             _LOGGER.debug(f"Overriding attribute {k} in the generation config")
         else:
             raise AttributeError(
-                "Argument provided for GenerationConfig is not "
+                f"Argument {k} provided for GenerationConfig is not "
                 "valid. Refer to the TextGenerationInput for supported attributes. "
             )
 
