@@ -43,7 +43,10 @@ Options:
   --task TEXT                     The task to use for the pipeline. Choose any
                                   of `chat`, `codegen`, `text-generation`
                                   [default: chat]
-  --help                          Show this message and exit.
+  --stream / --no_stream          Whether to stream output as generated or not
+                                  [default: no_stream]
+  --help                          Show this message and exit.  [default:
+                                  False]
 
 Installation: pip install deepsparse[transformers]
 Examples:
@@ -62,6 +65,10 @@ deepsparse.infer models/llama/deployment \
 4) Disable history
 deepsparse.infer models/llama/deployment \
     --task text-generation
+
+5) Stream output
+deepsparse.infer models/llama/deployment \
+    --stream
 """
 
 from typing import Optional
@@ -122,6 +129,12 @@ from deepsparse.transformers.inference.prompt_parser import PromptParser
     help="The task to use for the pipeline. Choose any of "
     "`chat`, `codegen`, `text-generation`",
 )
+@click.option(
+    "--stream/--no_stream",
+    is_flag=True,
+    default=False,
+    help="Whether to stream output as generated or not",
+)
 def main(
     model_path: str,
     data: Optional[str],
@@ -130,6 +143,7 @@ def main(
     prompt_sequence_length: int,
     show_tokens_per_sec: bool,
     task: str,
+    stream: bool,
 ):
     """
     Command Line utility to interact with a text genration LLM in a chatbot style
@@ -166,52 +180,46 @@ def main(
         return
 
     # continue prompts until a keyboard interrupt
-    while data is None:  # always True in interactive Mode
-        prompt = input(">>> ")
-        _run_inference(
-            pipeline,
-            sampling_temperature,
-            task,
-            session_ids,
-            show_tokens_per_sec,
-            prompt_sequence_length,
-            prompt,
+    while True:
+        input_text = input("User: ")
+        pipeline_inputs = dict(
+            prompt=[input_text],
+            sampling_temperature=sampling_temperature,
         )
 
+        if SupportedTasks.is_chat(task):
+            pipeline_inputs["session_ids"] = session_ids
 
-def _run_inference(
-    pipeline,
-    sampling_temperature,
-    task,
-    session_ids,
-    show_tokens_per_sec,
-    prompt_sequence_length,
-    prompt,
-    **kwargs,
-):
-    pipeline_inputs = dict(
-        prompt=[prompt],
-        temperature=sampling_temperature,
-        **kwargs,
+        response = pipeline(**pipeline_inputs, streaming=stream)
+        _display_bot_response(stream, response)
+
+        if show_tokens_per_sec:
+            _display_generation_speed(prompt_sequence_length, pipeline)
+
+
+def _display_generation_speed(prompt_sequence_length, pipeline):
+    # display prefill and generation speed(s) in tokens/sec
+    times = pipeline.timer_manager.times
+    prefill_speed = 1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
+    generation_speed = 1.0 / times["engine_token_generation_single"]
+    print(
+        f"[prefill: {prefill_speed:.2f} tokens/sec]",
+        f"[decode: {generation_speed:.2f} tokens/sec]",
+        sep="\n",
     )
-    if SupportedTasks.is_chat(task):
-        pipeline_inputs["session_ids"] = session_ids
-
-    response = pipeline(**pipeline_inputs)
-    print("\n", response.generations[0].text)
-
-    if show_tokens_per_sec:
-        times = pipeline.timer_manager.times
-        prefill_speed = (
-            1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
-        )
-        generation_speed = 1.0 / times["engine_token_generation_single"]
-        print(
-            f"[prefill: {prefill_speed:.2f} tokens/sec]",
-            f"[decode: {generation_speed:.2f} tokens/sec]",
-            sep="\n",
-        )
 
 
-if __name__ == "__main__":
+def _display_bot_response(stream: bool, response):
+    # print response from pipeline, streaming or not
+
+    print("Bot:", end=" ")
+    if stream:
+        for generation in response:
+            print(generation.generations[0].text, end=" ")
+        print()
+    else:
+        print(response.generations[0].text)
+
+
+if "__main__" == __name__:
     main()
