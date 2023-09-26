@@ -152,7 +152,6 @@ def main():
     )
     print(f"ResNet-50 v1 Pruned 90 FP32 {results}")
 
-
     results = benchmark_model(
         (
             "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/"
