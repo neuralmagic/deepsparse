@@ -246,15 +246,14 @@ def override_config(
         return generation_config
 
     for k, v in overrides.items():
-        try:
-            getattr(generation_config, k)
+        if hasattr(generation_config, k):
             setattr(generation_config, k, v)
             _LOGGER.debug(f"Overriding attribute {k} in the generation config")
-        except AttributeError as exception:
+        else:
             raise AttributeError(
                 "Argument provided for GenerationConfig is not "
                 "valid. Refer to the TextGenerationInput for supported attributes. "
-            ) from exception
+            )
 
     return generation_config
 

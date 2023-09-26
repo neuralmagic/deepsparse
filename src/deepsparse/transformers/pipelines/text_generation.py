@@ -428,18 +428,10 @@ class TextGenerationPipeline(TransformersPipeline):
             args = args[1:]
 
         if kwargs:
-            if kwargs.get("generation_kwargs"):
-                generation_kwargs = kwargs.get("generation_kwargs")
-            else:
-                generation_kwargs = {}
-
+            generation_kwargs = kwargs.get("generation_kwargs", {})
             for k, v in kwargs.items():
-                try:
-                    if not generation_kwargs.get(k):
-                        getattr(GenerationDefaults, k)
-                        generation_kwargs[k] = v
-                except AttributeError:
-                    continue
+                if not generation_kwargs.get(k) and hasattr(GenerationDefaults, k):
+                    generation_kwargs[k] = v
 
             kwargs["generation_kwargs"] = generation_kwargs
 
@@ -551,10 +543,10 @@ class TextGenerationPipeline(TransformersPipeline):
             finished=False,
         )
 
-    def _stream_engine_outputs(self, engine_outputs, prompts, kwargs):
+    def _stream_engine_outputs(self, engine_outputs, prompts, generation_config):
         for output in engine_outputs:
             generated_tokens, generated_logits, finished_reason = output
-            logits = generated_logits if kwargs.get("return_logits") else None
+            logits = generated_logits if generation_config.output_scores else None
             generation = self._create_generated_text_output(
                 self.tokenizer.batch_decode(generated_tokens)[0],
                 finished_reason[0],
@@ -581,7 +573,9 @@ class TextGenerationPipeline(TransformersPipeline):
         streaming = kwargs.get("streaming")
 
         if streaming:
-            return self._stream_engine_outputs(engine_outputs, prompts, kwargs)
+            return self._stream_engine_outputs(
+                engine_outputs, prompts, generation_config
+            )
 
         if self._debug:
             (
