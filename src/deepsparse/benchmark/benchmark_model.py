@@ -410,7 +410,6 @@ def benchmark_model(
         seconds_to_warmup=warmup_time,
         num_streams=num_streams,
     )
-
     export_dict = {
         "engine": str(model),
         "version": __version__,
@@ -435,7 +434,6 @@ def benchmark_model(
         _LOGGER.info("Saving benchmark results to JSON file at {}".format(export_path))
         with open(export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
-
     return export_dict
 
 
