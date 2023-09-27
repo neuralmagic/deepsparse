@@ -64,7 +64,7 @@ deepsparse.infer models/llama/deployment \
     --task text-generation
 """
 
-from typing import Iterator, Optional
+from typing import Optional
 
 import click
 
@@ -148,22 +148,26 @@ def main(
     )
 
     if data:
-        for prompt, prompt_kwargs in _iter_prompt_from_file(data):
+        prompt_parser = PromptParser(data)
+        default_prompt_kwargs = {
+            "sequence_length": sequence_length,
+            "sampling_temperature": sampling_temperature,
+            "prompt_sequence_length": prompt_sequence_length,
+            "show_tokens_per_sec": show_tokens_per_sec,
+        }
+
+        for prompt_kwargs in prompt_parser.parse_as_iterable(**default_prompt_kwargs):
             _run_inference(
-                pipeline,
-                sampling_temperature,
-                task,
-                session_ids,
-                show_tokens_per_sec,
-                prompt_sequence_length,
-                prompt,
+                task=task,
+                pipeline=pipeline,
+                session_ids=session_ids,
                 **prompt_kwargs,
             )
         return
 
     # continue prompts until a keyboard interrupt
     while data is None:  # always True in interactive Mode
-        prompt_input = input(">>> ")
+        prompt = input(">>> ")
         _run_inference(
             pipeline,
             sampling_temperature,
@@ -171,13 +175,8 @@ def main(
             session_ids,
             show_tokens_per_sec,
             prompt_sequence_length,
-            prompt_input,
+            prompt,
         )
-
-
-def _iter_prompt_from_file(data: str) -> Iterator:
-    parser = PromptParser(data)
-    return parser.parse_as_iterable()
 
 
 def _run_inference(

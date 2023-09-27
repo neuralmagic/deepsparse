@@ -17,6 +17,7 @@ import csv
 import json
 import os
 from enum import Enum
+from typing import Iterator, Tuple
 
 
 class InvalidPromptSourceDirectoryException(Exception):
@@ -25,6 +26,18 @@ class InvalidPromptSourceDirectoryException(Exception):
 
 class UnableToParseExtentionException(Exception):
     pass
+
+
+def parse_value_to_appropriate_type(value: str):
+    if value.isdigit():
+        return int(value)
+    if "." in str(value) and all(part.isdigit() for part in value.split(".", 1)):
+        return float(value)
+    if value.lower() == "true":
+        return True
+    if value.lower() == "false":
+        return False
+    return value
 
 
 class PromptParser:
@@ -38,43 +51,49 @@ class PromptParser:
         self.extention: self.Extensions = self._validate_and_return_extention(filename)
         self.filename: str = filename
 
-    def parse_as_iterable(self):
+    def parse_as_iterable(self, **kwargs) -> Iterator[Tuple]:
 
         if self.extention == self.Extensions.TEXT:
-            return self._parse_text()
+            return self._parse_text(**kwargs)
         if self.extention == self.Extensions.CSV:
-            return self._parse_csv()
+            return self._parse_csv(**kwargs)
         if self.extention == self.Extensions.JSON:
-            return self._parse_json_list()
+            return self._parse_json_list(**kwargs)
         if self.extention == self.Extensions.JSONL:
-            return self._parse_jsonl()
+            return self._parse_jsonl(**kwargs)
 
         raise UnableToParseExtentionException(
             f"Parser for {self.extention} does not exist"
         )
 
-    def _parse_text(self):
+    def _parse_text(self, **kwargs):
         with open(self.filename, "r") as file:
             for line in file:
-                yield line.strip(), {}
+                kwargs["prompt"] = line.strip()
+                yield kwargs
 
-    def _parse_csv(self):
+    def _parse_csv(self, **kwargs):
         with open(self.filename, "r", newline="", encoding="utf-8-sig") as file:
             reader = csv.DictReader(file)
             for row in reader:
-                yield row.get("prompt"), row
+                for key, value in row.items():
+                    kwargs.update({key: parse_value_to_appropriate_type(value)})
+                yield kwargs
 
-    def _parse_json_list(self):
+    def _parse_json_list(self, **kwargs):
         with open(self.filename, "r") as file:
             json_list = json.load(file)
             for json_object in json_list:
-                yield json_object.get("prompt"), json_object
+                kwargs.update(json_object)
+                yield kwargs
 
-    def _parse_jsonl(self):
+    def _parse_jsonl(self, **kwargs):
         with open(self.filename, "r") as file:
             for jsonl in file:
                 jsonl_object = json.loads(jsonl)
-                yield jsonl_object.get("prompt"), jsonl_object
+                breakpoint()
+                kwargs.update(jsonl_object)
+                yield kwargs
 
     def _validate_and_return_extention(self, filename: str):
         if os.path.exists(filename):
