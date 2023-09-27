@@ -757,7 +757,8 @@ class TextGenerationPipeline(TransformersPipeline):
                     tokens=token_generator.tokens, kv_cache=session
                 )
                 if streaming:
-                    if max_tokens == 1:
+                    # when no new tokens are generated
+                    if len(finished_reason) == 0:
                         yield (
                             numpy.array([generated_tokens]),
                             numpy.concatenate(generated_logits, axis=1),
