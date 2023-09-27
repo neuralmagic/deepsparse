@@ -41,25 +41,19 @@ second_prompt_output = text_output.generations[1]
 - For a complete list of supported attributes, see the tables below
 
 ```python
-
 generation_config = {"max_length": 10}
 generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
-print(generations)
-
 ```
 
 ### Use the transformers `GenerationConfig` object for the `generation_config`
 
 ```python
-
 from transformers import GenerationConfig
 
 generation_config = GenerationConfig()
 generation_config.max_length = 10
 
 generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
-print(generations)
-
 ```
 
 ### Use just `kwargs`
@@ -67,28 +61,22 @@ print(generations)
 `kwargs`
 
 ```python
-
 generations = text_pipeline(prompt=PROMPT, max_length=10)
-print(generations)
-
 ```
 ### Use the GenerationConfig during pipeline creation
 - Every inference run with this pipeline will apply this generation config, unless
 also provided during inference
 
 ```python
-
 MODEL_PATH = "path/to/model/or/zoostub"
 generation_config = {"max_length": 10}
 text_pipeline = TextGeneration(model_path=MODEL_PATH, generation_config=generation_config)
 
 generations = text_pipeline(prompt=PROMPT)
-print(generations)
 
 # Override the generation config by providing a config during inference time
 generation_config = {"max_length": 25}
 generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
-print(generations)
 ```
 
 ### Get more then one response for a given prompt
@@ -96,7 +84,6 @@ print(generations)
 ```python
 generation_config = {"num_return_sequences": 2}
 generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
-print(generations)
 ```
 
 ### Get more than one unique response
@@ -104,7 +91,6 @@ print(generations)
 ```python
 generation_config = {"num_return_sequences": 2, "do_sample": True}
 generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
-print(generations)
 ```
 
 ### Use multiple prompts and generate multiple outputs for each prompt
@@ -145,7 +131,6 @@ text='  every school or publication I have looked at has said the same two books
 
 ```python
 generations = text_pipeline(prompt=PROMPT, output_score=True)
-print(generations)
 ```
 
 <h1><summary>Text Generation GenerationConfig Features Supported </h1></summary>
