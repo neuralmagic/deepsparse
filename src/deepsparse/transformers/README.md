@@ -1,4 +1,4 @@
-x# Hugging Face Transformer Inference Pipelines
+# Hugging Face Transformer Inference Pipelines
 
 
 DeepSparse allows accelerated inference, serving, and benchmarking of sparsified [Hugging Face Transformer](https://github.com/huggingface/transformers) models.  
@@ -285,7 +285,7 @@ response.text
 >> '{"labels": ["duplicate"], "scores": [0.9947025775909424]}'
 ```
 
-#### Token Classification Pipeline
+### Token Classification Pipeline
 The token classification task takes in sequences as inputs and assigns a class to each token.
 The following example uses a pruned and quantized token classification NER BERT model
 trained on the `CoNLL` dataset downloaded from the SparseZoo.
