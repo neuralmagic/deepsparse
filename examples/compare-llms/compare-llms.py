@@ -101,7 +101,7 @@ for model_path, loading_parameters, sampling_parameters in itertools.product(mod
         
         # Print or store the output to analyze the quality later
         print(f"Model: {model_path}, Loading Parameters: {loading_parameters}, Sampling Parameters: {sampling_parameters}\nPrompt: {prompt}\n====\n")
-        print(output.sequences[0])
+        print(output.generations[0].text)
         print("------")
 
         # Store the results in a dictionary and append to the results list
@@ -110,7 +110,7 @@ for model_path, loading_parameters, sampling_parameters in itertools.product(mod
             "Loading Parameters": str(loading_parameters),
             "Sampling Parameters": str(sampling_parameters),
             "Prompt": prompt,
-            "Output": output.sequences[0]
+            "Output": output.generations[0].text
         })
 
 # Create a DataFrame from the results
