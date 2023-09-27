@@ -149,7 +149,6 @@ def main(
 
     if data:
         for prompt, prompt_kwargs in _iter_prompt_from_file(data):
-            prompt_kwargs = {}
             _run_inference(
                 pipeline,
                 sampling_temperature,
