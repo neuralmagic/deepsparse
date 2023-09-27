@@ -184,7 +184,7 @@ def main(
         input_text = input("User: ")
         pipeline_inputs = dict(
             prompt=[input_text],
-            sampling_temperature=sampling_temperature,
+            temperature=sampling_temperature,
         )
 
         if SupportedTasks.is_chat(task):
