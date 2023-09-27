@@ -17,7 +17,7 @@ import csv
 import json
 import os
 from enum import Enum
-from typing import Iterator, Tuple
+from typing import Iterator
 
 
 class InvalidPromptSourceDirectoryException(Exception):
@@ -51,8 +51,7 @@ class PromptParser:
         self.extention: self.Extensions = self._validate_and_return_extention(filename)
         self.filename: str = filename
 
-    def parse_as_iterable(self, **kwargs) -> Iterator[Tuple]:
-
+    def parse_as_iterable(self, **kwargs) -> Iterator:
         if self.extention == self.Extensions.TEXT:
             return self._parse_text(**kwargs)
         if self.extention == self.Extensions.CSV:
