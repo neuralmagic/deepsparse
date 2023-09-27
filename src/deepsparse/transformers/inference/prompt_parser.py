@@ -91,7 +91,6 @@ class PromptParser:
         with open(self.filename, "r") as file:
             for jsonl in file:
                 jsonl_object = json.loads(jsonl)
-                breakpoint()
                 kwargs.update(jsonl_object)
                 yield kwargs
 
