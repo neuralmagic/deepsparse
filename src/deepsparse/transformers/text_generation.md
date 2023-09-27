@@ -22,21 +22,23 @@ text_result = text_pipeline(prompt=PROMPT)
 
 ### Enable Streaming
 ```python
-genrations = text_pipeline(prompt=PROMPT, streaming=True)
-for text_generation in genrations:
+generations = text_pipeline(prompt=PROMPT, streaming=True)
+for text_generation in generations:
     print(text_generation)
 ```
 
 ### Multiple Inputs
 ```python
 PROMPTS = [PROMPT, SECOND_PROMPT]
-generations = text_pipeline(prompt=PROMPTS)
-prompt_output = generations[0]
-second_prompt_output = generation[1]
+text_output = text_pipeline(prompt=PROMPTS)
+
+prompt_output = text_output.generations[0]
+second_prompt_output = text_output.generations[1]
 ```
 
-### Use the GenerationConfig
-#### Limit the generated output size using the `max_length` property
+### Use `generation_config` to control the generated results
+- Limit the generated output size using the `max_length` property
+- For a complete list of supported attributes, see the tables below
 
 ```python
 
@@ -45,7 +47,24 @@ generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
 print(generations)
 
 ```
-### Use just kwargs
+
+### Use the transformers `GenerationConfig` object for the `generation_config`
+
+```python
+
+from transformers import GenerationConfig
+
+generation_config = GenerationConfig()
+generation_config.max_length = 10
+
+generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
+print(generations)
+
+```
+
+### Use just `kwargs`
+- The attributes supported through the `generation_config` are also supported through
+`kwargs`
 
 ```python
 
@@ -53,8 +72,26 @@ generations = text_pipeline(prompt=PROMPT, max_length=10)
 print(generations)
 
 ```
+### Use the GenerationConfig during pipeline creation
+- Every inference run with this pipeline will apply this generation config, unless
+also provided during inference
 
-### Get more then one response
+```python
+
+MODEL_PATH = "path/to/model/or/zoostub"
+generation_config = {"max_length": 10}
+text_pipeline = TextGeneration(model_path=MODEL_PATH, generation_config=generation_config)
+
+generations = text_pipeline(prompt=PROMPT)
+print(generations)
+
+# Override the generation config by providing a config during inference time
+generation_config = {"max_length": 25}
+generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
+print(generations)
+```
+
+### Get more then one response for a given prompt
 
 ```python
 generation_config = {"num_return_sequences": 2}
@@ -70,6 +107,40 @@ generations = text_pipeline(prompt=PROMPT, generation_config=generation_config)
 print(generations)
 ```
 
+### Use multiple prompts and generate multiple outputs for each prompt
+
+```python
+PROMPTS = [PROMPT, SECOND_PROMPT]
+
+generations = text_pipeline(prompt=PROMPTS, num_return_sequences=2, do_sample=True, max_length=100)
+prompt_outputs = text_output.generations[0]
+second_prompt_outputs = text_output.generations[1]
+
+print("Outputs from the first prompt: ")
+for output in prompt_outputs:
+   print(output)
+   print("\n")
+
+print("Outputs from the second prompt: ")
+for output in second_prompt_outputs:
+   print(output)
+   print("\n")
+```
+
+Output:
+```
+Outputs from the first prompt:
+text="  are you coping better with holidays?\nI'm been reall getting good friends and helping friends as much as i can so it's all good." score=None finished=True finished_reason='stop'
+
+text="\nI'm good... minor panic attacks but aside from that I'm good." score=None finished=True finished_reason='stop'
+
+Outputs from the second prompt: 
+text='\nHAVING A GOOD TIME by Maya Angelou; How to Be a Winner by Peter Enns; BE CAREFUL WHAT YOU WHORE FOR by Sarah Bergman; 18: The Basic Ingredients of a Good Life by Jack Canfield.\nI think you might also read The Sympathy of the earth by Charles Darwin, if you are not interested in reading books. Do you write? I think it will help you to refine your own writing.' score=None finished=True finished_reason='stop'
+
+text='  every school or publication I have looked at has said the same two books.\nIt depends on the school/master. AIS was the New York Times Bestseller forever, kicked an ass in the teen fiction genre for many reasons, a lot of fiction picks like that have been around a while hence popularity. And most science fiction and fantasy titles (but not romance or thriller) are still popular.' score=None finished=True finished_reason='stop'
+```
+
+
 ### Output scores
 
 ```python
@@ -79,7 +150,7 @@ print(generations)
 
 <h1><summary>Text Generation GenerationConfig Features Supported </h1></summary>
 
-<details>
+
 <h2> Parameters controlling the output length: </h2>
 
 | Feature | Description | Deepsparse Default | HuggingFace Default | Supported |
@@ -141,5 +212,5 @@ print(generations)
 | bos_token_id | - | - | - | No |
 | eos_token_id | - | - | - | No |
 
-</details>
+
 <br/>
