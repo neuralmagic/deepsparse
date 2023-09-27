@@ -193,7 +193,7 @@ def _run_inference(
 ):
     pipeline_inputs = dict(
         prompt=[prompt],
-        sampling_temperature=sampling_temperature,
+        temperature=sampling_temperature,
         # **kwargs,
     )
     if SupportedTasks.is_chat(task):
