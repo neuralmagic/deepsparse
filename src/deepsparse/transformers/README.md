@@ -1,4 +1,4 @@
-x# Hugging Face Transformer Inference Pipelines
+# Hugging Face Transformer Inference Pipelines
 
 
 DeepSparse allows accelerated inference, serving, and benchmarking of sparsified [Hugging Face Transformer](https://github.com/huggingface/transformers) models.  
@@ -285,7 +285,7 @@ response.text
 >> '{"labels": ["duplicate"], "scores": [0.9947025775909424]}'
 ```
 
-#### Token Classification Pipeline
+### Token Classification Pipeline
 The token classification task takes in sequences as inputs and assigns a class to each token.
 The following example uses a pruned and quantized token classification NER BERT model
 trained on the `CoNLL` dataset downloaded from the SparseZoo.
@@ -353,6 +353,7 @@ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/sq
 
 To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
+
 
 ## Tutorials:
 For a deeper dive into using transformers within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/):
