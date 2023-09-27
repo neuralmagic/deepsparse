@@ -23,27 +23,35 @@ class InvalidPromptSourceDirectoryException(Exception):
     pass
 
 
+class UnableToParseExtentionException(Exception):
+    pass
+
+
 class PromptParser:
-    class Extentions(Enum):
+    class Extensions(Enum):
         TEXT = ".txt"
         CSV = ".csv"
         JSON = ".json"
         JSONL = ".jsonl"
 
     def __init__(self, filename: str):
-        self.extention: self.Extentions = self._validate_and_return_extention(filename)
+        self.extention: self.Extensions = self._validate_and_return_extention(filename)
         self.filename: str = filename
 
     def parse_as_iterable(self):
 
-        if self.extention == self.Extentions.TEXT:
+        if self.extention == self.Extensions.TEXT:
             return self._parse_text()
-        if self.extention == self.Extentions.CSV:
+        if self.extention == self.Extensions.CSV:
             return self._parse_csv()
-        if self.extention == self.Extentions.JSON:
+        if self.extention == self.Extensions.JSON:
             return self._parse_json_list()
-        if self.extention == self.Extentions.JSONL:
+        if self.extention == self.Extensions.JSONL:
             return self._parse_jsonl()
+
+        raise UnableToParseExtentionException(
+            f"Parser for {self.extention} does not exist"
+        )
 
     def _parse_text(self):
         with open(self.filename, "r") as file:
@@ -71,11 +79,13 @@ class PromptParser:
     def _validate_and_return_extention(self, filename: str):
         if os.path.exists(filename):
 
-            for extention in self.Extentions:
+            for extention in self.Extensions:
                 if filename.endswith(extention.value):
                     return extention
 
             raise InvalidPromptSourceDirectoryException(
-                f"{filename} is not a parsable data for inference"
+                f"{filename} is not compatible. Select file that has "
+                "extension from "
+                f"{[key.name for key in self.Extensions]}"
             )
         raise FileNotFoundError

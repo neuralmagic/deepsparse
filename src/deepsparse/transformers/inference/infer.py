@@ -141,7 +141,7 @@ def main(
     session_ids = "chatbot_cli_session"
 
     pipeline = Pipeline.create(
-        task=task,  # let pipeline determine if task is supported
+        task=task,  # let the pipeline determine if task is supported
         model_path=model_path,
         sequence_length=sequence_length,
         prompt_sequence_length=prompt_sequence_length,
@@ -193,7 +193,7 @@ def _run_inference(
     pipeline_inputs = dict(
         prompt=[prompt],
         temperature=sampling_temperature,
-        # **kwargs,
+        **kwargs,
     )
     if SupportedTasks.is_chat(task):
         pipeline_inputs["session_ids"] = session_ids
