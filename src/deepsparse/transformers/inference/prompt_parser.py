@@ -76,6 +76,6 @@ class PromptParser:
                     return extention
 
             raise InvalidPromptSourceDirectoryException(
-                f"{filename} is not a valid source extract batched prompts"
+                f"{filename} is not a parsable data for inference"
             )
         raise FileNotFoundError
