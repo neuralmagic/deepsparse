@@ -29,7 +29,8 @@ import yaml
 
 from deepsparse.pipeline import SupportedTasks
 from deepsparse.server.config import EndpointConfig, ServerConfig
-from deepsparse.server.server import start_server
+from deepsparse.server.openai_server import OpenAIServer
+from deepsparse.server.server import DeepsparseServer, SagemakerServer
 
 
 HOST_OPTION = click.option(
@@ -109,7 +110,7 @@ WORKERS_OPTION = click.option(
 
 INTEGRATION_OPTION = click.option(
     "--integration",
-    type=click.Choice(["local", "sagemaker"], case_sensitive=False),
+    type=click.Choice(["local", "sagemaker", "openai"], case_sensitive=False),
     default="local",
     help=(
         "Name of deployment integration that this server will be deployed to "
@@ -206,6 +207,15 @@ def main(
        ...
     ```
     """
+    def _fetch_server(integration: str, config_path: str):
+        if integration == "local":
+            return DeepsparseServer(config_path=config_path)
+        elif integration == "sagemaker":
+            return SagemakerServer(config_path=config_path)
+        else:
+            return OpenAIServer(config_path=config_path)
+
+    print("INTEGRATION", integration)
     if ctx.invoked_subcommand is not None:
         return
 
@@ -234,14 +244,15 @@ def main(
             config_path = os.path.join(tmp_dir, "server-config.yaml")
             with open(config_path, "w") as fp:
                 yaml.dump(cfg.dict(), fp)
-            start_server(
-                config_path, host, port, log_level, hot_reload_config=hot_reload_config
+
+            server = _fetch_server(integration=integration, config_path=config_path)
+            server.start_server(
+                host, port, log_level, hot_reload_config=hot_reload_config
             )
 
     if config_file is not None:
-        start_server(
-            config_file, host, port, log_level, hot_reload_config=hot_reload_config
-        )
+        server = _fetch_server(integration=integration, config_path=config_file)
+        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
 
 
 @main.command(
