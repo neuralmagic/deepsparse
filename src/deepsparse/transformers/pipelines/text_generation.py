@@ -543,7 +543,9 @@ class TextGenerationPipeline(TransformersPipeline):
             finished=False,
         )
 
-    def _stream_engine_outputs(self, engine_outputs, prompts, generation_config):
+    def _stream_engine_outputs(
+        self, engine_outputs, prompts, generation_config, **kwargs
+    ):
         for output in engine_outputs:
             generated_tokens, generated_logits, finished_reason = output
             logits = generated_logits if generation_config.output_scores else None
