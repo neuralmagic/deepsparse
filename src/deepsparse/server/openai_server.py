@@ -17,9 +17,10 @@ import logging
 from http import HTTPStatus
 from typing import AsyncGenerator, Dict
 
+from deepsparse import Pipeline
 from deepsparse.server.output import *
 from deepsparse.server.protocol import *
-from deepsparse.server.server import Pipeline, Server
+from deepsparse.server.server import Server
 from deepsparse.transformers.pipelines.text_generation import TextGenerationInput
 from fastapi import BackgroundTasks, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -70,6 +71,9 @@ class OpenAIServer(Server):
                 generation_kwargs[OPENAI_TO_DEEPSPARSE_MAPPINGS[k]] = generation_kwargs[
                     k
                 ]
+
+            if generation_kwargs["num_return_sequences"] > 1:
+                generation_kwargs["do_sample"] = True
 
         return generation_kwargs
 
@@ -240,6 +244,7 @@ class OpenAIServer(Server):
                     max_tokens=request.max_tokens,
                     top_k=request.top_k,
                     stream=request.stream,
+                    num_return_sequences=request.n,
                 )
             except ValueError as e:
                 return self.create_error_response(HTTPStatus.BAD_REQUEST, str(e))

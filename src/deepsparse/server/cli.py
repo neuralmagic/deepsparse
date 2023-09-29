@@ -29,8 +29,9 @@ import yaml
 
 from deepsparse.pipeline import SupportedTasks
 from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.deepsparse_server import DeepsparseServer
 from deepsparse.server.openai_server import OpenAIServer
-from deepsparse.server.server import DeepsparseServer, SagemakerServer
+from deepsparse.server.sagemaker import SagemakerServer
 
 
 HOST_OPTION = click.option(
@@ -207,6 +208,7 @@ def main(
        ...
     ```
     """
+
     def _fetch_server(integration: str, config_path: str):
         if integration == "local":
             return DeepsparseServer(config_path=config_path)
