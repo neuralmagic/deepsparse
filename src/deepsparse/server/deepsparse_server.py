@@ -14,9 +14,6 @@
 
 import logging
 from functools import partial
-from typing import List
-
-from pydantic import BaseModel
 
 from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig
@@ -63,11 +60,6 @@ class DeepsparseServer(Server):
         _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
         return app
 
-    def clean_up_route(self, route):
-        if not route.startswith("/"):
-            route = "/" + route
-        return route
-
     def _add_endpoint(
         self,
         app: FastAPI,
@@ -88,24 +80,6 @@ class DeepsparseServer(Server):
             pipeline,
         )
         self._add_status_and_metadata_endpoints(app, endpoint_config, pipeline)
-
-    def _update_routes(
-        self,
-        app: FastAPI,
-        routes_and_fns: List,
-        response_model: BaseModel,
-        methods: List[str],
-        tags: List[str],
-    ):
-        for route, endpoint_fn in routes_and_fns:
-            app.add_api_route(
-                route,
-                endpoint_fn,
-                response_model=response_model,
-                methods=methods,
-                tags=tags,
-            )
-            _LOGGER.info(f"Added '{route}' endpoint")
 
     def _add_status_and_metadata_endpoints(
         self,

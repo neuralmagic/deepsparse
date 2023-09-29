@@ -117,14 +117,15 @@ class Server:
 
     def _build_app(self) -> FastAPI:
         route_counts = Counter([cfg.route for cfg in self.server_config.endpoints])
-        if route_counts[None] > 1:
+        name_counts = Counter([cfg.name for cfg in self.server_config.endpoints])
+        if route_counts[None] > 1 and name_counts[None] > 1:
             raise ValueError(
-                "You must specify `route` for all endpoints if multiple endpoints "
-                "are used."
+                "You must specify `route` or `name` for all endpoints if multiple "
+                "endpoints are used."
             )
 
         for route, count in route_counts.items():
-            if count > 1:
+            if count > 1 and route is not None:
                 raise ValueError(
                     f"{route} specified {count} times for multiple EndpoingConfig.route"
                 )
@@ -193,6 +194,29 @@ class Server:
 
         _LOGGER.info(f"NM_BIND_THREADS_TO_CORES={cores}")
         _LOGGER.info(f"NM_BIND_THREADS_TO_SOCKETS={socks}")
+
+    def clean_up_route(self, route):
+        if not route.startswith("/"):
+            route = "/" + route
+        return route
+
+    def _update_routes(
+        self,
+        app: FastAPI,
+        routes_and_fns: List,
+        response_model: BaseModel,
+        methods: List[str],
+        tags: List[str],
+    ):
+        for route, endpoint_fn in routes_and_fns:
+            app.add_api_route(
+                route,
+                endpoint_fn,
+                response_model=response_model,
+                methods=methods,
+                tags=tags,
+            )
+            _LOGGER.info(f"Added '{route}' endpoint")
 
     @abstractmethod
     def _add_routes(self, app):

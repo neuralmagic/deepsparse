@@ -277,9 +277,6 @@ def config(
         "Use the `--config_file` argument instead.",
         category=DeprecationWarning,
     )
-    start_server(
-        config_path, host, port, log_level, hot_reload_config=hot_reload_config
-    )
 
 
 @main.command(
@@ -323,30 +320,6 @@ def task(
         "Use the `--task` argument instead.",
         category=DeprecationWarning,
     )
-
-    cfg = ServerConfig(
-        num_cores=num_cores,
-        num_workers=num_workers,
-        integration=integration,
-        endpoints=[
-            EndpointConfig(
-                task=task,
-                name=f"{task}",
-                route="/predict",
-                model=model_path,
-                batch_size=batch_size,
-            )
-        ],
-        loggers={},
-    )
-
-    with TemporaryDirectory() as tmp_dir:
-        config_path = os.path.join(tmp_dir, "server-config.yaml")
-        with open(config_path, "w") as fp:
-            yaml.dump(cfg.dict(), fp)
-        start_server(
-            config_path, host, port, log_level, hot_reload_config=hot_reload_config
-        )
 
 
 if __name__ == "__main__":
