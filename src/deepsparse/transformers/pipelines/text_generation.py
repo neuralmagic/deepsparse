@@ -138,14 +138,15 @@ class TextGenerationInput(BaseModel):
         description="GenerationConfig file consisting of parameters used to control "
         "sequences generated for each prompt. The current supported parameters are: "
         "max_length, max_new_tokens, num_return_sequences, output_scores, top_p, "
-        "top_k, repetition_penalty, do_sample, temperature",
+        "top_k, repetition_penalty, do_sample, temperature. If None is provided, "
+        "deepsparse defaults will be used. For all other input types, HuggingFace "
+        "defaults for GenerationConfig will be used. ",
     )
 
-    kwargs: Optional[Dict] = Field(
+    generation_kwargs: Optional[Dict] = Field(
         default=None,
         description="Any arguments to override generation_config arguments. Refer to "
-        "the generation_config argument for a full list of supported variables. Only "
-        "valid when generation_config is not None.",
+        "the generation_config argument for a full list of supported variables.",
     )
 
 
@@ -201,6 +202,12 @@ class TextGenerationPipeline(TransformersPipeline):
         of tokens supplied even if the stop token is reached.
     :param internal_kv_cache: if True, the pipeline will use the deepsparse kv cache
         for caching the model outputs.
+    :param generation_config: config file consisting of parameters used to control
+        sequences generated for each prompt. The current supported parameters are:
+        max_length, max_new_tokens, num_return_sequences, output_scores, top_p,
+        top_k, repetition_penalty, do_sample, temperature. If None is provided,
+        deepsparse defaults will be used. For all other input types, HuggingFace
+        defaults for GenerationConfig will be used.
     :param kwargs: kwargs to pass to the TransformersPipeline
     """
 
@@ -409,6 +416,7 @@ class TextGenerationPipeline(TransformersPipeline):
         if "sequences" in kwargs and "prompt" not in kwargs:
             # support prompt and sequences interchangeably
             kwargs["prompt"] = kwargs["sequences"]
+
         if (
             args
             and not isinstance(args[0], TextGenerationInput)
@@ -418,6 +426,14 @@ class TextGenerationPipeline(TransformersPipeline):
             # assume first argument is "sequences" (prompt) by default
             kwargs["prompt"] = args[0]
             args = args[1:]
+
+        if kwargs:
+            generation_kwargs = kwargs.get("generation_kwargs", {})
+            for k, v in kwargs.items():
+                if not generation_kwargs.get(k) and hasattr(GenerationDefaults, k):
+                    generation_kwargs[k] = v
+
+            kwargs["generation_kwargs"] = generation_kwargs
 
         return super().parse_inputs(*args, **kwargs)
 
@@ -434,7 +450,7 @@ class TextGenerationPipeline(TransformersPipeline):
             self.generation_config, inputs.generation_config, GenerationDefaults()
         )
 
-        generation_config = override_config(inputs.kwargs, generation_config)
+        generation_config = override_config(inputs.generation_kwargs, generation_config)
 
         self.streaming = inputs.streaming
         if not self.cache_support_enabled and generation_config.max_length > 1:
@@ -527,10 +543,10 @@ class TextGenerationPipeline(TransformersPipeline):
             finished=False,
         )
 
-    def _stream_engine_outputs(self, engine_outputs, prompts, kwargs):
+    def _stream_engine_outputs(self, engine_outputs, prompts, generation_config):
         for output in engine_outputs:
             generated_tokens, generated_logits, finished_reason = output
-            logits = generated_logits if kwargs.get("return_logits") else None
+            logits = generated_logits if generation_config.output_scores else None
             generation = self._create_generated_text_output(
                 self.tokenizer.batch_decode(generated_tokens)[0],
                 finished_reason[0],
@@ -565,7 +581,9 @@ class TextGenerationPipeline(TransformersPipeline):
         streaming = kwargs.get("streaming")
 
         if streaming:
-            return self._stream_engine_outputs(engine_outputs, prompts, kwargs)
+            return self._stream_engine_outputs(
+                engine_outputs, prompts, generation_config
+            )
 
         if self._debug:
             (
@@ -736,6 +754,7 @@ class TextGenerationPipeline(TransformersPipeline):
 
                     if len(generated_tokens) == max_tokens:
                         finished_reason.append(FinishReason.LENGTH)
+                        break
 
                     if streaming:
                         yield (numpy.array([token]), numpy.array([logits]), [None])
@@ -746,13 +765,25 @@ class TextGenerationPipeline(TransformersPipeline):
                     tokens=token_generator.tokens, kv_cache=session
                 )
                 if streaming:
-                    yield (
-                        numpy.array([token]),
-                        numpy.array([logits]),
-                        [finished_reason[-1]],
-                    )
+                    # when no new tokens are generated
+                    if len(finished_reason) == 0:
+                        yield (
+                            numpy.array([generated_tokens]),
+                            numpy.concatenate(generated_logits, axis=1),
+                            [FinishReason.LENGTH],
+                        )
+                    else:
+                        yield (
+                            numpy.array([token]),
+                            numpy.array([logits]),
+                            [finished_reason[-1]],
+                        )
 
         if not streaming:
+            # when no new tokens are generated
+            if len(finished_reason) == 0:
+                finished_reason.append(FinishReason.LENGTH)
+
             if self._debug:
                 returns = (
                     numpy.array([generated_tokens]),
