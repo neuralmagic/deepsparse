@@ -61,16 +61,21 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["TextGenerationPipeline"]
 
 
+# Based off of https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig # noqa E501
 class GenerationDefaults:
-    num_return_sequences = 1
-    max_length = 1024
-    max_new_tokens = None
-    output_scores = False
-    top_k = 0
-    top_p = 0.0
-    repetition_penalty = 0.0
+    # Parameters that control the length of the output
+    max_length = 20 
+    max_new_tokens = 200
+    # Parameters that control the generation strategy used
     do_sample = False
+    # Parameters for manipulation of the model output logits
     temperature = 1.0
+    top_k = 50
+    top_p = 1.0
+    repetition_penalty = 1.0
+    # Parameters that define the outputs
+    num_return_sequences = 1
+    output_scores = False
 
 
 class FinishReason(Enum):
@@ -213,8 +218,8 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def __init__(
         self,
-        prompt_sequence_length: int = 64,
         sequence_length: int = 1024,
+        prompt_sequence_length: int = 16,
         force_max_tokens: bool = False,
         internal_kv_cache: bool = True,
         generation_config: Union[str, pathlib.Path, Dict, GenerationConfig] = None,

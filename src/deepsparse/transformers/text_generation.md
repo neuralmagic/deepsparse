@@ -140,8 +140,8 @@ generations = text_pipeline(prompt=PROMPT, output_score=True)
 
 | Feature | Description | Deepsparse Default | HuggingFace Default | Supported |
 | :---    |      :----: |         :----:     |        :----:       |       ---:|
-| max_length | Maximum length of generated tokens. Equal to input_prompt + max_new_tokens. Overridden by max_new_tokens | 1024 | 20 | Yes|
-| max_new_tokens | Maximum number of tokens to generate, ignoring prompt tokens. | None | None | Yes |
+| max_length | Maximum length of generated tokens. Equal to input_prompt + max_new_tokens. Overridden by max_new_tokens | 20 | 20 | Yes|
+| max_new_tokens | Maximum number of tokens to generate, ignoring prompt tokens. | 200 | None | Yes |
 | min_length | Minimum length of generated tokens. Equal to input_prompt + min_new_tokens. Overridden by min_new_tokens | - | 0 | No
 | min_new_tokens | Minomum number of tokens to generate, ignoring prompt tokens. | - | None | No |
 | max_time | - | - | - | No |
@@ -151,9 +151,9 @@ generations = text_pipeline(prompt=PROMPT, output_score=True)
 
 | Feature | Description | Deepsparse Default | HuggingFace Default | Supported |
 | :---    |      :----: |         :----:     |        :----:       |       ---:|
-| top_k | The number of highest probability vocabulary tokens to keep for top-k-filtering | 0 | 50 | Yes
-| top_p | Keep the generated tokens where its cumulative probability is >= top_p | 0.0 | 1.0 | Yes
-| repetition_penalty | Penalty applied for generating new token. Existing token frequencies summed to subtraction the logit of its corresponding logit value | 0.0 | 1.0 | Yes |
+| top_k | The number of highest probability vocabulary tokens to keep for top-k-filtering | 50 | 50 | Yes
+| top_p | Keep the generated tokens where its cumulative probability is >= top_p | 1.0 | 1.0 | Yes
+| repetition_penalty | Penalty applied for generating new token. Existing token frequencies summed to subtraction the logit of its corresponding logit value | 1.0 | 1.0 | Yes |
 | temperature | The temperature to use when sampling from the probability distribution computed from the logits. Higher values will result in more random samples. Should be greater than 0.0 | 1.0 | 1.0 | Yes |
 | typical_p | - | - | - | No |
 | epsilon_cutoff | - | - | - | No |
