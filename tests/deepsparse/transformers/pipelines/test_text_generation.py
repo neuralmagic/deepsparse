@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 from typing import List, Optional, Tuple
 
 import numpy
@@ -50,7 +51,10 @@ def Fibonacci(n):
 
 @pytest.mark.parametrize(
     "internal_kv_cache",
-    [True, False],
+    [
+        True,
+        False,
+    ],
 )
 @pytest.mark.parametrize(
     "pipeline_type",
@@ -661,3 +665,23 @@ class TestTextGenerationPipeline:
             assert numpy.allclose(
                 x[:, :, -start_index:-end_index, :], y, atol=_PRECISION
             )
+
+    def test_streaming_mode_returns_generator(self, setup):
+        pipeline = self.get_pipeline(
+            task=self.pipeline_type,
+            model_path=self.model_stub,
+            sequence_length=self.sequence_length,
+            prompt_sequence_length=1,
+        )
+        inputs = dict(prompt=self.prompt, streaming=True)
+        response_generator = pipeline(**inputs)
+
+        assert inspect.isgenerator(
+            response_generator
+        ), "Pipeline should return a generator in streaming mode"
+
+        assert all(
+            isinstance(response, pipeline.output_schema)
+            for response in response_generator
+        ), "Pipeline should return a generator of output_schema \
+            objects in streaming mode"

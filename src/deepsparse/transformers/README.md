@@ -208,7 +208,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     task sentiment-analysis \
-    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/pruned80_quant-none-vnni"
 ```
 
 Making a request:
@@ -285,7 +285,7 @@ response.text
 >> '{"labels": ["duplicate"], "scores": [0.9947025775909424]}'
 ```
 
-#### Token Classification Pipeline
+### Token Classification Pipeline
 The token classification task takes in sequences as inputs and assigns a class to each token.
 The following example uses a pruned and quantized token classification NER BERT model
 trained on the `CoNLL` dataset downloaded from the SparseZoo.
@@ -314,7 +314,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     task token-classification \
-    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
+    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/pruned90-none"
 ```
 
 Making a request:
@@ -353,6 +353,7 @@ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/sq
 
 To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
+
 
 ## Tutorials:
 For a deeper dive into using transformers within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/):
