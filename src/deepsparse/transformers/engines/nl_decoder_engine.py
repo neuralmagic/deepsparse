@@ -14,6 +14,7 @@
 import copy
 import logging
 from typing import Any, Dict, List, Optional, Tuple
+from contextlib import nullcontext
 
 import numpy
 
@@ -191,17 +192,28 @@ class NLDecoderEngine:
             # to add the kv cache state to the input
             inp = self.add_kv_cache_to_input(inp, kv_cache)
 
-        # with timer.time(f"EXECUTE_ENGINE_SEQ_LEN_{self.sequence_length}"):
-        out = self.run(inp, val_inp, kv_cache)
+        # Using context based on whether timer exists or not
+        context = (
+            timer.time(f"EXECUTE_ENGINE_SEQ_LEN_{self.sequence_length}")
+            if timer
+            else nullcontext()
+        )
+        with context:
+            out = self.run(inp, val_inp, kv_cache)
 
         if kv_cache:
-            # with timer.time(TextGenerationTimings.KV_CACHE_UPDATE):
-            logits, *kv_cache_state = out
-            self.update_kv_cache(
-                kv_cache_state=kv_cache_state,
-                input_ids_len=self.input_ids_length,
-                kv_cache=kv_cache,
+            context = (
+                timer.time(TextGenerationTimings.KV_CACHE_UPDATE)
+                if timer
+                else nullcontext()
             )
+            with context:
+                logits, *kv_cache_state = out
+                self.update_kv_cache(
+                    kv_cache_state=kv_cache_state,
+                    input_ids_len=self.input_ids_length,
+                    kv_cache=kv_cache,
+                )
         else:
             logits = out[0]
 
