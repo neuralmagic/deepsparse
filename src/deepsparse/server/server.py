@@ -18,7 +18,7 @@ from abc import abstractmethod
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import List
+from typing import List, Union
 
 import yaml
 from pydantic import BaseModel
@@ -41,6 +41,8 @@ from fastapi.exceptions import HTTPException
 from starlette.responses import RedirectResponse
 
 
+SUPPORTED_INTEGRATIONS = ["local", "sagemaker", "openai"]
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -58,22 +60,28 @@ class ProxyPipeline:
 
 
 class Server:
-    def __init__(self, config_path: str):
-        _LOGGER.info(f"config_path: {config_path}")
+    def __init__(self, server_config: Union[str, ServerConfig]):
 
-        with open(config_path) as fp:
-            obj = yaml.safe_load(fp)
+        if isinstance(server_config, str):
+            with open(server_config) as fp:
+                obj = yaml.safe_load(fp)
 
-        self.config_path = config_path
-        self.server_config = ServerConfig(**obj)
+            self.config_path = server_config
+            self.server_config = ServerConfig(**obj)
+        else:
+            self.server_config = server_config
+
         _LOGGER.info(f"Using config: {repr(self.server_config)}")
 
-        self.context = Context(
-            num_cores=self.server_config.num_cores,
-            num_streams=self.server_config.num_workers,
-        )
-        self.executor = ThreadPoolExecutor(max_workers=self.context.num_streams)
+        self.context = None
+        self.executor = None
         self.server_logger = server_logger_from_config(self.server_config)
+
+        if self.server_config.integration not in SUPPORTED_INTEGRATIONS:
+            raise ValueError(
+                f"Unknown integration field {self.server_config.integration}. "
+                f"Expected one of {SUPPORTED_INTEGRATIONS}"
+            )
 
     def start_server(
         self,
@@ -103,6 +111,12 @@ class Server:
                 self.config_path, f"http://{host}:{port}/endpoints", 0.5
             )
 
+        self.context = Context(
+            num_cores=self.server_config.num_cores,
+            num_streams=self.server_config.num_workers,
+        )
+        self.executor = ThreadPoolExecutor(max_workers=self.context.num_streams)
+
         app = self._build_app()
 
         uvicorn.run(
@@ -117,12 +131,6 @@ class Server:
 
     def _build_app(self) -> FastAPI:
         route_counts = Counter([cfg.route for cfg in self.server_config.endpoints])
-        name_counts = Counter([cfg.name for cfg in self.server_config.endpoints])
-        if route_counts[None] > 1 and name_counts[None] > 1:
-            raise ValueError(
-                "You must specify `route` or `name` for all endpoints if multiple "
-                "endpoints are used."
-            )
 
         for route, count in route_counts.items():
             if count > 1 and route is not None:
@@ -208,15 +216,17 @@ class Server:
         methods: List[str],
         tags: List[str],
     ):
+        existing = [route.path for route in app.routes]
         for route, endpoint_fn in routes_and_fns:
-            app.add_api_route(
-                route,
-                endpoint_fn,
-                response_model=response_model,
-                methods=methods,
-                tags=tags,
-            )
-            _LOGGER.info(f"Added '{route}' endpoint")
+            if route not in existing:
+                app.add_api_route(
+                    route,
+                    endpoint_fn,
+                    response_model=response_model,
+                    methods=methods,
+                    tags=tags,
+                )
+                _LOGGER.info(f"Added '{route}' endpoint")
 
     @abstractmethod
     def _add_routes(self, app):

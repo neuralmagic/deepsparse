@@ -25,9 +25,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class DeepsparseServer(Server):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
     def _add_routes(self, app):
         @app.post("/endpoints", tags=["endpoints"], response_model=bool)
         def _add_endpoint_endpoint(cfg: EndpointConfig):
