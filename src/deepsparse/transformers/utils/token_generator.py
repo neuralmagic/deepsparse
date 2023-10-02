@@ -161,7 +161,6 @@ class TokenGenerator:
         # scatter sorted tensors to original indexing
         indices_to_remove = sorted_indices[sorted_indices_to_remove]
         logits[indices_to_remove] = filter_value
-        breakpoint()
         return logits.reshape(logits_shape)
 
     def _update_frequencies(self, token: numpy.ndarray):
