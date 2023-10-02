@@ -141,6 +141,13 @@ class TestTokenGenerator:
                 1,  # one token should have cumsum > 0.9
             ),
             (0.1 * numpy.ones(10).reshape((1, 1, 10)), 1, 1),  # keep at least one token
+            (
+                numpy.array([1.0, -3.1, 2.0, 3.1, -1.0, -2.0, 1.2, -1.2]).reshape(
+                    1, 1, -1
+                ),
+                0.9,
+                3,
+            ),
         ],
     )
     def test_apply_top_p(
