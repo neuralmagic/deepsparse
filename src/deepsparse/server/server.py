@@ -54,6 +54,12 @@ class ModelMetaData(BaseModel):
     model_path: str
 
 
+# For deepsparse endpoints, we bind the `predict`` and `predict_from_files` functions to
+# each of the added routes. As we require access to the pipeline to run inference on
+# each request, instead of binding `predict`, we bind `partial(predict, pipeline ...)`
+# so that there is access to the pipelne when handling each request. However, fastapi
+# has trouble with validating the pipeline type. As a workaround, we can wrap each
+# pipelinne as a `ProxyPipeline` which can be resolved by fastapi.
 class ProxyPipeline:
     def __init__(self, pipeline: Pipeline):
         self.pipeline = pipeline

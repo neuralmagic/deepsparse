@@ -96,7 +96,6 @@ class OpenAIServer(Server):
         endpoint_config: EndpointConfig,
         pipeline: Pipeline,
     ):
-        # TODO: do we let users add their own route and just add in /chat/completion?
         routes_and_fns = []
         route = (
             f"{endpoint_config.route}/chat/completions"
