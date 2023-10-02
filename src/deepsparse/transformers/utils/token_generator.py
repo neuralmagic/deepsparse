@@ -154,7 +154,7 @@ class TokenGenerator:
 
         # Remove tokens with cumulative top_p above the threshold
         # (token with 0 are kept)
-        sorted_indices_to_remove = logit_cumulative_probs > self.top_p
+        sorted_indices_to_remove = logit_cumulative_probs < self.top_p
         # Keep at least min_tokens_to_keep
         sorted_indices_to_remove[..., -min_tokens_to_keep:] = 0
 

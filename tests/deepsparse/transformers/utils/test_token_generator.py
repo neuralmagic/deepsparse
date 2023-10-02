@@ -127,27 +127,39 @@ class TestTokenGenerator:
 
         assert numpy.all(new_logits == filter_value)
 
+    @pytest.mark.parametrize(
+        ("logits", "top_p", "expected_non_inf_counts"),
+        [
+            (
+                0.1 * numpy.ones(10).reshape((1, 1, 10)),
+                0.89,
+                2,  # two tokens should have cumsum > 0.89
+            ),
+            (
+                0.1 * numpy.ones(10).reshape((1, 1, 10)),
+                0.9,
+                1,  # one token should have cumsum > 0.9
+            ),
+            (0.1 * numpy.ones(10).reshape((1, 1, 10)), 1, 1),  # keep at least one token
+        ],
+    )
     def test_apply_top_p(
         self,
+        logits,
+        top_p,
+        expected_non_inf_counts,
     ):
-        # logits for opt usually have shape (1,1,51200)
-        logits = 0.1 * numpy.ones(10).reshape((1, 1, 10))
 
         token_generator = TokenGenerator(
             logits_shape=logits[-1].shape[-1],
-            top_p=0.89,
+            top_p=top_p,
         )
 
         filter_value = -float("Inf")
         new_logits = token_generator.apply_top_p(
             logits.copy(), filter_value=filter_value
         )
-        for _ in range(1):
-            curr_min, idx = numpy.min(new_logits), numpy.argmin(new_logits)
-            assert curr_min == filter_value
-            new_logits = numpy.delete(new_logits, idx)
-
-        assert numpy.all(new_logits != filter_value)
+        assert numpy.isfinite(new_logits[-1]).sum(axis=1) == expected_non_inf_counts
 
     def test_generate_token(
         self,
