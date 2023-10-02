@@ -24,7 +24,7 @@ class InvalidPromptSourceDirectoryException(Exception):
     pass
 
 
-class UnableToParseExtentionException(Exception):
+class UnableToParseExtentsonException(Exception):
     pass
 
 
@@ -61,7 +61,7 @@ class PromptParser:
         if self.extention == self.Extensions.JSONL:
             return self._parse_jsonl(**kwargs)
 
-        raise UnableToParseExtentionException(
+        raise UnableToParseExtentsonException(
             f"Parser for {self.extention} does not exist"
         )
 
