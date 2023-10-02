@@ -146,21 +146,26 @@ class OpenAIServer(Server):
         )
 
         if not stream:
-            # Non-streaming response
-            generation = output.generations[0]
+            # Non-streaming responss
+            generations = output.generations[0]
+            if not isinstance(generations, list):
+                generations = [generations]
+
+            generated_outputs = []
+            for prompt_generation in generations:
+                completion = CompletionOutput(
+                    index=0,
+                    text=prompt_generation.text,
+                    token_ids=tokenize(prompt_generation.text),
+                    finish_reason=prompt_generation.finished_reason,
+                )
+                generated_outputs.append(completion)
             yield RequestOutput(
                 request_id=request_id,
                 prompt=prompt,
                 prompt_token_ids=prompt_token_ids,
-                outputs=[
-                    CompletionOutput(
-                        index=0,
-                        text=generation.text,
-                        token_ids=tokenize(generation.text),
-                        finish_reason=generation.finished_reason,
-                    )
-                ],
-                finished=generation.finished,
+                outputs=generated_outputs,
+                finished=True,
             )
         else:
             concat_text = ""
@@ -305,8 +310,8 @@ def map_generation_schema(generation_kwargs: Dict) -> Dict:
         if k in OPENAI_TO_DEEPSPARSE_MAPPINGS:
             generation_kwargs[OPENAI_TO_DEEPSPARSE_MAPPINGS[k]] = generation_kwargs[k]
 
-        if generation_kwargs["num_return_sequences"] > 1:
-            generation_kwargs["do_sample"] = True
+    if generation_kwargs["num_return_sequences"] > 1:
+        generation_kwargs["do_sample"] = True
 
     return generation_kwargs
 

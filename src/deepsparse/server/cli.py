@@ -211,13 +211,12 @@ def main(
 
     def _fetch_server(integration: str, config_path: str):
         if integration == "local":
-            return DeepsparseServer(config_path=config_path)
+            return DeepsparseServer(server_config=config_path)
         elif integration == "sagemaker":
-            return SagemakerServer(config_path=config_path)
+            return SagemakerServer(server_config=config_path)
         else:
-            return OpenAIServer(config_path=config_path)
+            return OpenAIServer(server_config=config_path)
 
-    print("INTEGRATION", integration)
     if ctx.invoked_subcommand is not None:
         return
 
