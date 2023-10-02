@@ -187,17 +187,8 @@ def _check_supported_system():
         )
 
     if sys.platform.startswith("darwin"):
-        if os.getenv("NM_ALLOW_DARWIN", "0") != "0":
-            # experimental support for mac, allow install to go through
-            return
-        else:
-            # mac is not supported, raise error on install
-            raise OSError(
-                "Native Mac is currently unsupported for DeepSparse. "
-                "Please run on a Linux system or within a Linux container on Mac. "
-                "More info can be found in our docs here: "
-                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-            )
+        # beta support for mac, allow install to go through
+        return
 
     # unknown system, raise error on install
     raise OSError(
