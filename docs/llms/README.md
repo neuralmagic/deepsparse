@@ -7,6 +7,13 @@ We are pleased to announce initial support for generative models in DeepSparse, 
 - Internally managed KV-caching infrastructure
 - Custom kernels for key generative inference operations for prefill and decode
 
+In this page, we will discuss:
+- [Current status of our LLM sparsity research](#sparse-llm-research)
+- [Roadmap over the next several months](#roadmap)
+- [Try it now examples](#try-it-now)
+
+[Checkout the Text Generation Pipeline user guide for more usage details](text-generation-pipeline.md)
+
 ## **Sparse LLM Research**
 
 Sparsity is a powerful model compression technique, where weights are removed from the network with limited accuracy drop. At Neural Magic, we have successfully pruned CNN models like ResNet and Transformer models like BERT to 90%+. The more sparsity we can induce in the model, the faster DeepSparse can run them!
