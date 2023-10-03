@@ -3,6 +3,7 @@ from datasets import load_dataset
 import numpy
 from typing import Mapping, List, Union
 
+CONCATENATED_DATSETS = ["wikitext2", "c4"]
 
 def process_concatenated_datasets(
         dataset_name: str,
@@ -31,6 +32,12 @@ def process_concatenated_datasets(
     Raises:
         ValueError: If an invalid dataset_name is provided.
     """
+
+    if dataset_name not in CONCATENATED_DATSETS:
+        raise KeyError(
+            f"dataset {dataset_name} not supported for concatenated processing, "
+            f"available datasets are {list(CONCATENATED_DATSETS.keys())}"
+        )
 
     if dataset_name == "wikitext2":
         eos = kwargs.get("eos", "\n\n")
