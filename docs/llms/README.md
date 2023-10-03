@@ -18,11 +18,11 @@ For usage details, see the [Text Generation User Guide](text-generation-pipeline
 
 Sparsity is a powerful model compression technique, where weights are removed from the network with limited accuracy drop. At Neural Magic, we have successfully pruned CNN models like ResNet and Transformer models like BERT to 90%+. The more sparsity we can induce in the model, the faster DeepSparse can run them!
 
-Over the past months, we have adapted our sparsity techniques to decoder-only generative models. Currently, we can prune a fine-tuned version of [**MPT-7B**](https://huggingface.co/mosaicml/mpt-7b) to ~60% sparsity with <1% accuracy drop (--- UPDATE: see our paper on arxiv ---) using a technique called **Downstream Pruning**, where we prune the network during the fine-tuning process.
+Over the past months, we have adapted our sparsity techniques to decoder-only generative models. Currently, we can prune a fine-tuned version of [**MPT-7B**](https://huggingface.co/mosaicml/mpt-7b) to ~60% sparsity with <1% accuracy drop (--- UPDATE: see our paper on arxiv ---) using a technique called Downstream Pruning, where we prune the network during the fine-tuning process.
 
 > **Note**: We currently can induce sparsity during domain adaptation fine-tuning. Sparsifying a general model that performs well on the [OpenLLM Leaderbaord](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard) is an area of active research.
 
-### **Example: Downstream Pruning on Grade-School Math (GSM)**
+### **Downstream Pruning on Grade-School Math (GSM)**
 
 Open-source LLMs like MPT and Llama2 are fine-tuned onto downstream datasets for two reasons:
 * **Instruction Tuning**: fine-tune the model onto examples that show an LLM how to respond to user input in a helpful way
