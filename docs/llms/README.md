@@ -20,7 +20,7 @@ Sparsity is a powerful model compression technique, where weights are removed fr
 
 Recently, we have been focused on adapting our sparsity techniques to decoder-only generative models. Currently, we can prune a fine-tuned version of [MPT-7B](https://huggingface.co/mosaicml/mpt-7b) to ~60% sparsity with <1% accuracy drop (--- UPDATE: see our paper on arxiv ---) using a technique called Downstream Pruning, where we prune the network during the fine-tuning process.
 
-> **Note**: We currently can induce sparsity during domain adaptation fine-tuning. Sparsifying a general model that performs well on the [OpenLLM Leaderbaord](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard) is an area of active research.
+> **Note**: We currently can induce sparsity during domain adaptation fine-tuning. Sparsifying a general model that performs well on general tasks like [OpenLLM Leaderboard](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard) is an area of active research.
 
 ### **Downstream Pruning on Grade-School Math (GSM)**
 
