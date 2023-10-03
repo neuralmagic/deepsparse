@@ -48,7 +48,7 @@ While the GSM dataset is a toy example dataset, it serves as an example of how L
 
 Using Neural Magic, we can deploy these fine-tuned models performantly on CPUs!
 
-> **Note**: The research code for Downstream Pruning will be pushed publicall SparseML over the comping weeks to enable you to apply this flow to your dataset.
+> **Note**: The research code for Downstream Pruning will be pushed to SparseML over the coming weeks to enable you to apply this flow to your dataset.
 
 ## Roadmap
 
