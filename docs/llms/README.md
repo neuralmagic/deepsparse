@@ -7,8 +7,8 @@ We are pleased to announce initial support for generative models in DeepSparse, 
 - Internally managed KV-caching infrastructure
 - Custom kernels for key generative inference operations for prefill and decode
 
-In this page, we will discuss:
-- Current status of our LLM sparsity research
+In this overview, we will discuss:
+- Current status of Neural Magic's LLM sparsity research
 - Roadmap over the next several months
 - How to try text generation with DeepSparse now
 
