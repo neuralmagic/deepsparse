@@ -54,14 +54,14 @@ Using Neural Magic, we can deploy these fine-tuned models performantly on CPUs!
 
 As mentioned above, we have only initial support for LLMs in DeepSparse. We are investing hevaily to expand our offering including:
 
-* **Supporting Llama2**: Apply Downstream Pruning flow to Llama2 (and other models)
-* **Productizing Downstream Pruning**: Enable external users to apply the Downstream Pruning to their datasets, enabling creation of fine-tuned LLMs for business use cases.
-* **Pushing to Higher Sparsity**: Expanding our pruning techniques to push sparsity as high as possible without dropping accuracy to enable further performance speedups.
-* **Building General Sparse Model**: Create sparse model that can perform well on general tasks like OpenLLM leaderboard and can be deployed directly.
+* **Supporting Llama2**: Recreating Downstream Pruning results on other models, including Llama2
+* **Productizing Downstream Pruning**: Enable external users to apply the Downstream Pruning to their datasets, enabling creation of fine-tuned LLMs for business use cases
+* **Pushing to Higher Sparsity**: Expanding our pruning techniques to push sparsity as high as possible without dropping accuracy to enable further performance
+* **Building General Sparse Model**: Create sparse model that can perform well on general tasks like OpenLLM leaderboard that can be deployed without fine-tuning
 
 ## Try It Now
 
-The following examples demonstrate how to use the trained MPT models on DeepSparse. Checkout the [user guide on `TextGeneration`](text-generation-pipeline.md) for more details on usage.
+The following examples demonstrate how to use the MPT models on DeepSparse. Checkout the [user guide on `TextGeneration`](text-generation-pipeline.md) for more details on usage.
 
 Make sure you have the nightly build of DeepSparse installed to run the examples.
 
@@ -71,7 +71,7 @@ pip install deepsparse-nightly[transformers]
 
 ### MPT-7B on GSM 
 
-We can run inference on the 60% sparse-quantized MPT-7B GSM model ([available in SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-gsm8k_mpt_pretrain-pruned50_quantized?showHidden=1)) using DeepSparse Pipelines:
+We can run inference on the 60% sparse-quantized MPT-7B GSM model ([available in SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-gsm8k_mpt_pretrain-pruned50_quantized?showHidden=1)) using DeepSparse's `TextGeneration` Pipeline:
 
 ```python
 from deepsparse import TextGeneration
@@ -90,10 +90,11 @@ print(output.generations[0].text)
 
 ### **MPT-7B on Dolly-HHRLHF**
 
-We have made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-HHRLHF](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) instruction tuning dataset [available on SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
+We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-HHRLHF](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) instruction tuning dataset [available on SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
 
 ***Caution: these models drop signficiant accuracy on general LLM evaluation tasks OpenLLM leaderboard*** and are meant to serve as demonstrations.
 
+We can run inference on these models with the following:
 ```python
 from deepsparse import TextGeneration
 
@@ -109,7 +110,7 @@ print(output.generations[0].text)
 
 ## **Feedback / Roadmap Requests**
 
-We are excited to add initial support for LLMs in the Neural Magic stack and to bring ongoing improvements over the coming months.
+We are excited to add initial support for LLMs in the Neural Magic stack and plan to bring many ongoing improvements over the coming months.
 
 For questions or requests regarding LLMs, please reach out in any of the following channels:
 - [Neural Magic Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ)
