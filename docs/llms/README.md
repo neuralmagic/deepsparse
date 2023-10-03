@@ -28,9 +28,9 @@ Open-source LLMs like MPT and Llama2 are typically fine-tuned onto downstream da
 * **Instruction Tuning**: fine-tune the model onto examples that show an LLM how to respond to user input in a helpful way
 * **Domain Adaptation**: fine-tune the model onto examples that teach an LLM information it does not currently understand
 
-An example of how domain adaptation is helpful is the [Grade-school math quetion answering dataset (GSM)](https://huggingface.co/datasets/gsm8k). 
+An example of how domain adaptation is helpful for the [Grade-school math (GSM) dataset](https://huggingface.co/datasets/gsm8k), a linguistically diverse set of grade school math word problems, which was created to support the task of question answering on basic mathematical problems that require multi-step reasoning.
 
-GSM is a difficult task for LLMs, as evidenced by the poor performance of the MPT-7B model. By fine-tuning onto ~7k examples, however, we can boost the model's accuracy on the test set significantly:
+GSM is a difficult task for LLMs, as evidenced by the poor performance of the MPT-7B model before fine-tuning. By fine-tuning with a very small set of ~7k traning examples, however, we can boost the model's accuracy on the test set significantly:
 
 --- UPDATE: insert chart showing accuracy ---
 
