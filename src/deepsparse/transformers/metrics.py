@@ -17,7 +17,6 @@ Utilities for evaluation metric computation
 """
 
 from typing import Any, Dict, Optional
-
 import numpy
 
 from scipy.special import log_softmax
@@ -183,7 +182,25 @@ class PrecisionRecallF1:
         return results
 
 
-def _cross_entropy(predictions, targets, reduction="mean"):
+def _cross_entropy(
+        predictions: numpy.ndarray,
+        targets: numpy.ndarray,
+        reduction: str = "mean",
+) -> float:
+    """
+    Calculate the cross-entropy loss between predicted probabilities and target labels.
+
+    Args:
+        predictions (numpy.ndarray): Predicted logits.
+        targets (nnumpy.ndarray): Target class labels.
+        reduction (str, optional): Specifies the reduction method for the loss.
+            - "mean" (default): Computes the mean loss over all samples.
+            - "sum": Computes the sum of losses over all samples.
+
+    Returns:
+        float: The computed cross-entropy loss.
+    """
+
     logp = log_softmax(predictions, axis=-1)
     neg_log_likelihoods = -1.0 * numpy.take_along_axis(
         logp, numpy.expand_dims(targets, axis=-1), axis=-1
