@@ -67,6 +67,7 @@ from pstats import Stats
 
 import numpy
 from tqdm.auto import tqdm
+import logging
 
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
@@ -74,6 +75,12 @@ from deepsparse.transformers.utils.eval_helpers import process_concatenated_data
 
 
 from datasets import load_dataset, load_metric  # isort: skip
+
+
+_LOGGER = logging.getLogger(__name__)
+
+
+PPL_DATASETS = ["wikitext2", "c4", "openai_humaneval"]
 
 
 def perplexity_eval(args, dataset_name="openai_humaneval"):
@@ -705,6 +712,12 @@ def _main(args):
         raise KeyError(
             f"Unknown downstream dataset {args.dataset}, "
             f"available datasets are {list(SUPPORTED_DATASETS.keys())}"
+        )
+
+    if dataset not in PPL_DATASETS:
+        _LOGGER.warning(
+            "Batch-size argument is not supported for this dataset."
+            "Will use default value of 1."
         )
 
     if dataset == "mnli":
