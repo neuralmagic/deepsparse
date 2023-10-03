@@ -3,16 +3,13 @@
 Since our founding in 2018, Neural Magic has brought the power of sparsity and quantization to speed up deep learning models on CPUs.
 
 We are pleased to announce initial support for generative models in DeepSparse, starting with Mosaic's MPT, including:
-- Sparsity and quantization performance optimizations
+- Sparsity and quantization optimizations
 - Internally managed KV-caching infrastructure
 - Custom kernels for key generative inference operations for prefill and decode
 
-In this overview, we will discuss:
-- Current status of Neural Magic's LLM sparsity research
-- Our roadmap over the next several months
-- How to try text generation with DeepSparse
+In this overview, we will discuss (1) the current status of Neural Magic's LLM sparsity research, (2) our roadmap over the next several months and (3) How to try text generation with DeepSparse.
 
-For usage details, see the [Text Generation User Guide](text-generation-pipeline.md)
+For detailed usage, see the [Text Generation User Guide](text-generation-pipeline.md)
 
 ## **Sparse LLM Research**
 
