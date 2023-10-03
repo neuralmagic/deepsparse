@@ -44,9 +44,7 @@ With <1% accuracy drop, the 60% sparse-quantized model runs YYx faster in DeepSp
 
 ### **How Is This Useful For Real World Use?**
 
-The GSM dataset is a toy example demonstrating how to adapt LLMs to new tasks.
-
-It it serves as an example of how LLMs can be adapted (with a relatively small <8k sample dataset) to solve tasks which the general pretrained model cannot. Given the treasure-troves of proprietary, domain-specific data held by companies, we expect to see many production models fine-tuned to enable more accurate, smaller models fit to business tasks.
+While the GSM dataset is a toy example dataset, it serves as an example of how LLMs can be adapted (with a relatively small <8k sample dataset) to solve tasks which the general pretrained model cannot. Given the treasure-troves of proprietary, domain-specific data held by companies, we expect to see many production models fine-tuned to enable more accurate, smaller models fit to business tasks.
 
 Using Neural Magic, we can deploy these fine-tuned models performantly on CPUs!
 
