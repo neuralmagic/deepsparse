@@ -10,7 +10,7 @@ We are pleased to announce initial support for generative models in DeepSparse, 
 In this overview, we will discuss:
 - Current status of Neural Magic's LLM sparsity research
 - Our roadmap over the next several months
-- How to try text generation with DeepSparse now
+- How to try text generation with DeepSparse
 
 For usage details, see the [Text Generation User Guide](text-generation-pipeline.md)
 
