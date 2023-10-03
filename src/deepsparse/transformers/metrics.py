@@ -34,6 +34,15 @@ class Perplexity:
         """
         Class for computing perplexity.
 
+        Each batch is processed via the "add_batches" method.
+        At the end the data is reduced to a single perplexity metric via the "compute" method.
+
+        Example:
+        metric = Perplexity()
+        for prediction, target in samples:
+            metric.add_batch(prediction, target)
+        perplexity_value = metric.compute()
+
         :param accumulate: If True, accumulate negative log-likelihood
             over samples. If False, perplexity is computed separately
             for each sampled and then averaged in the end.
