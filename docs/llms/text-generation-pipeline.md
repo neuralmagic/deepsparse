@@ -1,6 +1,6 @@
 # **Text Generation Pipelines**
 
-This page explains how to run inference with Text Generation models with DeepSparse.
+This user guide describes how to run inference with Text Generation models with DeepSparse.
 
 Make sure you have all the dependencies installed before diving in:
 
@@ -25,12 +25,12 @@ pipeline = TextGeneration(model_path=MODEL_PATH)
 Generate text by passing a prompt to the pipeline:
 
 ```python
-prompt = "Princess peach jumped from the balcony"
+prompt = "Princess Peach jumped from the balcony"
 output = pipeline(prompt=prompt)
 
 print(f"{prompt}{output.generations[0].text}")
 
-# >> Princess peach jumped from the balcony and landed on the ground. She was so happy that she had found her treasure. She thanked the bird and went back inside to show her family her new treasure.
+# >> Princess Peach jumped from the balcony and landed on the ground. She was so happy that she had found her treasure. She thanked the bird and went back inside to show her family her new treasure.
 ```
 
 ## **Input and Output Formats**
