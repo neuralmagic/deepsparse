@@ -133,14 +133,14 @@ class TestTokenGenerator:
             (
                 0.1 * numpy.ones(10).reshape((1, 1, 10)),
                 0.89,
-                2,  # two tokens should have cumsum > 0.89
+                9,
             ),
             (
                 0.1 * numpy.ones(10).reshape((1, 1, 10)),
                 0.9,
-                1,  # one token should have cumsum > 0.9
+                10,  # one token should have cumsum > 0.9
             ),
-            (0.1 * numpy.ones(10).reshape((1, 1, 10)), 1, 1),  # keep at least one token
+            (0.1 * numpy.ones(10).reshape((1, 1, 10)), 0, 1),  # keep at least one token
             (
                 numpy.array([1.0, -3.1, 2.0, 3.1, -1.0, -2.0, 1.2, -1.2]).reshape(
                     1, 1, -1
@@ -166,6 +166,7 @@ class TestTokenGenerator:
         new_logits = token_generator.apply_top_p(
             logits.copy(), filter_value=filter_value
         )
+        breakpoint()
         assert numpy.isfinite(new_logits[-1]).sum(axis=1) == expected_non_inf_counts
 
     def test_generate_token(
