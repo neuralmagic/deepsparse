@@ -92,7 +92,7 @@ print(output.generations[0].text)
 
 We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-HHRLHF](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) instruction tuning dataset [available on SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
 
-***Caution: these models drop signficiant accuracy on general LLM evaluation tasks OpenLLM leaderboard*** and are meant to serve as demonstrations.
+***These models drop accuracy on general LLM evaluation tasks OpenLLM leaderboard*** and are meant to serve as demonstrations.
 
 We can run inference on these models with the following:
 ```python
@@ -110,9 +110,7 @@ print(output.generations[0].text)
 
 ## **Feedback / Roadmap Requests**
 
-We are excited to add initial support for LLMs in the Neural Magic stack and plan to bring many ongoing improvements over the coming months.
-
-For questions or requests regarding LLMs, please reach out in any of the following channels:
+We are excited to add initial support for LLMs in the Neural Magic stack and plan to bring many ongoing improvements over the coming months. For questions or requests regarding LLMs, please reach out in any of the following channels:
 - [Neural Magic Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ)
 - [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues)
 - [Contact Form](http://neuralmagic.com/contact/)
