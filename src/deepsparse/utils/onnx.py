@@ -227,7 +227,10 @@ def generate_random_inputs(
         )
 
         _LOGGER.info(f"Generating {input_string}")
-        input_data_list.append(numpy.random.rand(*in_shape).astype(elem_type))
+        if np.issubdtype(elem_type, numpy.integer):
+            input_data_list.append(numpy.zeros(tuple(in_shape), dtype=elem_type))
+        else:
+            input_data_list.append(numpy.random.rand(*in_shape).astype(elem_type))
     return input_data_list
 
 
