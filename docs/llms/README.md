@@ -24,7 +24,7 @@ Recently, we have been focused on adapting our sparsity techniques to decoder-on
 
 ### **Downstream Pruning on Grade-School Math (GSM)**
 
-Open-source LLMs like MPT and Llama2 are fine-tuned onto downstream datasets for two reasons:
+Open-source LLMs like MPT and Llama2 are typically fine-tuned onto downstream datasets for two reasons:
 * **Instruction Tuning**: fine-tune the model onto examples that show an LLM how to respond to user input in a helpful way
 * **Domain Adaptation**: fine-tune the model onto examples that teach an LLM information it does not currently understand
 
