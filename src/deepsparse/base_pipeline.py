@@ -191,7 +191,7 @@ class BasePipeline(ABC):
         if issubclass(
             pipeline_constructor, Bucketable
         ) and pipeline_constructor.should_bucket(**kwargs):
-            if kwargs.get("input_shape", None):
+            if kwargs.get("input_shapes", None):
                 raise ValueError(
                     "Overriding input shapes not supported with Bucketing enabled"
                 )
