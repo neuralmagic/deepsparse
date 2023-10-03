@@ -185,7 +185,14 @@ class NLDecoderEngine:
 
         :return: The generated token and corresponding logits
         """
+
         timer = self.timer_manager.current
+        if not timer:
+            with self.timer_manager.new_timer_context(
+                total_inference=False
+            ) as new_timer:
+                timer = new_timer
+
         if kv_cache:
             # if model has kv cache enabled, we need
             # to add the kv cache state to the input
