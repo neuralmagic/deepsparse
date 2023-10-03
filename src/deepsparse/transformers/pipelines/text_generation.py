@@ -192,9 +192,6 @@ class TextGenerationOutput(BaseModel):
         "both mapping to arrays of size "
         "[batch_size, sequence_length]",
     )
-    session_id: Optional[str] = Field(
-        default=None, description="A string identifier for the kv cache session."
-    )
 
     class Config:
         arbitrary_types_allowed = True
