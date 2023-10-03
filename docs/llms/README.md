@@ -8,9 +8,9 @@ We are pleased to announce initial support for generative models in DeepSparse, 
 - Custom kernels for key generative inference operations for prefill and decode
 
 In this page, we will discuss:
-- [Current status of our LLM sparsity research](#sparse-llm-research)
-- [Roadmap over the next several months](#roadmap)
-- [Try it now examples](#try-it-now)
+- Current status of our LLM sparsity research
+- Roadmap over the next several months
+- How to try text generation with DeepSparse now
 
 For usage details, see the [Text Generation User Guide](text-generation-pipeline.md)
 
