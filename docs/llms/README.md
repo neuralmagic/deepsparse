@@ -12,7 +12,7 @@ In this page, we will discuss:
 - [Roadmap over the next several months](#roadmap)
 - [Try it now examples](#try-it-now)
 
-[Checkout the Text Generation Pipeline user guide for more usage details](text-generation-pipeline.md)
+For usage details, see the [Text Generation User Guide](text-generation-pipeline.md)
 
 ## **Sparse LLM Research**
 
