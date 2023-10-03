@@ -1,9 +1,37 @@
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
 from datasets import load_dataset
 import numpy
+from typing import Mapping, List, Union
 
 
-def process_concatenated_datasets(dataset_name, model_path, max_sequence_length, kwargs):
+def process_concatenated_datasets(
+        dataset_name: str,
+        model_path: str,
+        max_sequence_length: int,
+        kwargs: Mapping,
+) -> list:
+    """
+    Concatenate text datasets and split them into chunks text that, after
+    tokenization, have size "max_sequence_length" tokens.
+
+    Args:
+        dataset_name (str): The name of the dataset to process. Options: "wikitext2" or "c4".
+        model_path (str): The path to a pretrained transformer model for tokenization.
+        max_sequence_length (int): The maximum number of tokens in each sequence.
+        kwargs (mapping): Additional keyword arguments.
+            - eos (str, optional): The end-of-sentence token. Default is "\n\n" for wikitext2 and "" for c4.
+            - bos (str, optional): The beginning-of-sentence token. Default is "".
+            - raw_samples (int, optional): The number of raw samples to use. Default is None.
+            - data_file (int, optional): The index of the data file to use for dataset.
+                Not used in wikitext2. Default is 0 for c4.
+            - max_text_length (int, optional): The maximum length of text to consider.
+    Returns:
+        list: A list of text sequences.
+
+    Raises:
+        ValueError: If an invalid dataset_name is provided.
+    """
+
     if dataset_name == "wikitext2":
         eos = kwargs.get("eos", "\n\n")
         bos = kwargs.get("bos", "")
@@ -40,7 +68,32 @@ def process_concatenated_datasets(dataset_name, model_path, max_sequence_length,
     )
 
 
-def _split_text_by_tokens(text, eos, bos, tokenizer, sequence_length, max_text_length):
+def _split_text_by_tokens(
+        text: List[str],
+        eos: str,
+        bos: str,
+        tokenizer: PreTrainedTokenizerFast,
+        sequence_length: int,
+        max_text_length: Union[None, int],
+) -> List[str]:
+    """
+    Tokenizes and splits a list of concatenated text samples into sections of specified maximum token length.
+
+    Args:
+        text (List[str]): List of concatenated text samples to be tokenized and split.
+        eos (str): The end-of-sentence token.
+        bos (str): The beginning-of-sentence token.
+        tokenizer (PreTrainedTokenizerFast): Tokenizer for tokenizing the text.
+        sequence_length (int): The maximum number of tokens in each section.
+        max_text_length (Union[None, int]): The maximum length of text to consider.
+            - If None, the entire text is tokenized and split.
+            - If -1, each sample is tokenized separately.
+            - If a positive integer, the text is split into sections of this length before tokenization.
+
+    Returns:
+        List[str]: A list of sections where each section contains a maximum of "sequence_length" tokens.
+    """
+
     text = [bos + sample + eos for sample in text]
 
     if max_text_length is None:
