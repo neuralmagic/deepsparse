@@ -16,9 +16,9 @@ For usage details, see the [Text Generation User Guide](text-generation-pipeline
 
 ## **Sparse LLM Research**
 
-Sparsity is a powerful model compression technique, where weights are removed from the network with limited accuracy drop. At Neural Magic, we have successfully pruned CNN models like ResNet and Transformer models like BERT to 90%+. The more sparsity we can induce in the model, the faster DeepSparse can run them!
+Sparsity is a powerful model compression technique, where weights are removed from the network with limited accuracy drop. For instance, Neural Magic, has successfully pruned CNN models like ResNet and Transformer models like BERT to 90%+, a >10x compression in model size. This compression creates opportunity for performance optimizations in DeepSparse, which is specifically built to accelerate NNs using sparsity.
 
-Over the past months, we have adapted our sparsity techniques to decoder-only generative models. Currently, we can prune a fine-tuned version of [**MPT-7B**](https://huggingface.co/mosaicml/mpt-7b) to ~60% sparsity with <1% accuracy drop (--- UPDATE: see our paper on arxiv ---) using a technique called Downstream Pruning, where we prune the network during the fine-tuning process.
+Recently, we have been focused on adapting our sparsity techniques to decoder-only generative models. Currently, we can prune a fine-tuned version of [MPT-7B](https://huggingface.co/mosaicml/mpt-7b) to ~60% sparsity with <1% accuracy drop (--- UPDATE: see our paper on arxiv ---) using a technique called Downstream Pruning, where we prune the network during the fine-tuning process.
 
 > **Note**: We currently can induce sparsity during domain adaptation fine-tuning. Sparsifying a general model that performs well on the [OpenLLM Leaderbaord](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard) is an area of active research.
 
