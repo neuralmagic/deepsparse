@@ -64,7 +64,7 @@ __all__ = ["TextGenerationPipeline"]
 # Based off of https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig # noqa E501
 class GenerationDefaults:
     # Parameters that control the length of the output
-    max_length = 20 
+    max_length = 20
     max_new_tokens = 200
     # Parameters that control the generation strategy used
     do_sample = False
