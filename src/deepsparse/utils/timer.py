@@ -338,6 +338,16 @@ class TimerManager:
 
         return all_times
 
+    def current_or_new(self) -> StagedTimer:
+        """
+        Return the current timer if there is one, otherwise return a new one.
+        """
+        if self.current:
+            return self.current
+        else:
+            with self.new_timer_context(total_inference=False) as timer:
+                return timer
+
     def clear(self):
         for t in self._timers:
             t.clear()
