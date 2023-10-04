@@ -166,7 +166,6 @@ class TestTokenGenerator:
         new_logits = token_generator.apply_top_p(
             logits.copy(), filter_value=filter_value
         )
-        breakpoint()
         assert numpy.isfinite(new_logits[-1]).sum(axis=1) == expected_non_inf_counts
 
     def test_generate_token(
