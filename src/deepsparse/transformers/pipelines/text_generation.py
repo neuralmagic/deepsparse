@@ -64,7 +64,7 @@ __all__ = ["TextGenerationPipeline"]
 # Based off of https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig # noqa E501
 class GenerationDefaults:
     # Parameters that control the length of the output
-    max_length = 20
+    max_length = None 
     max_new_tokens = 200
     # Parameters that control the generation strategy used
     do_sample = False
@@ -709,11 +709,13 @@ class TextGenerationPipeline(TransformersPipeline):
             # last prompt token is the first generated token
             # add it to generated tokens, and the logits
             generated_tokens = [token_generator.tokens[-1]]
+
             generated_logits = (
                 prompt_logits
                 if context.get("include_prompt_logits")
                 else [prompt_logits[-1]]
             )
+
             callback = context.get("callback")
             stop = context.get("stop")
 
@@ -727,12 +729,21 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
 
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
+                if len(generated_tokens) < max_tokens:
+                    if streaming:
+                        yield (
+                            numpy.array([generated_tokens[-1]]),
+                            numpy.array([generated_logits[-1]]),
+                            [None],
+                        )
+
                 while len(generated_tokens) < max_tokens:
                     with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                         logits = self.autoregressive_inference(
                             tokens=token_generator.tokens, kv_cache=session
                         )
                         token = token_generator.generate(logits=logits[0, -1, :])
+
                     generated_tokens.append(token)
                     generated_logits.append(logits)
 

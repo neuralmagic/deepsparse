@@ -63,10 +63,14 @@ deepsparse.infer models/llama/deployment \
 deepsparse.infer models/llama/deployment \
     --task text-generation
 """
+
+from typing import Optional
+
 import click
 
 from deepsparse import Pipeline
 from deepsparse.tasks import SupportedTasks
+from deepsparse.transformers.inference.prompt_parser import PromptParser
 
 
 @click.command(
@@ -75,6 +79,14 @@ from deepsparse.tasks import SupportedTasks
     )
 )
 @click.argument("model_path", type=str)
+@click.option(
+    "--data",
+    type=str,
+    default=None,
+    help="Path to .txt, .csv, .json, or .jsonl file to load data from"
+    "If provided, runs inference over the entire dataset. If not provided "
+    "runs an interactive inference session in the console. Default None.",
+)
 @click.option(
     "--sequence_length",
     type=int,
@@ -112,6 +124,7 @@ from deepsparse.tasks import SupportedTasks
 )
 def main(
     model_path: str,
+    data: Optional[str],
     sequence_length: int,
     sampling_temperature: float,
     prompt_sequence_length: int,
@@ -128,34 +141,76 @@ def main(
     session_ids = "chatbot_cli_session"
 
     pipeline = Pipeline.create(
-        task=task,  # let pipeline determine if task is supported
+        task=task,  # let the pipeline determine if task is supported
         model_path=model_path,
         sequence_length=sequence_length,
-        sampling_temperature=sampling_temperature,
         prompt_sequence_length=prompt_sequence_length,
     )
 
+    if data:
+        prompt_parser = PromptParser(data)
+        default_prompt_kwargs = {
+            "sequence_length": sequence_length,
+            "sampling_temperature": sampling_temperature,
+            "prompt_sequence_length": prompt_sequence_length,
+            "show_tokens_per_sec": show_tokens_per_sec,
+        }
+
+        for prompt_kwargs in prompt_parser.parse_as_iterable(**default_prompt_kwargs):
+            _run_inference(
+                task=task,
+                pipeline=pipeline,
+                session_ids=session_ids,
+                **prompt_kwargs,
+            )
+        return
+
     # continue prompts until a keyboard interrupt
-    while True:
-        input_text = input("User: ")
-        pipeline_inputs = {"prompt": [input_text]}
+    while data is None:  # always True in interactive Mode
+        prompt = input(">>> ")
+        _run_inference(
+            pipeline,
+            sampling_temperature,
+            task,
+            session_ids,
+            show_tokens_per_sec,
+            prompt_sequence_length,
+            prompt,
+        )
 
-        if SupportedTasks.is_chat(task):
-            pipeline_inputs["session_ids"] = session_ids
 
-        response = pipeline(**pipeline_inputs)
-        print("Bot: ", response.generations[0].text)
-        if show_tokens_per_sec:
-            times = pipeline.timer_manager.times
-            prefill_speed = (
-                1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
-            )
-            generation_speed = 1.0 / times["engine_token_generation_single"]
-            print(
-                f"[prefill: {prefill_speed:.2f} tokens/sec]",
-                f"[decode: {generation_speed:.2f} tokens/sec]",
-                sep="\n",
-            )
+def _run_inference(
+    pipeline,
+    sampling_temperature,
+    task,
+    session_ids,
+    show_tokens_per_sec,
+    prompt_sequence_length,
+    prompt,
+    **kwargs,
+):
+    pipeline_inputs = dict(
+        prompt=[prompt],
+        temperature=sampling_temperature,
+        **kwargs,
+    )
+    if SupportedTasks.is_chat(task):
+        pipeline_inputs["session_ids"] = session_ids
+
+    response = pipeline(**pipeline_inputs)
+    print("\n", response.generations[0].text)
+
+    if show_tokens_per_sec:
+        times = pipeline.timer_manager.times
+        prefill_speed = (
+            1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
+        )
+        generation_speed = 1.0 / times["engine_token_generation_single"]
+        print(
+            f"[prefill: {prefill_speed:.2f} tokens/sec]",
+            f"[decode: {generation_speed:.2f} tokens/sec]",
+            sep="\n",
+        )
 
 
 if __name__ == "__main__":
