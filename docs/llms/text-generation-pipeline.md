@@ -40,7 +40,7 @@ print(output.generations[0].text)
 
 ## **Model Format**
 
-DeepSparse accepts models in ONNX format.
+DeepSparse accepts models in ONNX format, passed either as SparseZoo stubs or local directories.
 
 > **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At current, we suggest only using LLM ONNX graphs from SparseZoo.***
 
