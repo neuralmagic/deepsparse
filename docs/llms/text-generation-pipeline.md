@@ -20,7 +20,7 @@ For those using MacOS or Windows, we suggest using Linux containers with Docker 
 
 ## **Basic Usage**
 
-DeepSparse exposes a Pipeline interface called `TextGeneration`. Construct a pipeline and generate text:
+DeepSparse exposes a Pipeline interface called `TextGeneration`, which is used to construct a pipeline and generate text:
 ```python
 from deepsparse import TextGeneration
 
