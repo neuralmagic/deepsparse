@@ -48,7 +48,7 @@ DeepSparse accepts models in ONNX format, passed either as SparseZoo stubs or lo
 
 SparseZoo stubs identify a model in SparseZoo. 
 
-For instance, `zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none` identifes a 50% pruned and quantized MPT-7b model which was fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
+For instance, `zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none` identifes a 50% pruned-quantized MPT-7b model fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
 
 ```python
 model_path = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
@@ -57,25 +57,20 @@ pipeline = TextGeneration(model_path=model_path)
 
 ### **Local Deployment Directory**
 
-Additionally, we can pass a local path to a deployment directory which contains the necessary files to create a Pipeline. Use the SparseZoo API to download an example deployment directory:
-
+Additionally, we can pass a local path to a deployment directory. Use the SparseZoo API to download an example deployment directory:
 ```python
 import sparsezoo
-
-SPARSEZOO_STUB = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
-DOWNLOAD_DIR = "./local-model"
-sz_model = sparsezoo.Model(SPARSEZOO_STUB, DOWNLOAD_DIR)
+sz_model = sparsezoo.Model("zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none", "./local-model")
 sz_model.deployment.download()
 ```
 
 Looking at the deployment directory, we see it contains the HF configs and ONNX model files:
 ```bash
 ls ./local-model/deployment
-
 >> config.json model.onnx tokenizer.json model.data special_tokens_map.json tokenizer_config.json
 ```
 
-We can pass the local directory path to DeepSparse to compile the model:
+We can pass the local directory path to `TextGeneration`:
 ```python
 model_path = "./local-model/deployment"
 pipeline = TextGeneration(model_path=model_path)
@@ -269,7 +264,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed in front of her. She stood proudly and exclaimed, “I did
 ```
 
-- `temperature`: The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability. If `0.0`, temperature is turned off. Default is `0.0`
+- `temperature`: The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is close to uniform probability. If `0.0`, temperature is turned off. Default is `0.0`
 ```python
 # more random
 output = pipeline(prompt=prompt, do_sample=True, temperature=1.5, max_new_tokens=15)
@@ -281,7 +276,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and disappeared forever. All that means now is Maria staying where nothing draws herloads.
 # >> Princess peach jumped from the balcony and landed on the floor. She was very scared, but she knew that her mom
 ```
-- `top_k`:  Integer to define the top tokens considered within the sample operation to create new text. If `0`, `top_k` is turned off. Default is `0`.
+- `top_k`:  Int defining the top tokens considered during sampling. If `0`, `top_k` is turned off. Default is `0`
 ```python
 import numpy
 
@@ -291,7 +286,7 @@ print(numpy.isfinite(output.generations[0].score).sum(axis=1))
 # >> array([20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20])
 ```
 
-- `top_p`: Float to define the tokens that are within the sample operation of text generation. Add tokens in the sample for more probable to least probable until the sum of the probabilities is greater than top_p. If `0.0`, `top_p` is turned off. Default is `0.0`.
+- `top_p`: Float to define the tokens that are considered with nucleus sampling. If `0.0`, `top_p` is turned off. Default is `0.0`
 ```python
 import numpy
 
@@ -301,7 +296,7 @@ print(numpy.isfinite(output.generations[0].score).sum(axis=1))
 
 # >> array([20, 15, 10, 5, 25, 3, 10, 7, 6, 6, 15, 12, 11, 3, 4, 4])
 ```
-- `repetition_penalty`: The more a token is used within generation the more it is penalized to not be picked in successive generation passes. If `0.0`, `repetation_penalty` is turned off. Default is `0.0`.
+- `repetition_penalty`: The more a token is used within generation the more it is penalized to not be picked in successive generation passes. If `0.0`, `repetation_penalty` is turned off. Default is `0.0`
 
 ```python
 output = pipeline(prompt=prompt, repetition_penalty=1.3)
