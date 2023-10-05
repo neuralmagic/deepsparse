@@ -19,11 +19,13 @@ Currently, we can prune a fine-tuned version of [MPT-7B](https://huggingface.co/
 
 ### **Sparse Fine Tuning on Grade-School Math (GSM)**
 
-Open-source LLMs like MPT and Llama2 are typically fine-tuned onto downstream datasets for two reasons:
+Open-source LLMs are typically fine-tuned onto downstream datasets for two reasons:
 * **Instruction Tuning**: show the LLM examples of how to respond to human input or prompts properly
-* **Domain Adaptation**: show the model examples that teach an LLM information it does not currently understand
+* **Domain Adaptation**: show the LLM examples with information it does not currently understand
 
-An example of how domain adaptation is helpful is solving the [Grade-school math (GSM) dataset](https://huggingface.co/datasets/gsm8k), a linguistically diverse set of grade school math word problems. GSM is a difficult task for LLMs, as evidenced by the 0% zero-shot accuracy of MPT-7B-base. By fine-tuning with a very small set of ~7k training examples we can boost the model's accuracy on the test set to (--- UPDATE: xxx ---), demonstrating the power of fine-tuning to improve the models's quality.
+An example of how domain adaptation is helpful is solving the [Grade-school math (GSM) dataset](https://huggingface.co/datasets/gsm8k). 
+
+GSM is a linguistically diverse set of grade school math word problems and a notoriously difficult task for LLMs, as evidenced by the 0% zero-shot accuracy of MPT-7B-base. By fine-tuning with a very small set of ~7k training examples, we can boost the model's accuracy on the test set to (--- UPDATE: xxx ---), demonstrating the power of fine-tuning to improve the models's quality!
 
 The key insight from our paper is that we can prune the network during the fine-tuning process! We apply the [SparseGPT pruning algorithm](https://arxiv.org/pdf/2301.00774.pdf) after fine-tuning and retrain for one extra epoch. The result is a 60% sparse-quantized model with limited accuracy drop on GSM:
 
