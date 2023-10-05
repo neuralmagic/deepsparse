@@ -83,9 +83,9 @@ print(output.generations[0].text)
 
 ### **MPT-7B on Dolly-HHRLHF**
 
-We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-HHRLHF](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) instruction tuning dataset [available on SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
+We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) instruction tuning dataset [available on SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
 
-***These models drop accuracy on general LLM evaluation tasks OpenLLM leaderboard*** and are meant to serve as demonstrations.
+> ***Note: These sparse Dolly model drop accuracy on OpenLLM leaderboard***. It is a demonstration.
 
 We can run inference on these models with the following:
 ```python
