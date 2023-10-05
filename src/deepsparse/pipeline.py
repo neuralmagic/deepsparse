@@ -302,6 +302,26 @@ class Pipeline(BasePipeline):
 
         return pipeline_outputs
 
+    def __repr__(self):
+        """
+        :return: Unambiguous representation of the current pipeline
+        """
+        return "{}({})".format(self.__class__, self._properties_dict())
+
+    def __str__(self):
+        """
+        :return: Human readable form of the current pipeline
+        """
+        formatted_props = [
+            "\t{}: {}".format(key, val) for key, val in self._properties_dict().items()
+        ]
+
+        return "{}.{}:\n{}".format(
+            self.__class__.__module__,
+            self.__class__.__qualname__,
+            "\n".join(formatted_props),
+        )
+
     @classmethod
     def from_config(
         cls,
