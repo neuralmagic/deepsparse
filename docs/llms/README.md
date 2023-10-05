@@ -3,8 +3,8 @@
 DeepSparse has support for performance inference of sparse large language models, starting with Mosaic's MPT. 
 
 In this overview, we will discuss:
-1. [The current status of Neural Magic's LLM sparse fine-tuning research](#sparse-fine-tuning-research)
-2. [Our LLM roadmap over the next several months to expand support](#our-llm-roadmap)
+1. [The current status of our sparse fine-tuning research](#sparse-fine-tuning-research)
+2. [Our LLM roadmap](#our-llm-roadmap)
 3. [How to try text generation with DeepSparse](#try-it-now)
 
 For detailed usage instructions, [see the text generation user guide](text-generation-pipeline.md).
