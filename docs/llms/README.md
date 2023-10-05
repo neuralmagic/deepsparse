@@ -15,7 +15,7 @@ Sparsity is a powerful model compression technique, where weights are removed fr
 
 Currently, we can prune a fine-tuned version of [MPT-7B](https://huggingface.co/mosaicml/mpt-7b) to ~60% sparsity with INT8 quantization with limitied accuracy drop using a technique called **Sparse Fine Tuning**, where we prune the network during the fine-tuning process.
 
-> ***Note***: We currently can induce sparsity during domain adaptation fine-tuning only. Sparsifying a model that performs well on general tasks like [OpenLLM Leaderboard](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard) is an area of active research.
+> **Note**: We currently can induce sparsity during domain adaptation fine-tuning only. Sparsifying a model that performs well on general tasks like [OpenLLM Leaderboard](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard) is an area of active research.
 
 ### **Sparse Fine Tuning on Grade-School Math (GSM)**
 
