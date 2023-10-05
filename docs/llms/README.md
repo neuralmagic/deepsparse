@@ -64,12 +64,12 @@ pip install deepsparse-nightly[transformers]
 
 ### MPT-7B on GSM 
 
-We can run inference on the 60% sparse-quantized MPT-7B GSM model ([available in SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-gsm8k_mpt_pretrain-pruned50_quantized?showHidden=1)) using DeepSparse's `TextGeneration` Pipeline:
+We can run inference on the 60% sparse-quantized MPT-7B GSM model ([available in SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-gsm8k_mpt_pretrain-pruned60_quantized)) using DeepSparse's `TextGeneration` Pipeline:
 
 ```python
 from deepsparse import TextGeneration
 
-MODEL_PATH = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/gsm8k/pruned50_quant-none"
+MODEL_PATH = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/gsm8k/pruned60_quant-none"
 pipeline = TextGeneration(model_path=MODEL_PATH)
 
 prompt = "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May"
@@ -91,7 +91,7 @@ We can run inference on these models with the following:
 ```python
 from deepsparse import TextGeneration
 
-MODEL_PATH = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/gsm8k/pruned50_quant-none"
+MODEL_PATH = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
 pipeline = TextGeneration(model_path=MODEL_PATH)
 
 prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: what is Kubernetes? ### Response:"
