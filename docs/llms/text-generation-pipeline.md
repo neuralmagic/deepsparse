@@ -4,7 +4,7 @@ This user guide describes how to run inference of text generation models with De
 
 ## **Installation**
 
-DeepSparse LLMs is currently available on DeepSparse's nightly build on PyPi:
+DeepSparse support for LLMs is currently available on DeepSparse's nightly build on PyPi:
 
 ```bash
 pip install deepsparse-nightly==1.6.0.20230928[transformers] --upgrade
