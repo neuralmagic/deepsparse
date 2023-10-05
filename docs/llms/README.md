@@ -56,7 +56,7 @@ We are investing to expand our offering, including:
 
 ## Try It Now
 
-The following examples demonstrate how to use the MPT models on DeepSparse. [Checkout the user guide on `TextGeneration`](text-generation-pipeline.md) for detailed usage instructions.
+The following examples demonstrate how to use the MPT models on DeepSparse.
 
 Make sure you have the nightly build of DeepSparse installed:
 
@@ -83,6 +83,8 @@ print(output.generations[0].text)
 ### >> #### 72
 ```
 
+- [Try out the demo on Hugging Face Spaces](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k-deepsparse)!
+
 ### **MPT-7B on Dolly-HHRLHF**
 
 We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) instruction tuning dataset [available on SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
@@ -102,6 +104,9 @@ print(output.generations[0].text)
 
 ### >> Kubernetes is an open-source container orchestration system for automating deployment, scaling, and management of containerized applications.
 ```
+
+## **Learn More**
+- [Checkout the user guide on `TextGeneration`](text-generation-pipeline.md) for detailed usage instructions.
 
 ## **Feedback / Roadmap Requests**
 
