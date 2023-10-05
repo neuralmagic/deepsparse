@@ -20,23 +20,17 @@ For those using MacOS or Windows, we suggest using Linux containers with Docker 
 
 ## **Basic Usage**
 
-DeepSparse exposes a Pipeline interface called `TextGeneration` for running inference with text generation models. In this case, we will use MPT-7B 50% pruned-quantized and finetuned on Dolly. [See the model in SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
+DeepSparse exposes a Pipeline interface called `TextGeneration` for LLMs.
 
-> **Note:** The sparse Dolly model drops accuracy on OpenLLM leaderboard. It is meant as a demonstration. See [README.md#sparse-fine-tuning-research](the LLM README) for more details on the status of our pruning research.
-
-Construct a pipeline by passing a model path:
+Construct a pipeline and generate text:
 ```python
 from deepsparse import TextGeneration
 
+# construct a pipeline
 MODEL_PATH = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
 pipeline = TextGeneration(model_path=MODEL_PATH)
-```
 
-> Note: The 7B model takes about 3 minutes to compile. Try setting `MODEL_PATH` to `hf:mgoin/TinyStories-33M-quant-deepsparse` in order to use a smaller TinyStories model that will compile quickly if you are just experimenting.
-
-Generate text by passing a prompt to the pipeline:
-
-```python
+# generate text
 prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: What is Kubernetes? ### Response:"
 output = pipeline(prompt=prompt)
 print(output.generations[0].text)
@@ -44,20 +38,22 @@ print(output.generations[0].text)
 # >> Kubernetes is an open-source container orchestration system for automating deployment, scaling, and management of containerized applications.
 ```
 
+> **Note:** The 7B model takes about 2 minutes to compile. Set `MODEL_PATH` to `hf:mgoin/TinyStories-33M-quant-deepsparse` to use a small TinyStories model for quick compilation if you are just experimenting.
+
 ## **Model Format**
 
 DeepSparse accepts models in ONNX format.
 
-For performant LLM inference, DeepSparse expects ONNX graphs that are modified to use KV-caching. We will be publishing code and specifications to enable external users to create performant ONNX graphs for usage with DeepSparse over the next few weeks. ***At the current moment, however, we suggest only using LLM ONNX graphs downloaded from SparseZoo.***
+> **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At current, we suggest only using LLM ONNX graphs from SparseZoo.***
 
 ### **SparseZoo Stubs**
 
-[SparseZoo](https://sparsezoo.neuralmagic.com/) is Neural Magic's repository of sparse models. SparseZoo Stubs identify a model in the Zoo. For instance, the following stub identifes a 50% pruned and quantized MPT-7b model which was fine-tuned on the Dolly dataset:
+SparseZoo stubs identify a model in SparseZoo. For instance, the following stub identifes a 50% pruned and quantized MPT-7b model which was fine-tuned on the Dolly dataset:
 ```bash
 zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none
 ```
 
-We can pass SparseZoo stubs directly to DeepSparse, which downloads the ONNX file before compilation.
+We can pass SparseZoo stubs directly to DeepSparse, which downloads the ONNX file from the Zoo before compilation.
 ```python
 model_path = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
 pipeline = TextGeneration(model_path=model_path)
@@ -65,9 +61,7 @@ pipeline = TextGeneration(model_path=model_path)
 
 ### **Local Deployment Directory**
 
-Additionally, we can pass a local path to a deployment directory which contains the necessary files to create a Pipeline.
-
-Use the SparseZoo API to download an example deployment directory:
+Additionally, we can pass a local path to a deployment directory which contains the necessary files to create a Pipeline. Use the SparseZoo API to download an example deployment directory:
 
 ```python
 import sparsezoo
@@ -78,15 +72,14 @@ sz_model = sparsezoo.Model(SPARSEZOO_STUB, DOWNLOAD_DIR)
 sz_model.deployment.download()
 ```
 
-Looking at the contents of the deployment directory, we can see it contains Hugging Face configuration files (`config.json`, `tokenizer.json`, `tokenizer_config.json`, `special_tokens_map.json`) as well as the model files in ONNX format (`model.data` and `model.onnx`):
+Looking at the deployment directory, we see it contains the HF configs and ONNX model files:
 ```bash
 ls ./local-model/deployment
 
->> config.json  model.onnx		      tokenizer.json
->> model.data   special_tokens_map.json  tokenizer_config.json
+>> config.json model.onnx tokenizer.json model.data special_tokens_map.json tokenizer_config.json
 ```
 
-We can then pass the local directory to DeepSparse to compile the model:
+We can pass the local directory path to DeepSparse to compile the model:
 ```python
 model_path = "./local-model/deployment"
 pipeline = TextGeneration(model_path=model_path)
@@ -94,9 +87,9 @@ pipeline = TextGeneration(model_path=model_path)
 
 ## **Input and Output Formats**
 
-DeepSparse `TextGeneration` pipeline accepts [`TextGenerationInput`](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/pipelines/text_generation.py#L83) as input and returns [`TextGenerationOutput`](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/pipelines/text_generation.py#L170) as output.
+`TextGeneration` accepts [`TextGenerationInput`](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/pipelines/text_generation.py#L83) as input and returns [`TextGenerationOutput`](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/pipelines/text_generation.py#L170) as output.
 
-The following examples use a quantized version of the 33M parameter TinyStories model to speed up compilation time. Set up the pipeline with the following:
+The following examples use a quantized 33M parameter TinyStories model for quick compilation:
 ```python
 from deepsparse import TextGeneration
 
@@ -133,8 +126,8 @@ for it in output_iterator:
 # >> Princess Peach jumped from the balcony and landed on the ground. She was so happy that she had found her treasure. She thanked the old
 ```
 
-- `generation_config`: Parameters used to control sequences generated for each prompt. If None is provided, defaults will be used. [See `PipelineConfiguration`](#pipeline-configuration) for more details.
-- `generations_kwargs`: Arguments to override the `generation_config` defaults. [See `PipelineConfiguration`](#pipeline-configuration) for more details.
+- `generation_config`: Parameters used to control sequences generated for each prompt. [See below for more details](#generation-configuration)
+- `generations_kwargs`: Arguments to override the `generation_config` defaults
 
 ### Output Format
 
@@ -170,17 +163,15 @@ print(f"finished_reason: {output.generations[0].finished_reason}")
 
 ## **Generation Configuration**
 
-The `TextGeneration` Pipeline can be configured to alter several variables in generation.
+`TextGeneration` can be configured to alter several variables in generation.
 
-The following examples use a quantized version of the 33M parameter TinyStories model to speed up compilation time. Set up the pipeline with the following:
+The following examples use a quantized 33M parameter TinyStories model for quick compilation:
 ```python
 from deepsparse import TextGeneration
 
 MODEL_PATH = "hf:mgoin/TinyStories-33M-quant-deepsparse"
 pipeline = TextGeneration(model_path=MODEL_PATH)
 ```
-
-We will step through ceating a `GenerationConfig`, passing a `GenerationConfig`, and supported `GenerationConfig` parameters.
 
 ### **1. Creating A `GenerationConfig`**
 
