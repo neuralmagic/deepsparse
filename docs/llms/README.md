@@ -54,9 +54,7 @@ We are investing to expand our offering, including:
 
 ## Try It Now
 
-The following examples demonstrate how to use the MPT models on DeepSparse.
-
-Make sure you have the nightly build of DeepSparse installed:
+Install the DeepSparse Nightly build (requires Linux):
 
 ```bash
 pip install deepsparse-nightly[transformers]
@@ -87,7 +85,7 @@ print(output.generations[0].text)
 
 ### **MPT-7B on Dolly-HHRLHF**
 
-We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) dataset available on SparseZoo. We can run inference with the following:
+We have also made a 50% sparse-quantized MPT-7B fine-tuned on [Dolly-hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) available on SparseZoo. We can run inference with the following:
 
 ```python
 from deepsparse import TextGeneration
