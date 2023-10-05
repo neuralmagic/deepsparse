@@ -1,6 +1,6 @@
 # **DeepSparse LLMs**
 
-DeepSparse has initial support for sparse large language models, starting with Mosaic's MPT. 
+DeepSparse has support for performance inference of sparse large language models, starting with Mosaic's MPT. 
 
 In this overview, we will discuss:
 1. [The current status of Neural Magic's LLM sparse fine-tuning research](#sparse-fine-tuning-research)
