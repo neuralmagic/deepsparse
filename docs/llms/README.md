@@ -39,7 +39,7 @@ In DeepSparse, the 60% sparse-quantized model runs (--- UPDATE: xxx ---) faster 
 
 ### **How Is This Useful For Real World Use?**
 
-While GSM is a toy dataset, it serves as an example of how LLMs can be adapted with a relatively small dataset to solve tasks which the general pretrained model cannot. Given the treasure-troves of domain-specific data held by companies, we expect to see many production models fine-tuned to enable more accurate, smaller models fit to business tasks. Using Neural Magic, you can deploy these fine-tuned models performantly on CPUs!
+While GSM is a toy dataset, it serves as an example of how LLMs can be adapted to solve tasks which the general pretrained model cannot. Given the treasure-troves of domain-specific data held by companies, we expect to see many production models fine-tuned to create more accurate models fit to business tasks. Using Neural Magic, you can deploy these fine-tuned models performantly on CPUs!
 
 > **Note**: The code for sparse fine tuning with your data will be pushed publically in the coming weeks
 
