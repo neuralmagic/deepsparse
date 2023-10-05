@@ -63,7 +63,7 @@ DeepSparse is a CPU inference runtime that takes advantage of sparsity to accele
 
 We are pleased to announce initial support for LLMs in DeepSparse, starting with MosaicML's MPT-7b.
 
-- Check out DeepSparse's [LLM README](docs/llms) for more details on our current support and instructions to try out our technology.
+- Check out DeepSparse's [LLM README](docs/llms) for more details on our current support and instructions to try it now
 - Reach out in our [Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ) or [Contact Form](http://neuralmagic.com/contact/) if you would like to discuss our roadmap.
 
 ## Installation
