@@ -197,7 +197,7 @@ print(f"{prompt}{output.generations[0].text}")
 
 We can pass a `GenerationConfig` to `TextGeneration.__init__` or `TextGeneration.__call__`.
 
-If passed to `__init__`, the `GenerationConfig` becomes the default for all subsequent `__call__`s:
+- If passed to `__init__`, the `GenerationConfig` becomes the default for all subsequent `__call__`s:
 
 ```python
 # set generation_config during __init__
@@ -209,7 +209,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed on the ground. She was so happy that she
 ```
 
-If passed to `__call__` the `GenerationConfig` will be used for just that generation:
+- If passed to `__call__` the `GenerationConfig` will be used for just that generation:
 
 ```python
 # no generation_config set during __init__
