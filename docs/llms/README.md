@@ -1,6 +1,6 @@
 # **DeepSparse LLMs**
 
-Since our founding in 2018, Neural Magic has brought the power of sparsity and quantization to speed up deep learning models on CPUs. We are pleased to announce initial support for sparse large language models in DeepSparse, starting with Mosaic's MPT. 
+DeepSparse has initial support for sparse large language models, starting with Mosaic's MPT. 
 
 In this overview, we will discuss:
 1. [The current status of Neural Magic's LLM sparse fine-tuning research](#sparse-fine-tuning-research)
