@@ -7,7 +7,7 @@ In this overview, we will discuss:
 2. [Our LLM roadmap over the next several months to expand support](#our-llm-roadmap)
 3. [How to try text generation with DeepSparse](#try-it-now)
 
-For detailed usage instructions, see the text generation [user guide](text-generation-pipeline.md).
+For detailed usage instructions, [see the text generation user guide](text-generation-pipeline.md).
 
 ## **Sparse Fine Tuning Research**
 
