@@ -20,7 +20,9 @@ For those using MacOS or Windows, we suggest using Linux containers with Docker 
 
 ## **Basic Usage**
 
-DeepSparse exposes a Pipeline interface called `TextGeneration` for running inference with text generation models. In this case, we will use MPT-7B 50% pruned-quantized and finetuned on Dolly. ([See the model in SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none))
+DeepSparse exposes a Pipeline interface called `TextGeneration` for running inference with text generation models. In this case, we will use MPT-7B 50% pruned-quantized and finetuned on Dolly. [See the model in SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
+
+> **Note:** The sparse Dolly model drops accuracy on OpenLLM leaderboard. It is meant as a demonstration. See [README.md#sparse-fine-tuning-research](the LLM README) for more details on the status of our pruning research.
 
 Construct a pipeline by passing a model path:
 ```python
