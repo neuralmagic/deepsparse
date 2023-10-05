@@ -53,17 +53,44 @@ SUPPORTED_TASKS = ["text_generation", "opt", "bloom"]
 
 
 class OpenAIServer(Server):
+    def __init__(self, **kwargs):
+        self.model_list = ModelList()
+        self.model_to_pipeline = {}
+
+        super().__init__(**kwargs)
+
     def _add_routes(self, app: FastAPI):
         for endpoint_config in self.server_config.endpoints:
-            self._add_endpoint(
+            self._add_model(
                 app,
                 endpoint_config,
             )
+    
+        routes_and_fns = [
+            (
+                "/v2/models/chat/completions",
+                OpenAIServer.create_chat_completion,
+            ),
+        ]
 
-        _LOGGER.info(f"Added endpoints: {[route.path for route in app.routes]}")
+        self._update_routes(
+            app=app,
+            routes_and_fns=routes_and_fns,
+            response_model=ChatCompletionResponse,
+            methods=["POST"],
+            tags=["model", "inference"],
+        )
+
+        self._update_routes(
+            app=app,
+            routes_and_fns=[("/v2/models/", OpenAI.show_available_models)],
+            response_model=dict,
+            methods=["POST"],
+            tags=["model"],
+        )
         return app
 
-    def _add_endpoint(
+    def _add_model(
         self,
         app: FastAPI,
         endpoint_config: EndpointConfig,
@@ -83,40 +110,11 @@ class OpenAIServer(Server):
             pipeline_config, self.context, self.server_logger
         )
 
-        _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
-        self._add_chat_completion_endpoint(
-            app,
-            endpoint_config,
-            pipeline,
-        )
+        model_card = ModelCard(id=endpoint_config.model, root=endpoint_config.model, permission=[ModelPermission()])
 
-    def _add_chat_completion_endpoint(
-        self,
-        app: FastAPI,
-        endpoint_config: EndpointConfig,
-        pipeline: Pipeline,
-    ):
-        routes_and_fns = []
-        route = (
-            f"{endpoint_config.route}/chat/completions"
-            if endpoint_config.route
-            else f"/v2/models/{endpoint_config.name}/chat/completions"
-        )
-        route = self.clean_up_route(route)
-        routes_and_fns.append(
-            (
-                route,
-                partial(OpenAIServer.create_chat_completion, ProxyPipeline(pipeline)),
-            )
-        )
+        self.model_to_pipeline[endpoint_config.name] = pipeline
+        self.model_list.data.extend(model_card)
 
-        self._update_routes(
-            app=app,
-            routes_and_fns=routes_and_fns,
-            response_model=ChatCompletionResponse,
-            methods=["POST"],
-            tags=["model", "inference"],
-        )
 
     @staticmethod
     async def generate(
@@ -189,20 +187,13 @@ class OpenAIServer(Server):
                 )
 
     @staticmethod
-    async def show_available_models(proxy_pipeline: ProxyPipeline):
+    async def show_available_models():
         """Show available models. Right now we only have one model."""
-        model_cards = [
-            ModelCard(
-                id=proxy_pipeline.pipeline.model_path,
-                root=proxy_pipeline.pipeline.model_path,
-                permission=[ModelPermission()],
-            )
-        ]
-        return ModelList(data=model_cards)
+        return self.model_list
 
     @staticmethod
     async def create_chat_completion(
-        proxy_pipeline: ProxyPipeline, raw_request: Request
+        raw_request: Request
     ):
         """Completion API similar to OpenAI's API.
 
@@ -215,7 +206,21 @@ class OpenAIServer(Server):
         prompt = request.messages
         request_id = f"cmpl-{random_uuid()}"
         created_time = int(time.time())
+        model = request.model
 
+        pipeline = self.model_to_pipeline.get(model)
+        if not pipeline:
+            pipeline = Pipeline.create(
+                model_path=model,
+                task="text_generation"
+                context=self.context,
+                executor=self.executor
+
+            )
+            model_card = ModelCard(id=model, root=model, permission=[ModelPermission()])
+            self.model_to_pipeline[model] = pipeline
+            self.model_list.data.extend(model_card)
+            
         try:
             sampling_params = dict(
                 presence_penalty=request.presence_penalty,
@@ -232,11 +237,11 @@ class OpenAIServer(Server):
             return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
 
         result_generator = OpenAIServer.generate(
-            prompt, request_id, sampling_params, proxy_pipeline.pipeline
+            prompt, request_id, sampling_params, pipeline
         )
 
         async def abort_request() -> None:
-            await proxy_pipeline.pipeline.abort(request_id)
+            await pipeline.abort(request_id)
 
         # Streaming response
         if request.stream:
@@ -287,7 +292,7 @@ class OpenAIServer(Server):
         response = ChatCompletionResponse(
             id=request_id,
             created=created_time,
-            model=proxy_pipeline.pipeline.model_path,
+            model=model,
             choices=choices,
             usage=usage,
         )
