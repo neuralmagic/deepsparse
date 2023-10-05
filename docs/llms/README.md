@@ -27,13 +27,13 @@ An example of how domain adaptation is helpful is solving the [Grade-school math
 
 GSM is a linguistically diverse set of grade school math word problems and a notoriously difficult task for LLMs, as evidenced by the 0% zero-shot accuracy of MPT-7B-base. By fine-tuning with a very small set of ~7k training examples, we can boost the model's accuracy on the test set to (--- UPDATE: xxx ---), demonstrating the power of fine-tuning to improve the models's quality!
 
-The key insight from our paper is that we can prune the network during the fine-tuning process! We apply the [SparseGPT pruning algorithm](https://arxiv.org/pdf/2301.00774.pdf) after fine-tuning and retrain for one extra epoch. The result is a 60% sparse-quantized model with limited accuracy drop on GSM:
+The key insight from our paper is that we can prune the network during the fine-tuning process! We apply [SparseGPTm](https://arxiv.org/pdf/2301.00774.pdf) after fine-tuning and retrain for one extra epoch. The result is a 60% sparse-quantized model with limited accuracy drop on GSM:
 
 <p align="center">
   <img width="50%" src="images/gsm8k-accuracy.png" />
 </p>
 
-The 60% sparse-quantized model runs (--- UPDATE: xxx ---) faster in DeepSparse than the baseline model:
+Now, with DeepSparse, we can take advantage of sparsity to increase performance. In DeepSparse, the 60% sparse-quantized model runs (--- UPDATE: xxx ---) faster than the dense baseline:
 
 <p align="center">
   <img width="50%" src="images/gsm8k-performance.png" />
@@ -41,20 +41,18 @@ The 60% sparse-quantized model runs (--- UPDATE: xxx ---) faster in DeepSparse t
 
 ### **How Is This Useful For Real World Use?**
 
-While GSM is a toy  dataset, it serves as an example of how LLMs can be adapted with a relatively small <8k sample dataset to solve tasks which the general pretrained model cannot. Given the treasure-troves of domain-specific data held by companies, we expect to see many production models fine-tuned to enable more accurate, smaller models fit to business tasks.
+While GSM is a toy dataset, it serves as an example of how LLMs can be adapted with a relatively small <8k sample dataset to solve tasks which the general pretrained model cannot. Given the treasure-troves of domain-specific data held by companies, we expect to see many production models fine-tuned to enable more accurate, smaller models fit to business tasks. Using Neural Magic, you can deploy these fine-tuned models performantly on CPUs!
 
-Using Neural Magic, you can deploy these fine-tuned models performantly on CPUs!
-
-> **Note**: The research code for Downstream Pruning will be pushed to SparseML over the coming weeks to enable you to apply this flow to your dataset.
+> **Note**: The code for Sparse Fine Tuning will be pushed publically in the coming weeks
 
 ## Our LLM Roadmap
 
-We are investing to expand our offering including:
+We are investing to expand our offering, including:
 
-* **Productizing Downstream Pruning**: Enable external users to apply the Downstream Pruning to their datasets, enabling creation of fine-tuned LLMs for business use cases
-* **Supporting Llama2**: Recreating Downstream Pruning results on other models, including Llama2
-* **Pushing to Higher Sparsity**: Expanding our pruning techniques to push sparsity as high as possible without dropping accuracy to enable further performance
-* **Building General Sparse Model**: Create sparse model that can perform well on general tasks like OpenLLM leaderboard that can be deployed without fine-tuning
+* **Productizing Sparse Fine Tuning**: Enable external users to apply the sparse fine-tuning to business datasets
+* **Supporting Llama2**: Apply sparse fine-tuning results to Llama2 model
+* **Pushing to Higher Sparsity**: Improving our pruning algorithms to reach higher sparsity
+* **Building General Sparse Model**: Create sparse model that can perform well on general tasks like OpenLLM leaderboard
 
 ## Try It Now
 
