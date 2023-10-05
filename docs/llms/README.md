@@ -11,9 +11,11 @@ For detailed usage instructions, [see the text generation user guide](text-gener
 
 ## **Sparse Fine Tuning Research**
 
-Sparsity is a powerful model compression technique, where weights are removed from the network with limited accuracy drop. Currently, we can prune a fine-tuned version of [MPT-7B](https://huggingface.co/mosaicml/mpt-7b) to ~60% sparsity with INT8 quantization (--- UPDATE: see our paper on arxiv ---) using a technique called **Sparse Fine Tuning**, where we prune the network during the fine-tuning process.
+Sparsity is a powerful model compression technique, where weights are removed from the network with limited accuracy drop. 
 
-> **Note**: We currently can induce sparsity during domain adaptation fine-tuning. Sparsifying a model that performs well on general tasks like [OpenLLM Leaderboard](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard) is an area of active research.
+Currently, we can prune a fine-tuned version of [MPT-7B](https://huggingface.co/mosaicml/mpt-7b) to ~60% sparsity with INT8 quantization with limitied accuracy drop using a technique called **Sparse Fine Tuning**, where we prune the network during the fine-tuning process.
+
+> ***Note***: We currently can induce sparsity during domain adaptation fine-tuning. Sparsifying a model that performs well on general tasks like [OpenLLM Leaderboard](https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard) is an area of active research.
 
 ### **Sparse Fine Tuning on Grade-School Math (GSM)**
 
@@ -85,7 +87,7 @@ print(output.generations[0].text)
 
 We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) instruction tuning dataset [available on SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
 
-> ***Note: These sparse Dolly model drop accuracy on OpenLLM leaderboard***. They are meant as a demonstration.
+> ***Note: The sparse Dolly model drops accuracy on OpenLLM leaderboard. It is meant as a demonstration.***
 
 We can run inference on these models with the following:
 ```python
