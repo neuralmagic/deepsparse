@@ -106,12 +106,6 @@ print(output.generations[0].text)
 
 > ***Note: The sparse Dolly model drops accuracy on OpenLLM leaderboard. It is meant as a demonstration.***
 
-#### Other Resources
-- [Check out the model on SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-dolly_mpt_pretrain-pruned50_quantized)
-
-## **Learn More**
-- [Checkout the user guide on `TextGeneration`](text-generation-pipeline.md) for detailed usage instructions.
-
 ## **Feedback / Roadmap Requests**
 
 We are excited to add initial support for LLMs in the Neural Magic stack and plan to bring many ongoing improvements over the coming months. For questions or requests regarding LLMs, please reach out in any of the following channels:
