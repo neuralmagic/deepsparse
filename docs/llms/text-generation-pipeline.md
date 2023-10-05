@@ -173,7 +173,7 @@ MODEL_PATH = "hf:mgoin/TinyStories-33M-quant-deepsparse"
 pipeline = TextGeneration(model_path=MODEL_PATH)
 ```
 
-### **1. Creating A `GenerationConfig`**
+### **Creating A `GenerationConfig`**
 
 The `GenerationConfig` can be created in three ways:
 - Via `transformers.GenerationConfig`:
@@ -202,7 +202,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed on the ground. She was so happy that she
 ```
 
-### **2. Passing A `GenerationConfig`**
+### **Passing A `GenerationConfig`**
 
 We can pass a `GenerationConfig` to `TextGeneration.__init__` or `TextGeneration.__call__`.
 
@@ -230,7 +230,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed on the ground. She was so happy that she
 ```
 
-### **3. Supported `GenerationConfig` Parameters**
+### **Supported `GenerationConfig` Parameters**
 
 The following parameters are supported by the `GenerationConfig`:
 
