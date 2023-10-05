@@ -66,7 +66,7 @@ pip install deepsparse-nightly[transformers]
 
 ### MPT-7B on GSM 
 
-We can run inference on the 60% sparse-quantized MPT-7B GSM model ([available in SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-gsm8k_mpt_pretrain-pruned60_quantized)) using DeepSparse's `TextGeneration` Pipeline:
+We can run inference on the 60% sparse-quantized MPT-7B GSM model using DeepSparse's `TextGeneration` Pipeline:
 
 ```python
 from deepsparse import TextGeneration
@@ -83,15 +83,14 @@ print(output.generations[0].text)
 ### >> #### 72
 ```
 
-- [Try out the demo on Hugging Face Spaces](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k-deepsparse)!
+#### Other Resources
+- [Try out the demo on Hugging Face Spaces](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k-deepsparse)
+- [Check out the model on SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-gsm8k_mpt_pretrain-pruned60_quantized)
 
 ### **MPT-7B on Dolly-HHRLHF**
 
-We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) instruction tuning dataset [available on SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none).
+We have also made a 50% sparse-quantized MPT-7B fine-tuned on the [Dolly-hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) dataset available on SparseZoo. We can run inference with the following:
 
-> ***Note: The sparse Dolly model drops accuracy on OpenLLM leaderboard. It is meant as a demonstration.***
-
-We can run inference on these models with the following:
 ```python
 from deepsparse import TextGeneration
 
@@ -104,6 +103,11 @@ print(output.generations[0].text)
 
 ### >> Kubernetes is an open-source container orchestration system for automating deployment, scaling, and management of containerized applications.
 ```
+
+> ***Note: The sparse Dolly model drops accuracy on OpenLLM leaderboard. It is meant as a demonstration.***
+
+#### Other Resources
+- [Check out the model on SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-dolly_mpt_pretrain-pruned50_quantized)
 
 ## **Learn More**
 - [Checkout the user guide on `TextGeneration`](text-generation-pipeline.md) for detailed usage instructions.
