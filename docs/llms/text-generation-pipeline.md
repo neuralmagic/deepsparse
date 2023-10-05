@@ -46,12 +46,10 @@ DeepSparse accepts models in ONNX format, passed either as SparseZoo stubs or lo
 
 ### **SparseZoo Stubs**
 
-SparseZoo stubs identify a model in SparseZoo. For instance, the following stub identifes a 50% pruned and quantized MPT-7b model which was fine-tuned on the Dolly dataset:
-```bash
-zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none
-```
+SparseZoo stubs identify a model in SparseZoo. 
 
-We can pass SparseZoo stubs directly to DeepSparse, which downloads the ONNX file from the Zoo before compilation.
+For instance, `zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none` identifes a 50% pruned and quantized MPT-7b model which was fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
+
 ```python
 model_path = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
 pipeline = TextGeneration(model_path=model_path)
