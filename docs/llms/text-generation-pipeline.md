@@ -1,48 +1,113 @@
 # **Text Generation Pipelines**
 
-This user guide describes how to run inference with Text Generation models with DeepSparse.
+This user guide describes how to run inference of text generation models with DeepSparse.
 
-Make sure you have all the dependencies installed before diving in:
+## **Installation**
+
+DeepSparse LLMs is currently available on DeepSparse's nightly build on PyPi:
 
 ```bash
-pip install deepsparse-nightly==1.6.0.20230928[transformers]
+pip install deepsparse-nightly==1.6.0.20230928[transformers] --upgrade
 ```
 
-## **Usage**
+#### **System Requirements**
 
-DeepSparse exposes a Pipeline interface called `TextGeneration` for running inference with text generation models.
+- Hardware: x86 AVX2, AVX512, AVX512-VNNI and ARM v8.2+.
+- Operating System: Linux (MacOS will be supported soon)
+- Python: v3.8-3.10
 
-Construct a pipeline by passing a model:
+For those using MacOS or Windows, we suggest using Linux containers with Docker to run DeepSparse.
 
+## **Basic Usage**
+
+DeepSparse exposes a Pipeline interface called `TextGeneration` for running inference with text generation models. In this case, we will use MPT-7B 50% pruned-quantized and finetuned on Dolly. ([See the model in SparseZoo](zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none))
+
+Construct a pipeline by passing a model path:
 ```python
 from deepsparse import TextGeneration
-from huggingface_hub import snapshot_download
 
-MODEL_PATH = snapshot_download(repo_id="mgoin/TinyStories-33M-quant-deepsparse")
+MODEL_PATH = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
 pipeline = TextGeneration(model_path=MODEL_PATH)
 ```
+
+> Note: The 7B model takes about 3 minutes to compile. Try setting `MODEL_PATH` to `hf:mgoin/TinyStories-33M-quant-deepsparse` in order to use a smaller TinyStories model that will compile quickly if you are just experimenting.
 
 Generate text by passing a prompt to the pipeline:
 
 ```python
-prompt = "Princess Peach jumped from the balcony"
+prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: What is Kubernetes? ### Response:"
 output = pipeline(prompt=prompt)
+print(output.generations[0].text)
 
-print(f"{prompt}{output.generations[0].text}")
+# >> Kubernetes is an open-source container orchestration system for automating deployment, scaling, and management of containerized applications.
+```
 
-# >> Princess Peach jumped from the balcony and landed on the ground. She was so happy that she had found her treasure. She thanked the bird and went back inside to show her family her new treasure.
+## **Model Format**
+
+DeepSparse accepts models in ONNX format.
+
+For performant LLM inference, DeepSparse expects ONNX graphs that are modified to use KV-caching. We will be publishing code and specifications to enable external users to create performant ONNX graphs for usage with DeepSparse over the next few weeks. ***At the current moment, however, we suggest only using LLM ONNX graphs downloaded from SparseZoo.***
+
+### **SparseZoo Stubs**
+
+[SparseZoo](https://sparsezoo.neuralmagic.com/) is Neural Magic's repository of sparse models. SparseZoo Stubs identify a model in the Zoo. For instance, the following stub identifes a 50% pruned and quantized MPT-7b model which was fine-tuned on the Dolly dataset:
+```bash
+zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none
+```
+
+We can pass SparseZoo stubs directly to DeepSparse, which downloads the ONNX file before compilation.
+```python
+model_path = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
+pipeline = TextGeneration(model_path=model_path)
+```
+
+### **Local Deployment Directory**
+
+Additionally, we can pass a local path to a deployment directory which contains the necessary files to create a Pipeline.
+
+Use the SparseZoo API to download an example deployment directory:
+
+```python
+import sparsezoo
+
+SPARSEZOO_STUB = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
+DOWNLOAD_DIR = "./local-model"
+sz_model = sparsezoo.Model(SPARSEZOO_STUB, DOWNLOAD_DIR)
+sz_model.deployment.download()
+```
+
+Looking at the contents of the deployment directory, we can see it contains Hugging Face configuration files (`config.json`, `tokenizer.json`, `tokenizer_config.json`, `special_tokens_map.json`) as well as the model files in ONNX format (`model.data` and `model.onnx`):
+```bash
+ls ./local-model/deployment
+
+>> config.json  model.onnx		      tokenizer.json
+>> model.data   special_tokens_map.json  tokenizer_config.json
+```
+
+We can then pass the local directory to DeepSparse to compile the model:
+```python
+model_path = "./local-model/deployment"
+pipeline = TextGeneration(model_path=model_path)
 ```
 
 ## **Input and Output Formats**
 
 DeepSparse `TextGeneration` pipeline accepts [`TextGenerationInput`](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/pipelines/text_generation.py#L83) as input and returns [`TextGenerationOutput`](https://github.com/neuralmagic/deepsparse/blob/main/src/deepsparse/transformers/pipelines/text_generation.py#L170) as output.
 
+The following examples use a quantized version of the 33M parameter TinyStories model to speed up compilation time. Set up the pipeline with the following:
+```python
+from deepsparse import TextGeneration
+
+MODEL_PATH = "hf:mgoin/TinyStories-33M-quant-deepsparse"
+pipeline = TextGeneration(model_path=MODEL_PATH)
+```
+
 ### Input Format
 `TextGenerationInput` has the following fields:
 - `sequences` / `prompt`: Input sequences to generate text from. String or list of strings. Required.
 
 ```python
-prompt1 = "Princess peach jumped from the balcony"
+prompt1 = "Princess Peach jumped from the balcony"
 prompt2 = "Mario ran into the castle"
 output = pipeline(sequences=[prompt1, prompt2], max_new_tokens=20)
 for prompt_i, generation_i in zip(output.prompts, output.generations):
@@ -66,14 +131,14 @@ for it in output_iterator:
 # >> Princess Peach jumped from the balcony and landed on the ground. She was so happy that she had found her treasure. She thanked the old
 ```
 
-- `generation_config`: Parameters used to control sequences generated for each prompt. If None is provided, defaults will be used. [See PipelineConfiguration for more details](#pipeline-configuration) for more details.
-- `generations_kwargs`: Arguments to override the `generation_config` defaults. [See PipelineConfiguration for more details](#pipeline-configuration) for more details.
+- `generation_config`: Parameters used to control sequences generated for each prompt. If None is provided, defaults will be used. [See `PipelineConfiguration`](#pipeline-configuration) for more details.
+- `generations_kwargs`: Arguments to override the `generation_config` defaults. [See `PipelineConfiguration`](#pipeline-configuration) for more details.
 
 ### Output Format
 
 `TextGenerationOutput` has the following fields:
-- `prompts`: String or list of strings. Prompts used for the sequence generation. For multiple input prompts, a list of prompts is returned
-- `generations`: For a single prompt, a list of `GeneratedText` is returned. If multiple prompts are given, a list of GeneratedText is returned for each prompt provided. If streaming is enabled, the next generated token is returned. Otherwise, the full generated sequence is returned."
+- `prompts`: String or list of strings. Prompts used for the sequence generation. For multiple input prompts, a list of prompts is returned.
+- `generations`: For a single prompt, a list of `GeneratedText` is returned. If multiple prompts are given, a list of `GeneratedText` is returned for each prompt provided. If streaming is enabled, the next generated token is returned. Otherwise, the full generated sequence is returned.
 - `created`: Time of inference creation.
 
 `GeneratedText` has the following fields:
@@ -81,6 +146,7 @@ for it in output_iterator:
 - `score`: The score for the generated token or sequence. The scores have the shape [sequence_length, vocab_size]
 - `finished`: Whether generation has stopped.
 - `finished_reason`: The reason for generation to stop. Defined by `FinishReason`. One of stop, length, or time.
+
 
 ```python
 output = pipeline(sequences=prompt, max_new_tokens=20, output_scores=True)
@@ -104,7 +170,17 @@ print(f"finished_reason: {output.generations[0].finished_reason}")
 
 The `TextGeneration` Pipeline can be configured to alter several variables in generation.
 
-### **Creating A `GenerationConfig`**
+The following examples use a quantized version of the 33M parameter TinyStories model to speed up compilation time. Set up the pipeline with the following:
+```python
+from deepsparse import TextGeneration
+
+MODEL_PATH = "hf:mgoin/TinyStories-33M-quant-deepsparse"
+pipeline = TextGeneration(model_path=MODEL_PATH)
+```
+
+We will step through ceating a `GenerationConfig`, passing a `GenerationConfig`, and supported `GenerationConfig` parameters.
+
+### **1. Creating A `GenerationConfig`**
 
 The `GenerationConfig` can be created in three ways:
 - Via `transformers.GenerationConfig`:
@@ -133,7 +209,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed on the ground. She was so happy that she
 ```
 
-### **Passing A `GenerationConfig`**
+### **2. Passing A `GenerationConfig`**
 
 We can pass a `GenerationConfig` to `TextGeneration.__init__` or `TextGeneration.__call__`.
 
@@ -161,7 +237,9 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed on the ground. She was so happy that she
 ```
 
-### **Supported Parameters**
+### **3. Supported `GenerationConfig` Parameters**
+
+The following parameters are supported by the `GenerationConfig`:
 
 #### Controlling The Output
 - `output_scores`: Whether to return the generated logits in addition to sampled tokens. Default is `False`
@@ -183,8 +261,7 @@ for generated_text in output.generations[0]:
 # >> Princess peach jumped from the balcony and ran after her. Jill jumped to the floor and followed
 ```
 
-### Controling the Output Length
-Parameters controlling the output length:
+#### Controling the Output Length
 - `max_new_tokens`: maximum number of tokens to generate. Default is `None`
 ```python
 output = pipeline(prompt=prompt, max_new_tokens=10)
@@ -192,7 +269,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed on the ground. She was so happy that she
 ```
 
-### Controling the Sampling
+#### Controling the Sampling
 - `do_sample`: If True, will apply sampling from the probability distribution computed from the logits rather than deterministic greedy sampling. Default is `False`
 ```python
 output = pipeline(prompt=prompt, do_sample=True, max_new_tokens=15)
@@ -203,7 +280,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed in front of her. She stood proudly and exclaimed, “I did
 ```
 
-- `temperature`:The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability. If `0.0`, temperature is turned off. Default is `0.0`
+- `temperature`: The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is getting closer to uniform probability. If `0.0`, temperature is turned off. Default is `0.0`
 ```python
 # more random
 output = pipeline(prompt=prompt, do_sample=True, temperature=1.5, max_new_tokens=15)
@@ -213,7 +290,7 @@ print(f"{prompt}{output.generations[0].text}")
 output = pipeline(prompt=prompt, do_sample=True, temperature=0.5, max_new_tokens=15)
 print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and disappeared forever. All that means now is Maria staying where nothing draws herloads.
-# >>Princess peach jumped from the balcony and landed on the floor. She was very scared, but she knew that her mom
+# >> Princess peach jumped from the balcony and landed on the floor. She was very scared, but she knew that her mom
 ```
 - `top_k`:  Integer to define the top tokens considered within the sample operation to create new text. If `0`, `top_k` is turned off. Default is `0`.
 ```python
@@ -235,7 +312,7 @@ print(numpy.isfinite(output.generations[0].score).sum(axis=1))
 
 # >> array([20, 15, 10, 5, 25, 3, 10, 7, 6, 6, 15, 12, 11, 3, 4, 4])
 ```
-- `repetition_penalty`: The more a token is used within generation the more it is penalized to not be picked in successive generation passes. If `0.0`, `repetation_penalty` is turned off. Default is `0.0`
+- `repetition_penalty`: The more a token is used within generation the more it is penalized to not be picked in successive generation passes. If `0.0`, `repetation_penalty` is turned off. Default is `0.0`.
 
 ```python
 output = pipeline(prompt=prompt, repetition_penalty=1.3)
