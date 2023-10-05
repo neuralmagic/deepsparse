@@ -213,8 +213,8 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def __init__(
         self,
-        prompt_sequence_length: int = 64,
         sequence_length: int = 1024,
+        prompt_sequence_length: int = 16,
         force_max_tokens: bool = False,
         internal_kv_cache: bool = True,
         generation_config: Union[str, pathlib.Path, Dict, GenerationConfig] = None,
