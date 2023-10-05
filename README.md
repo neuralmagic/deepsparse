@@ -20,7 +20,7 @@ limitations under the License.
     <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/icon-deepsparse.png" />
     &nbsp;&nbsp;DeepSparse
   </h1>
-  <h4>Sparsity-aware deep learing inference runtime for CPUs</h4>
+  <h4>Sparsity-aware deep learning inference runtime for CPUs</h4>
   <div align="center">
     <a href="https://docs.neuralmagic.com/deepsparse/">
       <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
@@ -63,16 +63,18 @@ DeepSparse is a CPU inference runtime that takes advantage of sparsity to accele
 
 We are pleased to announce initial support for LLMs in DeepSparse, starting with MosaicML's MPT-7b.
 
+```python
+from deepsparse import TextGeneration
+model = TextGeneration(model="zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/mpt_chat/pruned50_quant-none")
+print(model("Are you excited about LLMs?", max_new_tokens=20).generations[0].text)
+### > Yes, I am excited about LLMs!
+```
+
 - Check out DeepSparse's [LLM README](docs/llms) for more details on our current support and instructions to try it now
 - Reach out in our [Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ) or [Contact Form](http://neuralmagic.com/contact/) if you would like to discuss our roadmap
 
 ## Installation
 
-DeepSparse is available in two editions: 
-1. DeepSparse Community is free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2. DeepSparse Enterprise requires a [trial license](https://neuralmagic.com/deepsparse-free-trial/) or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
-
-### Install via PyPI
 DeepSparse Community is available via PyPI. We recommend using a virtual enviornment.
 
 ```bash
