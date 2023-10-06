@@ -14,6 +14,7 @@
 
 import logging
 <<<<<<< HEAD
+<<<<<<< HEAD
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
@@ -24,12 +25,20 @@ import torch
 from optimum.deepsparse import DeepSparseModelForFeatureExtraction
 =======
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
+=======
+from typing import Dict, List, Tuple, Union
+>>>>>>> 4441aad0 (Format)
 
 import numpy as np
 from tqdm.autonotebook import trange
+from transformers.onnx.utils import get_preprocessor
 
 import torch
+<<<<<<< HEAD
 >>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
+=======
+from optimum.deepsparse import DeepSparseModelForFeatureExtraction
+>>>>>>> 4441aad0 (Format)
 
 
 logger = logging.getLogger(__name__)
@@ -78,9 +87,6 @@ class SentenceTransformer:
     def __init__(
         self, model_name_or_path: str = DEFAULT_MODEL_NAME, export: bool = False
     ):
-        from transformers.onnx.utils import get_preprocessor
-
-        from optimum.deepsparse import DeepSparseModelForFeatureExtraction
 
         self.model_name_or_path = model_name_or_path
         self.model = DeepSparseModelForFeatureExtraction.from_pretrained(
@@ -228,7 +234,8 @@ class SentenceTransformer:
 =======
     def get_max_seq_length(self):
         """
-        Returns the maximal sequence length for input the model accepts. Longer inputs will be truncated
+        Returns the maximal sequence length for input the model accepts.
+        Longer inputs will be truncated
         """
         return self._max_seq_length
 
@@ -255,12 +262,17 @@ class SentenceTransformer:
         """
         return self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     def mean_pooling(
         self, model_output: torch.Tensor, attention_mask: torch.Tensor
     ) -> torch.Tensor:
 =======
         # return self.tokenizer(texts, padding='max_length', truncation=True, max_length=self.get_max_seq_length(), return_tensors="pt")
+=======
+        # return self.tokenizer(texts, padding='max_length', truncation=True,
+        #  max_length=self.get_max_seq_length(), return_tensors="pt")
+>>>>>>> 4441aad0 (Format)
 
     def mean_pooling(self, model_output: torch.Tensor, attention_mask: torch.Tensor):
 >>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
