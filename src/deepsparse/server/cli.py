@@ -261,6 +261,24 @@ def main(
         token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
     ),
 )
+@click.argument("config-file", type=str)
+@HOST_OPTION
+@PORT_OPTION
+@LOG_LEVEL_OPTION
+@HOT_RELOAD_OPTION
+def openai(
+    config_file: str, host: str, port: int, log_level: str, hot_reload_config: bool
+):
+
+    server = OpenAIServer(server_config=config_file)
+    server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
+
+
+@main.command(
+    context_settings=dict(
+        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
+    ),
+)
 @click.argument("config-path", type=str)
 @HOST_OPTION
 @PORT_OPTION
