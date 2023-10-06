@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+<<<<<<< HEAD
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
@@ -21,10 +22,19 @@ from transformers.onnx.utils import get_preprocessor
 
 import torch
 from optimum.deepsparse import DeepSparseModelForFeatureExtraction
+=======
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
+
+import numpy as np
+from tqdm.autonotebook import trange
+
+import torch
+>>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
 
 
 logger = logging.getLogger(__name__)
 
+<<<<<<< HEAD
 DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
 
 
@@ -60,6 +70,27 @@ class SentenceTransformer:
         self.tokenizer = get_preprocessor(model_name_or_path)
 
         self._max_seq_length = max_seq_length
+=======
+DEFAULT_MODEL_NAME = "zeroshot/oneshot-minilm"
+
+
+class SentenceTransformer:
+    def __init__(
+        self, model_name_or_path: str = DEFAULT_MODEL_NAME, export: bool = False
+    ):
+        from transformers.onnx.utils import get_preprocessor
+
+        from optimum.deepsparse import DeepSparseModelForFeatureExtraction
+
+        self.model_name_or_path = model_name_or_path
+        self.model = DeepSparseModelForFeatureExtraction.from_pretrained(
+            model_name_or_path, export=export
+        )
+        self.tokenizer = get_preprocessor(model_name_or_path)
+
+        self._max_seq_length = 512
+        self._batch_size = 1
+>>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
 
     def encode(
         self,
@@ -131,6 +162,7 @@ class SentenceTransformer:
                 model_output, model_inputs["attention_mask"]
             )
 
+<<<<<<< HEAD
             embeddings = []
             if output_value == "token_embeddings":
                 for token_emb, attention in zip(
@@ -148,6 +180,24 @@ class SentenceTransformer:
                     embeddings.append(row)
             else:
                 # Sentence embeddings
+=======
+            if output_value == "token_embeddings":
+                embeddings = []
+                for token_emb, attention in zip(
+                    out_features[output_value], out_features["attention_mask"]
+                ):
+                    last_mask_id = len(attention) - 1
+                    while last_mask_id > 0 and attention[last_mask_id].item() == 0:
+                        last_mask_id -= 1
+
+                    embeddings.append(token_emb[0 : last_mask_id + 1])
+            elif output_value is None:  # Return all outputs
+                embeddings = []
+                for sent_idx in range(len(out_features["sentence_embedding"])):
+                    row = {name: out_features[name][sent_idx] for name in out_features}
+                    embeddings.append(row)
+            else:  # Sentence embeddings
+>>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
                 embeddings = out_features[output_value]
                 if normalize_embeddings:
                     embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
@@ -166,6 +216,7 @@ class SentenceTransformer:
 
         return all_embeddings
 
+<<<<<<< HEAD
     def get_max_seq_length(self) -> int:
         """
         Returns the maximal sequence length for input the model accepts.
@@ -174,6 +225,15 @@ class SentenceTransformer:
         return self._max_seq_length
 
     def _text_length(self, text: Union[List[int], List[List[int]]]) -> int:
+=======
+    def get_max_seq_length(self):
+        """
+        Returns the maximal sequence length for input the model accepts. Longer inputs will be truncated
+        """
+        return self._max_seq_length
+
+    def _text_length(self, text: Union[List[int], List[List[int]]]):
+>>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
         """
         Help function to get the length for the input text. Text can be either
         a list of ints (which means a single text as input), or a tuple of list of ints
@@ -194,10 +254,16 @@ class SentenceTransformer:
         Tokenizes the texts
         """
         return self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+<<<<<<< HEAD
 
     def mean_pooling(
         self, model_output: torch.Tensor, attention_mask: torch.Tensor
     ) -> torch.Tensor:
+=======
+        # return self.tokenizer(texts, padding='max_length', truncation=True, max_length=self.get_max_seq_length(), return_tensors="pt")
+
+    def mean_pooling(self, model_output: torch.Tensor, attention_mask: torch.Tensor):
+>>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
         """
         Compute mean pooling of token embeddings weighted by attention mask.
         Args:
