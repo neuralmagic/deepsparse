@@ -302,26 +302,6 @@ class Pipeline(BasePipeline):
 
         return pipeline_outputs
 
-    def __repr__(self):
-        """
-        :return: Unambiguous representation of the current pipeline
-        """
-        return "{}({})".format(self.__class__, self._properties_dict())
-
-    def __str__(self):
-        """
-        :return: Human readable form of the current pipeline
-        """
-        formatted_props = [
-            "\t{}: {}".format(key, val) for key, val in self._properties_dict().items()
-        ]
-
-        return "{}.{}:\n{}".format(
-            self.__class__.__module__,
-            self.__class__.__qualname__,
-            "\n".join(formatted_props),
-        )
-
     @classmethod
     def from_config(
         cls,
@@ -483,10 +463,10 @@ class Pipeline(BasePipeline):
             task=self.task,
             model_path=self.model_path_orig,
             engine_type=self.engine_type,
-            batch_size=self.batch_size,
-            num_cores=self.num_cores,
-            scheduler=self.scheduler,
-            input_shapes=self.input_shapes,
+            batch_size=self._batch_size,
+            num_cores=self._engine_args.get("num_cores"),
+            scheduler=self._engine_args.get("scheduler"),
+            input_shapes=self._engine_args.get("input_shapes"),
             alias=self.alias,
             kwargs=kwargs,
         )
@@ -551,6 +531,32 @@ class Pipeline(BasePipeline):
             self.onnx_file_path, self.engine_type, self._engine_args, self.context
         )
 
+    def _properties_dict(self) -> Dict:
+        return {
+            "config": self.to_config(),
+            "engine": self.engine,
+        }
+
+    def __repr__(self):
+        """
+        :return: Unambiguous representation of the current pipeline
+        """
+        return "{}({})".format(self.__class__, self._properties_dict())
+
+    def __str__(self):
+        """
+        :return: Human readable form of the current pipeline
+        """
+        formatted_props = [
+            "\t{}: {}".format(key, val) for key, val in self._properties_dict().items()
+        ]
+
+        return "{}.{}:\n{}".format(
+            self.__class__.__module__,
+            self.__class__.__qualname__,
+            "\n".join(formatted_props),
+        )
+
 
 class PipelineConfig(BaseModel):
     """
@@ -586,7 +592,7 @@ class PipelineConfig(BaseModel):
             "specifies all available cores. Default is None"
         ),
     )
-    scheduler: str = Field(
+    scheduler: Optional[str] = Field(
         default="async",
         description=(
             "(deepsparse only) kind of scheduler to execute with. Defaults to async"
