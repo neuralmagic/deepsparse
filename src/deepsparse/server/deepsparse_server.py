@@ -26,6 +26,15 @@ _LOGGER = logging.getLogger(__name__)
 
 class DeepsparseServer(Server):
     def _add_routes(self, app):
+        @app.get("/v2/health/ready", tags=["health"], response_model=CheckReady)
+        @app.get("/v2/health/live", tags=["health"], response_model=CheckReady)
+        def _check_health():
+            return CheckReady(status="OK")
+
+        @app.get("/v2", tags=["metadata", "server"], response_model=str)
+        def _get_server_info():
+            return "This is the deepsparse server. Hello!"
+
         @app.post("/endpoints", tags=["endpoints"], response_model=bool)
         def _add_endpoint_endpoint(cfg: EndpointConfig):
             if cfg.name is None:

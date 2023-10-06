@@ -36,7 +36,7 @@ from deepsparse.server.protocol import (
     UsageInfo,
     random_uuid,
 )
-from deepsparse.server.server import Server
+from deepsparse.server.server import Server, SystemLoggingMiddleware
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
 
@@ -67,16 +67,14 @@ class OpenAIServer(Server):
 
         app.model_list = self.model_list
         app.model_to_pipeline = self.model_to_pipeline
-        app.context = self.context
-        app.executor = self.executor
 
-        @app.get("/v2/models", tags=["model"])
+        @app.get("/v1/models", tags=["model"])
         async def show_available_models():
             """Show available models. Right now we only have one model."""
             return app.model_list
 
         @app.post(
-            "/v2/models/chat/completions",
+            "/v1/chat/completions",
             tags=["model", "inference"],
             response_model=ChatCompletionResponse,
         )
@@ -96,17 +94,9 @@ class OpenAIServer(Server):
 
             pipeline = app.model_to_pipeline.get(model)
             if not pipeline:
-                pipeline = Pipeline.create(
-                    model_path=model,
-                    task="text_generation",
-                    context=app.context,
-                    executor=app.executor,
+                create_error_response(
+                    HTTPStatus.BAD_REQUEST, f"{model} is not " "available"
                 )
-                model_card = ModelCard(
-                    id=model, root=model, permission=[ModelPermission()]
-                )
-                app.model_to_pipeline[model] = pipeline
-                app.model_list.data.extend(model_card)
 
             try:
                 sampling_params = dict(
