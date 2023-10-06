@@ -15,7 +15,6 @@
 
 import logging
 import time
-from functools import partial
 from http import HTTPStatus
 from typing import AsyncGenerator, Dict, List, Optional
 
@@ -37,7 +36,7 @@ from deepsparse.server.protocol import (
     UsageInfo,
     random_uuid,
 )
-from deepsparse.server.server import ProxyPipeline, Server
+from deepsparse.server.server import Server
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
 
@@ -65,29 +64,127 @@ class OpenAIServer(Server):
                 app,
                 endpoint_config,
             )
-    
-        routes_and_fns = [
-            (
-                "/v2/models/chat/completions",
-                OpenAIServer.create_chat_completion,
-            ),
-        ]
 
-        self._update_routes(
-            app=app,
-            routes_and_fns=routes_and_fns,
-            response_model=ChatCompletionResponse,
-            methods=["POST"],
+        app.model_list = self.model_list
+        app.model_to_pipeline = self.model_to_pipeline
+        app.context = self.context
+        app.executor = self.executor
+
+        @app.get("/v2/models", tags=["model"])
+        async def show_available_models():
+            """Show available models. Right now we only have one model."""
+            return app.model_list
+
+        @app.post(
+            "/v2/models/chat/completions",
             tags=["model", "inference"],
+            response_model=ChatCompletionResponse,
         )
+        async def create_chat_completion(raw_request: Request):
+            """Completion API similar to OpenAI's API.
 
-        self._update_routes(
-            app=app,
-            routes_and_fns=[("/v2/models/", OpenAI.show_available_models)],
-            response_model=dict,
-            methods=["POST"],
-            tags=["model"],
-        )
+            See  https://platform.openai.com/docs/api-reference/chat/create
+            for the API specification. This API mimics the OpenAI ChatCompletion API.
+            """
+            request = ChatCompletionRequest(**await raw_request.json())
+            _LOGGER.info(f"Received chat completion request: {request}")
+
+            prompt = request.messages
+            request_id = f"cmpl-{random_uuid()}"
+            created_time = int(time.time())
+            model = request.model
+
+            pipeline = app.model_to_pipeline.get(model)
+            if not pipeline:
+                pipeline = Pipeline.create(
+                    model_path=model,
+                    task="text_generation",
+                    context=app.context,
+                    executor=app.executor,
+                )
+                model_card = ModelCard(
+                    id=model, root=model, permission=[ModelPermission()]
+                )
+                app.model_to_pipeline[model] = pipeline
+                app.model_list.data.extend(model_card)
+
+            try:
+                sampling_params = dict(
+                    presence_penalty=request.presence_penalty,
+                    frequency_penalty=request.frequency_penalty,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
+                    stop=request.stop,
+                    max_tokens=request.max_tokens,
+                    top_k=request.top_k,
+                    stream=request.stream,
+                    num_return_sequences=request.n,
+                )
+            except ValueError as e:
+                return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
+
+            result_generator = OpenAIServer.generate(
+                prompt, request_id, sampling_params, pipeline
+            )
+
+            async def abort_request() -> None:
+                await pipeline.abort(request_id)
+
+            # Streaming response
+            if request.stream:
+                background_tasks = BackgroundTasks()
+                # Abort the request if the client disconnects.
+                background_tasks.add_task(abort_request)
+                return StreamingResponse(
+                    completion_stream_generator(
+                        request,
+                        result_generator,
+                        request_id=request_id,
+                        created_time=created_time,
+                        pipeline=pipeline,
+                    ),
+                    media_type="text/event-stream",
+                    background=background_tasks,
+                )
+
+            # Non-streaming response
+            final_res: RequestOutput = None
+            async for res in result_generator:
+                if await raw_request.is_disconnected():
+                    # Abort the request if the client disconnects.
+                    await abort_request()
+                    return OpenAIServer.create_error_response(
+                        HTTPStatus.BAD_REQUEST, "Client disconnected"
+                    )
+                final_res = res
+            assert final_res is not None
+            choices = []
+            for output in final_res.outputs:
+                choice_data = ChatCompletionResponseChoice(
+                    index=output.index,
+                    message=ChatMessage(role="assistant", content=output.text),
+                    finish_reason=output.finish_reason,
+                )
+                choices.append(choice_data)
+
+            num_prompt_tokens = len(final_res.prompt_token_ids)
+            num_generated_tokens = sum(
+                len(output.token_ids) for output in final_res.outputs
+            )
+            usage = UsageInfo(
+                prompt_tokens=num_prompt_tokens,
+                completion_tokens=num_generated_tokens,
+                total_tokens=num_prompt_tokens + num_generated_tokens,
+            )
+            response = ChatCompletionResponse(
+                id=request_id,
+                created=created_time,
+                model=model,
+                choices=choices,
+                usage=usage,
+            )
+            return response
+
         return app
 
     def _add_model(
@@ -110,11 +207,14 @@ class OpenAIServer(Server):
             pipeline_config, self.context, self.server_logger
         )
 
-        model_card = ModelCard(id=endpoint_config.model, root=endpoint_config.model, permission=[ModelPermission()])
+        model_card = ModelCard(
+            id=endpoint_config.model,
+            root=endpoint_config.model,
+            permission=[ModelPermission()],
+        )
 
-        self.model_to_pipeline[endpoint_config.name] = pipeline
+        self.model_to_pipeline[endpoint_config.model] = pipeline
         self.model_list.data.extend(model_card)
-
 
     @staticmethod
     async def generate(
@@ -185,118 +285,6 @@ class OpenAIServer(Server):
                     ],
                     finished=output.finished,
                 )
-
-    @staticmethod
-    async def show_available_models():
-        """Show available models. Right now we only have one model."""
-        return self.model_list
-
-    @staticmethod
-    async def create_chat_completion(
-        raw_request: Request
-    ):
-        """Completion API similar to OpenAI's API.
-
-        See  https://platform.openai.com/docs/api-reference/chat/create
-        for the API specification. This API mimics the OpenAI ChatCompletion API.
-        """
-        request = ChatCompletionRequest(**await raw_request.json())
-        _LOGGER.info(f"Received chat completion request: {request}")
-
-        prompt = request.messages
-        request_id = f"cmpl-{random_uuid()}"
-        created_time = int(time.time())
-        model = request.model
-
-        pipeline = self.model_to_pipeline.get(model)
-        if not pipeline:
-            pipeline = Pipeline.create(
-                model_path=model,
-                task="text_generation"
-                context=self.context,
-                executor=self.executor
-
-            )
-            model_card = ModelCard(id=model, root=model, permission=[ModelPermission()])
-            self.model_to_pipeline[model] = pipeline
-            self.model_list.data.extend(model_card)
-            
-        try:
-            sampling_params = dict(
-                presence_penalty=request.presence_penalty,
-                frequency_penalty=request.frequency_penalty,
-                temperature=request.temperature,
-                top_p=request.top_p,
-                stop=request.stop,
-                max_tokens=request.max_tokens,
-                top_k=request.top_k,
-                stream=request.stream,
-                num_return_sequences=request.n,
-            )
-        except ValueError as e:
-            return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
-
-        result_generator = OpenAIServer.generate(
-            prompt, request_id, sampling_params, pipeline
-        )
-
-        async def abort_request() -> None:
-            await pipeline.abort(request_id)
-
-        # Streaming response
-        if request.stream:
-            background_tasks = BackgroundTasks()
-            # Abort the request if the client disconnects.
-            background_tasks.add_task(abort_request)
-            return StreamingResponse(
-                completion_stream_generator(
-                    request,
-                    result_generator,
-                    request_id=request_id,
-                    created_time=created_time,
-                    pipeline=proxy_pipeline.pipeline,
-                ),
-                media_type="text/event-stream",
-                background=background_tasks,
-            )
-
-        # Non-streaming response
-        final_res: RequestOutput = None
-        async for res in result_generator:
-            if await raw_request.is_disconnected():
-                # Abort the request if the client disconnects.
-                await abort_request()
-                return OpenAIServer.create_error_response(
-                    HTTPStatus.BAD_REQUEST, "Client disconnected"
-                )
-            final_res = res
-        assert final_res is not None
-        choices = []
-        for output in final_res.outputs:
-            choice_data = ChatCompletionResponseChoice(
-                index=output.index,
-                message=ChatMessage(role="assistant", content=output.text),
-                finish_reason=output.finish_reason,
-            )
-            choices.append(choice_data)
-
-        num_prompt_tokens = len(final_res.prompt_token_ids)
-        num_generated_tokens = sum(
-            len(output.token_ids) for output in final_res.outputs
-        )
-        usage = UsageInfo(
-            prompt_tokens=num_prompt_tokens,
-            completion_tokens=num_generated_tokens,
-            total_tokens=num_prompt_tokens + num_generated_tokens,
-        )
-        response = ChatCompletionResponse(
-            id=request_id,
-            created=created_time,
-            model=model,
-            choices=choices,
-            usage=usage,
-        )
-        return response
 
 
 def map_generation_schema(generation_kwargs: Dict) -> Dict:
