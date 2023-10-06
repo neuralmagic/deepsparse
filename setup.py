@@ -129,6 +129,7 @@ _server_deps = [
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
+_torch_deps = ["torch>=1.7.0,<=2.0"]
 _image_classification_deps = [
     "torchvision>=0.3.0,<0.14",
     "opencv-python<=4.6.0.66",
@@ -151,6 +152,9 @@ _transformers_integration_deps = [
     "scikit-learn",
     "seqeval",
 ]
+_sentence_transformers_integration_deps = [
+    "git+https://github.com/neuralmagic/optimum-deepsparse.git"
+] + _torch_deps
 
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
@@ -168,8 +172,6 @@ _clip_deps = [
     "scipy<1.9.2,>=1.8",
     f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}",
 ]
-
-_torch_deps = ["torch>=1.7.0,<=2.0"]
 
 
 def _check_supported_system():
@@ -275,6 +277,7 @@ def _setup_extras() -> Dict:
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
+        "sentence_transformers": _sentence_transformers_integration_deps,
         "torch": _torch_deps,
         "clip": _clip_deps,
     }
