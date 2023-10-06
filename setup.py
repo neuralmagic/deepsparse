@@ -153,7 +153,7 @@ _transformers_integration_deps = [
     "seqeval",
 ]
 _sentence_transformers_integration_deps = [
-    "git+https://github.com/neuralmagic/optimum-deepsparse.git"
+    "optimum-deepsparse @ git://github.com/neuralmagic/optimum-deepsparse.git"
 ] + _torch_deps
 
 # haystack dependencies are installed from a requirements file to avoid
