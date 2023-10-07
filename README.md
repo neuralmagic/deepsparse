@@ -70,18 +70,26 @@ print(model("Are you excited about LLMs?", max_new_tokens=20).generations[0].tex
 ### > Yes, I am excited about LLMs!
 ```
 
-- Check out DeepSparse's [LLM README](docs/llms) for more details on our current support and instructions to try it now
+DeepSparse is optimized for LLMs with:
+
+- State-of-the-art text generation decoding latency
+- Optimized sparse quantized x86 and ARM CPU kernels
+- Efficient usage of cached attention keys and values for minimal memory movement
+- Compressed memory usage using sparse weights
+- Run locally or in the cloud on Linux (Mac coming soon!)
+- Check out DeepSparse's [LLM documentation](https://github.com/neuralmagic/deepsparse/tree/main/docs/llms) for more details on our current support and instructions to try it now
 - Reach out in our [Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ) or [Contact Form](http://neuralmagic.com/contact/) if you would like to discuss our roadmap
 
 ## Installation
 
-DeepSparse Community is available via PyPI. We recommend using a virtual enviornment.
+DeepSparse Community can be install using `pip` via PyPI. We recommend using a virtual enviornment.
 
 ```bash
 pip install deepsparse
 ```
 
-- [Check out the Installation page](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md) for optional dependencies.
+[Check out the Installation page](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md) for optional dependencies. To experiment with the latest features, there is a nightly build available using `pip install deepsparse-nightly`.
+
 
 ## Hardware Support and System Requirements
 
