@@ -170,6 +170,7 @@ _clip_deps = [
 
 _torch_deps = ["torch>=1.7.0,<=2.0"]
 
+
 def _check_supported_system():
     if sys.platform.startswith("linux"):
         # linux is supported, allow install to go through
