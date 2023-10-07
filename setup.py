@@ -151,8 +151,6 @@ _transformers_integration_deps = [
     "seqeval",
 ]
 
-_torch_deps = ["torch>=1.7.0,<=2.0"]
-
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
 _haystack_requirements_file_path = os.path.join(
@@ -170,6 +168,7 @@ _clip_deps = [
     "transformers<4.35",
 ]
 
+_torch_deps = ["torch>=1.7.0,<=2.0"]
 
 def _check_supported_system():
     if sys.platform.startswith("linux"):
