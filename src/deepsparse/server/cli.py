@@ -214,8 +214,13 @@ def main(
             return DeepsparseServer(server_config=config_path)
         elif integration == "sagemaker":
             return SagemakerServer(server_config=config_path)
-        else:
+        elif integration == "openai":
             return OpenAIServer(server_config=config_path)
+        else:
+            raise ValueError(
+                f"{integration} is not a supported integration. Must be "
+                "one of local, sagemkaer or openai."
+            )
 
     if ctx.invoked_subcommand is not None:
         return

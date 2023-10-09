@@ -27,6 +27,11 @@ def random_uuid() -> str:
 
 
 class ErrorResponse(BaseModel):
+    """
+    Structure of the error messages returned for any errors returned as part of the
+    OpenAI integration.
+    """
+
     object: str = "error"
     message: str
     type: str
@@ -35,6 +40,11 @@ class ErrorResponse(BaseModel):
 
 
 class ModelPermission(BaseModel):
+    """
+    Expected structure of the permission for each model (included as part of the
+    ModelCard) supported for inference.
+    """
+
     id: str = Field(default_factory=lambda: f"modelperm-{random_uuid()}")
     object: str = "model_permission"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -50,6 +60,12 @@ class ModelPermission(BaseModel):
 
 
 class ModelCard(BaseModel):
+    """
+    Expected structure for each item in the ModelList returned from the /v1/models
+    endpoint, as part of the OpenAI integration. Each model available for inference
+    will have its own ModelCard.
+    """
+
     id: str
     object: str = "model"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -60,6 +76,12 @@ class ModelCard(BaseModel):
 
 
 class ModelList(BaseModel):
+    """
+    Expected structure for the response from the /v1/models endpoint,
+    as part of the OpenAI integration. Includes a list structure, containing a ModelCard
+    for each model available to run inference.
+    """
+
     object: str = "list"
     data: List[ModelCard] = Field(default_factory=list)
 
@@ -71,6 +93,11 @@ class UsageInfo(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
+    """
+    Expected structure for requests sent to the /v1/chat/completions endpoint,
+    as part of the OpenAI integration.
+    """
+
     model: Optional[str] = None
     messages: Union[str, List[Dict[str, str]]]
     temperature: Optional[float] = 0.7
@@ -102,6 +129,11 @@ class ChatCompletionResponseChoice(BaseModel):
 
 
 class ChatCompletionResponse(BaseModel):
+    """
+    Expected structure for responses returned from the /v1/chat/completions endpoint,
+    as part of the OpenAI integration.
+    """
+
     id: str = Field(default_factory=lambda: f"chatcmpl-{random_uuid()}")
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -122,6 +154,11 @@ class ChatCompletionResponseStreamChoice(BaseModel):
 
 
 class ChatCompletionStreamResponse(BaseModel):
+    """
+    Expected structure for responses returned from the /v1/chat/completions endpoint
+    when streaming is enabled, as part of the OpenAI integration.
+    """
+
     id: str = Field(default_factory=lambda: f"chatcmpl-{random_uuid()}")
     object: str = "chat.completion.chunk"
     created: int = Field(default_factory=lambda: int(time.time()))

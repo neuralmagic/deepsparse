@@ -37,6 +37,7 @@ from deepsparse.server.protocol import (
     random_uuid,
 )
 from deepsparse.server.server import Server
+from deepsparse.tasks import SupportedTasks
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
 
@@ -48,7 +49,6 @@ OPENAI_TO_DEEPSPARSE_MAPPINGS = {
     "max_tokens": "max_length",
     "frequency_penalty": "repetition_penalty",
 }
-SUPPORTED_TASKS = ["text_generation", "opt", "bloom"]
 
 
 class OpenAIServer(Server):
@@ -187,10 +187,10 @@ class OpenAIServer(Server):
 
         _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
 
-        if pipeline_config.task not in SUPPORTED_TASKS:
+        if not SupportedTasks.is_text_generation(pipeline_config.task):
             raise ValueError(
                 "OpenAI API is only available for one of the following "
-                f"tasks: {SUPPORTED_TASKS}"
+                f"tasks: {SupportedTasks.text_generation._fields}"
             )
 
         pipeline = Pipeline.from_config(
@@ -216,13 +216,9 @@ class OpenAIServer(Server):
         prompt_token_ids = tokenize(prompt)
         generation_kwargs = map_generation_schema(generation_kwargs)
 
-        stream = generation_kwargs["stream"]
-        presence_penalty = generation_kwargs["presence_penalty"]
-        stop = generation_kwargs["stop"]
-
-        generation_kwargs.pop("stream")
-        generation_kwargs.pop("presence_penalty")
-        generation_kwargs.pop("stop")
+        stream = generation_kwargs.pop("stream")
+        presence_penalty = generation_kwargs.pop("presence_penalty")
+        stop = generation_kwargs.pop("stop")
 
         output = pipeline(
             sequences=prompt,
@@ -233,7 +229,7 @@ class OpenAIServer(Server):
         )
 
         if not stream:
-            # Non-streaming responss
+            # Non-streaming responses
             generations = output.generations[0]
             if not isinstance(generations, list):
                 generations = [generations]
@@ -336,7 +332,7 @@ async def completion_stream_generator(
             id=request_id, choices=[choice_data], model=pipeline.model_path
         )
         data = chunk.json(exclude_unset=True, ensure_ascii=False)
-        yield f"data: {data}\n\n"
+        yield f"{data}\n\n"
 
     previous_texts = [""] * request.n
     previous_num_tokens = [0] * request.n
@@ -354,7 +350,7 @@ async def completion_stream_generator(
                 created_time=created_time,
                 pipeline=pipeline,
             )
-            yield f"data: {response_json}\n\n"
+            yield f"{response_json}\n\n"
             if output.finish_reason is not None:
                 response_json = create_stream_response_json(
                     index=i,
@@ -364,5 +360,5 @@ async def completion_stream_generator(
                     created_time=created_time,
                     pipeline=pipeline,
                 )
-                yield f"data: {response_json}\n\n"
-    yield "data: [DONE]\n\n"
+                yield f"{response_json}\n\n"
+    yield "[DONE]\n\n"

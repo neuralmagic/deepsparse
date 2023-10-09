@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 
+@dataclass
 class CompletionOutput:
     """The output data of one completion output of a request.
 
@@ -29,36 +31,18 @@ class CompletionOutput:
         finish_reason: The reason why the sequence is finished.
     """
 
-    def __init__(
-        self,
-        index: int,
-        text: str,
-        token_ids: List[int],
-        cumulative_logprob: float = 0.0,
-        logprobs: Optional[List[Dict[int, float]]] = None,
-        finish_reason: Optional[str] = None,
-    ) -> None:
-        self.index = index
-        self.text = text
-        self.token_ids = token_ids
-        self.cumulative_logprob = cumulative_logprob
-        self.logprobs = logprobs
-        self.finish_reason = finish_reason
+    index: int
+    text: str
+    token_ids: List[int]
+    cumulative_logprob: float = 0.0
+    logprobs: Optional[List[Dict[int, float]]] = None
+    finish_reason: Optional[str] = None
 
     def finished(self) -> bool:
         return self.finish_reason is not None
 
-    def __repr__(self) -> str:
-        return (
-            f"CompletionOutput(index={self.index}, "
-            f"text={self.text!r}, "
-            f"token_ids={self.token_ids}, "
-            f"cumulative_logprob={self.cumulative_logprob}, "
-            f"logprobs={self.logprobs}, "
-            f"finish_reason={self.finish_reason})"
-        )
 
-
+@dataclass
 class RequestOutput:
     """The output data of a request to the LLM.
 
@@ -70,25 +54,8 @@ class RequestOutput:
         finished: Whether the whole request is finished.
     """
 
-    def __init__(
-        self,
-        request_id: str,
-        prompt: str,
-        prompt_token_ids: List[int],
-        outputs: List[CompletionOutput],
-        finished: bool,
-    ) -> None:
-        self.request_id = request_id
-        self.prompt = prompt
-        self.prompt_token_ids = prompt_token_ids
-        self.outputs = outputs
-        self.finished = finished
-
-    def __repr__(self) -> str:
-        return (
-            f"RequestOutput(request_id={self.request_id}, "
-            f"prompt={self.prompt!r}, "
-            f"prompt_token_ids={self.prompt_token_ids}, "
-            f"outputs={self.outputs}, "
-            f"finished={self.finished})"
-        )
+    request_id: str
+    prompt: str
+    prompt_token_ids: List[str]
+    outputs: List[CompletionOutput]
+    finished: bool

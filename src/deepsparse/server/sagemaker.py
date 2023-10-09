@@ -25,6 +25,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class SagemakerServer(DeepsparseServer):
+    """
+    Server support for sagemaker. This integration support includes all the routes
+    supported by the Deepsparse server, with the additional route /ping. All sagemaker
+    endpoints also start with /invocations. All endpoints are added/deleted in the
+    same way as the Deepsparse server.
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
