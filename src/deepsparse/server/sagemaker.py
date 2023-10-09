@@ -29,6 +29,10 @@ class SagemakerServer(DeepsparseServer):
         super().__init__(**kwargs)
 
     def _add_routes(self, app: FastAPI):
+        @app.get("/ping", tags=["health"], response_model=CheckReady)
+        def _check_health():
+            return CheckReady(status="OK")
+
         return super()._add_routes(app)
 
     def _add_inference_endpoints(
