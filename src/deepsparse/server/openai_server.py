@@ -197,14 +197,15 @@ class OpenAIServer(Server):
             pipeline_config, self.context, self.server_logger
         )
 
-        model_card = ModelCard(
-            id=endpoint_config.model,
-            root=endpoint_config.model,
-            permission=[ModelPermission()],
-        )
+        if not self.model_to_pipeline.get(endpoint_config.model):
+            model_card = ModelCard(
+                id=endpoint_config.model,
+                root=endpoint_config.model,
+                permission=[ModelPermission()],
+            )
 
-        self.model_to_pipeline[endpoint_config.model] = pipeline
-        self.model_list.data.extend(model_card)
+            self.model_to_pipeline[endpoint_config.model] = pipeline
+            self.model_list.data.extend(model_card)
 
     @staticmethod
     async def generate(
@@ -332,7 +333,7 @@ async def completion_stream_generator(
             id=request_id, choices=[choice_data], model=pipeline.model_path
         )
         data = chunk.json(exclude_unset=True, ensure_ascii=False)
-        yield f"{data}\n\n"
+        yield f"data: {data}\n\n"
 
     previous_texts = [""] * request.n
     previous_num_tokens = [0] * request.n
@@ -350,7 +351,7 @@ async def completion_stream_generator(
                 created_time=created_time,
                 pipeline=pipeline,
             )
-            yield f"{response_json}\n\n"
+            yield f"data: {response_json}\n\n"
             if output.finish_reason is not None:
                 response_json = create_stream_response_json(
                     index=i,
@@ -360,5 +361,5 @@ async def completion_stream_generator(
                     created_time=created_time,
                     pipeline=pipeline,
                 )
-                yield f"{response_json}\n\n"
-    yield "[DONE]\n\n"
+                yield f"data: {response_json}\n\n"
+    yield "data: [DONE]\n\n"
