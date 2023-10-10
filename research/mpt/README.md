@@ -6,7 +6,9 @@ In this overview, we will discuss:
 1. [Current status of our sparse fine-tuning research](#sparse-fine-tuning-research)
 2. [How to try text generation with DeepSparse](#try-it-now)
 
-For detailed usage instructions, [see the text generation user guide](text-generation-pipeline.md).
+For detailed usage instructions, [see the text generation user guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/llms/text-generation-pipeline.md).
+
+![deepsparse_mpt_gsm_speedup](https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9)
 
 ## **Sparse Finetuning Research**
 
