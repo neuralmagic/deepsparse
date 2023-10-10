@@ -213,8 +213,8 @@ class TextGenerationPipeline(TransformersPipeline):
 
     def __init__(
         self,
-        prompt_sequence_length: int = 64,
         sequence_length: int = 1024,
+        prompt_sequence_length: int = 16,
         force_max_tokens: bool = False,
         internal_kv_cache: bool = True,
         generation_config: Union[str, pathlib.Path, Dict, GenerationConfig] = None,
@@ -543,7 +543,9 @@ class TextGenerationPipeline(TransformersPipeline):
             finished=False,
         )
 
-    def _stream_engine_outputs(self, engine_outputs, prompts, generation_config):
+    def _stream_engine_outputs(
+        self, engine_outputs, prompts, generation_config, **kwargs
+    ):
         for output in engine_outputs:
             generated_tokens, generated_logits, finished_reason = output
             logits = generated_logits if generation_config.output_scores else None
@@ -552,10 +554,18 @@ class TextGenerationPipeline(TransformersPipeline):
                 finished_reason[0],
                 logits,
             )
-            yield TextGenerationOutput(
+            # Add session_id to schema if it exists
+            #  more relevant for `ChatPipeline`
+            schema_kwargs = (
+                {"session_ids": session_ids}
+                if (session_ids := kwargs.get("session_ids"))
+                else {}
+            )
+            yield self.output_schema(
                 created=datetime.datetime.now(),
                 prompts=prompts,
                 generations=[generation],
+                **schema_kwargs,
             )
 
     def process_engine_outputs(
@@ -634,7 +644,7 @@ class TextGenerationPipeline(TransformersPipeline):
             )
             outputs.update(debug_params)
 
-        return TextGenerationOutput(**outputs)
+        return self.output_schema(**outputs)
 
     def engine_forward(
         self, engine_inputs: List[numpy.ndarray], context: Dict
@@ -694,11 +704,13 @@ class TextGenerationPipeline(TransformersPipeline):
             # last prompt token is the first generated token
             # add it to generated tokens, and the logits
             generated_tokens = [token_generator.tokens[-1]]
+
             generated_logits = (
                 prompt_logits
                 if context.get("include_prompt_logits")
                 else [prompt_logits[-1]]
             )
+
             callback = context.get("callback")
             stop = context.get("stop")
 
@@ -712,12 +724,21 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
 
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
+                if len(generated_tokens) < max_tokens:
+                    if streaming:
+                        yield (
+                            numpy.array([generated_tokens[-1]]),
+                            numpy.array([generated_logits[-1]]),
+                            [None],
+                        )
+
                 while len(generated_tokens) < max_tokens:
                     with timer.time(TextGenerationTimings.TOKEN_GENERATION_SINGLE):
                         logits = self.autoregressive_inference(
                             tokens=token_generator.tokens, kv_cache=session
                         )
                         token = token_generator.generate(logits=logits[0, -1, :])
+
                     generated_tokens.append(token)
                     generated_logits.append(logits)
 
