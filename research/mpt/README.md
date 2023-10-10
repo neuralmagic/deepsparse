@@ -8,6 +8,8 @@ In this overview, we will discuss:
 
 For detailed usage instructions, [see the text generation user guide](text-generation-pipeline.md).
 
+![deepsparse_mpt_gsm_speedup](https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9)
+
 ## **Sparse Finetuning Research**
 
 Sparsity is a powerful model compression technique, where weights are removed from the network with limited accuracy drop. 
