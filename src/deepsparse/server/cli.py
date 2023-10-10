@@ -34,6 +34,7 @@ from deepsparse.server.openai_server import OpenAIServer
 from deepsparse.server.sagemaker import SagemakerServer
 
 
+SUPPORTED_INTEGRATIONS = ["local", "sagemaker", "openai"]
 HOST_OPTION = click.option(
     "--host",
     type=str,
@@ -111,7 +112,7 @@ WORKERS_OPTION = click.option(
 
 INTEGRATION_OPTION = click.option(
     "--integration",
-    type=click.Choice(["local", "sagemaker", "openai"], case_sensitive=False),
+    type=click.Choice(SUPPORTED_INTEGRATIONS, case_sensitive=False),
     default="local",
     help=(
         "Name of deployment integration that this server will be deployed to "
@@ -219,7 +220,7 @@ def main(
         else:
             raise ValueError(
                 f"{integration} is not a supported integration. Must be "
-                "one of local, sagemkaer or openai."
+                f"one of {SUPPORTED_INTEGRATIONS}."
             )
 
     if ctx.invoked_subcommand is not None:

@@ -49,12 +49,11 @@ class SagemakerServer(DeepsparseServer):
         pipeline: Pipeline,
     ):
         routes_and_fns = []
-        route = (
-            f"/invocations/{endpoint_config.route}/infer"
-            if endpoint_config.route
-            else f"/invocations/{endpoint_config.name}/infer"
-        )
-        route = self.clean_up_route(route)
+        if endpoint_config.route:
+            endpoint_config.route = self.clean_up_route(endpoint_config.route)
+            route = f"/invocations{endpoint_config.route}/infer"
+        else:
+            route = f"/invocations/{endpoint_config.name}/infer"
 
         if hasattr(pipeline.input_schema, "from_files"):
             routes_and_fns.append(
@@ -79,17 +78,13 @@ class SagemakerServer(DeepsparseServer):
         routes_and_fns = []
         meta_and_fns = []
 
-        route_ready = (
-            f"/invocations/{endpoint_config.route}/ready"
-            if endpoint_config.route
-            else f"/invocations/{endpoint_config.name}/ready"
-        )
-
-        route_meta = (
-            f"/invocations/{endpoint_config.route}"
-            if endpoint_config.route
-            else f"/invocations/{endpoint_config.name}"
-        )
+        if endpoint_config.route:
+            endpoint_config.route = self.clean_up_route(endpoint_config.route)
+            route_ready = f"/invocations{endpoint_config.route}/ready"
+            route_meta = f"/invocations{endpoint_config.route}"
+        else:
+            route_ready = f"/invocations/{endpoint_config.name}/ready"
+            route_meta = f"/invocations/{endpoint_config.name}"
 
         routes_and_fns.append((route_ready, Server.pipeline_ready))
         meta_and_fns.append(

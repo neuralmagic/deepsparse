@@ -68,6 +68,35 @@ Commands:
   config  Run the server using configuration from a .yaml file.
   task    Run the server using configuration with CLI options, which can...
 ```
+---
+<h3>Note on the latest server release</h3>
+
+Endpoints have now been updated such that all base routes and endpoints added for
+inference will follow `/v2/models/<route>/infer` for inference. Additionally, a series
+of other endpoints have been added for each new configured endpoint,
+including `/v2/models/<route>/ready` and `/v2/models/<route>`, providing metadata and
+health checks for the pipelines available through the endpoint.
+
+For example: If previously the following route `/pruned/model_1` was provided,
+the following endpoint would be avaialble:
+
+```
+http://localhost:<port>/puned/model_1
+```
+
+Now, the following endpoints are available:
+
+```
+http://localhost:<port>/v2/models/puned/model_1/infer
+http://localhost:<port>/v2/models/puned/model_1/ready
+http://localhost:<port>/v2/models/puned/model_1
+```
+
+The same can be expected when a name is provided in the config file instead of a route.
+When neither a name or route is provided, a name will be generated for the endpoint,
+using the task provided (e.g question_answering will create question_answering-0)
+
+---
 
 ### Single Model Inference
 
@@ -84,7 +113,7 @@ To make a request to your server, use the `requests` library and pass the reques
 ```python
 import requests
 
-url = "http://localhost:5543/predict"
+url = "http://localhost:5543/v2/models/question_answering-0/infer"
 
 obj = {
     "question": "Who is Mark?", 
@@ -98,7 +127,7 @@ In addition, you can make a request with a `curl` command from terminal:
 
 ```bash
 curl -X POST \
-  'http://localhost:5543/predict' \
+  'http://localhost:5543/v2/models/question_answering-0/infer' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -116,11 +145,11 @@ num_cores: 2
 num_workers: 2
 endpoints:
     - task: question_answering
-      route: /unpruned/predict
+      route: /unpruned
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/base-none
       batch_size: 1
     - task: question_answering
-      route: /pruned/predict
+      route: /pruned
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 1
 ```
@@ -135,7 +164,7 @@ You can send requests to a specific model by appending the model's `alias` from 
 ```python
 import requests
 
-url = "http://localhost:5543/pruned/predict"
+url = "http://localhost:5543/v2/models/pruned/infer"
 
 obj = {
     "question": "Who is Mark?", 

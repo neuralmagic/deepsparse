@@ -115,7 +115,7 @@ class TestMockEndpoints:
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=mock_pipeline,
         )
-        assert app.routes[-1].path == "/predict/parse_int/infer"
+        assert app.routes[-1].path == "/v2/models/predict/parse_int/infer"
         assert app.routes[-1].response_model is int
         assert app.routes[-1].endpoint.func.__annotations__ == {
             "proxy_pipeline": ProxyPipeline,
@@ -125,7 +125,9 @@ class TestMockEndpoints:
         assert app.routes[-1].methods == {"POST"}
 
         for v in ["1234", "5678"]:
-            response = client.post("/predict/parse_int/infer", json=dict(value=v))
+            response = client.post(
+                "/v2/models/predict/parse_int/infer", json=dict(value=v)
+            )
             assert response.status_code == 200
             assert response.json() == int(v)
 
@@ -135,13 +137,13 @@ class TestMockEndpoints:
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
         )
-        assert app.routes[-2].path == "/predict/parse_int/infer"
+        assert app.routes[-2].path == "/v2/models/predict/parse_int/infer"
         assert app.routes[-2].endpoint.func.__annotations__ == {
             "proxy_pipeline": ProxyPipeline,
             "raw_request": Request,
             "system_logging_config": SystemLoggingConfig,
         }
-        assert app.routes[-1].path == "/predict/parse_int/infer/from_files"
+        assert app.routes[-1].path == "/v2/models/predict/parse_int/infer/from_files"
         assert app.routes[-1].endpoint.func.__annotations__ == {
             "proxy_pipeline": ProxyPipeline,
             "request": List[UploadFile],
@@ -220,11 +222,14 @@ class TestActualModelEndpoints:
 
     def test_static_batch_errors_on_wrong_batch_size(self, client):
         # this is okay because we can pad batches now
-        client.post("/predict/static-batch/infer", json={"sequences": "today is great"})
+        client.post(
+            "/v2/models/predict/static-batch/infer",
+            json={"sequences": "today is great"},
+        )
 
     def test_static_batch_good_request(self, client):
         response = client.post(
-            "/predict/static-batch/infer",
+            "/v2/models/predict/static-batch/infer",
             json={"sequences": ["today is great", "today is terrible"]},
         )
         assert response.status_code == 200
@@ -241,7 +246,9 @@ class TestActualModelEndpoints:
         ],
     )
     def test_dynamic_batch_any(self, client, seqs):
-        response = client.post("/predict/dynamic-batch/infer", json={"sequences": seqs})
+        response = client.post(
+            "/v2/models/predict/dynamic-batch/infer", json={"sequences": seqs}
+        )
         assert response.status_code == 200
         output = response.json()
         assert len(output["labels"]) == len(seqs)

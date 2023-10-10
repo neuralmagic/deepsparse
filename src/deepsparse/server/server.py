@@ -202,6 +202,8 @@ class Server:
     def clean_up_route(self, route):
         if not route.startswith("/"):
             route = "/" + route
+        if route.endswith("/"):
+            route = route[:-1]
         return route
 
     def _update_routes(

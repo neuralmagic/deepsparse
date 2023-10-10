@@ -296,10 +296,13 @@ def test_endpoint_system_logging(mock_engine):
         server = DeepsparseServer(server_config)
         app = server._build_app()
     client = TestClient(app)
-    client.post("/predict_text_classification/infer", json=dict(sequences="asdf"))
-    client.post("/predict_text_classification/infer", json=dict(sequences="asdf"))
+    client.post(
+        "/v2/models/predict_text_classification/infer", json=dict(sequences="asdf")
+    )
+    client.post(
+        "/v2/models/predict_text_classification/infer", json=dict(sequences="asdf")
+    )
     calls = server_logger.logger.loggers[0].logger.loggers[0].calls
 
     c = Counter([call.split(",")[0] for call in calls])
-
     assert c == SAMPLE_LOGS_DICT

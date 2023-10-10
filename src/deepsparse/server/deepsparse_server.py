@@ -98,8 +98,8 @@ class DeepsparseServer(Server):
 
         if endpoint_config.route:
             endpoint_config.route = self.clean_up_route(endpoint_config.route)
-            route_ready = f"{endpoint_config.route}/ready"
-            route_meta = endpoint_config.route
+            route_ready = f"/v2/models{endpoint_config.route}/ready"
+            route_meta = f"/v2/models{endpoint_config.route}"
         else:
             route_ready = f"/v2/models/{endpoint_config.name}/ready"
             route_meta = f"/v2/models/{endpoint_config.name}"
@@ -131,12 +131,11 @@ class DeepsparseServer(Server):
         pipeline: Pipeline,
     ):
         routes_and_fns = []
-        route = (
-            f"{endpoint_config.route}/infer"
-            if endpoint_config.route
-            else f"/v2/models/{endpoint_config.name}/infer"
-        )
-        route = self.clean_up_route(route)
+        if endpoint_config.route:
+            endpoint_config.route = self.clean_up_route(endpoint_config.route)
+            route = f"/v2/models{endpoint_config.route}/infer"
+        else:
+            route = f"/v2/models/{endpoint_config.name}/infer"
 
         routes_and_fns.append(
             (
