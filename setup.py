@@ -275,6 +275,7 @@ def _setup_extras() -> Dict:
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
+        "llm": _transformers_integration_deps,
         "torch": _torch_deps,
         "clip": _clip_deps,
     }
