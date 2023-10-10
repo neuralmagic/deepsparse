@@ -14,6 +14,8 @@
 
 from unittest import mock
 
+import pydantic
+
 import pytest
 from deepsparse.loggers.config import SystemLoggingGroup
 from deepsparse.server.config import (
@@ -21,8 +23,8 @@ from deepsparse.server.config import (
     ServerConfig,
     ServerSystemLoggingConfig,
 )
+from deepsparse.server.deepsparse_server import DeepsparseServer
 from deepsparse.server.helpers import server_logger_from_config
-from deepsparse.server.server import _build_app
 from deepsparse.server.system_logging import log_resource_utilization
 from fastapi.testclient import TestClient
 from tests.deepsparse.loggers.helpers import ListLogger
@@ -70,7 +72,6 @@ def _test_response_msg(calls, response_msg):
             True,
             "Response status code: 200",
         ),
-        ({"this": "is supposed to fail"}, 1, False, "Response status code: 422"),
     ],
 )
 def test_log_request_details(
@@ -91,14 +92,21 @@ def test_log_request_details(
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
-        app = _build_app(server_config)
+        server = DeepsparseServer(server_config)
+        app = server._build_app()
     client = TestClient(app)
+
     client.post(endpoint_path, json=json_payload)
 
     calls = server_logger.logger.loggers[0].logger.loggers[0].calls
 
     _test_successful_requests(calls, successful_request)
     _test_response_msg(calls, response_msg)
+
+    try:
+        client.post(endpoint_path, json=({"this": "is supposed to fail"}))
+    except Exception as e:
+        assert isinstance(e, pydantic.ValidationError)
 
 
 def _test_cpu_utilization(calls, num_iterations):

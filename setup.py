@@ -306,6 +306,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark_pipeline=deepsparse.benchmark.benchmark_pipeline:main",  # noqa E501
             "deepsparse.benchmark_sweep=deepsparse.benchmark.benchmark_sweep:main",
             "deepsparse.server=deepsparse.server.cli:main",
+            "deepsparse.openai=deepsparse.server.cli:openai",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
             "deepsparse.yolov8.annotate=deepsparse.yolov8.annotate:main",
             "deepsparse.yolov8.eval=deepsparse.yolov8.validation:main",

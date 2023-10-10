@@ -19,9 +19,7 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import yaml
-from click.testing import CliRunner
 
-from deepsparse.server.cli import config, task
 from deepsparse.server.config import EndpointConfig, ImageSizesConfig, ServerConfig
 from deepsparse.server.config_hot_reloading import (
     _ContentMonitor,
@@ -29,7 +27,7 @@ from deepsparse.server.config_hot_reloading import (
     _update_endpoints,
     endpoint_diff,
 )
-from deepsparse.server.server import start_server
+from deepsparse.server.deepsparse_server import DeepsparseServer
 
 
 def test_no_route_not_in_diff():
@@ -175,43 +173,12 @@ def test_hot_reload_config_with_start_server(
         yaml.safe_dump(cfg.dict(), fp)
 
     # setting to False calls uvicorn.run(), but NOT start_config_watcher
-    start_server(cfg_path, hot_reload_config=False)
+    server = DeepsparseServer(cfg_path)
+    server.start_server(hot_reload_config=False)
     assert run_patch.call_count == 1
     assert watcher_patch.call_count == 0
 
     # setting to True calls uvicorn.run() AND start_config_watcher
-    start_server(cfg_path, hot_reload_config=True)
+    server.start_server(hot_reload_config=True)
     assert run_patch.call_count == 2
     assert watcher_patch.call_count == 1
-
-
-@mock.patch("deepsparse.server.cli.start_server")
-def test_task_cli_hot_reload(start_server):
-    runner = CliRunner()
-
-    # no flag sets hot_reload_config to False
-    assert runner.invoke(task, ["qa"]).exception is None
-    _, kwargs = start_server.call_args
-    assert kwargs["hot_reload_config"] is False
-
-    # using flag sets hot_reload_config to True
-    assert runner.invoke(task, ["qa", "--hot-reload-config"]).exception is None
-    _, kwargs = start_server.call_args
-    assert kwargs["hot_reload_config"] is True
-
-
-@mock.patch("deepsparse.server.cli.start_server")
-def test_config_cli_hot_reload(start_server, tmp_path: Path):
-    runner = CliRunner()
-
-    # no flag sets hot_reload_config to False
-    assert runner.invoke(config, [str(tmp_path)]).exception is None
-    _, kwargs = start_server.call_args
-    assert kwargs["hot_reload_config"] is False
-
-    # using flag sets hot_reload_config to True
-    assert (
-        runner.invoke(config, [str(tmp_path), "--hot-reload-config"]).exception is None
-    )
-    _, kwargs = start_server.call_args
-    assert kwargs["hot_reload_config"] is True
