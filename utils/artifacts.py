@@ -14,12 +14,12 @@
 
 import argparse
 import os
+import platform
 import sys
 import tarfile
 from io import BytesIO
 from typing import Tuple
 from urllib.request import Request, urlopen
-import platform
 
 
 __all__ = [
