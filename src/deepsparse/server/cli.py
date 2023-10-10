@@ -209,20 +209,6 @@ def main(
        ...
     ```
     """
-
-    def _fetch_server(integration: str, config_path: str):
-        if integration == "local":
-            return DeepsparseServer(server_config=config_path)
-        elif integration == "sagemaker":
-            return SagemakerServer(server_config=config_path)
-        elif integration == "openai":
-            return OpenAIServer(server_config=config_path)
-        else:
-            raise ValueError(
-                f"{integration} is not a supported integration. Must be "
-                f"one of {SUPPORTED_INTEGRATIONS}."
-            )
-
     if ctx.invoked_subcommand is not None:
         return
 
@@ -343,6 +329,43 @@ def task(
         "Use the `--task` argument instead.",
         category=DeprecationWarning,
     )
+
+    cfg = ServerConfig(
+        num_cores=num_cores,
+        num_workers=num_workers,
+        integration=integration,
+        endpoints=[
+            EndpointConfig(
+                task=task,
+                name=f"{task}",
+                model=model_path,
+                batch_size=batch_size,
+            )
+        ],
+        loggers={},
+    )
+
+    with TemporaryDirectory() as tmp_dir:
+        config_path = os.path.join(tmp_dir, "server-config.yaml")
+        with open(config_path, "w") as fp:
+            yaml.dump(cfg.dict(), fp)
+
+        server = _fetch_server(integration=integration, config_path=config_path)
+        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
+
+
+def _fetch_server(integration: str, config_path: str):
+    if integration == "local":
+        return DeepsparseServer(server_config=config_path)
+    elif integration == "sagemaker":
+        return SagemakerServer(server_config=config_path)
+    elif integration == "openai":
+        return OpenAIServer(server_config=config_path)
+    else:
+        raise ValueError(
+            f"{integration} is not a supported integration. Must be "
+            f"one of {SUPPORTED_INTEGRATIONS}."
+        )
 
 
 if __name__ == "__main__":

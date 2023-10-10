@@ -81,20 +81,20 @@ For example: If previously the following route `/pruned/model_1` was provided,
 the following endpoint would be avaialble:
 
 ```
-http://localhost:<port>/puned/model_1
+http://localhost:5543/pruned/model_1
 ```
 
 Now, the following endpoints are available:
 
 ```
-http://localhost:<port>/v2/models/puned/model_1/infer
-http://localhost:<port>/v2/models/puned/model_1/ready
-http://localhost:<port>/v2/models/puned/model_1
+http://localhost:5543/v2/models/pruned/model_1/infer
+http://localhost:5543/v2/models/pruned/model_1/ready
+http://localhost:5543/v2/models/pruned/model_1
 ```
 
 The same can be expected when a name is provided in the config file instead of a route.
 When neither a name or route is provided, a name will be generated for the endpoint,
-using the task provided (e.g question_answering will create question_answering-0)
+using the task provided.
 
 ---
 
@@ -113,7 +113,7 @@ To make a request to your server, use the `requests` library and pass the reques
 ```python
 import requests
 
-url = "http://localhost:5543/v2/models/question_answering-0/infer"
+url = "http://localhost:5543/v2/models/question_answering/infer"
 
 obj = {
     "question": "Who is Mark?", 
@@ -127,7 +127,7 @@ In addition, you can make a request with a `curl` command from terminal:
 
 ```bash
 curl -X POST \
-  'http://localhost:5543/v2/models/question_answering-0/infer' \
+  'http://localhost:5543/v2/models/question_answering/infer' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -153,11 +153,6 @@ endpoints:
       model: zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni
       batch_size: 1
 ```
-You can now run the server with the config file path using the `config` sub command:
-
-```bash
-deepsparse.server config config.yaml
-```
 
 You can send requests to a specific model by appending the model's `alias` from the `config.yaml` to the end of the request url. For example, to call the second model, you can send a request to its configured route:
 
@@ -180,5 +175,5 @@ All you need is to add `/docs` at the end of your host URL:
 
     localhost:5543/docs
 
-![alt text](./img/swagger_ui.png)
+![alt text](./img/endpoints.png)
 
