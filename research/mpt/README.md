@@ -75,8 +75,8 @@ print(output.generations[0].text)
 ```
 
 #### Other Resources
-- [Check out all the models on SparseZoo](https://sparsezoo.neuralmagic.com/models/mpt-7b-gsm8k_mpt_pretrain-pruned60_quantized)
-- [Try out the live demo on Hugging Face Spaces](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k-deepsparse) and view the [collection of paper, demos, and models](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d)
+- [Check out all the MPT GSM models on SparseZoo](https://sparsezoo.neuralmagic.com/?datasets=gsm8k&ungrouped=true)
+- [Try out the live demo on Hugging Face Spaces](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k) and view the [collection of paper, demos, and models](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d)
 
 ### **MPT-7B on Dolly-HHRLHF**
 
