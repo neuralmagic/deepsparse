@@ -268,6 +268,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--internal-kv-cache",
         "--internal_kv_cache",
         help=(
             "DeepSparse engine only - If True, and a model with KV cache, "
@@ -428,6 +429,7 @@ def benchmark_model(
         seconds_to_run=time,
         seconds_to_warmup=warmup_time,
         num_streams=num_streams,
+        internal_kv_cache=cached_outputs,
     )
     export_dict = {
         "engine": str(model),
@@ -457,7 +459,6 @@ def benchmark_model(
 
 
 def main():
-
     args = parse_args()
 
     result = benchmark_model(
