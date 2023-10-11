@@ -27,6 +27,11 @@ def random_uuid() -> str:
 
 
 class ErrorResponse(BaseModel):
+    """
+    Structure of the error messages returned for any errors returned as part of the
+    OpenAI integration.
+    """
+
     object: str = "error"
     message: str
     type: str
@@ -35,6 +40,11 @@ class ErrorResponse(BaseModel):
 
 
 class ModelPermission(BaseModel):
+    """
+    Expected structure of the permission for each model (included as part of the
+    ModelCard) supported for inference.
+    """
+
     id: str = Field(default_factory=lambda: f"modelperm-{random_uuid()}")
     object: str = "model_permission"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -50,6 +60,12 @@ class ModelPermission(BaseModel):
 
 
 class ModelCard(BaseModel):
+    """
+    Expected structure for each item in the ModelList returned from the /v1/models
+    endpoint, as part of the OpenAI integration. Each model available for inference
+    will have its own ModelCard.
+    """
+
     id: str
     object: str = "model"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -60,6 +76,12 @@ class ModelCard(BaseModel):
 
 
 class ModelList(BaseModel):
+    """
+    Expected structure for the response from the /v1/models endpoint,
+    as part of the OpenAI integration. Includes a list structure, containing a ModelCard
+    for each model available to run inference.
+    """
+
     object: str = "list"
     data: List[ModelCard] = Field(default_factory=list)
 
@@ -71,8 +93,13 @@ class UsageInfo(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    model: str
-    messages: Union[str, List[str]]
+    """
+    Expected structure for requests sent to the /v1/chat/completions endpoint,
+    as part of the OpenAI integration.
+    """
+
+    model: Optional[str] = None
+    messages: Union[str, List[Dict[str, str]]]
     temperature: Optional[float] = 0.7
     top_p: Optional[float] = 1.0
     n: Optional[int] = 1
@@ -90,67 +117,6 @@ class ChatCompletionRequest(BaseModel):
     use_beam_search: Optional[bool] = False
 
 
-class CompletionRequest(BaseModel):
-    model: str
-    prompt: Union[str, List[str]]
-    suffix: Optional[str] = None
-    max_tokens: Optional[int] = 16
-    temperature: Optional[float] = 1.0
-    top_p: Optional[float] = 1.0
-    n: Optional[int] = 1
-    stream: Optional[bool] = False
-    logprobs: Optional[int] = None
-    echo: Optional[bool] = False
-    stop: Optional[Union[str, List[str]]] = Field(default_factory=list)
-    presence_penalty: Optional[float] = 0.0
-    frequency_penalty: Optional[float] = 0.0
-    best_of: Optional[int] = None
-    logit_bias: Optional[Dict[str, float]] = None
-    user: Optional[str] = None
-    # Additional parameters
-    top_k: Optional[int] = -1
-    ignore_eos: Optional[bool] = False
-    use_beam_search: Optional[bool] = False
-
-
-class LogProbs(BaseModel):
-    text_offset: List[int] = Field(default_factory=list)
-    token_logprobs: List[Optional[float]] = Field(default_factory=list)
-    tokens: List[str] = Field(default_factory=list)
-    top_logprobs: List[Optional[Dict[str, float]]] = Field(default_factory=list)
-
-
-class CompletionResponseChoice(BaseModel):
-    index: int
-    text: str
-    logprobs: Optional[LogProbs] = None
-    finish_reason: Optional[Literal["stop", "length"]] = None
-
-
-class CompletionResponse(BaseModel):
-    id: str = Field(default_factory=lambda: f"cmpl-{random_uuid()}")
-    object: str = "text_completion"
-    created: int = Field(default_factory=lambda: int(time.time()))
-    model: str
-    choices: List[CompletionResponseChoice]
-    usage: UsageInfo
-
-
-class CompletionResponseStreamChoice(BaseModel):
-    index: int
-    text: str
-    logprobs: Optional[LogProbs] = None
-    finish_reason: Optional[Literal["stop", "length"]] = None
-
-
-class CompletionStreamResponse(BaseModel):
-    id: str = Field(default_factory=lambda: f"cmpl-{random_uuid()}")
-    object: str = "text_completion"
-    created: int = Field(default_factory=lambda: int(time.time()))
-    model: str
-    choices: List[CompletionResponseStreamChoice]
-
-
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -159,10 +125,15 @@ class ChatMessage(BaseModel):
 class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: ChatMessage
-    finish_reason: Optional[Literal["stop", "length"]] = None
+    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
 
 
 class ChatCompletionResponse(BaseModel):
+    """
+    Expected structure for responses returned from the /v1/chat/completions endpoint,
+    as part of the OpenAI integration.
+    """
+
     id: str = Field(default_factory=lambda: f"chatcmpl-{random_uuid()}")
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -179,10 +150,15 @@ class DeltaMessage(BaseModel):
 class ChatCompletionResponseStreamChoice(BaseModel):
     index: int
     delta: DeltaMessage
-    finish_reason: Optional[Literal["stop", "length"]] = None
+    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
 
 
 class ChatCompletionStreamResponse(BaseModel):
+    """
+    Expected structure for responses returned from the /v1/chat/completions endpoint
+    when streaming is enabled, as part of the OpenAI integration.
+    """
+
     id: str = Field(default_factory=lambda: f"chatcmpl-{random_uuid()}")
     object: str = "chat.completion.chunk"
     created: int = Field(default_factory=lambda: int(time.time()))
