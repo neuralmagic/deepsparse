@@ -246,19 +246,27 @@ class Server:
         system_logging_config: SystemLoggingConfig,
         raw_request: Request,
     ):
-        request = proxy_pipeline.pipeline.input_schema(**await raw_request.json())
+        pipeline_outputs = proxy_pipeline.pipeline(**await raw_request.json())
+        server_logger = proxy_pipeline.pipeline.logger
+        if server_logger:
+            log_system_information(
+                server_logger=server_logger, system_logging_config=system_logging_config
+            )
+        return prep_outputs_for_serialization(pipeline_outputs)
+
+    @staticmethod
+    def predict_from_files(
+        proxy_pipeline: ProxyPipeline,
+        system_logging_config: SystemLoggingConfig,
+        request: List[UploadFile],
+    ):
+        request = proxy_pipeline.pipeline.input_schema.from_files(
+            (file.file for file in request), from_server=True
+        )
         pipeline_outputs = proxy_pipeline.pipeline(request)
         server_logger = proxy_pipeline.pipeline.logger
         if server_logger:
             log_system_information(
                 server_logger=server_logger, system_logging_config=system_logging_config
             )
-        pipeline_outputs = prep_outputs_for_serialization(pipeline_outputs)
-        return pipeline_outputs
-
-    @staticmethod
-    def predict_from_files(proxy_pipeline: ProxyPipeline, request: List[UploadFile]):
-        request = proxy_pipeline.pipeline.input_schema.from_files(
-            (file.file for file in request), from_server=True
-        )
-        return Server.predict(request)
+        return prep_outputs_for_serialization(pipeline_outputs)
