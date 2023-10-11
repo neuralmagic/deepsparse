@@ -182,19 +182,41 @@ def main(
     # continue prompts until a keyboard interrupt
     while True:
         input_text = input("User: ")
-        pipeline_inputs = dict(
-            prompt=[input_text],
-            temperature=sampling_temperature,
+        _run_inference(
+            pipeline=pipeline,
+            sampling_temperature=sampling_temperature,
+            task=task,
+            session_ids=session_ids,
+            show_tokens_per_sec=show_tokens_per_sec,
+            prompt_sequence_length=prompt_sequence_length,
+            stream=stream,
+            input_text=input_text,
         )
 
-        if SupportedTasks.is_chat(task):
-            pipeline_inputs["session_ids"] = session_ids
 
-        response = pipeline(**pipeline_inputs, streaming=stream)
-        _display_bot_response(stream, response)
+def _run_inference(
+    pipeline: Pipeline,
+    sampling_temperature: float,
+    task: str,
+    session_ids: str,
+    show_tokens_per_sec: bool,
+    prompt_sequence_length: int,
+    input_text: str,
+    stream: bool = False,
+):
+    pipeline_inputs = dict(
+        prompt=[input_text],
+        temperature=sampling_temperature,
+    )
 
-        if show_tokens_per_sec:
-            _display_generation_speed(prompt_sequence_length, pipeline)
+    if SupportedTasks.is_chat(task):
+        pipeline_inputs["session_ids"] = session_ids
+
+    response = pipeline(**pipeline_inputs, streaming=stream)
+    _display_bot_response(stream, response)
+
+    if show_tokens_per_sec:
+        _display_generation_speed(prompt_sequence_length, pipeline)
 
 
 def _display_generation_speed(prompt_sequence_length, pipeline):
