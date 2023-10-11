@@ -59,7 +59,7 @@ def get_platform_string():
             return "manylinux_aarch64"
     elif system == "Darwin":
         if machine == "arm64":
-            return "macos_13_0_arm64"
+            return "macosx_13_0_arm64"
 
     raise ValueError(f"Unsupported or unrecognized platform: {machine}, {system}")
 
