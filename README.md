@@ -20,7 +20,7 @@ limitations under the License.
     <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/icon-deepsparse.png" />
     &nbsp;&nbsp;DeepSparse
   </h1>
-  <h4> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h4>
+  <h4>Sparsity-aware deep learning inference runtime for CPUs</h4>
   <div align="center">
     <a href="https://docs.neuralmagic.com/deepsparse/">
       <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
@@ -52,47 +52,44 @@ limitations under the License.
   </div>
 </div>
 
-
-[DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity within neural networks to execute inference quickly. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), an open-source optimization library, DeepSparse enables you to achieve GPU-class performance on commodity hardware.
+[DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity to accelerate neural network inference. Coupled with SparseML, our optimization library for pruning and quantizing your models, DeepSparse delivers exceptional performance on commodity hardware. [Check out SparseML for details of training sparse models](https://github.com/neuralmagic/sparseml).
 
 <p align="center">
    <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/blob/7ee5e60f13b1fd321c5282c91e2873b3363ec911/docs/neural-magic-workflow.png" width="60%" />
 </p>
 
-For details of training sparse models for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
 
-### ✨NEW✨ DeepSparse ARM Alpha 💪
+### ✨NEW✨ DeepSparse LLMs
 
-Neural Magic is bringing performant deep learning inference to ARM CPUs! In our recent product release, we launched alpha support for DeepSparse on AWS Graviton and Ampere. We are working towards a general release across ARM server, embedded, and mobile platforms in 2023.
+We are pleased to announce initial support for LLMs in DeepSparse, starting with MosaicML's MPT-7b.
 
-**If you would like to trial the alpha or want early access to the general release, [sign up for the waitlist](https://neuralmagic.com/deepsparse-arm-waitlist/).**
+```python
+from deepsparse import TextGeneration
+model = TextGeneration(model="zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/mpt_chat/pruned50_quant-none")
+print(model("Are you excited about LLMs?", max_new_tokens=20).generations[0].text)
+### > Yes, I am excited about LLMs!
+```
+
+DeepSparse is optimized for LLMs with:
+
+- State-of-the-art text generation decoding latency
+- Optimized sparse quantized x86 and ARM CPU kernels
+- Efficient usage of cached attention keys and values for minimal memory movement
+- Compressed memory usage using sparse weights
+- Run locally or in the cloud on Linux (Mac coming soon!)
+- Check out DeepSparse's [LLM documentation](https://github.com/neuralmagic/deepsparse/tree/main/docs/llms) for more details on our current support and instructions to try it now
+- Reach out in our [Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ) or [Contact Form](http://neuralmagic.com/contact/) if you would like to discuss our roadmap
 
 ## Installation
 
-DeepSparse is available in two editions: 
-1. DeepSparse Community is free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2. DeepSparse Enterprise requires a [trial license](https://neuralmagic.com/deepsparse-free-trial/) or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
-
-#### Install via Docker (Recommended)
-
-DeepSparse Community is available as a container image hosted on [GitHub container registry](https://github.com/neuralmagic/deepsparse/pkgs/container/deepsparse).
-
-```bash
-docker pull ghcr.io/neuralmagic/deepsparse:1.4.2
-docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse-docker
-docker run -it deepsparse-docker
-```
-
-- [Check out the Docker page](https://github.com/neuralmagic/deepsparse/tree/main/docker/) for more details.
-
-#### Install via PyPI
-DeepSparse Community is also available via PyPI. We recommend using a virtual enviornment.
+DeepSparse Community can be install using `pip` via PyPI. We recommend using a virtual enviornment.
 
 ```bash
 pip install deepsparse
 ```
 
-- [Check out the Installation page](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md) for optional dependencies.
+[Check out the Installation page](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md) for optional dependencies. To experiment with the latest features, there is a nightly build available using `pip install deepsparse-nightly`.
+
 
 ## Hardware Support and System Requirements
 

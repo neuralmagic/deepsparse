@@ -126,7 +126,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/question_answering/infer" # Server's port default to 5543
 
 obj = {
     "question": "Who is Mark?", 
@@ -170,7 +170,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/text_generation/infer" # Server's port default to 5543
 
 obj = {"sequence": "Who is the president of the United States?"}
 
@@ -215,7 +215,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/setiment_analysis/infer" # Server's port default to 5543
 
 obj = {"sequences": "Snorlax loves my Tesla!"}
 
@@ -268,7 +268,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/text_classification/infer" # Server's port default to 5543
 
 obj = {
     "sequences": [
@@ -321,7 +321,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/token_classification/infer" # Server's port default to 5543
 
 obj = {"inputs": "Drive from California to Texas!"}
 
