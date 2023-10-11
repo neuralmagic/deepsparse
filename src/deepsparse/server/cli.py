@@ -224,7 +224,6 @@ def main(
                 EndpointConfig(
                     task=task,
                     name=f"{task}",
-                    route="/predict",
                     model=model_path,
                     batch_size=batch_size,
                 )

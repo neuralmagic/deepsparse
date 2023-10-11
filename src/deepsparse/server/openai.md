@@ -66,13 +66,13 @@ else:
 - We can toggle the `stream` flag to enable streaming outputs as well
 
 ---
- 
+
 ## Using `curl` or `requests`
 
 - We can also run inference through `curl` commands or by using the `requests` library
 
 `curl`:
-```
+```bash
 curl http://localhost:5543/v1/chat/completions \
     -H "Content-Type: application/json" \
     -d '{
