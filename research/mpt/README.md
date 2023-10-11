@@ -14,6 +14,8 @@ In this research overview, we will discuss:
 
 We show that MPT-7B can be pruned to ~60% sparsity with INT8 quantization (and 70% sparsity without quantization), with no accuracy drop, using a technique called **Sparse Finetuning**, where we prune the network during the finetuning process.
 
+When running the pruned network with DeepSparse, we can accelerate inference by ~7x over the dense-FP32 baseline!
+
 ### **Sparse Finetuning on Grade-School Math (GSM)**
 
 Training LLMs consist of two steps. First, the model is pre-trained on a very large corpus of text (typically >1T tokens). Then, the model is adapted for downstream use by continuing training with a much smaller high quality curated dataset. This second step is called finetuning.
