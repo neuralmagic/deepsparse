@@ -268,6 +268,17 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--internal-kv-cache",
+        "--internal_kv_cache",
+        help=(
+            "DeepSparse engine only - If True, and a model with KV cache, "
+            "KV Cache state will be managed within the compiled deepsparse "
+            "model. This is preferred when applicable for best performance"
+        ),
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         help="Lower logging verbosity",
@@ -314,6 +325,7 @@ def benchmark_model(
     input_ids_length: Optional[int] = 1,
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
+    internal_kv_cache: bool = False,
     quiet: bool = False,
     export_path: Optional[str] = None,
 ) -> Dict:
@@ -332,6 +344,7 @@ def benchmark_model(
     orig_model_path = model_path
     model_path = model_to_path(model_path)
 
+    cached_outputs = None
     if sequence_length and input_ids_length and has_model_kv_cache(model_path):
         if input_ids_length > sequence_length:
             raise ValueError(
@@ -346,12 +359,18 @@ def benchmark_model(
             f"sequence length: {sequence_length}."
         )
 
-        model_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+        model_path, cached_outs, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
             onnx_file_path=model_path,
             input_ids_length=input_ids_length,
             sequence_length=sequence_length,
             batch_size=batch_size,
         )
+
+        if internal_kv_cache:
+            _LOGGER.info(
+                "Benchmarking DeepSparse Engine with internal KV Cache management"
+            )
+            cached_outputs = cached_outs
     else:
         input_ids_length = None
         sequence_length = None
@@ -367,6 +386,7 @@ def benchmark_model(
             num_streams=num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
+            cached_outputs=cached_outputs,
         )
     elif engine == ORT_ENGINE:
         model = ORTEngine(
@@ -409,6 +429,7 @@ def benchmark_model(
         seconds_to_run=time,
         seconds_to_warmup=warmup_time,
         num_streams=num_streams,
+        internal_kv_cache=cached_outputs,
     )
     export_dict = {
         "engine": str(model),
@@ -438,7 +459,6 @@ def benchmark_model(
 
 
 def main():
-
     args = parse_args()
 
     result = benchmark_model(
@@ -454,6 +474,7 @@ def main():
         input_ids_length=args.input_ids_length,
         thread_pinning=args.thread_pinning,
         engine=args.engine,
+        internal_kv_cache=args.internal_kv_cache,
         quiet=args.quiet,
         export_path=args.export_path,
     )
