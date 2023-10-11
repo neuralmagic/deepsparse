@@ -89,22 +89,14 @@ print(output.generations[0].text)
 - [Try out the live demo on Hugging Face Spaces](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k) and view the [collection of paper, demos, and models](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d)
 - [Check out the detailed `TextGeneration` Pipeline documentation](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
-### **MPT-7B on Dolly-HHRLHF**
+## **Roadmap**
 
-We have also made a 50% sparse-quantized MPT-7B fine-tuned on [Dolly-hhrlhf](https://huggingface.co/datasets/mosaicml/dolly_hhrlhf) available on SparseZoo. We can run inference with the following:
+Following these initial results, we are rapidly expanding our support for LLMs across the Neural Magic stack, including:
 
-```python
-from deepsparse import TextGeneration
-
-MODEL_PATH = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
-pipeline = TextGeneration(model_path=MODEL_PATH)
-
-prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: what is Kubernetes? ### Response:"
-output = pipeline(prompt=prompt)
-print(output.generations[0].text)
-
-### >> Kubernetes is an open-source container orchestration system for automating deployment, scaling, and management of containerized applications.
-```
+- **Productizing Sparse Fine Tuning**: Enable external users to apply the sparse fine-tuning to business datasets
+- **Expanding Model Support**: Apply sparse fine-tuning results to Llama2 and Mistral models
+- **Pushing to Higher Sparsity**: Improving our pruning algorithms to reach higher sparsity
+- **Building General Sparse Model**: Create sparse model that can perform well on general tasks like OpenLLM leaderboard
 
 ## **Feedback / Roadmap Requests**
 
