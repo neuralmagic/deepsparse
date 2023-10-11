@@ -175,6 +175,7 @@ def main(
                 task=task,
                 pipeline=pipeline,
                 session_ids=session_ids,
+                stream=stream,
                 **prompt_kwargs,
             )
         return
@@ -190,7 +191,7 @@ def main(
             show_tokens_per_sec=show_tokens_per_sec,
             prompt_sequence_length=prompt_sequence_length,
             stream=stream,
-            input_text=input_text,
+            prompt=input_text,
         )
 
 
@@ -201,11 +202,11 @@ def _run_inference(
     session_ids: str,
     show_tokens_per_sec: bool,
     prompt_sequence_length: int,
-    input_text: str,
+    prompt: str,
     stream: bool = False,
 ):
     pipeline_inputs = dict(
-        prompt=[input_text],
+        prompt=[prompt],
         temperature=sampling_temperature,
     )
 
