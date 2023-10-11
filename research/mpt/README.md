@@ -1,6 +1,6 @@
 # **Sparse Finetuned LLMs with DeepSparse**
 
-LAST UPDATED: 10/11/2023
+*LAST UPDATED: 10/11/2023*
 
 DeepSparse has support for performant inference of sparse large language models, starting with Mosaic's MPT.
 
