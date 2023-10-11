@@ -23,7 +23,7 @@ It is broken into two parts: installation and then examples of DeepSparse usage.
 
 - Install the Python packages with `pip install deepsparse-nightly langchain`
 - Choose a [SparseZoo model](https://sparsezoo.neuralmagic.com/?useCase=text_generation) or export a support model to ONNX [using Optimum](https://github.com/neuralmagic/notebooks/blob/main/notebooks/opt-text-generation-deepsparse-quickstart/OPT_Text_Generation_DeepSparse_Quickstart.ipynb)
-- Models hosted on HuggingFace are also supported by prepending `"hf:"` to the model id. 
+- Models hosted on HuggingFace are also supported by prepending `"hf:"` to the model id, such as [`"hf:mgoin/TinyStories-33M-quant-deepsparse"`](https://huggingface.co/mgoin/TinyStories-33M-quant-deepsparse)
 
 ## Wrappers
 
