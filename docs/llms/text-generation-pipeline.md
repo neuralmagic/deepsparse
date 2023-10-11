@@ -106,8 +106,7 @@ The following examples use a quantized 33M parameter TinyStories model for quick
 ```python
 from deepsparse import TextGeneration
 
-model_id = "hf:mgoin/TinyStories-33M-quant-deepsparse"
-pipeline = TextGeneration(model=model_id)
+pipeline = TextGeneration(model="hf:mgoin/TinyStories-33M-quant-deepsparse")
 ```
 
 ### Input Format
