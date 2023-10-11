@@ -16,7 +16,7 @@ limitations under the License.
 
 # **Text Generation Pipelines**
 
-This user guide describes how to run inference of text generation models with DeepSparse.
+This user guide explains how to run inference of text generation models with DeepSparse.
 
 ## **Installation**
 
