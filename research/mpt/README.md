@@ -6,10 +6,6 @@ In this research overview, we will discuss:
 1. [Our Sparse Fineuning Research](#sparse-finetuning-research)
 2. [How to try Text Generation with DeepSparse](#try-it-now)
 
-<div align="center">
-    <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
-</div>
-
 ## **Sparse Finetuning Research**
 
 We show that MPT-7B can be pruned to ~60% sparsity with INT8 quantization (and 70% sparsity without quantization), with no accuracy drop, using a technique called **Sparse Finetuning**, where we prune the network during the finetuning process.
@@ -21,13 +17,17 @@ When running the pruned network with DeepSparse, we can accelerate inference by 
 Training LLMs consist of two steps. First, the model is pre-trained on a very large corpus of text (typically >1T tokens). Then, the model is adapted for downstream use by continuing training with a much smaller high quality curated dataset. This second step is called finetuning.
 
 Fine-tuning is useful for two main reasons:
-1. It can teach the model *how* to respond* to input (often called **instruction tuning**).
+1. It can teach the model *how to respond* to input (often called **instruction tuning**).
 2. It can teach the model *new information* (often called **domain adaptation**).
 
 
 An example of how domain adaptation is helpful is solving the [Grade-school math (GSM) dataset](https://huggingface.co/datasets/gsm8k). GSM is a set of grade school word problems and a notoriously difficult task for LLMs, as evidenced by the 0% zero-shot accuracy of MPT-7B. By fine-tuning with a very small set of ~7k training examples, however, we can boost the model's accuracy on the test set to 28.2%.
 
-The key insight from our paper is that we can prune the network during the finetuning process. We apply [SparseGPT](https://arxiv.org/pdf/2301.00774.pdf) to prune the network after dense finetuning and retrain for 2 epochs with L2 distillation. The result is a 60% sparse-quantized model with limited accuracy drop on GSM8k runs 7x faster than the dense baseline with DeepSparse!
+The key insight from our paper is that we can prune the network during the finetuning process. We apply [SparseGPT](https://arxiv.org/pdf/2301.00774.pdf) to prune the network after dense finetuning and retrain for 2 epochs with L2 distillation. The result is a 60% sparse-quantized model with no accuracy drop on GSM8k runs 7x faster than the dense baseline with DeepSparse!
+
+<div align="center">
+    <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
+</div>
 
 - [See the paper on Arxiv]() << UPDATE >>
 
