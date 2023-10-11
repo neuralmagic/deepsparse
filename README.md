@@ -174,11 +174,10 @@ print(prediction)
 # > labels=['positive'] scores=[0.9954759478569031]
 ```
 
-#### Additional Resources 
 - Check out the [Use Cases Page](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases) for more details on supported tasks.
 - Check out the [Pipelines User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-pipelines.md) for more usage details.
 
-### Server
+#### Server
 
 Server wraps Pipelines with REST APIs, enabling you to stand up model serving endpoint running DeepSparse. This enables you to send raw data to DeepSparse over HTTP and receive the post-processed predictions. DeepSparse Server is launched from the command line, configured via arguments or a server configuration file. The following downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo and launches a sentiment analysis endpoint:
 
@@ -201,6 +200,8 @@ print(response.text)
 # {"labels":["positive"],"scores":[0.9965094327926636]}
 ```
 
+- Check out the [Server User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-server.md) for more usage details.
+
 ### Additional Resources
 - [User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide)
 - [Use Cases](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases)
@@ -213,32 +214,30 @@ print(response.text)
 - [GitHub](https://github.com/neuralmagic/deepsparse/releases) | releases
 
 ## Product Usage Analytics
-DeepSparse Community Edition gathers basic usage telemetry including, but not limited to, Invocations, Package, Version, and IP Address for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data.
-
-To disable Product Usage Analytics, run the command:
+DeepSparse Community Edition gathers basic usage telemetry including, but not limited to, Invocations, Package, Version, and IP Address for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data. To disable Product Usage Analytics, run the command:
 ```bash
 export NM_DISABLE_ANALYTICS=True
 ```
 
-Confirm that telemetry is shut off through info logs streamed with engine invocation by looking for the phrase "Skipping Neural Magic's latest package version check." For additional assistance, reach out through the [DeepSparse GitHub Issue queue](https://github.com/neuralmagic/deepsparse/issues).
+Confirm that telemetry is shut off through info logs streamed with engine invocation by looking for the phrase "Skipping Neural Magic's latest package version check."
 
 ## Community
 
-### Be Part of the Future... And the Future is Sparse!
+### Get In Touch
 
 - [Contribution Guide](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
 - [Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ)
 - [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues) 
-- [Subscribe To Our Newsletter](https://neuralmagic.com/subscribe/) to the Neural Magic community.
+- [Subscribe To Our Newsletter](https://neuralmagic.com/subscribe/)
 
-For more general questions about Neural Magic, complete this [form.](http://neuralmagic.com/contact/)
+For more general questions about Neural Magic, [complete this form.](http://neuralmagic.com/contact/)
 
 ### License
 
-[DeepSparse Community](https://docs.neuralmagic.com/products/deepsparse) is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
+- **DeepSparse Community** is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
 Some source code, example files, and scripts included in the deepsparse GitHub repository or directory are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 
-[DeepSparse Enterprise](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+- **DeepSparse Enterprise** requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
 
 ### Cite
 
