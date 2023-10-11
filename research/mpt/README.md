@@ -4,7 +4,7 @@ DeepSparse has support for performant inference of sparse large language models,
 
 In this research overview, we will discuss:
 1. [Our Sparse Fineuning Research](#sparse-finetuning-research)
-2. [How to try text generation with DeepSparse](#try-it-now)
+2. [How to try Text Generation with DeepSparse](#try-it-now)
 
 [See the text generation user guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/llms/text-generation-pipeline.md) for detailed usage documentation.
 <div align="center">
