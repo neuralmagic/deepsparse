@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from http import HTTPStatus
 from typing import Any, Dict, List, Optional
 
 import numpy
@@ -25,9 +26,22 @@ from deepsparse import (
 )
 from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingGroup
 from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.protocol import ErrorResponse
+from fastapi.responses import JSONResponse
 
 
-__all__ = ["server_logger_from_config", "prep_outputs_for_serialization"]
+__all__ = [
+    "create_error_response",
+    "server_logger_from_config",
+    "prep_outputs_for_serialization",
+]
+
+
+def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse:
+    return JSONResponse(
+        ErrorResponse(message=message, type="invalid_request_error").dict(),
+        status_code=status_code.value,
+    )
 
 
 def server_logger_from_config(config: ServerConfig) -> BaseLogger:

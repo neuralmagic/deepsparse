@@ -274,6 +274,7 @@ def _setup_extras() -> Dict:
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
+        "llm": _transformers_integration_deps,
         "torch": _torch_deps,
         "clip": _clip_deps,
     }
@@ -296,6 +297,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark_pipeline=deepsparse.benchmark.benchmark_pipeline:main",  # noqa E501
             "deepsparse.benchmark_sweep=deepsparse.benchmark.benchmark_sweep:main",
             "deepsparse.server=deepsparse.server.cli:main",
+            "deepsparse.openai=deepsparse.server.cli:openai",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
             "deepsparse.yolov8.annotate=deepsparse.yolov8.annotate:main",
             "deepsparse.yolov8.eval=deepsparse.yolov8.validation:main",
