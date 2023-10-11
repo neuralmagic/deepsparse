@@ -212,10 +212,10 @@ def _display_generation_speed(prompt_sequence_length, pipeline):
 def _display_bot_response(stream: bool, response):
     # print response from pipeline, streaming or not
 
-    print("Bot:", end="")
+    print("Bot:", end="", flush=True)
     if stream:
         for generation in response:
-            print(generation.generations[0].text, end="")
+            print(generation.generations[0].text, end="", flush=True)
         print()
     else:
         print(response.generations[0].text)
