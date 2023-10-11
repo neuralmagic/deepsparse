@@ -61,11 +61,11 @@ limitations under the License.
 
 ### ✨NEW✨ DeepSparse LLMs
 
-We are pleased to announce initial support for LLMs in DeepSparse, starting with MosaicML's MPT-7b.
+We are pleased to announce initial support for LLMs in DeepSparse, starting with [MosaicML's MPT-7b](https://github.com/neuralmagic/deepsparse/tree/main/research/mpt).
 
 ```python
 from deepsparse import TextGeneration
-model = TextGeneration(model="zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/mpt_chat/pruned50_quant-none")
+model = TextGeneration(model="zoo:mpt-7b-gsm8k_mpt_pretrain-pruned60_quantized")
 print(model("Are you excited about LLMs?", max_new_tokens=20).generations[0].text)
 ### > Yes, I am excited about LLMs!
 ```
