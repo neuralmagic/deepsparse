@@ -12,7 +12,7 @@ In this research overview, we will discuss:
 
 ## **Sparse Finetuning Research**
 
-Sparsity is a powerful model compression technique, where weights are removed from the network with limited accuracy drop. We show that MPT-7B can be pruned to ~60% sparsity with INT8 quantization (and 70% sparsity without quantization), with no accuracy drop, using a technique called **Sparse Finetuning**, where we prune the network during the finetuning process.
+We show that MPT-7B can be pruned to ~60% sparsity with INT8 quantization (and 70% sparsity without quantization), with no accuracy drop, using a technique called **Sparse Finetuning**, where we prune the network during the finetuning process.
 
 ### **Sparse Finetuning on Grade-School Math (GSM)**
 
