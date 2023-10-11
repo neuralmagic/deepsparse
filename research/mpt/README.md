@@ -43,10 +43,11 @@ Install the DeepSparse Nightly build (requires Linux):
 pip install deepsparse-nightly[transformers]==1.6.0.20231007
 ```
 
-The models generated in the paper are hosted on [SparseZoo](https://sparsezoo.neuralmagic.com/?ungrouped=true&sort=null&datasets=gsm8k&architectures=mpt) and [Hugging Face](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d). We can run them  using DeepSparse's `TextGeneration` Pipeline.
+The models generated in the paper are hosted on [SparseZoo](https://sparsezoo.neuralmagic.com/?ungrouped=true&sort=null&datasets=gsm8k&architectures=mpt) and [Hugging Face](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d). 
 
 ### MPT-7B on GSM 
 
+We can run inference on the models using DeepSparse's `TextGeneration` Pipeline:
 
 ```python
 from deepsparse import TextGeneration
@@ -86,6 +87,7 @@ print(output.generations[0].text)
 #### Other Resources
 - [Check out all the MPT GSM models on SparseZoo](https://sparsezoo.neuralmagic.com/?datasets=gsm8k&ungrouped=true)
 - [Try out the live demo on Hugging Face Spaces](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k) and view the [collection of paper, demos, and models](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d)
+- [Check out the detailed `TextGeneration` Pipeline documentation](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
 ### **MPT-7B on Dolly-HHRLHF**
 
