@@ -58,7 +58,8 @@ print(output.generations[0].text)
 
 DeepSparse accepts models in ONNX format, passed either as SparseZoo stubs or local directories.
 
-> **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At current, we suggest only using LLM ONNX graphs from SparseZoo.***
+> **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At current, we suggest only using LLM ONNX graphs created by Neural Magic.***
+> 
 ### **SparseZoo Stubs**
 
 SparseZoo stubs identify a model in SparseZoo. For instance, `zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized` identifes a 50% pruned-quantized pretrained MPT-7b model fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
@@ -87,6 +88,14 @@ We can pass the local directory path to `TextGeneration`:
 ```python
 model_path = "./local-model/deployment"
 pipeline = TextGeneration(model=model_path)
+```
+
+### **Hugging Face Models**
+Hugging Face models which conform to the directory structure listed above can also be run with DeepSparse by prepending "hf:" to a model id, such as:
+
+```python
+from deepsparse import TextGeneration
+pipeline = TextGeneration(model="hf:neuralmagic/mpt-7b-gsm8k-pruned60-quant")
 ```
 
 ## **Input and Output Formats**
