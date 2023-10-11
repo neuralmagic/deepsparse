@@ -91,7 +91,7 @@ pipeline = TextGeneration(model=model_path)
 ```
 
 ### **Hugging Face Models**
-Hugging Face models which conform to the directory structure listed above can also be run with DeepSparse by prepending "hf:" to a model id, such as:
+Hugging Face models which conform to the directory structure listed above can also be run with DeepSparse by prepending `hf:` to a model id. The following runs a [60% pruned-quantized MPT-7b model trained on GSM](https://huggingface.co/neuralmagic/mpt-7b-gsm8k-pruned60-quant).
 
 ```python
 from deepsparse import TextGeneration
