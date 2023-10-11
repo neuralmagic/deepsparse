@@ -2,7 +2,7 @@
 
 The [OpenAI API](https://platform.openai.com/docs/api-reference/introduction) can be used to interact with `text_generation` models.
 Similar to the Deepsparse server (see `README.md` for details), a config file can be
-createed for the text generation models. A sample config is provided below
+created for the text generation models. A sample config is provided below
 
 ```yaml
 num_cores: 2
