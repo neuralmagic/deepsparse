@@ -43,9 +43,7 @@ Install the DeepSparse Nightly build (requires Linux):
 pip install deepsparse-nightly[transformers]==1.6.0.20231007
 ```
 
-The models generated in the paper are hosted on [SparseZoo](https://sparsezoo.neuralmagic.com/?ungrouped=true&sort=null&datasets=gsm8k&architectures=mpt) and [Hugging Face](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d).
-
-We can run inference on the 60% sparse-quantized MPT-7B GSM model using DeepSparse's `TextGeneration` Pipeline.
+The models generated in the paper are hosted on [SparseZoo](https://sparsezoo.neuralmagic.com/?ungrouped=true&sort=null&datasets=gsm8k&architectures=mpt) and [Hugging Face](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d). We can run them  using DeepSparse's `TextGeneration` Pipeline.
 
 ### MPT-7B on GSM 
 
