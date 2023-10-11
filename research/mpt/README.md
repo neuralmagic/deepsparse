@@ -6,7 +6,8 @@ In this research overview, we will discuss:
 1. [Our Sparse Fineuning Research](#sparse-finetuning-research)
 2. [How to try Text Generation with DeepSparse](#try-it-now)
 
-[See the text generation user guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/llms/text-generation-pipeline.md) for detailed usage documentation.
+[See the Text Generation User Guide for detailed DeepSparse documentation](https://github.com/neuralmagic/deepsparse/tree/main/docs/llms/text-generation-pipeline.md)
+
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
 </div>
