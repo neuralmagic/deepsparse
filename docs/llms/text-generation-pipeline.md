@@ -86,8 +86,8 @@ ls ./local-model/deployment
 
 We can pass the local directory path to `TextGeneration`:
 ```python
-model_path = "./local-model/deployment"
-pipeline = TextGeneration(model=model_path)
+from deepsparse import TextGeneration
+pipeline = TextGeneration(model="./local-model/deployment")
 ```
 
 ### **Hugging Face Models**
