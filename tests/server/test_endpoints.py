@@ -20,8 +20,10 @@ from pydantic import BaseModel
 import pytest
 from deepsparse.loggers import MultiLogger
 from deepsparse.server.config import EndpointConfig, ServerConfig, SystemLoggingConfig
-from deepsparse.server.server import _add_pipeline_endpoint, _build_app
-from fastapi import FastAPI, UploadFile
+from deepsparse.server.deepsparse_server import DeepsparseServer
+from deepsparse.server.sagemaker import SagemakerServer
+from deepsparse.server.server import ProxyPipeline
+from fastapi import FastAPI, Request, UploadFile
 from fastapi.testclient import TestClient
 from tests.utils import mock_engine
 
@@ -36,8 +38,8 @@ class StrSchema(BaseModel):
     value: str
 
 
-def parse(v: StrSchema) -> int:
-    return int(v.value)
+def parse(value) -> int:
+    return int(value)
 
 
 class TestStatusEndpoints:
@@ -50,18 +52,19 @@ class TestStatusEndpoints:
 
     @pytest.fixture(scope="class")
     def client(self, server_config):
-        yield TestClient(_build_app(server_config))
+        server = DeepsparseServer(server_config=server_config)
+        yield TestClient(server._build_app())
 
     def test_config(self, server_config, client):
         response = client.get("/config")
         loaded = ServerConfig(**response.json())
         assert loaded == server_config
 
-    @pytest.mark.parametrize("route", ["/ping", "/health", "/healthcheck", "/status"])
+    @pytest.mark.parametrize("route", ["/v2/health/ready", "/v2/health/live"])
     def test_pings_exist(self, client, route):
         response = client.get(route)
         assert response.status_code == 200
-        assert response.json() is True
+        assert response.json()["status"] == "OK"
 
     def test_docs_exist(self, client):
         assert client.get("/docs").status_code == 200
@@ -83,83 +86,115 @@ class TestMockEndpoints:
         yield server_config
 
     @pytest.fixture(scope="class")
-    def app(self, server_config):
-        yield _build_app(server_config)
+    def server(self, server_config):
+        yield DeepsparseServer(server_config=server_config)
+
+    @pytest.fixture(scope="class")
+    def sagemaker_server(self, server_config):
+        yield SagemakerServer(server_config=server_config)
+
+    @pytest.fixture(scope="class")
+    def app(self, server):
+        yield server._build_app()
 
     @pytest.fixture(scope="class")
     def client(self, app):
         yield TestClient(app)
 
-    def test_add_model_endpoint(self, app: FastAPI, client: TestClient):
+    def test_add_model_endpoint(
+        self, server: DeepsparseServer, app: FastAPI, client: TestClient
+    ):
         mock_pipeline = Mock(
             side_effect=parse,
-            input_schema=StrSchema,
+            input_schema=str,
             output_schema=int,
             logger=MultiLogger([]),
         )
-        _add_pipeline_endpoint(
-            app,
-            system_logging_config=SystemLoggingConfig(),
+        server._add_inference_endpoints(
+            app=app,
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=mock_pipeline,
         )
-        assert app.routes[-1].path == "/predict/parse_int"
+        assert app.routes[-1].path == "/v2/models/predict/parse_int/infer"
         assert app.routes[-1].response_model is int
-        assert app.routes[-1].endpoint.__annotations__ == {"request": StrSchema}
+        assert app.routes[-1].endpoint.func.__annotations__ == {
+            "proxy_pipeline": ProxyPipeline,
+            "raw_request": Request,
+            "system_logging_config": SystemLoggingConfig,
+        }
         assert app.routes[-1].methods == {"POST"}
 
         for v in ["1234", "5678"]:
-            response = client.post("/predict/parse_int", json=dict(value=v))
+            response = client.post(
+                "/v2/models/predict/parse_int/infer", json=dict(value=v)
+            )
             assert response.status_code == 200
             assert response.json() == int(v)
 
-    def test_add_model_endpoint_with_from_files(self, app):
-        _add_pipeline_endpoint(
+    def test_add_model_endpoint_with_from_files(self, server, app):
+        server._add_inference_endpoints(
             app,
-            system_logging_config=Mock(),
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
         )
-        assert app.routes[-2].path == "/predict/parse_int"
-        assert app.routes[-2].endpoint.__annotations__ == {"request": FromFilesSchema}
-        assert app.routes[-1].path == "/predict/parse_int/from_files"
-        assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
+        assert app.routes[-2].path == "/v2/models/predict/parse_int/infer"
+        assert app.routes[-2].endpoint.func.__annotations__ == {
+            "proxy_pipeline": ProxyPipeline,
+            "raw_request": Request,
+            "system_logging_config": SystemLoggingConfig,
+        }
+        assert app.routes[-1].path == "/v2/models/predict/parse_int/infer/from_files"
+        assert app.routes[-1].endpoint.func.__annotations__ == {
+            "proxy_pipeline": ProxyPipeline,
+            "system_logging_config": SystemLoggingConfig,
+            "request": List[UploadFile],
+        }
         assert app.routes[-1].response_model is int
         assert app.routes[-1].methods == {"POST"}
 
-    def test_sagemaker_only_adds_one_endpoint(self, app):
+    def test_sagemaker_only_adds_one_endpoint(self, sagemaker_server, app):
         num_routes = len(app.routes)
-        _add_pipeline_endpoint(
+        sagemaker_server._add_inference_endpoints(
             app,
-            endpoint_config=Mock(route="/predict/parse_int"),
-            system_logging_config=Mock(),
+            endpoint_config=Mock(route="predict/parse_int"),
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
-            integration="sagemaker",
         )
         assert len(app.routes) == num_routes + 1
-        assert app.routes[-1].path == "/invocations"
-        assert app.routes[-1].endpoint.__annotations__ == {"request": List[UploadFile]}
-
         num_routes = len(app.routes)
-        _add_pipeline_endpoint(
+
+        assert app.routes[-1].path == "/invocations/predict/parse_int/infer/from_files"
+        assert app.routes[-1].endpoint.func.__annotations__ == {
+            "proxy_pipeline": ProxyPipeline,
+            "system_logging_config": SystemLoggingConfig,
+            "request": List[UploadFile],
+        }
+
+        sagemaker_server._add_inference_endpoints(
             app,
-            endpoint_config=Mock(route="/predict/parse_int"),
-            system_logging_config=Mock(),
+            endpoint_config=Mock(route="predict/parse_int"),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
-            integration="sagemaker",
         )
         assert len(app.routes) == num_routes + 1
-        assert app.routes[-1].path == "/invocations"
-        assert app.routes[-1].endpoint.__annotations__ == {"request": StrSchema}
+        assert app.routes[-1].path == "/invocations/predict/parse_int/infer"
+        assert app.routes[-1].endpoint.func.__annotations__ == {
+            "proxy_pipeline": ProxyPipeline,
+            "system_logging_config": SystemLoggingConfig,
+            "raw_request": Request,
+        }
 
-    def test_add_endpoint_with_no_route_specified(self, app):
-        _add_pipeline_endpoint(
+    def test_add_endpoint_with_no_route_specified(self, server, app):
+        server._add_inference_endpoints(
             app,
-            endpoint_config=Mock(route=None),
-            system_logging_config=Mock(),
+            endpoint_config=EndpointConfig(
+                route=None,
+                name="test_name",
+                task="text-classification",
+                model="default",
+            ),
             pipeline=Mock(input_schema=StrSchema, output_schema=int),
         )
-        assert app.routes[-1].path == "/predict"
+
+        assert app.routes[-1].path == "/v2/models/test_name/infer"
 
 
 class TestActualModelEndpoints:
@@ -186,16 +221,20 @@ class TestActualModelEndpoints:
             loggers={},  # do not instantiate any loggers
         )
         with mock_engine(rng_seed=0):
-            app = _build_app(server_config)
+            server = DeepsparseServer(server_config=server_config)
+            app = server._build_app()
         yield TestClient(app)
 
     def test_static_batch_errors_on_wrong_batch_size(self, client):
         # this is okay because we can pad batches now
-        client.post("/predict/static-batch", json={"sequences": "today is great"})
+        client.post(
+            "/v2/models/predict/static-batch/infer",
+            json={"sequences": "today is great"},
+        )
 
     def test_static_batch_good_request(self, client):
         response = client.post(
-            "/predict/static-batch",
+            "/v2/models/predict/static-batch/infer",
             json={"sequences": ["today is great", "today is terrible"]},
         )
         assert response.status_code == 200
@@ -212,7 +251,9 @@ class TestActualModelEndpoints:
         ],
     )
     def test_dynamic_batch_any(self, client, seqs):
-        response = client.post("/predict/dynamic-batch", json={"sequences": seqs})
+        response = client.post(
+            "/v2/models/predict/dynamic-batch/infer", json={"sequences": seqs}
+        )
         assert response.status_code == 200
         output = response.json()
         assert len(output["labels"]) == len(seqs)
@@ -226,14 +267,16 @@ class TestDynamicEndpoints:
             num_cores=1, num_workers=1, endpoints=[], loggers=None
         )
         with mock_engine(rng_seed=0):
-            app = _build_app(server_config)
+            server = DeepsparseServer(server_config=server_config)
+            app = server._build_app(server_config)
             yield TestClient(app)
 
 
 @mock_engine(rng_seed=0)
 def test_dynamic_add_and_remove_endpoint(engine_mock):
     server_config = ServerConfig(num_cores=1, num_workers=1, endpoints=[], loggers={})
-    app = _build_app(server_config)
+    server = DeepsparseServer(server_config=server_config)
+    app = server._build_app()
     client = TestClient(app)
 
     # assert /predict doesn't exist
@@ -242,17 +285,23 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     # add /predict
     response = client.post(
         "/endpoints",
-        json=EndpointConfig(task="text-classification", model="default").dict(),
+        json=EndpointConfig(
+            task="text-classification", model="default", name="test_model"
+        ).dict(),
     )
+
     assert response.status_code == 200
-    response = client.post("/predict", json=dict(sequences="asdf"))
+
+    response = client.post("/v2/models/test_model/infer", json=dict(sequences="asdf"))
     assert response.status_code == 200
 
     # remove /predict
     response = client.delete(
         "/endpoints",
         json=EndpointConfig(
-            route="/predict", task="text-classification", model="default"
+            route="/v2/models/test_model/infer",
+            task="text-classification",
+            model="default",
         ).dict(),
     )
     assert response.status_code == 200

@@ -16,9 +16,7 @@
 Base Pipeline class for transformers inference pipeline
 """
 
-import json
 import logging
-import os
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
@@ -29,8 +27,7 @@ from transformers.models.auto import AutoTokenizer
 
 from deepsparse import Bucketable, Pipeline
 from deepsparse.transformers.helpers import (
-    get_hugging_face_configs,
-    get_onnx_path,
+    get_deployment_path,
     overwrite_transformer_onnx_model_inputs,
 )
 
@@ -121,54 +118,30 @@ class TransformersPipeline(Pipeline, Bucketable):
 
     def setup_onnx_file_path(self) -> str:
         """
-        Parses ONNX model from the `model_path` provided.
-        For tokenizers and model configs, supports paths, dictionaries,
-        or transformers.PretrainedConfig/transformes.PreTrainedTokenizerBase types. Also
-        supports the default None, in which case the config and tokenizer are read from
-        the provided `model_path`.
-
-        Supports sparsezoo stubs
+        Parses ONNX model from the `model_path` provided. It additionally
+        creates config and tokenizer objects from the `deployment path`,
+        derived from the `model_path` provided.
 
         :return: file path to the processed ONNX file for the engine to compile
         """
-        onnx_path = get_onnx_path(self.model_path)
+        deployment_path, onnx_path = get_deployment_path(self.model_path)
 
-        if not self.config or not self.tokenizer:
-            config_found, tokenizer_found = get_hugging_face_configs(self.model_path)
-            if config_found:
-                self.config = config_found
-            if tokenizer_found:
-                self.tokenizer = tokenizer_found
+        # temporarily set transformers logger to ERROR to avoid
+        # printing misleading warnings
+        hf_logger = logging.getLogger("transformers")
+        hf_logger_level = hf_logger.level
+        hf_logger.setLevel(logging.ERROR)
+        self.config = transformers.PretrainedConfig.from_pretrained(
+            deployment_path,
+            finetuning_task=self.task if hasattr(self, "task") else None,
+        )
+        hf_logger.setLevel(hf_logger_level)
 
-        if isinstance(self.config, dict):
-            local_config_path = os.path.join(self.model_path, "config.json")
-            with open(local_config_path, "w") as f:
-                json.dump(self.config, f)
-            self.config = local_config_path
-
-        if isinstance(self.config, (str, Path)):
-            if str(self.config).endswith(".json"):
-                self.config_path = self.config
-            else:
-                self.config_path = os.path.join(self.config, "config.json")
-
-            hf_logger = logging.getLogger("transformers")
-            hf_logger_level = hf_logger.level
-            hf_logger.setLevel(logging.ERROR)
-            self.config = transformers.PretrainedConfig.from_pretrained(
-                self.config,
-                finetuning_task=self.task if hasattr(self, "task") else None,
-            )
-            hf_logger.setLevel(hf_logger_level)
-
-        if isinstance(self.tokenizer, (str, Path)):
-            self.tokenizer_config_path = os.path.join(self.tokenizer, "tokenizer.json")
-
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.tokenizer,
-                trust_remote_code=self._trust_remote_code,
-                model_max_length=self.sequence_length,
-            )
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            deployment_path,
+            trust_remote_code=self._trust_remote_code,
+            model_max_length=self.sequence_length,
+        )
 
         if not self._delay_overwriting_inputs:
             # overwrite onnx graph to given required input shape
