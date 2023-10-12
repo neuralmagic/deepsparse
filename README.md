@@ -60,7 +60,7 @@ print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 
 ### Sparsity :handshake: Performance
 
-Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy. With our new support for LLMs, DeepSparse accelerates the sparse-quantized MPT-7b ***~7x*** over the dense baseline:
+Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy. With our new support for LLMs, DeepSparse accelerates the sparse-quantized model 7x over the dense baseline:
 
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
@@ -76,7 +76,7 @@ Following this initial launch, we are rapidly expanding our support for LLMs, in
 2. **Expanding Model Support**: Apply our sparse fine-tuning results to Llama2 and Mistral models
 3. **Pushing to Higher Sparsity**: Improving our pruning algorithms to reach higher sparsity
 
-## Other (Non-LLM) Models
+## Other Models
 
 In addition to LLMs, DeepSparse supports transformer models like BERT and CNN models like YOLOv5/8.
 
