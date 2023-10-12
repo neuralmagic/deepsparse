@@ -52,18 +52,19 @@ limitations under the License.
   </div>
 </div>
 
-[DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity to accelerate neural network inference. Coupled with SparseML, our optimization library for pruning and quantizing your models, DeepSparse delivers exceptional performance on commodity hardware. [Check out SparseML for details of training sparse models](https://github.com/neuralmagic/sparseml).
+DeepSparse is a CPU inference runtime that takes advantage of sparsity to accelerate neural network inference. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), our optimization library for pruning and quantizing your models, DeepSparse delivers exceptional performance on CPU hardware.
 
 <p align="center">
    <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/blob/7ee5e60f13b1fd321c5282c91e2873b3363ec911/docs/neural-magic-workflow.png" width="60%" />
 </p>
 
-
 ## ✨NEW✨ DeepSparse LLMs
 
-We are pleased to announce initial support for LLMs in DeepSparse, starting with [MosaicML's MPT-7b](https://github.com/neuralmagic/deepsparse/tree/main/research/mpt).
+We are pleased to announce support for LLMs in DeepSparse, starting with MosaicML's MPT-7B.
 
-Install:
+### Try It Now
+
+Install (requires Linux):
 ```bash
 pip install -U deepsparse-nightly[transformers]==1.6.0.20231007
 ```
@@ -76,28 +77,27 @@ pipeline = TextGeneration(model="zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantize
 prompt="""
 Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: what is sparsity? ### Response:
 """
-
 print(pipeline(prompt, max_new_tokens=75).generations[0].text)
-### >> Sparsity is the property of a matrix or other data structure in which a large number of elements are zero, and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
+# Sparsity is the property of a matrix or other data structure in which a large number of elements are zero, and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
 
-DeepSparse is optimized for state-of-the-art text generation latency for LLMs with:
-- Optimized sparse quantized x86 and ARM CPU kernels
+DeepSparse is optimized for performant inference of LLMs with:
+- Optimized sparse quantized CPU kernels
 - Efficient usage of cached attention keys and values for minimal memory movement
 - Compressed memory using sparse weights
-- Run locally or in the cloud on Linux (Mac coming soon!)
+- Local or cloud deployments on Linux (Mac coming soon!)
 
-- [Check out our LLM documentation for more details]().
+> [Check out our `TextGeneration` documentation for  usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
-### Performance / Accuracy
+### Performance Gains From Sparsity
 
-Using our state-of-the-art **Sparse Finetuning** technique, we pruned MPT-7B to 60% sparsity (with INT8 quantization). With DeepSparse, the 60% sparse-INT8 model runs ~7x faster than the dense-FP32 baseline with no drop in accuracy:
+Our recent paper, [Sparse Finetuning for Inference Acceleration of Large Language Models](), developed in collaboration with IST Austria, details a new technique called Sparse Finetuning, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy. DeepSparse accelerates the 60% sparse-INT8 model runs ~7x relative to the dense-FP32 baseline.
 
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="50%"/>
 </div>
 
-- [Check out the current status of our **Sparse Finetuning** research](https://github.com/neuralmagic/deepsparse/tree/llm-docs-2/research/mpt#sparse-finetuned-llms-with-deepsparse)
+> [Learn more about our Sparse Finetuning research.](https://github.com/neuralmagic/deepsparse/tree/llm-docs-2/research/mpt#sparse-finetuned-llms-with-deepsparse)
 
 ### LLM Roadmap
 
@@ -107,23 +107,25 @@ Following this initial launch, we are rapidly expanding our support for LLMs, in
 2. **Expanding Model Support**: Apply our sparse fine-tuning results to Llama2 and Mistral models
 3. **Pushing to Higher Sparsity**: Improving our pruning algorithms to reach higher sparsity
 
-## Pre-LLM Support
+## Other (Non-LLM) Models
+
+In addition to LLMs, DeepSparse supports transformer models like BERT and CNN models like YOLOv5/8.
 
 ### Installation
 
-DeepSparse can be install via PyPI. We recommend using a virtual enviornment.
+Install via PyPI. [See the installation page for optional dependencies](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md).
 
 ```bash
 pip install deepsparse
 ```
-[Check out the Installation page for optional dependencies](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md).
 
+#### System Requirements
 - Hardware: x86 AVX2, AVX512, AVX512-VNNI and ARM v8.2+.
 - Operating System: Linux (manylinux compliant systems)
 - Python: v3.8-3.10
 - ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher
 
-For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
+For those using Mac or Windows, we recommend using Linux Containers with Docker.
 
 ### Deployment APIs
 
@@ -156,7 +158,7 @@ print(output)
 
 #### Pipeline
 
-Pipeline is the default API for interacting with DeepSparse. Similar to Hugging Face Pipelines, DeepSparse Pipelines wrap Engine with pre- and post-processing (as well as other utilities), enabling you to send raw data to DeepSparse and receive the post-processed prediction. The example below downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo, sets up a pipeline, and runs inference on sample data.
+Pipeline is the default API for interacting with DeepSparse. Similar to Hugging Face Pipelines, DeepSparse Pipelines wrap Engine with pre- and post-processing, enabling you to pass raw data and receive the post-processed prediction. The example below downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo, sets up a pipeline, and runs inference on sample data.
 
 ```python
 from deepsparse import Pipeline
@@ -173,9 +175,6 @@ prediction = sentiment_analysis_pipeline("I love using DeepSparse Pipelines")
 print(prediction)
 # > labels=['positive'] scores=[0.9954759478569031]
 ```
-
-- Check out the [Use Cases Page](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases) for more details on supported tasks.
-- Check out the [Pipelines User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-pipelines.md) for more usage details.
 
 #### Server
 
@@ -200,21 +199,20 @@ print(response.text)
 # {"labels":["positive"],"scores":[0.9965094327926636]}
 ```
 
-- Check out the [Server User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-server.md) for more usage details.
-
 ### Additional Resources
-- [User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide)
-- [Use Cases](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases)
-- [Benchmarking Performance](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-benchmarking.md)
+- [Use Cases Page](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases) for more details on supported tasks
+- [Pipelines User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-pipelines.md) for Pipeline documentation
+- [Server User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-server.md) for Server documentation
+- [Benchmarking User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-benchmarking.md) for benchmarking documenttion
 - [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples/)
+- [User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide) for more detailed documentation
 
-### Versions
-- [DeepSparse](https://pypi.org/project/deepsparse) | stable
-- [DeepSparse-Nightly](https://pypi.org/project/deepsparse-nightly/) | nightly (dev)
-- [GitHub](https://github.com/neuralmagic/deepsparse/releases) | releases
 
 ## Product Usage Analytics
-DeepSparse Community Edition gathers basic usage telemetry including, but not limited to, Invocations, Package, Version, and IP Address for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data. To disable Product Usage Analytics, run the command:
+
+DeepSparse gathers basic usage telemetry including, but not limited to, Invocations, Package, Version, and IP Address for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data. 
+
+To disable Product Usage Analytics, run:
 ```bash
 export NM_DISABLE_ANALYTICS=True
 ```
@@ -235,7 +233,7 @@ For more general questions about Neural Magic, [complete this form.](http://neur
 ### License
 
 - **DeepSparse Community** is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
-Some source code, example files, and scripts included in the deepsparse GitHub repository or directory are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
+Some source code, example files, and scripts included in the DeepSparse GitHub repository or directory are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 
 - **DeepSparse Enterprise** requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
 
