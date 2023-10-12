@@ -113,7 +113,7 @@ from deepsparse.transformers.inference.prompt_parser import PromptParser
 @click.option(
     "--prompt_sequence_length",
     type=int,
-    default=64,
+    default=16,
     help="Processed prompt in chunks of this length. "
     "This is to maximize the inference speed",
 )
@@ -124,7 +124,7 @@ from deepsparse.transformers.inference.prompt_parser import PromptParser
 )
 @click.option(
     "--task",
-    default="chat",
+    default="text-generation",
     type=str,
     help="The task to use for the pipeline. Choose any of "
     "`chat`, `codegen`, `text-generation`",
@@ -166,7 +166,6 @@ def main(
         default_prompt_kwargs = {
             "sequence_length": sequence_length,
             "sampling_temperature": sampling_temperature,
-            "prompt_sequence_length": prompt_sequence_length,
             "show_tokens_per_sec": show_tokens_per_sec,
         }
 
@@ -189,7 +188,6 @@ def main(
             task=task,
             session_ids=session_ids,
             show_tokens_per_sec=show_tokens_per_sec,
-            prompt_sequence_length=prompt_sequence_length,
             stream=stream,
             prompt=input_text,
         )
@@ -201,7 +199,6 @@ def _run_inference(
     task: str,
     session_ids: str,
     show_tokens_per_sec: bool,
-    prompt_sequence_length: int,
     prompt: str,
     stream: bool = False,
 ):
@@ -217,13 +214,15 @@ def _run_inference(
     _display_bot_response(stream, response)
 
     if show_tokens_per_sec:
-        _display_generation_speed(prompt_sequence_length, pipeline)
+        _display_generation_speed(prompt, pipeline)
 
 
-def _display_generation_speed(prompt_sequence_length, pipeline):
+def _display_generation_speed(prompt, pipeline):
     # display prefill and generation speed(s) in tokens/sec
     times = pipeline.timer_manager.times
-    prefill_speed = 1.0 * prompt_sequence_length / times["engine_prompt_prefill_single"]
+    prefill_speed = (
+        len(pipeline.tokenizer(prompt)["input_ids"]) / times["engine_prompt_prefill"]
+    )
     generation_speed = 1.0 / times["engine_token_generation_single"]
     print(
         f"[prefill: {prefill_speed:.2f} tokens/sec]",
