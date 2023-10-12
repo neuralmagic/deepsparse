@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# **Text Generation Pipelines**
+# **Text Generation Pipeline**
 
 This user guide explains how to run inference of text generation models with DeepSparse.
 
