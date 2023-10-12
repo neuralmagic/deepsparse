@@ -63,7 +63,7 @@ print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy relative to the dense baseline. With our new support for LLMs, DeepSparse accelerates the sparse-quantized MPT-7b ***~7x*** over the dense baseline:
 
 <div align="center">
-    <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="50%"/>
+    <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
 </div>
 
 > [Learn more about our Sparse Finetuning research.](https://github.com/neuralmagic/deepsparse/tree/llm-docs-2/research/mpt#sparse-finetuned-llms-with-deepsparse)
