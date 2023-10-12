@@ -31,7 +31,7 @@ DeepSparse is a CPU inference runtime that takes advantage of sparsity to accele
 
 ## ✨NEW✨ DeepSparse LLMs
 
-We are pleased to announce support for LLMs, starting with MPT-7B.
+We are pleased to announce DeepSparse support for LLMs, starting with MPT-7B.
 
 ### Try It Now
 
