@@ -128,15 +128,13 @@ The example below downloads a 90% pruned-quantized BERT model for sentiment anal
 
 ```python
 from deepsparse import Engine
-from deepsparse.utils import generate_random_inputs, model_to_path
 
 # download onnx, compile
 zoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"
-batch_size = 1
-compiled_model = Engine(model=zoo_stub, batch_size=batch_size)
+compiled_model = Engine(model=zoo_stub, batch_size=1)
 
 # run inference (input is raw numpy tensors, output is raw scores)
-inputs = generate_random_inputs(model_to_path(zoo_stub), batch_size)
+inputs = compiled_model.generate_random_inputs()
 output = compiled_model(inputs)
 print(output)
 
