@@ -3,6 +3,7 @@
 # **Sparse Finetuned LLMs with DeepSparse**
 
 DeepSparse has support for performant inference of sparse large language models, starting with Mosaic's MPT.
+Check out our paper [Sparse Finetuning for Inference Acceleration of Large Language Models](https://arxiv.org/abs/2310.06927)
 
 In this research overview, we will discuss:
 1. [Our Sparse Fineuning Research](#sparse-finetuning-research)
@@ -25,13 +26,13 @@ Fine-tuning is useful for two main reasons:
 
 An example of how domain adaptation is helpful is solving the [Grade-school math (GSM) dataset](https://huggingface.co/datasets/gsm8k). GSM is a set of grade school word problems and a notoriously difficult task for LLMs, as evidenced by the 0% zero-shot accuracy of MPT-7B. By fine-tuning with a very small set of ~7k training examples, however, we can boost the model's accuracy on the test set to 28.2%.
 
-The key insight from our paper is that we can prune the network during the finetuning process. We apply [SparseGPT](https://arxiv.org/pdf/2301.00774.pdf) to prune the network after dense finetuning and retrain for 2 epochs with L2 distillation. The result is a 60% sparse-quantized model with no accuracy drop on GSM8k runs 7x faster than the dense baseline with DeepSparse!
+The key insight from [our paper](https://arxiv.org/abs/2310.06927) is that we can prune the network during the finetuning process. We apply [SparseGPT](https://arxiv.org/pdf/2301.00774.pdf) to prune the network after dense finetuning and retrain for 2 epochs with L2 distillation. The result is a 60% sparse-quantized model with no accuracy drop on GSM8k runs 7x faster than the dense baseline with DeepSparse!
 
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
 </div>
 
-- [See the paper on Arxiv]() << UPDATE >>
+- [See the paper on Arxiv](https://arxiv.org/abs/2310.06927)
 
 ### **How Is This Useful For Real World Use?**
 
