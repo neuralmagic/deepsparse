@@ -72,9 +72,9 @@ Developed in collaboration with IST Austria, [our recent paper](https://arxiv.or
 
 Following this initial launch, we are rapidly expanding our support for LLMs, including:
 
-1. **Productizing Sparse Finetuning**: Enable external users to apply the sparse fine-tuning to their datasets via SparseML
-2. **Expanding Model Support**: Apply our sparse fine-tuning results to Llama2 and Mistral models
-3. **Pushing to Higher Sparsity**: Improving our pruning algorithms to reach higher sparsity
+1. Productizing Sparse Finetuning: Enable external users to apply the sparse fine-tuning to their datasets via SparseML
+2. Expanding Model Support: Apply our sparse fine-tuning results to Llama2 and Mistral models
+3. Pushing to Higher Sparsity: Improving our pruning algorithms to reach higher sparsity
 
 ## Other Models
 
