@@ -178,7 +178,7 @@ Sending a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/sentiment_analysis/infer" # Server's port default to 5543
 obj = {"sequences": "Snorlax loves my Tesla!"}
 
 response = requests.post(url, json=obj)
