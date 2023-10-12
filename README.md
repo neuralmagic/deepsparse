@@ -84,6 +84,8 @@ Developed in collaboration with IST Austria, [our recent paper](https://arxiv.or
 
 > [Learn more about our Sparse Finetuning research.](https://github.com/neuralmagic/deepsparse/blob/main/research/mpt#sparse-finetuned-llms-with-deepsparse)
 
+> [Check out the model running live on Hugging Face.](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k)
+
 ### LLM Roadmap
 
 Following this initial launch, we are rapidly expanding our support for LLMs, including:
