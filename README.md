@@ -31,7 +31,10 @@ DeepSparse is a CPU inference runtime that takes advantage of sparsity to accele
 
 ## ✨NEW✨ DeepSparse LLMs
 
-We are pleased to announce support for LLMs in DeepSparse, starting with MosaicML's MPT-7B.
+We are pleased to announce support for LLMs in DeepSparse, starting with MosaicML's MPT-7B. DeepSparse is optimized for performant inference of LLMs with:
+- Optimized sparse quantized CPU kernels
+- Efficient usage of cached attention keys and values for minimal memory movement
+- Compressed memory using sparse weights
 
 ### Try It Now
 
@@ -52,16 +55,13 @@ print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 # Sparsity is the property of a matrix or other data structure in which a large number of elements are zero, and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
 
-DeepSparse is optimized for performant inference of LLMs with:
-- Optimized sparse quantized CPU kernels
-- Efficient usage of cached attention keys and values for minimal memory movement
-- Compressed memory using sparse weights
-
 > [Check out our `TextGeneration` documentation for  usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
-### Performance Gains From Sparsity
+### Sparsity :handshake: Performance
 
-Our recent paper, [Sparse Finetuning for Inference Acceleration of Large Language Models](), developed in collaboration with IST Austria, details a new technique called Sparse Finetuning, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy. DeepSparse accelerates the 60% sparse-INT8 model runs ~7x relative to the dense-FP32 baseline.
+Our recent paper, [Sparse Finetuning for Inference Acceleration of Large Language Models](https://arxiv.org/abs/2310.06927), developed in collaboration with IST Austria, details a new technique called Sparse Finetuning, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy. 
+
+DeepSparse accelerates the 60% sparse-INT8 model ***~7x*** over the dense-FP32 baseline.
 
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="50%"/>
