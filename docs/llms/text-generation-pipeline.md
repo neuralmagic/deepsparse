@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# **Text Generation Pipelines**
+# **Text Generation Pipeline**
 
-This user guide describes how to run inference of text generation models with DeepSparse.
+This user guide explains how to run inference of text generation models with DeepSparse.
 
 ## **Installation**
 
-DeepSparse support for LLMs is currently available on DeepSparse's nightly build on PyPi:
+DeepSparse support for LLMs is available on DeepSparse's nightly build on PyPi:
 
 ```bash
-pip install -U deepsparse-nightly==1.6.0.20231007[transformers]
+pip install -U deepsparse-nightly[llm]
 ```
 
 #### **System Requirements**
@@ -41,8 +41,8 @@ DeepSparse exposes a Pipeline interface called `TextGeneration`, which is used t
 from deepsparse import TextGeneration
 
 # construct a pipeline
-MODEL_PATH = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
-pipeline = TextGeneration(model_path=MODEL_PATH)
+model_path = "zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized"
+pipeline = TextGeneration(model=model_path)
 
 # generate text
 prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: What is Kubernetes? ### Response:"
@@ -52,27 +52,29 @@ print(output.generations[0].text)
 # >> Kubernetes is an open-source container orchestration system for automating deployment, scaling, and management of containerized applications.
 ```
 
-> **Note:** The 7B model takes about 2 minutes to compile. Set `MODEL_PATH` to `hf:mgoin/TinyStories-33M-quant-deepsparse` to use a small TinyStories model for quick compilation if you are just experimenting.
+> **Note:** The 7B model takes about 2 minutes to compile. Set `model_path = hf:mgoin/TinyStories-33M-quant-deepsparse` to use a small TinyStories model for quick compilation if you are just experimenting.
+
 ## **Model Format**
 
 DeepSparse accepts models in ONNX format, passed either as SparseZoo stubs or local directories.
 
-> **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At current, we suggest only using LLM ONNX graphs from SparseZoo.***
+> **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At current, we suggest only using LLM ONNX graphs created by Neural Magic.***
+> 
 ### **SparseZoo Stubs**
 
-SparseZoo stubs identify a model in SparseZoo. For instance, `zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none` identifes a 50% pruned-quantized MPT-7b model fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
+SparseZoo stubs identify a model in SparseZoo. For instance, `zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized` identifes a 50% pruned-quantized pretrained MPT-7b model fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
 
 ```python
-model_path = "zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none"
-pipeline = TextGeneration(model_path=model_path)
+model_path = "zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized"
+pipeline = TextGeneration(model=model_path)
 ```
 
 ### **Local Deployment Directory**
 
 Additionally, we can pass a local path to a deployment directory. Use the SparseZoo API to download an example deployment directory:
 ```python
-import sparsezoo
-sz_model = sparsezoo.Model("zoo:nlg/text_generation/mpt-7b/pytorch/huggingface/dolly/pruned50_quant-none", "./local-model")
+from sparsezoo import Model
+sz_model = Model("zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized", "./local-model")
 sz_model.deployment.download()
 ```
 
@@ -84,8 +86,16 @@ ls ./local-model/deployment
 
 We can pass the local directory path to `TextGeneration`:
 ```python
-model_path = "./local-model/deployment"
-pipeline = TextGeneration(model_path=model_path)
+from deepsparse import TextGeneration
+pipeline = TextGeneration(model="./local-model/deployment")
+```
+
+### **Hugging Face Models**
+Hugging Face models which conform to the directory structure listed above can also be run with DeepSparse by prepending `hf:` to a model id. The following runs a [60% pruned-quantized MPT-7b model trained on GSM](https://huggingface.co/neuralmagic/mpt-7b-gsm8k-pruned60-quant).
+
+```python
+from deepsparse import TextGeneration
+pipeline = TextGeneration(model="hf:neuralmagic/mpt-7b-gsm8k-pruned60-quant")
 ```
 
 ## **Input and Output Formats**
@@ -96,8 +106,7 @@ The following examples use a quantized 33M parameter TinyStories model for quick
 ```python
 from deepsparse import TextGeneration
 
-MODEL_PATH = "hf:mgoin/TinyStories-33M-quant-deepsparse"
-pipeline = TextGeneration(model_path=MODEL_PATH)
+pipeline = TextGeneration(model="hf:mgoin/TinyStories-33M-quant-deepsparse")
 ```
 
 ### Input Format
@@ -112,13 +121,14 @@ for prompt_i, generation_i in zip(output.prompts, output.generations):
     print(f"{prompt_i}{generation_i.text}")
 
 # >> Princess Peach jumped from the balcony and landed on the ground. She was so happy that she had found her treasure. She thanked the old
+
 # >> Mario ran into the castle and started to explore. He ran around the castle and climbed on the throne. He even tried to climb
 ```
 
 - `streaming`: Boolean determining whether to stream response. If True, then the results are returned as a generator object which yields the results as they are generated.
 
 ```python
-prompt = "Princess peach jumped from the balcony"
+prompt = "Princess Peach jumped from the balcony"
 output_iterator = pipeline(prompt=prompt, streaming=True, max_new_tokens=20)
 
 print(prompt, end="")
@@ -172,8 +182,8 @@ The following examples use a quantized 33M parameter TinyStories model for quick
 ```python
 from deepsparse import TextGeneration
 
-MODEL_PATH = "hf:mgoin/TinyStories-33M-quant-deepsparse"
-pipeline = TextGeneration(model_path=MODEL_PATH)
+model_id = "hf:mgoin/TinyStories-33M-quant-deepsparse"
+pipeline = TextGeneration(model=model_id)
 ```
 
 ### **Creating A `GenerationConfig`**
@@ -213,7 +223,7 @@ We can pass a `GenerationConfig` to `TextGeneration.__init__` or `TextGeneration
 
 ```python
 # set generation_config during __init__
-pipeline_w_gen_config = TextGeneration(model_path=MODEL_PATH, generation_config={"max_new_tokens": 10})
+pipeline_w_gen_config = TextGeneration(model=model_id, generation_config={"max_new_tokens": 10})
 
 # generation_config is the default during __call__
 output = pipeline_w_gen_config(prompt=prompt)
@@ -225,7 +235,7 @@ print(f"{prompt}{output.generations[0].text}")
 
 ```python
 # no generation_config set during __init__
-pipeline_w_no_gen_config = TextGeneration(model_path=MODEL_PATH)
+pipeline_w_no_gen_config = TextGeneration(model=model_id)
 
 # generation_config is the passed during __call__
 output = pipeline_w_no_gen_config(prompt=prompt, generation_config= {"max_new_tokens": 10})
@@ -295,7 +305,7 @@ import numpy
 # only 20 logits are not set to -inf == only 20 logits used to sample token
 output = pipeline(prompt=prompt, do_sample=True, top_k=20, max_new_tokens=15, output_scores=True)
 print(numpy.isfinite(output.generations[0].score).sum(axis=1))
-# >> array([20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20])
+# >> [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]
 ```
 
 - `top_p`: Float to define the tokens that are considered with nucleus sampling. If `0.0`, `top_p` is turned off. Default is `0.0`
@@ -306,7 +316,7 @@ import numpy
 output = pipeline(prompt=prompt, do_sample=True, top_p=0.9, max_new_tokens=15, output_scores=True)
 print(numpy.isfinite(output.generations[0].score).sum(axis=1))
 
-# >> array([20, 15, 10, 5, 25, 3, 10, 7, 6, 6, 15, 12, 11, 3, 4, 4])
+# >> [  5 119  18  14 204   6   7 367 191  20  12   7  46   6   2  35]
 ```
 - `repetition_penalty`: The more a token is used within generation the more it is penalized to not be picked in successive generation passes. If `0.0`, `repetation_penalty` is turned off. Default is `0.0`
 
