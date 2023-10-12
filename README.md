@@ -59,9 +59,7 @@ print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 
 ### Sparsity :handshake: Performance
 
-Our recent paper, [Sparse Finetuning for Inference Acceleration of Large Language Models](https://arxiv.org/abs/2310.06927), developed in collaboration with IST Austria, details a new technique called Sparse Finetuning, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy. 
-
-DeepSparse accelerates the 60% sparse-INT8 model ***~7x*** over the dense-FP32 baseline.
+Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy relative to the dense baseline. With our support for LLMs, DeepSparse accelerates the 60% sparse-INT8 model ***~7x*** over the dense baseline:
 
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="50%"/>
