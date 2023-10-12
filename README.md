@@ -32,7 +32,7 @@ DeepSparse is a CPU inference runtime that takes advantage of sparsity to accele
 ## ✨NEW✨ DeepSparse LLMs
 
 We are pleased to announce support for LLMs, starting with MPT-7B. DeepSparse is optimized for performant text generation with:
-- Optimized sparse quantized CPU kernels
+- Custom sparse quantized CPU kernels
 - Efficient usage of cached attention keys and values for minimal memory movement
 - Low memory utilization with sparse-quantized weights and quantized activations
 
