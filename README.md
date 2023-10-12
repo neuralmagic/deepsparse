@@ -47,7 +47,7 @@ limitations under the License.
 
 ## ✨NEW✨ DeepSparse LLMs
 
-We are pleased to announce initial support for performant LLM inference in DeepSparse with:
+We are excited to announce initial support for performant LLM inference in DeepSparse with:
 - Sparse kernels for speedups and memory savings from unstructured sparse weights
 - 8-bit weight and activation quantization support
 - Efficient usage of cached attention keys and values for minimal memory movement
@@ -94,7 +94,7 @@ Following this initial launch, we are rapidly expanding our support for LLMs, in
 
 ## Computer Vision and NLP Models
 
-In addition to LLMs, DeepSparse supports many variants of CNNs and Transformer models such as BERT, ViT, ResNet, EfficientNet, YOLOv5/8, and many more! Take a look at the [Computer Vision](https://sparsezoo.neuralmagic.com/?modelSet=computer_vision) and [Natural Language Processing](https://sparsezoo.neuralmagic.com/?modelSet=natural_language_processing) domains of SparseZoo.
+In addition to LLMs, DeepSparse supports many variants of CNNs and Transformer models such as BERT, ViT, ResNet, EfficientNet, YOLOv5/8, and many more! Take a look at the [Computer Vision](https://sparsezoo.neuralmagic.com/?modelSet=computer_vision) and [Natural Language Processing](https://sparsezoo.neuralmagic.com/?modelSet=natural_language_processing) domains of [SparseZoo](https://sparsezoo.neuralmagic.com/), our home for optimized models.
 
 ### Installation
 
