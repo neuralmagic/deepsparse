@@ -73,10 +73,7 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
-        deployment_path = zoo_model.deployment.path
-        for deployment_file in zoo_model.deployment.files:
-            # force download of any missing files in deployment directory
-            deployment_file.path
+        deployment_path = zoo_model.deployment_directory_path
         return deployment_path, os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
     elif model_path.startswith("hf:"):
         from huggingface_hub import snapshot_download
